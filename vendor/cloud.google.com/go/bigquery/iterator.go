@@ -229,6 +229,7 @@ type rowSource struct {
 	cachedRows      []*bq.TableRow
 	cachedSchema    *bq.TableSchema
 	cachedNextToken string
+	cachedTotalRows uint64
 }
 
 // fetchPageResult represents a page of rows returned from the backend.
@@ -243,7 +244,7 @@ type fetchPageResult struct {
 // then dispatches to either the appropriate job or table-based backend mechanism
 // as needed.
 func fetchPage(ctx context.Context, src *rowSource, schema Schema, startIndex uint64, pageSize int64, pageToken string) (*fetchPageResult, error) {
-	result, err := fetchCachedPage(ctx, src, schema, startIndex, pageSize, pageToken)
+	result, err := fetchCachedPage(src, schema, startIndex, pageSize, pageToken)
 	if err != nil {
 		if err != errNoCacheData {
 			// This likely means something more severe, like a problem with schema.
@@ -257,7 +258,12 @@ func fetchPage(ctx context.Context, src *rowSource, schema Schema, startIndex ui
 			return fetchTableResultPage(ctx, src, schema, startIndex, pageSize, pageToken)
 		}
 		// No rows, but no table or job reference.  Return an empty result set.
-		return &fetchPageResult{}, nil
+		if schema == nil {
+			schema = bqToSchema(src.cachedSchema)
+		}
+		return &fetchPageResult{
+			schema: schema,
+		}, nil
 	}
 	return result, nil
 }
@@ -319,7 +325,7 @@ func fetchTableResultPage(ctx context.Context, src *rowSource, schema Schema, st
 }
 
 func fetchJobResultPage(ctx context.Context, src *rowSource, schema Schema, startIndex uint64, pageSize int64, pageToken string) (*fetchPageResult, error) {
-	// reduce data transfered by leveraging api projections
+	// reduce data transferred by leveraging api projections
 	projectedFields := []googleapi.Field{"rows", "pageToken", "totalRows"}
 	call := src.j.c.bqs.Jobs.GetQueryResults(src.j.projectID, src.j.jobID).Location(src.j.location).Context(ctx)
 	call = call.FormatOptionsUseInt64Timestamp(true)
@@ -366,7 +372,7 @@ var errNoCacheData = errors.New("no rows in rowSource cache")
 // fetchCachedPage attempts to service the first page of results.  For the jobs path specifically, we have an
 // opportunity to fetch rows before the iterator is constructed, and thus serve that data as the first request
 // without an unnecessary network round trip.
-func fetchCachedPage(ctx context.Context, src *rowSource, schema Schema, startIndex uint64, pageSize int64, pageToken string) (*fetchPageResult, error) {
+func fetchCachedPage(src *rowSource, schema Schema, startIndex uint64, pageSize int64, pageToken string) (*fetchPageResult, error) {
 	// we have no cached data
 	if src.cachedRows == nil {
 		return nil, errNoCacheData
@@ -377,6 +383,7 @@ func fetchCachedPage(ctx context.Context, src *rowSource, schema Schema, startIn
 			// We can't progress with no schema, destroy references and return a miss.
 			src.cachedRows = nil
 			src.cachedNextToken = ""
+			src.cachedTotalRows = 0
 			return nil, errNoCacheData
 		}
 		schema = bqToSchema(src.cachedSchema)
@@ -395,23 +402,26 @@ func fetchCachedPage(ctx context.Context, src *rowSource, schema Schema, startIn
 			src.cachedRows = nil
 			src.cachedSchema = nil
 			src.cachedNextToken = ""
+			src.cachedTotalRows = 0
 			return nil, err
 		}
 		result := &fetchPageResult{
 			pageToken: src.cachedNextToken,
 			rows:      converted,
 			schema:    schema,
-			totalRows: uint64(len(converted)),
+			totalRows: src.cachedTotalRows,
 		}
 		// clear cache references and return response.
 		src.cachedRows = nil
 		src.cachedSchema = nil
 		src.cachedNextToken = ""
+		src.cachedTotalRows = 0
 		return result, nil
 	}
 	// All other cases are invalid.  Destroy any cache references on the way out the door.
 	src.cachedRows = nil
 	src.cachedSchema = nil
 	src.cachedNextToken = ""
+	src.cachedTotalRows = 0
 	return nil, errNoCacheData
 }

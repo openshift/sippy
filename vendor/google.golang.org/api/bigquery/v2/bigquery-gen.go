@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC.
+// Copyright 2025 Google LLC.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -64,11 +64,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
+	"github.com/googleapis/gax-go/v2/internallog"
 	googleapi "google.golang.org/api/googleapi"
 	internal "google.golang.org/api/internal"
 	gensupport "google.golang.org/api/internal/gensupport"
@@ -92,6 +94,7 @@ var _ = strings.Replace
 var _ = context.Canceled
 var _ = internaloption.WithDefaultEndpoint
 var _ = internal.Version
+var _ = internallog.New
 
 const apiId = "bigquery:v2"
 const apiName = "bigquery"
@@ -145,14 +148,20 @@ func NewService(ctx context.Context, opts ...option.ClientOption) (*Service, err
 	opts = append(opts, internaloption.WithDefaultEndpoint(basePath))
 	opts = append(opts, internaloption.WithDefaultEndpointTemplate(basePathTemplate))
 	opts = append(opts, internaloption.WithDefaultMTLSEndpoint(mtlsBasePath))
+	opts = append(opts, internaloption.EnableNewAuthLibrary())
 	client, endpoint, err := htransport.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
-	s, err := New(client)
-	if err != nil {
-		return nil, err
-	}
+	s := &Service{client: client, BasePath: basePath, logger: internaloption.GetLogger(opts)}
+	s.Datasets = NewDatasetsService(s)
+	s.Jobs = NewJobsService(s)
+	s.Models = NewModelsService(s)
+	s.Projects = NewProjectsService(s)
+	s.Routines = NewRoutinesService(s)
+	s.RowAccessPolicies = NewRowAccessPoliciesService(s)
+	s.Tabledata = NewTabledataService(s)
+	s.Tables = NewTablesService(s)
 	if endpoint != "" {
 		s.BasePath = endpoint
 	}
@@ -168,20 +177,12 @@ func New(client *http.Client) (*Service, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
 	}
-	s := &Service{client: client, BasePath: basePath}
-	s.Datasets = NewDatasetsService(s)
-	s.Jobs = NewJobsService(s)
-	s.Models = NewModelsService(s)
-	s.Projects = NewProjectsService(s)
-	s.Routines = NewRoutinesService(s)
-	s.RowAccessPolicies = NewRowAccessPoliciesService(s)
-	s.Tabledata = NewTabledataService(s)
-	s.Tables = NewTablesService(s)
-	return s, nil
+	return NewService(context.TODO(), option.WithHTTPClient(client))
 }
 
 type Service struct {
 	client    *http.Client
+	logger    *slog.Logger
 	BasePath  string // API endpoint base URL
 	UserAgent string // optional additional User-Agent fragment
 
@@ -308,7 +309,7 @@ type AggregateClassificationMetrics struct {
 	RocAuc float64 `json:"rocAuc,omitempty"`
 	// Threshold: Threshold at which the metrics are computed. For binary
 	// classification models this is the positive class threshold. For multi-class
-	// classfication models this is the confidence threshold.
+	// classification models this is the confidence threshold.
 	Threshold float64 `json:"threshold,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "Accuracy") to
 	// unconditionally include in API requests. By default, fields with empty or
@@ -393,9 +394,9 @@ type Argument struct {
 	//   "FIXED_TYPE" - The argument is a variable with fully specified type, which
 	// can be a struct or an array, but not a table.
 	//   "ANY_TYPE" - The argument is any type, including struct or array, but not
-	// a table. To be added: FIXED_TABLE, ANY_TABLE
+	// a table.
 	ArgumentKind string `json:"argumentKind,omitempty"`
-	// DataType: Required unless argument_kind = ANY_TYPE.
+	// DataType: Set if argument_kind == FIXED_TYPE.
 	DataType *StandardSqlDataType `json:"dataType,omitempty"`
 	// IsAggregate: Optional. Whether the argument is an aggregate function
 	// parameter. Must be Unset for routine types other than AGGREGATE_FUNCTION.
@@ -859,6 +860,33 @@ func (s AvroOptions) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
+// BatchDeleteRowAccessPoliciesRequest: Request message for the
+// BatchDeleteRowAccessPoliciesRequest method.
+type BatchDeleteRowAccessPoliciesRequest struct {
+	// Force: If set to true, it deletes the row access policy even if it's the
+	// last row access policy on the table and the deletion will widen the access
+	// rather narrowing it.
+	Force bool `json:"force,omitempty"`
+	// PolicyIds: Required. Policy IDs of the row access policies.
+	PolicyIds []string `json:"policyIds,omitempty"`
+	// ForceSendFields is a list of field names (e.g. "Force") to unconditionally
+	// include in API requests. By default, fields with empty or default values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g. "Force") to include in API
+	// requests with the JSON null value. By default, fields with empty values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
+	NullFields []string `json:"-"`
+}
+
+func (s BatchDeleteRowAccessPoliciesRequest) MarshalJSON() ([]byte, error) {
+	type NoMethod BatchDeleteRowAccessPoliciesRequest
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
 // BiEngineReason: Reason why BI Engine didn't accelerate the query (or
 // sub-query).
 type BiEngineReason struct {
@@ -948,24 +976,25 @@ func (s BiEngineStatistics) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
-// BigLakeConfiguration: Configuration for BigLake managed tables.
+// BigLakeConfiguration: Configuration for BigQuery tables for Apache Iceberg
+// (formerly BigLake managed tables.)
 type BigLakeConfiguration struct {
-	// ConnectionId: Required. The connection specifying the credentials to be used
+	// ConnectionId: Optional. The connection specifying the credentials to be used
 	// to read and write to external storage, such as Cloud Storage. The
 	// connection_id can have the form `{project}.{location}.{connection_id}` or
 	// `projects/{project}/locations/{location}/connections/{connection_id}".
 	ConnectionId string `json:"connectionId,omitempty"`
-	// FileFormat: Required. The file format the table data is stored in.
+	// FileFormat: Optional. The file format the table data is stored in.
 	//
 	// Possible values:
 	//   "FILE_FORMAT_UNSPECIFIED" - Default Value.
 	//   "PARQUET" - Apache Parquet format.
 	FileFormat string `json:"fileFormat,omitempty"`
-	// StorageUri: Required. The fully qualified location prefix of the external
+	// StorageUri: Optional. The fully qualified location prefix of the external
 	// folder where table data is stored. The '*' wildcard character is not
 	// allowed. The URI should be in the format `gs://bucket/path_to_table/`
 	StorageUri string `json:"storageUri,omitempty"`
-	// TableFormat: Required. The table format the metadata only snapshots are
+	// TableFormat: Optional. The table format the metadata only snapshots are
 	// stored in.
 	//
 	// Possible values:
@@ -1623,8 +1652,9 @@ type Clustering struct {
 	// Fields: One or more fields on which data should be clustered. Only
 	// top-level, non-repeated, simple-type fields are supported. The ordering of
 	// the clustering fields should be prioritized from most to least important for
-	// filtering purposes. Additional information on limitations can be found here:
-	// https://cloud.google.com/bigquery/docs/creating-clustered-tables#limitations
+	// filtering purposes. For additional information, see Introduction to
+	// clustered tables
+	// (https://cloud.google.com/bigquery/docs/clustered-tables#limitations).
 	Fields []string `json:"fields,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "Fields") to unconditionally
 	// include in API requests. By default, fields with empty or default values are
@@ -1805,6 +1835,14 @@ type CsvOptions struct {
 	// STRING and BYTE columns, BigQuery interprets the empty string as an empty
 	// value.
 	NullMarker string `json:"nullMarker,omitempty"`
+	// NullMarkers: Optional. A list of strings represented as SQL NULL value in a
+	// CSV file. null_marker and null_markers can't be set at the same time. If
+	// null_marker is set, null_markers has to be not set. If null_markers is set,
+	// null_marker has to be not set. If both null_marker and null_markers are set
+	// at the same time, a user error would be thrown. Any strings listed in
+	// null_markers, including empty string would be interpreted as SQL NULL. This
+	// applies to all column types.
+	NullMarkers []string `json:"nullMarkers,omitempty"`
 	// PreserveAsciiControlCharacters: Optional. Indicates if the embedded ASCII
 	// control characters (the first 32 characters in the ASCII-table, from '\x00'
 	// to '\x1F') are preserved.
@@ -1835,6 +1873,15 @@ type CsvOptions struct {
 	// skipped. Otherwise row N is used to extract column names for the detected
 	// schema.
 	SkipLeadingRows int64 `json:"skipLeadingRows,omitempty,string"`
+	// SourceColumnMatch: Optional. Controls the strategy used to match loaded
+	// columns to the schema. If not set, a sensible default is chosen based on how
+	// the schema is provided. If autodetect is used, then columns are matched by
+	// name. Otherwise, columns are matched by position. This is done to keep the
+	// behavior backward-compatible. Acceptable values are: POSITION - matches by
+	// position. This assumes that the columns are ordered the same way as the
+	// schema. NAME - matches by name. This reads the header row as column names
+	// and reorders columns to match the field names in the schema.
+	SourceColumnMatch string `json:"sourceColumnMatch,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "AllowJaggedRows") to
 	// unconditionally include in API requests. By default, fields with empty or
 	// default values are omitted from API requests. See
@@ -1855,18 +1902,30 @@ func (s CsvOptions) MarshalJSON() ([]byte, error) {
 
 // DataFormatOptions: Options for data format adjustments.
 type DataFormatOptions struct {
+	// TimestampOutputFormat: Optional. The API output format for a timestamp. This
+	// offers more explicit control over the timestamp output format as compared to
+	// the existing `use_int64_timestamp` option.
+	//
+	// Possible values:
+	//   "TIMESTAMP_OUTPUT_FORMAT_UNSPECIFIED" - Corresponds to default API output
+	// behavior, which is FLOAT64.
+	//   "FLOAT64" - Timestamp is output as float64 seconds since Unix epoch.
+	//   "INT64" - Timestamp is output as int64 microseconds since Unix epoch.
+	//   "ISO8601_STRING" - Timestamp is output as ISO 8601 String
+	// ("YYYY-MM-DDTHH:MM:SS.FFFFFFFFFFFFZ").
+	TimestampOutputFormat string `json:"timestampOutputFormat,omitempty"`
 	// UseInt64Timestamp: Optional. Output timestamp as usec int64. Default is
 	// false.
 	UseInt64Timestamp bool `json:"useInt64Timestamp,omitempty"`
-	// ForceSendFields is a list of field names (e.g. "UseInt64Timestamp") to
+	// ForceSendFields is a list of field names (e.g. "TimestampOutputFormat") to
 	// unconditionally include in API requests. By default, fields with empty or
 	// default values are omitted from API requests. See
 	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
 	// details.
 	ForceSendFields []string `json:"-"`
-	// NullFields is a list of field names (e.g. "UseInt64Timestamp") to include in
-	// API requests with the JSON null value. By default, fields with empty values
-	// are omitted from API requests. See
+	// NullFields is a list of field names (e.g. "TimestampOutputFormat") to
+	// include in API requests with the JSON null value. By default, fields with
+	// empty values are omitted from API requests. See
 	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
 	NullFields []string `json:"-"`
 }
@@ -1896,6 +1955,30 @@ type DataMaskingStatistics struct {
 
 func (s DataMaskingStatistics) MarshalJSON() ([]byte, error) {
 	type NoMethod DataMaskingStatistics
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
+// DataPolicyOption: Data policy option proto, it currently supports name only,
+// will support precedence later.
+type DataPolicyOption struct {
+	// Name: Data policy resource name in the form of
+	// projects/project_id/locations/location_id/dataPolicies/data_policy_id.
+	Name string `json:"name,omitempty"`
+	// ForceSendFields is a list of field names (e.g. "Name") to unconditionally
+	// include in API requests. By default, fields with empty or default values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g. "Name") to include in API requests
+	// with the JSON null value. By default, fields with empty values are omitted
+	// from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
+	NullFields []string `json:"-"`
+}
+
+func (s DataPolicyOption) MarshalJSON() ([]byte, error) {
+	type NoMethod DataPolicyOption
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
@@ -2053,18 +2136,21 @@ type Dataset struct {
 	// value can be from 48 to 168 hours (2 to 7 days). The default value is 168
 	// hours if this is not set.
 	MaxTimeTravelHours int64 `json:"maxTimeTravelHours,omitempty,string"`
-	// ResourceTags: Optional. The tags (/bigquery/docs/tags) attached to this
-	// dataset. Tag keys are globally unique. Tag key is expected to be in the
-	// namespaced format, for example "123456789012/environment" where 123456789012
-	// is the ID of the parent organization or project resource for this tag key.
-	// Tag value is expected to be the short name, for example "Production". See
-	// Tag definitions (/iam/docs/tags-access-control#definitions) for more
+	// ResourceTags: Optional. The tags
+	// (https://cloud.google.com/bigquery/docs/tags) attached to this dataset. Tag
+	// keys are globally unique. Tag key is expected to be in the namespaced
+	// format, for example "123456789012/environment" where 123456789012 is the ID
+	// of the parent organization or project resource for this tag key. Tag value
+	// is expected to be the short name, for example "Production". See Tag
+	// definitions
+	// (https://cloud.google.com/iam/docs/tags-access-control#definitions) for more
 	// details.
 	ResourceTags map[string]string `json:"resourceTags,omitempty"`
 	// Restrictions: Optional. Output only. Restriction config for all tables and
 	// dataset. If set, restrict certain accesses on the dataset and all its tables
 	// based on the config. See Data egress
-	// (/bigquery/docs/analytics-hub-introduction#data_egress) for more details.
+	// (https://cloud.google.com/bigquery/docs/analytics-hub-introduction#data_egress)
+	// for more details.
 	Restrictions *RestrictionConfig `json:"restrictions,omitempty"`
 	// SatisfiesPzi: Output only. Reserved for future use.
 	SatisfiesPzi bool `json:"satisfiesPzi,omitempty"`
@@ -2112,6 +2198,9 @@ func (s Dataset) MarshalJSON() ([]byte, error) {
 
 // DatasetAccess: An object that defines dataset access for an entity.
 type DatasetAccess struct {
+	// Condition: Optional. condition for the binding. If CEL expression in this
+	// field is true, this access binding will be considered
+	Condition *Expr `json:"condition,omitempty"`
 	// Dataset: [Pick one] A grant authorizing all resources of a particular type
 	// in a particular dataset access to this dataset. Only views are supported for
 	// now. The role field is not required when this field is set. If that dataset
@@ -2159,13 +2248,13 @@ type DatasetAccess struct {
 	// view is updated by any user, access to the view needs to be granted again
 	// via an update operation.
 	View *TableReference `json:"view,omitempty"`
-	// ForceSendFields is a list of field names (e.g. "Dataset") to unconditionally
-	// include in API requests. By default, fields with empty or default values are
-	// omitted from API requests. See
+	// ForceSendFields is a list of field names (e.g. "Condition") to
+	// unconditionally include in API requests. By default, fields with empty or
+	// default values are omitted from API requests. See
 	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
 	// details.
 	ForceSendFields []string `json:"-"`
-	// NullFields is a list of field names (e.g. "Dataset") to include in API
+	// NullFields is a list of field names (e.g. "Condition") to include in API
 	// requests with the JSON null value. By default, fields with empty values are
 	// omitted from API requests. See
 	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
@@ -2287,6 +2376,10 @@ type DatasetListDatasets struct {
 	// DatasetReference: The dataset reference. Use this property to access
 	// specific parts of the dataset's ID, such as project ID or dataset ID.
 	DatasetReference *DatasetReference `json:"datasetReference,omitempty"`
+	// ExternalDatasetReference: Output only. Reference to a read-only external
+	// dataset defined in data catalogs outside of BigQuery. Filled out when the
+	// dataset type is EXTERNAL.
+	ExternalDatasetReference *ExternalDatasetReference `json:"externalDatasetReference,omitempty"`
 	// FriendlyName: An alternate name for the dataset. The friendly name is purely
 	// decorative in nature.
 	FriendlyName string `json:"friendlyName,omitempty"`
@@ -3036,14 +3129,14 @@ func (s Expr) MarshalJSON() ([]byte, error) {
 
 // ExternalCatalogDatasetOptions: Options defining open source compatible
 // datasets living in the BigQuery catalog. Contains metadata of open source
-// database, schema or namespace represented by the current dataset.
+// database, schema, or namespace represented by the current dataset.
 type ExternalCatalogDatasetOptions struct {
 	// DefaultStorageLocationUri: Optional. The storage location URI for all tables
 	// in the dataset. Equivalent to hive metastore's database locationUri. Maximum
 	// length of 1024 characters.
 	DefaultStorageLocationUri string `json:"defaultStorageLocationUri,omitempty"`
 	// Parameters: Optional. A map of key value pairs defining the parameters and
-	// properties of the open source schema. Maximum size of 2Mib.
+	// properties of the open source schema. Maximum size of 2MiB.
 	Parameters map[string]string `json:"parameters,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "DefaultStorageLocationUri")
 	// to unconditionally include in API requests. By default, fields with empty or
@@ -3064,17 +3157,18 @@ func (s ExternalCatalogDatasetOptions) MarshalJSON() ([]byte, error) {
 }
 
 // ExternalCatalogTableOptions: Metadata about open source compatible table.
-// The fields contained in these options correspond to hive metastore's table
-// level properties.
+// The fields contained in these options correspond to Hive metastore's
+// table-level properties.
 type ExternalCatalogTableOptions struct {
-	// ConnectionId: Optional. The connection specifying the credentials to be used
-	// to read external storage, such as Azure Blob, Cloud Storage, or S3. The
-	// connection is needed to read the open source table from BigQuery Engine. The
-	// connection_id can have the form `..` or `projects//locations//connections/`.
+	// ConnectionId: Optional. A connection ID that specifies the credentials to be
+	// used to read external storage, such as Azure Blob, Cloud Storage, or Amazon
+	// S3. This connection is needed to read the open source table from BigQuery.
+	// The connection_id format must be either `..` or
+	// `projects//locations//connections/`.
 	ConnectionId string `json:"connectionId,omitempty"`
-	// Parameters: Optional. A map of key value pairs defining the parameters and
-	// properties of the open source table. Corresponds with hive meta store table
-	// parameters. Maximum size of 4Mib.
+	// Parameters: Optional. A map of the key-value pairs defining the parameters
+	// and properties of the open source table. Corresponds with Hive metastore
+	// table parameters. Maximum size of 4MiB.
 	Parameters map[string]string `json:"parameters,omitempty"`
 	// StorageDescriptor: Optional. A storage descriptor containing information
 	// about the physical storage of this table.
@@ -3121,6 +3215,12 @@ type ExternalDataConfiguration struct {
 	// CsvOptions: Optional. Additional properties to set if sourceFormat is set to
 	// CSV.
 	CsvOptions *CsvOptions `json:"csvOptions,omitempty"`
+	// DateFormat: Optional. Format used to parse DATE values. Supports C-style and
+	// SQL-style values.
+	DateFormat string `json:"dateFormat,omitempty"`
+	// DatetimeFormat: Optional. Format used to parse DATETIME values. Supports
+	// C-style and SQL-style values.
+	DatetimeFormat string `json:"datetimeFormat,omitempty"`
 	// DecimalTargetTypes: Defines the list of possible SQL data types to which the
 	// source decimal values are converted. This list and the precision and the
 	// scale parameters of the decimal field determine the target type. In the
@@ -3133,7 +3233,7 @@ type ExternalDataConfiguration struct {
 	// of this field is ["NUMERIC", "BIGNUMERIC"]. If (precision,scale) is: *
 	// (38,9) -> NUMERIC; * (39,9) -> BIGNUMERIC (NUMERIC cannot hold 30 integer
 	// digits); * (38,10) -> BIGNUMERIC (NUMERIC cannot hold 10 fractional digits);
-	// * (76,38) -> BIGNUMERIC; * (77,38) -> BIGNUMERIC (error if value exeeds
+	// * (76,38) -> BIGNUMERIC; * (77,38) -> BIGNUMERIC (error if value exceeds
 	// supported range). This field cannot contain duplicate types. The order of
 	// the types in this field is ignored. For example, ["BIGNUMERIC", "NUMERIC"]
 	// is the same as ["NUMERIC", "BIGNUMERIC"] and NUMERIC always takes precedence
@@ -3185,7 +3285,7 @@ type ExternalDataConfiguration struct {
 	//
 	// Possible values:
 	//   "JSON_EXTENSION_UNSPECIFIED" - The default if provided value is not one
-	// included in the enum, or the value is not specified. The source formate is
+	// included in the enum, or the value is not specified. The source format is
 	// parsed without any modification.
 	//   "GEOJSON" - Use GeoJSON variant of JSON. See
 	// https://tools.ietf.org/html/rfc7946.
@@ -3249,6 +3349,16 @@ type ExternalDataConfiguration struct {
 	// Cloud Datastore backups, exactly one URI can be specified. Also, the '*'
 	// wildcard character is not allowed.
 	SourceUris []string `json:"sourceUris,omitempty"`
+	// TimeFormat: Optional. Format used to parse TIME values. Supports C-style and
+	// SQL-style values.
+	TimeFormat string `json:"timeFormat,omitempty"`
+	// TimeZone: Optional. Time zone used when parsing timestamp values that do not
+	// have specific time zone information (e.g. 2024-04-20 12:34:56). The expected
+	// format is a IANA timezone string (e.g. America/Los_Angeles).
+	TimeZone string `json:"timeZone,omitempty"`
+	// TimestampFormat: Optional. Format used to parse TIMESTAMP values. Supports
+	// C-style and SQL-style values.
+	TimestampFormat string `json:"timestampFormat,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "Autodetect") to
 	// unconditionally include in API requests. By default, fields with empty or
 	// default values are omitted from API requests. See
@@ -3294,6 +3404,62 @@ func (s ExternalDatasetReference) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
+// ExternalRuntimeOptions: Options for the runtime of the external system.
+type ExternalRuntimeOptions struct {
+	// ContainerCpu: Optional. Amount of CPU provisioned for a Python UDF container
+	// instance. For more information, see Configure container limits for Python
+	// UDFs
+	// (https://cloud.google.com/bigquery/docs/user-defined-functions-python#configure-container-limits)
+	ContainerCpu float64 `json:"containerCpu,omitempty"`
+	// ContainerMemory: Optional. Amount of memory provisioned for a Python UDF
+	// container instance. Format: {number}{unit} where unit is one of "M", "G",
+	// "Mi" and "Gi" (e.g. 1G, 512Mi). If not specified, the default value is
+	// 512Mi. For more information, see Configure container limits for Python UDFs
+	// (https://cloud.google.com/bigquery/docs/user-defined-functions-python#configure-container-limits)
+	ContainerMemory string `json:"containerMemory,omitempty"`
+	// MaxBatchingRows: Optional. Maximum number of rows in each batch sent to the
+	// external runtime. If absent or if 0, BigQuery dynamically decides the number
+	// of rows in a batch.
+	MaxBatchingRows int64 `json:"maxBatchingRows,omitempty,string"`
+	// RuntimeConnection: Optional. Fully qualified name of the connection whose
+	// service account will be used to execute the code in the container. Format:
+	// ``"projects/{project_id}/locations/{location_id}/connections/{connection_id}
+	// "``
+	RuntimeConnection string `json:"runtimeConnection,omitempty"`
+	// RuntimeVersion: Optional. Language runtime version. Example: `python-3.11`.
+	RuntimeVersion string `json:"runtimeVersion,omitempty"`
+	// ForceSendFields is a list of field names (e.g. "ContainerCpu") to
+	// unconditionally include in API requests. By default, fields with empty or
+	// default values are omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g. "ContainerCpu") to include in API
+	// requests with the JSON null value. By default, fields with empty values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
+	NullFields []string `json:"-"`
+}
+
+func (s ExternalRuntimeOptions) MarshalJSON() ([]byte, error) {
+	type NoMethod ExternalRuntimeOptions
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
+func (s *ExternalRuntimeOptions) UnmarshalJSON(data []byte) error {
+	type NoMethod ExternalRuntimeOptions
+	var s1 struct {
+		ContainerCpu gensupport.JSONFloat64 `json:"containerCpu"`
+		*NoMethod
+	}
+	s1.NoMethod = (*NoMethod)(s)
+	if err := json.Unmarshal(data, &s1); err != nil {
+		return err
+	}
+	s.ContainerCpu = float64(s1.ContainerCpu)
+	return nil
+}
+
 // ExternalServiceCost: The external service cost is a portion of the total
 // cost, these costs are not additive with total_bytes_billed. Moreover, this
 // field only track external service costs that will show up as BigQuery costs
@@ -3305,6 +3471,10 @@ func (s ExternalDatasetReference) MarshalJSON() ([]byte, error) {
 // dollars. Services may not directly correlate to these metrics, but these are
 // the equivalents for billing purposes. Output only.
 type ExternalServiceCost struct {
+	// BillingMethod: The billing method used for the external job. This field is
+	// only used when billed on the services sku, set to "SERVICES_SKU". Otherwise,
+	// it is unspecified for backward compatibility.
+	BillingMethod string `json:"billingMethod,omitempty"`
 	// BytesBilled: External service cost in terms of bigquery bytes billed.
 	BytesBilled int64 `json:"bytesBilled,omitempty,string"`
 	// BytesProcessed: External service cost in terms of bigquery bytes processed.
@@ -3317,13 +3487,13 @@ type ExternalServiceCost struct {
 	ReservedSlotCount int64 `json:"reservedSlotCount,omitempty,string"`
 	// SlotMs: External service cost in terms of bigquery slot milliseconds.
 	SlotMs int64 `json:"slotMs,omitempty,string"`
-	// ForceSendFields is a list of field names (e.g. "BytesBilled") to
+	// ForceSendFields is a list of field names (e.g. "BillingMethod") to
 	// unconditionally include in API requests. By default, fields with empty or
 	// default values are omitted from API requests. See
 	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
 	// details.
 	ForceSendFields []string `json:"-"`
-	// NullFields is a list of field names (e.g. "BytesBilled") to include in API
+	// NullFields is a list of field names (e.g. "BillingMethod") to include in API
 	// requests with the JSON null value. By default, fields with empty values are
 	// omitted from API requests. See
 	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
@@ -3804,8 +3974,8 @@ func (s HparamSearchSpaces) MarshalJSON() ([]byte, error) {
 }
 
 // HparamTuningTrial: Training info of a trial in hyperparameter tuning
-// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overvie
-// w) models.
+// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overview)
+// models.
 type HparamTuningTrial struct {
 	// EndTimeMs: Ending time of the trial.
 	EndTimeMs int64 `json:"endTimeMs,omitempty,string"`
@@ -3873,44 +4043,6 @@ func (s *HparamTuningTrial) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// IdentityColumnInfo: Metadata for value generation for an identity column.
-type IdentityColumnInfo struct {
-	// GeneratedMode: Optional. Dictates when system generated values are used to
-	// populate the field.
-	//
-	// Possible values:
-	//   "GENERATED_MODE_UNSPECIFIED" - Unspecified GeneratedMode will default to
-	// GENERATED_ALWAYS.
-	//   "GENERATED_ALWAYS" - Field can only have system generated values. Users
-	// cannot manually insert values into the field.
-	//   "GENERATED_BY_DEFAULT" - Use system generated values only if the user does
-	// not explicitly provide a value.
-	GeneratedMode string `json:"generatedMode,omitempty"`
-	// Increment: Optional. The minimum difference between two successive generated
-	// values. Should be INTEGER compatible. Can be negative or positive but not 0.
-	// The default value is 1 if the field is not specified.
-	Increment string `json:"increment,omitempty"`
-	// Start: Optional. The first generated value. Should be INTEGER compatible.
-	// The default value is 1 if the field is not specified.
-	Start string `json:"start,omitempty"`
-	// ForceSendFields is a list of field names (e.g. "GeneratedMode") to
-	// unconditionally include in API requests. By default, fields with empty or
-	// default values are omitted from API requests. See
-	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
-	// details.
-	ForceSendFields []string `json:"-"`
-	// NullFields is a list of field names (e.g. "GeneratedMode") to include in API
-	// requests with the JSON null value. By default, fields with empty values are
-	// omitted from API requests. See
-	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
-	NullFields []string `json:"-"`
-}
-
-func (s IdentityColumnInfo) MarshalJSON() ([]byte, error) {
-	type NoMethod IdentityColumnInfo
-	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
-}
-
 // IndexUnusedReason: Reason about why no search index was used in the search
 // query (or sub-query).
 type IndexUnusedReason struct {
@@ -3956,12 +4088,19 @@ type IndexUnusedReason struct {
 	//   "ESTIMATED_PERFORMANCE_GAIN_TOO_LOW" - Indicates that the estimated
 	// performance gain from using the search index is too low for the given search
 	// query.
+	//   "COLUMN_METADATA_INDEX_NOT_USED" - Indicates that the column metadata
+	// index (which the search index depends on) is not used. User can refer to the
+	// [column metadata index
+	// usage](https://cloud.google.com/bigquery/docs/metadata-indexing-managed-table
+	// s#view_column_metadata_index_usage) for more details on why it was not used.
 	//   "NOT_SUPPORTED_IN_STANDARD_EDITION" - Indicates that search indexes can
 	// not be used for search query with STANDARD edition.
 	//   "INDEX_SUPPRESSED_BY_FUNCTION_OPTION" - Indicates that an option in the
 	// search function that cannot make use of the index has been selected.
 	//   "QUERY_CACHE_HIT" - Indicates that the query was cached, and thus the
 	// search index was not used.
+	//   "STALE_INDEX" - The index cannot be used in the search query because it is
+	// stale.
 	//   "INTERNAL_ERROR" - Indicates an internal error that causes the search
 	// index to be unused.
 	//   "OTHER_REASON" - Indicates that the reason search indexes cannot be used
@@ -4202,9 +4341,7 @@ type Job struct {
 	Etag string `json:"etag,omitempty"`
 	// Id: Output only. Opaque ID field of the job.
 	Id string `json:"id,omitempty"`
-	// JobCreationReason: Output only. If set, it provides the reason why a Job was
-	// created. If not set, it should be treated as the default: REQUESTED. This
-	// feature is not yet available. Jobs will always be created.
+	// JobCreationReason: Output only. The reason why a Job was created.
 	JobCreationReason *JobCreationReason `json:"jobCreationReason,omitempty"`
 	// JobReference: Optional. Reference describing the unique-per-user name of the
 	// job.
@@ -4303,6 +4440,12 @@ type JobConfiguration struct {
 	Load *JobConfigurationLoad `json:"load,omitempty"`
 	// Query: [Pick one] Configures a query job.
 	Query *JobConfigurationQuery `json:"query,omitempty"`
+	// Reservation: Optional. The reservation that job would use. User can specify
+	// a reservation to execute the job. If reservation is not set, reservation is
+	// determined based on the rules defined by the reservation assignments. The
+	// expected format is
+	// `projects/{project}/locations/{location}/reservations/{reservation}`.
+	Reservation string `json:"reservation,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "Copy") to unconditionally
 	// include in API requests. By default, fields with empty or default values are
 	// omitted from API requests. See
@@ -4440,6 +4583,10 @@ type JobConfigurationLoad struct {
 	// location will be set to `Job.JobReference.location` if it is present,
 	// otherwise it's set to the default location based on existing routing logic.
 	CreateSession bool `json:"createSession,omitempty"`
+	// DateFormat: Optional. Date format used for parsing DATE values.
+	DateFormat string `json:"dateFormat,omitempty"`
+	// DatetimeFormat: Optional. Date format used for parsing DATETIME values.
+	DatetimeFormat string `json:"datetimeFormat,omitempty"`
 	// DecimalTargetTypes: Defines the list of possible SQL data types to which the
 	// source decimal values are converted. This list and the precision and the
 	// scale parameters of the decimal field determine the target type. In the
@@ -4452,7 +4599,7 @@ type JobConfigurationLoad struct {
 	// of this field is ["NUMERIC", "BIGNUMERIC"]. If (precision,scale) is: *
 	// (38,9) -> NUMERIC; * (39,9) -> BIGNUMERIC (NUMERIC cannot hold 30 integer
 	// digits); * (38,10) -> BIGNUMERIC (NUMERIC cannot hold 10 fractional digits);
-	// * (76,38) -> BIGNUMERIC; * (77,38) -> BIGNUMERIC (error if value exeeds
+	// * (76,38) -> BIGNUMERIC; * (77,38) -> BIGNUMERIC (error if value exceeds
 	// supported range). This field cannot contain duplicate types. The order of
 	// the types in this field is ignored. For example, ["BIGNUMERIC", "NUMERIC"]
 	// is the same as ["NUMERIC", "BIGNUMERIC"] and NUMERIC always takes precedence
@@ -4531,7 +4678,7 @@ type JobConfigurationLoad struct {
 	//
 	// Possible values:
 	//   "JSON_EXTENSION_UNSPECIFIED" - The default if provided value is not one
-	// included in the enum, or the value is not specified. The source formate is
+	// included in the enum, or the value is not specified. The source format is
 	// parsed without any modification.
 	//   "GEOJSON" - Use GeoJSON variant of JSON. See
 	// https://tools.ietf.org/html/rfc7946.
@@ -4550,6 +4697,14 @@ type JobConfigurationLoad struct {
 	// STRING and BYTE columns, BigQuery interprets the empty string as an empty
 	// value.
 	NullMarker string `json:"nullMarker,omitempty"`
+	// NullMarkers: Optional. A list of strings represented as SQL NULL value in a
+	// CSV file. null_marker and null_markers can't be set at the same time. If
+	// null_marker is set, null_markers has to be not set. If null_markers is set,
+	// null_marker has to be not set. If both null_marker and null_markers are set
+	// at the same time, a user error would be thrown. Any strings listed in
+	// null_markers, including empty string would be interpreted as SQL NULL. This
+	// applies to all column types.
+	NullMarkers []string `json:"nullMarkers,omitempty"`
 	// ParquetOptions: Optional. Additional properties to set if sourceFormat is
 	// set to PARQUET.
 	ParquetOptions *ParquetOptions `json:"parquetOptions,omitempty"`
@@ -4620,6 +4775,22 @@ type JobConfigurationLoad struct {
 	// skipped. Otherwise row N is used to extract column names for the detected
 	// schema.
 	SkipLeadingRows int64 `json:"skipLeadingRows,omitempty"`
+	// SourceColumnMatch: Optional. Controls the strategy used to match loaded
+	// columns to the schema. If not set, a sensible default is chosen based on how
+	// the schema is provided. If autodetect is used, then columns are matched by
+	// name. Otherwise, columns are matched by position. This is done to keep the
+	// behavior backward-compatible.
+	//
+	// Possible values:
+	//   "SOURCE_COLUMN_MATCH_UNSPECIFIED" - Uses sensible defaults based on how
+	// the schema is provided. If autodetect is used, then columns are matched by
+	// name. Otherwise, columns are matched by position. This is done to keep the
+	// behavior backward-compatible.
+	//   "POSITION" - Matches by position. This assumes that the columns are
+	// ordered the same way as the schema.
+	//   "NAME" - Matches by name. This reads the header row as column names and
+	// reorders columns to match the field names in the schema.
+	SourceColumnMatch string `json:"sourceColumnMatch,omitempty"`
 	// SourceFormat: Optional. The format of the data files. For CSV files, specify
 	// "CSV". For datastore backups, specify "DATASTORE_BACKUP". For
 	// newline-delimited JSON, specify "NEWLINE_DELIMITED_JSON". For Avro, specify
@@ -4635,10 +4806,17 @@ type JobConfigurationLoad struct {
 	// Cloud Datastore backups: Exactly one URI can be specified. Also, the '*'
 	// wildcard character is not allowed.
 	SourceUris []string `json:"sourceUris,omitempty"`
+	// TimeFormat: Optional. Date format used for parsing TIME values.
+	TimeFormat string `json:"timeFormat,omitempty"`
 	// TimePartitioning: Time-based partitioning specification for the destination
 	// table. Only one of timePartitioning and rangePartitioning should be
 	// specified.
 	TimePartitioning *TimePartitioning `json:"timePartitioning,omitempty"`
+	// TimeZone: Optional. Default time zone that will apply when parsing timestamp
+	// values that have no specific time zone.
+	TimeZone string `json:"timeZone,omitempty"`
+	// TimestampFormat: Optional. Date format used for parsing TIMESTAMP values.
+	TimestampFormat string `json:"timestampFormat,omitempty"`
 	// UseAvroLogicalTypes: Optional. If sourceFormat is set to "AVRO", indicates
 	// whether to interpret logical types as the corresponding BigQuery data type
 	// (for example, TIMESTAMP), instead of using the raw type (for example,
@@ -4648,6 +4826,8 @@ type JobConfigurationLoad struct {
 	// destination table already exists. The following values are supported: *
 	// WRITE_TRUNCATE: If the table already exists, BigQuery overwrites the data,
 	// removes the constraints and uses the schema from the load job. *
+	// WRITE_TRUNCATE_DATA: If the table already exists, BigQuery overwrites the
+	// data, but keeps the constraints and schema of the existing table. *
 	// WRITE_APPEND: If the table already exists, BigQuery appends the data to the
 	// table. * WRITE_EMPTY: If the table already exists and contains data, a
 	// 'duplicate' error is returned in the job result. The default value is
@@ -4813,6 +4993,8 @@ type JobConfigurationQuery struct {
 	// destination table already exists. The following values are supported: *
 	// WRITE_TRUNCATE: If the table already exists, BigQuery overwrites the data,
 	// removes the constraints, and uses the schema from the query result. *
+	// WRITE_TRUNCATE_DATA: If the table already exists, BigQuery overwrites the
+	// data, but keeps the constraints and schema of the existing table. *
 	// WRITE_APPEND: If the table already exists, BigQuery appends the data to the
 	// table. * WRITE_EMPTY: If the table already exists and contains data, a
 	// 'duplicate' error is returned in the job result. The default value is
@@ -4820,6 +5002,12 @@ type JobConfigurationQuery struct {
 	// complete the job successfully. Creation, truncation and append actions occur
 	// as one atomic update upon job completion.
 	WriteDisposition string `json:"writeDisposition,omitempty"`
+	// WriteIncrementalResults: Optional. This is only supported for a SELECT query
+	// using a temporary table. If set, the query is allowed to write results
+	// incrementally to the temporary result table. This may incur a performance
+	// penalty. This option cannot be used with Legacy SQL. This feature is not yet
+	// available.
+	WriteIncrementalResults bool `json:"writeIncrementalResults,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "AllowLargeResults") to
 	// unconditionally include in API requests. By default, fields with empty or
 	// default values are omitted from API requests. See
@@ -4907,8 +5095,7 @@ func (s JobConfigurationTableCopy) MarshalJSON() ([]byte, error) {
 // (https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query) method
 // when used with `JOB_CREATION_OPTIONAL` Job creation mode. For `jobs.insert`
 // (https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/insert)
-// method calls it will always be `REQUESTED`. This feature is not yet
-// available. Jobs will always be created.
+// method calls it will always be `REQUESTED`.
 type JobCreationReason struct {
 	// Code: Output only. Specifies the high level reason why a Job was created.
 	//
@@ -5075,7 +5262,7 @@ type JobStatistics struct {
 	// as ENTERPRISE.
 	//   "STANDARD" - Standard edition.
 	//   "ENTERPRISE" - Enterprise edition.
-	//   "ENTERPRISE_PLUS" - Enterprise plus edition.
+	//   "ENTERPRISE_PLUS" - Enterprise Plus edition.
 	Edition string `json:"edition,omitempty"`
 	// EndTime: Output only. End time of this job, in milliseconds since the epoch.
 	// This field will be present whenever a job is in the DONE state.
@@ -5266,8 +5453,7 @@ type JobStatistics2 struct {
 	QueryPlan []*ExplainQueryStage `json:"queryPlan,omitempty"`
 	// ReferencedRoutines: Output only. Referenced routines for the job.
 	ReferencedRoutines []*RoutineReference `json:"referencedRoutines,omitempty"`
-	// ReferencedTables: Output only. Referenced tables for the job. Queries that
-	// reference more than 50 tables will not have a complete list.
+	// ReferencedTables: Output only. Referenced tables for the job.
 	ReferencedTables []*TableReference `json:"referencedTables,omitempty"`
 	// ReservationUsage: Output only. Job resource usage breakdown by reservation.
 	// This field reported misleading information and will no longer be populated.
@@ -5281,93 +5467,90 @@ type JobStatistics2 struct {
 	SparkStatistics *SparkStatistics `json:"sparkStatistics,omitempty"`
 	// StatementType: Output only. The type of query statement, if valid. Possible
 	// values: * `SELECT`: `SELECT`
-	// (/bigquery/docs/reference/standard-sql/query-syntax#select_list) statement.
-	// * `ASSERT`: `ASSERT`
-	// (/bigquery/docs/reference/standard-sql/debugging-statements#assert)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#select_list)
+	// statement. * `ASSERT`: `ASSERT`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/debugging-statements#assert)
 	// statement. * `INSERT`: `INSERT`
-	// (/bigquery/docs/reference/standard-sql/dml-syntax#insert_statement)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#insert_statement)
 	// statement. * `UPDATE`: `UPDATE`
-	// (/bigquery/docs/reference/standard-sql/query-syntax#update_statement)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#update_statement)
 	// statement. * `DELETE`: `DELETE`
-	// (/bigquery/docs/reference/standard-sql/data-manipulation-language)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-manipulation-language)
 	// statement. * `MERGE`: `MERGE`
-	// (/bigquery/docs/reference/standard-sql/data-manipulation-language)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-manipulation-language)
 	// statement. * `CREATE_TABLE`: `CREATE TABLE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_table_
-	// statement) statement, without `AS SELECT`. * `CREATE_TABLE_AS_SELECT`:
-	// `CREATE TABLE AS SELECT`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#query_stateme
-	// nt) statement. * `CREATE_VIEW`: `CREATE VIEW`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_view_s
-	// tatement) statement. * `CREATE_MODEL`: `CREATE MODEL`
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create#create_mod
-	// el_statement) statement. * `CREATE_MATERIALIZED_VIEW`: `CREATE MATERIALIZED
-	// VIEW`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_materi
-	// alized_view_statement) statement. * `CREATE_FUNCTION`: `CREATE FUNCTION`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_functi
-	// on_statement) statement. * `CREATE_TABLE_FUNCTION`: `CREATE TABLE FUNCTION`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_table_
-	// function_statement) statement. * `CREATE_PROCEDURE`: `CREATE PROCEDURE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_proced
-	// ure) statement. * `CREATE_ROW_ACCESS_POLICY`: `CREATE ROW ACCESS POLICY`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_row_ac
-	// cess_policy_statement) statement. * `CREATE_SCHEMA`: `CREATE SCHEMA`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_schema
-	// _statement) statement. * `CREATE_SNAPSHOT_TABLE`: `CREATE SNAPSHOT TABLE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_snapsh
-	// ot_table_statement) statement. * `CREATE_SEARCH_INDEX`: `CREATE SEARCH
-	// INDEX`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_search
-	// _index_statement) statement. * `DROP_TABLE`: `DROP TABLE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_table_st
-	// atement) statement. * `DROP_EXTERNAL_TABLE`: `DROP EXTERNAL TABLE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_external
-	// _table_statement) statement. * `DROP_VIEW`: `DROP VIEW`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_view_sta
-	// tement) statement. * `DROP_MODEL`: `DROP MODEL`
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-drop-model)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement)
+	// statement, without `AS SELECT`. * `CREATE_TABLE_AS_SELECT`: `CREATE TABLE AS
+	// SELECT`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_statement)
+	// statement. * `CREATE_VIEW`: `CREATE VIEW`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_view_statement)
+	// statement. * `CREATE_MODEL`: `CREATE MODEL`
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create#create_model_statement)
+	// statement. * `CREATE_MATERIALIZED_VIEW`: `CREATE MATERIALIZED VIEW`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_materialized_view_statement)
+	// statement. * `CREATE_FUNCTION`: `CREATE FUNCTION`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_function_statement)
+	// statement. * `CREATE_TABLE_FUNCTION`: `CREATE TABLE FUNCTION`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_table_function_statement)
+	// statement. * `CREATE_PROCEDURE`: `CREATE PROCEDURE`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_procedure)
+	// statement. * `CREATE_ROW_ACCESS_POLICY`: `CREATE ROW ACCESS POLICY`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_row_access_policy_statement)
+	// statement. * `CREATE_SCHEMA`: `CREATE SCHEMA`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_schema_statement)
+	// statement. * `CREATE_SNAPSHOT_TABLE`: `CREATE SNAPSHOT TABLE`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_snapshot_table_statement)
+	// statement. * `CREATE_SEARCH_INDEX`: `CREATE SEARCH INDEX`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_search_index_statement)
+	// statement. * `DROP_TABLE`: `DROP TABLE`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_table_statement)
+	// statement. * `DROP_EXTERNAL_TABLE`: `DROP EXTERNAL TABLE`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_external_table_statement)
+	// statement. * `DROP_VIEW`: `DROP VIEW`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_view_statement)
+	// statement. * `DROP_MODEL`: `DROP MODEL`
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-drop-model)
 	// statement. * `DROP_MATERIALIZED_VIEW`: `DROP MATERIALIZED VIEW`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_material
-	// ized_view_statement) statement. * `DROP_FUNCTION` : `DROP FUNCTION`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_function
-	// _statement) statement. * `DROP_TABLE_FUNCTION` : `DROP TABLE FUNCTION`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_table_fu
-	// nction) statement. * `DROP_PROCEDURE`: `DROP PROCEDURE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_procedur
-	// e_statement) statement. * `DROP_SEARCH_INDEX`: `DROP SEARCH INDEX`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_search_i
-	// ndex) statement. * `DROP_SCHEMA`: `DROP SCHEMA`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_schema_s
-	// tatement) statement. * `DROP_SNAPSHOT_TABLE`: `DROP SNAPSHOT TABLE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_snapshot
-	// _table_statement) statement. * `DROP_ROW_ACCESS_POLICY`: [`DROP ALL] ROW
-	// ACCESS POLICY|POLICIES`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#drop_row_acce
-	// ss_policy_statement) statement. * `ALTER_TABLE`: `ALTER TABLE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_s
-	// et_options_statement) statement. * `ALTER_VIEW`: `ALTER VIEW`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#alter_view_se
-	// t_options_statement) statement. * `ALTER_MATERIALIZED_VIEW`: `ALTER
-	// MATERIALIZED VIEW`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#alter_materia
-	// lized_view_set_options_statement) statement. * `ALTER_SCHEMA`: `ALTER
-	// SCHEMA`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#aalter_schema
-	// _set_options_statement) statement. * `SCRIPT`: `SCRIPT`
-	// (/bigquery/docs/reference/standard-sql/procedural-language). *
-	// `TRUNCATE_TABLE`: `TRUNCATE TABLE`
-	// (/bigquery/docs/reference/standard-sql/dml-syntax#truncate_table_statement)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_materialized_view_statement)
+	// statement. * `DROP_FUNCTION` : `DROP FUNCTION`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_function_statement)
+	// statement. * `DROP_TABLE_FUNCTION` : `DROP TABLE FUNCTION`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_table_function)
+	// statement. * `DROP_PROCEDURE`: `DROP PROCEDURE`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_procedure_statement)
+	// statement. * `DROP_SEARCH_INDEX`: `DROP SEARCH INDEX`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_search_index)
+	// statement. * `DROP_SCHEMA`: `DROP SCHEMA`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_schema_statement)
+	// statement. * `DROP_SNAPSHOT_TABLE`: `DROP SNAPSHOT TABLE`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_snapshot_table_statement)
+	// statement. * `DROP_ROW_ACCESS_POLICY`: [`DROP ALL] ROW ACCESS
+	// POLICY|POLICIES`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#drop_row_access_policy_statement)
+	// statement. * `ALTER_TABLE`: `ALTER TABLE`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_set_options_statement)
+	// statement. * `ALTER_VIEW`: `ALTER VIEW`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_view_set_options_statement)
+	// statement. * `ALTER_MATERIALIZED_VIEW`: `ALTER MATERIALIZED VIEW`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_materialized_view_set_options_statement)
+	// statement. * `ALTER_SCHEMA`: `ALTER SCHEMA`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_schema_set_options_statement)
+	// statement. * `SCRIPT`: `SCRIPT`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language).
+	// * `TRUNCATE_TABLE`: `TRUNCATE TABLE`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/dml-syntax#truncate_table_statement)
 	// statement. * `CREATE_EXTERNAL_TABLE`: `CREATE EXTERNAL TABLE`
-	// (/bigquery/docs/reference/standard-sql/data-definition-language#create_extern
-	// al_table_statement) statement. * `EXPORT_DATA`: `EXPORT DATA`
-	// (/bigquery/docs/reference/standard-sql/other-statements#export_data_statement
-	// ) statement. * `EXPORT_MODEL`: `EXPORT MODEL`
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-export-model)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#create_external_table_statement)
+	// statement. * `EXPORT_DATA`: `EXPORT DATA`
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/other-statements#export_data_statement)
+	// statement. * `EXPORT_MODEL`: `EXPORT MODEL`
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-export-model)
 	// statement. * `LOAD_DATA`: `LOAD DATA`
-	// (/bigquery/docs/reference/standard-sql/other-statements#load_data_statement)
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/other-statements#load_data_statement)
 	// statement. * `CALL`: `CALL`
-	// (/bigquery/docs/reference/standard-sql/procedural-language#call) statement.
+	// (https://cloud.google.com/bigquery/docs/reference/standard-sql/procedural-language#call)
+	// statement.
 	StatementType string `json:"statementType,omitempty"`
 	// Timeline: Output only. Describes a timeline of job execution.
 	Timeline []*QueryTimelineSample `json:"timeline,omitempty"`
@@ -5388,6 +5571,11 @@ type JobStatistics2 struct {
 	// TotalPartitionsProcessed: Output only. Total number of partitions processed
 	// from all partitioned tables referenced in the job.
 	TotalPartitionsProcessed int64 `json:"totalPartitionsProcessed,omitempty,string"`
+	// TotalServicesSkuSlotMs: Output only. Total slot-milliseconds for the job
+	// that run on external services and billed on the service SKU. This field is
+	// only populated for jobs that have external service costs, and is the total
+	// of the usage for costs whose billing method is "SERVICES_SKU".
+	TotalServicesSkuSlotMs int64 `json:"totalServicesSkuSlotMs,omitempty,string"`
 	// TotalSlotMs: Output only. Slot-milliseconds for the job.
 	TotalSlotMs int64 `json:"totalSlotMs,omitempty,string"`
 	// TransferredBytes: Output only. Total bytes transferred for cross-cloud
@@ -5865,9 +6053,9 @@ type MaterializedView struct {
 	// truncated.
 	//   "BASE_TABLE_DATA_CHANGE" - View is invalidated because of a data change in
 	// one or more base tables. It could be any recent change if the
-	// [`max_staleness`](https://cloud.google.com/bigquery/docs/materialized-views-c
-	// reate#max_staleness) option is not set for the view, or otherwise any change
-	// outside of the staleness window.
+	// [`maxStaleness`](https://cloud.google.com/bigquery/docs/reference/rest/v2/tab
+	// les#Table.FIELDS.max_staleness) option is not set for the view, or otherwise
+	// any change outside of the staleness window.
 	//   "BASE_TABLE_PARTITION_EXPIRATION_CHANGE" - View is invalidated because a
 	// base table's partition expiration has changed.
 	//   "BASE_TABLE_EXPIRED_PARTITION" - View is invalidated because a base
@@ -5908,6 +6096,9 @@ func (s MaterializedView) MarshalJSON() ([]byte, error) {
 type MaterializedViewDefinition struct {
 	// AllowNonIncrementalDefinition: Optional. This option declares the intention
 	// to construct a materialized view that isn't refreshed incrementally.
+	// Non-incremental materialized views support an expanded range of SQL queries.
+	// The `allow_non_incremental_definition` option can't be changed after the
+	// materialized view is created.
 	AllowNonIncrementalDefinition bool `json:"allowNonIncrementalDefinition,omitempty"`
 	// EnableRefresh: Optional. Enable automatic refresh of the materialized view
 	// when the base table is updated. The default value is "true".
@@ -5997,7 +6188,7 @@ func (s MaterializedViewStatus) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
-// MetadataCacheStatistics: Statistics for metadata caching in BigLake tables.
+// MetadataCacheStatistics: Statistics for metadata caching in queried tables.
 type MetadataCacheStatistics struct {
 	// TableMetadataCacheUsage: Set for the Metadata caching eligible tables
 	// referenced in the query.
@@ -6023,13 +6214,12 @@ func (s MetadataCacheStatistics) MarshalJSON() ([]byte, error) {
 // MlStatistics: Job statistics specific to a BigQuery ML training job.
 type MlStatistics struct {
 	// HparamTrials: Output only. Trials of a hyperparameter tuning job
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overvie
-	// w) sorted by trial_id.
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overview)
+	// sorted by trial_id.
 	HparamTrials []*HparamTuningTrial `json:"hparamTrials,omitempty"`
 	// IterationResults: Results for all completed iterations. Empty for
 	// hyperparameter tuning jobs
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overvie
-	// w).
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overview).
 	IterationResults []*IterationResult `json:"iterationResults,omitempty"`
 	// MaxIterations: Output only. Maximum number of iterations specified as
 	// max_iterations in the 'CREATE MODEL' query. The actual number of iterations
@@ -6064,6 +6254,7 @@ type MlStatistics struct {
 	//   "ONNX" - An imported ONNX model.
 	//   "TRANSFORM_ONLY" - Model to capture the columns and logic in the TRANSFORM
 	// clause along with statistics useful for ML analytic functions.
+	//   "CONTRIBUTION_ANALYSIS" - The contribution analysis model.
 	ModelType string `json:"modelType,omitempty"`
 	// TrainingType: Output only. Training type of the job.
 	//
@@ -6071,8 +6262,8 @@ type MlStatistics struct {
 	//   "TRAINING_TYPE_UNSPECIFIED" - Unspecified training type.
 	//   "SINGLE_TRAINING" - Single training with fixed parameter space.
 	//   "HPARAM_TUNING" - [Hyperparameter tuning
-	// training](/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tunin
-	// g-overview).
+	// training](https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bi
+	// gqueryml-syntax-hp-tuning-overview).
 	TrainingType string `json:"trainingType,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "HparamTrials") to
 	// unconditionally include in API requests. By default, fields with empty or
@@ -6100,11 +6291,10 @@ type Model struct {
 	CreationTime int64 `json:"creationTime,omitempty,string"`
 	// DefaultTrialId: Output only. The default trial_id to use in TVFs when the
 	// trial_id is not passed in. For single-objective hyperparameter tuning
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overvie
-	// w) models, this is the best trial ID. For multi-objective hyperparameter
-	// tuning
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overvie
-	// w) models, this is the smallest trial ID among all Pareto optimal trials.
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overview)
+	// models, this is the best trial ID. For multi-objective hyperparameter tuning
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overview)
+	// models, this is the smallest trial ID among all Pareto optimal trials.
 	DefaultTrialId int64 `json:"defaultTrialId,omitempty,string"`
 	// Description: Optional. A user-friendly description of this model.
 	Description string `json:"description,omitempty"`
@@ -6131,8 +6321,8 @@ type Model struct {
 	// model.
 	HparamSearchSpaces *HparamSearchSpaces `json:"hparamSearchSpaces,omitempty"`
 	// HparamTrials: Output only. Trials of a hyperparameter tuning
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overvie
-	// w) model sorted by trial_id.
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overview)
+	// model sorted by trial_id.
 	HparamTrials []*HparamTuningTrial `json:"hparamTrials,omitempty"`
 	// LabelColumns: Output only. Label columns that were used to train this model.
 	// The output of the model will have a "predicted_" prefix to these columns.
@@ -6181,13 +6371,14 @@ type Model struct {
 	//   "ONNX" - An imported ONNX model.
 	//   "TRANSFORM_ONLY" - Model to capture the columns and logic in the TRANSFORM
 	// clause along with statistics useful for ML analytic functions.
+	//   "CONTRIBUTION_ANALYSIS" - The contribution analysis model.
 	ModelType string `json:"modelType,omitempty"`
 	// OptimalTrialIds: Output only. For single-objective hyperparameter tuning
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overvie
-	// w) models, it only contains the best trial. For multi-objective
-	// hyperparameter tuning
-	// (/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overvie
-	// w) models, it contains all Pareto optimal trials sorted by trial_id.
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overview)
+	// models, it only contains the best trial. For multi-objective hyperparameter
+	// tuning
+	// (https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-hp-tuning-overview)
+	// models, it contains all Pareto optimal trials sorted by trial_id.
 	OptimalTrialIds googleapi.Int64s `json:"optimalTrialIds,omitempty"`
 	// RemoteModelInfo: Output only. Remote model info
 	RemoteModelInfo *RemoteModelInfo `json:"remoteModelInfo,omitempty"`
@@ -6270,9 +6461,9 @@ func (s ModelDefinitionModelOptions) MarshalJSON() ([]byte, error) {
 type ModelExtractOptions struct {
 	// TrialId: The 1-based ID of the trial to be exported from a hyperparameter
 	// tuning model. If not specified, the trial with id = Model
-	// (/bigquery/docs/reference/rest/v2/models#resource:-model).defaultTrialId is
-	// exported. This field is ignored for models not trained with hyperparameter
-	// tuning.
+	// (https://cloud.google.com/bigquery/docs/reference/rest/v2/models#resource:-model).defaultTrialId
+	// is exported. This field is ignored for models not trained with
+	// hyperparameter tuning.
 	TrialId int64 `json:"trialId,omitempty,string"`
 	// ForceSendFields is a list of field names (e.g. "TrialId") to unconditionally
 	// include in API requests. By default, fields with empty or default values are
@@ -6753,6 +6944,34 @@ func (s ProjectReference) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
+// PythonOptions: Options for a user-defined Python function.
+type PythonOptions struct {
+	// EntryPoint: Required. The name of the function defined in Python code as the
+	// entry point when the Python UDF is invoked.
+	EntryPoint string `json:"entryPoint,omitempty"`
+	// Packages: Optional. A list of Python package names along with versions to be
+	// installed. Example: ["pandas>=2.1", "google-cloud-translate==3.11"]. For
+	// more information, see Use third-party packages
+	// (https://cloud.google.com/bigquery/docs/user-defined-functions-python#third-party-packages).
+	Packages []string `json:"packages,omitempty"`
+	// ForceSendFields is a list of field names (e.g. "EntryPoint") to
+	// unconditionally include in API requests. By default, fields with empty or
+	// default values are omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g. "EntryPoint") to include in API
+	// requests with the JSON null value. By default, fields with empty values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
+	NullFields []string `json:"-"`
+}
+
+func (s PythonOptions) MarshalJSON() ([]byte, error) {
+	type NoMethod PythonOptions
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
 // QueryInfo: Query optimization information for a QUERY job.
 type QueryInfo struct {
 	// OptimizationDetails: Output only. Information about query optimizations.
@@ -6812,6 +7031,13 @@ type QueryParameterType struct {
 	// StructTypes: Optional. The types of the fields of this struct, in order, if
 	// this is a struct.
 	StructTypes []*QueryParameterTypeStructTypes `json:"structTypes,omitempty"`
+	// TimestampPrecision: Optional. Precision (maximum number of total digits in
+	// base 10) for seconds of TIMESTAMP type. Possible values include: * 6
+	// (Default, for TIMESTAMP type with microsecond precision) * 12 (For TIMESTAMP
+	// type with picosecond precision)
+	//
+	// Default: 6
+	TimestampPrecision *int64 `json:"timestampPrecision,omitempty,string"`
 	// Type: Required. The top level type of this field.
 	Type string `json:"type,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "ArrayType") to
@@ -6905,6 +7131,9 @@ type QueryRequest struct {
 	// names in the query string must be qualified in the format
 	// 'datasetId.tableId'.
 	DefaultDataset *DatasetReference `json:"defaultDataset,omitempty"`
+	// DestinationEncryptionConfiguration: Optional. Custom encryption
+	// configuration (e.g., Cloud KMS keys)
+	DestinationEncryptionConfiguration *EncryptionConfiguration `json:"destinationEncryptionConfiguration,omitempty"`
 	// DryRun: Optional. If set to true, BigQuery doesn't run the job. Instead, if
 	// the query is valid, BigQuery returns statistics about the job such as how
 	// many bytes would be processed. If the query is invalid, an error returns.
@@ -6913,8 +7142,7 @@ type QueryRequest struct {
 	// FormatOptions: Optional. Output format adjustments.
 	FormatOptions *DataFormatOptions `json:"formatOptions,omitempty"`
 	// JobCreationMode: Optional. If not set, jobs are always required. If set, the
-	// query request will follow the behavior described JobCreationMode. This
-	// feature is not yet available. Jobs will always be created.
+	// query request will follow the behavior described JobCreationMode.
 	//
 	// Possible values:
 	//   "JOB_CREATION_MODE_UNSPECIFIED" - If unspecified JOB_CREATION_REQUIRED is
@@ -6926,6 +7154,13 @@ type QueryRequest struct {
 	// a Job are subject to change. If Job creation is required,
 	// JOB_CREATION_REQUIRED mode should be used, which is the default.
 	JobCreationMode string `json:"jobCreationMode,omitempty"`
+	// JobTimeoutMs: Optional. Job timeout in milliseconds. If this time limit is
+	// exceeded, BigQuery will attempt to stop a longer job, but may not always
+	// succeed in canceling it before the job completes. For example, a job that
+	// takes more than 60 seconds to complete has a better chance of being stopped
+	// than a job that takes 10 seconds to complete. This timeout applies to the
+	// query even if a job does not need to be created.
+	JobTimeoutMs int64 `json:"jobTimeoutMs,omitempty,string"`
 	// Kind: The resource type of the request.
 	Kind string `json:"kind,omitempty"`
 	// Labels: Optional. The labels associated with this query. Labels can be used
@@ -6935,8 +7170,9 @@ type QueryRequest struct {
 	// must start with a letter and each label in the list must have a different
 	// key.
 	Labels map[string]string `json:"labels,omitempty"`
-	// Location: The geographic location where the job should run. See details at
-	// https://cloud.google.com/bigquery/docs/locations#specifying_your_location.
+	// Location: The geographic location where the job should run. For more
+	// information, see how to specify locations
+	// (https://cloud.google.com/bigquery/docs/locations#specify_locations).
 	Location string `json:"location,omitempty"`
 	// MaxResults: Optional. The maximum number of rows of data to return per page
 	// of results. Setting this flag to a small value such as 1000 and then paging
@@ -6980,6 +7216,10 @@ type QueryRequest struct {
 	// 15 minutes. In other words, if two requests are sent with the same
 	// request_id, but more than 15 minutes apart, idempotency is not guaranteed.
 	RequestId string `json:"requestId,omitempty"`
+	// Reservation: Optional. The reservation that jobs.query request would use.
+	// User can specify a reservation to execute the job.query. The expected format
+	// is `projects/{project}/locations/{location}/reservations/{reservation}`.
+	Reservation string `json:"reservation,omitempty"`
 	// TimeoutMs: Optional. Optional: Specifies the maximum amount of time, in
 	// milliseconds, that the client is willing to wait for the query to complete.
 	// By default, this limit is 10 seconds (10,000 milliseconds). If the query is
@@ -7006,6 +7246,11 @@ type QueryRequest struct {
 	//
 	// Default: true
 	UseQueryCache *bool `json:"useQueryCache,omitempty"`
+	// WriteIncrementalResults: Optional. This is only supported for SELECT query.
+	// If set, the query is allowed to write results incrementally to the temporary
+	// result table. This may incur a performance penalty. This option cannot be
+	// used with Legacy SQL. This feature is not yet available.
+	WriteIncrementalResults bool `json:"writeIncrementalResults,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "ConnectionProperties") to
 	// unconditionally include in API requests. By default, fields with empty or
 	// default values are omitted from API requests. See
@@ -7027,9 +7272,15 @@ func (s QueryRequest) MarshalJSON() ([]byte, error) {
 type QueryResponse struct {
 	// CacheHit: Whether the query result was fetched from the query cache.
 	CacheHit bool `json:"cacheHit,omitempty"`
+	// CreationTime: Output only. Creation time of this query, in milliseconds
+	// since the epoch. This field will be present on all queries.
+	CreationTime int64 `json:"creationTime,omitempty,string"`
 	// DmlStats: Output only. Detailed statistics for DML statements INSERT,
 	// UPDATE, DELETE, MERGE or TRUNCATE.
 	DmlStats *DmlStatistics `json:"dmlStats,omitempty"`
+	// EndTime: Output only. End time of this query, in milliseconds since the
+	// epoch. This field will be present whenever a query job is in the DONE state.
+	EndTime int64 `json:"endTime,omitempty,string"`
 	// Errors: Output only. The first errors or warnings encountered during the
 	// running of the job. The final message includes the number of errors that
 	// caused the process to stop. Errors here do not necessarily mean that the job
@@ -7041,21 +7292,24 @@ type QueryResponse struct {
 	// are present, this will always be true. If this is false, totalRows will not
 	// be available.
 	JobComplete bool `json:"jobComplete,omitempty"`
-	// JobCreationReason: Optional. Only relevant when a job_reference is present
-	// in the response. If job_reference is not present it will always be unset.
-	// When job_reference is present, this field should be interpreted as follows:
-	// If set, it will provide the reason of why a Job was created. If not set, it
-	// should be treated as the default: REQUESTED. This feature is not yet
-	// available. Jobs will always be created.
+	// JobCreationReason: Optional. The reason why a Job was created. Only relevant
+	// when a job_reference is present in the response. If job_reference is not
+	// present it will always be unset.
 	JobCreationReason *JobCreationReason `json:"jobCreationReason,omitempty"`
 	// JobReference: Reference to the Job that was created to run the query. This
 	// field will be present even if the original request timed out, in which case
 	// GetQueryResults can be used to read the results once the query has
 	// completed. Since this API only returns the first page of results, subsequent
-	// pages can be fetched via the same mechanism (GetQueryResults).
+	// pages can be fetched via the same mechanism (GetQueryResults). If
+	// job_creation_mode was set to `JOB_CREATION_OPTIONAL` and the query completes
+	// without creating a job, this field will be empty.
 	JobReference *JobReference `json:"jobReference,omitempty"`
 	// Kind: The resource type.
 	Kind string `json:"kind,omitempty"`
+	// Location: Output only. The geographic location of the query. For more
+	// information about BigQuery locations, see:
+	// https://cloud.google.com/bigquery/docs/locations
+	Location string `json:"location,omitempty"`
 	// NumDmlAffectedRows: Output only. The number of rows affected by a DML
 	// statement. Present only for DML statements INSERT, UPDATE or DELETE.
 	NumDmlAffectedRows int64 `json:"numDmlAffectedRows,omitempty,string"`
@@ -7066,9 +7320,7 @@ type QueryResponse struct {
 	// method. For more information, see Paging through table data
 	// (https://cloud.google.com/bigquery/docs/paging-results).
 	PageToken string `json:"pageToken,omitempty"`
-	// QueryId: Query ID for the completed query. This ID will be auto-generated.
-	// This field is not yet available and it is currently not guaranteed to be
-	// populated.
+	// QueryId: Auto-generated ID for the query.
 	QueryId string `json:"queryId,omitempty"`
 	// Rows: An object with as many results as can be contained within the maximum
 	// permitted reply size. To get any additional rows, you can call
@@ -7080,6 +7332,15 @@ type QueryResponse struct {
 	// SessionInfo: Output only. Information of the session if this job is part of
 	// one.
 	SessionInfo *SessionInfo `json:"sessionInfo,omitempty"`
+	// StartTime: Output only. Start time of this query, in milliseconds since the
+	// epoch. This field will be present when the query job transitions from the
+	// PENDING state to either RUNNING or DONE.
+	StartTime int64 `json:"startTime,omitempty,string"`
+	// TotalBytesBilled: Output only. If the project is configured to use on-demand
+	// pricing, then this field contains the total bytes billed for the job. If the
+	// project is configured to use flat-rate pricing, then you are not billed for
+	// bytes and this field is informational only.
+	TotalBytesBilled int64 `json:"totalBytesBilled,omitempty,string"`
 	// TotalBytesProcessed: The total number of bytes processed for this query. If
 	// this query was a dry run, this is the number of bytes that would be
 	// processed if the query were run.
@@ -7087,6 +7348,8 @@ type QueryResponse struct {
 	// TotalRows: The total number of rows in the complete query result set, which
 	// can be more than the number of rows in this single page of results.
 	TotalRows uint64 `json:"totalRows,omitempty,string"`
+	// TotalSlotMs: Output only. Number of slot ms the user is actually billed for.
+	TotalSlotMs int64 `json:"totalSlotMs,omitempty,string"`
 
 	// ServerResponse contains the HTTP response code and headers from the server.
 	googleapi.ServerResponse `json:"-"`
@@ -7126,6 +7389,10 @@ type QueryTimelineSample struct {
 	// PendingUnits: Total units of work remaining for the query. This number can
 	// be revised (increased or decreased) while the query is running.
 	PendingUnits int64 `json:"pendingUnits,omitempty,string"`
+	// ShuffleRamUsageRatio: Total shuffle usage ratio in shuffle RAM per
+	// reservation of this query. This will be provided for reservation customers
+	// only.
+	ShuffleRamUsageRatio float64 `json:"shuffleRamUsageRatio,omitempty"`
 	// TotalSlotMs: Cumulative slot-ms consumed by the query.
 	TotalSlotMs int64 `json:"totalSlotMs,omitempty,string"`
 	// ForceSendFields is a list of field names (e.g. "ActiveUnits") to
@@ -7144,6 +7411,20 @@ type QueryTimelineSample struct {
 func (s QueryTimelineSample) MarshalJSON() ([]byte, error) {
 	type NoMethod QueryTimelineSample
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
+func (s *QueryTimelineSample) UnmarshalJSON(data []byte) error {
+	type NoMethod QueryTimelineSample
+	var s1 struct {
+		ShuffleRamUsageRatio gensupport.JSONFloat64 `json:"shuffleRamUsageRatio"`
+		*NoMethod
+	}
+	s1.NoMethod = (*NoMethod)(s)
+	if err := json.Unmarshal(data, &s1); err != nil {
+		return err
+	}
+	s.ShuffleRamUsageRatio = float64(s1.ShuffleRamUsageRatio)
+	return nil
 }
 
 type RangePartitioning struct {
@@ -7435,8 +7716,8 @@ type RestrictionConfig struct {
 	// Possible values:
 	//   "RESTRICTION_TYPE_UNSPECIFIED" - Should never be used.
 	//   "RESTRICTED_DATA_EGRESS" - Restrict data egress. See [Data
-	// egress](/bigquery/docs/analytics-hub-introduction#data_egress) for more
-	// details.
+	// egress](https://cloud.google.com/bigquery/docs/analytics-hub-introduction#dat
+	// a_egress) for more details.
 	Type string `json:"type,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "Type") to unconditionally
 	// include in API requests. By default, fields with empty or default values are
@@ -7499,6 +7780,10 @@ type Routine struct {
 	DeterminismLevel string `json:"determinismLevel,omitempty"`
 	// Etag: Output only. A hash of this resource.
 	Etag string `json:"etag,omitempty"`
+	// ExternalRuntimeOptions: Optional. Options for the runtime of the external
+	// system executing the routine. This field is only applicable for Python UDFs.
+	// Preview (https://cloud.google.com/products/#product-launch-stages)
+	ExternalRuntimeOptions *ExternalRuntimeOptions `json:"externalRuntimeOptions,omitempty"`
 	// ImportedLibraries: Optional. If language = "JAVASCRIPT", this field stores
 	// the path of the imported JAVASCRIPT libraries.
 	ImportedLibraries []string `json:"importedLibraries,omitempty"`
@@ -7516,6 +7801,9 @@ type Routine struct {
 	// LastModifiedTime: Output only. The time when this routine was last modified,
 	// in milliseconds since the epoch.
 	LastModifiedTime int64 `json:"lastModifiedTime,omitempty,string"`
+	// PythonOptions: Optional. Options for the Python UDF. Preview
+	// (https://cloud.google.com/products/#product-launch-stages)
+	PythonOptions *PythonOptions `json:"pythonOptions,omitempty"`
 	// RemoteFunctionOptions: Optional. Remote function specific options.
 	RemoteFunctionOptions *RemoteFunctionOptions `json:"remoteFunctionOptions,omitempty"`
 	// ReturnTableType: Optional. Can be set only if routine_type =
@@ -7664,12 +7952,33 @@ type RowAccessPolicy struct {
 	// date_field = CAST('2019-9-27' as DATE) nullable_field is not NULL
 	// numeric_field BETWEEN 1.0 AND 5.0
 	FilterPredicate string `json:"filterPredicate,omitempty"`
+	// Grantees: Optional. Input only. The optional list of iam_member users or
+	// groups that specifies the initial members that the row-level access policy
+	// should be created with. grantees types: - "user:alice@example.com": An email
+	// address that represents a specific Google account. -
+	// "serviceAccount:my-other-app@appspot.gserviceaccount.com": An email address
+	// that represents a service account. - "group:admins@example.com": An email
+	// address that represents a Google group. - "domain:example.com":The Google
+	// Workspace domain (primary) that represents all the users of that domain. -
+	// "allAuthenticatedUsers": A special identifier that represents all service
+	// accounts and all users on the internet who have authenticated with a Google
+	// Account. This identifier includes accounts that aren't connected to a Google
+	// Workspace or Cloud Identity domain, such as personal Gmail accounts. Users
+	// who aren't authenticated, such as anonymous visitors, aren't included. -
+	// "allUsers":A special identifier that represents anyone who is on the
+	// internet, including authenticated and unauthenticated users. Because
+	// BigQuery requires authentication before a user can access the service,
+	// allUsers includes only authenticated users.
+	Grantees []string `json:"grantees,omitempty"`
 	// LastModifiedTime: Output only. The time when this row access policy was last
 	// modified, in milliseconds since the epoch.
 	LastModifiedTime string `json:"lastModifiedTime,omitempty"`
 	// RowAccessPolicyReference: Required. Reference describing the ID of this row
 	// access policy.
 	RowAccessPolicyReference *RowAccessPolicyReference `json:"rowAccessPolicyReference,omitempty"`
+
+	// ServerResponse contains the HTTP response code and headers from the server.
+	googleapi.ServerResponse `json:"-"`
 	// ForceSendFields is a list of field names (e.g. "CreationTime") to
 	// unconditionally include in API requests. By default, fields with empty or
 	// default values are omitted from API requests. See
@@ -8229,7 +8538,8 @@ func (s StagePerformanceStandaloneInsight) MarshalJSON() ([]byte, error) {
 // "typeKind": "ARRAY", "arrayElementType": {"typeKind": "STRING"} } * STRUCT>:
 // { "typeKind": "STRUCT", "structType": { "fields": [ { "name": "x", "type":
 // {"typeKind": "STRING"} }, { "name": "y", "type": { "typeKind": "ARRAY",
-// "arrayElementType": {"typeKind": "DATE"} } } ] } }
+// "arrayElementType": {"typeKind": "DATE"} } } ] } } * RANGE: { "typeKind":
+// "RANGE", "rangeElementType": {"typeKind": "DATE"} }
 type StandardSqlDataType struct {
 	// ArrayElementType: The type of the array's elements, if type_kind = "ARRAY".
 	ArrayElementType *StandardSqlDataType `json:"arrayElementType,omitempty"`
@@ -8361,8 +8671,8 @@ type StorageDescriptor struct {
 	// maximum length is 128 characters.
 	InputFormat string `json:"inputFormat,omitempty"`
 	// LocationUri: Optional. The physical location of the table (e.g.
-	// 'gs://spark-dataproc-data/pangea-data/case_sensitive/' or
-	// 'gs://spark-dataproc-data/pangea-data/*'). The maximum length is 2056 bytes.
+	// `gs://spark-dataproc-data/pangea-data/case_sensitive/` or
+	// `gs://spark-dataproc-data/pangea-data/*`). The maximum length is 2056 bytes.
 	LocationUri string `json:"locationUri,omitempty"`
 	// OutputFormat: Optional. Specifies the fully qualified class name of the
 	// OutputFormat (e.g. "org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat"). The
@@ -8385,6 +8695,75 @@ type StorageDescriptor struct {
 
 func (s StorageDescriptor) MarshalJSON() ([]byte, error) {
 	type NoMethod StorageDescriptor
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
+// StoredColumnsUnusedReason: If the stored column was not used, explain why.
+type StoredColumnsUnusedReason struct {
+	// Code: Specifies the high-level reason for the unused scenario, each reason
+	// must have a code associated.
+	//
+	// Possible values:
+	//   "CODE_UNSPECIFIED" - Default value.
+	//   "STORED_COLUMNS_COVER_INSUFFICIENT" - If stored columns do not fully cover
+	// the columns.
+	//   "BASE_TABLE_HAS_RLS" - If the base table has RLS (Row Level Security).
+	//   "BASE_TABLE_HAS_CLS" - If the base table has CLS (Column Level Security).
+	//   "UNSUPPORTED_PREFILTER" - If the provided prefilter is not supported.
+	//   "INTERNAL_ERROR" - If an internal error is preventing stored columns from
+	// being used.
+	//   "OTHER_REASON" - Indicates that the reason stored columns cannot be used
+	// in the query is not covered by any of the other StoredColumnsUnusedReason
+	// options.
+	Code string `json:"code,omitempty"`
+	// Message: Specifies the detailed description for the scenario.
+	Message string `json:"message,omitempty"`
+	// UncoveredColumns: Specifies which columns were not covered by the stored
+	// columns for the specified code up to 20 columns. This is populated when the
+	// code is STORED_COLUMNS_COVER_INSUFFICIENT and BASE_TABLE_HAS_CLS.
+	UncoveredColumns []string `json:"uncoveredColumns,omitempty"`
+	// ForceSendFields is a list of field names (e.g. "Code") to unconditionally
+	// include in API requests. By default, fields with empty or default values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g. "Code") to include in API requests
+	// with the JSON null value. By default, fields with empty values are omitted
+	// from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
+	NullFields []string `json:"-"`
+}
+
+func (s StoredColumnsUnusedReason) MarshalJSON() ([]byte, error) {
+	type NoMethod StoredColumnsUnusedReason
+	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
+}
+
+// StoredColumnsUsage: Indicates the stored columns usage in the query.
+type StoredColumnsUsage struct {
+	// BaseTable: Specifies the base table.
+	BaseTable *TableReference `json:"baseTable,omitempty"`
+	// IsQueryAccelerated: Specifies whether the query was accelerated with stored
+	// columns.
+	IsQueryAccelerated bool `json:"isQueryAccelerated,omitempty"`
+	// StoredColumnsUnusedReasons: If stored columns were not used, explain why.
+	StoredColumnsUnusedReasons []*StoredColumnsUnusedReason `json:"storedColumnsUnusedReasons,omitempty"`
+	// ForceSendFields is a list of field names (e.g. "BaseTable") to
+	// unconditionally include in API requests. By default, fields with empty or
+	// default values are omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-ForceSendFields for more
+	// details.
+	ForceSendFields []string `json:"-"`
+	// NullFields is a list of field names (e.g. "BaseTable") to include in API
+	// requests with the JSON null value. By default, fields with empty values are
+	// omitted from API requests. See
+	// https://pkg.go.dev/google.golang.org/api#hdr-NullFields for more details.
+	NullFields []string `json:"-"`
+}
+
+func (s StoredColumnsUsage) MarshalJSON() ([]byte, error) {
+	type NoMethod StoredColumnsUsage
 	return gensupport.MarshalJSON(NoMethod(s), s.ForceSendFields, s.NullFields)
 }
 
@@ -8464,8 +8843,8 @@ func (s SystemVariables) MarshalJSON() ([]byte, error) {
 }
 
 type Table struct {
-	// BiglakeConfiguration: Optional. Specifies the configuration of a BigLake
-	// managed table.
+	// BiglakeConfiguration: Optional. Specifies the configuration of a BigQuery
+	// table for Apache Iceberg.
 	BiglakeConfiguration *BigLakeConfiguration `json:"biglakeConfiguration,omitempty"`
 	// CloneDefinition: Output only. Contains information about the clone. This
 	// value is set via the clone operation.
@@ -8544,6 +8923,15 @@ type Table struct {
 	// Location: Output only. The geographic location where the table resides. This
 	// value is inherited from the dataset.
 	Location string `json:"location,omitempty"`
+	// ManagedTableType: Optional. If set, overrides the default managed table type
+	// configured in the dataset.
+	//
+	// Possible values:
+	//   "MANAGED_TABLE_TYPE_UNSPECIFIED" - No managed table type specified.
+	//   "NATIVE" - The managed table is a native BigQuery table.
+	//   "BIGLAKE" - The managed table is a BigLake table for Apache Iceberg in
+	// BigQuery.
+	ManagedTableType string `json:"managedTableType,omitempty"`
 	// MaterializedView: Optional. The materialized view definition.
 	MaterializedView *MaterializedViewDefinition `json:"materializedView,omitempty"`
 	// MaterializedViewStatus: Output only. The materialized view status.
@@ -8625,7 +9013,8 @@ type Table struct {
 	ResourceTags map[string]string `json:"resourceTags,omitempty"`
 	// Restrictions: Optional. Output only. Restriction config for table. If set,
 	// restrict certain accesses on the table based on the config. See Data egress
-	// (/bigquery/docs/analytics-hub-introduction#data_egress) for more details.
+	// (https://cloud.google.com/bigquery/docs/analytics-hub-introduction#data_egress)
+	// for more details.
 	Restrictions *RestrictionConfig `json:"restrictions,omitempty"`
 	// Schema: Optional. Describes the schema of this table.
 	Schema *TableSchema `json:"schema,omitempty"`
@@ -8655,8 +9044,8 @@ type Table struct {
 	// `MATERIALIZED_VIEW`: A precomputed view defined by a SQL query. *
 	// `SNAPSHOT`: An immutable BigQuery table that preserves the contents of a
 	// base table at a particular time. See additional information on table
-	// snapshots (/bigquery/docs/table-snapshots-intro). The default value is
-	// `TABLE`.
+	// snapshots (https://cloud.google.com/bigquery/docs/table-snapshots-intro).
+	// The default value is `TABLE`.
 	Type string `json:"type,omitempty"`
 	// View: Optional. The view definition.
 	View *ViewDefinition `json:"view,omitempty"`
@@ -8993,6 +9382,8 @@ type TableFieldSchema struct {
 	// locale, case insensitive. * '': empty string. Default to case-sensitive
 	// behavior.
 	Collation string `json:"collation,omitempty"`
+	// DataPolicies: Optional. Data policy options, will replace the data_policies.
+	DataPolicies []*DataPolicyOption `json:"dataPolicies,omitempty"`
 	// DefaultValueExpression: Optional. A SQL expression to specify the [default
 	// value] (https://cloud.google.com/bigquery/docs/default-values) for this
 	// field.
@@ -9007,10 +9398,6 @@ type TableFieldSchema struct {
 	// valid for top-level schema fields (not nested fields). If the type is
 	// FOREIGN, this field is required.
 	ForeignTypeDefinition string `json:"foreignTypeDefinition,omitempty"`
-	// IdentityColumnInfo: Optional. Definition of how values are generated for the
-	// field. Setting this option means that the field is an identity column. Only
-	// valid for top-level schema INTEGER fields (not nested fields).
-	IdentityColumnInfo *IdentityColumnInfo `json:"identityColumnInfo,omitempty"`
 	// MaxLength: Optional. Maximum length of values of this field for STRINGS or
 	// BYTES. If max_length is not specified, no maximum length constraint is
 	// imposed on this field. If type = "STRING", then max_length represents the
@@ -9068,8 +9455,8 @@ type TableFieldSchema struct {
 	// Type: Required. The field data type. Possible values include: * STRING *
 	// BYTES * INTEGER (or INT64) * FLOAT (or FLOAT64) * BOOLEAN (or BOOL) *
 	// TIMESTAMP * DATE * TIME * DATETIME * GEOGRAPHY * NUMERIC * BIGNUMERIC * JSON
-	// * RECORD (or STRUCT) * RANGE (Preview (/products/#product-launch-stages))
-	// Use of RECORD/STRUCT indicates that the field contains a nested schema.
+	// * RECORD (or STRUCT) * RANGE Use of RECORD/STRUCT indicates that the field
+	// contains a nested schema.
 	Type string `json:"type,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "Categories") to
 	// unconditionally include in API requests. By default, fields with empty or
@@ -9247,7 +9634,7 @@ func (s TableListTables) MarshalJSON() ([]byte, error) {
 
 // TableListTablesView: Information about a logical view.
 type TableListTablesView struct {
-	// PrivacyPolicy: Specifices the privacy policy for the view.
+	// PrivacyPolicy: Specifies the privacy policy for the view.
 	PrivacyPolicy *PrivacyPolicy `json:"privacyPolicy,omitempty"`
 	// UseLegacySql: True if view is defined in legacy SQL dialect, false if in
 	// GoogleSQL.
@@ -9283,7 +9670,7 @@ type TableMetadataCacheUsage struct {
 	// TableReference: Metadata caching eligible table referenced in the query.
 	TableReference *TableReference `json:"tableReference,omitempty"`
 	// TableType: Table type
-	// (/bigquery/docs/reference/rest/v2/tables#Table.FIELDS.type).
+	// (https://cloud.google.com/bigquery/docs/reference/rest/v2/tables#Table.FIELDS.type).
 	TableType string `json:"tableType,omitempty"`
 	// UnusedReason: Reason for not using metadata caching for the table.
 	//
@@ -9591,6 +9978,11 @@ type TrainingOptions struct {
 	// ColsampleBytree: Subsample ratio of columns when constructing each tree for
 	// boosted tree models.
 	ColsampleBytree float64 `json:"colsampleBytree,omitempty"`
+	// ContributionMetric: The contribution metric. Applies to contribution
+	// analysis models. Allowed formats supported are for summable and summable
+	// ratio contribution metrics. These include expressions such as `SUM(x)` or
+	// `SUM(x)/SUM(y)`, where x and y are column names from the base table.
+	ContributionMetric string `json:"contributionMetric,omitempty"`
 	// DartNormalizeType: Type of normalization algorithm for boosted tree models
 	// using dart booster.
 	//
@@ -9619,7 +10011,7 @@ type TrainingOptions struct {
 	// DATA_SPLIT_EVAL_FRACTION rows (from smallest to largest) in the
 	// corresponding column are used as training data, and the rest are eval data.
 	// It respects the order in Orderable data types:
-	// https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data-type-properties
+	// https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_properties
 	DataSplitColumn string `json:"dataSplitColumn,omitempty"`
 	// DataSplitEvalFraction: The fraction of evaluation data over the whole input
 	// data. The rest of data will be used as training data. The format should be
@@ -9640,6 +10032,9 @@ type TrainingOptions struct {
 	// DecomposeTimeSeries: If true, perform decompose time series and save the
 	// results.
 	DecomposeTimeSeries bool `json:"decomposeTimeSeries,omitempty"`
+	// DimensionIdColumns: Optional. Names of the columns to slice on. Applies to
+	// contribution analysis models.
+	DimensionIdColumns []string `json:"dimensionIdColumns,omitempty"`
 	// DistanceType: Distance type for clustering models.
 	//
 	// Possible values:
@@ -9666,6 +10061,13 @@ type TrainingOptions struct {
 	// FitIntercept: Whether the model should include intercept during model
 	// training.
 	FitIntercept bool `json:"fitIntercept,omitempty"`
+	// ForecastLimitLowerBound: The forecast limit lower bound that was used during
+	// ARIMA model training with limits. To see more details of the algorithm:
+	// https://otexts.com/fpp2/limits.html
+	ForecastLimitLowerBound float64 `json:"forecastLimitLowerBound,omitempty"`
+	// ForecastLimitUpperBound: The forecast limit upper bound that was used during
+	// ARIMA model training with limits.
+	ForecastLimitUpperBound float64 `json:"forecastLimitUpperBound,omitempty"`
 	// HiddenUnits: Hidden units for dnn models.
 	HiddenUnits googleapi.Int64s `json:"hiddenUnits,omitempty"`
 	// HolidayRegion: The geographical region based on which the holidays are
@@ -9741,7 +10143,7 @@ type TrainingOptions struct {
 	//   "UA" - Ukraine
 	//   "US" - United States
 	//   "VE" - Venezuela
-	//   "VN" - Viet Nam
+	//   "VN" - Vietnam
 	//   "ZA" - South Africa
 	HolidayRegion string `json:"holidayRegion,omitempty"`
 	// HolidayRegions: A list of geographical regions that are used for time series
@@ -9816,7 +10218,7 @@ type TrainingOptions struct {
 	//   "UA" - Ukraine
 	//   "US" - United States
 	//   "VE" - Venezuela
-	//   "VN" - Viet Nam
+	//   "VN" - Vietnam
 	//   "ZA" - South Africa
 	HolidayRegions []string `json:"holidayRegions,omitempty"`
 	// Horizon: The number of periods ahead that need to be forecasted.
@@ -9847,7 +10249,7 @@ type TrainingOptions struct {
 	// label. For multiclass this is a globally micro-averaged metric.
 	//   "F1_SCORE" - The F1 score is an average of recall and precision. For
 	// multiclass this is a macro-averaged metric.
-	//   "LOG_LOSS" - Logorithmic Loss. For multiclass this is a macro-averaged
+	//   "LOG_LOSS" - Logarithmic Loss. For multiclass this is a macro-averaged
 	// metric.
 	//   "ROC_AUC" - Area Under an ROC Curve. For multiclass this is a
 	// macro-averaged metric.
@@ -9870,6 +10272,9 @@ type TrainingOptions struct {
 	// IntegratedGradientsNumSteps: Number of integral steps for the integrated
 	// gradients explain method.
 	IntegratedGradientsNumSteps int64 `json:"integratedGradientsNumSteps,omitempty,string"`
+	// IsTestColumn: Name of the column used to determine the rows corresponding to
+	// control and test. Applies to contribution analysis models.
+	IsTestColumn string `json:"isTestColumn,omitempty"`
 	// ItemColumn: Item column specified for matrix factorization models.
 	ItemColumn string `json:"itemColumn,omitempty"`
 	// KmeansInitializationColumn: The column used to provide the initial centroids
@@ -9925,6 +10330,9 @@ type TrainingOptions struct {
 	MaxTimeSeriesLength int64 `json:"maxTimeSeriesLength,omitempty,string"`
 	// MaxTreeDepth: Maximum depth of a tree for boosted tree models.
 	MaxTreeDepth int64 `json:"maxTreeDepth,omitempty,string"`
+	// MinAprioriSupport: The apriori support minimum. Applies to contribution
+	// analysis models.
+	MinAprioriSupport float64 `json:"minAprioriSupport,omitempty"`
 	// MinRelativeProgress: When early_stop is true, stops training when accuracy
 	// improvement is less than 'min_relative_progress'. Used only for iterative
 	// training algorithms.
@@ -10083,11 +10491,14 @@ func (s *TrainingOptions) UnmarshalJSON(data []byte) error {
 		ColsampleBytree           gensupport.JSONFloat64 `json:"colsampleBytree"`
 		DataSplitEvalFraction     gensupport.JSONFloat64 `json:"dataSplitEvalFraction"`
 		Dropout                   gensupport.JSONFloat64 `json:"dropout"`
+		ForecastLimitLowerBound   gensupport.JSONFloat64 `json:"forecastLimitLowerBound"`
+		ForecastLimitUpperBound   gensupport.JSONFloat64 `json:"forecastLimitUpperBound"`
 		InitialLearnRate          gensupport.JSONFloat64 `json:"initialLearnRate"`
 		L1RegActivation           gensupport.JSONFloat64 `json:"l1RegActivation"`
 		L1Regularization          gensupport.JSONFloat64 `json:"l1Regularization"`
 		L2Regularization          gensupport.JSONFloat64 `json:"l2Regularization"`
 		LearnRate                 gensupport.JSONFloat64 `json:"learnRate"`
+		MinAprioriSupport         gensupport.JSONFloat64 `json:"minAprioriSupport"`
 		MinRelativeProgress       gensupport.JSONFloat64 `json:"minRelativeProgress"`
 		MinSplitLoss              gensupport.JSONFloat64 `json:"minSplitLoss"`
 		PcaExplainedVarianceRatio gensupport.JSONFloat64 `json:"pcaExplainedVarianceRatio"`
@@ -10106,11 +10517,14 @@ func (s *TrainingOptions) UnmarshalJSON(data []byte) error {
 	s.ColsampleBytree = float64(s1.ColsampleBytree)
 	s.DataSplitEvalFraction = float64(s1.DataSplitEvalFraction)
 	s.Dropout = float64(s1.Dropout)
+	s.ForecastLimitLowerBound = float64(s1.ForecastLimitLowerBound)
+	s.ForecastLimitUpperBound = float64(s1.ForecastLimitUpperBound)
 	s.InitialLearnRate = float64(s1.InitialLearnRate)
 	s.L1RegActivation = float64(s1.L1RegActivation)
 	s.L1Regularization = float64(s1.L1Regularization)
 	s.L2Regularization = float64(s1.L2Regularization)
 	s.LearnRate = float64(s1.LearnRate)
+	s.MinAprioriSupport = float64(s1.MinAprioriSupport)
 	s.MinRelativeProgress = float64(s1.MinRelativeProgress)
 	s.MinSplitLoss = float64(s1.MinSplitLoss)
 	s.PcaExplainedVarianceRatio = float64(s1.PcaExplainedVarianceRatio)
@@ -10300,6 +10714,9 @@ type VectorSearchStatistics struct {
 	// of the query did not use vector indexes.
 	//   "FULLY_USED" - The entire vector search query used vector indexes.
 	IndexUsageMode string `json:"indexUsageMode,omitempty"`
+	// StoredColumnsUsages: Specifies the usage of stored columns in the query when
+	// stored columns are used in the query.
+	StoredColumnsUsages []*StoredColumnsUsage `json:"storedColumnsUsages,omitempty"`
 	// ForceSendFields is a list of field names (e.g. "IndexUnusedReasons") to
 	// unconditionally include in API requests. By default, fields with empty or
 	// default values are omitted from API requests. See
@@ -10322,7 +10739,7 @@ func (s VectorSearchStatistics) MarshalJSON() ([]byte, error) {
 type ViewDefinition struct {
 	// ForeignDefinitions: Optional. Foreign view representations.
 	ForeignDefinitions []*ForeignViewDefinition `json:"foreignDefinitions,omitempty"`
-	// PrivacyPolicy: Optional. Specifices the privacy policy for the view.
+	// PrivacyPolicy: Optional. Specifies the privacy policy for the view.
 	PrivacyPolicy *PrivacyPolicy `json:"privacyPolicy,omitempty"`
 	// Query: Required. A query that BigQuery executes when the view is referenced.
 	Query string `json:"query,omitempty"`
@@ -10413,12 +10830,11 @@ func (c *DatasetsDeleteCall) Header() http.Header {
 
 func (c *DatasetsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("DELETE", urls, body)
+	req, err := http.NewRequest("DELETE", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -10427,6 +10843,7 @@ func (c *DatasetsDeleteCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.datasets.delete", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -10441,6 +10858,7 @@ func (c *DatasetsDeleteCall) Do(opts ...googleapi.CallOption) error {
 	if err := googleapi.CheckResponse(res); err != nil {
 		return gensupport.WrapError(err)
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.datasets.delete", "response", internallog.HTTPResponse(res, nil))
 	return nil
 }
 
@@ -10465,6 +10883,25 @@ func (r *DatasetsService) Get(projectId string, datasetId string) *DatasetsGetCa
 	return c
 }
 
+// AccessPolicyVersion sets the optional parameter "accessPolicyVersion": The
+// version of the access policy schema to fetch. Valid values are 0, 1, and 3.
+// Requests specifying an invalid value will be rejected. Requests for
+// conditional access policy binding in datasets must specify version 3.
+// Dataset with no conditional role bindings in access policy may specify any
+// valid value or leave the field unset. This field will be mapped to [IAM
+// Policy version] (https://cloud.google.com/iam/docs/policies#versions) and
+// will be used to fetch policy from IAM. If unset or if 0 or 1 value is used
+// for dataset with conditional bindings, access entry with condition will have
+// role string appended by 'withcond' string followed by a hash value. For
+// example : { "access": [ { "role":
+// "roles/bigquery.dataViewer_with_conditionalbinding_7a34awqsda",
+// "userByEmail": "user@example.com", } ] } Please refer
+// https://cloud.google.com/iam/docs/troubleshooting-withcond for more details.
+func (c *DatasetsGetCall) AccessPolicyVersion(accessPolicyVersion int64) *DatasetsGetCall {
+	c.urlParams_.Set("accessPolicyVersion", fmt.Sprint(accessPolicyVersion))
+	return c
+}
+
 // DatasetView sets the optional parameter "datasetView": Specifies the view
 // that determines which dataset information is returned. By default, metadata
 // and ACL information are returned.
@@ -10472,15 +10909,15 @@ func (r *DatasetsService) Get(projectId string, datasetId string) *DatasetsGetCa
 // Possible values:
 //
 //	"DATASET_VIEW_UNSPECIFIED" - The default value. Default to the FULL view.
-//	"METADATA" - Includes metadata information for the dataset, such as
+//	"METADATA" - View metadata information for the dataset, such as
 //
-// location, etag, lastModifiedTime, etc.
+// friendlyName, description, labels, etc.
 //
-//	"ACL" - Includes ACL information for the dataset, which defines dataset
+//	"ACL" - View ACL information for the dataset, which defines dataset access
 //
-// access for one or more entities.
+// for one or more entities.
 //
-//	"FULL" - Includes both dataset metadata and ACL information.
+//	"FULL" - View both dataset metadata and ACL information.
 func (c *DatasetsGetCall) DatasetView(datasetView string) *DatasetsGetCall {
 	c.urlParams_.Set("datasetView", datasetView)
 	return c
@@ -10522,12 +10959,11 @@ func (c *DatasetsGetCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -10536,6 +10972,7 @@ func (c *DatasetsGetCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.datasets.get", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -10570,9 +11007,11 @@ func (c *DatasetsGetCall) Do(opts ...googleapi.CallOption) (*Dataset, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.datasets.get", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -10592,6 +11031,23 @@ func (r *DatasetsService) Insert(projectId string, dataset *Dataset) *DatasetsIn
 	c := &DatasetsInsertCall{s: r.s, urlParams_: make(gensupport.URLParams)}
 	c.projectId = projectId
 	c.dataset = dataset
+	return c
+}
+
+// AccessPolicyVersion sets the optional parameter "accessPolicyVersion": The
+// version of the provided access policy schema. Valid values are 0, 1, and 3.
+// Requests specifying an invalid value will be rejected. This version refers
+// to the schema version of the access policy and not the version of access
+// policy. This field's value can be equal or more than the access policy
+// schema provided in the request. For example, * Requests with conditional
+// access policy binding in datasets must specify version 3. * But dataset with
+// no conditional role bindings in access policy may specify any valid value or
+// leave the field unset. If unset or if 0 or 1 value is used for dataset with
+// conditional bindings, request will be rejected. This field will be mapped to
+// IAM Policy version (https://cloud.google.com/iam/docs/policies#versions) and
+// will be used to set policy in IAM.
+func (c *DatasetsInsertCall) AccessPolicyVersion(accessPolicyVersion int64) *DatasetsInsertCall {
+	c.urlParams_.Set("accessPolicyVersion", fmt.Sprint(accessPolicyVersion))
 	return c
 }
 
@@ -10620,8 +11076,7 @@ func (c *DatasetsInsertCall) Header() http.Header {
 
 func (c *DatasetsInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.dataset)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.dataset)
 	if err != nil {
 		return nil, err
 	}
@@ -10637,6 +11092,7 @@ func (c *DatasetsInsertCall) doRequest(alt string) (*http.Response, error) {
 	googleapi.Expand(req.URL, map[string]string{
 		"projectId": c.projectId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.datasets.insert", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -10671,9 +11127,11 @@ func (c *DatasetsInsertCall) Do(opts ...googleapi.CallOption) (*Dataset, error) 
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.datasets.insert", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -10705,7 +11163,7 @@ func (c *DatasetsListCall) All(all bool) *DatasetsListCall {
 
 // Filter sets the optional parameter "filter": An expression for filtering the
 // results of the request by label. The syntax is `labels.[:]`. Multiple
-// filters can be ANDed together by connecting with a space. Example:
+// filters can be AND-ed together by connecting with a space. Example:
 // `labels.department:receiving labels.active`. See Filtering datasets using
 // labels
 // (https://cloud.google.com/bigquery/docs/filtering-labels#filtering_datasets_using_labels)
@@ -10766,12 +11224,11 @@ func (c *DatasetsListCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -10779,6 +11236,7 @@ func (c *DatasetsListCall) doRequest(alt string) (*http.Response, error) {
 	googleapi.Expand(req.URL, map[string]string{
 		"projectId": c.projectId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.datasets.list", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -10813,9 +11271,11 @@ func (c *DatasetsListCall) Do(opts ...googleapi.CallOption) (*DatasetList, error
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.datasets.list", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -10865,6 +11325,47 @@ func (r *DatasetsService) Patch(projectId string, datasetId string, dataset *Dat
 	return c
 }
 
+// AccessPolicyVersion sets the optional parameter "accessPolicyVersion": The
+// version of the provided access policy schema. Valid values are 0, 1, and 3.
+// Requests specifying an invalid value will be rejected. This version refers
+// to the schema version of the access policy and not the version of access
+// policy. This field's value can be equal or more than the access policy
+// schema provided in the request. For example, * Operations updating
+// conditional access policy binding in datasets must specify version 3. Some
+// of the operations are : - Adding a new access policy entry with condition. -
+// Removing an access policy entry with condition. - Updating an access policy
+// entry with condition. * But dataset with no conditional role bindings in
+// access policy may specify any valid value or leave the field unset. If unset
+// or if 0 or 1 value is used for dataset with conditional bindings, request
+// will be rejected. This field will be mapped to IAM Policy version
+// (https://cloud.google.com/iam/docs/policies#versions) and will be used to
+// set policy in IAM.
+func (c *DatasetsPatchCall) AccessPolicyVersion(accessPolicyVersion int64) *DatasetsPatchCall {
+	c.urlParams_.Set("accessPolicyVersion", fmt.Sprint(accessPolicyVersion))
+	return c
+}
+
+// UpdateMode sets the optional parameter "updateMode": Specifies the fields of
+// dataset that update/patch operation is targeting By default, both metadata
+// and ACL fields are updated.
+//
+// Possible values:
+//
+//	"UPDATE_MODE_UNSPECIFIED" - The default value. Default to the UPDATE_FULL.
+//	"UPDATE_METADATA" - Includes metadata information for the dataset, such as
+//
+// friendlyName, description, labels, etc.
+//
+//	"UPDATE_ACL" - Includes ACL information for the dataset, which defines
+//
+// dataset access for one or more entities.
+//
+//	"UPDATE_FULL" - Includes both dataset metadata and ACL information.
+func (c *DatasetsPatchCall) UpdateMode(updateMode string) *DatasetsPatchCall {
+	c.urlParams_.Set("updateMode", updateMode)
+	return c
+}
+
 // Fields allows partial responses to be retrieved. See
 // https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
 // details.
@@ -10890,8 +11391,7 @@ func (c *DatasetsPatchCall) Header() http.Header {
 
 func (c *DatasetsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.dataset)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.dataset)
 	if err != nil {
 		return nil, err
 	}
@@ -10908,6 +11408,7 @@ func (c *DatasetsPatchCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.datasets.patch", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -10942,9 +11443,11 @@ func (c *DatasetsPatchCall) Do(opts ...googleapi.CallOption) (*Dataset, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.datasets.patch", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -10997,8 +11500,7 @@ func (c *DatasetsUndeleteCall) Header() http.Header {
 
 func (c *DatasetsUndeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.undeletedatasetrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.undeletedatasetrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -11015,6 +11517,7 @@ func (c *DatasetsUndeleteCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.datasets.undelete", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -11049,9 +11552,11 @@ func (c *DatasetsUndeleteCall) Do(opts ...googleapi.CallOption) (*Dataset, error
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.datasets.undelete", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -11076,6 +11581,47 @@ func (r *DatasetsService) Update(projectId string, datasetId string, dataset *Da
 	c.projectId = projectId
 	c.datasetId = datasetId
 	c.dataset = dataset
+	return c
+}
+
+// AccessPolicyVersion sets the optional parameter "accessPolicyVersion": The
+// version of the provided access policy schema. Valid values are 0, 1, and 3.
+// Requests specifying an invalid value will be rejected. This version refers
+// to the schema version of the access policy and not the version of access
+// policy. This field's value can be equal or more than the access policy
+// schema provided in the request. For example, * Operations updating
+// conditional access policy binding in datasets must specify version 3. Some
+// of the operations are : - Adding a new access policy entry with condition. -
+// Removing an access policy entry with condition. - Updating an access policy
+// entry with condition. * But dataset with no conditional role bindings in
+// access policy may specify any valid value or leave the field unset. If unset
+// or if 0 or 1 value is used for dataset with conditional bindings, request
+// will be rejected. This field will be mapped to IAM Policy version
+// (https://cloud.google.com/iam/docs/policies#versions) and will be used to
+// set policy in IAM.
+func (c *DatasetsUpdateCall) AccessPolicyVersion(accessPolicyVersion int64) *DatasetsUpdateCall {
+	c.urlParams_.Set("accessPolicyVersion", fmt.Sprint(accessPolicyVersion))
+	return c
+}
+
+// UpdateMode sets the optional parameter "updateMode": Specifies the fields of
+// dataset that update/patch operation is targeting By default, both metadata
+// and ACL fields are updated.
+//
+// Possible values:
+//
+//	"UPDATE_MODE_UNSPECIFIED" - The default value. Default to the UPDATE_FULL.
+//	"UPDATE_METADATA" - Includes metadata information for the dataset, such as
+//
+// friendlyName, description, labels, etc.
+//
+//	"UPDATE_ACL" - Includes ACL information for the dataset, which defines
+//
+// dataset access for one or more entities.
+//
+//	"UPDATE_FULL" - Includes both dataset metadata and ACL information.
+func (c *DatasetsUpdateCall) UpdateMode(updateMode string) *DatasetsUpdateCall {
+	c.urlParams_.Set("updateMode", updateMode)
 	return c
 }
 
@@ -11104,8 +11650,7 @@ func (c *DatasetsUpdateCall) Header() http.Header {
 
 func (c *DatasetsUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.dataset)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.dataset)
 	if err != nil {
 		return nil, err
 	}
@@ -11122,6 +11667,7 @@ func (c *DatasetsUpdateCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.datasets.update", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -11156,9 +11702,11 @@ func (c *DatasetsUpdateCall) Do(opts ...googleapi.CallOption) (*Dataset, error) 
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.datasets.update", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -11185,11 +11733,11 @@ func (r *JobsService) Cancel(projectId string, jobId string) *JobsCancelCall {
 }
 
 // Location sets the optional parameter "location": The geographic location of
-// the job. You must specify the location to run the job for the following
-// scenarios: * If the location to run a job is not in the `us` or the `eu`
-// multi-regional location * If the job's location is in a single region (for
-// example, `us-central1`) For more information, see
-// https://cloud.google.com/bigquery/docs/locations#specifying_your_location.
+// the job. You must specify the location
+// (https://cloud.google.com/bigquery/docs/locations#specify_locations) to run
+// the job for the following scenarios: * If the location to run a job is not
+// in the `us` or the `eu` multi-regional location * If the job's location is
+// in a single region (for example, `us-central1`)
 func (c *JobsCancelCall) Location(location string) *JobsCancelCall {
 	c.urlParams_.Set("location", location)
 	return c
@@ -11220,12 +11768,11 @@ func (c *JobsCancelCall) Header() http.Header {
 
 func (c *JobsCancelCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/jobs/{+jobId}/cancel")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("POST", urls, body)
+	req, err := http.NewRequest("POST", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -11234,6 +11781,7 @@ func (c *JobsCancelCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"jobId":     c.jobId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.jobs.cancel", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -11269,9 +11817,11 @@ func (c *JobsCancelCall) Do(opts ...googleapi.CallOption) (*JobCancelResponse, e
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.jobs.cancel", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -11300,8 +11850,8 @@ func (r *JobsService) Delete(projectId string, jobId string) *JobsDeleteCall {
 }
 
 // Location sets the optional parameter "location": The geographic location of
-// the job. Required. See details at:
-// https://cloud.google.com/bigquery/docs/locations#specifying_your_location.
+// the job. Required. For more information, see how to specify locations
+// (https://cloud.google.com/bigquery/docs/locations#specify_locations).
 func (c *JobsDeleteCall) Location(location string) *JobsDeleteCall {
 	c.urlParams_.Set("location", location)
 	return c
@@ -11332,12 +11882,11 @@ func (c *JobsDeleteCall) Header() http.Header {
 
 func (c *JobsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/jobs/{+jobId}/delete")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("DELETE", urls, body)
+	req, err := http.NewRequest("DELETE", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -11346,6 +11895,7 @@ func (c *JobsDeleteCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"jobId":     c.jobId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.jobs.delete", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -11360,6 +11910,7 @@ func (c *JobsDeleteCall) Do(opts ...googleapi.CallOption) error {
 	if err := googleapi.CheckResponse(res); err != nil {
 		return gensupport.WrapError(err)
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.jobs.delete", "response", internallog.HTTPResponse(res, nil))
 	return nil
 }
 
@@ -11390,8 +11941,8 @@ func (r *JobsService) Get(projectId string, jobId string) *JobsGetCall {
 // the job. You must specify the location to run the job for the following
 // scenarios: * If the location to run a job is not in the `us` or the `eu`
 // multi-regional location * If the job's location is in a single region (for
-// example, `us-central1`) For more information, see
-// https://cloud.google.com/bigquery/docs/locations#specifying_your_location.
+// example, `us-central1`) For more information, see how to specify locations
+// (https://cloud.google.com/bigquery/docs/locations#specify_locations).
 func (c *JobsGetCall) Location(location string) *JobsGetCall {
 	c.urlParams_.Set("location", location)
 	return c
@@ -11433,12 +11984,11 @@ func (c *JobsGetCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/jobs/{+jobId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -11447,6 +11997,7 @@ func (c *JobsGetCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"jobId":     c.jobId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.jobs.get", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -11481,9 +12032,11 @@ func (c *JobsGetCall) Do(opts ...googleapi.CallOption) (*Job, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.jobs.get", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -11508,6 +12061,27 @@ func (r *JobsService) GetQueryResults(projectId string, jobId string) *JobsGetQu
 	return c
 }
 
+// FormatOptionsTimestampOutputFormat sets the optional parameter
+// "formatOptions.timestampOutputFormat": The API output format for a
+// timestamp. This offers more explicit control over the timestamp output
+// format as compared to the existing `use_int64_timestamp` option.
+//
+// Possible values:
+//
+//	"TIMESTAMP_OUTPUT_FORMAT_UNSPECIFIED" - Corresponds to default API output
+//
+// behavior, which is FLOAT64.
+//
+//	"FLOAT64" - Timestamp is output as float64 seconds since Unix epoch.
+//	"INT64" - Timestamp is output as int64 microseconds since Unix epoch.
+//	"ISO8601_STRING" - Timestamp is output as ISO 8601 String
+//
+// ("YYYY-MM-DDTHH:MM:SS.FFFFFFFFFFFFZ").
+func (c *JobsGetQueryResultsCall) FormatOptionsTimestampOutputFormat(formatOptionsTimestampOutputFormat string) *JobsGetQueryResultsCall {
+	c.urlParams_.Set("formatOptions.timestampOutputFormat", formatOptionsTimestampOutputFormat)
+	return c
+}
+
 // FormatOptionsUseInt64Timestamp sets the optional parameter
 // "formatOptions.useInt64Timestamp": Output timestamp as usec int64. Default
 // is false.
@@ -11520,8 +12094,8 @@ func (c *JobsGetQueryResultsCall) FormatOptionsUseInt64Timestamp(formatOptionsUs
 // the job. You must specify the location to run the job for the following
 // scenarios: * If the location to run a job is not in the `us` or the `eu`
 // multi-regional location * If the job's location is in a single region (for
-// example, `us-central1`) For more information, see
-// https://cloud.google.com/bigquery/docs/locations#specifying_your_location.
+// example, `us-central1`) For more information, see how to specify locations
+// (https://cloud.google.com/bigquery/docs/locations#specify_locations).
 func (c *JobsGetQueryResultsCall) Location(location string) *JobsGetQueryResultsCall {
 	c.urlParams_.Set("location", location)
 	return c
@@ -11600,12 +12174,11 @@ func (c *JobsGetQueryResultsCall) doRequest(alt string) (*http.Response, error) 
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/queries/{+jobId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -11614,6 +12187,7 @@ func (c *JobsGetQueryResultsCall) doRequest(alt string) (*http.Response, error) 
 		"projectId": c.projectId,
 		"jobId":     c.jobId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.jobs.getQueryResults", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -11649,9 +12223,11 @@ func (c *JobsGetQueryResultsCall) Do(opts ...googleapi.CallOption) (*GetQueryRes
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.jobs.getQueryResults", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -11765,8 +12341,7 @@ func (c *JobsInsertCall) Header() http.Header {
 
 func (c *JobsInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.job)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.job)
 	if err != nil {
 		return nil, err
 	}
@@ -11777,14 +12352,10 @@ func (c *JobsInsertCall) doRequest(alt string) (*http.Response, error) {
 		urls = googleapi.ResolveRelative(c.s.BasePath, "/upload/bigquery/v2/projects/{+projectId}/jobs")
 		c.urlParams_.Set("uploadType", c.mediaInfo_.UploadType())
 	}
-	if body == nil {
-		body = new(bytes.Buffer)
-		reqHeaders.Set("Content-Type", "application/json")
-	}
-	body, getBody, cleanup := c.mediaInfo_.UploadRequest(reqHeaders, body)
+	newBody, getBody, cleanup := c.mediaInfo_.UploadRequest(reqHeaders, body)
 	defer cleanup()
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("POST", urls, body)
+	req, err := http.NewRequest("POST", urls, newBody)
 	if err != nil {
 		return nil, err
 	}
@@ -11793,6 +12364,7 @@ func (c *JobsInsertCall) doRequest(alt string) (*http.Response, error) {
 	googleapi.Expand(req.URL, map[string]string{
 		"projectId": c.projectId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.jobs.insert", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -11844,9 +12416,11 @@ func (c *JobsInsertCall) Do(opts ...googleapi.CallOption) (*Job, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.jobs.insert", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -11977,12 +12551,11 @@ func (c *JobsListCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/jobs")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -11990,6 +12563,7 @@ func (c *JobsListCall) doRequest(alt string) (*http.Response, error) {
 	googleapi.Expand(req.URL, map[string]string{
 		"projectId": c.projectId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.jobs.list", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12024,9 +12598,11 @@ func (c *JobsListCall) Do(opts ...googleapi.CallOption) (*JobList, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.jobs.list", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -12096,8 +12672,7 @@ func (c *JobsQueryCall) Header() http.Header {
 
 func (c *JobsQueryCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.queryrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.queryrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -12113,6 +12688,7 @@ func (c *JobsQueryCall) doRequest(alt string) (*http.Response, error) {
 	googleapi.Expand(req.URL, map[string]string{
 		"projectId": c.projectId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.jobs.query", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12147,9 +12723,11 @@ func (c *JobsQueryCall) Do(opts ...googleapi.CallOption) (*QueryResponse, error)
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.jobs.query", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -12201,12 +12779,11 @@ func (c *ModelsDeleteCall) Header() http.Header {
 
 func (c *ModelsDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/models/{+modelId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("DELETE", urls, body)
+	req, err := http.NewRequest("DELETE", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -12216,6 +12793,7 @@ func (c *ModelsDeleteCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"modelId":   c.modelId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.models.delete", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12230,6 +12808,7 @@ func (c *ModelsDeleteCall) Do(opts ...googleapi.CallOption) error {
 	if err := googleapi.CheckResponse(res); err != nil {
 		return gensupport.WrapError(err)
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.models.delete", "response", internallog.HTTPResponse(res, nil))
 	return nil
 }
 
@@ -12293,12 +12872,11 @@ func (c *ModelsGetCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/models/{+modelId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -12308,6 +12886,7 @@ func (c *ModelsGetCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"modelId":   c.modelId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.models.get", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12342,9 +12921,11 @@ func (c *ModelsGetCall) Do(opts ...googleapi.CallOption) (*Model, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.models.get", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -12422,12 +13003,11 @@ func (c *ModelsListCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/models")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -12436,6 +13016,7 @@ func (c *ModelsListCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.models.list", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12471,9 +13052,11 @@ func (c *ModelsListCall) Do(opts ...googleapi.CallOption) (*ListModelsResponse, 
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.models.list", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -12548,8 +13131,7 @@ func (c *ModelsPatchCall) Header() http.Header {
 
 func (c *ModelsPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.model)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.model)
 	if err != nil {
 		return nil, err
 	}
@@ -12567,6 +13149,7 @@ func (c *ModelsPatchCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"modelId":   c.modelId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.models.patch", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12601,9 +13184,11 @@ func (c *ModelsPatchCall) Do(opts ...googleapi.CallOption) (*Model, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.models.patch", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -12662,12 +13247,11 @@ func (c *ProjectsGetServiceAccountCall) doRequest(alt string) (*http.Response, e
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/serviceAccount")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -12675,6 +13259,7 @@ func (c *ProjectsGetServiceAccountCall) doRequest(alt string) (*http.Response, e
 	googleapi.Expand(req.URL, map[string]string{
 		"projectId": c.projectId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.projects.getServiceAccount", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12710,9 +13295,11 @@ func (c *ProjectsGetServiceAccountCall) Do(opts ...googleapi.CallOption) (*GetSe
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.projects.getServiceAccount", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -12786,16 +13373,16 @@ func (c *ProjectsListCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header = reqHeaders
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.projects.list", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12830,9 +13417,11 @@ func (c *ProjectsListCall) Do(opts ...googleapi.CallOption) (*ProjectList, error
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.projects.list", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -12905,12 +13494,11 @@ func (c *RoutinesDeleteCall) Header() http.Header {
 
 func (c *RoutinesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/routines/{+routineId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("DELETE", urls, body)
+	req, err := http.NewRequest("DELETE", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -12920,6 +13508,7 @@ func (c *RoutinesDeleteCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"routineId": c.routineId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.routines.delete", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -12934,6 +13523,7 @@ func (c *RoutinesDeleteCall) Do(opts ...googleapi.CallOption) error {
 	if err := googleapi.CheckResponse(res); err != nil {
 		return gensupport.WrapError(err)
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.routines.delete", "response", internallog.HTTPResponse(res, nil))
 	return nil
 }
 
@@ -13005,12 +13595,11 @@ func (c *RoutinesGetCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/routines/{+routineId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -13020,6 +13609,7 @@ func (c *RoutinesGetCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"routineId": c.routineId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.routines.get", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -13054,9 +13644,11 @@ func (c *RoutinesGetCall) Do(opts ...googleapi.CallOption) (*Routine, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.routines.get", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -13107,8 +13699,7 @@ func (c *RoutinesGetIamPolicyCall) Header() http.Header {
 
 func (c *RoutinesGetIamPolicyCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.getiampolicyrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.getiampolicyrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -13124,6 +13715,7 @@ func (c *RoutinesGetIamPolicyCall) doRequest(alt string) (*http.Response, error)
 	googleapi.Expand(req.URL, map[string]string{
 		"resource": c.resource,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.routines.getIamPolicy", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -13158,9 +13750,11 @@ func (c *RoutinesGetIamPolicyCall) Do(opts ...googleapi.CallOption) (*Policy, er
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.routines.getIamPolicy", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -13211,8 +13805,7 @@ func (c *RoutinesInsertCall) Header() http.Header {
 
 func (c *RoutinesInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.routine)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.routine)
 	if err != nil {
 		return nil, err
 	}
@@ -13229,6 +13822,7 @@ func (c *RoutinesInsertCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.routines.insert", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -13263,9 +13857,11 @@ func (c *RoutinesInsertCall) Do(opts ...googleapi.CallOption) (*Routine, error) 
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.routines.insert", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -13361,12 +13957,11 @@ func (c *RoutinesListCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/routines")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -13375,6 +13970,7 @@ func (c *RoutinesListCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.routines.list", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -13410,9 +14006,11 @@ func (c *RoutinesListCall) Do(opts ...googleapi.CallOption) (*ListRoutinesRespon
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.routines.list", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -13485,8 +14083,7 @@ func (c *RoutinesSetIamPolicyCall) Header() http.Header {
 
 func (c *RoutinesSetIamPolicyCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.setiampolicyrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.setiampolicyrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -13502,6 +14099,7 @@ func (c *RoutinesSetIamPolicyCall) doRequest(alt string) (*http.Response, error)
 	googleapi.Expand(req.URL, map[string]string{
 		"resource": c.resource,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.routines.setIamPolicy", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -13536,9 +14134,122 @@ func (c *RoutinesSetIamPolicyCall) Do(opts ...googleapi.CallOption) (*Policy, er
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.routines.setIamPolicy", "response", internallog.HTTPResponse(res, b))
+	return ret, nil
+}
+
+type RoutinesTestIamPermissionsCall struct {
+	s                         *Service
+	resource                  string
+	testiampermissionsrequest *TestIamPermissionsRequest
+	urlParams_                gensupport.URLParams
+	ctx_                      context.Context
+	header_                   http.Header
+}
+
+// TestIamPermissions: Returns permissions that a caller has on the specified
+// resource. If the resource does not exist, this will return an empty set of
+// permissions, not a `NOT_FOUND` error. Note: This operation is designed to be
+// used for building permission-aware UIs and command-line tools, not for
+// authorization checking. This operation may "fail open" without warning.
+//
+//   - resource: REQUIRED: The resource for which the policy detail is being
+//     requested. See Resource names
+//     (https://cloud.google.com/apis/design/resource_names) for the appropriate
+//     value for this field.
+func (r *RoutinesService) TestIamPermissions(resource string, testiampermissionsrequest *TestIamPermissionsRequest) *RoutinesTestIamPermissionsCall {
+	c := &RoutinesTestIamPermissionsCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.resource = resource
+	c.testiampermissionsrequest = testiampermissionsrequest
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *RoutinesTestIamPermissionsCall) Fields(s ...googleapi.Field) *RoutinesTestIamPermissionsCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *RoutinesTestIamPermissionsCall) Context(ctx context.Context) *RoutinesTestIamPermissionsCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *RoutinesTestIamPermissionsCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RoutinesTestIamPermissionsCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.testiampermissionsrequest)
+	if err != nil {
+		return nil, err
+	}
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "{+resource}:testIamPermissions")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"resource": c.resource,
+	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.routines.testIamPermissions", "request", internallog.HTTPRequest(req, body.Bytes()))
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "bigquery.routines.testIamPermissions" call.
+// Any non-2xx status code is an error. Response headers are in either
+// *TestIamPermissionsResponse.ServerResponse.Header or (if a response was
+// returned at all) in error.(*googleapi.Error).Header. Use
+// googleapi.IsNotModified to check whether the returned error was because
+// http.StatusNotModified was returned.
+func (c *RoutinesTestIamPermissionsCall) Do(opts ...googleapi.CallOption) (*TestIamPermissionsResponse, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &TestIamPermissionsResponse{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
+		return nil, err
+	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.routines.testIamPermissions", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -13593,8 +14304,7 @@ func (c *RoutinesUpdateCall) Header() http.Header {
 
 func (c *RoutinesUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.routine)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.routine)
 	if err != nil {
 		return nil, err
 	}
@@ -13612,6 +14322,7 @@ func (c *RoutinesUpdateCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"routineId": c.routineId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.routines.update", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -13646,9 +14357,313 @@ func (c *RoutinesUpdateCall) Do(opts ...googleapi.CallOption) (*Routine, error) 
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.routines.update", "response", internallog.HTTPResponse(res, b))
+	return ret, nil
+}
+
+type RowAccessPoliciesBatchDeleteCall struct {
+	s                                   *Service
+	projectId                           string
+	datasetId                           string
+	tableId                             string
+	batchdeleterowaccesspoliciesrequest *BatchDeleteRowAccessPoliciesRequest
+	urlParams_                          gensupport.URLParams
+	ctx_                                context.Context
+	header_                             http.Header
+}
+
+// BatchDelete: Deletes provided row access policies.
+//
+// - datasetId: Dataset ID of the table to delete the row access policies.
+// - projectId: Project ID of the table to delete the row access policies.
+// - tableId: Table ID of the table to delete the row access policies.
+func (r *RowAccessPoliciesService) BatchDelete(projectId string, datasetId string, tableId string, batchdeleterowaccesspoliciesrequest *BatchDeleteRowAccessPoliciesRequest) *RowAccessPoliciesBatchDeleteCall {
+	c := &RowAccessPoliciesBatchDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.datasetId = datasetId
+	c.tableId = tableId
+	c.batchdeleterowaccesspoliciesrequest = batchdeleterowaccesspoliciesrequest
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *RowAccessPoliciesBatchDeleteCall) Fields(s ...googleapi.Field) *RowAccessPoliciesBatchDeleteCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *RowAccessPoliciesBatchDeleteCall) Context(ctx context.Context) *RowAccessPoliciesBatchDeleteCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *RowAccessPoliciesBatchDeleteCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RowAccessPoliciesBatchDeleteCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.batchdeleterowaccesspoliciesrequest)
+	if err != nil {
+		return nil, err
+	}
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}/rowAccessPolicies:batchDelete")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId": c.projectId,
+		"datasetId": c.datasetId,
+		"tableId":   c.tableId,
+	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.batchDelete", "request", internallog.HTTPRequest(req, body.Bytes()))
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "bigquery.rowAccessPolicies.batchDelete" call.
+func (c *RowAccessPoliciesBatchDeleteCall) Do(opts ...googleapi.CallOption) error {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if err != nil {
+		return err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return gensupport.WrapError(err)
+	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.batchDelete", "response", internallog.HTTPResponse(res, nil))
+	return nil
+}
+
+type RowAccessPoliciesDeleteCall struct {
+	s          *Service
+	projectId  string
+	datasetId  string
+	tableId    string
+	policyId   string
+	urlParams_ gensupport.URLParams
+	ctx_       context.Context
+	header_    http.Header
+}
+
+// Delete: Deletes a row access policy.
+//
+// - datasetId: Dataset ID of the table to delete the row access policy.
+// - policyId: Policy ID of the row access policy.
+// - projectId: Project ID of the table to delete the row access policy.
+// - tableId: Table ID of the table to delete the row access policy.
+func (r *RowAccessPoliciesService) Delete(projectId string, datasetId string, tableId string, policyId string) *RowAccessPoliciesDeleteCall {
+	c := &RowAccessPoliciesDeleteCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.datasetId = datasetId
+	c.tableId = tableId
+	c.policyId = policyId
+	return c
+}
+
+// Force sets the optional parameter "force": If set to true, it deletes the
+// row access policy even if it's the last row access policy on the table and
+// the deletion will widen the access rather narrowing it.
+func (c *RowAccessPoliciesDeleteCall) Force(force bool) *RowAccessPoliciesDeleteCall {
+	c.urlParams_.Set("force", fmt.Sprint(force))
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *RowAccessPoliciesDeleteCall) Fields(s ...googleapi.Field) *RowAccessPoliciesDeleteCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *RowAccessPoliciesDeleteCall) Context(ctx context.Context) *RowAccessPoliciesDeleteCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *RowAccessPoliciesDeleteCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RowAccessPoliciesDeleteCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}/rowAccessPolicies/{+policyId}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("DELETE", urls, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId": c.projectId,
+		"datasetId": c.datasetId,
+		"tableId":   c.tableId,
+		"policyId":  c.policyId,
+	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.delete", "request", internallog.HTTPRequest(req, nil))
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "bigquery.rowAccessPolicies.delete" call.
+func (c *RowAccessPoliciesDeleteCall) Do(opts ...googleapi.CallOption) error {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if err != nil {
+		return err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return gensupport.WrapError(err)
+	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.delete", "response", internallog.HTTPResponse(res, nil))
+	return nil
+}
+
+type RowAccessPoliciesGetCall struct {
+	s            *Service
+	projectId    string
+	datasetId    string
+	tableId      string
+	policyId     string
+	urlParams_   gensupport.URLParams
+	ifNoneMatch_ string
+	ctx_         context.Context
+	header_      http.Header
+}
+
+// Get: Gets the specified row access policy by policy ID.
+//
+// - datasetId: Dataset ID of the table to get the row access policy.
+// - policyId: Policy ID of the row access policy.
+// - projectId: Project ID of the table to get the row access policy.
+// - tableId: Table ID of the table to get the row access policy.
+func (r *RowAccessPoliciesService) Get(projectId string, datasetId string, tableId string, policyId string) *RowAccessPoliciesGetCall {
+	c := &RowAccessPoliciesGetCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.datasetId = datasetId
+	c.tableId = tableId
+	c.policyId = policyId
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *RowAccessPoliciesGetCall) Fields(s ...googleapi.Field) *RowAccessPoliciesGetCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// IfNoneMatch sets an optional parameter which makes the operation fail if the
+// object's ETag matches the given value. This is useful for getting updates
+// only after the object has changed since the last request.
+func (c *RowAccessPoliciesGetCall) IfNoneMatch(entityTag string) *RowAccessPoliciesGetCall {
+	c.ifNoneMatch_ = entityTag
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *RowAccessPoliciesGetCall) Context(ctx context.Context) *RowAccessPoliciesGetCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *RowAccessPoliciesGetCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RowAccessPoliciesGetCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
+	if c.ifNoneMatch_ != "" {
+		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
+	}
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}/rowAccessPolicies/{+policyId}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("GET", urls, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId": c.projectId,
+		"datasetId": c.datasetId,
+		"tableId":   c.tableId,
+		"policyId":  c.policyId,
+	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.get", "request", internallog.HTTPRequest(req, nil))
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "bigquery.rowAccessPolicies.get" call.
+// Any non-2xx status code is an error. Response headers are in either
+// *RowAccessPolicy.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified was
+// returned.
+func (c *RowAccessPoliciesGetCall) Do(opts ...googleapi.CallOption) (*RowAccessPolicy, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &RowAccessPolicy{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
+		return nil, err
+	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.get", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -13699,8 +14714,7 @@ func (c *RowAccessPoliciesGetIamPolicyCall) Header() http.Header {
 
 func (c *RowAccessPoliciesGetIamPolicyCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.getiampolicyrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.getiampolicyrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -13716,6 +14730,7 @@ func (c *RowAccessPoliciesGetIamPolicyCall) doRequest(alt string) (*http.Respons
 	googleapi.Expand(req.URL, map[string]string{
 		"resource": c.resource,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.getIamPolicy", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -13750,9 +14765,123 @@ func (c *RowAccessPoliciesGetIamPolicyCall) Do(opts ...googleapi.CallOption) (*P
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.getIamPolicy", "response", internallog.HTTPResponse(res, b))
+	return ret, nil
+}
+
+type RowAccessPoliciesInsertCall struct {
+	s               *Service
+	projectId       string
+	datasetId       string
+	tableId         string
+	rowaccesspolicy *RowAccessPolicy
+	urlParams_      gensupport.URLParams
+	ctx_            context.Context
+	header_         http.Header
+}
+
+// Insert: Creates a row access policy.
+//
+// - datasetId: Dataset ID of the table to get the row access policy.
+// - projectId: Project ID of the table to get the row access policy.
+// - tableId: Table ID of the table to get the row access policy.
+func (r *RowAccessPoliciesService) Insert(projectId string, datasetId string, tableId string, rowaccesspolicy *RowAccessPolicy) *RowAccessPoliciesInsertCall {
+	c := &RowAccessPoliciesInsertCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.datasetId = datasetId
+	c.tableId = tableId
+	c.rowaccesspolicy = rowaccesspolicy
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *RowAccessPoliciesInsertCall) Fields(s ...googleapi.Field) *RowAccessPoliciesInsertCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *RowAccessPoliciesInsertCall) Context(ctx context.Context) *RowAccessPoliciesInsertCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *RowAccessPoliciesInsertCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RowAccessPoliciesInsertCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.rowaccesspolicy)
+	if err != nil {
+		return nil, err
+	}
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}/rowAccessPolicies")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("POST", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId": c.projectId,
+		"datasetId": c.datasetId,
+		"tableId":   c.tableId,
+	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.insert", "request", internallog.HTTPRequest(req, body.Bytes()))
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "bigquery.rowAccessPolicies.insert" call.
+// Any non-2xx status code is an error. Response headers are in either
+// *RowAccessPolicy.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified was
+// returned.
+func (c *RowAccessPoliciesInsertCall) Do(opts ...googleapi.CallOption) (*RowAccessPolicy, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &RowAccessPolicy{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
+		return nil, err
+	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.insert", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -13831,12 +14960,11 @@ func (c *RowAccessPoliciesListCall) doRequest(alt string) (*http.Response, error
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}/rowAccessPolicies")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -13846,6 +14974,7 @@ func (c *RowAccessPoliciesListCall) doRequest(alt string) (*http.Response, error
 		"datasetId": c.datasetId,
 		"tableId":   c.tableId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.list", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -13881,9 +15010,11 @@ func (c *RowAccessPoliciesListCall) Do(opts ...googleapi.CallOption) (*ListRowAc
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.list", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -13959,8 +15090,7 @@ func (c *RowAccessPoliciesTestIamPermissionsCall) Header() http.Header {
 
 func (c *RowAccessPoliciesTestIamPermissionsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.testiampermissionsrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.testiampermissionsrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -13976,6 +15106,7 @@ func (c *RowAccessPoliciesTestIamPermissionsCall) doRequest(alt string) (*http.R
 	googleapi.Expand(req.URL, map[string]string{
 		"resource": c.resource,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.testIamPermissions", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -14011,9 +15142,127 @@ func (c *RowAccessPoliciesTestIamPermissionsCall) Do(opts ...googleapi.CallOptio
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.testIamPermissions", "response", internallog.HTTPResponse(res, b))
+	return ret, nil
+}
+
+type RowAccessPoliciesUpdateCall struct {
+	s               *Service
+	projectId       string
+	datasetId       string
+	tableId         string
+	policyId        string
+	rowaccesspolicy *RowAccessPolicy
+	urlParams_      gensupport.URLParams
+	ctx_            context.Context
+	header_         http.Header
+}
+
+// Update: Updates a row access policy.
+//
+// - datasetId: Dataset ID of the table to get the row access policy.
+// - policyId: Policy ID of the row access policy.
+// - projectId: Project ID of the table to get the row access policy.
+// - tableId: Table ID of the table to get the row access policy.
+func (r *RowAccessPoliciesService) Update(projectId string, datasetId string, tableId string, policyId string, rowaccesspolicy *RowAccessPolicy) *RowAccessPoliciesUpdateCall {
+	c := &RowAccessPoliciesUpdateCall{s: r.s, urlParams_: make(gensupport.URLParams)}
+	c.projectId = projectId
+	c.datasetId = datasetId
+	c.tableId = tableId
+	c.policyId = policyId
+	c.rowaccesspolicy = rowaccesspolicy
+	return c
+}
+
+// Fields allows partial responses to be retrieved. See
+// https://developers.google.com/gdata/docs/2.0/basics#PartialResponse for more
+// details.
+func (c *RowAccessPoliciesUpdateCall) Fields(s ...googleapi.Field) *RowAccessPoliciesUpdateCall {
+	c.urlParams_.Set("fields", googleapi.CombineFields(s))
+	return c
+}
+
+// Context sets the context to be used in this call's Do method.
+func (c *RowAccessPoliciesUpdateCall) Context(ctx context.Context) *RowAccessPoliciesUpdateCall {
+	c.ctx_ = ctx
+	return c
+}
+
+// Header returns a http.Header that can be modified by the caller to add
+// headers to the request.
+func (c *RowAccessPoliciesUpdateCall) Header() http.Header {
+	if c.header_ == nil {
+		c.header_ = make(http.Header)
+	}
+	return c.header_
+}
+
+func (c *RowAccessPoliciesUpdateCall) doRequest(alt string) (*http.Response, error) {
+	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.rowaccesspolicy)
+	if err != nil {
+		return nil, err
+	}
+	c.urlParams_.Set("alt", alt)
+	c.urlParams_.Set("prettyPrint", "false")
+	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}/rowAccessPolicies/{+policyId}")
+	urls += "?" + c.urlParams_.Encode()
+	req, err := http.NewRequest("PUT", urls, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header = reqHeaders
+	googleapi.Expand(req.URL, map[string]string{
+		"projectId": c.projectId,
+		"datasetId": c.datasetId,
+		"tableId":   c.tableId,
+		"policyId":  c.policyId,
+	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.update", "request", internallog.HTTPRequest(req, body.Bytes()))
+	return gensupport.SendRequest(c.ctx_, c.s.client, req)
+}
+
+// Do executes the "bigquery.rowAccessPolicies.update" call.
+// Any non-2xx status code is an error. Response headers are in either
+// *RowAccessPolicy.ServerResponse.Header or (if a response was returned at
+// all) in error.(*googleapi.Error).Header. Use googleapi.IsNotModified to
+// check whether the returned error was because http.StatusNotModified was
+// returned.
+func (c *RowAccessPoliciesUpdateCall) Do(opts ...googleapi.CallOption) (*RowAccessPolicy, error) {
+	gensupport.SetOptions(c.urlParams_, opts...)
+	res, err := c.doRequest("json")
+	if res != nil && res.StatusCode == http.StatusNotModified {
+		if res.Body != nil {
+			res.Body.Close()
+		}
+		return nil, gensupport.WrapError(&googleapi.Error{
+			Code:   res.StatusCode,
+			Header: res.Header,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer googleapi.CloseBody(res)
+	if err := googleapi.CheckResponse(res); err != nil {
+		return nil, gensupport.WrapError(err)
+	}
+	ret := &RowAccessPolicy{
+		ServerResponse: googleapi.ServerResponse{
+			Header:         res.Header,
+			HTTPStatusCode: res.StatusCode,
+		},
+	}
+	target := &ret
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
+		return nil, err
+	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.rowAccessPolicies.update", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -14068,8 +15317,7 @@ func (c *TabledataInsertAllCall) Header() http.Header {
 
 func (c *TabledataInsertAllCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.tabledatainsertallrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.tabledatainsertallrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -14087,6 +15335,7 @@ func (c *TabledataInsertAllCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"tableId":   c.tableId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tabledata.insertAll", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -14122,9 +15371,11 @@ func (c *TabledataInsertAllCall) Do(opts ...googleapi.CallOption) (*TableDataIns
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tabledata.insertAll", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -14149,6 +15400,27 @@ func (r *TabledataService) List(projectId string, datasetId string, tableId stri
 	c.projectId = projectId
 	c.datasetId = datasetId
 	c.tableId = tableId
+	return c
+}
+
+// FormatOptionsTimestampOutputFormat sets the optional parameter
+// "formatOptions.timestampOutputFormat": The API output format for a
+// timestamp. This offers more explicit control over the timestamp output
+// format as compared to the existing `use_int64_timestamp` option.
+//
+// Possible values:
+//
+//	"TIMESTAMP_OUTPUT_FORMAT_UNSPECIFIED" - Corresponds to default API output
+//
+// behavior, which is FLOAT64.
+//
+//	"FLOAT64" - Timestamp is output as float64 seconds since Unix epoch.
+//	"INT64" - Timestamp is output as int64 microseconds since Unix epoch.
+//	"ISO8601_STRING" - Timestamp is output as ISO 8601 String
+//
+// ("YYYY-MM-DDTHH:MM:SS.FFFFFFFFFFFFZ").
+func (c *TabledataListCall) FormatOptionsTimestampOutputFormat(formatOptionsTimestampOutputFormat string) *TabledataListCall {
+	c.urlParams_.Set("formatOptions.timestampOutputFormat", formatOptionsTimestampOutputFormat)
 	return c
 }
 
@@ -14225,12 +15497,11 @@ func (c *TabledataListCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}/data")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -14240,6 +15511,7 @@ func (c *TabledataListCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"tableId":   c.tableId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tabledata.list", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -14274,9 +15546,11 @@ func (c *TabledataListCall) Do(opts ...googleapi.CallOption) (*TableDataList, er
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tabledata.list", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -14350,12 +15624,11 @@ func (c *TablesDeleteCall) Header() http.Header {
 
 func (c *TablesDeleteCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "", c.header_)
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("DELETE", urls, body)
+	req, err := http.NewRequest("DELETE", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -14365,6 +15638,7 @@ func (c *TablesDeleteCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"tableId":   c.tableId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.delete", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -14379,6 +15653,7 @@ func (c *TablesDeleteCall) Do(opts ...googleapi.CallOption) error {
 	if err := googleapi.CheckResponse(res); err != nil {
 		return gensupport.WrapError(err)
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.delete", "response", internallog.HTTPResponse(res, nil))
 	return nil
 }
 
@@ -14485,12 +15760,11 @@ func (c *TablesGetCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables/{+tableId}")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -14500,6 +15774,7 @@ func (c *TablesGetCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"tableId":   c.tableId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.get", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -14534,9 +15809,11 @@ func (c *TablesGetCall) Do(opts ...googleapi.CallOption) (*Table, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.get", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -14587,8 +15864,7 @@ func (c *TablesGetIamPolicyCall) Header() http.Header {
 
 func (c *TablesGetIamPolicyCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.getiampolicyrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.getiampolicyrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -14604,6 +15880,7 @@ func (c *TablesGetIamPolicyCall) doRequest(alt string) (*http.Response, error) {
 	googleapi.Expand(req.URL, map[string]string{
 		"resource": c.resource,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.getIamPolicy", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -14638,9 +15915,11 @@ func (c *TablesGetIamPolicyCall) Do(opts ...googleapi.CallOption) (*Policy, erro
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.getIamPolicy", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -14691,8 +15970,7 @@ func (c *TablesInsertCall) Header() http.Header {
 
 func (c *TablesInsertCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.table)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.table)
 	if err != nil {
 		return nil, err
 	}
@@ -14709,6 +15987,7 @@ func (c *TablesInsertCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.insert", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -14743,9 +16022,11 @@ func (c *TablesInsertCall) Do(opts ...googleapi.CallOption) (*Table, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.insert", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -14822,12 +16103,11 @@ func (c *TablesListCall) doRequest(alt string) (*http.Response, error) {
 	if c.ifNoneMatch_ != "" {
 		reqHeaders.Set("If-None-Match", c.ifNoneMatch_)
 	}
-	var body io.Reader = nil
 	c.urlParams_.Set("alt", alt)
 	c.urlParams_.Set("prettyPrint", "false")
 	urls := googleapi.ResolveRelative(c.s.BasePath, "projects/{+projectId}/datasets/{+datasetId}/tables")
 	urls += "?" + c.urlParams_.Encode()
-	req, err := http.NewRequest("GET", urls, body)
+	req, err := http.NewRequest("GET", urls, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -14836,6 +16116,7 @@ func (c *TablesListCall) doRequest(alt string) (*http.Response, error) {
 		"projectId": c.projectId,
 		"datasetId": c.datasetId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.list", "request", internallog.HTTPRequest(req, nil))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -14870,9 +16151,11 @@ func (c *TablesListCall) Do(opts ...googleapi.CallOption) (*TableList, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.list", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -14957,8 +16240,7 @@ func (c *TablesPatchCall) Header() http.Header {
 
 func (c *TablesPatchCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.table)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.table)
 	if err != nil {
 		return nil, err
 	}
@@ -14976,6 +16258,7 @@ func (c *TablesPatchCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"tableId":   c.tableId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.patch", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -15010,9 +16293,11 @@ func (c *TablesPatchCall) Do(opts ...googleapi.CallOption) (*Table, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.patch", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -15064,8 +16349,7 @@ func (c *TablesSetIamPolicyCall) Header() http.Header {
 
 func (c *TablesSetIamPolicyCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.setiampolicyrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.setiampolicyrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -15081,6 +16365,7 @@ func (c *TablesSetIamPolicyCall) doRequest(alt string) (*http.Response, error) {
 	googleapi.Expand(req.URL, map[string]string{
 		"resource": c.resource,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.setIamPolicy", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -15115,9 +16400,11 @@ func (c *TablesSetIamPolicyCall) Do(opts ...googleapi.CallOption) (*Policy, erro
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.setIamPolicy", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -15172,8 +16459,7 @@ func (c *TablesTestIamPermissionsCall) Header() http.Header {
 
 func (c *TablesTestIamPermissionsCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.testiampermissionsrequest)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.testiampermissionsrequest)
 	if err != nil {
 		return nil, err
 	}
@@ -15189,6 +16475,7 @@ func (c *TablesTestIamPermissionsCall) doRequest(alt string) (*http.Response, er
 	googleapi.Expand(req.URL, map[string]string{
 		"resource": c.resource,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.testIamPermissions", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -15224,9 +16511,11 @@ func (c *TablesTestIamPermissionsCall) Do(opts ...googleapi.CallOption) (*TestIa
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.testIamPermissions", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }
 
@@ -15289,8 +16578,7 @@ func (c *TablesUpdateCall) Header() http.Header {
 
 func (c *TablesUpdateCall) doRequest(alt string) (*http.Response, error) {
 	reqHeaders := gensupport.SetHeaders(c.s.userAgent(), "application/json", c.header_)
-	var body io.Reader = nil
-	body, err := googleapi.WithoutDataWrapper.JSONReader(c.table)
+	body, err := googleapi.WithoutDataWrapper.JSONBuffer(c.table)
 	if err != nil {
 		return nil, err
 	}
@@ -15308,6 +16596,7 @@ func (c *TablesUpdateCall) doRequest(alt string) (*http.Response, error) {
 		"datasetId": c.datasetId,
 		"tableId":   c.tableId,
 	})
+	c.s.logger.DebugContext(c.ctx_, "api request", "serviceName", apiName, "rpcName", "bigquery.tables.update", "request", internallog.HTTPRequest(req, body.Bytes()))
 	return gensupport.SendRequest(c.ctx_, c.s.client, req)
 }
 
@@ -15342,8 +16631,10 @@ func (c *TablesUpdateCall) Do(opts ...googleapi.CallOption) (*Table, error) {
 		},
 	}
 	target := &ret
-	if err := gensupport.DecodeResponse(target, res); err != nil {
+	b, err := gensupport.DecodeResponseBytes(target, res)
+	if err != nil {
 		return nil, err
 	}
+	c.s.logger.DebugContext(c.ctx_, "api response", "serviceName", apiName, "rpcName", "bigquery.tables.update", "response", internallog.HTTPResponse(res, b))
 	return ret, nil
 }

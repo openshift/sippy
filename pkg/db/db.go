@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
+	sippymigrate "github.com/openshift/sippy/pkg/db/migrate"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 )
@@ -66,6 +67,11 @@ func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
 }
 
 func (d *DB) UpdateSchema(reportEnd *time.Time) error {
+	// Run versioned migrations (golang-migrate).
+	if err := sippymigrate.RunMigrations(d.DB); err != nil {
+		return err
+	}
+
 	// List of all models to migrate
 	modelsToMigrate := []any{
 		&models.ReleaseTag{},
@@ -120,10 +126,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	if err := syncPostgresMaterializedViews(d.DB, reportEnd); err != nil {
-		return err
-	}
-
-	if err := syncPartitionedTables(d.DB); err != nil {
 		return err
 	}
 
