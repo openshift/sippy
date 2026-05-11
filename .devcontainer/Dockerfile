@@ -1,9 +1,8 @@
-FROM registry.access.redhat.com/ubi9/ubi:latest
+FROM registry.fedoraproject.org/fedora:43
 
 ARG GOLANGCI_LINT_VERSION=1.64.8
 
-RUN dnf module enable nodejs:18 -y && \
-    dnf install -y --allowerasing \
+RUN dnf install -y \
     git \
     make \
     jq \
@@ -14,11 +13,13 @@ RUN dnf module enable nodejs:18 -y && \
     findutils \
     procps-ng \
     sudo \
-    go \
+    golang \
     npm \
-    python3.12 \
+    python3 \
     libstdc++ \
     postgresql \
+    chromium-headless \
+    which \
     && dnf clean all
 
 RUN ARCH=$(uname -m) && \
@@ -40,6 +41,7 @@ RUN groupadd -g 1000 vscode && \
 
 ENV GOPATH=/home/vscode/go
 ENV PATH="/home/vscode/.local/bin:${GOPATH}/bin:/usr/local/go/bin:${PATH}"
+ENV CHROME_PATH=/usr/lib64/chromium-browser/headless_shell
 
 USER vscode
 
