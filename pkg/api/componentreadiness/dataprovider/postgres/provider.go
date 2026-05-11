@@ -137,7 +137,8 @@ func (p *PostgresProvider) QueryJobVariants(ctx context.Context) (crtest.JobVari
 // and fill in metadata from this map.
 var releaseMetadata = map[string]struct {
 	previousRelease string
-	gaOffsetDays    int // 0 = no GA date (in development)
+	gaOffsetDays    int    // 0 = no GA date (in development)
+	product         string // empty = defaults to "OCP"
 }{
 	"4.17": {previousRelease: "4.16", gaOffsetDays: -540},
 	"4.18": {previousRelease: "4.17", gaOffsetDays: -395},
@@ -170,12 +171,16 @@ func (p *PostgresProvider) QueryReleases(ctx context.Context) ([]v1.Release, err
 		rel := v1.Release{
 			Release:      name,
 			Capabilities: caps,
+			Product:      "OCP",
 		}
 		if meta, ok := releaseMetadata[name]; ok {
 			rel.PreviousRelease = meta.previousRelease
 			if meta.gaOffsetDays != 0 {
 				ga := now.AddDate(0, 0, meta.gaOffsetDays)
 				rel.GADate = &ga
+			}
+			if meta.product != "" {
+				rel.Product = meta.product
 			}
 		}
 		releases = append(releases, rel)

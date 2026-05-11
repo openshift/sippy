@@ -527,6 +527,7 @@ func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) ap
 			PreviousRelease: release.PreviousRelease,
 			ReleaseDates:    releaseDate,
 			Capabilities:    release.Capabilities,
+			Product:         release.Product,
 		}
 	}
 
