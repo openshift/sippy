@@ -2,6 +2,10 @@
 set -eu
 # Starts PostgreSQL and Redis as standalone Podman containers (runs on the host before the devcontainer starts)
 
+# Ensure Claude Code credentials file exists so the bind mount succeeds
+mkdir -p "$HOME/.claude"
+[ -f "$HOME/.claude/.credentials.json" ] || echo '{}' > "$HOME/.claude/.credentials.json"
+
 podman network create sippy-net 2>/dev/null || true
 
 podman start sippy-postgres 2>/dev/null || \
