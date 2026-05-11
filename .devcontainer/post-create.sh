@@ -23,6 +23,7 @@ claude plugin marketplace add openshift-eng/ai-helpers --scope project
 claude plugin marketplace add anthropics/claude-plugins-official --scope project
 claude plugin install golang@ai-helpers --scope project
 claude plugin install typescript-lsp@claude-plugins-official --scope project
+claude mcp add sippy-dev -- mcp/run.sh
 claude mcp add --transport http atlassian https://mcp.atlassian.com/v1/mcp
 
 echo "==> Building sippy and seeding database..."

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sippy-dev": {
+      "command": "mcp/run.sh",
+      "args": []
+    }
+  }
+}
