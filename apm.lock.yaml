@@ -15,12 +15,14 @@ local_deployed_files:
 - .claude/commands/sippy-update-job-variant.md
 - .claude/rules/backend.md
 - .claude/rules/dev-commands.md
+- .claude/rules/docs.md
 - .claude/rules/frontend.md
 - .claude/rules/general.md
 - .claude/rules/mcp.md
 - .claude/rules/testing.md
 - .cursor/rules/backend.mdc
 - .cursor/rules/dev-commands.mdc
+- .cursor/rules/docs.mdc
 - .cursor/rules/frontend.mdc
 - .cursor/rules/general.mdc
 - .cursor/rules/mcp.mdc
@@ -58,12 +60,14 @@ local_deployed_file_hashes:
   .claude/commands/sippy-update-job-variant.md: sha256:ef00ec3a3b01556b33243d3e17ab1ace23879a8ef10dfd2e501a0fda2291fb97
   .claude/rules/backend.md: sha256:c57f9ef479340d977f06266779cacc8cd0a67cf045a58d30757a0c494354081a
   .claude/rules/dev-commands.md: sha256:4508eaad3d835305b68106ed5b270ced97c93e4a42ee94d1bcac5ea7b056bc5d
+  .claude/rules/docs.md: sha256:7c4967f4c8a479f54a158b1e3ea3061b72cb78d920f46f0be820f9bd09a00689
   .claude/rules/frontend.md: sha256:ff22046c5b951769218bbdf36499e67c70896811b8ef161ca6d3729a3423997d
   .claude/rules/general.md: sha256:9238d053e2d6a1703728c2bb165de93658b47c3152dfac16169ff9db9c6f716c
   .claude/rules/mcp.md: sha256:73735078b3b1a8597b91b49821ba05cdb338144ea00c1eea9e9f4de38d0241a3
   .claude/rules/testing.md: sha256:57834092f6732d17f8c1812d25290cfc1cfbbbeb6eae1561ba2240973c651866
   .cursor/rules/backend.mdc: sha256:fb466b896d76ea1730c23d6c3fc783adf2cd5502c1cbb36e5b3d30c01531e4c1
   .cursor/rules/dev-commands.mdc: sha256:c69ca93db9b6c68f9aeb6567289dc5baef805520e8636a1e3e848793f67450e6
+  .cursor/rules/docs.mdc: sha256:a9cbd6965f8f4eb4ee2c97473b1cfaf739e4c5967d90a67f2772a3cee84e1512
   .cursor/rules/frontend.mdc: sha256:497f39372724f1ae127181fe3dac9ea9a95a51c532b68ccfee6080832cf9c556
   .cursor/rules/general.mdc: sha256:671e94d8251783ecfb70d16e6e8d60dc42752ecfbe90919006b908b8a751595d
   .cursor/rules/mcp.mdc: sha256:268557cc3bdd9c8f7401f9ea80ac342ff2688f1d563b10880177ca586d7d30bb
