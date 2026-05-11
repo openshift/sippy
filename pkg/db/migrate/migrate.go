@@ -17,7 +17,7 @@ const baselineVersion = 1
 
 type logAdapter struct{}
 
-func (l *logAdapter) Printf(format string, v ...interface{}) {
+func (l *logAdapter) Printf(format string, v ...any) {
 	log.Infof(format, v...)
 }
 
@@ -25,29 +25,35 @@ func (l *logAdapter) Verbose() bool {
 	return log.IsLevelEnabled(log.DebugLevel)
 }
 
-func newMigrate(gormDB *gorm.DB) (*migrate.Migrate, error) {
+func newMigrate(gormDB *gorm.DB) (*migrate.Migrate, func() error, error) {
 	sqlDB, err := gormDB.DB()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get *sql.DB from GORM: %w", err)
+		return nil, nil, fmt.Errorf("failed to get *sql.DB from GORM: %w", err)
 	}
 
 	source, err := iofs.New(migrations.FS, ".")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create migration source: %w", err)
+		return nil, nil, fmt.Errorf("failed to create migration source: %w", err)
 	}
 
 	driver, err := mpg.WithInstance(sqlDB, &mpg.Config{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create postgres driver: %w", err)
+		return nil, nil, fmt.Errorf("failed to create postgres driver: %w", err)
 	}
 
 	m, err := migrate.NewWithInstance("iofs", source, "postgres", driver)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create migrate instance: %w", err)
+		return nil, nil, fmt.Errorf("failed to create migrate instance: %w", err)
 	}
 
 	m.Log = &logAdapter{}
-	return m, nil
+
+	// Return a cleanup function that only closes the source driver
+	cleanup := func() error {
+		return source.Close()
+	}
+
+	return m, cleanup, nil
 }
 
 func tableExists(sqlDB *sql.DB, table string) (bool, error) {
@@ -80,30 +86,22 @@ func RunMigrations(gormDB *gorm.DB) error {
 
 		if hasExistingTable {
 			log.Info("existing database detected, stamping baseline migration version")
-			m, err := newMigrate(gormDB)
+			m, cleanup, err := newMigrate(gormDB)
 			if err != nil {
 				return err
 			}
+			defer cleanup()
 			if err := m.Force(baselineVersion); err != nil {
 				return fmt.Errorf("failed to stamp baseline version: %w", err)
-			}
-			srcErr, dbErr := m.Close()
-			if srcErr != nil {
-				return srcErr
-			}
-			if dbErr != nil {
-				return dbErr
 			}
 		}
 	}
 
-	m, err := newMigrate(gormDB)
+	m, cleanup, err := newMigrate(gormDB)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		m.Close()
-	}()
+	defer cleanup()
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migration failed: %w", err)
@@ -119,25 +117,21 @@ func RunMigrations(gormDB *gorm.DB) error {
 
 // CurrentVersion returns the current migration version and dirty flag.
 func CurrentVersion(gormDB *gorm.DB) (uint, bool, error) {
-	m, err := newMigrate(gormDB)
+	m, cleanup, err := newMigrate(gormDB)
 	if err != nil {
 		return 0, false, err
 	}
-	defer func() {
-		m.Close()
-	}()
+	defer cleanup()
 	return m.Version()
 }
 
 // ForceVersion sets the migration version without running any migrations.
 // Use this to recover from a dirty state.
 func ForceVersion(gormDB *gorm.DB, version int) error {
-	m, err := newMigrate(gormDB)
+	m, cleanup, err := newMigrate(gormDB)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		m.Close()
-	}()
+	defer cleanup()
 	return m.Force(version)
 }
