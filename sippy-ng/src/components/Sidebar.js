@@ -40,7 +40,7 @@ import ListItem from '@mui/material/ListItem'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useEffect, useMemo } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import SippyLogo from './SippyLogo'
 
@@ -49,50 +49,317 @@ const StyledListItemButton = styled(ListItemButton)({
   margin: 0,
 })
 
+function groupReleasesByProduct(releases, releaseAttrs) {
+  const groups = {}
+  releases.forEach((release) => {
+    const product = releaseAttrs?.[release]?.product || 'Other'
+    if (!groups[product]) {
+      groups[product] = []
+    }
+    groups[product].push(release)
+  })
+
+  const sortedProducts = Object.keys(groups).sort((a, b) => {
+    if (a === 'OCP') return -1
+    if (b === 'OCP') return 1
+    return a.localeCompare(b)
+  })
+
+  return sortedProducts.map((product) => ({
+    product,
+    releases: groups[product],
+  }))
+}
+
 export default function Sidebar(props) {
   const classes = useTheme()
   const location = useLocation()
 
-  const [open, setOpen] = React.useState({})
+  const [openReleases, setOpenReleases] = React.useState({})
+  const [openGroups, setOpenGroups] = React.useState({})
+
+  const productGroups = useMemo(
+    () =>
+      groupReleasesByProduct(
+        props.releaseConfig.releases || [],
+        props.releaseConfig.release_attrs
+      ),
+    [props.releaseConfig]
+  )
 
   useEffect(() => {
-    return () => {
-      // infer release from current url when loading sidebar for first time
-      let parts = location.pathname.split('/')
-      let tmpOpen = open
-      if (parts.length >= 3) {
-        let index = props.releaseConfig.releases.indexOf(parts[2])
-        if (index !== -1) {
-          tmpOpen[index] = true
-        }
-      } else {
-        let defaultIndex = 0
-        if (props.defaultRelease != undefined) {
-          defaultIndex = props.releaseConfig.releases.indexOf(
-            props.defaultRelease
-          )
-          if (defaultIndex < 0) {
-            defaultIndex = 0
-          }
-        }
-        tmpOpen[defaultIndex] = true
-      }
-      setOpen(tmpOpen)
-    }
-  }, [props])
+    const parts = location.pathname.split('/')
+    const tmpOpenReleases = {}
+    const tmpOpenGroups = {}
 
-  function handleClick(id) {
-    setOpen((prevState) => ({ ...prevState, [id]: !prevState[id] }))
+    productGroups.forEach(({ product }) => {
+      tmpOpenGroups[product] = product === 'OCP'
+    })
+
+    if (parts.length >= 3) {
+      const release = parts[2]
+      const group = productGroups.find((g) => g.releases.includes(release))
+      if (group) {
+        tmpOpenGroups[group.product] = true
+        tmpOpenReleases[release] = true
+      }
+    } else if (props.defaultRelease) {
+      const group = productGroups.find((g) =>
+        g.releases.includes(props.defaultRelease)
+      )
+      if (group) {
+        tmpOpenGroups[group.product] = true
+        tmpOpenReleases[props.defaultRelease] = true
+      }
+    } else if (
+      productGroups.length > 0 &&
+      productGroups[0].releases.length > 0
+    ) {
+      tmpOpenGroups[productGroups[0].product] = true
+      tmpOpenReleases[productGroups[0].releases[0]] = true
+    }
+
+    setOpenGroups(tmpOpenGroups)
+    setOpenReleases(tmpOpenReleases)
+  }, [productGroups, props.defaultRelease])
+
+  function handleGroupClick(product) {
+    setOpenGroups((prev) => ({ ...prev, [product]: !prev[product] }))
+  }
+
+  function handleReleaseClick(release) {
+    setOpenReleases((prev) => ({ ...prev, [release]: !prev[release] }))
   }
 
   function reportAnIssueURI() {
     const description = `Describe your feature request or bug:\n\n
-    
+
     Relevant Sippy URL:\n
     ${window.location.href}\n\n`
     return `https://redhat.atlassian.net/secure/CreateIssueDetails!init.jspa?pid=11604&issuetype=10009&description=${safeEncodeURIComponent(
       description
     )}`
+  }
+
+  function renderReleaseItems(release) {
+    return (
+      <List component="div" disablePadding>
+        <ListItem
+          key={'release-overview-' + release}
+          component={Link}
+          to={'/release/' + release}
+          className={classes.nested}
+        >
+          <StyledListItemButton>
+            <ListItemIcon>
+              <InfoIcon />
+            </ListItemIcon>
+            <ListItemText primary="Overview" />
+          </StyledListItemButton>
+        </ListItem>
+        {props.releaseConfig.release_attrs?.[release]?.capabilities
+          ?.payloadTags && (
+          <SippyCapabilitiesContext.Consumer>
+            {(value) => {
+              if (value.includes('openshift_releases')) {
+                return (
+                  <ListItem
+                    key={'release-tags-' + release}
+                    component={Link}
+                    to={`/release/${release}/streams`}
+                    className={classes.nested}
+                  >
+                    <StyledListItemButton>
+                      <ListItemIcon>
+                        <FileCopyOutlined />
+                      </ListItemIcon>
+                      <ListItemText primary="Payload Streams" />
+                    </StyledListItemButton>
+                  </ListItem>
+                )
+              }
+            }}
+          </SippyCapabilitiesContext.Consumer>
+        )}
+        <ListItem
+          key={'release-jobs-' + release}
+          component={Link}
+          to={withSort(
+            pathForJobsWithFilter(release, {
+              items: [...withoutUnstable()],
+            }),
+            'net_improvement',
+            'asc'
+          )}
+          className={classes.nested}
+        >
+          <StyledListItemButton>
+            <ListItemIcon>
+              <ListIcon />
+            </ListItemIcon>
+            <ListItemText primary="Jobs" />
+          </StyledListItemButton>
+        </ListItem>
+
+        {props.releaseConfig.release_attrs?.[release]?.capabilities
+          ?.pullRequests && (
+          <Fragment>
+            <ListItem
+              key={'release-pull-requests-' + release}
+              component={Link}
+              to={`/pull_requests/${release}`}
+              className={classes.nested}
+            >
+              <StyledListItemButton>
+                <ListItemIcon>
+                  <GitHub />
+                </ListItemIcon>
+                <ListItemText primary="Pull Requests" />
+              </StyledListItemButton>
+            </ListItem>
+            <ListItem
+              key={'release-repositories-' + release}
+              component={Link}
+              to={`/repositories/${release}`}
+              className={classes.nested}
+            >
+              <StyledListItemButton>
+                <ListItemIcon>
+                  <Code />
+                </ListItemIcon>
+                <ListItemText primary="Repositories" />
+              </StyledListItemButton>
+            </ListItem>
+          </Fragment>
+        )}
+
+        <ListItem
+          key={'release-tests-' + release}
+          component={Link}
+          to={withSort(
+            pathForTestsWithFilter(release, {
+              items: DEFAULT_TEST_FILTERS,
+              linkOperator: 'and',
+            }),
+            'net_improvement',
+            'asc'
+          )}
+          className={classes.nested}
+        >
+          <StyledListItemButton>
+            <ListItemIcon>
+              <SearchIcon />
+            </ListItemIcon>
+            <ListItemText primary="Tests" />
+          </StyledListItemButton>
+        </ListItem>
+
+        {props.releaseConfig.release_attrs?.[release]?.capabilities
+          ?.featureGates && (
+          <SippyCapabilitiesContext.Consumer>
+            {(value) => {
+              if (value.includes('openshift_releases')) {
+                return (
+                  <ListItem
+                    key={'release-feature-gates-' + release}
+                    component={Link}
+                    to={'/feature_gates/' + release}
+                    className={classes.nested}
+                  >
+                    <StyledListItemButton>
+                      <ListItemIcon>
+                        <Apps />
+                      </ListItemIcon>
+                      <ListItemText primary="Feature Gates" />
+                    </StyledListItemButton>
+                  </ListItem>
+                )
+              }
+            }}
+          </SippyCapabilitiesContext.Consumer>
+        )}
+
+        <SippyCapabilitiesContext.Consumer>
+          {(value) => {
+            if (value.includes('openshift_releases')) {
+              return (
+                <ListItem
+                  key={'release-upgrade-' + release}
+                  component={Link}
+                  to={'/upgrade/' + release}
+                  className={classes.nested}
+                >
+                  <StyledListItemButton>
+                    <ListItemIcon>
+                      <ArrowUpwardIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Upgrade" />
+                  </StyledListItemButton>
+                </ListItem>
+              )
+            }
+          }}
+        </SippyCapabilitiesContext.Consumer>
+
+        <SippyCapabilitiesContext.Consumer>
+          {(value) => {
+            if (value.includes('openshift_releases')) {
+              return (
+                <ListItem
+                  key={'release-install-' + release}
+                  component={Link}
+                  to={'/install/' + release}
+                  className={classes.nested}
+                >
+                  <StyledListItemButton>
+                    <ListItemIcon>
+                      <ExitToAppIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Install" />
+                  </StyledListItemButton>
+                </ListItem>
+              )
+            }
+          }}
+        </SippyCapabilitiesContext.Consumer>
+
+        <SippyCapabilitiesContext.Consumer>
+          {(value) => {
+            if (value.includes('openshift_releases')) {
+              let newInstall = useNewInstallTests(release)
+              let link
+              if (newInstall) {
+                link = pathForTestByVariant(
+                  release,
+                  'install should succeed: infrastructure'
+                )
+              } else {
+                link = pathForTestByVariant(
+                  release,
+                  '[sig-sippy] infrastructure should work'
+                )
+              }
+
+              return (
+                <ListItem
+                  key={'release-infrastructure-' + release}
+                  component={Link}
+                  to={link}
+                  className={classes.nested}
+                >
+                  <StyledListItemButton>
+                    <ListItemIcon>
+                      <ApartmentIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Infrastructure" />
+                  </StyledListItemButton>
+                </ListItem>
+              )
+            }
+          }}
+        </SippyCapabilitiesContext.Consumer>
+      </List>
+    )
   }
 
   return (
@@ -222,233 +489,51 @@ export default function Sidebar(props) {
                     </ListSubheader>
                   }
                 >
-                  {props.releaseConfig.releases.map((release, index) => (
-                    <Fragment key={'section-release-' + index}>
-                      <ListItem
-                        key={'item-release-' + index}
-                        onClick={() => handleClick(index)}
-                      >
+                  {productGroups.map(({ product, releases }) => (
+                    <Fragment key={'product-group-' + product}>
+                      <ListItem onClick={() => handleGroupClick(product)}>
                         <StyledListItemButton>
-                          {open[index] ? <ExpandLess /> : <ExpandMore />}
-                          <ListItemText primary={release} />
+                          {openGroups[product] ? (
+                            <ExpandLess />
+                          ) : (
+                            <ExpandMore />
+                          )}
+                          <ListItemText
+                            primary={product}
+                            primaryTypographyProps={{ fontWeight: 'bold' }}
+                          />
                         </StyledListItemButton>
                       </ListItem>
-                      <Collapse in={open[index]} timeout="auto" unmountOnExit>
+                      <Collapse
+                        in={openGroups[product]}
+                        timeout="auto"
+                        unmountOnExit
+                      >
                         <List component="div" disablePadding>
-                          <ListItem
-                            key={'release-overview-' + index}
-                            component={Link}
-                            to={'/release/' + release}
-                            className={classes.nested}
-                          >
-                            <StyledListItemButton>
-                              <ListItemIcon>
-                                <InfoIcon />
-                              </ListItemIcon>
-                              <ListItemText primary="Overview" />
-                            </StyledListItemButton>
-                          </ListItem>
-                          {props.releaseConfig.release_attrs?.[release]
-                            ?.capabilities?.payloadTags && (
-                            <SippyCapabilitiesContext.Consumer>
-                              {(value) => {
-                                if (value.includes('openshift_releases')) {
-                                  return (
-                                    <ListItem
-                                      key={'release-tags-' + index}
-                                      component={Link}
-                                      to={`/release/${release}/streams`}
-                                      className={classes.nested}
-                                    >
-                                      <StyledListItemButton>
-                                        <ListItemIcon>
-                                          <FileCopyOutlined />
-                                        </ListItemIcon>
-                                        <ListItemText primary="Payload Streams" />
-                                      </StyledListItemButton>
-                                    </ListItem>
-                                  )
-                                }
-                              }}
-                            </SippyCapabilitiesContext.Consumer>
-                          )}
-                          <ListItem
-                            key={'release-jobs-' + index}
-                            component={Link}
-                            to={withSort(
-                              pathForJobsWithFilter(release, {
-                                items: [...withoutUnstable()],
-                              }),
-                              'net_improvement',
-                              'asc'
-                            )}
-                            className={classes.nested}
-                          >
-                            <StyledListItemButton>
-                              <ListItemIcon>
-                                <ListIcon />
-                              </ListItemIcon>
-                              <ListItemText primary="Jobs" />
-                            </StyledListItemButton>
-                          </ListItem>
-
-                          {props.releaseConfig.release_attrs?.[release]
-                            ?.capabilities?.pullRequests && (
-                            <Fragment>
+                          {releases.map((release) => (
+                            <Fragment key={'section-release-' + release}>
                               <ListItem
-                                key={'release-pull-requests-' + index}
-                                component={Link}
-                                to={`/pull_requests/${release}`}
-                                className={classes.nested}
+                                onClick={() => handleReleaseClick(release)}
+                                sx={{ pl: 2 }}
                               >
                                 <StyledListItemButton>
-                                  <ListItemIcon>
-                                    <GitHub />
-                                  </ListItemIcon>
-                                  <ListItemText primary="Pull Requests" />
+                                  {openReleases[release] ? (
+                                    <ExpandLess />
+                                  ) : (
+                                    <ExpandMore />
+                                  )}
+                                  <ListItemText primary={release} />
                                 </StyledListItemButton>
                               </ListItem>
-                              <ListItem
-                                key={'release-repositories-' + index}
-                                component={Link}
-                                to={`/repositories/${release}`}
-                                className={classes.nested}
+                              <Collapse
+                                in={openReleases[release]}
+                                timeout="auto"
+                                unmountOnExit
                               >
-                                <StyledListItemButton>
-                                  <ListItemIcon>
-                                    <Code />
-                                  </ListItemIcon>
-                                  <ListItemText primary="Repositories" />
-                                </StyledListItemButton>
-                              </ListItem>
+                                {renderReleaseItems(release)}
+                              </Collapse>
                             </Fragment>
-                          )}
-
-                          <ListItem
-                            key={'release-tests-' + index}
-                            component={Link}
-                            to={withSort(
-                              pathForTestsWithFilter(release, {
-                                items: DEFAULT_TEST_FILTERS,
-                                linkOperator: 'and',
-                              }),
-                              'net_improvement', // sort by tests that have recently regressed the most
-                              'asc'
-                            )}
-                            className={classes.nested}
-                          >
-                            <StyledListItemButton>
-                              <ListItemIcon>
-                                <SearchIcon />
-                              </ListItemIcon>
-                              <ListItemText primary="Tests" />
-                            </StyledListItemButton>
-                          </ListItem>
-
-                          {props.releaseConfig.release_attrs?.[release]
-                            ?.capabilities?.featureGates && (
-                            <SippyCapabilitiesContext.Consumer>
-                              {(value) => {
-                                if (value.includes('openshift_releases')) {
-                                  return (
-                                    <ListItem
-                                      key={'release-feature-gates-' + index}
-                                      component={Link}
-                                      to={'/feature_gates/' + release}
-                                      className={classes.nested}
-                                    >
-                                      <StyledListItemButton>
-                                        <ListItemIcon>
-                                          <Apps />
-                                        </ListItemIcon>
-                                        <ListItemText primary="Feature Gates" />
-                                      </StyledListItemButton>
-                                    </ListItem>
-                                  )
-                                }
-                              }}
-                            </SippyCapabilitiesContext.Consumer>
-                          )}
-
-                          <SippyCapabilitiesContext.Consumer>
-                            {(value) => {
-                              if (value.includes('openshift_releases')) {
-                                return (
-                                  <ListItem
-                                    key={'release-upgrade-' + index}
-                                    component={Link}
-                                    to={'/upgrade/' + release}
-                                    className={classes.nested}
-                                  >
-                                    <StyledListItemButton>
-                                      <ListItemIcon>
-                                        <ArrowUpwardIcon />
-                                      </ListItemIcon>
-                                      <ListItemText primary="Upgrade" />
-                                    </StyledListItemButton>
-                                  </ListItem>
-                                )
-                              }
-                            }}
-                          </SippyCapabilitiesContext.Consumer>
-
-                          <SippyCapabilitiesContext.Consumer>
-                            {(value) => {
-                              if (value.includes('openshift_releases')) {
-                                return (
-                                  <ListItem
-                                    key={'release-install-' + index}
-                                    component={Link}
-                                    to={'/install/' + release}
-                                    className={classes.nested}
-                                  >
-                                    <StyledListItemButton>
-                                      <ListItemIcon>
-                                        <ExitToAppIcon />
-                                      </ListItemIcon>
-                                      <ListItemText primary="Install" />
-                                    </StyledListItemButton>
-                                  </ListItem>
-                                )
-                              }
-                            }}
-                          </SippyCapabilitiesContext.Consumer>
-
-                          <SippyCapabilitiesContext.Consumer>
-                            {(value) => {
-                              if (value.includes('openshift_releases')) {
-                                let newInstall = useNewInstallTests(release)
-                                let link
-                                if (newInstall) {
-                                  link = pathForTestByVariant(
-                                    release,
-                                    'install should succeed: infrastructure'
-                                  )
-                                } else {
-                                  link = pathForTestByVariant(
-                                    release,
-                                    '[sig-sippy] infrastructure should work'
-                                  )
-                                }
-
-                                return (
-                                  <ListItem
-                                    key={'release-infrastructure-' + index}
-                                    component={Link}
-                                    to={link}
-                                    className={classes.nested}
-                                  >
-                                    <StyledListItemButton>
-                                      <ListItemIcon>
-                                        <ApartmentIcon />
-                                      </ListItemIcon>
-                                      <ListItemText primary="Infrastructure" />
-                                    </StyledListItemButton>
-                                  </ListItem>
-                                )
-                              }
-                            }}
-                          </SippyCapabilitiesContext.Consumer>
+                          ))}
                         </List>
                       </Collapse>
                     </Fragment>

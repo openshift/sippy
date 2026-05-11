@@ -908,6 +908,7 @@ type Release struct { // this is the Release that goes out to the UI
 	ReleaseDates
 	PreviousRelease string                             `json:"previous_release"`
 	Capabilities    map[sippyv1.ReleaseCapability]bool `json:"capabilities"`
+	Product         string                             `json:"product"`
 }
 type Releases struct {
 	Releases          []string                `json:"releases"`
