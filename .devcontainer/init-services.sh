@@ -17,7 +17,7 @@ podman start sippy-redis 2>/dev/null || \
     podman run -d --name sippy-redis \
         --network sippy-net \
         -p 127.0.0.1:6379:6379 \
-        redis:7-alpine
+        docker.io/redis:7-alpine
 
 echo "Waiting for PostgreSQL..."
 pg_ready=false
