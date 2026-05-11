@@ -2,10 +2,9 @@ import {
   Apps,
   AppsOutage,
   BugReport,
+  ChevronRight,
   Code,
   Dashboard,
-  ExpandLess,
-  ExpandMore,
   Favorite,
   FileCopyOutlined,
   GitHub,
@@ -101,7 +100,7 @@ export default function Sidebar(props) {
       const group = productGroups.find((g) => g.releases.includes(release))
       if (group) {
         tmpOpenGroups[group.product] = true
-        tmpOpenReleases[release] = true
+        tmpOpenReleases[releaseKey(group.product, release)] = true
       }
     } else if (props.defaultRelease) {
       const group = productGroups.find((g) =>
@@ -109,26 +108,33 @@ export default function Sidebar(props) {
       )
       if (group) {
         tmpOpenGroups[group.product] = true
-        tmpOpenReleases[props.defaultRelease] = true
+        tmpOpenReleases[releaseKey(group.product, props.defaultRelease)] = true
       }
     } else if (
       productGroups.length > 0 &&
       productGroups[0].releases.length > 0
     ) {
       tmpOpenGroups[productGroups[0].product] = true
-      tmpOpenReleases[productGroups[0].releases[0]] = true
+      tmpOpenReleases[
+        releaseKey(productGroups[0].product, productGroups[0].releases[0])
+      ] = true
     }
 
     setOpenGroups(tmpOpenGroups)
     setOpenReleases(tmpOpenReleases)
-  }, [productGroups, props.defaultRelease])
+  }, [location, productGroups, props.defaultRelease])
 
   function handleGroupClick(product) {
     setOpenGroups((prev) => ({ ...prev, [product]: !prev[product] }))
   }
 
-  function handleReleaseClick(release) {
-    setOpenReleases((prev) => ({ ...prev, [release]: !prev[release] }))
+  function releaseKey(product, release) {
+    return `${product}::${release}`
+  }
+
+  function handleReleaseClick(product, release) {
+    const key = releaseKey(product, release)
+    setOpenReleases((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   function reportAnIssueURI() {
@@ -144,7 +150,7 @@ export default function Sidebar(props) {
   function renderReleaseItems(release) {
     const newInstall = useNewInstallTests(release)
     return (
-      <List component="div" disablePadding>
+      <List component="div" disablePadding sx={{ pl: 3 }}>
         <ListItem
           key={'release-overview-' + release}
           component={Link}
@@ -490,11 +496,14 @@ export default function Sidebar(props) {
                     <Fragment key={'product-group-' + product}>
                       <ListItem onClick={() => handleGroupClick(product)}>
                         <StyledListItemButton>
-                          {openGroups[product] ? (
-                            <ExpandLess />
-                          ) : (
-                            <ExpandMore />
-                          )}
+                          <ChevronRight
+                            sx={{
+                              transition: 'transform 0.2s',
+                              transform: openGroups[product]
+                                ? 'rotate(90deg)'
+                                : 'none',
+                            }}
+                          />
                           <ListItemText
                             primary={product}
                             primaryTypographyProps={{ fontWeight: 'bold' }}
@@ -510,20 +519,28 @@ export default function Sidebar(props) {
                           {releases.map((release) => (
                             <Fragment key={'section-release-' + release}>
                               <ListItem
-                                onClick={() => handleReleaseClick(release)}
-                                sx={{ pl: 2 }}
+                                onClick={() =>
+                                  handleReleaseClick(product, release)
+                                }
+                                sx={{ pl: 3 }}
                               >
                                 <StyledListItemButton>
-                                  {openReleases[release] ? (
-                                    <ExpandLess />
-                                  ) : (
-                                    <ExpandMore />
-                                  )}
+                                  <ChevronRight
+                                    fontSize="small"
+                                    sx={{
+                                      transition: 'transform 0.2s',
+                                      transform: openReleases[
+                                        releaseKey(product, release)
+                                      ]
+                                        ? 'rotate(90deg)'
+                                        : 'none',
+                                    }}
+                                  />
                                   <ListItemText primary={release} />
                                 </StyledListItemButton>
                               </ListItem>
                               <Collapse
-                                in={openReleases[release]}
+                                in={openReleases[releaseKey(product, release)]}
                                 timeout="auto"
                                 unmountOnExit
                               >
