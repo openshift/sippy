@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	gomigrate "github.com/golang-migrate/migrate/v4"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	gormlogger "gorm.io/gorm/logger"
@@ -46,7 +47,10 @@ func init() {
 			}
 
 			version, dirty, err := sippymigrate.CurrentVersion(dbc.DB)
-			if err != nil {
+			if err == gomigrate.ErrNilVersion {
+				fmt.Println("no migrations applied yet")
+				return nil
+			} else if err != nil {
 				return errors.WithMessage(err, "could not get migration version")
 			}
 
