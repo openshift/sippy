@@ -317,7 +317,7 @@ func queryJiraAPI(issueID, authorization string) (*v1jira.Issue, error) {
 		req.Header.Add("Authorization", authorization)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is hardcoded to redhat.atlassian.net Jira API with issue key from Jira's own response
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +380,7 @@ func jiraRequest(apiURL, authorization string) ([]byte, error) {
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is hardcoded to redhat.atlassian.net Jira API, pagination token is url.QueryEscape'd
 	if err != nil {
 		return nil, err
 	}

@@ -179,7 +179,7 @@ func Test_TriageAPI(t *testing.T) {
 
 		// Verify the expanded triage contains the regressed tests with correct status values
 		require.NotNil(t, expandedTriage.Triage, "ExpandedTriage should contain a Triage")
-		assert.Equal(t, triageResponse.ID, expandedTriage.Triage.ID, "ExpandedTriage should have the same ID as the created triage")
+		assert.Equal(t, triageResponse.ID, expandedTriage.ID, "ExpandedTriage should have the same ID as the created triage")
 		expectedViewKey := view.Name
 		require.Contains(t, expandedTriage.RegressedTests, expectedViewKey, "ExpandedTriage should contain regressed tests for view %q", expectedViewKey)
 		regressedTestsForView := expandedTriage.RegressedTests[expectedViewKey]
@@ -189,7 +189,7 @@ func Test_TriageAPI(t *testing.T) {
 		statusMap := make(map[uint]crtest.Status)
 		for _, regressedTest := range regressedTestsForView {
 			if regressedTest != nil && regressedTest.Regression != nil {
-				statusMap[regressedTest.Regression.ID] = regressedTest.TestComparison.ReportStatus
+				statusMap[regressedTest.Regression.ID] = regressedTest.ReportStatus
 			}
 		}
 
@@ -682,7 +682,7 @@ func Test_RegressionAPI(t *testing.T) {
 	jiraBug := createBug(t, dbc.DB)
 	defer dbc.DB.Delete(jiraBug)
 
-	release := view.SampleRelease.Release.Name
+	release := view.SampleRelease.Name
 
 	t.Run("list regressions", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
@@ -1239,7 +1239,7 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 			regressionID := match.RegressedTest.Regression.ID
 			foundRegressionIDs[regressionID] = true
 			confidenceLevels[regressionID] = match.ConfidenceLevel
-			statusMap[regressionID] = match.RegressedTest.TestComparison.ReportStatus
+			statusMap[regressionID] = match.RegressedTest.ReportStatus
 			if len(match.SimilarlyNamedTests) > 0 {
 				matchesBySimilarName[regressionID] = match.SimilarlyNamedTests
 			}

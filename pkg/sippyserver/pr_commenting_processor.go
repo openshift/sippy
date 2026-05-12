@@ -528,7 +528,7 @@ func buildNewTestRisksComment(sb *strings.Builder, jobRisks []*JobNewTestRisks, 
 
 	if len(notableJobRisks) > 0 {
 		SortByJobNameNT(notableJobRisks)
-		sb.WriteString(fmt.Sprintf("New Test Risks for sha: %s\n\n", sha))
+		fmt.Fprintf(sb, "New Test Risks for sha: %s\n\n", sha)
 		sb.WriteString("| Job Name | New Test Risk |\n|:---|:---|\n")
 		rows := 0
 		for _, jr := range notableJobRisks {
@@ -537,25 +537,25 @@ func buildNewTestRisksComment(sb *strings.Builder, jobRisks []*JobNewTestRisks, 
 				if rows > commentRowLimit {
 					continue // limit comment size, just count rows
 				}
-				sb.WriteString(fmt.Sprintf("|%s|**%s** - *%q* **%s**|\n",
-					jr.JobName, risk.Level.Name, risk.TestName, risk.Reason))
+				fmt.Fprintf(sb, "|%s|**%s** - *%q* **%s**|\n",
+					jr.JobName, risk.Level.Name, risk.TestName, risk.Reason)
 			}
 		}
 		if rows > commentRowLimit {
-			sb.WriteString(fmt.Sprintf("| | *(...showing %d of %d rows)* |\n", commentRowLimit, rows))
+			fmt.Fprintf(sb, "| | *(...showing %d of %d rows)* |\n", commentRowLimit, rows)
 		}
 		sb.WriteString("\n")
 	}
 
 	if len(testSummaries) > 0 {
-		sb.WriteString(fmt.Sprintf("New tests seen in this PR at sha: %s\n\n", sha))
+		fmt.Fprintf(sb, "New tests seen in this PR at sha: %s\n\n", sha)
 		for idx, test := range testSummaries {
 			if idx >= commentRowLimit {
-				sb.WriteString(fmt.Sprintf("* *(...showing %d of %d tests)*", idx, len(testSummaries)))
+				fmt.Fprintf(sb, "* *(...showing %d of %d tests)*", idx, len(testSummaries))
 				break // limit comment size
 			}
-			sb.WriteString(fmt.Sprintf("- *%q* [Total: %d, Pass: %d, Fail: %d, Flake: %d]\n",
-				test.TestName, test.Runs, test.Runs-test.Failures, test.Failures, test.Flakes))
+			fmt.Fprintf(sb, "- *%q* [Total: %d, Pass: %d, Fail: %d, Flake: %d]\n",
+				test.TestName, test.Runs, test.Runs-test.Failures, test.Failures, test.Flakes)
 		}
 		sb.WriteString("\n")
 	}
@@ -563,7 +563,7 @@ func buildNewTestRisksComment(sb *strings.Builder, jobRisks []*JobNewTestRisks, 
 
 func buildRiskAnalysisComment(sb *strings.Builder, riskAnalyses []RiskAnalysisSummary, sha string) {
 	SortByJobNameRA(riskAnalyses)
-	sb.WriteString(fmt.Sprintf("Job Failure Risk Analysis for sha: %s\n\n", sha))
+	fmt.Fprintf(sb, "Job Failure Risk Analysis for sha: %s\n\n", sha)
 	sb.WriteString("| Job Name | Failure Risk |\n|:---|:---|\n")
 
 	// don't want the comment to be too large so if we have a high number of jobs to analyze
@@ -575,7 +575,7 @@ func buildRiskAnalysisComment(sb *strings.Builder, riskAnalyses []RiskAnalysisSu
 
 	for idx, analysis := range riskAnalyses {
 		if idx >= commentRowLimit {
-			sb.WriteString(fmt.Sprintf("\nShowing %d of %d jobs analysis", commentRowLimit, len(riskAnalyses)))
+			fmt.Fprintf(sb, "\nShowing %d of %d jobs analysis", commentRowLimit, len(riskAnalyses))
 			break // top 20 should be more than enough
 		}
 
@@ -585,34 +585,34 @@ func buildRiskAnalysisComment(sb *strings.Builder, riskAnalyses []RiskAnalysisSu
 		}
 
 		var riskSb strings.Builder
-		riskSb.WriteString(fmt.Sprintf("**%s**", analysis.RiskLevel.Name))
+		fmt.Fprintf(&riskSb, "**%s**", analysis.RiskLevel.Name)
 
 		// if we don't have any TestRiskAnalysis use the OverallReasons
 		if len(analysis.TestRiskAnalysis) == 0 {
 			for j, r := range analysis.OverallReasons {
 				if j > maxSubRows {
-					riskSb.WriteString(fmt.Sprintf("<br>Showing %d of %d test risk reasons", j, len(analysis.OverallReasons)))
+					fmt.Fprintf(&riskSb, "<br>Showing %d of %d test risk reasons", j, len(analysis.OverallReasons))
 					break
 				}
-				riskSb.WriteString(fmt.Sprintf("<br>%s", r))
+				fmt.Fprintf(&riskSb, "<br>%s", r)
 			}
 		} else {
 
 			for i, t := range analysis.TestRiskAnalysis {
 				if i > maxSubRows {
-					riskSb.WriteString(fmt.Sprintf("<br>---<br>Showing %d of %d test results", i, len(analysis.TestRiskAnalysis)))
+					fmt.Fprintf(&riskSb, "<br>---<br>Showing %d of %d test results", i, len(analysis.TestRiskAnalysis))
 					break
 				}
 				if i > 0 {
 					riskSb.WriteString("<br>---")
 				}
-				riskSb.WriteString(fmt.Sprintf("<br>*%s*", t.Name))
+				fmt.Fprintf(&riskSb, "<br>*%s*", t.Name)
 				for j, r := range t.Risk.Reasons {
 					if j > maxSubRows {
-						riskSb.WriteString(fmt.Sprintf("<br>Showing %d of %d test risk reasons", j, len(t.Risk.Reasons)))
+						fmt.Fprintf(&riskSb, "<br>Showing %d of %d test risk reasons", j, len(t.Risk.Reasons))
 						break
 					}
-					riskSb.WriteString(fmt.Sprintf("<br>%s", r))
+					fmt.Fprintf(&riskSb, "<br>%s", r)
 				}
 
 				// Do we have open bugs?  Stack them vertically to preserve real estate
@@ -627,11 +627,11 @@ func buildRiskAnalysisComment(sb *strings.Builder, riskAnalyses []RiskAnalysisSu
 						riskSb.WriteString("Open Bugs")
 					}
 					// prevent the openshift-ci bot from detecting JIRA references in the link by replacing - with html escaped sequence
-					riskSb.WriteString(fmt.Sprintf("<br>[%s](%s)", strings.ReplaceAll(html.EscapeString(b.Summary), "-", "&#45;"), b.URL))
+					fmt.Fprintf(&riskSb, "<br>[%s](%s)", strings.ReplaceAll(html.EscapeString(b.Summary), "-", "&#45;"), b.URL)
 				}
 			}
 		}
-		sb.WriteString(fmt.Sprintf("|%s|%s|\n", tableKey, riskSb.String()))
+		fmt.Fprintf(sb, "|%s|%s|\n", tableKey, riskSb.String())
 	}
 }
 

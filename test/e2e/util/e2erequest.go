@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -39,17 +40,19 @@ func BuildE2EURL(apiPath string) string {
 }
 
 func SippyGet(path string, data interface{}) error {
-	req, err := http.Get(BuildE2EURL(path))
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := client.Get(BuildE2EURL(path)) //nolint:gosec // G704: URL is constructed from test helper's hardcoded localhost base URL
 	if err != nil {
 		return err
 	}
+	defer req.Body.Close()
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
 	}
 	if req.StatusCode != http.StatusOK {
-		return fmt.Errorf("Sippy API request failed with code %d: %s", req.StatusCode, string(body))
+		return fmt.Errorf("sippy API request failed with code %d: %s", req.StatusCode, string(body))
 	}
 	err = json.Unmarshal(body, data)
 	if err != nil {
@@ -76,8 +79,8 @@ func sippyMutatingRequest(method, path string, bodyData, responseData interface{
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Forwarded-User", "developer")
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from test helper's hardcoded localhost base URL
 	if err != nil {
 		return err
 	}
@@ -89,7 +92,7 @@ func sippyMutatingRequest(method, path string, bodyData, responseData interface{
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Sippy API request failed with code %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("sippy API request failed with code %d: %s", resp.StatusCode, string(body))
 	}
 
 	if responseData != nil {

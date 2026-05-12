@@ -104,7 +104,7 @@ type PostgresFlags struct {
 func NewPostgresDatabaseFlags() *PostgresFlags {
 	dsn := os.Getenv("SIPPY_DATABASE_DSN")
 	if dsn == "" {
-		dsn = "postgresql://postgres:password@localhost:5432/postgres"
+		dsn = "postgresql://postgres:password@localhost:5432/postgres" //nolint:gosec // G101: dev default DSN, not a real credential
 	}
 
 	return &PostgresFlags{

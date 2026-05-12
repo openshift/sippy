@@ -76,7 +76,7 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 
 // Retrieves a token from a local file.
 func tokenFromFile(file string) (*oauth2.Token, error) {
-	f, err := os.Open(file)
+	f, err := os.Open(file) //nolint:gosec // G703: file is filepath.Join(homeDir, "gcp-token.json") — hardcoded filename, not user input
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 // Saves a token to a file path.
 func saveToken(path string, token *oauth2.Token) {
 	fmt.Printf("Saving credential file to: %s\n", path)
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gosec // G703: path is filepath.Join(homeDir, "gcp-token.json") — hardcoded filename, not user input
 	if err != nil {
 		log.Errorf("Unable to cache oauth token: %v", err)
 		return

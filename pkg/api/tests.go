@@ -295,10 +295,7 @@ func makeTestsResultsSpec(w http.ResponseWriter, req *http.Request, release stri
 	// combos. Uncollapsed results shows you the per-NURP+ result for each test (currently approx. 50,000 rows: filtering
 	// is advised)
 	collapseStr := req.URL.Query().Get("collapse")
-	collapse := true
-	if collapseStr == "false" {
-		collapse = false
-	}
+	collapse := collapseStr != "false"
 
 	overallStr := req.URL.Query().Get("overall")
 	includeOverall := !collapse

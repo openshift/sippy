@@ -46,7 +46,7 @@ func New(ctx context.Context, opCtx bqlabel.OperationalContext, c cache.Cache, c
 
 // LoggedRead is a wrapper around the bigquery Read method that logs the query being executed
 func LoggedRead(ctx context.Context, q *bigquery.Query) (*bigquery.RowIterator, error) {
-	log.Debugf("Querying BQ with Parameters: %v\n%v", q.Parameters, q.QueryConfig.Q)
+	log.Debugf("Querying BQ with Parameters: %v\n%v", q.Parameters, q.Q)
 	return q.Read(ctx)
 }
 

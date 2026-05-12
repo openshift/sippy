@@ -1,139 +1,160 @@
 ---
+version: "2"
+
 run:
   concurrency: 6
-  deadline: 10m
-  skip-dirs:
-    - sippy-ng/node_modules
+  timeout: 10m
+
 linters:
-  disable-all: true
+  default: none
   enable:
     - copyloopvar
     - errcheck
     # - goconst  # [lmeyer] I cannot see a way to configure this sanely
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - misspell
     - revive
     - staticcheck
-    - typecheck
     - unconvert
     - unparam
-linters-settings:
-  gofmt:
-    simplify: false # do not require the -s flag
-  gocritic:
-    disable-all: true # let's only enable ones we opt in to, not random new ones
-    enabled-checks:
-      # Diagnostic
-      - argOrder
-      - badCond
-      - caseOrder
-      - codegenComment
-      - commentedOutCode
-      - deprecatedComment
-      - dupArg
-      - dupBranchBody
-      - dupCase
-      - dupSubExpr
-      - exitAfterDefer
-      - flagDeref
-      - flagName
-      - nilValReturn
-      - octalLiteral
-      - offBy1
-      - sloppyReassign
-      - weakCond
+  settings:
+    gocritic:
+      disable-all: true # let's only enable ones we opt in to, not random new ones
+      enabled-checks:
+        # Diagnostic
+        - argOrder
+        - badCond
+        - caseOrder
+        - codegenComment
+        - commentedOutCode
+        - deprecatedComment
+        - dupArg
+        - dupBranchBody
+        - dupCase
+        - dupSubExpr
+        - exitAfterDefer
+        - flagDeref
+        - flagName
+        - nilValReturn
+        - octalLiteral
+        - offBy1
+        - sloppyReassign
+        - weakCond
 
-      # Performance
-      - equalFold
-      - indexAlloc
-      - rangeExprCopy
+        # Performance
+        - equalFold
+        - indexAlloc
+        - rangeExprCopy
 
-      # Style
-      - assignOp
-      - boolExprSimplify
-      - captLocal
-      - commentFormatting
-      - commentedOutImport
-      - defaultCaseOrder
-      - docStub
-      - elseif
-      - emptyFallthrough
-      - hexLiteral
-      - methodExprCall
-      - regexpMust
-      - singleCaseSwitch
-      - sloppyLen
-      - switchTrue
-      - typeAssertChain
-      - typeSwitchVar
-      - underef
-      - unlabelStmt
-      - unlambda
-      - unslice
-      - valSwap
-      - wrapperFunc
-      - yodaStyleExpr
+        # Style
+        - assignOp
+        - boolExprSimplify
+        - captLocal
+        - commentFormatting
+        - commentedOutImport
+        - defaultCaseOrder
+        - docStub
+        - elseif
+        - emptyFallthrough
+        - hexLiteral
+        - methodExprCall
+        - regexpMust
+        - singleCaseSwitch
+        - sloppyLen
+        - switchTrue
+        - typeAssertChain
+        - typeSwitchVar
+        - underef
+        - unlabelStmt
+        - unlambda
+        - unslice
+        - valSwap
+        - wrapperFunc
+        - yodaStyleExpr
 
-      # Opinionated
-      - initClause
-      - nestingReduce
-      - paramTypeCombine
-      - ptrToRefParam
-      - typeUnparen
-      - unnecessaryBlock
-  revive:
+        # Opinionated
+        - initClause
+        - nestingReduce
+        - paramTypeCombine
+        - ptrToRefParam
+        - typeUnparen
+        - unnecessaryBlock
+    revive:
+      rules:
+        - name: atomic
+        - name: blank-imports
+        - name: bool-literal-in-expr
+        - name: call-to-gc
+        - name: confusing-naming
+        - name: constant-logical-expr
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: deep-exit
+        - name: defer
+        - name: dot-imports
+        - name: duplicated-imports
+        - name: early-return
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: get-return
+        - name: identical-branches
+        - name: if-return
+        - name: import-shadowing
+        - name: imports-blacklist
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: modifies-parameter
+        - name: modifies-value-receiver
+        - name: package-comments
+        - name: range
+        - name: range-val-address
+        - name: range-val-in-closure
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: string-of-int
+        - name: struct-tag
+        - name: superfluous-else
+        - name: time-naming
+        - name: unconditional-recursion
+        - name: unexported-naming
+        - name: unnecessary-stmt
+        - name: unreachable-code
+        # TODO: Enable these in the future
+        # - name: unused-parameter
+        # - name: unused-receiver
+        - name: var-declaration
+        - name: var-naming
+        - name: waitgroup-by-value
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: atomic
-      - name: blank-imports
-      - name: bool-literal-in-expr
-      - name: call-to-gc
-      - name: confusing-naming
-      - name: constant-logical-expr
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: deep-exit
-      - name: defer
-      - name: dot-imports
-      - name: duplicated-imports
-      - name: early-return
-      - name: empty-block
-      - name: error-naming
-      - name: error-return
-      - name: error-strings
-      - name: errorf
-      - name: get-return
-      - name: identical-branches
-      - name: if-return
-      - name: import-shadowing
-      - name: imports-blacklist
-      - name: increment-decrement
-      - name: indent-error-flow
-      - name: modifies-parameter
-      - name: modifies-value-receiver
-      - name: package-comments
-      - name: range
-      - name: range-val-address
-      - name: range-val-in-closure
-      - name: receiver-naming
-      - name: redefines-builtin-id
-      - name: string-of-int
-      - name: struct-tag
-      - name: superfluous-else
-      - name: time-naming
-      - name: unconditional-recursion
-      - name: unexported-naming
-      - name: unnecessary-stmt
-      - name: unreachable-code
-      # TODO: Enable these in the future
-      # - name: unused-parameter
-      # - name: unused-receiver
-      - name: var-declaration
-      - name: var-naming
-      - name: waitgroup-by-value
+      - linters: [revive]
+        text: "var-naming: avoid meaningless package names" # pkg/api, pkg/util, pkg/api/componentreadiness/utils
+      - linters: [revive]
+        text: "var-naming: avoid package names that conflict" # pkg/sippyserver/metrics, pkg/version
+    paths:
+      - sippy-ng/node_modules
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: false # do not require the -s flag
+  exclusions:
+    generated: lax
+    paths:
+      - sippy-ng/node_modules

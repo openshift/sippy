@@ -14,8 +14,8 @@ func TestMatchLineWithStringMatcher(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("this is a test line\nanother line\n"))
 	matches, err := matcher.GetMatches(reader)
 	assert.NoError(t, err)
-	assert.Len(t, matches.ContentLineMatches.Matches, 1)
-	assert.Equal(t, "this is a test line\n", matches.ContentLineMatches.Matches[0].Match)
+	assert.Len(t, matches.Matches, 1)
+	assert.Equal(t, "this is a test line\n", matches.Matches[0].Match)
 }
 
 func TestMatchLineWithRegexMatcher(t *testing.T) {
@@ -24,8 +24,8 @@ func TestMatchLineWithRegexMatcher(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("this is a test line\nanother line\n"))
 	matches, err := matcher.GetMatches(reader)
 	assert.NoError(t, err)
-	assert.Len(t, matches.ContentLineMatches.Matches, 1)
-	assert.Equal(t, "this is a test line\n", matches.ContentLineMatches.Matches[0].Match)
+	assert.Len(t, matches.Matches, 1)
+	assert.Equal(t, "this is a test line\n", matches.Matches[0].Match)
 }
 
 func TestMatchLineWithContext(t *testing.T) {
@@ -33,11 +33,11 @@ func TestMatchLineWithContext(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("line before\nthis is a test line\nline after\nanother line\n"))
 	matches, err := matcher.GetMatches(reader)
 	assert.NoError(t, err)
-	assert.Len(t, matches.ContentLineMatches.Matches, 1)
-	assert.Equal(t, "this is a test line\n", matches.ContentLineMatches.Matches[0].Match)
-	assert.Equal(t, []string{"line before\n"}, matches.ContentLineMatches.Matches[0].Before)
+	assert.Len(t, matches.Matches, 1)
+	assert.Equal(t, "this is a test line\n", matches.Matches[0].Match)
+	assert.Equal(t, []string{"line before\n"}, matches.Matches[0].Before)
 	// although we said to capture 1 line after, we actually capture up to the max and then trim them later
-	assert.Equal(t, []string{"line after\n", "another line\n"}, matches.ContentLineMatches.Matches[0].After)
+	assert.Equal(t, []string{"line after\n", "another line\n"}, matches.Matches[0].After)
 }
 
 func TestLinesAfterMatches(t *testing.T) {
@@ -45,7 +45,7 @@ func TestLinesAfterMatches(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("test before\ntest line\ntest after\nanother line\n"))
 	matches, err := matcher.GetMatches(reader)
 	assert.NoError(t, err)
-	m := matches.ContentLineMatches.Matches
+	m := matches.Matches
 	assert.Len(t, m, 3)
 	// although we said to capture 2 lines after, we actually capture up to the max and then trim them later
 	assert.Equal(t, 3, len(m[0].After))
@@ -58,7 +58,7 @@ func TestMatchLineWithMultipleMatches(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("this is a test line\nanother test line\n"))
 	matches, err := matcher.GetMatches(reader)
 	assert.NoError(t, err)
-	lineMatches := matches.ContentLineMatches.Matches
+	lineMatches := matches.Matches
 	assert.Len(t, lineMatches, 2)
 	assert.Equal(t, "this is a test line\n", lineMatches[0].Match)
 	assert.Equal(t, []string{"this is a test line\n"}, lineMatches[1].Before)
@@ -72,8 +72,8 @@ func TestMatchLineWithMaxFileMatches(t *testing.T) {
 	matches, err := matcher.GetMatches(reader)
 	assert.NoError(t, err)
 	// we return up to the max matches even though we only asked for 3 (matches will be trimmed in post-processing)
-	assert.Len(t, matches.ContentLineMatches.Matches, maxFileMatches)
-	assert.True(t, matches.ContentLineMatches.Truncated)
+	assert.Len(t, matches.Matches, maxFileMatches)
+	assert.True(t, matches.Truncated)
 }
 
 func TestPostProcessMatch(t *testing.T) {
@@ -107,7 +107,7 @@ func TestPostProcessMatch(t *testing.T) {
 	}
 
 	processedArtifact := matcher.PostProcessMatch(fullArtifact)
-	processedMatches := processedArtifact.MatchedContent.ContentLineMatches
+	processedMatches := processedArtifact.ContentLineMatches
 
 	assert.Len(t, processedMatches.Matches, 2)
 	assert.True(t, processedMatches.Truncated)

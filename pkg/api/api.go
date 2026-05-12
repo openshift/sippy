@@ -12,7 +12,7 @@ func RespondWithJSON(statusCode int, w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(statusCode)
 
 	if jsonString, ok := data.(string); ok {
-		fmt.Fprint(w, jsonString)
+		fmt.Fprint(w, jsonString) //nolint:gosec // G705: jsonString is pre-marshaled JSON from internal sources, response Content-Type is application/json
 		return
 	}
 

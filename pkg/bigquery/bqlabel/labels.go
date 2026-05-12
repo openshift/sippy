@@ -119,7 +119,7 @@ func sanitizeLabelValue(value string) string {
 	// Replace invalid characters with underscores
 	runes := []rune(value)
 	for idx, r := range runes {
-		if !(unicode.IsLower(r) || unicode.IsDigit(r) || r == '_' || r == '-') {
+		if !unicode.IsLower(r) && !unicode.IsDigit(r) && r != '_' && r != '-' {
 			runes[idx] = '_'
 		}
 	}
