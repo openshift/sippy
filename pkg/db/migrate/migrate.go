@@ -102,7 +102,7 @@ func RunMigrations(gormDB *gorm.DB) error {
 			if err != nil {
 				return err
 			}
-			defer cleanup()
+			defer func() { _ = cleanup() }()
 			if err := m.Force(baselineVersion); err != nil {
 				return fmt.Errorf("failed to stamp baseline version: %w", err)
 			}
@@ -113,7 +113,7 @@ func RunMigrations(gormDB *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	defer cleanup()
+	defer func() { _ = cleanup() }()
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migration failed: %w", err)
@@ -134,7 +134,7 @@ func CurrentVersionWithFS(gormDB *gorm.DB, fsys fs.FS, migrationsTable string) (
 	if err != nil {
 		return 0, false, err
 	}
-	defer cleanup()
+	defer func() { _ = cleanup() }()
 	return m.Version()
 }
 
@@ -150,7 +150,7 @@ func MigrateDownWithFS(gormDB *gorm.DB, fsys fs.FS, migrationsTable string, step
 	if err != nil {
 		return err
 	}
-	defer cleanup()
+	defer func() { _ = cleanup() }()
 	if err := m.Steps(-steps); err != nil {
 		return fmt.Errorf("migrate down failed: %w", err)
 	}
@@ -174,7 +174,7 @@ func RunMigrationsWithFS(gormDB *gorm.DB, fsys fs.FS, migrationsTable string) er
 	if err != nil {
 		return err
 	}
-	defer cleanup()
+	defer func() { _ = cleanup() }()
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migration failed: %w", err)
@@ -195,6 +195,6 @@ func ForceVersion(gormDB *gorm.DB, version int) error {
 	if err != nil {
 		return err
 	}
-	defer cleanup()
+	defer func() { _ = cleanup() }()
 	return m.Force(version)
 }

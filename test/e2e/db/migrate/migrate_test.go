@@ -55,7 +55,7 @@ func TestMigrations(t *testing.T) {
 		require.NoError(t, err)
 
 		// Force to the same version (no-op but exercises the code path)
-		err = migrate.ForceVersion(dbc.DB, int(currentVersion))
+		err = migrate.ForceVersion(dbc.DB, int(currentVersion)) //nolint:gosec // version fits in int
 		require.NoError(t, err, "ForceVersion should succeed")
 
 		// Verify the database connection is still usable after ForceVersion
