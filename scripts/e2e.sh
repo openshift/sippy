@@ -70,7 +70,9 @@ if [ -f /run/.containerenv ]; then
     e2e_create_database "$E2E_DB_NAME" "$ADMIN_DSN"
 
     export SIPPY_E2E_DSN="$E2E_DSN"
-    export REDIS_URL="${REDIS_URL:-redis://sippy-redis:6379}"
+    # Redis logical DB 1: dev `sippy serve` uses default DB 0; e2e must not share that keyspace.
+    # Override with SIPPY_E2E_REDIS_URL if Redis is not sippy-redis:6379.
+    export REDIS_URL="${SIPPY_E2E_REDIS_URL:-redis://sippy-redis:6379/1}"
     export SIPPY_E2E_REPO_ROOT="$(pwd)"
     echo "E2E DSN: $SIPPY_E2E_DSN"
     echo "Redis:   $REDIS_URL"

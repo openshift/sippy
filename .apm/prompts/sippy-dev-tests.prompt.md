@@ -9,10 +9,8 @@ Run these three steps in order. Stop if any step fails.
 1. **Lint** — run directly:
 
    ```bash
-   CI=true make lint
+   make lint
    ```
-
-   `CI=true` makes `hack/go-lint.sh` use the locally installed `golangci-lint` instead of spawning a container.
 
 2. **Unit tests** — run directly:
 

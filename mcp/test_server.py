@@ -7,10 +7,14 @@ import pytest
 
 from server import (
     REPO_ROOT,
+    _data_mode,
     _default_database_dsn,
     _default_redis_url,
+    _dsn_for_mode,
     _repo_path,
     _resolve_bigquery_creds,
+    _validate_dsn,
+    _validate_redis_url,
     _trim,
 )
 
@@ -165,6 +169,110 @@ class TestResolveBigqueryCreds:
                     path, err = _resolve_bigquery_creds(None)
                     assert err is None
                     assert path == Path(first.name).resolve()
+
+
+class TestDataMode:
+    def _patch_dotenv(self, vals):
+        return mock.patch("server.dotenv_values", return_value=vals)
+
+    def test_default_is_seed(self):
+        with self._patch_dotenv({}):
+            assert _data_mode() == "seed"
+
+    def test_seed_mode(self):
+        with self._patch_dotenv({"SIPPY_DATA_MODE": "seed"}):
+            assert _data_mode() == "seed"
+
+    def test_prod_like_mode(self):
+        with self._patch_dotenv({"SIPPY_DATA_MODE": "prod-like"}):
+            assert _data_mode() == "prod-like"
+
+    def test_invalid_mode_falls_back_to_seed(self):
+        with self._patch_dotenv({"SIPPY_DATA_MODE": "invalid"}):
+            assert _data_mode() == "seed"
+
+    def test_case_insensitive(self):
+        with self._patch_dotenv({"SIPPY_DATA_MODE": "PROD-LIKE"}):
+            assert _data_mode() == "prod-like"
+
+    def test_no_env_file(self):
+        with mock.patch("server._DEVCONTAINER_ENV") as mock_path:
+            mock_path.is_file.return_value = False
+            assert _data_mode() == "seed"
+
+
+class TestDsnForMode:
+    def test_seed_mode_default(self):
+        with mock.patch.dict(os.environ, clear=False):
+            os.environ.pop("SIPPY_SEED_DATABASE_DSN", None)
+            os.environ.pop("SIPPY_DATABASE_DSN", None)
+            assert _dsn_for_mode("seed") == "postgresql://postgres:password@localhost:5432/postgres"
+
+    def test_seed_mode_from_env(self):
+        with mock.patch.dict(
+            os.environ, {"SIPPY_SEED_DATABASE_DSN": "postgresql://custom/seed"}, clear=False
+        ):
+            assert _dsn_for_mode("seed") == "postgresql://custom/seed"
+
+    def test_seed_mode_falls_back_to_sippy_database_dsn(self):
+        with mock.patch.dict(
+            os.environ, {"SIPPY_DATABASE_DSN": "postgresql://legacy/db"}, clear=False
+        ):
+            os.environ.pop("SIPPY_SEED_DATABASE_DSN", None)
+            assert _dsn_for_mode("seed") == "postgresql://legacy/db"
+
+    def test_prod_like_mode_default(self):
+        with mock.patch.dict(os.environ, clear=False):
+            os.environ.pop("SIPPY_PRODLIKE_DATABASE_DSN", None)
+            assert (
+                _dsn_for_mode("prod-like")
+                == "postgresql://postgres:password@localhost:5432/prodlike"
+            )
+
+    def test_prod_like_mode_from_env(self):
+        with mock.patch.dict(
+            os.environ,
+            {"SIPPY_PRODLIKE_DATABASE_DSN": "postgresql://custom/prodlike"},
+            clear=False,
+        ):
+            assert _dsn_for_mode("prod-like") == "postgresql://custom/prodlike"
+
+
+class TestValidateDsn:
+    def test_valid_dsn(self):
+        assert _validate_dsn("postgresql://postgres:password@localhost:5432/postgres") is None
+
+    def test_invalid_scheme(self):
+        assert _validate_dsn("mysql://localhost/db") is not None
+
+    def test_empty_string(self):
+        assert _validate_dsn("") is not None
+
+    def test_shell_metacharacters(self):
+        assert _validate_dsn("postgresql://x; rm -rf /") is not None
+
+    def test_whitespace_rejected(self):
+        assert _validate_dsn("postgresql://ok\nnewline") is not None
+
+
+class TestValidateRedisUrl:
+    def test_valid_redis(self):
+        assert _validate_redis_url("redis://localhost:6379") is None
+
+    def test_valid_rediss(self):
+        assert _validate_redis_url("rediss://secure:6380/0") is None
+
+    def test_invalid_scheme(self):
+        assert _validate_redis_url("http://localhost:6379") is not None
+
+    def test_empty_string(self):
+        assert _validate_redis_url("") is not None
+
+    def test_shell_metacharacters(self):
+        assert _validate_redis_url("redis://x$(whoami)") is None  # no whitespace, exec-safe
+
+    def test_whitespace_rejected(self):
+        assert _validate_redis_url("redis://ok \t") is not None
 
 
 class TestDefaults:
