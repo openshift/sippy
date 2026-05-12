@@ -21,6 +21,10 @@ export default function TriageSymptoms({
   symptomFilter,
   setSymptomFilter,
 }) {
+  const showRegressions =
+    symptomSummaries?.length > 0 &&
+    symptomSummaries[0].regression_count !== undefined
+
   return (
     <>
       <Tooltip
@@ -45,18 +49,32 @@ export default function TriageSymptoms({
                   <span>Symptom</span>
                 </Tooltip>
               </TableCell>
-              <TableCell>
-                <Tooltip title="Number of regressions in this triage where the symptom was detected">
-                  <span>Regressions</span>
-                </Tooltip>
-              </TableCell>
+              {showRegressions && (
+                <TableCell>
+                  <Tooltip title="Number of regressions in this triage where the symptom was detected">
+                    <span>Regressions</span>
+                  </Tooltip>
+                </TableCell>
+              )}
               <TableCell sx={{ minWidth: 120 }}>
-                <Tooltip title="Percentage of regressions in this triage exhibiting the symptom">
+                <Tooltip
+                  title={
+                    showRegressions
+                      ? 'Percentage of regressions in this triage exhibiting the symptom'
+                      : 'Percentage of sample job runs where the symptom was detected'
+                  }
+                >
                   <span>Percentage</span>
                 </Tooltip>
               </TableCell>
               <TableCell>
-                <Tooltip title="Total number of failed job runs across all regressions where the symptom was detected">
+                <Tooltip
+                  title={
+                    showRegressions
+                      ? 'Total number of failed job runs across all regressions where the symptom was detected'
+                      : 'Number of failed job runs where the symptom was detected'
+                  }
+                >
                   <span>Failed Runs</span>
                 </Tooltip>
               </TableCell>
@@ -76,34 +94,36 @@ export default function TriageSymptoms({
                     }}
                   />
                 </TableCell>
-                <TableCell>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    {ss.regression_count}
-                    <Tooltip title="Filter regressions to this symptom">
-                      <IconButton
-                        size="small"
-                        aria-label={`Filter regressions to ${
-                          ss.symptom.summary || ss.symptom.id
-                        }`}
-                        aria-pressed={symptomFilter === ss.symptom.id}
-                        onClick={() =>
-                          setSymptomFilter(
+                {showRegressions && (
+                  <TableCell>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      {ss.regression_count}
+                      <Tooltip title="Filter regressions to this symptom">
+                        <IconButton
+                          size="small"
+                          aria-label={`Filter regressions to ${
+                            ss.symptom.summary || ss.symptom.id
+                          }`}
+                          aria-pressed={symptomFilter === ss.symptom.id}
+                          onClick={() =>
+                            setSymptomFilter(
+                              symptomFilter === ss.symptom.id
+                                ? null
+                                : ss.symptom.id
+                            )
+                          }
+                          color={
                             symptomFilter === ss.symptom.id
-                              ? null
-                              : ss.symptom.id
-                          )
-                        }
-                        color={
-                          symptomFilter === ss.symptom.id
-                            ? 'primary'
-                            : 'default'
-                        }
-                      >
-                        <FilterList fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </TableCell>
+                              ? 'primary'
+                              : 'default'
+                          }
+                        >
+                          <FilterList fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
+                )}
                 <TableCell>
                   <Box display="flex" alignItems="center" gap={1}>
                     <LinearProgress
@@ -129,5 +149,5 @@ export default function TriageSymptoms({
 TriageSymptoms.propTypes = {
   symptomSummaries: PropTypes.array,
   symptomFilter: PropTypes.string,
-  setSymptomFilter: PropTypes.func.isRequired,
+  setSymptomFilter: PropTypes.func,
 }
