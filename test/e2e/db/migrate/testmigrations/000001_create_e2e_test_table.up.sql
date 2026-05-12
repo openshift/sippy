@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS e2e_test_table (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name text NOT NULL
+);

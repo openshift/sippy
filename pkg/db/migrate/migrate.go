@@ -3,6 +3,7 @@ package migrate
 import (
 	"database/sql"
 	"fmt"
+	"io/fs"
 
 	"github.com/golang-migrate/migrate/v4"
 	mpg "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -25,18 +26,26 @@ func (l *logAdapter) Verbose() bool {
 	return log.IsLevelEnabled(log.DebugLevel)
 }
 
-func newMigrate(gormDB *gorm.DB) (*migrate.Migrate, func() error, error) {
+// NewMigrateWithFS creates a migrate instance from an arbitrary fs.FS and
+// optional custom migrations tracking table. Pass an empty migrationsTable
+// to use the default "schema_migrations".
+func NewMigrateWithFS(gormDB *gorm.DB, fsys fs.FS, migrationsTable string) (*migrate.Migrate, func() error, error) {
 	sqlDB, err := gormDB.DB()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get *sql.DB from GORM: %w", err)
 	}
 
-	source, err := iofs.New(migrations.FS, ".")
+	source, err := iofs.New(fsys, ".")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create migration source: %w", err)
 	}
 
-	driver, err := mpg.WithInstance(sqlDB, &mpg.Config{})
+	cfg := &mpg.Config{}
+	if migrationsTable != "" {
+		cfg.MigrationsTable = migrationsTable
+	}
+
+	driver, err := mpg.WithInstance(sqlDB, cfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create postgres driver: %w", err)
 	}
@@ -48,12 +57,15 @@ func newMigrate(gormDB *gorm.DB) (*migrate.Migrate, func() error, error) {
 
 	m.Log = &logAdapter{}
 
-	// Return a cleanup function that only closes the source driver
 	cleanup := func() error {
 		return source.Close()
 	}
 
 	return m, cleanup, nil
+}
+
+func newMigrate(gormDB *gorm.DB) (*migrate.Migrate, func() error, error) {
+	return NewMigrateWithFS(gormDB, migrations.FS, "")
 }
 
 func tableExists(sqlDB *sql.DB, table string) (bool, error) {
@@ -115,14 +127,65 @@ func RunMigrations(gormDB *gorm.DB) error {
 	return nil
 }
 
-// CurrentVersion returns the current migration version and dirty flag.
-func CurrentVersion(gormDB *gorm.DB) (uint, bool, error) {
-	m, cleanup, err := newMigrate(gormDB)
+// CurrentVersionWithFS returns the current migration version and dirty flag
+// for the given migration source and tracking table.
+func CurrentVersionWithFS(gormDB *gorm.DB, fsys fs.FS, migrationsTable string) (uint, bool, error) {
+	m, cleanup, err := NewMigrateWithFS(gormDB, fsys, migrationsTable)
 	if err != nil {
 		return 0, false, err
 	}
 	defer cleanup()
 	return m.Version()
+}
+
+// CurrentVersion returns the current migration version and dirty flag.
+func CurrentVersion(gormDB *gorm.DB) (uint, bool, error) {
+	return CurrentVersionWithFS(gormDB, migrations.FS, "")
+}
+
+// MigrateDownWithFS rolls back the given number of migration steps
+// for the given migration source and tracking table.
+func MigrateDownWithFS(gormDB *gorm.DB, fsys fs.FS, migrationsTable string, steps int) error {
+	m, cleanup, err := NewMigrateWithFS(gormDB, fsys, migrationsTable)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	if err := m.Steps(-steps); err != nil {
+		return fmt.Errorf("migrate down failed: %w", err)
+	}
+	version, dirty, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		return fmt.Errorf("failed to read migration version: %w", err)
+	}
+	log.WithFields(log.Fields{"version": version, "dirty": dirty}).Info("migrate down complete")
+	return nil
+}
+
+// MigrateDown rolls back the given number of migration steps.
+func MigrateDown(gormDB *gorm.DB, steps int) error {
+	return MigrateDownWithFS(gormDB, migrations.FS, "", steps)
+}
+
+// RunMigrationsWithFS runs all pending versioned migrations from the given
+// migration source, tracking state in the specified table.
+func RunMigrationsWithFS(gormDB *gorm.DB, fsys fs.FS, migrationsTable string) error {
+	m, cleanup, err := NewMigrateWithFS(gormDB, fsys, migrationsTable)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("migration failed: %w", err)
+	}
+
+	version, dirty, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		return fmt.Errorf("failed to read migration version: %w", err)
+	}
+	log.WithFields(log.Fields{"version": version, "dirty": dirty}).Info("migrations complete")
+	return nil
 }
 
 // ForceVersion sets the migration version without running any migrations.

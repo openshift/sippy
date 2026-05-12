@@ -1,4 +1,4 @@
-package e2e
+package migrate_test
 
 import (
 	"testing"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/db/migrate"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/test/e2e/db/migrate/testmigrations"
 	"github.com/openshift/sippy/test/e2e/util"
 )
 
@@ -83,6 +84,75 @@ func TestMigrations(t *testing.T) {
 		err = dbc.DB.Raw("SELECT version FROM schema_migrations LIMIT 1").Scan(&version).Error
 		require.NoError(t, err)
 		assert.Greater(t, version, uint(0), "should have at least one migration version")
+	})
+
+	t.Run("MigrateDown with isolated test migrations", func(t *testing.T) {
+		const trackingTable = "e2e_schema_migrations"
+		fs := testmigrations.FS
+
+		t.Cleanup(func() {
+			dbc.DB.Exec("DROP TABLE IF EXISTS e2e_test_table")
+			dbc.DB.Exec("DROP TABLE IF EXISTS " + trackingTable)
+		})
+
+		// Migrate up to version 2: creates table then adds column
+		err := migrate.RunMigrationsWithFS(dbc.DB, fs, trackingTable)
+		require.NoError(t, err, "RunMigrationsWithFS should succeed")
+
+		version, dirty, err := migrate.CurrentVersionWithFS(dbc.DB, fs, trackingTable)
+		require.NoError(t, err)
+		assert.False(t, dirty)
+		assert.Equal(t, uint(2), version)
+
+		var exists bool
+		err = dbc.DB.Raw(
+			"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'e2e_test_table')",
+		).Scan(&exists).Error
+		require.NoError(t, err)
+		require.True(t, exists, "e2e_test_table should exist after up migration")
+
+		var hasColumn bool
+		err = dbc.DB.Raw(
+			"SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'e2e_test_table' AND column_name = 'description')",
+		).Scan(&hasColumn).Error
+		require.NoError(t, err)
+		require.True(t, hasColumn, "description column should exist at version 2")
+
+		// Step down to version 1: column dropped, table remains
+		err = migrate.MigrateDownWithFS(dbc.DB, fs, trackingTable, 1)
+		require.NoError(t, err, "MigrateDownWithFS step 1 should succeed")
+
+		version, dirty, err = migrate.CurrentVersionWithFS(dbc.DB, fs, trackingTable)
+		require.NoError(t, err)
+		assert.False(t, dirty)
+		assert.Equal(t, uint(1), version)
+
+		err = dbc.DB.Raw(
+			"SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'e2e_test_table' AND column_name = 'description')",
+		).Scan(&hasColumn).Error
+		require.NoError(t, err)
+		assert.False(t, hasColumn, "description column should be gone at version 1")
+
+		err = dbc.DB.Raw(
+			"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'e2e_test_table')",
+		).Scan(&exists).Error
+		require.NoError(t, err)
+		assert.True(t, exists, "e2e_test_table should still exist at version 1")
+
+		// Step down to version 0: table dropped
+		err = migrate.MigrateDownWithFS(dbc.DB, fs, trackingTable, 1)
+		require.NoError(t, err, "MigrateDownWithFS step 2 should succeed")
+
+		err = dbc.DB.Raw(
+			"SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'e2e_test_table')",
+		).Scan(&exists).Error
+		require.NoError(t, err)
+		assert.False(t, exists, "e2e_test_table should be gone after full rollback")
+
+		// Verify production connection is unaffected
+		var count int64
+		err = dbc.DB.Model(&models.SchemaHash{}).Count(&count).Error
+		require.NoError(t, err, "database connection should still be usable after test migrations")
 	})
 
 	t.Run("multiple migration operations preserve connection", func(t *testing.T) {

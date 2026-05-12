@@ -81,6 +81,35 @@ func init() {
 	}
 	f.BindFlags(forceCmd.Flags())
 
-	cmd.AddCommand(versionCmd, forceCmd)
+	downCmd := &cobra.Command{
+		Use:   "down [STEPS]",
+		Short: "Roll back migrations by STEPS (default 1).",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			steps := 1
+			if len(args) == 1 {
+				var err error
+				steps, err = strconv.Atoi(args[0])
+				if err != nil {
+					return errors.WithMessage(err, "invalid steps number")
+				}
+			}
+
+			dbc, err := db.New(f.DSN, gormlogger.LogLevel(f.LogLevel))
+			if err != nil {
+				return errors.WithMessage(err, "could not connect to db")
+			}
+
+			if err := sippymigrate.MigrateDown(dbc.DB, steps); err != nil {
+				return errors.WithMessage(err, "could not migrate down")
+			}
+
+			fmt.Printf("rolled back %d migration(s)\n", steps)
+			return nil
+		},
+	}
+	f.BindFlags(downCmd.Flags())
+
+	cmd.AddCommand(versionCmd, forceCmd, downCmd)
 	rootCmd.AddCommand(cmd)
 }
