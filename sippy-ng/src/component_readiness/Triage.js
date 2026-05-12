@@ -327,7 +327,7 @@ export default function Triage({ id }) {
             <TableCell>
               {triage.bug?.target_versions?.filter(Boolean).length
                 ? triage.bug.target_versions.filter(Boolean).join(', ')
-                : triage.bug?.affects_versions}
+                : triage.bug?.affects_versions?.filter(Boolean).join(', ')}
             </TableCell>
           </TableRow>
           <TableRow>
