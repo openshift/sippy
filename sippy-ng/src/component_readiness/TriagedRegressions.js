@@ -279,7 +279,7 @@ export default function TriagedRegressions({
       valueGetter: (value) => {
         return value.row.bug?.target_versions?.filter(Boolean).length
           ? value.row.bug.target_versions.filter(Boolean).join(', ')
-          : value.row.bug?.affects_versions || ''
+          : value.row.bug?.affects_versions?.filter(Boolean).join(', ') || ''
       },
       headerName: 'Version',
       flex: 4,
