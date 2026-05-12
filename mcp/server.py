@@ -68,13 +68,13 @@ _REDIS_RE = re.compile(r"^rediss?://[^\s]+$")
 
 def _validate_dsn(dsn: str) -> str | None:
     if not _DSN_RE.match(dsn):
-        return f"invalid database DSN (must start with postgresql://): {dsn!r}"
+        return "invalid database DSN: must match postgresql://<host>/<db>"
     return None
 
 
 def _validate_redis_url(url: str) -> str | None:
     if not _REDIS_RE.match(url):
-        return f"invalid Redis URL (must start with redis:// or rediss://): {url!r}"
+        return "invalid Redis URL: must match redis:// or rediss://"
     return None
 
 
