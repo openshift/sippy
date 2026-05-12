@@ -109,7 +109,7 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 				lastPhaseCount++
 			}
 
-			if !(p.Phase == result.LastPhase) || i == len(lastPayloads)-1 {
+			if p.Phase != result.LastPhase || i == len(lastPayloads)-1 {
 				// We'll stop looking after this is set.
 				result.LastPhaseCount = lastPhaseCount
 			}

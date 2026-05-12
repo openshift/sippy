@@ -78,7 +78,7 @@ func (c *Client) Get(ctx context.Context, path string, result interface{}) error
 	}
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.HTTPClient.Do(req) //nolint:gosec // G704: BaseURL is set at init from --server-url flag (default localhost:8080), path is hardcoded API route
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
@@ -119,7 +119,7 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.HTTPClient.Do(req) //nolint:gosec // G704: BaseURL is set at init from --server-url flag, not from HTTP request
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
@@ -157,7 +157,7 @@ func (c *Client) doJSONRequest(ctx context.Context, method, path string, body, r
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.HTTPClient.Do(req) //nolint:gosec // G704: BaseURL is set at init from --server-url flag, not from HTTP request
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %w", err)
 	}

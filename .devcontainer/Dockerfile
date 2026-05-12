@@ -1,6 +1,6 @@
 FROM registry.fedoraproject.org/fedora:43
 
-ARG GOLANGCI_LINT_VERSION=1.64.8
+ARG GOLANGCI_LINT_VERSION=2.10.1
 
 RUN dnf install -y \
     git \

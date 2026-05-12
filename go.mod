@@ -1,6 +1,6 @@
 module github.com/openshift/sippy
 
-go 1.24
+go 1.25
 
 require (
 	cloud.google.com/go v0.115.0

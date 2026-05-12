@@ -2254,7 +2254,7 @@ func (s *Server) Serve() {
 				if !os.IsNotExist(err) {
 					w.WriteHeader(http.StatusNotFound)
 					w.Header().Set("Content-Type", "text/plain")
-					if _, err := w.Write([]byte(fmt.Sprintf("404 Not Found: %s", fullPath))); err != nil {
+					if _, err := fmt.Fprintf(w, "404 Not Found: %s", fullPath); err != nil { //nolint:gosec // G705: Content-Type is text/plain (set on line above), browsers will not execute script in plain text
 						log.WithError(err).Warningf("could not write response")
 					}
 					return

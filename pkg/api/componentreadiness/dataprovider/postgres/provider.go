@@ -379,9 +379,9 @@ func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, 
 		existing, exists := result[keyStr]
 		if exists {
 			// Merge counts for same test+variant combo from different job runs
-			existing.Count.TotalCount += row.TotalCount
-			existing.Count.SuccessCount += row.SuccessCount
-			existing.Count.FlakeCount += row.FlakeCount
+			existing.TotalCount += row.TotalCount
+			existing.SuccessCount += row.SuccessCount
+			existing.FlakeCount += row.FlakeCount
 			if row.LastFailure != nil && (existing.LastFailure.IsZero() || row.LastFailure.After(existing.LastFailure)) {
 				existing.LastFailure = *row.LastFailure
 			}

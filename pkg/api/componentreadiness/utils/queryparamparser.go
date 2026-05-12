@@ -85,10 +85,10 @@ func ParseComponentReportRequest(
 
 	// Test filters override view defaults
 	if testCaps := req.URL.Query()["testCapabilities"]; len(testCaps) > 0 {
-		opts.TestFilters.Capabilities = testCaps
+		opts.Capabilities = testCaps
 	}
 	if testLifecycles := req.URL.Query()["testLifecycles"]; len(testLifecycles) > 0 {
-		opts.TestFilters.Lifecycles = testLifecycles
+		opts.Lifecycles = testLifecycles
 	}
 
 	// Variant options - merge with view defaults

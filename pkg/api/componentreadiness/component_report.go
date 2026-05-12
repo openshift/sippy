@@ -138,7 +138,7 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison); err != nil {
 					return err
 				}
-				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison.ReportStatus; rti == 0 || newStatus < worstStatus {
+				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].ReportStatus; rti == 0 || newStatus < worstStatus {
 					worstStatus = newStatus
 				}
 			}

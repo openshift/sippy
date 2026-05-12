@@ -274,6 +274,6 @@ func ParseGormLogLevel(logLevel string) (gormlogger.LogLevel, error) {
 	case "silent":
 		return gormlogger.Silent, nil
 	default:
-		return gormlogger.Info, fmt.Errorf("Unknown gorm LogLevel: %s", logLevel)
+		return gormlogger.Info, fmt.Errorf("unknown gorm LogLevel: %s", logLevel)
 	}
 }

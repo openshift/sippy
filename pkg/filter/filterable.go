@@ -446,9 +446,10 @@ func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	orFilterParams := []interface{}{}
 
 	for _, f := range filters.Items {
-		if filters.LinkOperator == LinkOperatorAnd || filters.LinkOperator == "" {
+		switch filters.LinkOperator {
+		case LinkOperatorAnd, "":
 			db = f.andFilterToSQL(db, filterable)
-		} else if filters.LinkOperator == LinkOperatorOr {
+		case LinkOperatorOr:
 			q, p := f.orFilterToSQL(db, filterable)
 			orFilters = append(orFilters, q)
 			if p != nil {

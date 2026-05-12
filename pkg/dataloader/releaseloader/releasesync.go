@@ -264,9 +264,10 @@ func releaseDetailsToDB(rs ReleaseStream, tag ReleaseTag, details ReleaseDetails
 		}
 	}
 
-	if release.Phase == "Accepted" {
+	switch release.Phase {
+	case "Accepted":
 		release.Forced = failedBlocking
-	} else if release.Phase == "Rejected" {
+	case "Rejected":
 		release.Forced = !failedBlocking
 	}
 

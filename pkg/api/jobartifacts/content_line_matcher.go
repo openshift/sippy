@@ -35,10 +35,10 @@ func (m *lineMatcher) GetCacheKey() string {
 
 func (m *lineMatcher) PostProcessMatch(fullArtifact JobRunArtifact) JobRunArtifact {
 	artifact := fullArtifact
-	if fullArtifact.MatchedContent.ContentLineMatches == nil {
+	if fullArtifact.ContentLineMatches == nil {
 		return artifact // no matches to process
 	}
-	clMatches := fullArtifact.MatchedContent.ContentLineMatches
+	clMatches := fullArtifact.ContentLineMatches
 	trimmed := &ContentLineMatches{
 		Matches:   []ContentLineMatch{},
 		Truncated: clMatches.Truncated,
@@ -65,7 +65,7 @@ func (m *lineMatcher) PostProcessMatch(fullArtifact JobRunArtifact) JobRunArtifa
 			After:  afterLines,
 		})
 	}
-	artifact.MatchedContent.ContentLineMatches = trimmed
+	artifact.ContentLineMatches = trimmed
 	return artifact
 }
 

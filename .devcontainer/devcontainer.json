@@ -39,7 +39,7 @@
       "settings": {
         "go.gopath": "/home/vscode/go",
         "go.lintTool": "golangci-lint",
-        "go.lintFlags": ["--fast"],
+        "go.lintFlags": ["--fast-only"],
         "editor.formatOnSave": true,
         "[go]": {
           "editor.defaultFormatter": "golang.go"

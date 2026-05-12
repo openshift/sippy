@@ -70,7 +70,7 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 	_ = q.SetJobRunCache(ctx, jobRunID, jobRunResponse)
 	if q.ContentMatcher != nil {
 		for i := range jobRunResponse.Artifacts {
-			jobRunResponse.Artifacts[i] = q.ContentMatcher.PostProcessMatch(jobRunResponse.Artifacts[i])
+			jobRunResponse.Artifacts[i] = q.PostProcessMatch(jobRunResponse.Artifacts[i])
 		}
 	}
 
@@ -186,7 +186,7 @@ func (q *JobArtifactQuery) getFileContentMatches(ctx context.Context, jobRunID i
 		return
 	}
 
-	matches, err := q.ContentMatcher.GetMatches(reader)
+	matches, err := q.GetMatches(reader)
 	if err != nil {
 		artifact.Error = err.Error()
 	}
@@ -274,7 +274,7 @@ func (q *JobArtifactQuery) CacheKeyForJobRun(jobRunID int64) string {
 		"pathGlob": q.PathGlob,
 	}
 	if q.ContentMatcher != nil {
-		key["contentMatcher"] = q.ContentMatcher.GetCacheKey()
+		key["contentMatcher"] = q.GetCacheKey()
 	}
 
 	jsonBytes, err := json.Marshal(key)
@@ -300,7 +300,7 @@ func (q *JobArtifactQuery) SetJobRunCache(ctx context.Context, jobRunID int64, r
 	}
 
 	// set the cache with the serialized response
-	if err := q.Cache.Set(ctx, q.CacheKeyForJobRun(jobRunID), serialized, cacheExpiration); err != nil {
+	if err := q.Set(ctx, q.CacheKeyForJobRun(jobRunID), serialized, cacheExpiration); err != nil {
 		logger.WithError(err).Error("failed to set job run cache")
 		return err
 	}
@@ -315,7 +315,7 @@ func (q *JobArtifactQuery) GetCachedJobRun(ctx context.Context, jobRunID int64) 
 	}
 
 	// retrieve bytes from the cache if they exist
-	jsonBytes, err := q.Cache.Get(ctx, q.CacheKeyForJobRun(jobRunID), cacheExpiration)
+	jsonBytes, err := q.Get(ctx, q.CacheKeyForJobRun(jobRunID), cacheExpiration)
 	if err != nil {
 		logger.WithError(err).Debug("failed to get job run cache entry")
 		return

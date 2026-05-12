@@ -37,7 +37,7 @@ func NewChatProxy(chatAPIURL string) (*ChatProxy, error) {
 	}
 
 	// Create HTTP reverse proxy
-	httpProxy := httputil.NewSingleHostReverseProxy(targetURL)
+	httpProxy := httputil.NewSingleHostReverseProxy(targetURL) //nolint:gosec // G704: targetURL is from --chat-api CLI flag set at server startup
 
 	// Modify the director to handle the path rewriting
 	originalDirector := httpProxy.Director
@@ -72,7 +72,7 @@ func (cp *ChatProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle regular HTTP request
-	cp.httpProxy.ServeHTTP(w, r)
+	cp.httpProxy.ServeHTTP(w, r) //nolint:gosec // G704: proxy target is fixed at init from --chat-api CLI flag, request path is rewritten not proxied raw
 }
 
 // isWebSocketUpgrade checks if the request is a WebSocket upgrade request

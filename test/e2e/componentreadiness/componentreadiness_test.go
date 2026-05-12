@@ -128,7 +128,7 @@ func TestRegressionCacheLoader(t *testing.T) {
 			t.Skip("no regressed tests in report, nothing to verify")
 		}
 
-		release := sippyViews.ComponentReadiness[0].SampleRelease.Release.Name
+		release := sippyViews.ComponentReadiness[0].SampleRelease.Name
 
 		for _, regTest := range regressedTests {
 			// Look up the regression in the database by test_id and release
