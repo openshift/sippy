@@ -48,6 +48,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
 import TriagedTestsPanel from './TriagedTestsPanel'
+import TriageSymptoms from './TriageSymptoms'
 import UpsertTriageModal from './UpsertTriageModal'
 
 // Big query requests take a while so give the user the option to
@@ -112,6 +113,7 @@ export default function TestDetailsReport(props) {
   const [regressionId, setRegressionId] = React.useState(0)
   const [versions, setVersions] = React.useState({})
   const [triageEntries, setTriageEntries] = React.useState([])
+  const [symptomSummaries, setSymptomSummaries] = React.useState([])
   const releases = useContext(ReleasesContext)
   const hasSetContextRef = React.useRef(false)
 
@@ -208,6 +210,54 @@ export default function TestDetailsReport(props) {
         setIsLoaded(true)
       })
   }, [hasBeenTriaged, urlParams, testId])
+
+  useEffect(() => {
+    if (!data.analyses || !data.analyses[0]?.job_stats) {
+      setSymptomSummaries([])
+      return
+    }
+    const counts = {}
+    let totalRuns = 0
+    for (const js of data.analyses[0].job_stats) {
+      for (const run of js.sample_job_run_stats || []) {
+        totalRuns++
+        for (const sid of run.job_symptoms || []) {
+          counts[sid] = (counts[sid] || 0) + 1
+        }
+      }
+    }
+    const symptomIds = Object.keys(counts)
+    if (symptomIds.length === 0) {
+      setSymptomSummaries([])
+      return
+    }
+    const controller = new AbortController()
+    fetch(process.env.REACT_APP_API_URL + '/api/jobs/symptoms', {
+      signal: controller.signal,
+    })
+      .then((r) => r.json())
+      .then((allSymptoms) => {
+        const lookup = {}
+        for (const s of allSymptoms) {
+          lookup[s.id] = s.summary
+        }
+        const total = totalRuns || 1
+        const summaries = symptomIds
+          .map((id) => ({
+            symptom: { id, summary: lookup[id] || id },
+            job_run_count: counts[id],
+            percentage: (counts[id] / total) * 100,
+          }))
+          .sort((a, b) => b.job_run_count - a.job_run_count)
+        setSymptomSummaries(summaries)
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          setSymptomSummaries([])
+        }
+      })
+    return () => controller.abort()
+  }, [data])
 
   useEffect(() => {
     let tmpRelease = {}
@@ -601,6 +651,7 @@ View the [test details report|${document.location.href}] for additional context.
           </TableRow>
         </TableBody>
       </Table>
+      <TriageSymptoms symptomSummaries={symptomSummaries} />
       {isBaseOverride ? (
         <Fragment>
           <Tabs
