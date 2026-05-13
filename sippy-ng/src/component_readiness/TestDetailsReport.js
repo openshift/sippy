@@ -231,7 +231,10 @@ export default function TestDetailsReport(props) {
       setSymptomSummaries([])
       return
     }
-    fetch(process.env.REACT_APP_API_URL + '/api/jobs/symptoms')
+    const controller = new AbortController()
+    fetch(process.env.REACT_APP_API_URL + '/api/jobs/symptoms', {
+      signal: controller.signal,
+    })
       .then((r) => r.json())
       .then((allSymptoms) => {
         const lookup = {}
@@ -248,7 +251,12 @@ export default function TestDetailsReport(props) {
           .sort((a, b) => b.job_run_count - a.job_run_count)
         setSymptomSummaries(summaries)
       })
-      .catch(() => setSymptomSummaries([]))
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          setSymptomSummaries([])
+        }
+      })
+    return () => controller.abort()
   }, [data])
 
   useEffect(() => {
