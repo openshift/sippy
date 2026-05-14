@@ -930,7 +930,7 @@ func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJo
 }
 
 func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJob, id uint64, path string, junitMatches []string, dbProwJob *models.ProwJob) error {
-	tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), path, junitMatches)
+	tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), dbProwJob.ID, dbProwJob.Release, path, junitMatches)
 	if err != nil {
 		return err
 	}
@@ -959,19 +959,20 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 		Model: gorm.Model{
 			ID: uint(id),
 		},
-		Cluster:       pj.Spec.Cluster,
-		Duration:      duration,
-		ProwJob:       *dbProwJob,
-		ProwJobID:     dbProwJob.ID,
-		URL:           pj.Status.URL,
-		GCSBucket:     pj.Spec.DecorationConfig.GCSConfiguration.Bucket,
-		Timestamp:     pj.Status.StartTime,
-		OverallResult: overallResult,
-		PullRequests:  pulls,
-		TestFailures:  failures,
-		Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
-		Labels:        labels,
-		Annotations:   annotations,
+		Cluster:        pj.Spec.Cluster,
+		Duration:       duration,
+		ProwJob:        *dbProwJob,
+		ProwJobID:      dbProwJob.ID,
+		ProwJobRelease: dbProwJob.Release,
+		URL:            pj.Status.URL,
+		GCSBucket:      pj.Spec.DecorationConfig.GCSConfiguration.Bucket,
+		Timestamp:      pj.Status.StartTime,
+		OverallResult:  overallResult,
+		PullRequests:   pulls,
+		TestFailures:   failures,
+		Succeeded:      overallResult == sippyprocessingv1.JobSucceeded,
+		Labels:         labels,
+		Annotations:    annotations,
 	}).Error
 	if err != nil {
 		return err
@@ -1187,7 +1188,7 @@ func (pl *ProwLoader) findSuite(name string) *uint {
 	return id
 }
 
-func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id uint, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
+func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
 	failures := 0
 
 	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
@@ -1206,7 +1207,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 			continue
 		}
 
-		pl.extractTestCases(suite, suiteID, testCases)
+		pl.extractTestCases(suite, suiteID, testCases, prowJobRelease, pj.Status.StartTime)
 	}
 
 	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, testCases, pl.syntheticTestManager)
@@ -1216,7 +1217,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		// this shouldn't happen but if it does we want to know
 		panic("synthetic suite is missing from the database")
 	}
-	pl.extractTestCases(syntheticSuite, suiteID, testCases)
+	pl.extractTestCases(syntheticSuite, suiteID, testCases, prowJobRelease, pj.Status.StartTime)
 	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
 
 	results := make([]*models.ProwJobRunTest, 0)
@@ -1226,6 +1227,9 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		}
 
 		testCases[k].ProwJobRunID = id
+		testCases[k].ProwJobID = prowJobID
+		testCases[k].ProwJobRunRelease = prowJobRelease
+		testCases[k].ProwJobRunTimestamp = pj.Status.StartTime
 		results = append(results, testCases[k])
 		if testCases[k].Status == 12 {
 			failures++
@@ -1235,7 +1239,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	return results, failures, jobResult, nil
 }
 
-func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, testCases map[string]*models.ProwJobRunTest) {
+func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, testCases map[string]*models.ProwJobRunTest, prowJobRelease string, prowJobStartTime time.Time) {
 
 	for _, tc := range suite.TestCases {
 		if testidentification.IsIgnoredTest(tc.Name) {
@@ -1250,7 +1254,9 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, te
 			status = sippyprocessingv1.TestStatusSuccess
 		default:
 			failureOutput = &models.ProwJobRunTestOutput{
-				Output: tc.FailureOutput.Output,
+				Output:                  tc.FailureOutput.Output,
+				ProwJobRunTestTimestamp: prowJobStartTime,
+				ProwJobRunTestRelease:   prowJobRelease,
 			}
 		}
 
@@ -1283,6 +1289,6 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, te
 	}
 
 	for _, c := range suite.Children {
-		pl.extractTestCases(c, suiteID, testCases)
+		pl.extractTestCases(c, suiteID, testCases, prowJobRelease, prowJobStartTime)
 	}
 }

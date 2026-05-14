@@ -39,6 +39,8 @@ type ProwJobRun struct {
 	// ProwJob is a link to the prow job this run belongs to.
 	ProwJob   ProwJob
 	ProwJobID uint `gorm:"index"`
+	// Used for partitioning
+	ProwJobRelease string `gorm:"varchar(10)"`
 
 	// Cluster is the cluster where the prow job was run.
 	Cluster string
@@ -87,8 +89,15 @@ type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint `gorm:"index"`
 	ProwJobRun   ProwJobRun
-	TestID       uint `gorm:"index;index:idx_prow_job_run_tests_test_id_status"`
-	Test         Test
+	// used for variants
+	// skips joining on ProwJobRunID just to get ProwJobID
+	ProwJobID uint
+	// used for partitioning
+	ProwJobRunTimestamp time.Time `gorm:"expression:DATE(timestamp AT TIME ZONE 'UTC')"`
+	// used for partitioning
+	ProwJobRunRelease string `gorm:"varchar(10)"`
+	TestID            uint   `gorm:"index;index:idx_prow_job_run_tests_test_id_status"`
+	Test              Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
 	SuiteID   *uint `gorm:"index"`
 	Suite     Suite
@@ -107,6 +116,10 @@ type ProwJobRunTestOutput struct {
 	ProwJobRunTestID uint `gorm:"index"`
 	// Output stores the output of a ProwJobRunTest.
 	Output string
+	// used for partitioning
+	ProwJobRunTestTimestamp time.Time `gorm:"expression:DATE(timestamp AT TIME ZONE 'UTC')"`
+	// used for partitioning
+	ProwJobRunTestRelease string `gorm:"varchar(10)"`
 }
 
 // Suite defines a junit testsuite. Used to differentiate the same test being run in different suites in ProwJobRunTest.
