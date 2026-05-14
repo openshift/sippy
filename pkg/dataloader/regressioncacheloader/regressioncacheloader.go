@@ -505,6 +505,15 @@ func (l *RegressionCacheLoader) buildGenerator(
 		TestFilters:    view.TestFilters,
 	}
 
+	if view.SpotCheckSample != nil {
+		resolved, err := utils.GetViewReleaseOptions(
+			l.releases, "spot_check", *view.SpotCheckSample, cacheOpts.CRTimeRoundingFactor)
+		if err != nil {
+			return nil, err
+		}
+		reqOpts.SpotCheckSample = &resolved
+	}
+
 	generator := componentreadiness.NewComponentReportGenerator(
 		bqprovider.NewBigQueryProvider(l.bqClient),
 		reqOpts, l.dbc,

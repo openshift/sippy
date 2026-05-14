@@ -120,42 +120,44 @@ func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup
 		return
 	}
 
-	if len(s.reqOptions.TestIDOptions) == 0 || !isSpotCheckTestID(s.reqOptions.TestIDOptions[0].TestID) {
-		return
+	for _, testIDOpt := range s.reqOptions.TestIDOptions {
+		if !isSpotCheckTestID(testIDOpt.TestID) {
+			continue
+		}
+
+		opt := testIDOpt
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			details, err := s.dataProvider.QuerySpotCheckJobRunDetails(ctx,
+				s.reqOptions, allJobVariants,
+				opt.RequestedVariants,
+				s.reqOptions.SpotCheckSample.Start, s.reqOptions.SpotCheckSample.End)
+			if err != nil {
+				errCh <- fmt.Errorf("spot check details query failed: %w", err)
+				return
+			}
+
+			testKey := crtest.KeyWithVariants{
+				TestID:   opt.TestID,
+				Variants: opt.RequestedVariants,
+			}
+
+			s.sampleJobDetailsMutex.Lock()
+			defer s.sampleJobDetailsMutex.Unlock()
+			if s.sampleJobDetails == nil {
+				s.sampleJobDetails = map[string][]dataprovider.JobRunDetail{}
+			}
+			s.sampleJobDetails[testKey.KeyOrDie()] = details
+			s.log.Infof("loaded %d spot-check job run details for %s", len(details), opt.TestID)
+		}()
 	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-
-		testIDOpt := s.reqOptions.TestIDOptions[0]
-		details, err := s.dataProvider.QuerySpotCheckJobRunDetails(ctx,
-			s.reqOptions, allJobVariants,
-			testIDOpt.RequestedVariants,
-			s.reqOptions.SpotCheckSample.Start, s.reqOptions.SpotCheckSample.End)
-		if err != nil {
-			errCh <- fmt.Errorf("spot check details query failed: %w", err)
-			return
-		}
-
-		testKey := crtest.KeyWithVariants{
-			TestID:   testIDOpt.TestID,
-			Variants: testIDOpt.RequestedVariants,
-		}
-
-		s.sampleJobDetailsMutex.Lock()
-		defer s.sampleJobDetailsMutex.Unlock()
-		if s.sampleJobDetails == nil {
-			s.sampleJobDetails = map[string][]dataprovider.JobRunDetail{}
-		}
-		s.sampleJobDetails[testKey.KeyOrDie()] = details
-		s.log.Infof("loaded %d spot-check job run details", len(details))
-	}()
 }
 
 func (s *SpotCheckJobs) PreAnalysis(testKey crtest.Identification,

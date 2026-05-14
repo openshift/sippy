@@ -537,7 +537,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 			jobs.prowjob_job_name AS job_name,
 			jobs.prowjob_build_id AS run_id,
 			jobs.prowjob_url AS url,
-			jobs.prowjob_start AS start_time,
+			TIMESTAMP(jobs.prowjob_start) AS start_time,
 			(jobs.prowjob_state = 'success') AS success
 		FROM %s.jobs jobs
 		%s

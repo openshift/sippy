@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -161,18 +162,24 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 			Variants: tOpt.RequestedVariants,
 		}
 		testKeyStr := testKey.KeyOrDie()
-		if statuses, ok := testKeyTestJobRunStatuses[testKeyStr]; ok {
-			report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
-			if len(generateReportErrs) > 0 {
-				errs = append(errs, generateReportErrs...)
-				continue
+		statuses, ok := testKeyTestJobRunStatuses[testKeyStr]
+		if !ok {
+			// Spot-check synthetic tests won't appear in junit query results.
+			// Create an empty status so GenerateDetailsReportForTest can still run;
+			// the middleware will populate it via PreTestDetailsAnalysis.
+			statuses = crstatus.TestJobRunStatuses{
+				BaseStatus:         map[string][]crstatus.TestJobRunRows{},
+				BaseOverrideStatus: map[string][]crstatus.TestJobRunRows{},
+				SampleStatus:       map[string][]crstatus.TestJobRunRows{},
+				GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
 			}
-			reports = append(reports, report)
-		} else {
-			logrus.Errorf("missing test key in results: %v", testKeyStr)
-
 		}
-
+		report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
+		if len(generateReportErrs) > 0 {
+			errs = append(errs, generateReportErrs...)
+			continue
+		}
+		reports = append(reports, report)
 	}
 	return reports, errs
 }
@@ -188,11 +195,14 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	if testIDOption.TestID == "" {
 		return testdetails.Report{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
-	for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
-		if _, ok := testIDOption.RequestedVariants[v]; !ok {
-			return testdetails.Report{}, []error{
-				fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
-					v, testIDOption.RequestedVariants),
+	isSpotCheck := strings.HasPrefix(testIDOption.TestID, "spotcheck:")
+	if !isSpotCheck {
+		for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
+			if _, ok := testIDOption.RequestedVariants[v]; !ok {
+				return testdetails.Report{}, []error{
+					fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
+						v, testIDOption.RequestedVariants),
+				}
 			}
 		}
 	}
@@ -220,17 +230,17 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	// to a circular dep. This is an unfortunate compromise in the middleware goal I didn't have time to unwind.
 	// For now, the middleware does the querying for test details, and passes the override status out
 	// by adding it to componentJobRunTestReportStatus.BaseOverrideStatus.
+	testKey := crtest.KeyWithVariants{
+		TestID:   testIDOption.TestID,
+		Variants: testIDOption.RequestedVariants,
+	}
+	if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
+		return testdetails.Report{}, []error{err}
+	}
+
 	var baseOverrideReport *testdetails.Report
 	if testIDOption.BaseOverrideRelease != "" &&
 		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name {
-
-		testKey := crtest.KeyWithVariants{
-			TestID:   testIDOption.TestID,
-			Variants: testIDOption.RequestedVariants,
-		}
-		if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
-			return testdetails.Report{}, []error{err}
-		}
 
 		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, testIDOption.BaseOverrideRelease)
 		if err != nil {
