@@ -61,7 +61,7 @@ export default function TriageSymptoms({
                   title={
                     showRegressions
                       ? 'Percentage of regressions in this triage exhibiting the symptom'
-                      : 'Percentage of sample job runs where the symptom was detected'
+                      : 'Percentage of failed job runs where the symptom was detected'
                   }
                 >
                   <span>Percentage</span>

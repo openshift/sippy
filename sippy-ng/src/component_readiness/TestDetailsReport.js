@@ -217,12 +217,14 @@ export default function TestDetailsReport(props) {
       return
     }
     const counts = {}
-    let totalRuns = 0
+    let totalFailedRuns = 0
     for (const js of data.analyses[0].job_stats) {
       for (const run of js.sample_job_run_stats || []) {
-        totalRuns++
-        for (const sid of run.job_symptoms || []) {
-          counts[sid] = (counts[sid] || 0) + 1
+        if (run.test_stats?.failure_count > 0) {
+          totalFailedRuns++
+          for (const sid of run.job_symptoms || []) {
+            counts[sid] = (counts[sid] || 0) + 1
+          }
         }
       }
     }
@@ -241,7 +243,7 @@ export default function TestDetailsReport(props) {
         for (const s of allSymptoms) {
           lookup[s.id] = s.summary
         }
-        const total = totalRuns || 1
+        const total = totalFailedRuns || 1
         const summaries = symptomIds
           .map((id) => ({
             symptom: { id, summary: lookup[id] || id },
