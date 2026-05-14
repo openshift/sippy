@@ -16,3 +16,4 @@ The system consists of:
 * Data sources including **PostgreSQL**, and **BigQuery**
 
 Favor clarity and maintainability over cleverness. Comments should be minimal, helpful, and explain the "why" not the "what".
+When updating go module versioning only specify major and minor version.  Never require a specific patch version

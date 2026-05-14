@@ -12,10 +12,7 @@ import (
 	"github.com/openshift/sippy/test/e2e/util"
 )
 
-// TestMigrations verifies that database migrations run successfully
-// and that the database connection remains usable after migration.
-// This test specifically validates the fix for the issue where m.Close()
-// was closing the shared gormDB connection.
+// TestMigrations verifies that database migrations run successfully.
 func TestMigrations(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 
