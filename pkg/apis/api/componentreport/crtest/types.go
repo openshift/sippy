@@ -35,6 +35,7 @@ type Comparison string
 const (
 	PassRate    Comparison = "pass_rate"
 	FisherExact Comparison = "fisher_exact"
+	SpotCheck   Comparison = "spot_check"
 )
 
 const (

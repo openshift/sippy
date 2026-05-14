@@ -24,8 +24,16 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 
 export default function CompReadyTestPanel(props) {
-  const { data, versions, loadedParams, testName, environment, component } =
-    props
+  const {
+    data,
+    comparison,
+    versions,
+    loadedParams,
+    testName,
+    environment,
+    component,
+  } = props
+  const isSpotCheck = comparison === 'spot_check'
   const classes = useContext(ComponentReadinessStyleContext)
 
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
@@ -224,7 +232,7 @@ export default function CompReadyTestPanel(props) {
   return (
     <Fragment>
       <Grid container spacing={2} style={{ marginTop: '10px' }}>
-        {data.base_stats && (
+        {!isSpotCheck && data.base_stats && (
           <Grid item xs={6}>
             {printParamsAndStats(
               'Basis (historical)',
@@ -237,9 +245,9 @@ export default function CompReadyTestPanel(props) {
           </Grid>
         )}
         {data.sample_stats && data.sample_stats.Start && data.sample_stats.End && (
-          <Grid item xs={6}>
+          <Grid item xs={isSpotCheck ? 12 : 6}>
             {printParamsAndStats(
-              'Sample (being evaluated)',
+              isSpotCheck ? 'Spot-Check Window' : 'Sample (being evaluated)',
               data.sample_stats,
               data.sample_stats.Start.toString(),
               data.sample_stats.End.toString(),
@@ -288,16 +296,17 @@ export default function CompReadyTestPanel(props) {
         <Table className="cr-comp-read-table">
           <TableHead>
             <TableRow>
-              {tableCell('Basis Job', 0)}
-              {tableCell('Basis Runs', 1)}
-              {tableCell('', 2)}
-              {tableCell('Sample Job', 3)}
-              {tableCell('Sample Runs', 4)}
-              {tableTooltipCell(
-                'Statistically Significant',
-                5,
-                significanceTitle
-              )}
+              {!isSpotCheck && tableCell('Basis Job', 0)}
+              {!isSpotCheck && tableCell('Basis Runs', 1)}
+              {!isSpotCheck && tableCell('', 2)}
+              {tableCell(isSpotCheck ? 'Job' : 'Sample Job', 3)}
+              {tableCell(isSpotCheck ? 'Runs' : 'Sample Runs', 4)}
+              {!isSpotCheck &&
+                tableTooltipCell(
+                  'Statistically Significant',
+                  5,
+                  significanceTitle
+                )}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -320,6 +329,7 @@ export default function CompReadyTestPanel(props) {
                       key={idx}
                       element={element}
                       idx={idx}
+                      isSpotCheck={isSpotCheck}
                       showOnlyFailures={showOnlyFailures}
                       searchJobArtifacts={searchJobArtifacts}
                       searchJobRunIds={searchJobRunIds}
@@ -402,6 +412,7 @@ export default function CompReadyTestPanel(props) {
 
 CompReadyTestPanel.propTypes = {
   data: PropTypes.object.isRequired,
+  comparison: PropTypes.string,
   versions: PropTypes.object.isRequired,
   loadedParams: PropTypes.object.isRequired,
   testName: PropTypes.string.isRequired,

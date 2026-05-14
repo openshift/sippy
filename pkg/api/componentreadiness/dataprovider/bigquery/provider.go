@@ -374,6 +374,226 @@ func (p *BigQueryProvider) LookupJobVariants(ctx context.Context, jobName string
 	return variants, nil
 }
 
+// --- SpotCheckQuerier ---
+
+func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
+	allJobVariants crtest.JobVariants,
+	start, end time.Time) ([]dataprovider.SpotCheckGroup, error) {
+
+	columnGroupByVariants := reqOptions.VariantOption.ColumnGroupBy
+	if len(columnGroupByVariants) == 0 {
+		columnGroupByVariants = sets.NewString("Platform", "Architecture", "Network")
+	}
+
+	var selectVariants, joinVariants string
+	var groupByParts []string
+	for _, v := range columnGroupByVariants.List() {
+		cleanV := param.Cleanse(v)
+		joinVariants += fmt.Sprintf(
+			"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+			p.client.Dataset, cleanV, cleanV, cleanV, v)
+		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", cleanV, cleanV)
+		groupByParts = append(groupByParts, fmt.Sprintf("jv_%s.variant_value", cleanV))
+	}
+	groupByVariants := strings.Join(groupByParts, ", ")
+
+	// Always join Release and JobTier
+	joinVariants += fmt.Sprintf(
+		"LEFT JOIN %s.job_variants jv_Release ON jobs.prowjob_job_name = jv_Release.job_name AND jv_Release.variant_name = 'Release'\n",
+		p.client.Dataset)
+	joinVariants += fmt.Sprintf(
+		"LEFT JOIN %s.job_variants jv_JobTier ON jobs.prowjob_job_name = jv_JobTier.job_name AND jv_JobTier.variant_name = 'JobTier'\n",
+		p.client.Dataset)
+
+	// Track which variant groups already have JOINs
+	joinedVariants := sets.NewString(columnGroupByVariants.List()...)
+	joinedVariants.Insert("Release", "JobTier")
+
+	// Build include variant filters (Platform, Architecture, etc.) but skip JobTier
+	variantFilters := ""
+	var params []bigquery.QueryParameter
+	includeVariants := reqOptions.VariantOption.IncludeVariants
+	if includeVariants == nil {
+		includeVariants = map[string][]string{}
+	}
+	for _, group := range sortedKeys(includeVariants) {
+		if group == "JobTier" {
+			continue
+		}
+		cleanGroup := param.Cleanse(group)
+		if !joinedVariants.Has(group) {
+			joinVariants += fmt.Sprintf(
+				"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, group)
+			joinedVariants.Insert(group)
+		}
+		paramName := fmt.Sprintf("variantGroup_%s", cleanGroup)
+		variantFilters += fmt.Sprintf(" AND (jv_%s.variant_value IN UNNEST(@%s))", cleanGroup, paramName)
+		params = append(params, bigquery.QueryParameter{
+			Name:  paramName,
+			Value: includeVariants[group],
+		})
+	}
+
+	queryString := fmt.Sprintf(`
+		SELECT
+			%s
+			COUNT(DISTINCT jobs.prowjob_build_id) AS total_runs,
+			COUNT(DISTINCT IF(jobs.prowjob_state = 'success', jobs.prowjob_build_id, NULL)) AS successful_runs,
+			ARRAY_AGG(DISTINCT jobs.prowjob_job_name) AS job_names
+		FROM %s.jobs jobs
+		%s
+		WHERE jobs.prowjob_start >= DATETIME(@From)
+			AND jobs.prowjob_start < DATETIME(@To)
+			AND jv_Release.variant_value = @Release
+			AND jv_JobTier.variant_value = 'rare'
+			AND (jobs.prowjob_job_name LIKE 'periodic-%%' OR jobs.prowjob_job_name LIKE 'release-%%')
+			%s
+		GROUP BY %s
+	`, selectVariants, p.client.Dataset, joinVariants, variantFilters,
+		groupByVariants)
+
+	params = append(params,
+		bigquery.QueryParameter{Name: "From", Value: start},
+		bigquery.QueryParameter{Name: "To", Value: end},
+		bigquery.QueryParameter{Name: "Release", Value: reqOptions.SampleRelease.Name},
+	)
+
+	q := p.client.Query(ctx, bqlabel.CRSpotCheck, queryString)
+	q.Parameters = params
+
+	it, err := q.Read(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error executing spot check query: %w", err)
+	}
+
+	var results []dataprovider.SpotCheckGroup
+	for {
+		var rawRow map[string]bigquery.Value
+		err := it.Next(&rawRow)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error reading spot check row: %w", err)
+		}
+
+		group := dataprovider.SpotCheckGroup{
+			Variants: map[string]string{},
+		}
+		for _, v := range columnGroupByVariants.List() {
+			cleanV := param.Cleanse(v)
+			if val, ok := rawRow["variant_"+cleanV]; ok && val != nil {
+				group.Variants[v] = val.(string)
+			}
+		}
+		if val, ok := rawRow["total_runs"]; ok && val != nil {
+			group.TotalRuns = int(val.(int64))
+		}
+		if val, ok := rawRow["successful_runs"]; ok && val != nil {
+			group.SuccessfulRuns = int(val.(int64))
+		}
+		if val, ok := rawRow["job_names"]; ok && val != nil {
+			for _, jn := range val.([]bigquery.Value) {
+				group.JobNames = append(group.JobNames, jn.(string))
+			}
+		}
+		results = append(results, group)
+	}
+
+	log.Infof("spot check query returned %d groups", len(results))
+	return results, nil
+}
+
+func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
+	allJobVariants crtest.JobVariants,
+	variants map[string]string,
+	start, end time.Time) ([]dataprovider.JobRunDetail, error) {
+
+	joinVariants := fmt.Sprintf(
+		"LEFT JOIN %s.job_variants jv_Release ON jobs.prowjob_job_name = jv_Release.job_name AND jv_Release.variant_name = 'Release'\n",
+		p.client.Dataset)
+	joinVariants += fmt.Sprintf(
+		"LEFT JOIN %s.job_variants jv_JobTier ON jobs.prowjob_job_name = jv_JobTier.job_name AND jv_JobTier.variant_name = 'JobTier'\n",
+		p.client.Dataset)
+
+	variantFilters := ""
+	var params []bigquery.QueryParameter
+	for k, v := range variants {
+		cleanK := param.Cleanse(k)
+		joinVariants += fmt.Sprintf(
+			"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+			p.client.Dataset, cleanK, cleanK, cleanK, k)
+		paramName := fmt.Sprintf("variant_%s", cleanK)
+		variantFilters += fmt.Sprintf(" AND jv_%s.variant_value = @%s", cleanK, paramName)
+		params = append(params, bigquery.QueryParameter{
+			Name:  paramName,
+			Value: v,
+		})
+	}
+
+	queryString := fmt.Sprintf(`
+		SELECT
+			jobs.prowjob_job_name AS job_name,
+			jobs.prowjob_build_id AS run_id,
+			jobs.prowjob_url AS url,
+			jobs.prowjob_start AS start_time,
+			(jobs.prowjob_state = 'success') AS success
+		FROM %s.jobs jobs
+		%s
+		WHERE jobs.prowjob_start >= DATETIME(@From)
+			AND jobs.prowjob_start < DATETIME(@To)
+			AND jv_Release.variant_value = @Release
+			AND jv_JobTier.variant_value = 'rare'
+			AND (jobs.prowjob_job_name LIKE 'periodic-%%' OR jobs.prowjob_job_name LIKE 'release-%%')
+			%s
+		ORDER BY jobs.prowjob_start DESC
+	`, p.client.Dataset, joinVariants, variantFilters)
+
+	params = append(params,
+		bigquery.QueryParameter{Name: "From", Value: start},
+		bigquery.QueryParameter{Name: "To", Value: end},
+		bigquery.QueryParameter{Name: "Release", Value: reqOptions.SampleRelease.Name},
+	)
+
+	q := p.client.Query(ctx, bqlabel.CRSpotCheckDetails, queryString)
+	q.Parameters = params
+
+	it, err := q.Read(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error executing spot check details query: %w", err)
+	}
+
+	type detailRow struct {
+		JobName   string    `bigquery:"job_name"`
+		RunID     string    `bigquery:"run_id"`
+		URL       string    `bigquery:"url"`
+		StartTime time.Time `bigquery:"start_time"`
+		Success   bool      `bigquery:"success"`
+	}
+
+	var results []dataprovider.JobRunDetail
+	for {
+		var row detailRow
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error reading spot check detail row: %w", err)
+		}
+		results = append(results, dataprovider.JobRunDetail{
+			JobName:   row.JobName,
+			RunID:     row.RunID,
+			URL:       row.URL,
+			StartTime: row.StartTime,
+			Success:   row.Success,
+		})
+	}
+
+	return results, nil
+}
+
 // --- Helpers ---
 
 func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]string, error) {

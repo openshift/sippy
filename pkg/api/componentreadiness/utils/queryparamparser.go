@@ -55,6 +55,15 @@ func ParseComponentReportRequest(
 			viewWarnings := api.ValidateVariants(allJobVariants, opts.VariantOption.IncludeVariants, " from view")
 			warnings = append(warnings, viewWarnings...)
 		}
+
+		if view.SpotCheckSample != nil {
+			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check", *view.SpotCheckSample, crTimeRoundingFactor)
+			if resolveErr != nil {
+				err = resolveErr
+				return
+			}
+			opts.SpotCheckSample = &resolved
+		}
 	}
 
 	// Parse URL parameters - these override view defaults if view was provided

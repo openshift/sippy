@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/linkinjector"
 	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/spotcheckjobs"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -276,6 +277,12 @@ func (c *ComponentReportGenerator) getCache() cache.Cache {
 
 func (c *ComponentReportGenerator) initializeMiddleware() {
 	c.middlewares = middleware.List{}
+
+	// Spot-check jobs middleware runs first so synthetic results are in place for other middleware.
+	if c.ReqOptions.SpotCheckSample != nil {
+		c.middlewares = append(c.middlewares, spotcheckjobs.NewSpotCheckJobsMiddleware(c.dataProvider, c.ReqOptions))
+	}
+
 	// Initialize all our middleware applicable to this request.
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && c.ReqOptions.SampleRelease.PullRequestOptions == nil {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.dataProvider, c.ReqOptions, c.releaseConfigs))
@@ -760,6 +767,9 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crte
 // (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
 // cross variant compare, rarely run jobs, etc.)
 func (c *ComponentReportGenerator) assessComponentStatus(testStats *testdetails.TestComparison, logger *log.Entry) {
+	if testStats.AnalysisComplete {
+		return
+	}
 	// Catch unset required confidence, typically unit tests
 	opts := c.ReqOptions.AdvancedOption
 	if testStats.RequiredConfidence == 0 {

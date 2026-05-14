@@ -9,6 +9,10 @@ component_readiness:
     release: "5.0"
     relative_start: now-7d
     relative_end: now
+  spot_check_sample:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
   variant_options:
     column_group_by:
       Network: { }

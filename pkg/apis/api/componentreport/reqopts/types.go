@@ -19,6 +19,10 @@ type RequestOptions struct {
 	CacheOption    cache.RequestOptions
 	TestFilters
 	TestIDOptions []TestIdentification
+	// SpotCheckSample is the resolved sample window for spot-check job analysis.
+	// Only set when the view defines spot_check_sample. These jobs must pass at least
+	// once in this window (typically 30 days, longer than the normal 7-day test sample).
+	SpotCheckSample *Release `json:"spot_check_sample,omitempty" yaml:"spot_check_sample,omitempty"`
 	// ViewName is the name of the view used for this request, if any.
 	// When generating test details URLs, if a view is present, we include just the view parameter
 	// plus test-specific overrides, rather than expanding all view parameters into the URL.

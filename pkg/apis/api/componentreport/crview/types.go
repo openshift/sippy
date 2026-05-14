@@ -13,6 +13,11 @@ type View struct {
 	VariantOptions  reqopts.Variants           `json:"variant_options" yaml:"variant_options"`
 	AdvancedOptions reqopts.Advanced           `json:"advanced_options" yaml:"advanced_options"`
 
+	// SpotCheckSample defines the sample window for spot-check job analysis.
+	// Spot-check jobs must pass at least once in this window (typically 30 days).
+	// If nil, spot-check analysis is disabled for this view.
+	SpotCheckSample *reqopts.RelativeRelease `json:"spot_check_sample,omitempty" yaml:"spot_check_sample,omitempty"`
+
 	Metrics            Metrics            `json:"metrics" yaml:"metrics"`
 	RegressionTracking RegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`
 	AutomateJira       AutomateJira       `json:"automate_jira" yaml:"automate_jira"`

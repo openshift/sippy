@@ -1,0 +1,283 @@
+package spotcheckjobs
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"sync"
+
+	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
+	log "github.com/sirupsen/logrus"
+)
+
+var _ middleware.Middleware = &SpotCheckJobs{}
+
+// spotCheckMapping defines the hardcoded component/capability for spot-check jobs
+// until SpotCheckComponent/SpotCheckCapability variants exist in the variant registry.
+type spotCheckMapping struct {
+	substrings []string
+	component  string
+	capability string
+}
+
+var spotCheckMappings = []spotCheckMapping{
+	{substrings: []string{"-cpu-partitioning"}, component: "Node", capability: "CPU Partitioning"},
+	{substrings: []string{"-etcd-scaling"}, component: "etcd", capability: "Scaling"},
+}
+
+func NewSpotCheckJobsMiddleware(
+	provider dataprovider.DataProvider,
+	reqOptions reqopts.RequestOptions,
+) *SpotCheckJobs {
+	return &SpotCheckJobs{
+		dataProvider: provider,
+		reqOptions:   reqOptions,
+		log:          log.WithField("middleware", "SpotCheckJobs"),
+	}
+}
+
+type SpotCheckJobs struct {
+	dataProvider dataprovider.DataProvider
+	reqOptions   reqopts.RequestOptions
+	log          log.FieldLogger
+
+	// sampleJobDetails is populated during QueryTestDetails and consumed by PreTestDetailsAnalysis.
+	sampleJobDetails      map[string][]dataprovider.JobRunDetail
+	sampleJobDetailsMutex sync.Mutex
+}
+
+func (s *SpotCheckJobs) Query(ctx context.Context, wg *sync.WaitGroup,
+	allJobVariants crtest.JobVariants,
+	_, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
+
+	if s.reqOptions.SpotCheckSample == nil {
+		return
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		select {
+		case <-ctx.Done():
+			s.log.Info("context canceled during spot check query")
+			return
+		default:
+		}
+
+		groups, err := s.dataProvider.QuerySpotCheckJobRuns(ctx,
+			s.reqOptions, allJobVariants,
+			s.reqOptions.SpotCheckSample.Start, s.reqOptions.SpotCheckSample.End)
+		if err != nil {
+			errCh <- fmt.Errorf("spot check query failed: %w", err)
+			return
+		}
+
+		sampleStatus := map[string]crstatus.TestStatus{}
+		for _, group := range groups {
+			component, capability := s.resolveComponentCapability(group)
+			if component == "" {
+				continue
+			}
+
+			testKey := crtest.KeyWithVariants{
+				TestID:   syntheticTestID(component, capability),
+				Variants: group.Variants,
+			}
+			keyStr := testKey.KeyOrDie()
+
+			atLeastOnePass := group.SuccessfulRuns >= 1
+			successCount := 0
+			if atLeastOnePass {
+				successCount = 1
+			}
+
+			sampleStatus[keyStr] = crstatus.TestStatus{
+				TestName:     syntheticTestName(component, capability),
+				Component:    component,
+				Capabilities: []string{capability},
+				Variants:     variantMapToSlice(group.Variants),
+				Count: crtest.Count{
+					TotalCount:   1,
+					SuccessCount: successCount,
+				},
+			}
+		}
+
+		s.log.Infof("injecting %d spot-check synthetic test results", len(sampleStatus))
+		sampleStatusCh <- sampleStatus
+	}()
+}
+
+func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup,
+	errCh chan error, allJobVariants crtest.JobVariants) {
+
+	if s.reqOptions.SpotCheckSample == nil {
+		return
+	}
+
+	if len(s.reqOptions.TestIDOptions) == 0 || !isSpotCheckTestID(s.reqOptions.TestIDOptions[0].TestID) {
+		return
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		testIDOpt := s.reqOptions.TestIDOptions[0]
+		details, err := s.dataProvider.QuerySpotCheckJobRunDetails(ctx,
+			s.reqOptions, allJobVariants,
+			testIDOpt.RequestedVariants,
+			s.reqOptions.SpotCheckSample.Start, s.reqOptions.SpotCheckSample.End)
+		if err != nil {
+			errCh <- fmt.Errorf("spot check details query failed: %w", err)
+			return
+		}
+
+		testKey := crtest.KeyWithVariants{
+			TestID:   testIDOpt.TestID,
+			Variants: testIDOpt.RequestedVariants,
+		}
+
+		s.sampleJobDetailsMutex.Lock()
+		defer s.sampleJobDetailsMutex.Unlock()
+		if s.sampleJobDetails == nil {
+			s.sampleJobDetails = map[string][]dataprovider.JobRunDetail{}
+		}
+		s.sampleJobDetails[testKey.KeyOrDie()] = details
+		s.log.Infof("loaded %d spot-check job run details", len(details))
+	}()
+}
+
+func (s *SpotCheckJobs) PreAnalysis(testKey crtest.Identification,
+	testStats *testdetails.TestComparison) error {
+
+	if !isSpotCheckTestID(testKey.TestID) {
+		return nil
+	}
+
+	sampleDays := int(s.reqOptions.SpotCheckSample.End.Sub(s.reqOptions.SpotCheckSample.Start).Hours() / 24)
+
+	if testStats.SampleStats.SuccessCount > 0 {
+		testStats.ReportStatus = crtest.NotSignificant
+		testStats.Explanations = append(testStats.Explanations,
+			fmt.Sprintf("Spot-check job passed at least once in the %d-day sample window", sampleDays))
+	} else {
+		testStats.ReportStatus = crtest.ExtremeRegression
+		testStats.Explanations = append(testStats.Explanations,
+			fmt.Sprintf("Spot-check job did not pass in the %d-day sample window (%d runs, 0 successes)",
+				sampleDays, testStats.SampleStats.Total()))
+	}
+
+	testStats.Comparison = crtest.SpotCheck
+	testStats.AnalysisComplete = true
+	testStats.BaseStats = nil
+
+	return nil
+}
+
+func (s *SpotCheckJobs) PostAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
+	return nil
+}
+
+func (s *SpotCheckJobs) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants,
+	status *crstatus.TestJobRunStatuses) error {
+
+	if !isSpotCheckTestID(testKey.TestID) {
+		return nil
+	}
+
+	s.sampleJobDetailsMutex.Lock()
+	details := s.sampleJobDetails[testKey.KeyOrDie()]
+	s.sampleJobDetailsMutex.Unlock()
+
+	if status.SampleStatus == nil {
+		status.SampleStatus = map[string][]crstatus.TestJobRunRows{}
+	}
+
+	for _, run := range details {
+		successCount := 0
+		if run.Success {
+			successCount = 1
+		}
+		row := crstatus.TestJobRunRows{
+			TestKey:      testKey,
+			TestKeyStr:   testKey.KeyOrDie(),
+			TestName:     syntheticTestNameFromID(testKey.TestID),
+			ProwJob:      run.JobName,
+			ProwJobRunID: run.RunID,
+			ProwJobURL:   run.URL,
+			StartTime:    run.StartTime,
+			Count: crtest.Count{
+				TotalCount:   1,
+				SuccessCount: successCount,
+			},
+		}
+		status.SampleStatus[run.JobName] = append(status.SampleStatus[run.JobName], row)
+	}
+
+	return nil
+}
+
+// resolveComponentCapability maps a spot-check group to its component/capability
+// using hardcoded patterns based on job names. This will be replaced by
+// SpotCheckComponent/SpotCheckCapability variants once the variant registry is updated.
+func (s *SpotCheckJobs) resolveComponentCapability(group dataprovider.SpotCheckGroup) (string, string) {
+	for _, jobName := range group.JobNames {
+		lower := strings.ToLower(jobName)
+		for _, m := range spotCheckMappings {
+			allMatch := true
+			for _, sub := range m.substrings {
+				if !strings.Contains(lower, sub) {
+					allMatch = false
+					break
+				}
+			}
+			if allMatch {
+				return m.component, m.capability
+			}
+		}
+	}
+	return "", ""
+}
+
+func isSpotCheckTestID(testID string) bool {
+	return strings.HasPrefix(testID, "spotcheck:")
+}
+
+func syntheticTestID(component, capability string) string {
+	return fmt.Sprintf("spotcheck:%s:%s",
+		strings.ToLower(component),
+		strings.ToLower(strings.ReplaceAll(capability, " ", "-")))
+}
+
+func syntheticTestName(component, capability string) string {
+	return fmt.Sprintf("[spot-check] %s / %s must pass at least once per sample window",
+		component, capability)
+}
+
+func syntheticTestNameFromID(testID string) string {
+	parts := strings.SplitN(testID, ":", 3)
+	if len(parts) == 3 {
+		return fmt.Sprintf("[spot-check] %s / %s must pass at least once per sample window",
+			parts[1], strings.ReplaceAll(parts[2], "-", " "))
+	}
+	return testID
+}
+
+func variantMapToSlice(m map[string]string) []string {
+	result := make([]string, 0, len(m))
+	for k, v := range m {
+		result = append(result, k+":"+v)
+	}
+	return result
+}
