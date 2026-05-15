@@ -252,27 +252,33 @@ func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
 	return ret
 }
 
-// PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
-func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string, reportEnd time.Time) error {
-	var start, end int
-
-	// List all ProwJobRuns for the given release in the last two weeks.
-	// TODO: 14 days matches orig API behavior, may want to add query params in future to control.
+// JobDetailsReport runs the job details query without HTTP response handling.
+func JobDetailsReport(dbc *db.DB, release, jobSearchStr string, reportEnd time.Time) ([]*models.ProwJobRun, error) {
 	since := reportEnd.Add(-14 * 24 * time.Hour)
-
 	prowJobRuns := make([]*models.ProwJobRun, 0)
 	res := dbc.DB.Joins("ProwJob").
 		Where("name LIKE ?", "%"+jobSearchStr+"%").
 		Where("timestamp > ?", since).
 		Where("release = ?", release).
-		Preload("Tests", "status = ?", 12). // Only pre-load test results with failure status.
+		Preload("Tests", "status = ?", 12).
 		Preload("Tests.Test").
 		Find(&prowJobRuns)
 	if res.Error != nil {
-		log.Errorf("error querying %s ProwJobRuns from db: %v", jobSearchStr, res.Error)
-		return res.Error
+		return nil, res.Error
 	}
 	log.WithFields(log.Fields{"prowJobRuns": len(prowJobRuns), "since": since}).Info("loaded ProwJobRuns from db")
+	return prowJobRuns, nil
+}
+
+// PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
+func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string, reportEnd time.Time) error {
+	var start, end int
+
+	prowJobRuns, err := JobDetailsReport(dbc, release, jobSearchStr, reportEnd)
+	if err != nil {
+		log.Errorf("error querying %s ProwJobRuns from db: %v", jobSearchStr, err)
+		return err
+	}
 
 	jobDetails := map[string]*jobDetail{}
 	for _, pjr := range prowJobRuns {
