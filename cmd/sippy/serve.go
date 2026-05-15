@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/partitionmanager"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/sippyserver"
@@ -251,6 +252,20 @@ func NewServeCommand() *cobra.Command {
 						panic(err)
 					}
 				}()
+			}
+
+			partMgr, pmErr := partitionmanager.NewWithDefaults(dbc.DB)
+			if pmErr != nil {
+				log.WithError(pmErr).Warn("failed to create partition manager, partition maintenance disabled")
+			} else {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				if startErr := partMgr.Start(ctx); startErr != nil {
+					log.WithError(startErr).Warn("failed to start partition manager")
+				} else {
+					defer partMgr.Stop()
+					log.Info("partition manager started for background maintenance")
+				}
 			}
 
 			server.Serve()

@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -43,6 +42,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/testconversion"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/partitionmanager"
 	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/releaseoverride"
 	"github.com/openshift/sippy/pkg/synthetictests"
@@ -58,6 +58,7 @@ var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
 type ProwLoader struct {
 	ctx                          context.Context
 	dbc                          *db.DB
+	partMgr                      *partitionmanager.PartitionManager
 	errors                       []error
 	githubClient                 *github.Client
 	bigQueryClient               *bqcachedclient.Client
@@ -96,11 +97,13 @@ func New(
 	ghCommenter *commenter.GitHubCommenter,
 	promPusher *push.Pusher,
 	loadSince *time.Time,
-	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides) *ProwLoader {
+	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides,
+	partMgr *partitionmanager.PartitionManager) *ProwLoader {
 
 	return &ProwLoader{
 		ctx:                          ctx,
 		dbc:                          dbc,
+		partMgr:                      partMgr,
 		gcsClient:                    gcsClient,
 		githubClient:                 githubClient,
 		bigQueryClient:               bigQueryClient,
@@ -373,6 +376,12 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 	}
 	log.Infof("importing test analysis by job for dates: %v", importDates)
 
+	if pl.partMgr != nil {
+		if err := pl.partMgr.Maintain(ctx); err != nil {
+			log.WithError(err).Warn("partition manager maintenance failed, will create partitions on demand")
+		}
+	}
+
 	jobCache, err := query.LoadProwJobCache(pl.dbc)
 	if err != nil {
 		log.WithError(err).Error("error loading job cache")
@@ -394,16 +403,11 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 			return errors.Wrapf(err, "error parsing next day from %s", dateToImport)
 		}
 
-		// create a partition for this date
-		partitionSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS test_analysis_by_job_by_dates_%s PARTITION OF test_analysis_by_job_by_dates
-    		FOR VALUES FROM ('%s') TO ('%s');`, strings.ReplaceAll(dateToImport, "-", "_"), dateToImport, nextDay)
-		dLog.Info(partitionSQL)
-
-		if res := pl.dbc.DB.Exec(partitionSQL); res.Error != nil {
-			log.WithError(res.Error).Error("error creating partition")
-			return res.Error
+		if err := partitionmanager.EnsurePartition(pl.dbc.DB, "test_analysis_by_job_by_dates", dateToImport, nextDay); err != nil {
+			log.WithError(err).Error("error creating partition")
+			return err
 		}
-		dLog.Warnf("partition created for releases %v", pl.releases)
+		dLog.Infof("partition ensured for releases %v", pl.releases)
 
 		q := pl.bigQueryClient.Query(ctx, bqlabel.ProwLoaderTestAnalysis, fmt.Sprintf(`WITH
   deduped_testcases AS (

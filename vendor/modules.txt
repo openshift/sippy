@@ -444,7 +444,7 @@ github.com/jackc/pgpassfile
 # github.com/jackc/pgproto3/v2 v2.3.3
 ## explicit; go 1.12
 github.com/jackc/pgproto3/v2
-# github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a
+# github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761
 ## explicit; go 1.14
 github.com/jackc/pgservicefile
 # github.com/jackc/pgtype v1.14.0
@@ -467,6 +467,13 @@ github.com/jinzhu/inflection
 # github.com/jinzhu/now v1.1.2
 ## explicit; go 1.12
 github.com/jinzhu/now
+# github.com/jirevwe/go_partman v0.4.1
+## explicit; go 1.22.0
+github.com/jirevwe/go_partman
+# github.com/jmoiron/sqlx v1.4.0
+## explicit; go 1.10
+github.com/jmoiron/sqlx
+github.com/jmoiron/sqlx/reflectx
 # github.com/jtolds/gls v4.20.0+incompatible
 ## explicit
 # github.com/kevinburke/ssh_config v1.2.0
@@ -504,6 +511,9 @@ github.com/montanaflynn/stats
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
+# github.com/oklog/ulid/v2 v2.1.0
+## explicit; go 1.15
+github.com/oklog/ulid/v2
 # github.com/onsi/ginkgo v1.16.5
 ## explicit; go 1.16
 # github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a
@@ -1073,6 +1083,9 @@ google.golang.org/protobuf/types/known/fieldmaskpb
 google.golang.org/protobuf/types/known/structpb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/known/wrapperspb
+# gopkg.in/guregu/null.v4 v4.0.0
+## explicit
+gopkg.in/guregu/null.v4
 # gopkg.in/redis.v5 v5.2.9
 ## explicit
 gopkg.in/redis.v5

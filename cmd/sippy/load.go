@@ -40,6 +40,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/dataloader/testownershiploader"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/partitionmanager"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
 )
@@ -455,6 +456,11 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		loadSince = &t
 	}
 
+	partMgr, err := partitionmanager.NewWithDefaults(dbc.DB)
+	if err != nil {
+		log.WithError(err).Warn("failed to create partition manager, partitions will be managed on demand")
+	}
+
 	return prowloader.New(
 		ctx,
 		dbc,
@@ -468,7 +474,8 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		ghCommenter,
 		promPusher,
 		loadSince,
-		syntheticReleaseJobOverrides), nil
+		syntheticReleaseJobOverrides,
+		partMgr), nil
 }
 
 // parseProwLoadSince parses a time value that is either an absolute RFC3339 timestamp
