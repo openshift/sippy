@@ -44,8 +44,6 @@ If the argument is not provided, you will prompt the user interactively.
    **F. Decrease pass_rate_required_new_tests**:
    - Set `pass_rate_required_new_tests` to `90` (from 95)
 
-   - **IMPORTANT**: Preserve YAML formatting (double quotes, `{ }` spacing, indentation)
-
 4. **Verify Output**: Show a diff of the changes made to views.yaml
 
 5. **Run Validation Test**:
@@ -71,3 +69,5 @@ This command is part of the release lifecycle workflow:
 - Use the Edit tool for each change to preserve exact YAML formatting
 - Always verify the diff to ensure only expected changes were made
 - This is typically run once when a release goes GA
+
+**IMPORTANT**: Preserve YAML formatting (double quotes, `{ }` spacing, indentation)

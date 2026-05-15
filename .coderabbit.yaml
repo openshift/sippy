@@ -37,7 +37,7 @@ reviews:
         explaining the purpose of each major query section (CTEs, JOINs,
         window functions, WHERE clauses). Abbreviations like CTE, matview,
         etc. should be expanded on first use. Functions that construct queries
-        should ideally stay under 200 lines; extract sub-queries or CTEs into
+        must stay under 200 lines; extract sub-queries or CTEs into
         helper functions when they grow beyond that.
     - path: "pkg/apis/**/*.go"
       instructions: |
@@ -105,7 +105,7 @@ reviews:
       - name: "Test Coverage for New Features"
         mode: warning
         instructions: |
-          New or modified functionality should include test coverage where possible:
+          New or modified functionality must include test coverage:
           - New Go functions and methods should have corresponding unit tests
           - Bug fixes should include a regression test that fails without the fix
           - Pure functions (no DB/external dependencies) should always be tested
