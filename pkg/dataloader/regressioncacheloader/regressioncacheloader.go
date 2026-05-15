@@ -506,8 +506,13 @@ func (l *RegressionCacheLoader) buildGenerator(
 	}
 
 	if view.SpotCheckSample != nil {
+		spotCheckRelative := reqopts.RelativeRelease{
+			Release:       reqopts.Release{Name: view.SampleRelease.Name},
+			RelativeStart: view.SpotCheckSample.RelativeStart,
+			RelativeEnd:   view.SpotCheckSample.RelativeEnd,
+		}
 		resolved, err := utils.GetViewReleaseOptions(
-			l.releases, "spot_check", *view.SpotCheckSample, cacheOpts.CRTimeRoundingFactor)
+			l.releases, "spot_check", spotCheckRelative, cacheOpts.CRTimeRoundingFactor)
 		if err != nil {
 			return nil, err
 		}

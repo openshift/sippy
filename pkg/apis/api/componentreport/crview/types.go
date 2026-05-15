@@ -16,7 +16,8 @@ type View struct {
 	// SpotCheckSample defines the sample window for spot-check job analysis.
 	// Spot-check jobs must pass at least once in this window (typically 30 days).
 	// If nil, spot-check analysis is disabled for this view.
-	SpotCheckSample *reqopts.RelativeRelease `json:"spot_check_sample,omitempty" yaml:"spot_check_sample,omitempty"`
+	// The release is inherited from SampleRelease; only the time window needs to be specified.
+	SpotCheckSample *SpotCheckWindow `json:"spot_check_sample,omitempty" yaml:"spot_check_sample,omitempty"`
 
 	Metrics            Metrics            `json:"metrics" yaml:"metrics"`
 	RegressionTracking RegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`
@@ -37,4 +38,11 @@ type PrimeCache struct {
 }
 type AutomateJira struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
+}
+
+// SpotCheckWindow defines just the time window for spot-check analysis.
+// The release is always inherited from SampleRelease.
+type SpotCheckWindow struct {
+	RelativeStart string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd   string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
