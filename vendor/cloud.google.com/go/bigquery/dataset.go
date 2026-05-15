@@ -81,6 +81,11 @@ type DatasetMetadata struct {
 	// More information: https://cloud.google.com/resource-manager/docs/tags/tags-overview
 	Tags []*DatasetTag
 
+	// TRUE if the dataset and its table names are case-insensitive, otherwise
+	// FALSE. By default, this is FALSE, which means the dataset and its table
+	// names are case-sensitive. This field does not affect routine references.
+	IsCaseInsensitive bool
+
 	// ETag is the ETag obtained when reading metadata. Pass it to Dataset.Update to
 	// ensure that the metadata hasn't changed since it was read.
 	ETag string
@@ -154,6 +159,11 @@ type DatasetMetadataToUpdate struct {
 	// The entire access list. It is not possible to replace individual entries.
 	Access []*AccessEntry
 
+	// TRUE if the dataset and its table names are case-insensitive, otherwise
+	// FALSE. By default, this is FALSE, which means the dataset and its table
+	// names are case-sensitive. This field does not affect routine references.
+	IsCaseInsensitive optional.Bool
+
 	labelUpdater
 }
 
@@ -190,11 +200,27 @@ func (d *Dataset) Identifier(f IdentifierFormat) (string, error) {
 	}
 }
 
-// Create creates a dataset in the BigQuery service. An error will be returned if the
-// dataset already exists. Pass in a DatasetMetadata value to configure the dataset.
+// Create creates a dataset in the BigQuery service.
+//
+// An error will be returned if the dataset already exists.
+// Pass in a DatasetMetadata value to configure the dataset.
 func (d *Dataset) Create(ctx context.Context, md *DatasetMetadata) (err error) {
+	return d.CreateWithOptions(ctx, md)
+}
+
+// CreateWithOptions creates a dataset in the BigQuery service, and
+// provides additional options to control the behavior of the call.
+//
+// An error will be returned if the dataset already exists.
+// Pass in a DatasetMetadata value to configure the dataset.
+func (d *Dataset) CreateWithOptions(ctx context.Context, md *DatasetMetadata, opts ...DatasetOption) (err error) {
 	ctx = trace.StartSpan(ctx, "cloud.google.com/go/bigquery.Dataset.Create")
 	defer func() { trace.EndSpan(ctx, err) }()
+
+	cOpt := &dsCallOption{}
+	for _, o := range opts {
+		o(cOpt)
+	}
 
 	ds, err := md.toBQ()
 	if err != nil {
@@ -207,6 +233,9 @@ func (d *Dataset) Create(ctx context.Context, md *DatasetMetadata) (err error) {
 	}
 	call := d.c.bqs.Datasets.Insert(d.ProjectID, ds).Context(ctx)
 	setClientHeader(call.Header())
+	if cOpt.accessPolicyVersion != nil {
+		call.AccessPolicyVersion(int64(optional.ToInt(cOpt.accessPolicyVersion)))
+	}
 	_, err = call.Do()
 	return err
 }
@@ -224,6 +253,7 @@ func (dm *DatasetMetadata) toBQ() (*bq.Dataset, error) {
 	ds.DefaultCollation = dm.DefaultCollation
 	ds.MaxTimeTravelHours = int64(dm.MaxTimeTravel / time.Hour)
 	ds.StorageBillingModel = string(dm.StorageBillingModel)
+	ds.IsCaseInsensitive = dm.IsCaseInsensitive
 	ds.Labels = dm.Labels
 	var err error
 	ds.Access, err = accessListToBQ(dm.Access)
@@ -289,11 +319,29 @@ func (d *Dataset) deleteInternal(ctx context.Context, deleteContents bool) (err 
 
 // Metadata fetches the metadata for the dataset.
 func (d *Dataset) Metadata(ctx context.Context) (md *DatasetMetadata, err error) {
+	return d.MetadataWithOptions(ctx)
+}
+
+// MetadataWithOptions fetches metadata for the dataset, and provides additional options for
+// controlling the request.
+func (d *Dataset) MetadataWithOptions(ctx context.Context, opts ...DatasetOption) (md *DatasetMetadata, err error) {
 	ctx = trace.StartSpan(ctx, "cloud.google.com/go/bigquery.Dataset.Metadata")
 	defer func() { trace.EndSpan(ctx, err) }()
 
+	cOpt := &dsCallOption{}
+	for _, o := range opts {
+		o(cOpt)
+	}
+
 	call := d.c.bqs.Datasets.Get(d.ProjectID, d.DatasetID).Context(ctx)
 	setClientHeader(call.Header())
+	if cOpt.accessPolicyVersion != nil {
+		call.AccessPolicyVersion(int64(optional.ToInt(cOpt.accessPolicyVersion)))
+	}
+	if cOpt.datasetView != nil {
+		call.DatasetView(optional.ToString(cOpt.datasetView))
+	}
+
 	var ds *bq.Dataset
 	if err := runWithRetry(ctx, func() (err error) {
 		sCtx := trace.StartSpan(ctx, "bigquery.datasets.get")
@@ -304,6 +352,94 @@ func (d *Dataset) Metadata(ctx context.Context) (md *DatasetMetadata, err error)
 		return nil, err
 	}
 	return bqToDatasetMetadata(ds, d.c)
+}
+
+// dsCallOption provides a general option holder for dataset RPCs
+type dsCallOption struct {
+	accessPolicyVersion optional.Int
+	datasetView         optional.String
+	updateMode          optional.String
+}
+
+// DatasetOption provides an option type for customizing requests against the Dataset
+// service.
+type DatasetOption func(*dsCallOption)
+
+// WithAccessPolicyVersion is an option that enabled setting of the Access Policy Version for a request
+// where appropriate.  Valid values are 0, 1, and 3.
+//
+// Requests specifying an invalid value will be rejected.
+// Requests for conditional access policy binding in datasets must specify version 3.
+//
+// Dataset with no conditional role bindings in access policy may specify any valid value
+// or leave the field unset.
+//
+// This field will be mapped to [IAM Policy version] (https://cloud.google.com/iam/docs/policies#versions)
+// and will be used to fetch policy from IAM. If unset or if 0 or 1 value is used for
+// dataset with conditional bindings, access entry with condition will have role string
+// appended by 'withcond' string followed by a hash value.
+//
+// Please refer https://cloud.google.com/iam/docs/troubleshooting-withcond for more details.
+func WithAccessPolicyVersion(apv int) DatasetOption {
+	return func(o *dsCallOption) {
+		o.accessPolicyVersion = apv
+	}
+}
+
+// DatasetView specifies which details about a dataset are desired.
+type DatasetView string
+
+const (
+	// DatasetMetadataView populates metadata information for the dataset,
+	// such as friendlyName, description, labels, etc.
+	DatasetMetadataView DatasetView = "METADATA"
+
+	// DatasetACLView populates information for the dataset, which defines
+	// dataset access for one or more entities.
+	DatasetACLView DatasetView = "ACL"
+
+	// DatasetFullView populates both dataset metadata and ACL information.
+	DatasetFullView DatasetView = "FULL"
+
+	// UnspecifiedDatasetView is the default value, which will be treated as DatasetFullView
+	UnspecifiedDatasetView DatasetView = "DATASET_VIEW_UNSPECIFIED"
+)
+
+// WithDatasetView specifies the view that determines which dataset information
+// is returned. By default, metadata and ACL information are returned.
+func WithDatasetView(view DatasetView) DatasetOption {
+	return func(o *dsCallOption) {
+		o.datasetView = string(view)
+	}
+}
+
+// DatasetUpdateMode specifies which fields of a dataset are going to be affected
+// by update/patch operations.
+type DatasetUpdateMode string
+
+const (
+	// DatasetMetadataUpdateMode targets metadata information for the dataset,
+	// such as friendlyName, description, labels, etc.
+	DatasetMetadataUpdateMode DatasetUpdateMode = "UPDATE_METADATA"
+
+	// DatasetACLUpdateMode targets ACL information for the dataset,
+	// which defines dataset access for one or more entities.
+	DatasetACLUpdateMode DatasetUpdateMode = "UPDATE_ACL"
+
+	// DatasetFullUpdateMode targets both dataset metadata and ACL
+	// information on update operations.
+	DatasetFullUpdateMode DatasetUpdateMode = "UPDATE_FULL"
+
+	// UnspecifiedDatasetUpdateMode is the default value, which will be treated as DatasetFullUpdateMode
+	UnspecifiedDatasetUpdateMode DatasetUpdateMode = "UPDATE_MODE_UNSPECIFIED"
+)
+
+// WithUpdateMode specifies the fields of dataset that the update/patch
+// operation is targeting. By default, both metadata and ACL fields are updated.
+func WithUpdateMode(mode DatasetUpdateMode) DatasetOption {
+	return func(o *dsCallOption) {
+		o.updateMode = string(mode)
+	}
 }
 
 func bqToDatasetMetadata(d *bq.Dataset, c *Client) (*DatasetMetadata, error) {
@@ -322,6 +458,7 @@ func bqToDatasetMetadata(d *bq.Dataset, c *Client) (*DatasetMetadata, error) {
 		FullID:                     d.Id,
 		Location:                   d.Location,
 		Labels:                     d.Labels,
+		IsCaseInsensitive:          d.IsCaseInsensitive,
 		ETag:                       d.Etag,
 	}
 	for _, a := range d.Access {
@@ -345,18 +482,40 @@ func bqToDatasetMetadata(d *bq.Dataset, c *Client) (*DatasetMetadata, error) {
 // set the etag argument to the DatasetMetadata.ETag field from the read.
 // Pass the empty string for etag for a "blind write" that will always succeed.
 func (d *Dataset) Update(ctx context.Context, dm DatasetMetadataToUpdate, etag string) (md *DatasetMetadata, err error) {
+	return d.UpdateWithOptions(ctx, dm, etag)
+}
+
+// UpdateWithOptions modifies specific Dataset metadata fields and
+// provides an interface for specifying additional options to the request.
+//
+// To perform a read-modify-write that protects against intervening reads,
+// set the etag argument to the DatasetMetadata.ETag field from the read.
+// Pass the empty string for etag for a "blind write" that will always succeed.
+func (d *Dataset) UpdateWithOptions(ctx context.Context, dm DatasetMetadataToUpdate, etag string, opts ...DatasetOption) (md *DatasetMetadata, err error) {
 	ctx = trace.StartSpan(ctx, "cloud.google.com/go/bigquery.Dataset.Update")
 	defer func() { trace.EndSpan(ctx, err) }()
 
+	cOpt := &dsCallOption{}
+	for _, o := range opts {
+		o(cOpt)
+	}
 	ds, err := dm.toBQ()
 	if err != nil {
 		return nil, err
 	}
+
 	call := d.c.bqs.Datasets.Patch(d.ProjectID, d.DatasetID, ds).Context(ctx)
 	setClientHeader(call.Header())
 	if etag != "" {
 		call.Header().Set("If-Match", etag)
 	}
+	if cOpt.accessPolicyVersion != nil {
+		call.AccessPolicyVersion(int64(optional.ToInt(cOpt.accessPolicyVersion)))
+	}
+	if cOpt.updateMode != nil {
+		call.UpdateMode(optional.ToString(cOpt.updateMode))
+	}
+
 	var ds2 *bq.Dataset
 	if err := runWithRetry(ctx, func() (err error) {
 		sCtx := trace.StartSpan(ctx, "bigquery.datasets.patch")
@@ -435,6 +594,10 @@ func (dm *DatasetMetadataToUpdate) toBQ() (*bq.Dataset, error) {
 		if len(ds.Access) == 0 {
 			ds.NullFields = append(ds.NullFields, "Access")
 		}
+	}
+	if dm.IsCaseInsensitive != nil {
+		ds.IsCaseInsensitive = optional.ToBool(dm.IsCaseInsensitive)
+		forceSend("IsCaseInsensitive")
 	}
 	labels, forces, nulls := dm.update()
 	ds.Labels = labels
@@ -811,6 +974,50 @@ type AccessEntry struct {
 	View       *Table              // The view granted access (EntityType must be ViewEntity)
 	Routine    *Routine            // The routine granted access (only UDF currently supported)
 	Dataset    *DatasetAccessEntry // The resources within a dataset granted access.
+	Condition  *Expr               // Condition for the access binding.
+}
+
+// Expr represents the conditional information related to dataset access policies.
+type Expr struct {
+	// Textual representation of an expression in Common Expression Language syntax.
+	Expression string
+
+	// Optional. Title for the expression, i.e. a short string describing
+	// its purpose. This can be used e.g. in UIs which allow to enter the
+	// expression.
+	Title string
+
+	// Optional. Description of the expression. This is a longer text which
+	// describes the expression, e.g. when hovered over it in a UI.
+	Description string
+
+	// Optional. String indicating the location of the expression for error
+	// reporting, e.g. a file name and a position in the file.
+	Location string
+}
+
+func (ex *Expr) toBQ() *bq.Expr {
+	if ex == nil {
+		return nil
+	}
+	return &bq.Expr{
+		Expression:  ex.Expression,
+		Title:       ex.Title,
+		Description: ex.Description,
+		Location:    ex.Location,
+	}
+}
+
+func bqToExpr(bq *bq.Expr) *Expr {
+	if bq == nil {
+		return nil
+	}
+	return &Expr{
+		Expression:  bq.Expression,
+		Title:       bq.Title,
+		Description: bq.Description,
+		Location:    bq.Location,
+	}
 }
 
 // AccessRole is the level of access to grant to a dataset.
@@ -857,7 +1064,10 @@ const (
 )
 
 func (e *AccessEntry) toBQ() (*bq.DatasetAccess, error) {
-	q := &bq.DatasetAccess{Role: string(e.Role)}
+	q := &bq.DatasetAccess{
+		Role:      string(e.Role),
+		Condition: e.Condition.toBQ(),
+	}
 	switch e.EntityType {
 	case DomainEntity:
 		q.Domain = e.Entity
@@ -910,6 +1120,9 @@ func bqToAccessEntry(q *bq.DatasetAccess, c *Client) (*AccessEntry, error) {
 		e.EntityType = DatasetEntity
 	default:
 		return nil, errors.New("bigquery: invalid access value")
+	}
+	if q.Condition != nil {
+		e.Condition = bqToExpr(q.Condition)
 	}
 	return e, nil
 }
