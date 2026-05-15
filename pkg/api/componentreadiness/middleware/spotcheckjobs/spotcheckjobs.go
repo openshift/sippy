@@ -263,14 +263,14 @@ func syntheticTestID(component, capability string) string {
 }
 
 func syntheticTestName(component, capability string) string {
-	return fmt.Sprintf("[spot-check] %s / %s must pass at least once per sample window",
+	return fmt.Sprintf("[spot-check] %s / %s job must pass at least once per sample window",
 		component, capability)
 }
 
 func syntheticTestNameFromID(testID string) string {
 	parts := strings.SplitN(testID, ":", 3)
 	if len(parts) == 3 {
-		return fmt.Sprintf("[spot-check] %s / %s must pass at least once per sample window",
+		return fmt.Sprintf("[spot-check] %s / %s job must pass at least once per sample window",
 			parts[1], strings.ReplaceAll(parts[2], "-", " "))
 	}
 	return testID
