@@ -215,6 +215,15 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	now := time.Now()
 	componentJobRunTestReportStatus.GeneratedAt = &now
 
+	// Let middleware inject data (e.g. spot-check job runs) before generating reports.
+	testKey := crtest.KeyWithVariants{
+		TestID:   testIDOption.TestID,
+		Variants: testIDOption.RequestedVariants,
+	}
+	if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
+		return testdetails.Report{}, []error{err}
+	}
+
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(
 		c.ReqOptions.BaseRelease.Name,
@@ -230,14 +239,6 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	// to a circular dep. This is an unfortunate compromise in the middleware goal I didn't have time to unwind.
 	// For now, the middleware does the querying for test details, and passes the override status out
 	// by adding it to componentJobRunTestReportStatus.BaseOverrideStatus.
-	testKey := crtest.KeyWithVariants{
-		TestID:   testIDOption.TestID,
-		Variants: testIDOption.RequestedVariants,
-	}
-	if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
-		return testdetails.Report{}, []error{err}
-	}
-
 	var baseOverrideReport *testdetails.Report
 	if testIDOption.BaseOverrideRelease != "" &&
 		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name {
