@@ -121,6 +121,15 @@ func (m *Manager) initialize(ctx context.Context, config *Config) error {
 
 		table.Id = id
 
+		// For non-multi-tenant tables, register a default tenant with an
+		// empty-string ID so CreateFuturePartitions and
+		// importExistingPartitions work correctly.
+		if table.TenantIdColumn == "" {
+			if _, err = m.db.ExecContext(ctx, insertTenantSQL, "", id); err != nil {
+				return fmt.Errorf("failed to register default tenant for table %s: %w", table.Name, err)
+			}
+		}
+
 		// Import existing partitions for this table
 		err = m.importExistingPartitions(ctx, table)
 		if err != nil {
