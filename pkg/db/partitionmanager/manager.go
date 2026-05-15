@@ -3,6 +3,7 @@ package partitionmanager
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	partman "github.com/jirevwe/go_partman"
@@ -10,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
+
+var validIdentifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 const defaultSampleRate = 1 * time.Hour
 
@@ -42,6 +45,9 @@ func NewWithDefaults(gormDB *gorm.DB) (*PartitionManager, error) {
 }
 
 func New(gormDB *gorm.DB, sampleRate time.Duration, tables []TableConfig) (*PartitionManager, error) {
+	if gormDB == nil {
+		return nil, fmt.Errorf("gorm DB cannot be nil")
+	}
 	sqlDB, err := gormDB.DB()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get *sql.DB from GORM: %w", err)
@@ -97,17 +103,20 @@ func (pm *PartitionManager) Stop() {
 // this covers historical dates needed during initial bulk loads.
 // Uses YYYYMMDD naming to match go_partman's format for retention compatibility.
 func EnsurePartition(db *gorm.DB, table, date, nextDay string) error {
+	if !validIdentifier.MatchString(table) {
+		return fmt.Errorf("invalid table name %q", table)
+	}
 	dateParsed, err := time.Parse("2006-01-02", date)
 	if err != nil {
 		return fmt.Errorf("invalid date %q: %w", date, err)
 	}
 	partitionName := fmt.Sprintf("%s_%s", table, dateParsed.Format("20060102"))
 	sql := fmt.Sprintf(
-		`CREATE TABLE IF NOT EXISTS %s PARTITION OF %s FOR VALUES FROM ('%s') TO ('%s')`,
-		partitionName, table, date, nextDay,
+		`CREATE TABLE IF NOT EXISTS "%s" PARTITION OF "%s" FOR VALUES FROM (?) TO (?)`,
+		partitionName, table,
 	)
 
-	if res := db.Exec(sql); res.Error != nil {
+	if res := db.Exec(sql, date, nextDay); res.Error != nil {
 		return fmt.Errorf("error creating partition %s: %w", partitionName, res.Error)
 	}
 	return nil
