@@ -187,12 +187,31 @@ func TestPartitionManager(t *testing.T) {
 
 	dbc := util.CreateE2EPostgresConnection(t)
 
+	dropPartmanState := func(t *testing.T) {
+		t.Helper()
+		if err := dbc.DB.Exec("DROP SCHEMA IF EXISTS partman CASCADE").Error; err != nil {
+			t.Logf("cleanup: drop partman schema: %v", err)
+		}
+		var childTables []string
+		if err := dbc.DB.Raw(
+			"SELECT c.relname FROM pg_inherits JOIN pg_class c ON c.oid = pg_inherits.inhrelid WHERE inhparent = ?::regclass",
+			testTable,
+		).Scan(&childTables).Error; err != nil {
+			t.Logf("cleanup: query child tables: %v", err)
+			return
+		}
+		for _, child := range childTables {
+			if err := dbc.DB.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS "%s"`, child)).Error; err != nil {
+				t.Logf("cleanup: drop child table %s: %v", child, err)
+			}
+		}
+	}
+
 	t.Cleanup(func() {
-		dbc.DB.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS "%s" CASCADE`, testTable))
-		dbc.DB.Exec("DROP TABLE IF EXISTS partman.partitions CASCADE")
-		dbc.DB.Exec("DROP TABLE IF EXISTS partman.tenants CASCADE")
-		dbc.DB.Exec("DROP TABLE IF EXISTS partman.parent_tables CASCADE")
-		dbc.DB.Exec("DROP SCHEMA IF EXISTS partman CASCADE")
+		dropPartmanState(t)
+		if err := dbc.DB.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS "%s" CASCADE`, testTable)).Error; err != nil {
+			t.Logf("cleanup: drop test table: %v", err)
+		}
 	})
 
 	// Create a test partitioned table
@@ -291,17 +310,7 @@ func TestPartitionManager(t *testing.T) {
 		ctx := context.Background()
 		partitionCount := uint(3)
 
-		// Clean up unmanaged partitions and partman metadata left by
-		// prior subtests so this manager starts with a clean slate.
-		dbc.DB.Exec("DROP SCHEMA IF EXISTS partman CASCADE")
-		var childTables []string
-		dbc.DB.Raw(
-			"SELECT inhrelid::regclass::text FROM pg_inherits WHERE inhparent = ?::regclass",
-			testTable,
-		).Scan(&childTables)
-		for _, child := range childTables {
-			dbc.DB.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS "%s"`, child))
-		}
+		dropPartmanState(t)
 
 		pm, err := partitionmanager.New(dbc.DB, time.Hour, []partitionmanager.TableConfig{
 			{
@@ -335,17 +344,7 @@ func TestPartitionManager(t *testing.T) {
 	t.Run("Maintain drops partitions beyond retention", func(t *testing.T) {
 		ctx := context.Background()
 
-		// Reset: drop all child partitions and partman metadata left by
-		// prior subtests so this manager starts with a clean slate.
-		dbc.DB.Exec("DROP SCHEMA IF EXISTS partman CASCADE")
-		var childTables []string
-		dbc.DB.Raw(
-			"SELECT inhrelid::regclass::text FROM pg_inherits WHERE inhparent = ?::regclass",
-			testTable,
-		).Scan(&childTables)
-		for _, child := range childTables {
-			dbc.DB.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS "%s"`, child))
-		}
+		dropPartmanState(t)
 
 		// Create a partition well in the past (3 days ago)
 		oldDate := time.Now().UTC().Add(-3 * 24 * time.Hour).Truncate(24 * time.Hour)
