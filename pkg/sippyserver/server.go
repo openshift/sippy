@@ -1350,6 +1350,10 @@ func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 
 	summary, err := api.GetJobRunSummary(req.Context(), s.db, s.gcsClient, jobRunID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			api.RespondWithJSON(http.StatusNotFound, w, "job run not found")
+			return
+		}
 		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
 		return
 	}
@@ -2927,6 +2931,16 @@ func (s *Server) Serve() {
 	}
 }
 
+type statusCapturingResponseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusCapturingResponseWriter) WriteHeader(code int) {
+	w.status = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
 func logRequestHandler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		// add request context for any BQ queries that may be made
@@ -2937,13 +2951,16 @@ func logRequestHandler(h http.Handler) http.Handler {
 		}
 		r = r.Clone(context.WithValue(r.Context(), sippybq.RequestContextKey, bqCtx))
 
+		sw := &statusCapturingResponseWriter{ResponseWriter: w, status: http.StatusOK}
 		start := time.Now()
-		h.ServeHTTP(w, r)
+		h.ServeHTTP(sw, r)
 		log.WithFields(log.Fields{
-			"uri":       r.URL.String(),
-			"method":    r.Method,
-			"elapsed":   time.Since(start),
-			"requestor": bqCtx.IP,
+			"uri":        r.URL.String(),
+			"method":     r.Method,
+			"status":     sw.status,
+			"elapsed":    time.Since(start),
+			"requestor":  bqCtx.IP,
+			"user_agent": r.UserAgent(),
 		}).Info("responded to request")
 	}
 	return http.HandlerFunc(fn)
