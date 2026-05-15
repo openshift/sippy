@@ -1,13 +1,17 @@
 package migrate_test
 
 import (
+	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/openshift/sippy/pkg/db/migrate"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/partitionmanager"
 	"github.com/openshift/sippy/test/e2e/db/migrate/testmigrations"
 	"github.com/openshift/sippy/test/e2e/util"
 )
@@ -175,5 +179,211 @@ func TestMigrations(t *testing.T) {
 		var count int64
 		err = dbc.DB.Model(&models.SchemaHash{}).Count(&count).Error
 		require.NoError(t, err, "database connection should still work after multiple migration operations")
+	})
+}
+
+func TestPartitionManager(t *testing.T) {
+	const testTable = "e2e_partitioned_test"
+
+	dbc := util.CreateE2EPostgresConnection(t)
+
+	t.Cleanup(func() {
+		dbc.DB.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS "%s" CASCADE`, testTable))
+		dbc.DB.Exec("DROP TABLE IF EXISTS partman.partitions CASCADE")
+		dbc.DB.Exec("DROP TABLE IF EXISTS partman.tenants CASCADE")
+		dbc.DB.Exec("DROP TABLE IF EXISTS partman.parent_tables CASCADE")
+		dbc.DB.Exec("DROP SCHEMA IF EXISTS partman CASCADE")
+	})
+
+	// Create a test partitioned table
+	err := dbc.DB.Exec(fmt.Sprintf(`CREATE TABLE IF NOT EXISTS "%s" (
+		date timestamp with time zone,
+		value text
+	) PARTITION BY RANGE (date)`, testTable)).Error
+	require.NoError(t, err, "should create test partitioned table")
+
+	t.Run("EnsurePartition creates and is idempotent", func(t *testing.T) {
+		date := "2025-06-01"
+		nextDay := "2025-06-02"
+
+		err := partitionmanager.EnsurePartition(dbc.DB, testTable, date, nextDay)
+		require.NoError(t, err, "should create partition")
+
+		// Verify partition exists
+		var exists bool
+		err = dbc.DB.Raw(
+			"SELECT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = ?)",
+			fmt.Sprintf("%s_20250601", testTable),
+		).Scan(&exists).Error
+		require.NoError(t, err)
+		assert.True(t, exists, "partition table should exist")
+
+		// Calling again should be idempotent
+		err = partitionmanager.EnsurePartition(dbc.DB, testTable, date, nextDay)
+		require.NoError(t, err, "second EnsurePartition call should succeed (idempotent)")
+	})
+
+	t.Run("write and read rows through partitioned table", func(t *testing.T) {
+		date := "2025-06-01"
+		nextDay := "2025-06-02"
+
+		err := partitionmanager.EnsurePartition(dbc.DB, testTable, date, nextDay)
+		require.NoError(t, err)
+
+		// Insert a row — it should be routed to the partition automatically
+		ts := time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC)
+		err = dbc.DB.Exec(
+			fmt.Sprintf(`INSERT INTO "%s" (date, value) VALUES (?, ?)`, testTable),
+			ts, "hello from partition",
+		).Error
+		require.NoError(t, err, "should insert into partitioned table")
+
+		// Read it back via the parent table
+		var value string
+		err = dbc.DB.Raw(
+			fmt.Sprintf(`SELECT value FROM "%s" WHERE date = ?`, testTable), ts,
+		).Scan(&value).Error
+		require.NoError(t, err, "should read row from partitioned table")
+		assert.Equal(t, "hello from partition", value)
+
+		// Verify the row physically lives in the partition, not just the parent
+		partName := fmt.Sprintf("%s_20250601", testTable)
+		var count int64
+		err = dbc.DB.Raw(
+			fmt.Sprintf(`SELECT count(*) FROM "%s"`, partName),
+		).Scan(&count).Error
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), count, "row should be in the partition table")
+
+		// Insert a second row on a different date — requires its own partition
+		err = partitionmanager.EnsurePartition(dbc.DB, testTable, nextDay, "2025-06-03")
+		require.NoError(t, err)
+
+		ts2 := time.Date(2025, 6, 2, 8, 30, 0, 0, time.UTC)
+		err = dbc.DB.Exec(
+			fmt.Sprintf(`INSERT INTO "%s" (date, value) VALUES (?, ?)`, testTable),
+			ts2, "second day",
+		).Error
+		require.NoError(t, err, "should insert into second partition")
+
+		// Both rows visible from the parent table
+		var total int64
+		err = dbc.DB.Raw(
+			fmt.Sprintf(`SELECT count(*) FROM "%s"`, testTable),
+		).Scan(&total).Error
+		require.NoError(t, err)
+		assert.Equal(t, int64(2), total, "parent table should see rows across partitions")
+	})
+
+	t.Run("EnsurePartition rejects invalid table names", func(t *testing.T) {
+		err := partitionmanager.EnsurePartition(dbc.DB, "robert'; DROP TABLE students;--", "2025-06-01", "2025-06-02")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid table name")
+	})
+
+	t.Run("EnsurePartition rejects invalid dates", func(t *testing.T) {
+		err := partitionmanager.EnsurePartition(dbc.DB, testTable, "not-a-date", "2025-06-02")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid date")
+	})
+
+	t.Run("Maintain creates future partitions", func(t *testing.T) {
+		ctx := context.Background()
+		partitionCount := uint(3)
+
+		// Clean up unmanaged partitions and partman metadata left by
+		// prior subtests so this manager starts with a clean slate.
+		dbc.DB.Exec("DROP SCHEMA IF EXISTS partman CASCADE")
+		var childTables []string
+		dbc.DB.Raw(
+			"SELECT inhrelid::regclass::text FROM pg_inherits WHERE inhparent = ?::regclass",
+			testTable,
+		).Scan(&childTables)
+		for _, child := range childTables {
+			dbc.DB.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS "%s"`, child))
+		}
+
+		pm, err := partitionmanager.New(dbc.DB, time.Hour, []partitionmanager.TableConfig{
+			{
+				Name:              testTable,
+				Schema:            "public",
+				PartitionColumn:   "date",
+				PartitionInterval: 24 * time.Hour,
+				PartitionCount:    partitionCount,
+				RetentionPeriod:   365 * 24 * time.Hour,
+			},
+		})
+		require.NoError(t, err, "should create partition manager")
+
+		err = pm.Maintain(ctx)
+		require.NoError(t, err, "Maintain should succeed")
+
+		// Verify future partitions were created
+		today := time.Now().UTC().Truncate(24 * time.Hour)
+		for i := uint(0); i < partitionCount; i++ {
+			d := today.Add(time.Duration(i) * 24 * time.Hour)
+			partName := fmt.Sprintf("%s_%s", testTable, d.Format("20060102"))
+			var exists bool
+			err = dbc.DB.Raw(
+				"SELECT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = ?)", partName,
+			).Scan(&exists).Error
+			require.NoError(t, err)
+			assert.True(t, exists, "future partition %s should exist", partName)
+		}
+	})
+
+	t.Run("Maintain drops partitions beyond retention", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Reset: drop all child partitions and partman metadata left by
+		// prior subtests so this manager starts with a clean slate.
+		dbc.DB.Exec("DROP SCHEMA IF EXISTS partman CASCADE")
+		var childTables []string
+		dbc.DB.Raw(
+			"SELECT inhrelid::regclass::text FROM pg_inherits WHERE inhparent = ?::regclass",
+			testTable,
+		).Scan(&childTables)
+		for _, child := range childTables {
+			dbc.DB.Exec(fmt.Sprintf(`DROP TABLE IF EXISTS "%s"`, child))
+		}
+
+		// Create a partition well in the past (3 days ago)
+		oldDate := time.Now().UTC().Add(-3 * 24 * time.Hour).Truncate(24 * time.Hour)
+		oldDateStr := oldDate.Format("2006-01-02")
+		oldNextDay := oldDate.Add(24 * time.Hour).Format("2006-01-02")
+
+		err := partitionmanager.EnsurePartition(dbc.DB, testTable, oldDateStr, oldNextDay)
+		require.NoError(t, err, "should create old partition")
+
+		oldPartName := fmt.Sprintf("%s_%s", testTable, oldDate.Format("20060102"))
+		var exists bool
+		err = dbc.DB.Raw(
+			"SELECT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = ?)", oldPartName,
+		).Scan(&exists).Error
+		require.NoError(t, err)
+		require.True(t, exists, "old partition should exist before Maintain")
+
+		// Create manager with 1-hour retention so the old partition is beyond cutoff
+		pm, err := partitionmanager.New(dbc.DB, time.Hour, []partitionmanager.TableConfig{
+			{
+				Name:              testTable,
+				Schema:            "public",
+				PartitionColumn:   "date",
+				PartitionInterval: 24 * time.Hour,
+				PartitionCount:    3,
+				RetentionPeriod:   1 * time.Hour,
+			},
+		})
+		require.NoError(t, err, "should create partition manager with short retention")
+
+		err = pm.Maintain(ctx)
+		require.NoError(t, err, "Maintain should succeed")
+
+		// The old partition (3 days ago) should have been dropped
+		err = dbc.DB.Raw(
+			"SELECT EXISTS(SELECT 1 FROM pg_tables WHERE tablename = ?)", oldPartName,
+		).Scan(&exists).Error
+		require.NoError(t, err)
+		assert.False(t, exists, "old partition %s should be dropped by retention policy", oldPartName)
 	})
 }

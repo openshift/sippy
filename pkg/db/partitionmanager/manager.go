@@ -110,13 +110,20 @@ func EnsurePartition(db *gorm.DB, table, date, nextDay string) error {
 	if err != nil {
 		return fmt.Errorf("invalid date %q: %w", date, err)
 	}
+	nextDayParsed, err := time.Parse("2006-01-02", nextDay)
+	if err != nil {
+		return fmt.Errorf("invalid nextDay %q: %w", nextDay, err)
+	}
 	partitionName := fmt.Sprintf("%s_%s", table, dateParsed.Format("20060102"))
+	// DDL statements don't support parameterized placeholders; dates are
+	// validated above via time.Parse so interpolation is safe.
 	sql := fmt.Sprintf(
-		`CREATE TABLE IF NOT EXISTS "%s" PARTITION OF "%s" FOR VALUES FROM (?) TO (?)`,
+		`CREATE TABLE IF NOT EXISTS "%s" PARTITION OF "%s" FOR VALUES FROM ('%s') TO ('%s')`,
 		partitionName, table,
+		dateParsed.Format("2006-01-02"), nextDayParsed.Format("2006-01-02"),
 	)
 
-	if res := db.Exec(sql, date, nextDay); res.Error != nil {
+	if res := db.Exec(sql); res.Error != nil {
 		return fmt.Errorf("error creating partition %s: %w", partitionName, res.Error)
 	}
 	return nil
