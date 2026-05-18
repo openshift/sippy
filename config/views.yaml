@@ -597,7 +597,7 @@ component_readiness:
       Network:
       - ovn
       Owner:
-      - mpiit
+      - mpex
       - qe
   advanced_options:
     minimum_failure: 2
@@ -643,7 +643,7 @@ component_readiness:
       Network:
       - ovn
       Owner:
-      - mpiit
+      - mpex
       - qe
   advanced_options:
     minimum_failure: 2
@@ -689,7 +689,7 @@ component_readiness:
       Network:
       - ovn
       Owner:
-      - mpiit
+      - mpex
       - qe
   advanced_options:
     minimum_failure: 2
@@ -1708,7 +1708,7 @@ component_readiness:
       Network:
       - ovn
       Owner:
-      - mpiit
+      - mpex
       - qe
   advanced_options:
     minimum_failure: 2
@@ -2461,7 +2461,7 @@ component_readiness:
       Network:
       - ovn
       Owner:
-      - mpiit
+      - mpex
       - qe
   advanced_options:
     minimum_failure: 2
@@ -3054,7 +3054,7 @@ component_readiness:
       Network:
       - ovn
       Owner:
-      - mpiit
+      - mpex
   advanced_options:
     minimum_failure: 2
     confidence: 95
