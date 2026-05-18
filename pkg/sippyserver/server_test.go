@@ -2,8 +2,12 @@ package sippyserver
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gorilla/websocket"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -82,6 +86,29 @@ func TestValidateProwJobRun(t *testing.T) {
 		})
 	}
 
+}
+
+func TestLogRequestHandlerAllowsWebSocketUpgrade(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Errorf("WebSocket upgrade through logRequestHandler failed: %v", err)
+		}
+	})
+
+	srv := httptest.NewServer(logRequestHandler(inner))
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("WebSocket dial through middleware stack failed: %v", err)
+	}
+	defer conn.Close()
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("expected 101 Switching Protocols, got %d", resp.StatusCode)
+	}
 }
 
 func TestEncodeDefaultHighRisk(t *testing.T) {
