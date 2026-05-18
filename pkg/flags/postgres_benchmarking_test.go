@@ -3,6 +3,8 @@ package flags
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +22,65 @@ const benchmarkJobName = "periodic-ci-openshift-release-main-ci-4.22-e2e-aws-ovn
 type benchmarkCase struct {
 	name string
 	fn   func(dbc *db.DB) error
+}
+
+type benchmarkResult struct {
+	name       string
+	iterations int
+	total      time.Duration
+	avg        time.Duration
+	min        time.Duration
+	max        time.Duration
+}
+
+func printSummaryTable(results []benchmarkResult) {
+	nameWidth := 4
+	for _, r := range results {
+		if len(r.name) > nameWidth {
+			nameWidth = len(r.name)
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].avg > results[j].avg
+	})
+
+	header := fmt.Sprintf("  %-*s  %5s  %12s  %12s  %12s  %12s",
+		nameWidth, "Name", "Iters", "Total", "Avg", "Min", "Max")
+	fmt.Println()
+	fmt.Println(header)
+	fmt.Println("  " + strings.Repeat("-", len(header)-2))
+	for _, r := range results {
+		fmt.Printf("  %-*s  %5d  %12s  %12s  %12s  %12s\n",
+			nameWidth, r.name, r.iterations, r.total, r.avg, r.min, r.max)
+	}
+	fmt.Println()
+}
+
+func runBenchmarkCase(t *testing.T, dbc *db.DB, bc benchmarkCase, iterations int) benchmarkResult {
+	t.Helper()
+	result := benchmarkResult{
+		name:       bc.name,
+		iterations: iterations,
+	}
+	for i := 0; i < iterations; i++ {
+		start := time.Now()
+		err := bc.fn(dbc)
+		elapsed := time.Since(start)
+		if err != nil {
+			t.Fatalf("%s iteration %d failed: %v", bc.name, i+1, err)
+		}
+		result.total += elapsed
+		if i == 0 || elapsed < result.min {
+			result.min = elapsed
+		}
+		if elapsed > result.max {
+			result.max = elapsed
+		}
+		fmt.Printf("  %s iteration %d: %s\n", bc.name, i+1, elapsed)
+	}
+	result.avg = result.total / time.Duration(iterations)
+	return result
 }
 
 func getIndividualBenchmarkCases() map[string]benchmarkCase {
@@ -144,6 +205,76 @@ func getBenchmarkCases() []benchmarkCase {
 			},
 		},
 		{
+			name: "TestCountsByLookback14",
+			fn: func(dbc *db.DB) error {
+				jobRuns, testIDs, err := api.GetJobRunTestsCountByLookback(dbc, 14)
+				if err == nil {
+					log.Printf("TestCountsByLookback14: %d job runs, %d test IDs", jobRuns, testIDs)
+				}
+				return err
+			},
+		},
+		{
+			name: "TestCountsByLookback9",
+			fn: func(dbc *db.DB) error {
+				jobRuns, testIDs, err := api.GetJobRunTestsCountByLookback(dbc, 9)
+				if err == nil {
+					log.Printf("TestCountsByLookback9: %d job runs, %d test IDs", jobRuns, testIDs)
+				}
+				return err
+			},
+		},
+		{
+			name: "TestCountsByLookback14ForRelease",
+			fn: func(dbc *db.DB) error {
+				type counts struct {
+					JobRunsCount int64
+					TestIDsCount int64
+				}
+				var result counts
+				truncatedTime := time.Now().UTC().AddDate(0, 0, -14).Truncate(24 * time.Hour)
+				res := dbc.DB.Raw(`
+					SELECT count(distinct pjrt.prow_job_run_id) as job_runs_count,
+					       count(distinct pjrt.test_id) as test_ids_count
+					FROM prow_job_run_tests pjrt
+					JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
+					JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
+					WHERE pjrt.created_at > ?
+					  AND pj.release = ?`, truncatedTime, benchmarkRelease).Scan(&result)
+				if res.Error != nil {
+					return res.Error
+				}
+				log.Printf("TestCountsByLookback14ForRelease %s: %d job runs, %d test IDs",
+					benchmarkRelease, result.JobRunsCount, result.TestIDsCount)
+				return nil
+			},
+		},
+		{
+			name: "TestCountsByLookback9ForRelease",
+			fn: func(dbc *db.DB) error {
+				type counts struct {
+					JobRunsCount int64
+					TestIDsCount int64
+				}
+				var result counts
+				truncatedTime := time.Now().UTC().AddDate(0, 0, -9).Truncate(24 * time.Hour)
+				res := dbc.DB.Raw(`
+					SELECT count(distinct pjrt.prow_job_run_id) as job_runs_count,
+					       count(distinct pjrt.test_id) as test_ids_count
+					FROM prow_job_run_tests pjrt
+					JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
+					JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
+					WHERE pjrt.created_at > ?
+					  AND pj.release = ?`, truncatedTime, benchmarkRelease).Scan(&result)
+				if res.Error != nil {
+					return res.Error
+				}
+				log.Printf("TestCountsByLookback9ForRelease %s: %d job runs, %d test IDs",
+					benchmarkRelease, result.JobRunsCount, result.TestIDsCount)
+				return nil
+			},
+		},
+		{
 			name: "TestAnalysisPassRate",
 			fn: func(dbc *db.DB) error {
 				type passRate struct {
@@ -191,24 +322,15 @@ func Test_BenchmarkIndividual(t *testing.T) {
 	iterations := 3
 	cases := getBenchmarkCases()
 
+	var results []benchmarkResult
 	for _, bc := range cases {
+		bc := bc
 		t.Run(bc.name, func(t *testing.T) {
-			var totalDuration time.Duration
-			for i := 0; i < iterations; i++ {
-				start := time.Now()
-				err := bc.fn(dbc)
-				elapsed := time.Since(start)
-				if err != nil {
-					t.Fatalf("iteration %d failed: %v", i+1, err)
-				}
-				totalDuration += elapsed
-				fmt.Printf("  %s iteration %d: %s\n", bc.name, i+1, elapsed)
-			}
-			avg := totalDuration / time.Duration(iterations)
-			fmt.Printf("  %s total: %s, avg: %s (%d iterations)\n",
-				bc.name, totalDuration, avg, iterations)
+			r := runBenchmarkCase(t, dbc, bc, iterations)
+			results = append(results, r)
 		})
 	}
+	printSummaryTable(results)
 }
 
 func Test_BenchmarkFindTestsByRelease(t *testing.T) {
@@ -216,20 +338,30 @@ func Test_BenchmarkFindTestsByRelease(t *testing.T) {
 	iterations := 1
 	bc := getIndividualBenchmarkCases()["FindTestsByRelease"]
 
-	var totalDuration time.Duration
-	for i := 0; i < iterations; i++ {
-		start := time.Now()
-		err := bc.fn(dbc)
-		elapsed := time.Since(start)
-		if err != nil {
-			t.Fatalf("iteration %d failed: %v", i+1, err)
-		}
-		totalDuration += elapsed
-		fmt.Printf("  %s iteration %d: %s\n", bc.name, i+1, elapsed)
+	r := runBenchmarkCase(t, dbc, bc, iterations)
+	printSummaryTable([]benchmarkResult{r})
+}
+
+func Test_BenchmarkCombined(t *testing.T) {
+	dbc := getBenchmarkDBClient(t)
+	iterations := 3
+
+	var results []benchmarkResult
+	for _, bc := range getBenchmarkCases() {
+		bc := bc
+		t.Run(bc.name, func(t *testing.T) {
+			r := runBenchmarkCase(t, dbc, bc, iterations)
+			results = append(results, r)
+		})
 	}
-	avg := totalDuration / time.Duration(iterations)
-	fmt.Printf("  %s total: %s, avg: %s (%d iterations)\n",
-		bc.name, totalDuration, avg, iterations)
+	for name, bc := range getIndividualBenchmarkCases() {
+		bc := bc
+		t.Run(name, func(t *testing.T) {
+			r := runBenchmarkCase(t, dbc, bc, iterations)
+			results = append(results, r)
+		})
+	}
+	printSummaryTable(results)
 }
 
 func Test_BenchmarkGroup(t *testing.T) {
@@ -237,7 +369,7 @@ func Test_BenchmarkGroup(t *testing.T) {
 	iterations := 1
 	cases := getBenchmarkCases()
 
-	var totalDuration time.Duration
+	group := benchmarkResult{name: "group"}
 	for i := 0; i < iterations; i++ {
 		start := time.Now()
 		for _, bc := range cases {
@@ -247,10 +379,16 @@ func Test_BenchmarkGroup(t *testing.T) {
 			}
 		}
 		elapsed := time.Since(start)
-		totalDuration += elapsed
+		group.total += elapsed
+		group.iterations++
+		if i == 0 || elapsed < group.min {
+			group.min = elapsed
+		}
+		if elapsed > group.max {
+			group.max = elapsed
+		}
 		fmt.Printf("  group iteration %d: %s\n", i+1, elapsed)
 	}
-	avg := totalDuration / time.Duration(iterations)
-	fmt.Printf("  group total: %s, avg: %s (%d iterations)\n",
-		totalDuration, avg, iterations)
+	group.avg = group.total / time.Duration(iterations)
+	printSummaryTable([]benchmarkResult{group})
 }
