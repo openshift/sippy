@@ -614,6 +614,98 @@ component_readiness:
     enabled: false
   prime_cache:
     enabled: false
+- name: 5.0-LP-Interop
+  base_release:
+    release: "4.22"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct: []
+      Network:
+      - ovn
+      Owner:
+      - mpiit
+      - qe
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+- name: 5.0-LP-Chaos
+  base_release:
+    release: "4.22"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct: []
+      Network:
+      - ovn
+      Owner:
+      - mpiit
+      - qe
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
 - name: 5.0-lp-Interop-coo
   base_release:
     release: "5.0"
