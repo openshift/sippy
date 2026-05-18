@@ -369,57 +369,35 @@ func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails)
 	results := make(map[uint]models.ReleaseJobRun)
 	ctx := context.Background()
 
-	if jobs, ok := details.Results["blockingJobs"]; ok {
-		for platform, jobResult := range jobs {
-			id, err := idFromURL(jobResult.URL)
-			if id == 0 || err != nil {
-				log.WithFields(map[string]interface{}{
-					"id":         id,
-					"releaseTag": details.Name,
-					"url":        jobResult.URL,
-					"platform":   platform,
-					"error":      err,
-				}).Warningf("invalid ID or missing URL for job")
-				continue
-			}
+	recordResultsFrom := func(element, resultKind string) {
+		if jobs, ok := details.Results[element]; ok {
+			for platform, jobResult := range jobs {
+				id, err := idFromURL(jobResult.URL)
+				if id == 0 || err != nil {
+					log.WithFields(map[string]interface{}{
+						"id":         id,
+						"releaseTag": details.Name,
+						"url":        jobResult.URL,
+						"platform":   platform,
+						"error":      err,
+					}).Warningf("invalid ID or missing URL for job")
+					continue
+				}
 
-			results[id] = models.ReleaseJobRun{
-				Name:           id,
-				JobName:        platform,
-				Kind:           "Blocking",
-				State:          jobResult.State,
-				URL:            jobResult.URL,
-				Retries:        jobResult.Retries,
-				TransitionTime: jobResult.TransitionTime,
+				results[id] = models.ReleaseJobRun{
+					Name:           id,
+					JobName:        platform,
+					Kind:           resultKind,
+					State:          jobResult.State,
+					URL:            jobResult.URL,
+					Retries:        jobResult.Retries,
+					TransitionTime: jobResult.TransitionTime,
+				}
 			}
 		}
 	}
-
-	if jobs, ok := details.Results["informingJobs"]; ok {
-		for platform, jobResult := range jobs {
-			id, err := idFromURL(jobResult.URL)
-			if id == 0 || err != nil {
-				log.WithFields(map[string]interface{}{
-					"id":         id,
-					"releaseTag": details.Name,
-					"url":        jobResult.URL,
-					"platform":   platform,
-					"error":      err,
-				}).Warningf("invalid ID or missing URL for job")
-				continue
-			}
-
-			results[id] = models.ReleaseJobRun{
-				Name:           id,
-				JobName:        platform,
-				Kind:           "Informing",
-				State:          jobResult.State,
-				URL:            jobResult.URL,
-				Retries:        jobResult.Retries,
-				TransitionTime: jobResult.TransitionTime,
-			}
-		}
-	}
+	recordResultsFrom("blockingJobs", "Blocking")
+	recordResultsFrom("informingJobs", "Informing")
 
 	// For all upgrades, update the row for the corresponding prow job.
 	for _, upgrade := range append(details.UpgradesTo, details.UpgradesFrom...) {
@@ -453,37 +431,24 @@ func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails)
 		}
 		jobRunDetails := make(map[uint]jobRunInfo)
 
-		// Extract build ID from URL for all blocking jobs
-		if jobs, ok := details.Results["blockingJobs"]; ok {
-			for _, jobResult := range jobs {
-				id, _ := idFromURL(jobResult.URL)
-				if id > 0 {
-					buildID := extractBuildIDFromURL(jobResult.URL)
-					if buildID != "" {
-						jobRunDetails[id] = jobRunInfo{
-							buildID:   buildID,
-							startTime: jobResult.TransitionTime,
+		extractBuildIDs := func(element string) {
+			if jobs, ok := details.Results[element]; ok {
+				for _, jobResult := range jobs {
+					id, _ := idFromURL(jobResult.URL)
+					if id > 0 {
+						buildID := extractBuildIDFromURL(jobResult.URL)
+						if buildID != "" {
+							jobRunDetails[id] = jobRunInfo{
+								buildID:   buildID,
+								startTime: jobResult.TransitionTime,
+							}
 						}
 					}
 				}
 			}
 		}
-
-		// Extract build ID from URL for all informing jobs
-		if jobs, ok := details.Results["informingJobs"]; ok {
-			for _, jobResult := range jobs {
-				id, _ := idFromURL(jobResult.URL)
-				if id > 0 {
-					buildID := extractBuildIDFromURL(jobResult.URL)
-					if buildID != "" {
-						jobRunDetails[id] = jobRunInfo{
-							buildID:   buildID,
-							startTime: jobResult.TransitionTime,
-						}
-					}
-				}
-			}
-		}
+		extractBuildIDs("blockingJobs")
+		extractBuildIDs("informingJobs")
 
 		// Extract build ID from URL for all upgrade jobs
 		for _, upgrade := range append(details.UpgradesTo, details.UpgradesFrom...) {
