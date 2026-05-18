@@ -611,7 +611,7 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: false
+    enabled: true
   prime_cache:
     enabled: false
 - name: 5.0-LP-Interop
@@ -657,7 +657,7 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: false
+    enabled: true
   prime_cache:
     enabled: false
 - name: 5.0-LP-Chaos
@@ -703,7 +703,7 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: false
+    enabled: true
   prime_cache:
     enabled: false
 - name: 5.0-lp-Interop-coo
@@ -1722,7 +1722,7 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: false
+    enabled: true
   prime_cache:
     enabled: false
 - name: 4.22-lp-Interop-coo
@@ -2475,7 +2475,7 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: false
+    enabled: true
   prime_cache:
     enabled: false
 - name: 4.21-lp-Interop-coo
@@ -3067,7 +3067,7 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: false
+    enabled: true
   prime_cache:
     enabled: false
 - name: 4.20-lp-Interop-coo
