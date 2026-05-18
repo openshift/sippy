@@ -1698,7 +1698,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantJobTier:          "candidate",
 				VariantNetwork:          "ovn",
 				VariantNetworkStack:     "ipv4",
-				VariantOwner:            "mpiit",
+				VariantOwner:            "mpex",
 				VariantSuite:            "unknown",
 				VariantTopology:         "ha",
 				VariantUpgrade:          VariantNoValue,

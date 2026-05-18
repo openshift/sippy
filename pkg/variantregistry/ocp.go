@@ -528,7 +528,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-verification-tests", "qe"},
 		{"-openshift-distributed-tracing", "qe"},
 		{"-oadp-", "oadp"},
-		{"-lp-interop", "mpiit"}, // MPEX Integrity and Interop Team
+		{"-lp-interop", "mpex"}, // MPEX Integrity and Interop Team
 	}
 
 	for _, entry := range ownerPatterns {
