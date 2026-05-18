@@ -235,7 +235,7 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					loaders = append(loaders, releaseloader.New(dbc, bqc, f.Releases, f.Architectures, releaseConfigs))
+					loaders = append(loaders, releaseloader.New(ctx, dbc, bqc, f.Releases, f.Architectures, releaseConfigs))
 				}
 
 				// Prow Loader

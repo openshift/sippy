@@ -32,6 +32,10 @@ const (
 )
 
 type ReleaseLoader struct {
+	// context in a struct violates golang best practices; but the releaseloader lifecycle is
+	// within the scope of the context, it will never be reused, and keeping it in the object
+	// keeps method calls more legible. so; best practices consciously overridden. [lmeyer]
+	ctx           context.Context
 	db            *db.DB
 	bqClient      *bqcachedclient.Client
 	httpClient    *http.Client
@@ -41,7 +45,7 @@ type ReleaseLoader struct {
 	errors        []error
 }
 
-func New(dbc *db.DB, bqClient *bqcachedclient.Client, releases, architectures []string, releaseConfigs []v1.Release) *ReleaseLoader {
+func New(ctx context.Context, dbc *db.DB, bqClient *bqcachedclient.Client, releases, architectures []string, releaseConfigs []v1.Release) *ReleaseLoader {
 	configForRelease := make(map[string]v1.Release, len(releaseConfigs))
 	for _, config := range releaseConfigs {
 		if config.Capabilities[v1.PayloadTagsCap] {
@@ -61,6 +65,7 @@ func New(dbc *db.DB, bqClient *bqcachedclient.Client, releases, architectures []
 	}
 
 	return &ReleaseLoader{
+		ctx:           ctx,
 		db:            dbc,
 		bqClient:      bqClient,
 		httpClient:    &http.Client{Timeout: 60 * time.Second},
@@ -120,7 +125,7 @@ func (r *ReleaseLoader) buildReleaseTag(rs ReleaseStream, tag ReleaseTag) *model
 	if releaseDetails == nil {
 		return nil
 	}
-	releaseTag := releaseDetailsToDB(r.bqClient, rs, tag, *releaseDetails)
+	releaseTag := r.releaseDetailsToDB(rs, tag, *releaseDetails)
 
 	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
@@ -211,7 +216,7 @@ func (r *ReleaseLoader) fetchReleaseTags(rs ReleaseStream) []ReleaseTag {
 	return tags.Tags
 }
 
-func releaseDetailsToDB(bqClient *bqcachedclient.Client, rs ReleaseStream, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
+func (r *ReleaseLoader) releaseDetailsToDB(rs ReleaseStream, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
 	release := models.ReleaseTag{
 		Release:      rs.Release.Release,
 		Stream:       rs.Stream,
@@ -255,7 +260,7 @@ func releaseDetailsToDB(bqClient *bqcachedclient.Client, rs ReleaseStream, tag R
 		release.Repositories = changelog.Repositories()
 		release.PullRequests = changelog.PullRequests()
 	}
-	release.JobRuns = releaseJobRunsToDB(bqClient, details, release.ReleaseTime)
+	release.JobRuns = r.releaseJobRunsToDB(details, release.ReleaseTime)
 
 	// set forced flag
 	failedBlocking := false
@@ -364,10 +369,9 @@ func parseChangeLogJSON(releaseTag string, changeLogJSON ChangeLog) models.Relea
 	return releaseChangeLogJSON
 }
 
-func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails, releaseTime time.Time) []models.ReleaseJobRun {
+func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime time.Time) []models.ReleaseJobRun {
 	rows := make([]models.ReleaseJobRun, 0)
 	results := make(map[uint]models.ReleaseJobRun)
-	ctx := context.Background()
 
 	recordResultsFrom := func(element, resultKind string) {
 		if jobs, ok := details.Results[element]; ok {
@@ -423,7 +427,7 @@ func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails,
 	}
 
 	// Fetch labels from BigQuery for all job runs
-	if bqClient != nil {
+	if r.bqClient != nil {
 		// Collect job run details for label fetching
 		type jobRunInfo struct {
 			buildID   string
@@ -434,14 +438,20 @@ func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails,
 		extractBuildIDs := func(element string) {
 			if jobs, ok := details.Results[element]; ok {
 				for _, jobResult := range jobs {
-					id, _ := idFromURL(jobResult.URL)
-					if id > 0 {
-						buildID := extractBuildIDFromURL(jobResult.URL)
-						if buildID != "" {
-							jobRunDetails[id] = jobRunInfo{
-								buildID:   buildID,
-								startTime: releaseTime,
-							}
+					id, err := idFromURL(jobResult.URL)
+					if id == 0 || err != nil {
+						log.WithFields(map[string]interface{}{
+							"releaseTag": details.Name,
+							"url":        jobResult.URL,
+							"error":      err,
+						}).Warningf("invalid ID or missing URL for job label extraction")
+						continue
+					}
+					buildID := extractBuildIDFromURL(jobResult.URL)
+					if buildID != "" {
+						jobRunDetails[id] = jobRunInfo{
+							buildID:   buildID,
+							startTime: releaseTime,
 						}
 					}
 				}
@@ -453,14 +463,20 @@ func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails,
 		// Extract build ID from URL for all upgrade jobs
 		for _, upgrade := range append(details.UpgradesTo, details.UpgradesFrom...) {
 			for _, run := range upgrade.History {
-				id, _ := idFromURL(run.URL)
-				if id > 0 {
-					buildID := extractBuildIDFromURL(run.URL)
-					if buildID != "" {
-						jobRunDetails[id] = jobRunInfo{
-							buildID:   buildID,
-							startTime: run.TransitionTime,
-						}
+				id, err := idFromURL(run.URL)
+				if id == 0 || err != nil {
+					log.WithFields(map[string]interface{}{
+						"releaseTag": details.Name,
+						"url":        run.URL,
+						"error":      err,
+					}).Warningf("invalid ID or missing URL for upgrade job label extraction")
+					continue
+				}
+				buildID := extractBuildIDFromURL(run.URL)
+				if buildID != "" {
+					jobRunDetails[id] = jobRunInfo{
+						buildID:   buildID,
+						startTime: run.TransitionTime,
 					}
 				}
 			}
@@ -469,7 +485,7 @@ func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails,
 		// Fetch labels for each job run from BigQuery
 		for id, info := range jobRunDetails {
 			if result, ok := results[id]; ok {
-				labels, err := prowloader.GatherLabelsFromBQ(ctx, bqClient, info.buildID, info.startTime)
+				labels, err := prowloader.GatherLabelsFromBQ(r.ctx, r.bqClient, info.buildID, info.startTime)
 				if err != nil {
 					log.WithError(err).WithField("buildID", info.buildID).Debug("failed to fetch labels from BigQuery")
 				} else if len(labels) > 0 {
