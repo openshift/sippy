@@ -324,7 +324,6 @@ func Test_BenchmarkIndividual(t *testing.T) {
 
 	var results []benchmarkResult
 	for _, bc := range cases {
-		bc := bc
 		t.Run(bc.name, func(t *testing.T) {
 			r := runBenchmarkCase(t, dbc, bc, iterations)
 			results = append(results, r)
@@ -348,14 +347,12 @@ func Test_BenchmarkCombined(t *testing.T) {
 
 	var results []benchmarkResult
 	for _, bc := range getBenchmarkCases() {
-		bc := bc
 		t.Run(bc.name, func(t *testing.T) {
 			r := runBenchmarkCase(t, dbc, bc, iterations)
 			results = append(results, r)
 		})
 	}
 	for name, bc := range getIndividualBenchmarkCases() {
-		bc := bc
 		t.Run(name, func(t *testing.T) {
 			r := runBenchmarkCase(t, dbc, bc, iterations)
 			results = append(results, r)
