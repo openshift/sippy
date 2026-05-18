@@ -2942,6 +2942,7 @@ func (w *statusCapturingResponseWriter) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
+// Hijack delegates to the underlying ResponseWriter so gorilla/websocket can upgrade connections (e.g. /api/chat/stream).
 func (w *statusCapturingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hj, ok := w.ResponseWriter.(http.Hijacker); ok {
 		return hj.Hijack()
