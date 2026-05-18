@@ -117,7 +117,7 @@ func getIndividualBenchmarkCases() map[string]benchmarkCase {
 	}
 }
 
-func getBenchmarkCases() []benchmarkCase {
+func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 	return []benchmarkCase{
 		{
 			name: "TestDurations",
@@ -149,7 +149,7 @@ func getBenchmarkCases() []benchmarkCase {
 			name: "JobDetails",
 			fn: func(dbc *db.DB) error {
 				jobRuns, err := api.JobDetailsReport(dbc, benchmarkRelease,
-					benchmarkJobName, time.Now())
+					benchmarkJobName, asOf)
 
 				if err == nil {
 					log.Printf("Found %d job runs", len(jobRuns))
@@ -162,7 +162,7 @@ func getBenchmarkCases() []benchmarkCase {
 			name: "TestAnalysisOverall",
 			fn: func(dbc *db.DB) error {
 				results, err := api.GetTestAnalysisOverallFromDB(dbc, nil,
-					benchmarkRelease, benchmarkTestName, time.Now())
+					benchmarkRelease, benchmarkTestName, asOf)
 
 				if err == nil {
 					for group, rows := range results {
@@ -177,7 +177,7 @@ func getBenchmarkCases() []benchmarkCase {
 			name: "TestAnalysisByJob",
 			fn: func(dbc *db.DB) error {
 				results, err := api.GetTestAnalysisByJobFromDB(dbc, nil,
-					benchmarkRelease, benchmarkTestName, time.Now())
+					benchmarkRelease, benchmarkTestName, asOf)
 
 				if err == nil {
 					log.Printf("TestAnalysisByJob: %d groups", len(results))
@@ -195,7 +195,7 @@ func getBenchmarkCases() []benchmarkCase {
 					},
 				}
 				results, err := api.GetTestAnalysisByJobFromDB(dbc, f,
-					benchmarkRelease, benchmarkTestName, time.Now())
+					benchmarkRelease, benchmarkTestName, asOf)
 
 				if err == nil {
 					log.Printf("TestAnalysisByJobWithVariantFilter: %d groups", len(results))
@@ -314,13 +314,23 @@ func getBenchmarkDBClient(t *testing.T) *db.DB {
 	if err != nil {
 		t.Fatalf("couldn't get DB client: %v", err)
 	}
+	sqlDB, err := dbc.DB.DB()
+	if err != nil {
+		t.Fatalf("couldn't get sql.DB handle: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Logf("failed to close DB client: %v", err)
+		}
+	})
 	return dbc
 }
 
 func Test_BenchmarkIndividual(t *testing.T) {
 	dbc := getBenchmarkDBClient(t)
+	asOf := time.Now().UTC()
 	iterations := 3
-	cases := getBenchmarkCases()
+	cases := getBenchmarkCases(asOf)
 
 	var results []benchmarkResult
 	for _, bc := range cases {
@@ -335,7 +345,10 @@ func Test_BenchmarkIndividual(t *testing.T) {
 func Test_BenchmarkFindTestsByRelease(t *testing.T) {
 	dbc := getBenchmarkDBClient(t)
 	iterations := 1
-	bc := getIndividualBenchmarkCases()["FindTestsByRelease"]
+	bc, ok := getIndividualBenchmarkCases()["FindTestsByRelease"]
+	if !ok {
+		t.Fatal("benchmark case \"FindTestsByRelease\" not found")
+	}
 
 	r := runBenchmarkCase(t, dbc, bc, iterations)
 	printSummaryTable([]benchmarkResult{r})
@@ -343,10 +356,11 @@ func Test_BenchmarkFindTestsByRelease(t *testing.T) {
 
 func Test_BenchmarkCombined(t *testing.T) {
 	dbc := getBenchmarkDBClient(t)
+	asOf := time.Now().UTC()
 	iterations := 3
 
 	var results []benchmarkResult
-	for _, bc := range getBenchmarkCases() {
+	for _, bc := range getBenchmarkCases(asOf) {
 		t.Run(bc.name, func(t *testing.T) {
 			r := runBenchmarkCase(t, dbc, bc, iterations)
 			results = append(results, r)
@@ -363,8 +377,9 @@ func Test_BenchmarkCombined(t *testing.T) {
 
 func Test_BenchmarkGroup(t *testing.T) {
 	dbc := getBenchmarkDBClient(t)
+	asOf := time.Now().UTC()
 	iterations := 1
-	cases := getBenchmarkCases()
+	cases := getBenchmarkCases(asOf)
 
 	group := benchmarkResult{name: "group"}
 	for i := 0; i < iterations; i++ {
