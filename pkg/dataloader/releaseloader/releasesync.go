@@ -255,7 +255,7 @@ func releaseDetailsToDB(bqClient *bqcachedclient.Client, rs ReleaseStream, tag R
 		release.Repositories = changelog.Repositories()
 		release.PullRequests = changelog.PullRequests()
 	}
-	release.JobRuns = releaseJobRunsToDB(bqClient, details)
+	release.JobRuns = releaseJobRunsToDB(bqClient, details, release.ReleaseTime)
 
 	// set forced flag
 	failedBlocking := false
@@ -364,7 +364,7 @@ func parseChangeLogJSON(releaseTag string, changeLogJSON ChangeLog) models.Relea
 	return releaseChangeLogJSON
 }
 
-func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails) []models.ReleaseJobRun {
+func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails, releaseTime time.Time) []models.ReleaseJobRun {
 	rows := make([]models.ReleaseJobRun, 0)
 	results := make(map[uint]models.ReleaseJobRun)
 	ctx := context.Background()
@@ -391,7 +391,7 @@ func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails)
 					State:          jobResult.State,
 					URL:            jobResult.URL,
 					Retries:        jobResult.Retries,
-					TransitionTime: jobResult.TransitionTime,
+					TransitionTime: jobResult.TransitionTime, // release-controller does not seem to have this
 				}
 			}
 		}
@@ -440,7 +440,7 @@ func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails)
 						if buildID != "" {
 							jobRunDetails[id] = jobRunInfo{
 								buildID:   buildID,
-								startTime: jobResult.TransitionTime,
+								startTime: releaseTime,
 							}
 						}
 					}
