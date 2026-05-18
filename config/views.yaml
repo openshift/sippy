@@ -556,7 +556,7 @@ component_readiness:
     enabled: false
   regression_tracking:
     enabled: false
-- name: 5.0-LP-Interop
+- name: 5.0-LP-OCP-Compat
   base_release:
     release: "4.22"
     relative_start: now-30d
@@ -1575,7 +1575,7 @@ component_readiness:
     enabled: false
   regression_tracking:
     enabled: false
-- name: 4.22-LP-Interop
+- name: 4.22-LP-OCP-Compat
   base_release:
     release: "4.21"
     relative_start: ga-30d
@@ -2328,7 +2328,7 @@ component_readiness:
     enabled: false
   regression_tracking:
     enabled: false
-- name: 4.21-LP-Interop
+- name: 4.21-LP-OCP-Compat
   base_release:
     release: "4.20"
     relative_start: now-30d
@@ -2932,7 +2932,7 @@ component_readiness:
     enabled: false
   regression_tracking:
     enabled: false
-- name: 4.20-LP-Interop
+- name: 4.20-LP-OCP-Compat
   base_release:
     release: "4.19"
     relative_start: ga-30d
