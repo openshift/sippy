@@ -68,12 +68,24 @@ type ProwJobRun struct {
 	ClusterData ClusterData `gorm:"-"`
 }
 
+// ProwJobRunProwPullRequest is the explicit join table for the many-to-many relationship
+// between ProwJobRun and ProwPullRequest. Release and timestamp are denormalized from
+// ProwJobRun to support future partitioning.
+type ProwJobRunProwPullRequest struct {
+	ProwJobRunID        uint `gorm:"primaryKey"`
+	ProwPullRequestID   uint `gorm:"primaryKey"`
+	ProwJobRunRelease   string
+	ProwJobRunTimestamp time.Time
+}
+
 // ProwJobRunAnnotation stores a single key-value annotation for a ProwJobRun.
 type ProwJobRunAnnotation struct {
 	gorm.Model
-	ProwJobRunID uint   `gorm:"index;uniqueIndex:idx_prow_job_run_annotations_key"`
-	Key          string `gorm:"uniqueIndex:idx_prow_job_run_annotations_key"`
-	Value        string
+	ProwJobRunID        uint   `gorm:"index;uniqueIndex:idx_prow_job_run_annotations_key"`
+	Key                 string `gorm:"uniqueIndex:idx_prow_job_run_annotations_key"`
+	Value               string
+	ProwJobRunRelease   string
+	ProwJobRunTimestamp time.Time
 }
 
 type Test struct {

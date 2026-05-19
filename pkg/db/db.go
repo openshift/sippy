@@ -72,6 +72,12 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	// Register explicit join table so GORM uses our model (with release/timestamp)
+	// instead of auto-generating a bare join table.
+	if err := d.DB.SetupJoinTable(&models.ProwJobRun{}, "PullRequests", &models.ProwJobRunProwPullRequest{}); err != nil {
+		return err
+	}
+
 	// List of all models to migrate
 	modelsToMigrate := []any{
 		&models.ReleaseTag{},
@@ -88,6 +94,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
+		&models.ProwJobRunProwPullRequest{},
 		&models.SchemaHash{},
 		&models.PullRequestComment{},
 		&models.JiraIncident{},

@@ -945,8 +945,10 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 	var annotations []models.ProwJobRunAnnotation
 	for k, v := range pj.Annotations {
 		annotations = append(annotations, models.ProwJobRunAnnotation{
-			Key:   k,
-			Value: v,
+			Key:                 k,
+			Value:               v,
+			ProwJobRunRelease:   dbProwJob.Release,
+			ProwJobRunTimestamp: pj.Status.StartTime,
 		})
 	}
 
@@ -968,7 +970,6 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 		GCSBucket:      pj.Spec.DecorationConfig.GCSConfiguration.Bucket,
 		Timestamp:      pj.Status.StartTime,
 		OverallResult:  overallResult,
-		PullRequests:   pulls,
 		TestFailures:   failures,
 		Succeeded:      overallResult == sippyprocessingv1.JobSucceeded,
 		Labels:         labels,
@@ -976,6 +977,17 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 	}).Error
 	if err != nil {
 		return err
+	}
+
+	for _, pull := range pulls {
+		if err := pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRunProwPullRequest{
+			ProwJobRunID:        uint(id),
+			ProwPullRequestID:   pull.ID,
+			ProwJobRunRelease:   dbProwJob.Release,
+			ProwJobRunTimestamp: pj.Status.StartTime,
+		}).Error; err != nil {
+			return err
+		}
 	}
 	// Looks like sometimes, we might be getting duplicate entries from bigquery:
 	pl.prowJobRunCacheLock.Lock()
