@@ -103,7 +103,7 @@ UPDATE prow_job_runs r
    SET prow_job_release = j.release
   FROM prow_jobs j
  WHERE r.prow_job_id = j.id
-   AND r.prow_job_release IS NULL OR r.prow_job_release = '';
+   AND (r.prow_job_release IS NULL OR r.prow_job_release = '');
 
 UPDATE prow_job_run_tests t
    SET prow_job_id = r.prow_job_id,

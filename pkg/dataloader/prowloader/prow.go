@@ -957,37 +957,42 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 		duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
 	}
 
-	err = pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRun{
-		Model: gorm.Model{
-			ID: uint(id),
-		},
-		Cluster:        pj.Spec.Cluster,
-		Duration:       duration,
-		ProwJob:        *dbProwJob,
-		ProwJobID:      dbProwJob.ID,
-		ProwJobRelease: dbProwJob.Release,
-		URL:            pj.Status.URL,
-		GCSBucket:      pj.Spec.DecorationConfig.GCSConfiguration.Bucket,
-		Timestamp:      pj.Status.StartTime,
-		OverallResult:  overallResult,
-		TestFailures:   failures,
-		Succeeded:      overallResult == sippyprocessingv1.JobSucceeded,
-		Labels:         labels,
-		Annotations:    annotations,
-	}).Error
-	if err != nil {
-		return err
-	}
-
-	for _, pull := range pulls {
-		if err := pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRunProwPullRequest{
-			ProwJobRunID:        uint(id),
-			ProwPullRequestID:   pull.ID,
-			ProwJobRunRelease:   dbProwJob.Release,
-			ProwJobRunTimestamp: pj.Status.StartTime,
+	err = pl.dbc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&models.ProwJobRun{
+			Model: gorm.Model{
+				ID: uint(id),
+			},
+			Cluster:        pj.Spec.Cluster,
+			Duration:       duration,
+			ProwJob:        *dbProwJob,
+			ProwJobID:      dbProwJob.ID,
+			ProwJobRelease: dbProwJob.Release,
+			URL:            pj.Status.URL,
+			GCSBucket:      pj.Spec.DecorationConfig.GCSConfiguration.Bucket,
+			Timestamp:      pj.Status.StartTime,
+			OverallResult:  overallResult,
+			TestFailures:   failures,
+			Succeeded:      overallResult == sippyprocessingv1.JobSucceeded,
+			Labels:         labels,
+			Annotations:    annotations,
 		}).Error; err != nil {
 			return err
 		}
+
+		for _, pull := range pulls {
+			if err := tx.Create(&models.ProwJobRunProwPullRequest{
+				ProwJobRunID:        uint(id),
+				ProwPullRequestID:   pull.ID,
+				ProwJobRunRelease:   dbProwJob.Release,
+				ProwJobRunTimestamp: pj.Status.StartTime,
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	// Looks like sometimes, we might be getting duplicate entries from bigquery:
 	pl.prowJobRunCacheLock.Lock()
