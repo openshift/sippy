@@ -1,9 +1,12 @@
 export PATH := ${HOME}/go/bin:/go/bin:${PATH}
 
 DOCKER := $(or $(DOCKER),podman)
+NO_DEP_CHECK_TARGETS := devcontainer-up devcontainer-claude
+ifeq ($(filter $(NO_DEP_CHECK_TARGETS),$(MAKECMDGOALS)),)
 DEPS = npm go
 CHECK := $(foreach dep,$(DEPS),\
         $(if $(shell which $(dep)),"$(dep) found",$(error "Missing $(dep) in PATH")))
+endif
 
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -71,6 +74,12 @@ verify-apm: apm
 		git diff --stat HEAD -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md; \
 		exit 1; \
 	fi
+
+devcontainer-up:
+	devcontainer up --workspace-folder . --docker-path podman
+
+devcontainer-claude:
+	podman exec -it -w /workspace sippy-dev claude $(CLAUDE_ARGS)
 
 e2e:
 	./scripts/e2e.sh

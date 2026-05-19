@@ -3,7 +3,7 @@ set -eu
 # Starts PostgreSQL and Redis as standalone Podman containers (runs on the host before the devcontainer starts)
 
 # Ensure host directories exist before the container bind-mounts them.
-mkdir -p "${HOME}/.config/gcloud" "${HOME}/.claude"
+mkdir -p "${HOME}/.config/gcloud" "${HOME}/.config/gh" "${HOME}/.claude"
 
 podman network create sippy-net 2>/dev/null || true
 
