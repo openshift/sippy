@@ -77,6 +77,16 @@ Drop and recreate the database to re-seed (e.g. docker compose down -v).
 					return errors.WithMessage(err, "could not migrate database")
 				}
 				log.Info("Database schema initialized successfully")
+
+				// Create partitions for synthetic releases
+				log.Info("Creating partitions for synthetic test data...")
+				startDate := time.Now().AddDate(0, 0, -190) // Cover all seed data date ranges
+				endDate := time.Now().AddDate(0, 0, 2)      // Small buffer into future
+				count, err := dbc.EnsurePartitions(syntheticReleases, startDate, endDate, false)
+				if err != nil {
+					return errors.WithMessage(err, "could not create partitions")
+				}
+				log.Infof("Created %d partitions for synthetic releases", count)
 			}
 
 			log.Info("Starting to seed test data...")

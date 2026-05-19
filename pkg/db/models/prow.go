@@ -39,7 +39,7 @@ type ProwJobRun struct {
 	// ProwJob is a link to the prow job this run belongs to.
 	ProwJob   ProwJob
 	ProwJobID uint `gorm:"index"`
-	// Used for partitioning
+	// Used for partitioning (denormalized for prow_job_run_tests)
 	ProwJobRelease string `gorm:"index:idx_prow_job_runs_release_timestamp"`
 
 	// Cluster is the cluster where the prow job was run.
@@ -48,7 +48,7 @@ type ProwJobRun struct {
 	GCSBucket    string
 	URL          string
 	TestFailures int
-	Tests        []ProwJobRunTest       `gorm:"constraint:OnDelete:CASCADE;"`
+	Tests        []ProwJobRunTest
 	PullRequests []ProwPullRequest      `gorm:"many2many:prow_job_run_prow_pull_requests;constraint:OnDelete:CASCADE;"`
 	Annotations  []ProwJobRunAnnotation `gorm:"constraint:OnDelete:CASCADE;"`
 	Failed       bool
@@ -70,7 +70,7 @@ type ProwJobRun struct {
 
 // ProwJobRunProwPullRequest is the explicit join table for the many-to-many relationship
 // between ProwJobRun and ProwPullRequest. Release and timestamp are denormalized from
-// ProwJobRun to support future partitioning.
+// ProwJobRun for query optimization.
 type ProwJobRunProwPullRequest struct {
 	ProwJobRunID        uint      `gorm:"primaryKey"`
 	ProwPullRequestID   uint      `gorm:"primaryKey"`
@@ -97,41 +97,47 @@ type Test struct {
 
 // ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
 // that execution.
+// Table is partitioned (LIST→RANGE) - schema managed by migration 000002, not AutoMigrate
 type ProwJobRunTest struct {
 	gorm.Model
-	ProwJobRunID uint `gorm:"index"`
+	ProwJobRunID uint
 	ProwJobRun   ProwJobRun
 	// used for variants
 	// skips joining on ProwJobRunID just to get ProwJobID
-	ProwJobID uint `gorm:"index:idx_prow_job_run_tests_prow_job_id"`
-	// used for partitioning
-	ProwJobRunTimestamp time.Time `gorm:"index:idx_prow_job_run_tests_release_timestamp"`
-	// used for partitioning
-	ProwJobRunRelease string `gorm:"index:idx_prow_job_run_tests_release_timestamp"`
-	TestID            uint   `gorm:"index;index:idx_prow_job_run_tests_test_id_status"`
+	ProwJobID uint
+	// used for partitioning - must be in primary key for RANGE partitioning
+	ProwJobRunTimestamp time.Time `gorm:"primaryKey"`
+	// denormalized for query optimization and LIST partitioning
+	ProwJobRunRelease string `gorm:"primaryKey"`
+	TestID            uint
 	Test              Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
-	SuiteID   *uint `gorm:"index"`
+	SuiteID   *uint
 	Suite     Suite
-	Status    int `gorm:"index;index:idx_prow_job_run_tests_test_id_status"`
+	Status    int
 	Duration  float64
-	CreatedAt time.Time `gorm:"index"`
+	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt
 
 	// ProwJobRunTestOutput collect the output of a failed test run. This is stored as a separate object in the DB, so
 	// we can keep the test result for a longer period of time than we keep the full failure output.
-	ProwJobRunTestOutput *ProwJobRunTestOutput `gorm:"constraint:OnDelete:CASCADE;"`
+	// No FK constraint - both tables partitioned, FK managed by migration
+	// Relationship uses composite key (id, timestamp, release) to match partitioned table structure
+	ProwJobRunTestOutput *ProwJobRunTestOutput `gorm:"foreignKey:ProwJobRunTestID,ProwJobRunTestTimestamp,ProwJobRunTestRelease;references:ID,ProwJobRunTimestamp,ProwJobRunRelease"`
 }
 
+// ProwJobRunTestOutput stores test failure output.
+// Table is partitioned (LIST→RANGE) - schema managed by migration 000002, not AutoMigrate
 type ProwJobRunTestOutput struct {
 	gorm.Model
-	ProwJobRunTestID uint `gorm:"index"`
+	ProwJobRunTestID uint
 	// Output stores the output of a ProwJobRunTest.
 	Output string
-	// used for partitioning
-	ProwJobRunTestTimestamp time.Time `gorm:"index:idx_prow_job_run_test_outputs_release_timestamp"`
-	// used for partitioning
-	ProwJobRunTestRelease string `gorm:"index:idx_prow_job_run_test_outputs_release_timestamp"`
+	// Denormalized from parent for composite foreign key and partitioning
+	// primaryKey required for RANGE partitioning
+	ProwJobRunTestTimestamp time.Time `gorm:"primaryKey"`
+	// Denormalized for query optimization and LIST partitioning
+	ProwJobRunTestRelease string `gorm:"primaryKey"`
 }
 
 // Suite defines a junit testsuite. Used to differentiate the same test being run in different suites in ProwJobRunTest.

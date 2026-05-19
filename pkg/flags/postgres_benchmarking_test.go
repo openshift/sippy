@@ -974,6 +974,120 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 	}
 }
 
+func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
+	dbc, connName := getBenchmarkDBClient(t)
+
+	var source db.PostgresView
+	for _, mv := range db.PostgresMatViews {
+		if mv.Name == "prow_test_report_7d_matview" {
+			source = mv
+			break
+		}
+	}
+	if source.Name == "" {
+		t.Fatal("prow_test_report_7d_matview not found in PostgresMatViews")
+	}
+
+	matviewName := fmt.Sprintf("bench_test_report_7d_%s", strings.ReplaceAll(benchmarkRelease, ".", "_"))
+
+	viewDef := source.Definition
+	for k, v := range source.ReplaceStrings {
+		viewDef = strings.ReplaceAll(viewDef, k, v)
+	}
+	viewDef = strings.ReplaceAll(viewDef, "|||TIMENOW|||", "NOW()")
+
+	const tsPredicate = "prow_job_run_tests.prow_job_run_timestamp >="
+	if !strings.Contains(viewDef, tsPredicate) {
+		t.Fatalf("expected %q in %s definition", tsPredicate, source.Name)
+	}
+	viewDef = strings.Replace(viewDef,
+		tsPredicate,
+		fmt.Sprintf("prow_job_run_tests.prow_job_run_release = '%s'\n    AND %s", benchmarkRelease, tsPredicate),
+		1)
+
+	t.Cleanup(func() {
+		if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
+			t.Logf("failed to drop materialized view %s during cleanup: %v", matviewName, err)
+		}
+	})
+	if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
+		t.Fatalf("failed to drop pre-existing materialized view %s: %v", matviewName, err)
+	}
+
+	var results []benchmarkResult
+
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "CreateMatview",
+		fn: func(dbc *db.DB) error {
+			if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
+				return err
+			}
+			res := dbc.DB.Exec(fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH DATA", matviewName, viewDef))
+			if res.Error != nil {
+				return res.Error
+			}
+			var count int64
+			if err := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matviewName)).Scan(&count).Error; err != nil {
+				return err
+			}
+			log.Printf("CreateMatview: %s populated with %d rows", matviewName, count)
+			return nil
+		},
+	}, 1))
+
+	indexName := fmt.Sprintf("idx_%s", matviewName)
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "CreateIndex",
+		fn: func(dbc *db.DB) error {
+			indexCols := strings.Join(source.IndexColumns, ", ")
+			res := dbc.DB.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, matviewName, indexCols))
+			return res.Error
+		},
+	}, 1))
+
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "QueryAPITestsReport",
+		fn: func(dbc *db.DB) error {
+			rawFilter := &filter.Filter{
+				Items: []filter.FilterItem{
+					{Field: "name", Operator: filter.OperatorContains, Value: "test"},
+					{Field: "variants", Operator: filter.OperatorHasEntry, Value: "never-stable", Not: true},
+					{Field: "variants", Operator: filter.OperatorHasEntry, Value: "aggregated", Not: true},
+				},
+			}
+			processedFilter := &filter.Filter{
+				Items: []filter.FilterItem{
+					{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "7"},
+					{Field: "current_flake_percentage", Operator: filter.OperatorArithmeticEquals, Value: "100", Not: true},
+				},
+			}
+			rawQuery := dbc.DB.
+				Table(matviewName).
+				Where("release = ?", benchmarkRelease).
+				Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummer).
+				Group("suite_name, name, jira_component, jira_component_id")
+			rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
+
+			processedResults := dbc.DB.Table("(?) as results", rawQuery).
+				Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
+				Where("current_runs > 0 or previous_runs > 0")
+
+			finalResults := dbc.DB.Table("(?) as final_results", processedResults)
+			finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
+
+			var testReports []apitype.Test
+			res := finalResults.Order("net_improvement asc").Scan(&testReports)
+			if res.Error != nil {
+				return res.Error
+			}
+			log.Printf("QueryAPITestsReport: %d tests from %s", len(testReports), matviewName)
+			return nil
+		},
+	}, 3))
+
+	printSummaryTable(t, results, connName)
+}
+
 func Test_BenchmarkAPI(t *testing.T) {
 	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()

@@ -35,6 +35,9 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			// 12 hours should safely cover our max timeout.
 			lastProwJobRun = lastProwJobRun.Add(-12 * time.Hour)
 		}
+
+		// we need to know how far back we are looking for partitioning
+		pl.loadSince = &lastProwJobRun
 	}
 	log.Infof("Loading prow jobs from bigquery completed since: %s", lastProwJobRun.UTC().Format(time.RFC3339))
 
