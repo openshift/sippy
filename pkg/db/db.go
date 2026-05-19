@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -54,7 +56,22 @@ func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
 		},
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	pgxConfig, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+	// Prevent PostgreSQL from generating generic plans for prepared statements.
+	// With 10k+ partitions on tables like test_analysis_by_job_by_dates, generic
+	// plan generation alone can take 17+ minutes as the planner enumerates all
+	// partitions. Custom plans use actual parameter values for partition pruning.
+	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
+	pgxConfig.RuntimeParams["work_mem"] = "128MB"
+
+	connPool := stdlib.OpenDB(*pgxConfig)
+
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		Conn: connPool,
+	}), &gorm.Config{
 		Logger: gormLogger,
 	})
 	if err != nil {
@@ -89,8 +106,8 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},
-		&models.ProwJobRunTest{},
-		&models.ProwJobRunTestOutput{},
+		// &models.ProwJobRunTest{}, disabled during migration period
+		// &models.ProwJobRunTestOutput{}, disabled during migration period
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
@@ -117,6 +134,29 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	for _, model := range modelsToMigrate {
 		if err := d.DB.AutoMigrate(model); err != nil {
 			return err
+		}
+	}
+
+	// while we are in the transition phase we have to check to see if the table exists for the models we are migrating
+	// if not then this is a new db so we should create the old non-partitioned tables
+	modelsToInitialize := []struct {
+		model     interface{}
+		tableName string
+	}{
+		{
+			model:     &models.ProwJobRunTest{},
+			tableName: "prow_job_run_tests",
+		},
+		{
+			model:     &models.ProwJobRunTestOutput{},
+			tableName: "prow_job_run_test_outputs",
+		},
+	}
+	for _, initModel := range modelsToInitialize {
+		if !d.DB.Migrator().HasTable(initModel.tableName) {
+			if err := d.DB.AutoMigrate(initModel.model); err != nil {
+				return err
+			}
 		}
 	}
 

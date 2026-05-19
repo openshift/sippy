@@ -396,7 +396,7 @@ func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, 
 
 	err := dbc.DB.Table("prow_job_run_tests").
 		Select("count(distinct prow_job_run_id) as job_runs_count, count(distinct test_id) as test_ids_count").
-		Where("created_at > ?", truncatedTime).
+		Where("prow_job_run_timestamp > ?", truncatedTime).
 		Scan(&queryCounts).
 		Error
 

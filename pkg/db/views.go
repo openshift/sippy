@@ -240,18 +240,18 @@ SELECT
     tests.name,
     suites.name AS suite_name,
     jira_components.name AS jira_component,
-    jira_components.id AS jira_component_id,   
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_successes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_failures,
-    COUNT(*) FILTER (WHERE prow_job_runs."timestamp" BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_runs,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" BETWEEN |||BOUNDARY||| AND |||END|||) AS current_successes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" BETWEEN |||BOUNDARY||| AND |||END|||) AS current_flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" BETWEEN |||BOUNDARY||| AND |||END|||) AS current_failures,
-    COUNT(*) FILTER (WHERE prow_job_runs."timestamp" BETWEEN |||BOUNDARY||| AND |||END|||) AS current_runs,
+    jira_components.id AS jira_component_id,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_successes,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_flakes,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_failures,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_runs,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_successes,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_flakes,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_failures,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_runs,
     open_bugs.open_bugs AS open_bugs,
     prow_jobs.variants,
-    prow_jobs.release
+    prow_job_run_tests.prow_job_run_release AS release
 FROM
     prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
@@ -259,12 +259,13 @@ FROM
     LEFT JOIN suites ON suites.id = prow_job_run_tests.suite_id
     LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND prow_job_run_tests.suite_id = test_ownerships.suite_id)
     LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
-    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
-    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
+    JOIN prow_jobs ON prow_jobs.id = prow_job_run_tests.prow_job_id
 WHERE
-    prow_job_run_tests.created_at >= |||START||| AND prow_job_runs.timestamp >= |||START|||
+    prow_job_run_tests.prow_job_run_timestamp >= |||START|||
 GROUP BY
-    tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_jobs.release
+    tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_job_run_tests.prow_job_run_release
+ORDER BY
+    prow_job_run_tests.prow_job_run_release, tests.name
 `
 
 const testAnalysisByVariantView = `
@@ -292,34 +293,32 @@ const testAnalysisByJobMatView = `
 SELECT
     tests.id AS test_id,
     tests.name AS test_name,
-    date(prow_job_runs."timestamp") AS date,
-    prow_jobs.release,
+    date(prow_job_run_tests.prow_job_run_timestamp) AS date,
+    prow_job_run_tests.prow_job_run_release AS release,
     prow_jobs.name AS job_name,
-    COUNT(*) FILTER (WHERE prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS runs,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS passes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS failures
+    COUNT(*) FILTER (WHERE prow_job_run_tests.prow_job_run_timestamp >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_run_tests.prow_job_run_timestamp <= |||TIMENOW|||) AS runs,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_run_tests.prow_job_run_timestamp >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_run_tests.prow_job_run_timestamp <= |||TIMENOW|||) AS passes,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_run_tests.prow_job_run_timestamp >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_run_tests.prow_job_run_timestamp <= |||TIMENOW|||) AS flakes,
+    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_run_tests.prow_job_run_timestamp >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_run_tests.prow_job_run_timestamp <= |||TIMENOW|||) AS failures
 FROM
     prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
-    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
-    JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
+    JOIN prow_jobs ON prow_jobs.id = prow_job_run_tests.prow_job_id
 WHERE
-    prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
+    prow_job_run_tests.prow_job_run_timestamp > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY
-    tests.name, tests.id, date(prow_job_runs."timestamp"), prow_jobs.release, prow_jobs.name
+    tests.name, tests.id, date(prow_job_run_tests.prow_job_run_timestamp), prow_job_run_tests.prow_job_run_release, prow_jobs.name
 `
 
 const prowJobFailedTestsMatView = `
-SELECT date_trunc('|||BY|||'::text, prow_job_runs."timestamp") AS period,
-   prow_job_runs.prow_job_id,
+SELECT date_trunc('|||BY|||'::text, pjrt.prow_job_run_timestamp) AS period,
+   pjrt.prow_job_id,
    tests.name AS test_name,
    count(tests.name) AS count
-FROM prow_job_runs
-   JOIN prow_job_run_tests pjrt ON prow_job_runs.id = pjrt.prow_job_run_id
+FROM prow_job_run_tests pjrt
    JOIN tests tests ON pjrt.test_id = tests.id
 WHERE pjrt.status = 12
-GROUP BY tests.name, (date_trunc('|||BY|||'::text, prow_job_runs."timestamp")), prow_job_runs.prow_job_id
+GROUP BY tests.name, (date_trunc('|||BY|||'::text, pjrt.prow_job_run_timestamp)), pjrt.prow_job_id
 `
 
 // TODO: remove distinct once bug fixed re dupes in release_job_runs
@@ -346,6 +345,8 @@ FROM
      prow_job_runs pjr
 WHERE
     rt.release_time > (|||TIMENOW||| - '14 days'::interval)
+    AND pjrt.prow_job_run_timestamp > (|||TIMENOW||| - '14 days'::interval)
+    AND pjr.timestamp > (|||TIMENOW||| - '14 days'::interval)
     AND rjr.release_tag_id = rt.id
     AND rjr.kind = 'Blocking'
     AND rjr.State = 'Failed'

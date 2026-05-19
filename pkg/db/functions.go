@@ -39,20 +39,19 @@ CREATE FUNCTION public.test_results(start timestamp without time zone, boundary 
 WITH results AS (
   SELECT
     tests.id AS id,
-    coalesce(count(case when status = 1 AND timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_successes,
-    coalesce(count(case when status = 13 AND timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_flakes,
-    coalesce(count(case when status = 12 AND timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_failures,
-    coalesce(count(case when timestamp BETWEEN $1 AND $2 then 1 end), 0) as previous_runs,
-    coalesce(count(case when status = 1 AND timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_successes,
-    coalesce(count(case when status = 13 AND timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_flakes,
-    coalesce(count(case when status = 12 AND timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_failures,
-    coalesce(count(case when timestamp BETWEEN $2 AND $3 then 1 end), 0) as current_runs,
-    prow_jobs.release
+    coalesce(count(case when status = 1 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_successes,
+    coalesce(count(case when status = 13 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_flakes,
+    coalesce(count(case when status = 12 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_failures,
+    coalesce(count(case when prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $2 then 1 end), 0) as previous_runs,
+    coalesce(count(case when status = 1 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_successes,
+    coalesce(count(case when status = 13 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_flakes,
+    coalesce(count(case when status = 12 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_failures,
+    coalesce(count(case when prow_job_run_tests.prow_job_run_timestamp BETWEEN $2 AND $3 then 1 end), 0) as current_runs,
+    prow_job_run_tests.prow_job_run_release AS release
 FROM prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
-    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
-    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
-GROUP BY tests.id, prow_jobs.release
+WHERE prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $3
+GROUP BY tests.id, prow_job_run_tests.prow_job_run_release
 )
 SELECT tests.id,
        tests.name,
@@ -85,6 +84,10 @@ WITH repo_org_jobs AS (
          INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
          INNER JOIN prow_pull_requests on prow_pull_requests.id = prow_job_run_prow_pull_requests.prow_pull_request_id
          INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
+    WHERE prow_job_runs.prow_job_release = $1
+      AND prow_job_runs.timestamp BETWEEN $2 AND $4
+      AND prow_job_run_prow_pull_requests.prow_job_run_release = $1
+      AND prow_job_run_prow_pull_requests.prow_job_run_timestamp BETWEEN $2 AND $4
     GROUP BY prow_pull_requests.org, prow_pull_requests.repo, prow_jobs.id
 ),
 merged_prs AS
@@ -94,6 +97,10 @@ merged_prs AS
          INNER JOIN prow_pull_requests on prow_pull_requests.id = prow_job_run_prow_pull_requests.prow_pull_request_id
          INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 	WHERE prow_pull_requests.merged_at BETWEEN $2::timestamp AND $4::timestamp
+	AND prow_job_runs.timestamp BETWEEN $2 AND $4
+	AND prow_job_runs.prow_job_release = $1
+	AND prow_job_run_prow_pull_requests.prow_job_run_release = $1
+	AND prow_job_run_prow_pull_requests.prow_job_run_timestamp BETWEEN $2 AND $4
 	AND prow_job_runs.overall_result != 'S'
 	AND prow_job_runs.overall_result != 'A'
     GROUP BY prow_jobs.id, prow_pull_requests.id, prow_pull_requests.link),
@@ -117,6 +124,7 @@ results AS (
                 AND timestamp BETWEEN $2 AND $4
    		LEFT JOIN bug_jobs on prow_jobs.id = bug_jobs.prow_job_id
         LEFT JOIN bugs on bugs.id = bug_jobs.bug_id AND lower(bugs.status) NOT IN ('verified', 'modified', 'closed', 'on_qa')
+        WHERE prow_job_runs.prow_job_release = $1
         group by prow_jobs.name, prow_jobs.variants
 ),
 last_pass AS (

@@ -30,8 +30,11 @@ func GetRecentTestFailures(
 		Joins("LEFT JOIN suites ON suites.id = prow_job_run_tests.suite_id").
 		Joins("LEFT JOIN test_ownerships ON test_ownerships.test_id = tests.id").
 		Where("prow_job_runs.timestamp >= ? AND prow_job_runs.timestamp < ?", periodStart, reportEnd).
+		Where("prow_job_runs.prow_job_release = ?", release).
+		Where("prow_job_run_tests.prow_job_run_timestamp >= ? AND prow_job_run_tests.prow_job_run_timestamp < ?", periodStart, reportEnd).
 		Where("prow_job_run_tests.status = ?", int(sippyprocessingv1.TestStatusFailure)).
 		Where("prow_jobs.release = ?", release).
+		Where("prow_job_run_tests.prow_job_run_release = ?", release).
 		Where("prow_job_run_tests.deleted_at IS NULL").
 		Where("prow_job_runs.deleted_at IS NULL").
 		Where("prow_jobs.deleted_at IS NULL").
@@ -56,11 +59,14 @@ func GetRecentTestFailures(
 			WHERE prev_t.test_id = tests.id
 			  AND prev_t.status = ?
 			  AND prev_r.timestamp >= ? AND prev_r.timestamp < ?
+			  AND prev_r.prow_job_release = ?
+			  AND prev_t.prow_job_run_timestamp >= ? AND prev_t.prow_job_run_timestamp < ?
 			  AND prev_j.release = ?
+			  AND prev_t.prow_job_run_release = ?
 			  AND prev_t.deleted_at IS NULL
 			  AND prev_r.deleted_at IS NULL
 			  AND prev_j.deleted_at IS NULL
-		)`, int(sippyprocessingv1.TestStatusFailure), prevStart, periodStart, release)
+		)`, int(sippyprocessingv1.TestStatusFailure), prevStart, periodStart, release, prevStart, periodStart, release, release)
 	}
 
 	// Wrap the aggregated query as a subquery so we can apply filters/sort/pagination
@@ -113,7 +119,10 @@ func GetRecentTestFailures(
 			Where("prow_job_run_tests.test_id IN ?", testIDs).
 			Where("prow_job_run_tests.status = ?", int(sippyprocessingv1.TestStatusSuccess)).
 			Where("prow_job_runs.timestamp >= ?", lastPassLookback).
+			Where("prow_job_runs.prow_job_release = ?", release).
+			Where("prow_job_run_tests.prow_job_run_timestamp >= ?", lastPassLookback).
 			Where("prow_jobs.release = ?", release).
+			Where("prow_job_run_tests.prow_job_run_release = ?", release).
 			Where("prow_job_run_tests.deleted_at IS NULL").
 			Where("prow_job_runs.deleted_at IS NULL").
 			Where("prow_jobs.deleted_at IS NULL").
@@ -148,7 +157,10 @@ func GetRecentTestFailures(
 				Where("prow_job_run_tests.test_id IN ?", testIDs).
 				Where("prow_job_run_tests.status = ?", int(sippyprocessingv1.TestStatusFailure)).
 				Where("prow_job_runs.timestamp >= ? AND prow_job_runs.timestamp < ?", periodStart, reportEnd).
+				Where("prow_job_runs.prow_job_release = ?", release).
+				Where("prow_job_run_tests.prow_job_run_timestamp >= ? AND prow_job_run_tests.prow_job_run_timestamp < ?", periodStart, reportEnd).
 				Where("prow_jobs.release = ?", release).
+				Where("prow_job_run_tests.prow_job_run_release = ?", release).
 				Where("prow_job_run_tests.deleted_at IS NULL").
 				Where("prow_job_runs.deleted_at IS NULL").
 				Where("prow_jobs.deleted_at IS NULL").

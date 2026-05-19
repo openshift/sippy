@@ -28,10 +28,13 @@ func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 	return prowJobCache, nil
 }
 
-func JobRunTestCount(dbc *db.DB, jobRunID int64) (int, error) {
+func JobRunTestCount(dbc *db.DB, jobRunID int64, release string) (int, error) {
 	var prowJobRunTestCount int64
 
-	res := dbc.DB.Model(&models.ProwJobRunTest{}).Where("prow_job_run_id = ?", jobRunID).Count(&prowJobRunTestCount)
+	res := dbc.DB.Model(&models.ProwJobRunTest{}).
+		Where("prow_job_run_id = ?", jobRunID).
+		Where("prow_job_run_release = ?", release).
+		Count(&prowJobRunTestCount)
 	if res.Error != nil {
 		return -1, res.Error
 	}
@@ -68,15 +71,16 @@ func ProwJobRunIDs(dbc *db.DB, prowJobID uint) ([]uint, error) {
 	return jobIDs, nil
 }
 
-func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint) (int, error) {
+func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (int, error) {
 
 	var historicalProwJobRunTestCount float64
-	q := dbc.DB.Raw(`SELECT avg(count) 
-	FROM (SELECT count(*) 
-	FROM prow_job_run_tests INNER JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id 
-	WHERE prow_job_runs.prow_job_id = ? 
-	AND prow_job_runs.timestamp >= CURRENT_DATE - interval '14' day  
-	GROUP BY prow_job_run_id) t`, prowJobID)
+	q := dbc.DB.Raw(`SELECT avg(count)
+	FROM (SELECT count(*)
+	FROM prow_job_run_tests
+	WHERE prow_job_run_tests.prow_job_id = ?
+	AND prow_job_run_tests.prow_job_run_release = ?
+	AND prow_job_run_tests.prow_job_run_timestamp >= CURRENT_DATE - interval '14' day
+	GROUP BY prow_job_run_id) t`, prowJobID, release)
 
 	if q.Error != nil {
 		return 0, q.Error
@@ -119,11 +123,12 @@ WITH results AS (
                 coalesce(count(case when succeeded = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_passes,
                 coalesce(count(case when succeeded = false AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_fails,        
                 coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs
-        FROM prow_job_runs 
-        JOIN prow_jobs 
-                ON prow_jobs.id = prow_job_runs.prow_job_id                 
+        FROM prow_job_runs
+        JOIN prow_jobs
+                ON prow_jobs.id = prow_job_runs.prow_job_id
                                 AND prow_jobs.release = @release
-                AND timestamp BETWEEN @start AND @end 
+                AND timestamp BETWEEN @start AND @end
+        WHERE prow_job_runs.prow_job_release = @release
         group by variant
 )
 SELECT variant as name,

@@ -32,6 +32,7 @@ func BuildClusterHealth(dbc *db.DB, start, boundary, end time.Time) ([]models.Bu
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where(`cluster != '' AND cluster IS NOT NULL`).
 		Where("prow_jobs.kind = 'periodic'").
+		Where("prow_job_runs.timestamp BETWEEN @start AND @end", sql.Named("start", start), sql.Named("end", end)).
 		Group("cluster")
 
 	q := dbc.DB.Table("(?) as results", rawResults).

@@ -235,7 +235,7 @@ func (jrf *pgJobRunFilter) JobFailedEarly(logger *logrus.Entry, run *models.Prow
 	historicalCount, ok := jrf.historicalTestCount[run.ProwJob.ID]
 	if !ok {
 		var err error
-		historicalCount, err = query.ProwJobHistoricalTestCounts(jrf.dbc, run.ProwJobID)
+		historicalCount, err = query.ProwJobHistoricalTestCounts(jrf.dbc, run.ProwJobID, run.ProwJob.Release)
 		if err != nil {
 			logger.WithError(err).Error("Error determining historical job test count, ignoring this run")
 			return true
@@ -378,6 +378,7 @@ func (ntf *pgNewTestFilter) IsNewTest(logger *logrus.Entry, testRun models.ProwJ
 		Joins("INNER JOIN prow_job_run_prow_pull_requests as prmap on prmap.prow_job_run_id = t.prow_job_run_id").
 		Joins("INNER JOIN prow_pull_requests as prs on prs.id = prmap.prow_pull_request_id").
 		Where("t.test_id = ?", testRun.TestID).
+		Where("t.prow_job_run_release = ?", testRun.ProwJobRunRelease).
 		Where("merged_at is not null").
 		Select("org, repo, number, sha, merged_at").
 		Limit(1).Find(&pjpr) // any result demonstrates this is not new

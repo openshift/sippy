@@ -20,6 +20,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jackc/pgtype v1.14.0
+	github.com/jackc/pgx/v4 v4.18.2
 	github.com/jferrl/go-githubauth v1.1.0
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.39.1
@@ -101,7 +102,6 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v4 v4.18.2 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.2 // indirect
