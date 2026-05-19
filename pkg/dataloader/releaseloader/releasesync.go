@@ -120,13 +120,17 @@ func (r *ReleaseLoader) Load() {
 }
 
 func (r *ReleaseLoader) buildReleaseTag(rs ReleaseStream, tag ReleaseTag) *models.ReleaseTag {
+	// Skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
+	if tag.Phase != api.PayloadAccepted && tag.Phase != api.PayloadRejected {
+		return nil
+	}
 	releaseDetails := r.fetchReleaseDetails(rs, tag)
 	if releaseDetails == nil {
 		return nil
 	}
 	releaseTag := r.releaseDetailsToDB(rs, tag, *releaseDetails)
 
-	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
+	// Tags do disappear; it would be weird if the phase had regressed somehow, but check anyway
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
 		return nil
 	}
@@ -443,6 +447,7 @@ func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime t
 		labelsByBuildID, err := GatherBulkLabelsFromBQ(r.ctx, r.bqClient, buildIDs, releaseTime)
 		if err != nil {
 			log.WithError(err).Warning("failed to fetch bulk labels from BigQuery")
+			r.errors = append(r.errors, fmt.Errorf("GatherBulkLabelsFromBQ: %w", err))
 		}
 		for buildID, labels := range labelsByBuildID {
 			if id, ok := buildIDToJobRun[buildID]; ok {

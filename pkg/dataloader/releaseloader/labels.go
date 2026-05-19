@@ -9,7 +9,6 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -54,8 +53,7 @@ func GatherBulkLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client
 
 	it, err := q.Read(ctx)
 	if err != nil {
-		log.WithError(err).Warning("error querying bulk labels from bigquery")
-		return nil, err
+		return nil, fmt.Errorf("bulk labels query from BigQuery for %d build IDs: %w", len(buildIDs), err)
 	}
 
 	result := make(map[string]pq.StringArray, len(buildIDs))
@@ -66,8 +64,7 @@ func GatherBulkLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client
 			break
 		}
 		if err != nil {
-			log.WithError(err).Warning("error parsing bulk labels from bigquery")
-			return result, err
+			return result, fmt.Errorf("bulk labels iteration from BigQuery at buildID %s: %w", r.BuildID, err)
 		}
 		result[r.BuildID] = r.Labels
 	}
