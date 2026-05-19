@@ -20,11 +20,6 @@ python3 -m venv mcp/.venv
 mcp/.venv/bin/pip install --upgrade pip -q
 mcp/.venv/bin/pip install -r mcp/requirements.txt -q
 
-echo "==> Configuring Claude Code MCP servers..."
-claude mcp add playwright -- npx @playwright/mcp@latest --executable-path /usr/lib64/chromium-browser/headless_shell
-claude mcp add sippy-dev -- mcp/run.sh
-claude mcp add --transport http atlassian https://mcp.atlassian.com/v1/mcp
-
 echo "==> Building sippy and seeding database..."
 make sippy
 ./sippy seed-data --init-database --database-dsn="$SIPPY_SEED_DATABASE_DSN"

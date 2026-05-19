@@ -1,7 +1,6 @@
 {
   "mcpServers": {
     "playwright": {
-      "type": "stdio",
       "command": "npx",
       "args": [
         "@playwright/mcp@latest",
@@ -10,13 +9,11 @@
       ]
     },
     "sippy-dev": {
-      "type": "stdio",
       "command": "mcp/run.sh",
       "args": []
     },
     "atlassian": {
-      "type": "http",
-      "url": "https://mcp.atlassian.com/v1/mcp"
+      "httpUrl": "https://mcp.atlassian.com/v1/mcp"
     }
   }
 }

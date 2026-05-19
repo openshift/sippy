@@ -1,6 +1,7 @@
 .playwright-mcp/
 .claude/*local.json
 /*.json
+!.mcp.json
 report.sh
 /sippy
 /sippy-daemon
