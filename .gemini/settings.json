@@ -1,11 +1,10 @@
 {
   "mcpServers": {
     "playwright": {
-      "command": "npx",
+      "command": "sh",
       "args": [
-        "@playwright/mcp@latest",
-        "--viewport-size",
-        "1440,900"
+        "-c",
+        "npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"
       ]
     },
     "sippy-dev": {

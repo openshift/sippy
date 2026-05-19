@@ -16,13 +16,11 @@ mcp_configs:
     name: playwright
     transport: stdio
     args:
-    - '@playwright/mcp@latest'
-    - --executable-path
-    - /usr/lib64/chromium-browser/headless_shell
-    - --viewport-size
-    - 1440,900
+    - -c
+    - npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH:+--executable-path
+      "$CHROME_PATH"}
     registry: false
-    command: npx
+    command: sh
   sippy-dev:
     name: sippy-dev
     transport: stdio
