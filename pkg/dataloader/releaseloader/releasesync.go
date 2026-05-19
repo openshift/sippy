@@ -20,7 +20,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 )
@@ -426,69 +425,28 @@ func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime t
 		}
 	}
 
-	// Fetch labels from BigQuery for all job runs
-	if r.bqClient != nil {
-		// Collect job run details for label fetching
-		type jobRunInfo struct {
-			buildID   string
-			startTime time.Time
-		}
-		jobRunDetails := make(map[uint]jobRunInfo)
-
-		extractBuildIDs := func(element string) {
-			if jobs, ok := details.Results[element]; ok {
-				for _, jobResult := range jobs {
-					id, err := idFromURL(jobResult.URL)
-					if id == 0 || err != nil {
-						log.WithFields(map[string]interface{}{
-							"releaseTag": details.Name,
-							"url":        jobResult.URL,
-							"error":      err,
-						}).Warningf("invalid ID or missing URL for job label extraction")
-						continue
-					}
-					buildID := extractBuildIDFromURL(jobResult.URL)
-					if buildID != "" {
-						jobRunDetails[id] = jobRunInfo{
-							buildID:   buildID,
-							startTime: releaseTime,
-						}
-					}
-				}
-			}
-		}
-		extractBuildIDs("blockingJobs")
-		extractBuildIDs("informingJobs")
-
-		// Extract build ID from URL for all upgrade jobs
-		for _, upgrade := range append(details.UpgradesTo, details.UpgradesFrom...) {
-			for _, run := range upgrade.History {
-				id, err := idFromURL(run.URL)
-				if id == 0 || err != nil {
-					log.WithFields(map[string]interface{}{
-						"releaseTag": details.Name,
-						"url":        run.URL,
-						"error":      err,
-					}).Warningf("invalid ID or missing URL for upgrade job label extraction")
-					continue
-				}
-				buildID := extractBuildIDFromURL(run.URL)
-				if buildID != "" {
-					jobRunDetails[id] = jobRunInfo{
-						buildID:   buildID,
-						startTime: run.TransitionTime,
-					}
-				}
+	// Fetch labels from BigQuery for all job runs in a single bulk query
+	if r.bqClient != nil && !releaseTime.IsZero() {
+		buildIDToJobRun := make(map[string]uint, len(results))
+		for id, result := range results {
+			buildID := extractBuildIDFromURL(result.URL)
+			if buildID != "" {
+				buildIDToJobRun[buildID] = id
 			}
 		}
 
-		// Fetch labels for each job run from BigQuery
-		for id, info := range jobRunDetails {
-			if result, ok := results[id]; ok {
-				labels, err := prowloader.GatherLabelsFromBQ(r.ctx, r.bqClient, info.buildID, info.startTime)
-				if err != nil {
-					log.WithError(err).WithField("buildID", info.buildID).Debug("failed to fetch labels from BigQuery")
-				} else if len(labels) > 0 {
+		buildIDs := make([]string, 0, len(buildIDToJobRun))
+		for buildID := range buildIDToJobRun {
+			buildIDs = append(buildIDs, buildID)
+		}
+
+		labelsByBuildID, err := GatherBulkLabelsFromBQ(r.ctx, r.bqClient, buildIDs, releaseTime)
+		if err != nil {
+			log.WithError(err).Warning("failed to fetch bulk labels from BigQuery")
+		}
+		for buildID, labels := range labelsByBuildID {
+			if id, ok := buildIDToJobRun[buildID]; ok {
+				if result, ok := results[id]; ok {
 					result.Labels = labels
 					results[id] = result
 				}
