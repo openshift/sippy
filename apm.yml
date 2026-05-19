@@ -12,4 +12,20 @@ dependencies:
   # apm:
   #   - openshift-eng/ai-helpers/plugins/bigquery
   apm: []
-  mcp: []
+  mcp:
+    - name: playwright
+      registry: false
+      transport: stdio
+      command: sh
+      args:
+        - "-c"
+        - "npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"
+    - name: sippy-dev
+      registry: false
+      transport: stdio
+      command: mcp/run.sh
+      args: []
+    - name: atlassian
+      registry: false
+      transport: http
+      url: https://mcp.atlassian.com/v1/mcp
