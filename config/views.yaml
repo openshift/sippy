@@ -1611,6 +1611,7 @@ component_readiness:
       - lp-interop-odf
       - lp-interop-oadp
       - lp-interop-gitops
+      - lp-interop-lpcomp
       - lp-interop-serverless
       - lp-interop-servicemesh
       Network:
