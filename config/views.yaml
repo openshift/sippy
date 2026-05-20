@@ -1606,6 +1606,7 @@ component_readiness:
       - lp-interop-acs-latest
       - lp-interop-acs
       - lp-interop-fusion-access
+      - lp-interop-mpexoperator
       - lp-interop-mta
       - lp-interop-quay
       - lp-interop-odf
