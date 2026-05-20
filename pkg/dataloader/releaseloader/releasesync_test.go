@@ -368,3 +368,41 @@ func TestResolveReleasePullRequestsLargeDataset(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractBuildIDFromURL(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{
+			name: "standard prow URL",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.16-e2e-gcp-ovn-upgrade/1234567890",
+			want: "1234567890",
+		},
+		{
+			name: "origin-ci-test URL",
+			url:  "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.7-e2e-aws-serial/1537826070202421248",
+			want: "1537826070202421248",
+		},
+		{
+			name: "empty string",
+			url:  "",
+			want: "",
+		},
+		{
+			name: "invalid URL",
+			url:  "://not-valid",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractBuildIDFromURL(tt.url)
+			if got != tt.want {
+				t.Errorf("extractBuildIDFromURL(%q) = %q, want %q", tt.url, got, tt.want)
+			}
+		})
+	}
+}
