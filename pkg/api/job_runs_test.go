@@ -220,9 +220,11 @@ func TestRunJobAnalysis(t *testing.T) {
 
 			for _, t := range tests {
 				fakeProwJobRun.Tests = append(fakeProwJobRun.Tests, models.ProwJobRunTest{
-					Test:   models.Test{Name: t.Name},
-					Suite:  models.Suite{Name: t.SuiteName},
-					Status: 12,
+					ProwJobID:         fakeProwJobRun.ProwJobID,
+					ProwJobRunRelease: fakeProwJobRun.ProwJobRelease,
+					Test:              models.Test{Name: t.Name},
+					Suite:             models.Suite{Name: t.SuiteName},
+					Status:            12,
 				})
 			}
 
@@ -289,6 +291,7 @@ func buildFakeProwJobRun() *models.ProwJobRun {
 			},
 		},
 		ProwJobID:             1000000000,
+		ProwJobRelease:        "4.12",
 		URL:                   "https://example.com/run/1000000000",
 		Tests:                 []models.ProwJobRunTest{}, // will be populated in the test cases
 		TestCount:             5,

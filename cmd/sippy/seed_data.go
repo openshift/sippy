@@ -574,10 +574,11 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 	for i := range totalRuns {
 		timestamp := start.Add(time.Duration(i) * interval)
 		run := models.ProwJobRun{
-			ProwJobID: prowJob.ID,
-			Cluster:   "build01",
-			Timestamp: timestamp,
-			Duration:  3 * time.Hour,
+			ProwJobID:      prowJob.ID,
+			ProwJobRelease: prowJob.Release,
+			Cluster:        "build01",
+			Timestamp:      timestamp,
+			Duration:       3 * time.Hour,
 		}
 		if err := dbc.DB.Create(&run).Error; err != nil {
 			return 0, 0, fmt.Errorf("failed to create ProwJobRun: %w", err)
@@ -616,12 +617,15 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 			}
 
 			result := models.ProwJobRunTest{
-				ProwJobRunID: runIDs[i],
-				TestID:       testID,
-				SuiteID:      &suite.ID,
-				Status:       status,
-				Duration:     5.0,
-				CreatedAt:    start.Add(time.Duration(i) * interval),
+				ProwJobRunID:        runIDs[i],
+				ProwJobID:           prowJob.ID,
+				ProwJobRunRelease:   prowJob.Release,
+				ProwJobRunTimestamp: start.Add(time.Duration(i) * interval),
+				TestID:              testID,
+				SuiteID:             &suite.ID,
+				Status:              status,
+				Duration:            5.0,
+				CreatedAt:           start.Add(time.Duration(i) * interval),
 			}
 			if err := dbc.DB.Create(&result).Error; err != nil {
 				return 0, 0, fmt.Errorf("failed to create ProwJobRunTest: %w", err)

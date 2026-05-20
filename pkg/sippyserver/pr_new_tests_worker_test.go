@@ -233,10 +233,11 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 			name: "successful fetch",
 			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				pjr := models.ProwJobRun{
+					ProwJobRelease: "4.12",
 					Tests: []models.ProwJobRunTest{
-						{Test: models.Test{Name: "test1"}, Status: int(v1.TestStatusSuccess)},
-						{Test: models.Test{Name: "test2"}, Status: int(v1.TestStatusFailure)},
-						{Test: models.Test{Name: "test3"}, Status: int(v1.TestStatusFlake)},
+						{ProwJobID: 1, ProwJobRunRelease: "4.12", Test: models.Test{Name: "test1"}, Status: int(v1.TestStatusSuccess)},
+						{ProwJobID: 1, ProwJobRunRelease: "4.12", Test: models.Test{Name: "test2"}, Status: int(v1.TestStatusFailure)},
+						{ProwJobID: 1, ProwJobRunRelease: "4.12", Test: models.Test{Name: "test3"}, Status: int(v1.TestStatusFlake)},
 					},
 				}
 				pjr.ID = 12345 // Gorm model ID for some reason can't be put in the struct literal
@@ -252,8 +253,9 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 			name: "error on filtering",
 			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				pjr := models.ProwJobRun{
+					ProwJobRelease: "4.12",
 					Tests: []models.ProwJobRunTest{
-						{Test: models.Test{Name: "test1"}, Status: int(v1.TestStatusSuccess)},
+						{ProwJobID: 1, ProwJobRunRelease: "4.12", Test: models.Test{Name: "test1"}, Status: int(v1.TestStatusSuccess)},
 					},
 				}
 				pjr.ID = 12345 // Gorm model ID for some reason can't be put in the struct literal
