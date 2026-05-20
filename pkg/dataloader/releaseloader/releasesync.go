@@ -13,6 +13,7 @@ import (
 	"time"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
@@ -444,7 +445,7 @@ func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime t
 			buildIDs = append(buildIDs, buildID)
 		}
 
-		labelsByBuildID, err := GatherBulkLabelsFromBQ(r.ctx, r.bqClient, buildIDs, releaseTime)
+		labelsByBuildID, err := prowloader.GatherLabelsFromBQ(r.ctx, r.bqClient, buildIDs, releaseTime)
 		if err != nil {
 			log.WithError(err).Warning("failed to fetch bulk labels from BigQuery")
 			r.errors = append(r.errors, fmt.Errorf("GatherBulkLabelsFromBQ: %w", err))
