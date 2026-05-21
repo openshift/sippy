@@ -9,9 +9,12 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -272,6 +275,97 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 				log.Printf("TestCountsByLookback9ForRelease %s: %d job runs, %d test IDs",
 					benchmarkRelease, result.JobRunsCount, result.TestIDsCount)
 				return nil
+			},
+		},
+		{
+			name: "VariantReports",
+			fn: func(dbc *db.DB) error {
+				start, boundary, end := util.PeriodToDates("default", asOf)
+				results, err := query.VariantReports(dbc, benchmarkRelease, start, boundary, end)
+				if err == nil {
+					log.Printf("VariantReports: %d variants", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "JobReports",
+			fn: func(dbc *db.DB) error {
+				start, boundary, end := util.PeriodToDates("default", asOf)
+				results, err := query.JobReports(dbc, nil, benchmarkRelease, start, boundary, end)
+				if err == nil {
+					log.Printf("JobReports: %d jobs", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "BuildClusterHealth",
+			fn: func(dbc *db.DB) error {
+				start, boundary, end := util.PeriodToDates("default", asOf)
+				results, err := query.BuildClusterHealth(dbc, start, boundary, end)
+				if err == nil {
+					log.Printf("BuildClusterHealth: %d clusters", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "RecentTestFailures",
+			fn: func(dbc *db.DB) error {
+				period := 7 * 24 * time.Hour
+				previousPeriod := 7 * 24 * time.Hour
+				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
+				result, err := api.GetRecentTestFailures(dbc, benchmarkRelease, period, &previousPeriod, false, nil, pagination, asOf)
+				if err == nil {
+					log.Printf("RecentTestFailures: %d rows", result.TotalRows)
+				}
+				return err
+			},
+		},
+		{
+			name: "PullRequestReport",
+			fn: func(dbc *db.DB) error {
+				results, err := query.PullRequestReport(dbc, nil, benchmarkRelease)
+				if err == nil {
+					log.Printf("PullRequestReport: %d PRs", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "RepositoryReport",
+			fn: func(dbc *db.DB) error {
+				results, err := query.RepositoryReport(dbc, nil, benchmarkRelease, asOf)
+				if err == nil {
+					log.Printf("RepositoryReport: %d repos", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "JobsRunsReport",
+			fn: func(dbc *db.DB) error {
+				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
+				result, err := api.JobsRunsReportFromDB(dbc, nil, benchmarkRelease, pagination, asOf)
+				if err == nil {
+					log.Printf("JobsRunsReport: %d rows", result.TotalRows)
+				}
+				return err
+			},
+		},
+		{
+			name: "ProwJobHistoricalTestCounts",
+			fn: func(dbc *db.DB) error {
+				var prowJob models.ProwJob
+				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
+					return err
+				}
+				count, err := query.ProwJobHistoricalTestCounts(dbc, prowJob.ID)
+				if err == nil {
+					log.Printf("ProwJobHistoricalTestCounts for %s: %d", benchmarkJobName, count)
+				}
+				return err
 			},
 		},
 		{
