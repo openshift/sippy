@@ -1,4 +1,14 @@
-import { Button, Tooltip } from '@mui/material'
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  List,
+  ListItem,
+  ListItemText,
+  Tooltip,
+} from '@mui/material'
 import { Check, DirectionsBoat } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { makeStyles, useTheme } from '@mui/styles'
@@ -8,6 +18,7 @@ import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 const useStyles = makeStyles((theme) => ({
   rowPhaseSucceeded: {
@@ -60,6 +71,46 @@ function ReleasePayloadJobRuns(props) {
       },
     },
     {
+      field: 'labels',
+      autocomplete: 'labels',
+      headerName: 'Labels',
+      type: 'array',
+      flex: 0.5,
+      sortable: false,
+      renderCell: (params) => {
+        if (!params.value || params.value.length === 0) {
+          return ''
+        }
+        const labelTitles = params.value.map((labelId) => {
+          const label = allLabels[labelId]
+          return label ? label.label_title : labelId
+        })
+        return (
+          <Tooltip
+            title={
+              <div>
+                {labelTitles.map((title, idx) => (
+                  <div key={idx}>{title}</div>
+                ))}
+              </div>
+            }
+          >
+            <Button
+              color="inherit"
+              variant="text"
+              onClick={() => {
+                setSelectedLabels(params.value)
+                setSelectedJobRun(params.row)
+                setLabelsDialogOpen(true)
+              }}
+            >
+              {params.value.length}
+            </Button>
+          </Tooltip>
+        )
+      },
+    },
+    {
       field: 'url',
       headerName: ' ',
       flex: 0.75,
@@ -82,6 +133,10 @@ function ReleasePayloadJobRuns(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
+  const [labelsDialogOpen, setLabelsDialogOpen] = React.useState(false)
+  const [selectedLabels, setSelectedLabels] = React.useState([])
+  const [selectedJobRun, setSelectedJobRun] = React.useState(null)
+  const [allLabels, setAllLabels] = React.useState({})
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
@@ -181,6 +236,32 @@ function ReleasePayloadJobRuns(props) {
 
   useEffect(() => {
     fetchData()
+  }, [filterModel, sort, sortField, pageSize])
+
+  // Fetch label definitions
+  useEffect(() => {
+    fetch(process.env.REACT_APP_API_URL + '/api/jobs/labels')
+      .then((response) => {
+        if (response.status !== 200) {
+          console.warn(
+            'Labels API returned unsuccessful status: ' + response.statusText
+          )
+          return {}
+        }
+        return response.json()
+      })
+      .then((labels) => {
+        const labelMap = {}
+        if (labels && Array.isArray(labels)) {
+          labels.forEach((label) => {
+            labelMap[label.id] = label
+          })
+        }
+        setAllLabels(labelMap)
+      })
+      .catch((error) => {
+        console.error('Could not fetch labels:', error)
+      })
   }, [])
 
   if (fetchError !== '') {
@@ -191,39 +272,83 @@ function ReleasePayloadJobRuns(props) {
     return <p>Loading...</p>
   }
 
+  const labelsDialog = (
+    <Dialog
+      open={labelsDialogOpen}
+      onClose={() => setLabelsDialogOpen(false)}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle>
+        {selectedJobRun
+          ? `Labels for ${selectedJobRun.job_name}`
+          : 'Job Run Labels'}
+      </DialogTitle>
+      <DialogContent>
+        <List>
+          {selectedLabels.map((labelId) => {
+            const label = allLabels[labelId]
+            return (
+              <ListItem key={labelId}>
+                <ListItemText
+                  primary={label ? label.label_title : labelId}
+                  secondary={
+                    label ? (
+                      <ReactMarkdown>{label.explanation}</ReactMarkdown>
+                    ) : (
+                      'Label not found'
+                    )
+                  }
+                />
+              </ListItem>
+            )
+          })}
+        </List>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setLabelsDialogOpen(false)} color="primary">
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+
   return (
-    <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
-      rows={rows}
-      columns={columns}
-      autoHeight={true}
-      getRowClassName={(params) => classes['rowPhase' + params.row.state]}
-      disableColumnFilter={props.briefTable}
-      disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={[5, 10, 25, 50]}
-      filterMode="server"
-      sortingMode="server"
-      sortingOrder={['desc', 'asc']}
-      sortModel={[
-        {
-          field: sortField,
-          sort: sort,
-        },
-      ]}
-      onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
-        toolbar: {
-          columns: columns,
-          clearSearch: () => requestSearch(''),
-          doSearch: requestSearch,
-          addFilters: addFilters,
-          filterModel: filterModel,
-          setFilterModel: setFilterModel,
-        },
-      }}
-    />
+    <>
+      <DataGrid
+        components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+        rows={rows}
+        columns={columns}
+        autoHeight={true}
+        getRowClassName={(params) => classes['rowPhase' + params.row.state]}
+        disableColumnFilter={props.briefTable}
+        disableColumnMenu={true}
+        pageSize={pageSize}
+        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        filterMode="server"
+        sortingMode="server"
+        sortingOrder={['desc', 'asc']}
+        sortModel={[
+          {
+            field: sortField,
+            sort: sort,
+          },
+        ]}
+        onSortModelChange={(m) => updateSortModel(m)}
+        componentsProps={{
+          toolbar: {
+            columns: columns,
+            clearSearch: () => requestSearch(''),
+            doSearch: requestSearch,
+            addFilters: addFilters,
+            filterModel: filterModel,
+            setFilterModel: setFilterModel,
+          },
+        }}
+      />
+      {labelsDialog}
+    </>
   )
 }
 

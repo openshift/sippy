@@ -80,7 +80,8 @@ func TestReleaseTagForcedFlag(t *testing.T) {
 			releaseTag.Phase = tt.releaseTagPhase
 			releaseTag.PullSpec = tt.releaseTagPullSpec
 
-			mReleaseTag := releaseDetailsToDB(ReleaseStream{Architecture: tt.architecture}, releaseTag, tt.releaseDetails)
+			loader := &ReleaseLoader{}
+			mReleaseTag := loader.releaseDetailsToDB(ReleaseStream{Architecture: tt.architecture}, releaseTag, tt.releaseDetails)
 
 			if mReleaseTag.Forced != tt.wantForced {
 				t.Errorf("Invalid forced flag for %s", tt.name)
@@ -365,5 +366,43 @@ func TestResolveReleasePullRequestsLargeDataset(t *testing.T) {
 		if result[i].BugURL != "" {
 			t.Errorf("PR %d should have empty BugURL, got %s", i, result[i].BugURL)
 		}
+	}
+}
+
+func TestExtractBuildIDFromURL(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{
+			name: "standard prow URL",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.16-e2e-gcp-ovn-upgrade/1234567890",
+			want: "1234567890",
+		},
+		{
+			name: "origin-ci-test URL",
+			url:  "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.7-e2e-aws-serial/1537826070202421248",
+			want: "1537826070202421248",
+		},
+		{
+			name: "empty string",
+			url:  "",
+			want: "",
+		},
+		{
+			name: "invalid URL",
+			url:  "://not-valid",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractBuildIDFromURL(tt.url)
+			if got != tt.want {
+				t.Errorf("extractBuildIDFromURL(%q) = %q, want %q", tt.url, got, tt.want)
+			}
+		})
 	}
 }

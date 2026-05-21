@@ -937,10 +937,11 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 
 	pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
 
-	labels, err := GatherLabelsFromBQ(ctx, pl.bigQueryClient, pj.Status.BuildID, pj.Status.StartTime)
+	labelResult, err := GatherLabelsFromBQ(ctx, pl.bigQueryClient, []string{pj.Status.BuildID}, pj.Status.StartTime)
 	if err != nil {
 		return err
 	}
+	labels := labelResult[pj.Status.BuildID] // result could be empty but nil labels is fine
 
 	var annotations []models.ProwJobRunAnnotation
 	for k, v := range pj.Annotations {
@@ -1115,13 +1116,13 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []mo
 const LabelsDatasetEnv = "JOB_LABELS_DATASET"
 const LabelsTableName = "job_labels"
 
-// GatherLabelsFromBQ queries BigQuery for labels associated with this job run.
-// Labels are stored in the job_labels table and indexed by prowjob_build_id.
-func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, buildID string, startTime time.Time) (pq.StringArray, error) {
-	if bqClient == nil {
+// GatherLabelsFromBQ queries BigQuery for labels for multiple job runs in a single query.
+// The startTime is used to constrain the scan to recent date partitions.
+// Returns a map of buildID → labels.
+func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, buildIDs []string, startTime time.Time) (map[string]pq.StringArray, error) {
+	if bqClient == nil || len(buildIDs) == 0 {
 		return nil, nil
 	}
-	logger := log.WithField("buildID", buildID)
 
 	dataset := os.Getenv(LabelsDatasetEnv)
 	if dataset == "" {
@@ -1129,36 +1130,47 @@ func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, bu
 	}
 	table := fmt.Sprintf("`%s.%s`", dataset, LabelsTableName)
 	q := bqClient.Query(ctx, bqlabel.ProwLoaderJobLabels, `
-		SELECT ARRAY_AGG(DISTINCT label ORDER BY label ASC) AS labels
+		SELECT prowjob_build_id, ARRAY_AGG(DISTINCT label ORDER BY label ASC) AS labels
 		FROM `+table+`
-		WHERE prowjob_build_id = @BuildID
-		  AND DATE(prowjob_start) = DATE(@StartTime)
+		WHERE prowjob_build_id IN UNNEST(@BuildIDs)
+		  AND DATE(prowjob_start) >= DATE(@ReleaseTime)
+		GROUP BY prowjob_build_id
 	`)
 	q.Parameters = []bigquery.QueryParameter{
 		{
-			Name:  "BuildID",
-			Value: buildID,
+			Name:  "BuildIDs",
+			Value: buildIDs,
 		},
 		{
-			Name:  "StartTime",
+			Name:  "ReleaseTime",
 			Value: startTime,
 		},
 	}
 
-	var result struct {
-		Labels []string `bigquery:"labels"`
-	}
-	it, err := q.Read(ctx)
-	if err != nil {
-		logger.WithError(err).Warning("error querying labels from bigquery")
-		return nil, err
-	}
-	if err = it.Next(&result); err != nil && err != iterator.Done {
-		logger.WithError(err).Warning("error parsing labels from bigquery")
-		return nil, err
+	type row struct {
+		BuildID string   `bigquery:"prowjob_build_id"`
+		Labels  []string `bigquery:"labels"`
 	}
 
-	return result.Labels, nil
+	it, err := q.Read(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("bulk labels query from BigQuery for %d build IDs: %w", len(buildIDs), err)
+	}
+
+	result := make(map[string]pq.StringArray, len(buildIDs))
+	for {
+		var r row
+		err := it.Next(&r)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return result, fmt.Errorf("bulk labels iteration from BigQuery at buildID %s: %w", r.BuildID, err)
+		}
+		result[r.BuildID] = r.Labels
+	}
+
+	return result, nil
 }
 
 func (pl *ProwLoader) findOrAddTest(name string) (uint, error) {
