@@ -215,7 +215,7 @@ func TestCalculateFallbackReleases(t *testing.T) {
 		{Release: "4.16", PreviousRelease: ""},
 	}
 
-	fallbackReleases := calculateFallbackReleases("4.20", allTimeRanges, releaseConfigs)
+	fallbackReleases := calculateFallbackReleases("4.20", allTimeRanges, releaseConfigs, 3)
 	for i := range expectedTimeRanges {
 		assert.Equal(t, expectedTimeRanges[i].Release, fallbackReleases[i].Release)
 		assert.Equal(t, expectedTimeRanges[i].Start, fallbackReleases[i].Start)
