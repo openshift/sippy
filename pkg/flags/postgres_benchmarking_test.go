@@ -36,7 +36,19 @@ type benchmarkResult struct {
 	max        time.Duration
 }
 
-func printSummaryTable(results []benchmarkResult) {
+func extractConnectionName(dsn string) string {
+	atIdx := strings.Index(dsn, "@")
+	if atIdx < 0 {
+		return ""
+	}
+	host := dsn[atIdx+1:]
+	if dotIdx := strings.Index(host, "."); dotIdx > 0 {
+		return host[:dotIdx]
+	}
+	return ""
+}
+
+func printSummaryTable(t *testing.T, results []benchmarkResult, connName string) {
 	nameWidth := 4
 	for _, r := range results {
 		if len(r.name) > nameWidth {
@@ -48,16 +60,35 @@ func printSummaryTable(results []benchmarkResult) {
 		return results[i].avg > results[j].avg
 	})
 
+	var sb strings.Builder
 	header := fmt.Sprintf("  %-*s  %5s  %12s  %12s  %12s  %12s",
 		nameWidth, "Name", "Iters", "Total", "Avg", "Min", "Max")
-	fmt.Println()
-	fmt.Println(header)
-	fmt.Println("  " + strings.Repeat("-", len(header)-2))
+	sb.WriteString("\n")
+	sb.WriteString(header + "\n")
+	sb.WriteString("  " + strings.Repeat("-", len(header)-2) + "\n")
 	for _, r := range results {
-		fmt.Printf("  %-*s  %5d  %12s  %12s  %12s  %12s\n",
-			nameWidth, r.name, r.iterations, r.total, r.avg, r.min, r.max)
+		sb.WriteString(fmt.Sprintf("  %-*s  %5d  %12s  %12s  %12s  %12s\n",
+			nameWidth, r.name, r.iterations, r.total, r.avg, r.min, r.max))
 	}
-	fmt.Println()
+	sb.WriteString("\n")
+	fmt.Print(sb.String())
+
+	// optional helper to track results
+	benchmarkFilePath := os.Getenv("benchmarking_file_path")
+	if connName != "" && len(benchmarkFilePath) > 0 {
+
+		if !strings.HasSuffix(benchmarkFilePath, "/") {
+			benchmarkFilePath += "/"
+		}
+
+		ts := time.Now().UTC().Format("2006-01-02T15-04-05")
+		filename := fmt.Sprintf("benchmark-%s-%s.txt", connName, ts)
+		if err := os.WriteFile(benchmarkFilePath+filename, []byte(sb.String()), 0644); err != nil {
+			t.Logf("failed to write benchmark report to %s: %v", filename, err)
+		} else {
+			t.Logf("benchmark report written to %s", filename)
+		}
+	}
 }
 
 func runBenchmarkCase(t *testing.T, dbc *db.DB, bc benchmarkCase, iterations int) benchmarkResult {
@@ -292,7 +323,7 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 			name: "JobReports",
 			fn: func(dbc *db.DB) error {
 				start, boundary, end := util.PeriodToDates("default", asOf)
-				results, err := query.JobReports(dbc, nil, benchmarkRelease, start, boundary, end)
+				results, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, start, boundary, end)
 				if err == nil {
 					log.Printf("JobReports: %d jobs", len(results))
 				}
@@ -316,7 +347,7 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 				period := 7 * 24 * time.Hour
 				previousPeriod := 7 * 24 * time.Hour
 				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
-				result, err := api.GetRecentTestFailures(dbc, benchmarkRelease, period, &previousPeriod, false, nil, pagination, asOf)
+				result, err := api.GetRecentTestFailures(dbc, benchmarkRelease, period, &previousPeriod, false, &filter.FilterOptions{Filter: &filter.Filter{}}, pagination, asOf)
 				if err == nil {
 					log.Printf("RecentTestFailures: %d rows", result.TotalRows)
 				}
@@ -326,7 +357,7 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "PullRequestReport",
 			fn: func(dbc *db.DB) error {
-				results, err := query.PullRequestReport(dbc, nil, benchmarkRelease)
+				results, err := query.PullRequestReport(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease)
 				if err == nil {
 					log.Printf("PullRequestReport: %d PRs", len(results))
 				}
@@ -336,7 +367,7 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "RepositoryReport",
 			fn: func(dbc *db.DB) error {
-				results, err := query.RepositoryReport(dbc, nil, benchmarkRelease, asOf)
+				results, err := query.RepositoryReport(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, asOf)
 				if err == nil {
 					log.Printf("RepositoryReport: %d repos", len(results))
 				}
@@ -347,7 +378,7 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 			name: "JobsRunsReport",
 			fn: func(dbc *db.DB) error {
 				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
-				result, err := api.JobsRunsReportFromDB(dbc, nil, benchmarkRelease, pagination, asOf)
+				result, err := api.JobsRunsReportFromDB(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, pagination, asOf)
 				if err == nil {
 					log.Printf("JobsRunsReport: %d rows", result.TotalRows)
 				}
@@ -392,7 +423,7 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 	}
 }
 
-func getBenchmarkDBClient(t *testing.T) *db.DB {
+func getBenchmarkDBClient(t *testing.T) (*db.DB, string) {
 	t.Helper()
 	dsn := os.Getenv("db_benchmarking_dsn")
 	if dsn == "" {
@@ -417,11 +448,11 @@ func getBenchmarkDBClient(t *testing.T) *db.DB {
 			t.Logf("failed to close DB client: %v", err)
 		}
 	})
-	return dbc
+	return dbc, extractConnectionName(dsn)
 }
 
 func Test_BenchmarkIndividual(t *testing.T) {
-	dbc := getBenchmarkDBClient(t)
+	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()
 	iterations := 3
 	cases := getBenchmarkCases(asOf)
@@ -433,11 +464,11 @@ func Test_BenchmarkIndividual(t *testing.T) {
 			results = append(results, r)
 		})
 	}
-	printSummaryTable(results)
+	printSummaryTable(t, results, connName)
 }
 
 func Test_BenchmarkFindTestsByRelease(t *testing.T) {
-	dbc := getBenchmarkDBClient(t)
+	dbc, connName := getBenchmarkDBClient(t)
 	iterations := 1
 	bc, ok := getIndividualBenchmarkCases()["FindTestsByRelease"]
 	if !ok {
@@ -445,11 +476,11 @@ func Test_BenchmarkFindTestsByRelease(t *testing.T) {
 	}
 
 	r := runBenchmarkCase(t, dbc, bc, iterations)
-	printSummaryTable([]benchmarkResult{r})
+	printSummaryTable(t, []benchmarkResult{r}, connName)
 }
 
 func Test_BenchmarkCombined(t *testing.T) {
-	dbc := getBenchmarkDBClient(t)
+	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()
 	iterations := 3
 
@@ -466,11 +497,11 @@ func Test_BenchmarkCombined(t *testing.T) {
 			results = append(results, r)
 		})
 	}
-	printSummaryTable(results)
+	printSummaryTable(t, results, connName)
 }
 
 func Test_BenchmarkGroup(t *testing.T) {
-	dbc := getBenchmarkDBClient(t)
+	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()
 	iterations := 1
 	cases := getBenchmarkCases(asOf)
@@ -496,5 +527,5 @@ func Test_BenchmarkGroup(t *testing.T) {
 		fmt.Printf("  group iteration %d: %s\n", i+1, elapsed)
 	}
 	group.avg = group.total / time.Duration(iterations)
-	printSummaryTable([]benchmarkResult{group})
+	printSummaryTable(t, []benchmarkResult{group}, connName)
 }
