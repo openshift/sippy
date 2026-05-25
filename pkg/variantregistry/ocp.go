@@ -106,6 +106,8 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
+		  OR prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
   GROUP BY prowjob_job_name
@@ -528,7 +530,9 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-verification-tests", "qe"},
 		{"-openshift-distributed-tracing", "qe"},
 		{"-oadp-", "oadp"},
-		{"-lp-interop", "mpex"}, // MPEX Integrity and Interop Team
+		{"-lp-chaos-", "mpiit"},    // MPEX Integrity Engineering Chaos Team
+		{"-lp-interop-", "mpiit"},  // MPEX Integrity Engineering Interop Team
+		{"-lp-ocp-compat-", "lp"},  // Layered Product Teams
 	}
 
 	for _, entry := range ownerPatterns {
@@ -1262,18 +1266,19 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		substring string
 		product   string
 	}{
-		{"-lp-interop-cr-cnv", "lp-interop-virt"},
-		{"-quay-cr", "lp-interop-quay"},
-		{"-lp-interop-cr-openshift-pipelines", "lp-interop-openshift-pipelines"},
-		{"-lp-interop-cr-acs-latest", "lp-interop-acs-latest"},
-		{"-lp-interop-cr-acs", "lp-interop-acs"},
-		{"-lp-interop-cr-odf", "lp-interop-odf"},
-		{"-lp-interop-cr-redhat-openshift-gitops", "lp-interop-gitops"},
-		{"-lp-interop-cr-fusion-access", "lp-interop-fusion-access"},
-		{"-lp-interop-cr-mta", "lp-interop-mta"},
-		{"-lp-interop-cr-oadp", "lp-interop-oadp"},
-		{"-lp-interop-cr-servicemesh", "lp-interop-servicemesh"},
-		{"-lp-interop-cr-operator-e2e", "lp-interop-serverless"},
+		{"-lp-ocp-compat-cr--cnv-", "lp-ocp-compat--virt"},
+		{"-lp-ocp-compat-cr--quay-", "lp-ocp-compat--quay"},
+		{"-quay-cr-", "lp-ocp-compat--quay"},
+		{"-lp-ocp-compat-cr--openshift-pipelines-", "lp-ocp-compat--openshift-pipelines"},
+		{"-lpMainline-lp-ocp-compat-cr--acs-", "lp-ocp-compat--acs--lpMainline"},
+		{"-lpGA-lp-ocp-compat-cr--acs-", "lp-ocp-compat--acs--lpGA"},
+		{"-lp-ocp-compat-cr--odf-", "lp-ocp-compat--odf"},
+		{"-lp-ocp-compat-cr--redhat-openshift-gitops-", "lp-ocp-compat--gitops"},
+		{"-lp-ocp-compat-cr--fusion-access-", "lp-ocp-compat--fusion-access"},
+		{"-lp-ocp-compat-cr--mta-", "lp-ocp-compat--mta"},
+		{"-lp-ocp-compat-cr--oadp-", "lp-ocp-compat--oadp"},
+		{"-lp-ocp-compat-cr--servicemesh-", "lp-ocp-compat--servicemesh"},
+		{"-lp-ocp-compat-cr--operator-e2e-", "lp-ocp-compat--serverless"},
 		{"-coo-", "lp-interop-coo"},
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
