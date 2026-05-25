@@ -301,6 +301,47 @@ Estimated cost per correction: ~$6 for a full-history update of a single job. In
 | Auto-reclustering takes too long | Low | New data (most queried) is clustered immediately. Historical data reclusters in background. CTAS rebuild available if needed. |
 | Clustering doesn't achieve projected savings | Low | BigQuery clustering on a low-cardinality column (~10 significant values) with large data volumes is a well-understood optimization. Actual savings will be visible in `INFORMATION_SCHEMA.JOBS` within days of shipping the query change. |
 
+## Experimental Validation (2026-05-25)
+
+To validate the clustering hypothesis before committing to schema changes, we created a 90-day copy of the junit table clustered on the existing `branch` column:
+
+```sql
+CREATE TABLE `ci_analysis_us.junit_clustered_branch_test`
+PARTITION BY DATE(modified_time)
+CLUSTER BY branch
+OPTIONS(partition_expiration_days=90, require_partition_filter=true)
+AS
+SELECT *
+FROM `ci_analysis_us.junit`
+WHERE modified_time >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 90 DAY);
+```
+
+We then ran a representative Component Readiness query (30-day window, release 4.22, with standard variant grouping) against both tables. The query was derived from `BuildComponentReportQuery` in `pkg/api/componentreadiness/dataprovider/bigquery/querygenerators.go`, with an added `AND branch = '4.22'` predicate in the junit scan CTE.
+
+**Key finding:** BigQuery dry-run estimates do not account for clustering pruning — both tables reported the same upper bound (~214 GB). Only actual execution reveals the difference.
+
+### Results
+
+| | Original `junit` | Clustered on `branch` |
+|---|---|---|
+| **Bytes processed** | 214.46 GB | 70.60 GB |
+| **Cost** | $1.34 | $0.44 |
+| **Reduction** | — | **67%** |
+| **Duration** | 7s | 7s |
+
+The 67% reduction matches the prediction: release 4.22 represents ~34% of rows, so filtering on `branch` with clustering prunes the remaining ~66% at the block level.
+
+### Cost of the experiment
+
+| Item | Cost |
+|------|------|
+| CTAS copy (90 days, 861 GB scanned) | $5.38 |
+| Query against original table | $1.34 |
+| Query against clustered table | $0.44 |
+| **Total** | **$7.16** |
+
+The test table (`junit_clustered_branch_test`) has `partition_expiration_days=90` and will auto-clean.
+
 ## Cost Summary
 
 | Item | Cost |
