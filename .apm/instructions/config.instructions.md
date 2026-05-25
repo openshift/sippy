@@ -32,3 +32,7 @@ This file is an **overlay** applied on top of the generated config. Use it to:
 
 * `config/views.yaml` / `config/qe-views.yaml` / `config/seed-views.yaml` — Component Readiness view definitions.
 * `config/e2e-openshift.yaml` — configuration used during e2e testing.
+
+#### Reference
+
+* [Configuration for periodic jobs](https://docs.ci.openshift.org/how-tos/naming-your-ci-jobs/#configuration-for-periodic-jobs) — how CI jobs become available to Sippy via OCP releases.
