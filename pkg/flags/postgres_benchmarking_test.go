@@ -3,6 +3,7 @@ package flags
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -67,8 +68,8 @@ func printSummaryTable(t *testing.T, results []benchmarkResult, connName string)
 	sb.WriteString(header + "\n")
 	sb.WriteString("  " + strings.Repeat("-", len(header)-2) + "\n")
 	for _, r := range results {
-		sb.WriteString(fmt.Sprintf("  %-*s  %5d  %12s  %12s  %12s  %12s\n",
-			nameWidth, r.name, r.iterations, r.total, r.avg, r.min, r.max))
+		fmt.Fprintf(&sb, "  %-*s  %5d  %12s  %12s  %12s  %12s\n",
+			nameWidth, r.name, r.iterations, r.total, r.avg, r.min, r.max)
 	}
 	sb.WriteString("\n")
 	fmt.Print(sb.String())
@@ -76,17 +77,14 @@ func printSummaryTable(t *testing.T, results []benchmarkResult, connName string)
 	// optional helper to track results
 	benchmarkFilePath := os.Getenv("benchmarking_file_path")
 	if connName != "" && len(benchmarkFilePath) > 0 {
-
-		if !strings.HasSuffix(benchmarkFilePath, "/") {
-			benchmarkFilePath += "/"
-		}
-
 		ts := time.Now().UTC().Format("2006-01-02T15-04-05")
 		filename := fmt.Sprintf("benchmark-%s-%s.txt", connName, ts)
-		if err := os.WriteFile(benchmarkFilePath+filename, []byte(sb.String()), 0644); err != nil {
-			t.Logf("failed to write benchmark report to %s: %v", filename, err)
+		fullPath := filepath.Join(benchmarkFilePath, filename)
+		fullPath = filepath.Clean(fullPath)
+		if err := os.WriteFile(fullPath, []byte(sb.String()), 0o600); err != nil { // #nosec G703
+			t.Logf("failed to write benchmark report to %s: %v", fullPath, err)
 		} else {
-			t.Logf("benchmark report written to %s", filename)
+			t.Logf("benchmark report written to %s", fullPath)
 		}
 	}
 }
