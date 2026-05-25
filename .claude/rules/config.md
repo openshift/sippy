@@ -28,11 +28,12 @@ This file is an **overlay** applied on top of the generated config. Use it to:
 * **Exclude** a generated job by setting it to `false`.
 * Configure `componentReadiness` overrides (e.g., `variantJunitTableOverrides`).
 
+**Adding a new release** requires two steps beyond the config change:
+
+1. The release must be registered in the Sippy central database — config alone is not enough.
+2. A Jira ticket must be filed in the **TRT** project with the release details (name, product, etc.) so the team can set it up.
+
 #### Other config files
 
 * `config/views.yaml` / `config/qe-views.yaml` / `config/seed-views.yaml` — Component Readiness view definitions.
 * `config/e2e-openshift.yaml` — configuration used during e2e testing.
-
-#### Reference
-
-* [Configuration for periodic jobs](https://docs.ci.openshift.org/how-tos/naming-your-ci-jobs/#configuration-for-periodic-jobs) — how CI jobs become available to Sippy via OCP releases.
