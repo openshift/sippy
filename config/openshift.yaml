@@ -12539,15 +12539,25 @@ releases:
             ? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-zero-egress-upgrade-staging-main
             : true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-osd-gcp-e2e-candidate-4-22: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-osd-gcp-fips-e2e-candidate-4-22: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-candidate-4-22: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-stable-4-19: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-stable-4-20: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-stable-4-21: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-fips-e2e-candidate-4-22: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-fips-e2e-stable-4-19: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-fips-e2e-stable-4-20: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-fips-e2e-stable-4-21: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-candidate-4-22: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-nightly-5-0: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-stable-4-19: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-stable-4-20: true
             periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-stable-4-21: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-fips-e2e-candidate-4-22: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-fips-e2e-nightly-5-0: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-fips-e2e-stable-4-19: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-fips-e2e-stable-4-20: true
+            periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-fips-e2e-stable-4-21: true
             periodic-ci-openshift-online-rosa-e2e-main-rosa-ci-daily-status: true
             periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-aws-c2s-ipi-disc-priv-fips-f7: true
             periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-aws-c2s-ipi-disc-priv-fips-f28-destructive: true
