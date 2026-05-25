@@ -556,7 +556,97 @@ component_readiness:
     enabled: false
   regression_tracking:
     enabled: false
-- name: 5.0-LP-OCP-Compat
+- name: 5.0-LP-Chaos--lpMainline
+  base_release:
+    release: "4.22"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct: []
+      Network:
+      - ovn
+      Owner:
+      - mpiit
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 5.0-LP-Interop--lpMainline
+  base_release:
+    release: "4.22"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct: []
+      Network:
+      - ovn
+      Owner:
+      - mpiit
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 5.0-LP-OCP-Compat--lpMainline
   base_release:
     release: "4.22"
     relative_start: now-30d
@@ -582,23 +672,11 @@ component_readiness:
       Upgrade: { }
     include_variants:
       LayeredProduct:
-      - lp-interop-virt
-      - lp-interop-openshift-pipelines
-      - lp-interop-acs-latest
-      - lp-interop-acs
-      - lp-interop-fusion-access
-      - lp-interop-mta
-      - lp-interop-quay
-      - lp-interop-odf
-      - lp-interop-oadp
-      - lp-interop-gitops
-      - lp-interop-serverless
-      - lp-interop-servicemesh
+      - lp-ocp-compat--acs--lpMainline
       Network:
       - ovn
       Owner:
-      - mpex
-      - qe
+      - lp
   advanced_options:
     minimum_failure: 2
     confidence: 95
@@ -614,7 +692,7 @@ component_readiness:
     enabled: true
   prime_cache:
     enabled: false
-- name: 5.0-LP-Interop
+- name: 5.0-LP-OCP-Compat--lpGA
   base_release:
     release: "4.22"
     relative_start: now-30d
@@ -639,58 +717,22 @@ component_readiness:
       Topology: { }
       Upgrade: { }
     include_variants:
-      LayeredProduct: []
+      LayeredProduct:
+      - lp-ocp-compat--virt
+      - lp-ocp-compat--openshift-pipelines
+      - lp-ocp-compat--acs--lpGA
+      - lp-ocp-compat--fusion-access
+      - lp-ocp-compat--mta
+      - lp-ocp-compat--quay
+      - lp-ocp-compat--odf
+      - lp-ocp-compat--oadp
+      - lp-ocp-compat--gitops
+      - lp-ocp-compat--serverless
+      - lp-ocp-compat--servicemesh
       Network:
       - ovn
       Owner:
-      - mpex
-      - qe
-  advanced_options:
-    minimum_failure: 2
-    confidence: 95
-    pity_factor: 5
-    ignore_missing: false
-    ignore_disruption: true
-    flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
-  metrics:
-    enabled: false
-  regression_tracking:
-    enabled: true
-  prime_cache:
-    enabled: false
-- name: 5.0-LP-Chaos
-  base_release:
-    release: "4.22"
-    relative_start: now-30d
-    relative_end: now
-  sample_release:
-    release: "5.0"
-    relative_start: now-30d
-    relative_end: now
-  variant_options:
-    column_group_by:
-      Architecture: { }
-      Network: { }
-      Platform: { }
-      Topology: { }
-    db_group_by:
-      Architecture: { }
-      FeatureSet: { }
-      Installer: { }
-      Network: { }
-      Platform: { }
-      Suite: { }
-      Topology: { }
-      Upgrade: { }
-    include_variants:
-      LayeredProduct: []
-      Network:
-      - ovn
-      Owner:
-      - mpex
-      - qe
+      - lp
   advanced_options:
     minimum_failure: 2
     confidence: 95
@@ -1667,7 +1709,7 @@ component_readiness:
     enabled: false
   regression_tracking:
     enabled: false
-- name: 4.22-LP-OCP-Compat
+- name: 4.22-LP-OCP-Compat--lpMainline
   base_release:
     release: "4.21"
     relative_start: ga-30d
@@ -1693,23 +1735,67 @@ component_readiness:
       Upgrade: { }
     include_variants:
       LayeredProduct:
-      - lp-interop-virt
-      - lp-interop-openshift-pipelines
-      - lp-interop-acs-latest
-      - lp-interop-acs
-      - lp-interop-fusion-access
-      - lp-interop-mta
-      - lp-interop-quay
-      - lp-interop-odf
-      - lp-interop-oadp
-      - lp-interop-gitops
-      - lp-interop-serverless
-      - lp-interop-servicemesh
+      - lp-ocp-compat--acs--lpMainline
       Network:
       - ovn
       Owner:
-      - mpex
-      - qe
+      - lp
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 4.22-LP-OCP-Compat--lpGA
+  base_release:
+    release: "4.21"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.22"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct:
+      - lp-ocp-compat--virt
+      - lp-ocp-compat--openshift-pipelines
+      - lp-ocp-compat--acs--lpGA
+      - lp-ocp-compat--fusion-access
+      - lp-ocp-compat--mta
+      - lp-ocp-compat--quay
+      - lp-ocp-compat--odf
+      - lp-ocp-compat--oadp
+      - lp-ocp-compat--gitops
+      - lp-ocp-compat--serverless
+      - lp-ocp-compat--servicemesh
+      Network:
+      - ovn
+      Owner:
+      - lp
   advanced_options:
     minimum_failure: 2
     confidence: 95
@@ -2420,7 +2506,7 @@ component_readiness:
     enabled: false
   regression_tracking:
     enabled: false
-- name: 4.21-LP-OCP-Compat
+- name: 4.21-LP-Interop
   base_release:
     release: "4.20"
     relative_start: now-30d
@@ -2461,7 +2547,7 @@ component_readiness:
       Network:
       - ovn
       Owner:
-      - mpex
+      - mpiit
       - qe
   advanced_options:
     minimum_failure: 2
@@ -2475,7 +2561,7 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: true
+    enabled: false
   prime_cache:
     enabled: false
 - name: 4.21-lp-Interop-coo
@@ -3024,7 +3110,7 @@ component_readiness:
     enabled: false
   regression_tracking:
     enabled: false
-- name: 4.20-LP-OCP-Compat
+- name: 4.20-LP-Interop
   base_release:
     release: "4.19"
     relative_start: ga-30d
@@ -3054,7 +3140,7 @@ component_readiness:
       Network:
       - ovn
       Owner:
-      - mpex
+      - mpiit
   advanced_options:
     minimum_failure: 2
     confidence: 95
@@ -3067,7 +3153,7 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: true
+    enabled: false
   prime_cache:
     enabled: false
 - name: 4.20-lp-Interop-coo
