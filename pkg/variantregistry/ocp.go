@@ -106,7 +106,7 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
-		  OR prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
@@ -530,9 +530,9 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-verification-tests", "qe"},
 		{"-openshift-distributed-tracing", "qe"},
 		{"-oadp-", "oadp"},
-		{"-lp-chaos-", "mpiit"},    // MPEX Integrity Engineering Chaos Team
-		{"-lp-interop-", "mpiit"},  // MPEX Integrity Engineering Interop Team
-		{"-lp-ocp-compat-", "lp"},  // Layered Product Teams
+		{"-lp-chaos-", "mpiit"},   // MPEX Integrity Engineering Chaos Team
+		{"-lp-interop-", "mpiit"}, // MPEX Integrity Engineering Interop Team
+		{"-lp-ocp-compat-", "lp"}, // Layered Product Teams
 	}
 
 	for _, entry := range ownerPatterns {
