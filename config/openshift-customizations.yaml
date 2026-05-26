@@ -42,18 +42,21 @@ releases:
     jobs:
       periodic-ci-Azure-ARO-RP-master-periodic-integration-e2e-parallel-csp: true
       periodic-ci-Azure-ARO-RP-master-periodic-integration-e2e-parallel-miwi: true
+      branch-ci-Azure-ARO-RP-master-e2e-integration-e2e-parallel: true
       branch-ci-Azure-ARO-RP-master-e2e-integration-e2e-parallel-csp: true
       branch-ci-Azure-ARO-RP-master-e2e-integration-e2e-parallel-miwi: true
   aro-classic-stage:
     jobs:
       periodic-ci-Azure-ARO-RP-master-periodic-stage-e2e-parallel-csp: true
       periodic-ci-Azure-ARO-RP-master-periodic-stage-e2e-parallel-miwi: true
+      branch-ci-Azure-ARO-RP-master-e2e-stage-e2e-parallel: true
       branch-ci-Azure-ARO-RP-master-e2e-stage-e2e-parallel-csp: true
       branch-ci-Azure-ARO-RP-master-e2e-stage-e2e-parallel-miwi: true
   aro-classic-production:
     jobs:
       periodic-ci-Azure-ARO-RP-master-periodic-prod-e2e-parallel-csp: true
       periodic-ci-Azure-ARO-RP-master-periodic-prod-e2e-parallel-miwi: true
+      branch-ci-Azure-ARO-RP-master-e2e-prod-e2e-parallel: true
       branch-ci-Azure-ARO-RP-master-e2e-prod-e2e-parallel-csp: true
       branch-ci-Azure-ARO-RP-master-e2e-prod-e2e-parallel-miwi: true
   rosa-stage:
