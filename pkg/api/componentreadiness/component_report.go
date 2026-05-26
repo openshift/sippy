@@ -277,7 +277,9 @@ func (c *ComponentReportGenerator) getCache() cache.Cache {
 func (c *ComponentReportGenerator) initializeMiddleware() {
 	c.middlewares = middleware.List{}
 
-	// Spot-check jobs middleware runs first so synthetic results are in place for other middleware.
+	// Initialize all our middleware applicable to this request.
+
+	// middlewares that inject synthetic tests must run first so results are in place for other middleware.
 	if c.ReqOptions.SpotCheckSample != nil {
 		c.middlewares = append(c.middlewares, spotcheckjobs.NewSpotCheckJobsMiddleware(c.dataProvider, c.ReqOptions))
 	}

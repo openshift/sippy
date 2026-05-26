@@ -250,7 +250,8 @@ func (s *SpotCheckJobs) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants,
 }
 
 // resolveComponentCapability maps a spot-check group to its component/capability
-// using hardcoded patterns based on job names. This will be replaced by
+// using hardcoded patterns based on job names.
+// TODO: This will be replaced by
 // SpotCheckComponent/SpotCheckCapability variants once the variant registry is updated.
 func (s *SpotCheckJobs) resolveComponentCapability(group dataprovider.SpotCheckGroup) (string, string) {
 	for _, jobName := range group.JobNames {
