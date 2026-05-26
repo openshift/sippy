@@ -376,6 +376,10 @@ func (p *BigQueryProvider) LookupJobVariants(ctx context.Context, jobName string
 
 // --- SpotCheckQuerier ---
 
+// QuerySpotCheckJobRuns queries the jobs table (not junit) for rare-tier periodic/release
+// jobs, grouping by the requested variant columns (e.g. Platform, Architecture, Network).
+// Returns aggregated pass/fail counts per variant group so the middleware can create
+// synthetic test results without needing individual test case data.
 func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	start, end time.Time) ([]dataprovider.SpotCheckGroup, error) {
@@ -505,6 +509,9 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 	return results, nil
 }
 
+// QuerySpotCheckJobRunDetails returns individual job runs matching the given variant
+// filters, used to populate the test details drill-down page for a specific spot-check
+// synthetic test.
 func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	variants map[string]string,

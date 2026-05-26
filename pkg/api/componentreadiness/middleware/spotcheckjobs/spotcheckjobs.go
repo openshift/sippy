@@ -30,6 +30,10 @@ var spotCheckMappings = []spotCheckMapping{
 	{substrings: []string{"-etcd-scaling"}, component: "etcd", capability: "Scaling"},
 }
 
+// NewSpotCheckJobsMiddleware creates middleware that injects synthetic test results for
+// "rare" tier jobs (e.g. cpu-partitioning, etcd-scaling) that don't run in the standard
+// junit-based test pipeline. These jobs are evaluated on a simple pass/fail basis:
+// at least one successful run in the sample window means healthy.
 func NewSpotCheckJobsMiddleware(
 	provider dataprovider.DataProvider,
 	reqOptions reqopts.RequestOptions,
@@ -51,6 +55,9 @@ type SpotCheckJobs struct {
 	sampleJobDetailsMutex sync.Mutex
 }
 
+// Query fetches aggregated spot-check job results from BigQuery, creates synthetic
+// test statuses (one per variant group), and injects them into the sample status channel.
+// Each synthetic test uses a binary pass/fail: >=1 successful run = pass.
 func (s *SpotCheckJobs) Query(ctx context.Context, wg *sync.WaitGroup,
 	allJobVariants crtest.JobVariants,
 	_, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
@@ -113,6 +120,8 @@ func (s *SpotCheckJobs) Query(ctx context.Context, wg *sync.WaitGroup,
 	}()
 }
 
+// QueryTestDetails fetches individual job run details for spot-check synthetic tests,
+// storing them for later use by PreTestDetailsAnalysis to populate the drill-down view.
 func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup,
 	errCh chan error, allJobVariants crtest.JobVariants) {
 
@@ -160,6 +169,10 @@ func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup
 	}
 }
 
+// PreAnalysis overrides the normal fisher-exact statistical comparison for spot-check
+// tests. Instead it applies a simple heuristic: any successful run in the sample window
+// means the job is healthy (NotSignificant), zero successes means ExtremeRegression.
+// Marks analysis as complete so the standard pipeline skips further processing.
 func (s *SpotCheckJobs) PreAnalysis(testKey crtest.Identification,
 	testStats *testdetails.TestComparison) error {
 
@@ -191,6 +204,9 @@ func (s *SpotCheckJobs) PostAnalysis(_ crtest.Identification, _ *testdetails.Tes
 	return nil
 }
 
+// PreTestDetailsAnalysis populates the test details drill-down view for spot-check tests
+// by converting the cached job run details into TestJobRunRows for the sample side.
+// There is no base side since spot-check tests have no historical baseline comparison.
 func (s *SpotCheckJobs) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants,
 	status *crstatus.TestJobRunStatuses) error {
 
