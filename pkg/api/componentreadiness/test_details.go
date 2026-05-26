@@ -477,7 +477,9 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 		logrus.WithError(err).Error("Failure from middleware analysis")
 	}
 
-	c.assessComponentStatus(&testStats, log)
+	if _, err := c.middlewares.Analyze(testKey, &testStats); err != nil {
+		logrus.WithError(err).Error("Failure from middleware Analyze")
+	}
 	report.TestComparison = testStats
 	result.Analyses = []testdetails.Analysis{report}
 

@@ -67,8 +67,8 @@ type ReleaseFallback struct {
 	releaseConfigs     []v1.Release
 }
 
-func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, report *testdetails.TestComparison) error {
-	return nil
+func (r *ReleaseFallback) Analyze(_ crtest.Identification, _ *testdetails.TestComparison) (bool, error) {
+	return false, nil
 }
 
 func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants,

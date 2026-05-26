@@ -169,15 +169,19 @@ func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup
 	}
 }
 
-// PreAnalysis overrides the normal fisher-exact statistical comparison for spot-check
-// tests. Instead it applies a simple heuristic: any successful run in the sample window
-// means the job is healthy (NotSignificant), zero successes means ExtremeRegression.
-// Marks analysis as complete so the standard pipeline skips further processing.
-func (s *SpotCheckJobs) PreAnalysis(testKey crtest.Identification,
-	testStats *testdetails.TestComparison) error {
+func (s *SpotCheckJobs) PreAnalysis(_ crtest.Identification,
+	_ *testdetails.TestComparison) error {
+	return nil
+}
+
+// Analyze claims spot-check tests and applies a simple heuristic: any successful run in
+// the sample window means the job is healthy (NotSignificant), zero successes means
+// ExtremeRegression. Returns false for non-spot-check tests to defer to other analyzers.
+func (s *SpotCheckJobs) Analyze(testKey crtest.Identification,
+	testStats *testdetails.TestComparison) (bool, error) {
 
 	if !isSpotCheckTestID(testKey.TestID) {
-		return nil
+		return false, nil
 	}
 
 	sampleDays := int(s.reqOptions.SpotCheckSample.End.Sub(s.reqOptions.SpotCheckSample.Start).Hours() / 24)
@@ -194,10 +198,9 @@ func (s *SpotCheckJobs) PreAnalysis(testKey crtest.Identification,
 	}
 
 	testStats.Comparison = crtest.SpotCheck
-	testStats.AnalysisComplete = true
 	testStats.BaseStats = nil
 
-	return nil
+	return true, nil
 }
 
 func (s *SpotCheckJobs) PostAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {

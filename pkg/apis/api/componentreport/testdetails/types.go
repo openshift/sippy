@@ -79,10 +79,6 @@ type TestComparison struct {
 	// LastFailure is the last time the regressed test failed.
 	LastFailure *time.Time `json:"last_failure"`
 
-	// AnalysisComplete indicates middleware has already determined the report status.
-	// When true, assessComponentStatus skips its analysis (Fisher's, pass-rate, etc.).
-	AnalysisComplete bool `json:"-"`
-
 	// Regression is populated with data on when we first detected this regression. If unset it implies
 	// the regression tracker has not yet run to find it, or you're using report params/a view without regression tracking.
 	Regression *models.TestRegression `json:"regression,omitempty"`

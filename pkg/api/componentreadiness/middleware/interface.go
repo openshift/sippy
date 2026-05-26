@@ -34,6 +34,12 @@ type Middleware interface {
 	// This allows for cheap reloads with fresh triage data without having to do an expensive report recalculation.
 	PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error
 
+	// Analyze gives middleware the opportunity to perform statistical analysis for a test,
+	// replacing the default Fisher's exact / pass-rate logic. Return true if this middleware
+	// handled the analysis (first responder wins, subsequent middleware will not be called).
+	// Return false to defer to the next middleware or the default analysis.
+	Analyze(testKey crtest.Identification, testStats *testdetails.TestComparison) (bool, error)
+
 	// PreTestDetailsAnalysis gives middleware the opportunity to adjust inputs to the report status
 	// prior to analysis.
 	PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error

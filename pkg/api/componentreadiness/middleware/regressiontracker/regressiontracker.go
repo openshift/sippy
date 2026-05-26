@@ -104,6 +104,10 @@ func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats
 	return nil
 }
 
+func (r *RegressionTracker) Analyze(_ crtest.Identification, _ *testdetails.TestComparison) (bool, error) {
+	return false, nil
+}
+
 // PostAnalysis adjusts triages and status code (and thus icons) based on the triaged state of open regressions.
 func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	if testStats.ReportStatus > crtest.SignificantTriagedRegression {
