@@ -39,7 +39,7 @@ import ListItem from '@mui/material/ListItem'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect, useMemo } from 'react'
+import React, { Fragment, useEffect, useMemo, useRef } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import SippyLogo from './SippyLogo'
 
@@ -76,6 +76,7 @@ export default function Sidebar(props) {
 
   const [openReleases, setOpenReleases] = React.useState({})
   const [openGroups, setOpenGroups] = React.useState({})
+  const initialPathRef = useRef(location.pathname)
 
   const productGroups = useMemo(
     () =>
@@ -87,7 +88,7 @@ export default function Sidebar(props) {
   )
 
   useEffect(() => {
-    const parts = location.pathname.split('/')
+    const parts = initialPathRef.current.split('/')
     const tmpOpenReleases = {}
     const tmpOpenGroups = {}
 
@@ -122,7 +123,7 @@ export default function Sidebar(props) {
 
     setOpenGroups(tmpOpenGroups)
     setOpenReleases(tmpOpenReleases)
-  }, [location, productGroups, props.defaultRelease])
+  }, [productGroups, props.defaultRelease])
 
   function handleGroupClick(product) {
     setOpenGroups((prev) => ({ ...prev, [product]: !prev[product] }))
