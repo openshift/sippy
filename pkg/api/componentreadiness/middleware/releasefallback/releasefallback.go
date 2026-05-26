@@ -25,6 +25,8 @@ import (
 const (
 	// consider fallback data good for 7 days
 	fallbackQueryTimeRoundingOverride = 24 * 7 * time.Hour
+
+	defaultFallbackReleases = 1
 )
 
 var _ middleware.Middleware = &ReleaseFallback{}
@@ -365,10 +367,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 		return nil, errs
 	}
 
-	// currently gets current base plus previous 3
-	// current base is just for testing but use could be
-	// extended to no longer require the base query
-	selectedTimeRanges := calculateFallbackReleases(f.BaseRelease, timeRanges, f.releaseConfigs)
+	selectedTimeRanges := calculateDefaultFallbackReleases(f.BaseRelease, timeRanges, f.releaseConfigs)
 
 	for _, crRelease := range selectedTimeRanges {
 
@@ -404,12 +403,15 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 	return &f.CachedFallbackTestStatuses, nil
 }
 
-func calculateFallbackReleases(startingRelease string, timeRanges []crtest.ReleaseTimeRange, releaseConfigs []v1.Release) []*crtest.ReleaseTimeRange {
+func calculateDefaultFallbackReleases(startingRelease string, timeRanges []crtest.ReleaseTimeRange, releaseConfigs []v1.Release) []*crtest.ReleaseTimeRange {
+	return calculateFallbackReleases(startingRelease, timeRanges, releaseConfigs, defaultFallbackReleases)
+}
+
+func calculateFallbackReleases(startingRelease string, timeRanges []crtest.ReleaseTimeRange, releaseConfigs []v1.Release, maxReleases int) []*crtest.ReleaseTimeRange {
 	var selectedTimeRanges []*crtest.ReleaseTimeRange
 	fallbackRelease := startingRelease
 
-	// Get up to 3 fallback releases
-	for i := 0; i < 3; i++ {
+	for i := 0; i < maxReleases; i++ {
 		var crRelease *crtest.ReleaseTimeRange
 
 		var err error
