@@ -1,4 +1,4 @@
-package fishersexact
+package fisherexact
 
 import (
 	"context"
@@ -16,37 +16,37 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 )
 
-type FishersExact struct {
+type FisherExact struct {
 	reqOptions reqopts.RequestOptions
 }
 
-func NewFishersExactMiddleware(reqOptions reqopts.RequestOptions) *FishersExact {
-	return &FishersExact{reqOptions: reqOptions}
+func NewFisherExactMiddleware(reqOptions reqopts.RequestOptions) *FisherExact {
+	return &FisherExact{reqOptions: reqOptions}
 }
 
-func (f *FishersExact) Query(_ context.Context, _ *sync.WaitGroup, _ crtest.JobVariants,
+func (f *FisherExact) Query(_ context.Context, _ *sync.WaitGroup, _ crtest.JobVariants,
 	_, _ chan map[string]crstatus.TestStatus, _ chan error) {
 }
 
-func (f *FishersExact) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error, _ crtest.JobVariants) {
+func (f *FisherExact) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error, _ crtest.JobVariants) {
 }
 
-func (f *FishersExact) PreAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
+func (f *FisherExact) PreAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
 	return nil
 }
 
-func (f *FishersExact) PostAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
+func (f *FisherExact) PostAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
 	return nil
 }
 
-func (f *FishersExact) PreTestDetailsAnalysis(_ crtest.KeyWithVariants, _ *crstatus.TestJobRunStatuses) error {
+func (f *FisherExact) PreTestDetailsAnalysis(_ crtest.KeyWithVariants, _ *crstatus.TestJobRunStatuses) error {
 	return nil
 }
 
 // Analyze is the catch-all analysis middleware. It always claims the test and performs
 // Fisher's exact test to determine regression significance.
-func (f *FishersExact) Analyze(_ crtest.Identification, testStats *testdetails.TestComparison) (bool, error) {
-	logger := log.WithField("middleware", "FishersExact")
+func (f *FisherExact) Analyze(_ crtest.Identification, testStats *testdetails.TestComparison) (bool, error) {
+	logger := log.WithField("middleware", "FisherExact")
 	opts := f.reqOptions.AdvancedOption
 
 	if testStats.RequiredConfidence == 0 {

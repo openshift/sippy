@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/alltestspassrate"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/fishersexact"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/fisherexact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/linkinjector"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/newtestpassrate"
 	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
@@ -296,7 +296,7 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	// Analysis middleware ordered by priority — first responder wins.
 	c.middlewares = append(c.middlewares, newtestpassrate.NewNewTestPassRateMiddleware(c.ReqOptions))
 	c.middlewares = append(c.middlewares, alltestspassrate.NewAllTestsPassRateMiddleware(c.ReqOptions))
-	c.middlewares = append(c.middlewares, fishersexact.NewFishersExactMiddleware(c.ReqOptions))
+	c.middlewares = append(c.middlewares, fisherexact.NewFisherExactMiddleware(c.ReqOptions))
 
 	// Initialize LinkInjector middleware
 	linkInjector := linkinjector.NewLinkInjectorMiddleware(c.ReqOptions, c.baseURL)
