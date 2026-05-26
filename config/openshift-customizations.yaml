@@ -62,6 +62,8 @@ releases:
     regexp:
       # rosa-e2e managed service validation + OCM FVT (current and future versioned jobs)
       - "^periodic-ci-openshift-online-rosa-e2e-main-.*"
+      # ROSA Gap Analysis (all versions)
+      - "^periodic-ci-openshift-online-rosa-gap-analysis-main-.*"
       # ROSA HCP conformance (all versions)
       - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-hcp-ovn$"
       # ROSA Classic/STS conformance (all versions)
