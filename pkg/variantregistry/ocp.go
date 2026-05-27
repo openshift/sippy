@@ -1270,7 +1270,7 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 	}{
 		{"-lpGA-lp-ocp-compat-cr--cnv-", "lp-ocp-compat--virt--lpGA"},
 		{"-lpGA-lp-ocp-compat-cr--quay-", "lp-ocp-compat--quay--lpGA"},
-		{"-quay-cr-", "lp-ocp-compat--quay"},
+		{"-quay-cr-", "lp-ocp-compat--quay--lpGA"},
 		{"-lpGA-lp-ocp-compat-cr--openshift-pipelines-", "lp-ocp-compat--openshift-pipelines--lpGA"},
 		{"-lpMainline-lp-ocp-compat-cr--acs-", "lp-ocp-compat--acs--lpMainline"},
 		{"-lpGA-lp-ocp-compat-cr--acs-", "lp-ocp-compat--acs--lpGA"},
