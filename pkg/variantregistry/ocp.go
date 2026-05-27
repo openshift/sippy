@@ -106,6 +106,8 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
   GROUP BY prowjob_job_name
@@ -126,7 +128,9 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
         OR j.prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-Azure-ARO-HCP-%%'
         OR j.prowjob_job_name LIKE 'release-%%'
-        OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
+		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
+		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
+		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
       OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
@@ -528,7 +532,9 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-verification-tests", "qe"},
 		{"-openshift-distributed-tracing", "qe"},
 		{"-oadp-", "oadp"},
-		{"-lp-interop", "mpiit"}, // MPEX Integrity and Interop Team
+		{"-lp-chaos-", "mpict"},   // MPEX Integrity Engineering Chaos Team
+		{"-lp-interop-", "mpiit"}, // MPEX Integrity Engineering Interop Team
+		{"-lp-ocp-compat-", "lp"}, // Layered Product Teams
 	}
 
 	for _, entry := range ownerPatterns {
@@ -1262,18 +1268,18 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		substring string
 		product   string
 	}{
-		{"-lp-interop-cr-cnv", "lp-interop-virt"},
-		{"-quay-cr", "lp-interop-quay"},
-		{"-lp-interop-cr-openshift-pipelines", "lp-interop-openshift-pipelines"},
-		{"-lp-interop-cr-acs-latest", "lp-interop-acs-latest"},
-		{"-lp-interop-cr-acs", "lp-interop-acs"},
-		{"-lp-interop-cr-odf", "lp-interop-odf"},
-		{"-lp-interop-cr-redhat-openshift-gitops", "lp-interop-gitops"},
-		{"-lp-interop-cr-fusion-access", "lp-interop-fusion-access"},
-		{"-lp-interop-cr-mta", "lp-interop-mta"},
-		{"-lp-interop-cr-oadp", "lp-interop-oadp"},
-		{"-lp-interop-cr-servicemesh", "lp-interop-servicemesh"},
-		{"-lp-interop-cr-operator-e2e", "lp-interop-serverless"},
+		{"-lpga-lp-ocp-compat-cr--cnv-", "lp-ocp-compat--virt--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--quay-", "lp-ocp-compat--quay--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--openshift-pipelines-", "lp-ocp-compat--openshift-pipelines--lpGA"},
+		{"-lpmainline-lp-ocp-compat-cr--acs-", "lp-ocp-compat--acs--lpMainline"},
+		{"-lpga-lp-ocp-compat-cr--acs-", "lp-ocp-compat--acs--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--odf-", "lp-ocp-compat--odf--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--redhat-openshift-gitops-", "lp-ocp-compat--gitops--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--fusion-access-", "lp-ocp-compat--fusion-access--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--mta-", "lp-ocp-compat--mta--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--oadp-", "lp-ocp-compat--oadp--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--servicemesh-", "lp-ocp-compat--servicemesh--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--operator-e2e-", "lp-ocp-compat--serverless--lpGA"},
 		{"-coo-", "lp-interop-coo"},
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
