@@ -70,15 +70,19 @@ type JobQuerier interface {
 type SpotCheckQuerier interface {
 	// QuerySpotCheckJobRuns returns aggregated pass/fail per spot-check group,
 	// grouped by variant columns. Queries the jobs table, not junit.
+	// jobNameSubstrings filters to jobs whose name contains ALL of the given substrings.
 	QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
 		allJobVariants crtest.JobVariants,
+		jobNameSubstrings []string,
 		start, end time.Time) ([]SpotCheckGroup, error)
 
 	// QuerySpotCheckJobRunDetails returns individual job runs for a specific
 	// spot-check group, used for test details drill-down.
+	// jobNameSubstrings filters to jobs whose name contains ALL of the given substrings.
 	QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
 		allJobVariants crtest.JobVariants,
 		variants map[string]string,
+		jobNameSubstrings []string,
 		start, end time.Time) ([]JobRunDetail, error)
 }
 

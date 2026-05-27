@@ -382,6 +382,7 @@ func (p *BigQueryProvider) LookupJobVariants(ctx context.Context, jobName string
 // synthetic test results without needing individual test case data.
 func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
+	jobNameSubstrings []string,
 	start, end time.Time) ([]dataprovider.SpotCheckGroup, error) {
 
 	columnGroupByVariants := reqOptions.VariantOption.ColumnGroupBy
@@ -439,6 +440,16 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		})
 	}
 
+	jobNameFilters := ""
+	for i, sub := range jobNameSubstrings {
+		paramName := fmt.Sprintf("jobNameSub_%d", i)
+		jobNameFilters += fmt.Sprintf(" AND LOWER(jobs.prowjob_job_name) LIKE CONCAT('%%', @%s, '%%')", paramName)
+		params = append(params, bigquery.QueryParameter{
+			Name:  paramName,
+			Value: strings.ToLower(sub),
+		})
+	}
+
 	queryString := fmt.Sprintf(`
 		SELECT
 			%s
@@ -453,8 +464,9 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 			AND jv_JobTier.variant_value = 'rare'
 			AND (jobs.prowjob_job_name LIKE 'periodic-%%' OR jobs.prowjob_job_name LIKE 'release-%%')
 			%s
+			%s
 		GROUP BY %s
-	`, selectVariants, p.client.Dataset, joinVariants, variantFilters,
+	`, selectVariants, p.client.Dataset, joinVariants, variantFilters, jobNameFilters,
 		groupByVariants)
 
 	params = append(params,
@@ -515,6 +527,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	variants map[string]string,
+	jobNameSubstrings []string,
 	start, end time.Time) ([]dataprovider.JobRunDetail, error) {
 
 	joinVariants := fmt.Sprintf(
@@ -539,6 +552,16 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 		})
 	}
 
+	jobNameFilters := ""
+	for i, sub := range jobNameSubstrings {
+		paramName := fmt.Sprintf("jobNameSub_%d", i)
+		jobNameFilters += fmt.Sprintf(" AND LOWER(jobs.prowjob_job_name) LIKE CONCAT('%%', @%s, '%%')", paramName)
+		params = append(params, bigquery.QueryParameter{
+			Name:  paramName,
+			Value: strings.ToLower(sub),
+		})
+	}
+
 	queryString := fmt.Sprintf(`
 		SELECT
 			jobs.prowjob_job_name AS job_name,
@@ -554,8 +577,9 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 			AND jv_JobTier.variant_value = 'rare'
 			AND (jobs.prowjob_job_name LIKE 'periodic-%%' OR jobs.prowjob_job_name LIKE 'release-%%')
 			%s
+			%s
 		ORDER BY jobs.prowjob_start DESC
-	`, p.client.Dataset, joinVariants, variantFilters)
+	`, p.client.Dataset, joinVariants, variantFilters, jobNameFilters)
 
 	params = append(params,
 		bigquery.QueryParameter{Name: "From", Value: start},
