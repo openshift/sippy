@@ -1,12 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"time"
 
-	"github.com/openshift/sippy/pkg/api"
-	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -18,16 +14,12 @@ import (
 
 type VariantSnapshotFlags struct {
 	Path                    string
-	BigQueryFlags           *flags.BigQueryFlags
-	GoogleCloudFlags        *flags.GoogleCloudFlags
 	ConfigFlags             *configflags.ConfigFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 }
 
 func NewVariantSnapshotFlags() *VariantSnapshotFlags {
 	return &VariantSnapshotFlags{
-		BigQueryFlags:           flags.NewBigQueryFlags(),
-		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		Path:                    "pkg/variantregistry/snapshot.yaml",
@@ -35,8 +27,6 @@ func NewVariantSnapshotFlags() *VariantSnapshotFlags {
 }
 
 func (f *VariantSnapshotFlags) BindFlags(fs *pflag.FlagSet) {
-	f.BigQueryFlags.BindFlags(fs)
-	f.GoogleCloudFlags.BindFlags(fs)
 	f.ConfigFlags.BindFlags(fs)
 	f.ComponentReadinessFlags.BindFlags(fs)
 	fs.StringVar(&f.Path, "out", f.Path, "Path to write results to")
@@ -53,24 +43,12 @@ func NewVariantSnapshotCommand() *cobra.Command {
 				return fmt.Errorf("--config is required")
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
-			defer cancel()
-
 			cfg, err := f.ConfigFlags.GetConfig()
 			if err != nil {
 				return err
 			}
 
-			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "variants snapshot")
-			bqClient, err := f.BigQueryFlags.GetBigQueryClient(ctx, opCtx, nil, f.GoogleCloudFlags.ServiceAccountCredentialFile)
-			if err != nil {
-				return fmt.Errorf("error getting BigQuery client: %w", err)
-			}
-			releaseConfigs, err := api.GetReleasesFromBigQuery(ctx, bqClient)
-			if err != nil {
-				return fmt.Errorf("error loading releases from BigQuery: %w", err)
-			}
-			syntheticReleaseJobOverrides, err := variantregistry.BuildSyntheticReleaseJobOverrides(cfg.Releases, releaseConfigs)
+			syntheticReleaseJobOverrides, err := variantregistry.BuildSyntheticReleaseJobOverrides(cfg.Releases)
 			if err != nil {
 				return fmt.Errorf("error building synthetic release job overrides: %w", err)
 			}

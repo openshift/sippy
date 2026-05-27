@@ -24,6 +24,12 @@ type ReleaseConfig struct {
 
 	// InformingJobs is the list of informing payload jobs
 	InformingJobs []string `yaml:"informingJobs,omitempty"`
+
+	// Synthetic indicates this release does not correspond to a specific OCP
+	// version (e.g., rosa-stage, aro-integration). Jobs listed in a synthetic
+	// release's Jobs map are pinned to that release, taking priority over
+	// name-based version matching.
+	Synthetic bool `yaml:"synthetic,omitempty"`
 }
 
 type ComponentReadinessConfig struct {

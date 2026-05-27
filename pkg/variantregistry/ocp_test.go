@@ -16,7 +16,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -2137,6 +2136,7 @@ func TestSyntheticReleaseVariants(t *testing.T) {
 	config := &v1.SippyConfig{
 		Releases: map[string]v1.ReleaseConfig{
 			"rosa-stage": {
+				Synthetic: true,
 				Jobs: map[string]bool{
 					"periodic-ci-openshift-osde2e-main-nightly-4.22-osd-aws":                                         true,
 					"periodic-ci-openshift-osde2e-main-nightly-4.16-osd-aws":                                         true,
@@ -2171,10 +2171,7 @@ func TestSyntheticReleaseVariants(t *testing.T) {
 		},
 	}
 
-	syntheticReleaseJobOverrides, err := BuildSyntheticReleaseJobOverrides(config.Releases, []sippyv1.Release{
-		{Release: "4.22"},
-		{Release: "rosa-stage", Synthetic: true},
-	})
+	syntheticReleaseJobOverrides, err := BuildSyntheticReleaseJobOverrides(config.Releases)
 	require.NoError(t, err)
 	loader := &OCPVariantLoader{config: config, syntheticReleaseJobOverrides: syntheticReleaseJobOverrides}
 
@@ -2328,21 +2325,7 @@ func TestVariantsSnapshot(t *testing.T) {
 	err = yaml.Unmarshal(viewsData, &views)
 	assert.NoError(t, err)
 
-	releaseConfigs := []sippyv1.Release{
-		{Release: "4.17"},
-		{Release: "4.18"},
-		{Release: "4.19"},
-		{Release: "aro-integration", Synthetic: true},
-		{Release: "aro-production", Synthetic: true},
-		{Release: "aro-stage", Synthetic: true},
-		{Release: "automation", Synthetic: true},
-		{Release: "ocp-hypershift", Synthetic: true},
-		{Release: "rosa-integration", Synthetic: true},
-		{Release: "rosa-production", Synthetic: true},
-		{Release: "rosa-stage", Synthetic: true},
-		{Release: "rrp-integration", Synthetic: true},
-	}
-	syntheticReleaseJobOverrides, err := BuildSyntheticReleaseJobOverrides(cfg.Releases, releaseConfigs)
+	syntheticReleaseJobOverrides, err := BuildSyntheticReleaseJobOverrides(cfg.Releases)
 	require.NoError(t, err)
 
 	log := logrus.WithField("test", "TestVariantsSnapshot")
