@@ -1781,17 +1781,17 @@ component_readiness:
       Upgrade: { }
     include_variants:
       LayeredProduct:
-      - lp-ocp-compat--virt
-      - lp-ocp-compat--openshift-pipelines
+      - lp-ocp-compat--virt--lpGA
+      - lp-ocp-compat--openshift-pipelines--lpGA
       - lp-ocp-compat--acs--lpGA
-      - lp-ocp-compat--fusion-access
-      - lp-ocp-compat--mta
-      - lp-ocp-compat--quay
-      - lp-ocp-compat--odf
-      - lp-ocp-compat--oadp
-      - lp-ocp-compat--gitops
-      - lp-ocp-compat--serverless
-      - lp-ocp-compat--servicemesh
+      - lp-ocp-compat--fusion-access--lpGA
+      - lp-ocp-compat--mta--lpGA
+      - lp-ocp-compat--quay--lpGA
+      - lp-ocp-compat--odf--lpGA
+      - lp-ocp-compat--oadp--lpGA
+      - lp-ocp-compat--gitops--lpGA
+      - lp-ocp-compat--serverless--lpGA
+      - lp-ocp-compat--servicemesh--lpGA
       Network:
       - ovn
       Owner:
