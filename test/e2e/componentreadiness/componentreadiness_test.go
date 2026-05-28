@@ -77,7 +77,6 @@ func TestRegressionCacheLoader(t *testing.T) {
 		releaseConfigs,
 		4*time.Hour, // default CRTimeRoundingFactor
 		regressionStore,
-		nil, // no variant junit table overrides for e2e
 	)
 	require.NoError(t, err)
 
