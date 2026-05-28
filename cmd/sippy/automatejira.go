@@ -165,12 +165,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return fmt.Errorf("couldn't get jira client: jira auth is not configured")
 			}
 
-			config, err := f.ConfigFlags.GetConfig()
-			if err != nil {
-				log.WithError(err).Warn("error reading config file")
-			}
-
-			provider := bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
+			provider := bqprovider.NewBigQueryProvider(bigQueryClient)
 			allVariants, errs := componentreadiness.GetJobVariants(ctx, provider)
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get job variants: %v", errs)

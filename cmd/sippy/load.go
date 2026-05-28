@@ -223,7 +223,6 @@ func NewLoadCommand() *cobra.Command {
 						dbc, bqc, config, views.ComponentReadiness, releaseConfigs,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor,
 						regressionStore,
-						config.ComponentReadinessConfig.VariantJunitTableOverrides,
 					)
 					if err != nil {
 						return errors.Wrap(err, "error creating regression cache loader")

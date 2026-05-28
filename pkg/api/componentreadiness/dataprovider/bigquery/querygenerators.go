@@ -105,16 +105,9 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.Repo
 }
 
 type sampleQueryGenerator struct {
-	client      *bqcachedclient.Client
-	allVariants crtest.JobVariants
-	ReqOptions  reqopts.RequestOptions
-	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
-	// pull its data from. It is a public field as we want it included in the cache
-	// key to differentiate this request from other sample queries that might be using a junit table override.
-	// Normally, this would just be the default junit table, but in some cases we pull from other tables. (rarely run jobs)
-	JunitTable string
-	// IncludeVariants is a potentially slightly adjusted copy of the ComponentReportGenerator, used in conjunction with
-	// junit table overrides to tweak the query.
+	client          *bqcachedclient.Client
+	allVariants     crtest.JobVariants
+	ReqOptions      reqopts.RequestOptions
 	IncludeVariants map[string][]string
 
 	Start time.Time
@@ -125,15 +118,13 @@ func NewSampleQueryGenerator(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
 	allVariants crtest.JobVariants,
-	includeVariants map[string][]string, // separate from ReqOptions as caller sometimes has to modify them
-	start, end time.Time,
-	junitTable string) sampleQueryGenerator {
+	includeVariants map[string][]string,
+	start, end time.Time) sampleQueryGenerator {
 
 	generator := sampleQueryGenerator{
 		ReqOptions:      reqOptions,
 		client:          client,
 		allVariants:     allVariants,
-		JunitTable:      junitTable,
 		IncludeVariants: includeVariants,
 		Start:           start,
 		End:             end,
@@ -142,7 +133,7 @@ func NewSampleQueryGenerator(
 }
 
 func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, s.JunitTable, true)
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, DefaultJunitTable, true)
 
 	errs := []error{}
 	sampleString := commonQuery
@@ -906,19 +897,10 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 	return crstatus.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
-// sampleTestDetailsQueryGenerator generates the query we use for the sample on the test details page.
 type sampleTestDetailsQueryGenerator struct {
-	allJobVariants crtest.JobVariants
-	client         *bqcachedclient.Client
-	ReqOptions     reqopts.RequestOptions
-
-	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
-	// pull its data from. It is a public field as we want it included in the cache
-	// key to differentiate this request from other sample queries that might be using a junit table override.
-	// Normally, this would just be the default junit table, but in some cases we pull from other tables. (rarely run jobs)
-	JunitTable string
-	// IncludeVariants is a potentially slightly adjusted copy of the ComponentReportGenerator, used in conjunction with
-	// junit table overrides to tweak the query.
+	allJobVariants  crtest.JobVariants
+	client          *bqcachedclient.Client
+	ReqOptions      reqopts.RequestOptions
 	IncludeVariants map[string][]string
 
 	Start time.Time
@@ -930,8 +912,7 @@ func NewSampleTestDetailsQueryGenerator(
 	reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	start, end time.Time,
-	junitTable string) *sampleTestDetailsQueryGenerator {
+	start, end time.Time) *sampleTestDetailsQueryGenerator {
 	return &sampleTestDetailsQueryGenerator{
 		allJobVariants:  allJobVariants,
 		client:          client,
@@ -939,7 +920,6 @@ func NewSampleTestDetailsQueryGenerator(
 		IncludeVariants: includeVariants,
 		Start:           start,
 		End:             end,
-		JunitTable:      junitTable,
 	}
 }
 
@@ -950,7 +930,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		s.ReqOptions.TestIDOptions,
 		s.ReqOptions,
 		s.allJobVariants,
-		s.IncludeVariants, s.JunitTable, true)
+		s.IncludeVariants, DefaultJunitTable, true)
 
 	sampleString := commonQuery
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {

@@ -57,7 +57,7 @@ func New(
 		views:                views,
 		releases:             releases,
 		bqClient:             bqClient,
-		dataProvider:         bqprovider.NewBigQueryProvider(bqClient, config.ComponentReadinessConfig.VariantJunitTableOverrides),
+		dataProvider:         bqprovider.NewBigQueryProvider(bqClient),
 		config:               config,
 		crTimeRoundingFactor: crTimeRoundingFactor,
 	}

@@ -187,7 +187,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 	}
 
-	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
+	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient)
 
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,

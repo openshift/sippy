@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	v2 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -22,9 +21,9 @@ import (
 
 var (
 	includeVariants = map[string][]string{
-		"Architecture": []string{"amd64"},
-		"FeatureSet":   []string{"default", "techpreview"},
-		"Installer":    []string{"ipi", "upi"},
+		"Architecture": {"amd64"},
+		"FeatureSet":   {"default", "techpreview"},
+		"Installer":    {"ipi", "upi"},
 	}
 )
 
@@ -80,14 +79,14 @@ func TestParseComponentReportRequest(t *testing.T) {
 	view417cross.VariantOptions = reqopts.Variants{
 		VariantCrossCompare: []string{"Topology"},
 		IncludeVariants: map[string][]string{
-			"Architecture": []string{"amd64"},
-			"Installer":    []string{"ipi", "upi"},
-			"Topology":     []string{"ha"},
+			"Architecture": {"amd64"},
+			"Installer":    {"ipi", "upi"},
+			"Topology":     {"ha"},
 		},
 		CompareVariants: map[string][]string{
-			"Architecture": []string{"amd64"},
-			"Installer":    []string{"ipi", "upi"},
-			"Topology":     []string{"single"},
+			"Architecture": {"amd64"},
+			"Installer":    {"ipi", "upi"},
+			"Topology":     {"single"},
 		},
 		// also remove Topology from columnGroupBy and dbGroupBy
 		ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
@@ -447,7 +446,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			// path/body are irrelevant at this point in time, we only parse query params in the func being tested
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
-			options, _, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, time.Duration(0), []v2.VariantJunitTableOverride{})
+			options, _, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, time.Duration(0))
 
 			if tc.errMessage != "" {
 				require.Error(t, err)
