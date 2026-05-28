@@ -133,7 +133,7 @@ func NewServeCommand() *cobra.Command {
 						bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 					}
 
-					crDataProvider = bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
+					crDataProvider = bqprovider.NewBigQueryProvider(bigQueryClient)
 				}
 
 			case "postgres":

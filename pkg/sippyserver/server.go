@@ -1023,8 +1023,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		return componentreport.ComponentReport{}, err
 	}
 
-	options, warnings, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
-		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
+	options, warnings, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
 
 	if err != nil {
 		return componentreport.ComponentReport{}, err
@@ -1078,8 +1077,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		return
 	}
 
-	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
-		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
+	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
 
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())

@@ -51,8 +51,7 @@ type RegressionCacheLoader struct {
 	crTimeRoundingFactor time.Duration
 
 	// Regression tracking deps
-	regressionStore            componentreadiness.RegressionStore
-	variantJunitTableOverrides []configv1.VariantJunitTableOverride
+	regressionStore componentreadiness.RegressionStore
 }
 
 func New(
@@ -63,22 +62,20 @@ func New(
 	releases []apiv1.Release,
 	crTimeRoundingFactor time.Duration,
 	regressionStore componentreadiness.RegressionStore,
-	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (*RegressionCacheLoader, error) {
 	if regressionStore == nil {
 		return nil, fmt.Errorf("regressionStore must not be nil")
 	}
 
 	return &RegressionCacheLoader{
-		dbc:                        dbc,
-		bqClient:                   bqClient,
-		config:                     config,
-		views:                      views,
-		releases:                   releases,
-		crTimeRoundingFactor:       crTimeRoundingFactor,
-		regressionStore:            regressionStore,
-		variantJunitTableOverrides: variantJunitTableOverrides,
-		logger:                     log.WithField("loader", "regression-cache"),
+		dbc:                  dbc,
+		bqClient:             bqClient,
+		config:               config,
+		views:                views,
+		releases:             releases,
+		crTimeRoundingFactor: crTimeRoundingFactor,
+		regressionStore:      regressionStore,
+		logger:               log.WithField("loader", "regression-cache"),
 	}, nil
 }
 
@@ -505,7 +502,7 @@ func (l *RegressionCacheLoader) buildGenerator(
 	}
 
 	generator := componentreadiness.NewComponentReportGenerator(
-		bqprovider.NewBigQueryProvider(l.bqClient, l.config.ComponentReadinessConfig.VariantJunitTableOverrides),
+		bqprovider.NewBigQueryProvider(l.bqClient),
 		reqOpts, l.dbc,
 		l.releases, "")
 	return &generator, nil

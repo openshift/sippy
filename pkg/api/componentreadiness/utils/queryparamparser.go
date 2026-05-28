@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/param"
@@ -25,7 +24,6 @@ func ParseComponentReportRequest(
 	req *http.Request,
 	allJobVariants crtest.JobVariants,
 	crTimeRoundingFactor time.Duration,
-	overrides []configv1.VariantJunitTableOverride,
 ) (
 	opts reqopts.RequestOptions,
 	warnings []string,
@@ -92,7 +90,7 @@ func ParseComponentReportRequest(
 	}
 
 	// Variant options - merge with view defaults
-	variantOpts, vWarnings, vErr := parseVariantOptions(req, allJobVariants, overrides)
+	variantOpts, vWarnings, vErr := parseVariantOptions(req, allJobVariants)
 	if vErr != nil {
 		err = vErr
 		return
@@ -281,7 +279,7 @@ func parsePayloadOptions(req *http.Request) *reqopts.Payload {
 	}
 }
 
-func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts reqopts.Variants, warnings []string, err error) {
+func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants) (opts reqopts.Variants, warnings []string, err error) {
 	warnings = []string{}
 	columnGroupBy := req.URL.Query().Get("columnGroupBy")
 	opts.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
@@ -302,15 +300,6 @@ func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, o
 	}
 	warnings = append(warnings, includeWarnings...)
 
-	// check if any included variants have a junit table override:
-	var overriddenVariant string
-	for _, or := range overrides {
-		if ContainsOverriddenVariant(opts.IncludeVariants, or.VariantName, or.VariantValue) {
-			overriddenVariant = fmt.Sprintf("%s=%s", or.VariantName, or.VariantValue)
-			break
-		}
-	}
-
 	compareVariants, err := api.VariantListToMap(allJobVariants, req.URL.Query()["compareVariant"])
 	if err != nil {
 		return
@@ -318,27 +307,15 @@ func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, o
 
 	opts.VariantCrossCompare = req.URL.Query()["variantCrossCompare"]
 	if len(opts.VariantCrossCompare) > 0 {
-
-		// cross compare is not supported with variant overrides
-		if len(overriddenVariant) > 0 {
-			err = fmt.Errorf("variant cross compare is not supported with overridden variant: %s", overriddenVariant)
-			return
-		}
-
-		// when we are cross-comparing variants, we need to construct the compareVariants map from the parameters.
-		// the resulting compareVariants map is includeVariants...
 		opts.CompareVariants = map[string][]string{}
 		for group, variants := range opts.IncludeVariants {
 			opts.CompareVariants[group] = variants
 		}
 
-		// ...with overrides from compareVariant parameters.
 		for _, group := range opts.VariantCrossCompare {
 			if variants := compareVariants[group]; len(variants) > 0 {
 				opts.CompareVariants[group] = variants
 			} else {
-				// a group override without any variants listed means not to restrict the variants in this group.
-				// in that case we don't want any where clause for the group, so we just omit it from the map.
 				delete(opts.CompareVariants, group)
 			}
 		}

@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -19,11 +18,9 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	apiCache "github.com/openshift/sippy/pkg/apis/cache"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/param"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -33,12 +30,11 @@ var _ dataprovider.DataProvider = &BigQueryProvider{}
 // BigQueryProvider implements dataprovider.DataProvider using Google BigQuery
 // as the backing data store, wrapping the existing query generators.
 type BigQueryProvider struct {
-	client                     *bqcachedclient.Client
-	variantJunitTableOverrides []configv1.VariantJunitTableOverride
+	client *bqcachedclient.Client
 }
 
-func NewBigQueryProvider(client *bqcachedclient.Client, overrides []configv1.VariantJunitTableOverride) *BigQueryProvider {
-	return &BigQueryProvider{client: client, variantJunitTableOverrides: overrides}
+func NewBigQueryProvider(client *bqcachedclient.Client) *BigQueryProvider {
+	return &BigQueryProvider{client: client}
 }
 
 // Client returns the underlying BigQuery client for callers that still need direct access
@@ -72,83 +68,7 @@ func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
 
-	fLog := log.WithField("func", "QuerySampleTestStatus")
-
-	// Filter out overridden variants from the default query
-	filteredVariants, skipDefault := copyIncludeVariantsAndRemoveOverrides(p.variantJunitTableOverrides, -1, includeVariants)
-
-	type result struct {
-		status map[string]crstatus.TestStatus
-		errs   []error
-	}
-	resultCh := make(chan result)
-	var wg sync.WaitGroup
-
-	// Run default query (unless all variants were overridden)
-	if !skipDefault {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				fLog.Infof("running default sample query with includeVariants: %+v", filteredVariants)
-				s, e := p.querySampleTestStatusForTable(ctx, reqOptions, allJobVariants, filteredVariants, start, end, DefaultJunitTable)
-				resultCh <- result{s, e}
-			}
-		}()
-	}
-
-	// Run override queries for applicable variants
-	for i, or := range p.variantJunitTableOverrides {
-		if !containsOverriddenVariant(includeVariants, or.VariantName, or.VariantValue) {
-			continue
-		}
-		index, override := i, or
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				overrideVariants, skip := copyIncludeVariantsAndRemoveOverrides(p.variantJunitTableOverrides, index, includeVariants)
-				if skip {
-					fLog.Infof("skipping override sample query as all values for a variant were overridden")
-					return
-				}
-				overrideEnd := end
-				overrideStart, err := util.ParseCRReleaseTime([]v1.Release{}, "", override.RelativeStart,
-					true, &overrideEnd, reqOptions.CacheOption.CRTimeRoundingFactor)
-				if err != nil {
-					resultCh <- result{nil, []error{err}}
-					return
-				}
-				fLog.Infof("running override sample query for %+v with includeVariants: %+v", override, overrideVariants)
-				s, e := p.querySampleTestStatusForTable(ctx, reqOptions, allJobVariants, overrideVariants, overrideStart, overrideEnd, override.TableName)
-				resultCh <- result{s, e}
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
-
-	merged := make(map[string]crstatus.TestStatus)
-	var allErrs []error
-	for r := range resultCh {
-		allErrs = append(allErrs, r.errs...)
-		for k, v := range r.status {
-			merged[k] = v
-		}
-	}
-	if len(allErrs) > 0 {
-		return nil, allErrs
-	}
-	return merged, nil
+	return p.querySampleTestStatusForTable(ctx, reqOptions, allJobVariants, includeVariants, start, end, DefaultJunitTable)
 }
 
 func (p *BigQueryProvider) querySampleTestStatusForTable(ctx context.Context, reqOptions reqopts.RequestOptions,
@@ -194,80 +114,7 @@ func (p *BigQueryProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqO
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	fLog := log.WithField("func", "QuerySampleJobRunTestStatus")
-
-	filteredVariants, skipDefault := copyIncludeVariantsAndRemoveOverrides(p.variantJunitTableOverrides, -1, includeVariants)
-
-	type result struct {
-		status map[string][]crstatus.TestJobRunRows
-		errs   []error
-	}
-	resultCh := make(chan result)
-	var wg sync.WaitGroup
-
-	if !skipDefault {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				fLog.Infof("running default sample job run query with includeVariants: %+v", filteredVariants)
-				s, e := p.querySampleJobRunTestStatusForTable(ctx, reqOptions, allJobVariants, filteredVariants, start, end, DefaultJunitTable)
-				resultCh <- result{s, e}
-			}
-		}()
-	}
-
-	for i, or := range p.variantJunitTableOverrides {
-		if !containsOverriddenVariant(includeVariants, or.VariantName, or.VariantValue) {
-			continue
-		}
-		index, override := i, or
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				overrideVariants, skip := copyIncludeVariantsAndRemoveOverrides(p.variantJunitTableOverrides, index, includeVariants)
-				if skip {
-					fLog.Infof("skipping override sample job run query as all values for a variant were overridden")
-					return
-				}
-				overrideEnd := end
-				overrideStart, err := util.ParseCRReleaseTime([]v1.Release{}, "", override.RelativeStart,
-					true, &overrideEnd, reqOptions.CacheOption.CRTimeRoundingFactor)
-				if err != nil {
-					resultCh <- result{nil, []error{err}}
-					return
-				}
-				fLog.Infof("running override sample job run query for %+v with includeVariants: %+v", override, overrideVariants)
-				s, e := p.querySampleJobRunTestStatusForTable(ctx, reqOptions, allJobVariants, overrideVariants, overrideStart, overrideEnd, override.TableName)
-				resultCh <- result{s, e}
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
-
-	merged := make(map[string][]crstatus.TestJobRunRows)
-	var allErrs []error
-	for r := range resultCh {
-		allErrs = append(allErrs, r.errs...)
-		for k, v := range r.status {
-			merged[k] = v
-		}
-	}
-	if len(allErrs) > 0 {
-		return nil, allErrs
-	}
-	return merged, nil
+	return p.querySampleJobRunTestStatusForTable(ctx, reqOptions, allJobVariants, includeVariants, start, end, DefaultJunitTable)
 }
 
 func (p *BigQueryProvider) querySampleJobRunTestStatusForTable(ctx context.Context, reqOptions reqopts.RequestOptions,
@@ -567,59 +414,4 @@ func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]str
 		names = append(names, row.Name)
 	}
 	return names, nil
-}
-
-// containsOverriddenVariant checks whether the given variant key/value pair
-// is present in the includeVariants map (i.e. the request actually includes
-// data for this overridden variant).
-func containsOverriddenVariant(includeVariants map[string][]string, key, value string) bool {
-	for k, v := range includeVariants {
-		if k != key {
-			continue
-		}
-		for _, vv := range v {
-			if vv == value {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// copyIncludeVariantsAndRemoveOverrides copies includeVariants and removes
-// overridden variant values. For the default query (currOverride=-1), all
-// overridden values are removed. For an override query at index i, only
-// other overrides' values are removed. Returns true if the query should be
-// skipped because all values for a variant were removed.
-func copyIncludeVariantsAndRemoveOverrides(
-	overrides []configv1.VariantJunitTableOverride,
-	currOverride int,
-	includeVariants map[string][]string) (map[string][]string, bool) {
-
-	cp := make(map[string][]string)
-	for key, values := range includeVariants {
-		var newSlice []string
-		for _, v := range values {
-			if !shouldSkipVariant(overrides, currOverride, key, v) {
-				newSlice = append(newSlice, v)
-			}
-		}
-		if len(newSlice) == 0 {
-			return cp, true
-		}
-		cp[key] = newSlice
-	}
-	return cp, false
-}
-
-func shouldSkipVariant(overrides []configv1.VariantJunitTableOverride, currOverride int, key, value string) bool {
-	for i, override := range overrides {
-		if i == currOverride {
-			return false
-		}
-		if override.VariantName == key && override.VariantValue == value {
-			return true
-		}
-	}
-	return false
 }

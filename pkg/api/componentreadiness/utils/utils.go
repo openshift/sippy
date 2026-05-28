@@ -333,17 +333,3 @@ func GenerateTestDetailsURL(
 	u.RawQuery = params.Encode()
 	return u.String(), nil
 }
-
-func ContainsOverriddenVariant(includeVariants map[string][]string, key, value string) bool {
-	for k, v := range includeVariants {
-		if k != key {
-			continue
-		}
-		for _, vv := range v {
-			if vv == value {
-				return true
-			}
-		}
-	}
-	return false
-}
