@@ -24,6 +24,13 @@ import (
 	"github.com/openshift/sippy/pkg/util/param"
 )
 
+func releaseFilterClause(release string) string {
+	if release == "" {
+		return ""
+	}
+	return "AND release = @ReleaseFilter"
+}
+
 const (
 	DefaultJunitTable        = "junit"
 	jobRunAnnotationToIgnore = "InfraFailure"
@@ -73,7 +80,7 @@ func NewBaseQueryGenerator(
 
 func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.ReportTestStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client, b.ReqOptions, b.allVariants, b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client, b.ReqOptions, b.allVariants, b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false, b.ReqOptions.BaseRelease.Name)
 
 	errs := []error{}
 	baseString := commonQuery + ` AND jv_Release.variant_value = @BaseRelease`
@@ -133,7 +140,11 @@ func NewSampleQueryGenerator(
 }
 
 func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, DefaultJunitTable, true)
+	sampleReleaseFilter := s.ReqOptions.SampleRelease.Name
+	if s.ReqOptions.SampleRelease.PullRequestOptions != nil || s.ReqOptions.SampleRelease.PayloadOptions != nil {
+		sampleReleaseFilter = ""
+	}
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, DefaultJunitTable, true, sampleReleaseFilter)
 
 	errs := []error{}
 	sampleString := commonQuery
@@ -254,7 +265,7 @@ func buildKeyTestFilterClause(tableAlias string) string {
 //
 // If keyTestNames is provided, additional CTEs are created to identify jobs with failed key tests
 // based on the DEDUPED data. This ensures key test filtering uses the same deduplicated results.
-func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore string, keyTestNames []string) (string, []bigquery.QueryParameter) {
+func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, releaseFilter string, keyTestNames []string) (string, []bigquery.QueryParameter) {
 	var commonParams []bigquery.QueryParameter
 
 	// Create the deduped_testcases CTE - this is the source of truth for all subsequent CTEs
@@ -298,11 +309,19 @@ func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotation
 			AND modified_time < DATETIME(@To)
 			AND skipped = false
 			AND job_labels.label IS NULL
+			%s
 		),
 		deduped_testcases AS (
 			SELECT * FROM deduped_testcases_with_rownum WHERE row_num = 1
 		)`,
-		jobNameQueryPortion, dataset, junitTable, dataset, dataset, jobRunAnnotationToIgnore)
+		jobNameQueryPortion, dataset, junitTable, dataset, dataset, jobRunAnnotationToIgnore, releaseFilterClause(releaseFilter))
+
+	if releaseFilter != "" {
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "ReleaseFilter",
+			Value: releaseFilter,
+		})
+	}
 
 	// Always create the component mapping CTE
 	componentMappingCTE := fmt.Sprintf(`,
@@ -368,6 +387,7 @@ func BuildComponentReportQuery(
 	includeVariants map[string][]string,
 	junitTable string,
 	isSample bool,
+	releaseFilter string,
 ) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
@@ -395,7 +415,7 @@ func BuildComponentReportQuery(
 	// TODO: last_failure here explicitly uses success_val not adjusted_success_val, this ensures we
 	// show the last time the test failed, not flaked. if you enable the flakes as failures feature (which is
 	// non default today), the last failure time will be wrong which can impact things like failed fix detection.
-	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, reqOptions.AdvancedOption.KeyTestNames)
+	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, releaseFilter, reqOptions.AdvancedOption.KeyTestNames)
 
 	queryString := fmt.Sprintf(`%s
 					SELECT
@@ -527,7 +547,8 @@ func buildTestDetailsQuery(
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
-	isSample bool) (string, string, []bigquery.QueryParameter) {
+	isSample bool,
+	releaseFilter string) (string, string, []bigquery.QueryParameter) {
 
 	jobNameQueryPortion := normalJobNameCol
 	if c.SampleRelease.PullRequestOptions != nil && isSample {
@@ -551,7 +572,7 @@ func buildTestDetailsQuery(
 	}
 
 	// Build WITH clause with key test filtering if configured
-	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, c.AdvancedOption.KeyTestNames)
+	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, releaseFilter, c.AdvancedOption.KeyTestNames)
 
 	jobLabelsJoin := fmt.Sprintf(`LEFT JOIN (
 						SELECT prowjob_build_id,
@@ -873,7 +894,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		b.TestIDOpts,
 		b.ReqOptions,
 		b.allJobVariants,
-		b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
+		b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false, b.BaseRelease)
 	baseString := commonQuery
 	baseQuery := b.client.Query(ctx, bqlabel.TDJunitBase, baseString+groupByQuery)
 
@@ -925,12 +946,16 @@ func NewSampleTestDetailsQueryGenerator(
 
 func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
 
+	sampleReleaseFilter := s.ReqOptions.SampleRelease.Name
+	if s.ReqOptions.SampleRelease.PullRequestOptions != nil || s.ReqOptions.SampleRelease.PayloadOptions != nil {
+		sampleReleaseFilter = ""
+	}
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		s.client,
 		s.ReqOptions.TestIDOptions,
 		s.ReqOptions,
 		s.allJobVariants,
-		s.IncludeVariants, DefaultJunitTable, true)
+		s.IncludeVariants, DefaultJunitTable, true, sampleReleaseFilter)
 
 	sampleString := commonQuery
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
