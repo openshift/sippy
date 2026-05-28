@@ -68,16 +68,7 @@ func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
 
-	return p.querySampleTestStatusForTable(ctx, reqOptions, allJobVariants, includeVariants, start, end, DefaultJunitTable)
-}
-
-func (p *BigQueryProvider) querySampleTestStatusForTable(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
-	includeVariants map[string][]string,
-	start, end time.Time,
-	junitTable string) (map[string]crstatus.TestStatus, []error) {
-
-	generator := NewSampleQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end, junitTable)
+	generator := NewSampleQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.ReportTestStatus](
 		ctx, p.client.Cache, reqOptions.CacheOption,
 		apiPkg.NewCacheSpec(generator, "SampleTestStatus~", &reqOptions.SampleRelease.End),
@@ -114,16 +105,7 @@ func (p *BigQueryProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqO
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	return p.querySampleJobRunTestStatusForTable(ctx, reqOptions, allJobVariants, includeVariants, start, end, DefaultJunitTable)
-}
-
-func (p *BigQueryProvider) querySampleJobRunTestStatusForTable(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
-	includeVariants map[string][]string,
-	start, end time.Time,
-	junitTable string) (map[string][]crstatus.TestJobRunRows, []error) {
-
-	generator := NewSampleTestDetailsQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end, junitTable)
+	generator := NewSampleTestDetailsQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.TestJobRunStatuses](
 		ctx, p.client.Cache, reqOptions.CacheOption,
 		apiPkg.NewCacheSpec(generator, "SampleJobRunTestStatusV2~", &end),

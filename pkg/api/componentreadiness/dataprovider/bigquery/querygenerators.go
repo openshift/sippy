@@ -119,8 +119,7 @@ func NewSampleQueryGenerator(
 	reqOptions reqopts.RequestOptions,
 	allVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	start, end time.Time,
-	junitTable string) sampleQueryGenerator {
+	start, end time.Time) sampleQueryGenerator {
 
 	generator := sampleQueryGenerator{
 		ReqOptions:      reqOptions,
@@ -913,8 +912,7 @@ func NewSampleTestDetailsQueryGenerator(
 	reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	start, end time.Time,
-	junitTable string) *sampleTestDetailsQueryGenerator {
+	start, end time.Time) *sampleTestDetailsQueryGenerator {
 	return &sampleTestDetailsQueryGenerator{
 		allJobVariants:  allJobVariants,
 		client:          client,
