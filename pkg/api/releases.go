@@ -481,7 +481,6 @@ func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
 		PreviousRelease: r.PreviousRelease.StringVal,
 		Capabilities:    make(map[sippyv1.ReleaseCapability]bool),
 		Product:         r.Product.StringVal,
-		Synthetic:       r.Synthetic,
 	}
 	if r.GADate.Valid {
 		gaDate := r.GADate.Date.In(time.UTC)

@@ -440,7 +440,7 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		}
 	}
 
-	syntheticReleaseJobOverrides, err := variantregistry.BuildSyntheticReleaseJobOverrides(sippyConfig.Releases, releaseConfigs)
+	syntheticReleaseJobOverrides, err := variantregistry.BuildSyntheticReleaseJobOverrides(sippyConfig.Releases)
 	if err != nil {
 		return nil, fmt.Errorf("error building synthetic release job overrides: %w", err)
 	}
