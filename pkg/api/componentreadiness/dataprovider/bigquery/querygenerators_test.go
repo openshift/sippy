@@ -94,6 +94,7 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 				includeVariants,
 				DefaultJunitTable,
 				false,
+				"",
 			)
 
 			// Check if CTE is present when expected
@@ -199,6 +200,7 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 		map[string][]string{},
 		DefaultJunitTable,
 		false,
+		"",
 	)
 
 	// The query should:
@@ -274,6 +276,7 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 		map[string][]string{},
 		DefaultJunitTable,
 		false,
+		"",
 	)
 
 	// Query with key tests
@@ -287,6 +290,7 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 		map[string][]string{},
 		DefaultJunitTable,
 		false,
+		"",
 	)
 
 	// Both should have the component_mapping CTE
