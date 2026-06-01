@@ -3,15 +3,19 @@ package flags
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -33,7 +37,19 @@ type benchmarkResult struct {
 	max        time.Duration
 }
 
-func printSummaryTable(results []benchmarkResult) {
+func extractConnectionName(dsn string) string {
+	atIdx := strings.Index(dsn, "@")
+	if atIdx < 0 {
+		return ""
+	}
+	host := dsn[atIdx+1:]
+	if dotIdx := strings.Index(host, "."); dotIdx > 0 {
+		return host[:dotIdx]
+	}
+	return ""
+}
+
+func printSummaryTable(t *testing.T, results []benchmarkResult, connName string) {
 	nameWidth := 4
 	for _, r := range results {
 		if len(r.name) > nameWidth {
@@ -45,16 +61,32 @@ func printSummaryTable(results []benchmarkResult) {
 		return results[i].avg > results[j].avg
 	})
 
+	var sb strings.Builder
 	header := fmt.Sprintf("  %-*s  %5s  %12s  %12s  %12s  %12s",
 		nameWidth, "Name", "Iters", "Total", "Avg", "Min", "Max")
-	fmt.Println()
-	fmt.Println(header)
-	fmt.Println("  " + strings.Repeat("-", len(header)-2))
+	sb.WriteString("\n")
+	sb.WriteString(header + "\n")
+	sb.WriteString("  " + strings.Repeat("-", len(header)-2) + "\n")
 	for _, r := range results {
-		fmt.Printf("  %-*s  %5d  %12s  %12s  %12s  %12s\n",
+		fmt.Fprintf(&sb, "  %-*s  %5d  %12s  %12s  %12s  %12s\n",
 			nameWidth, r.name, r.iterations, r.total, r.avg, r.min, r.max)
 	}
-	fmt.Println()
+	sb.WriteString("\n")
+	fmt.Print(sb.String())
+
+	// optional helper to track results
+	benchmarkFilePath := os.Getenv("benchmarking_file_path")
+	if connName != "" && len(benchmarkFilePath) > 0 {
+		ts := time.Now().UTC().Format("2006-01-02T15-04-05")
+		filename := fmt.Sprintf("benchmark-%s-%s.txt", connName, ts)
+		fullPath := filepath.Join(benchmarkFilePath, filename)
+		fullPath = filepath.Clean(fullPath)
+		if err := os.WriteFile(fullPath, []byte(sb.String()), 0o600); err != nil { // #nosec G703
+			t.Logf("failed to write benchmark report to %s: %v", fullPath, err)
+		} else {
+			t.Logf("benchmark report written to %s", fullPath)
+		}
+	}
 }
 
 func runBenchmarkCase(t *testing.T, dbc *db.DB, bc benchmarkCase, iterations int) benchmarkResult {
@@ -275,6 +307,97 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 			},
 		},
 		{
+			name: "VariantReports",
+			fn: func(dbc *db.DB) error {
+				start, boundary, end := util.PeriodToDates("default", asOf)
+				results, err := query.VariantReports(dbc, benchmarkRelease, start, boundary, end)
+				if err == nil {
+					log.Printf("VariantReports: %d variants", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "JobReports",
+			fn: func(dbc *db.DB) error {
+				start, boundary, end := util.PeriodToDates("default", asOf)
+				results, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, start, boundary, end)
+				if err == nil {
+					log.Printf("JobReports: %d jobs", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "BuildClusterHealth",
+			fn: func(dbc *db.DB) error {
+				start, boundary, end := util.PeriodToDates("default", asOf)
+				results, err := query.BuildClusterHealth(dbc, start, boundary, end)
+				if err == nil {
+					log.Printf("BuildClusterHealth: %d clusters", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "RecentTestFailures",
+			fn: func(dbc *db.DB) error {
+				period := 7 * 24 * time.Hour
+				previousPeriod := 7 * 24 * time.Hour
+				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
+				result, err := api.GetRecentTestFailures(dbc, benchmarkRelease, period, &previousPeriod, false, &filter.FilterOptions{Filter: &filter.Filter{}}, pagination, asOf)
+				if err == nil {
+					log.Printf("RecentTestFailures: %d rows", result.TotalRows)
+				}
+				return err
+			},
+		},
+		{
+			name: "PullRequestReport",
+			fn: func(dbc *db.DB) error {
+				results, err := query.PullRequestReport(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease)
+				if err == nil {
+					log.Printf("PullRequestReport: %d PRs", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "RepositoryReport",
+			fn: func(dbc *db.DB) error {
+				results, err := query.RepositoryReport(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, asOf)
+				if err == nil {
+					log.Printf("RepositoryReport: %d repos", len(results))
+				}
+				return err
+			},
+		},
+		{
+			name: "JobsRunsReport",
+			fn: func(dbc *db.DB) error {
+				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
+				result, err := api.JobsRunsReportFromDB(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, pagination, asOf)
+				if err == nil {
+					log.Printf("JobsRunsReport: %d rows", result.TotalRows)
+				}
+				return err
+			},
+		},
+		{
+			name: "ProwJobHistoricalTestCounts",
+			fn: func(dbc *db.DB) error {
+				var prowJob models.ProwJob
+				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
+					return err
+				}
+				count, err := query.ProwJobHistoricalTestCounts(dbc, prowJob.ID)
+				if err == nil {
+					log.Printf("ProwJobHistoricalTestCounts for %s: %d", benchmarkJobName, count)
+				}
+				return err
+			},
+		},
+		{
 			name: "TestAnalysisPassRate",
 			fn: func(dbc *db.DB) error {
 				type passRate struct {
@@ -298,7 +421,7 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 	}
 }
 
-func getBenchmarkDBClient(t *testing.T) *db.DB {
+func getBenchmarkDBClient(t *testing.T) (*db.DB, string) {
 	t.Helper()
 	dsn := os.Getenv("db_benchmarking_dsn")
 	if dsn == "" {
@@ -323,11 +446,11 @@ func getBenchmarkDBClient(t *testing.T) *db.DB {
 			t.Logf("failed to close DB client: %v", err)
 		}
 	})
-	return dbc
+	return dbc, extractConnectionName(dsn)
 }
 
 func Test_BenchmarkIndividual(t *testing.T) {
-	dbc := getBenchmarkDBClient(t)
+	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()
 	iterations := 3
 	cases := getBenchmarkCases(asOf)
@@ -339,11 +462,11 @@ func Test_BenchmarkIndividual(t *testing.T) {
 			results = append(results, r)
 		})
 	}
-	printSummaryTable(results)
+	printSummaryTable(t, results, connName)
 }
 
 func Test_BenchmarkFindTestsByRelease(t *testing.T) {
-	dbc := getBenchmarkDBClient(t)
+	dbc, connName := getBenchmarkDBClient(t)
 	iterations := 1
 	bc, ok := getIndividualBenchmarkCases()["FindTestsByRelease"]
 	if !ok {
@@ -351,11 +474,11 @@ func Test_BenchmarkFindTestsByRelease(t *testing.T) {
 	}
 
 	r := runBenchmarkCase(t, dbc, bc, iterations)
-	printSummaryTable([]benchmarkResult{r})
+	printSummaryTable(t, []benchmarkResult{r}, connName)
 }
 
 func Test_BenchmarkCombined(t *testing.T) {
-	dbc := getBenchmarkDBClient(t)
+	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()
 	iterations := 3
 
@@ -372,11 +495,11 @@ func Test_BenchmarkCombined(t *testing.T) {
 			results = append(results, r)
 		})
 	}
-	printSummaryTable(results)
+	printSummaryTable(t, results, connName)
 }
 
 func Test_BenchmarkGroup(t *testing.T) {
-	dbc := getBenchmarkDBClient(t)
+	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()
 	iterations := 1
 	cases := getBenchmarkCases(asOf)
@@ -402,5 +525,5 @@ func Test_BenchmarkGroup(t *testing.T) {
 		fmt.Printf("  group iteration %d: %s\n", i+1, elapsed)
 	}
 	group.avg = group.total / time.Duration(iterations)
-	printSummaryTable([]benchmarkResult{group})
+	printSummaryTable(t, []benchmarkResult{group}, connName)
 }
