@@ -173,7 +173,7 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 				bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 			}
 
-			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
+			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor, CRTimeRoundingOffset: f.ComponentReadinessFlags.CRTimeRoundingOffset}
 
 			dbc, err := f.PostgresFlags.GetDBClient()
 			if err != nil {

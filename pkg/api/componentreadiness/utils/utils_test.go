@@ -55,12 +55,12 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 
 	// Helper function to get release options from view
 	getBaseReleaseOpts := func() reqopts.Release {
-		opts, err := GetViewReleaseOptions(releases, "basis", testView.BaseRelease, 0)
+		opts, err := GetViewReleaseOptions(releases, "basis", testView.BaseRelease, 0, 0)
 		require.NoError(t, err)
 		return opts
 	}
 	getSampleReleaseOpts := func() reqopts.Release {
-		opts, err := GetViewReleaseOptions(releases, "sample", testView.SampleRelease, 0)
+		opts, err := GetViewReleaseOptions(releases, "sample", testView.SampleRelease, 0, 0)
 		require.NoError(t, err)
 		return opts
 	}
@@ -245,9 +245,9 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		}
 
 		// Get release options from the real-world view
-		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", realWorldView.BaseRelease, time.Hour)
+		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", realWorldView.BaseRelease, time.Hour, 0)
 		require.NoError(t, err)
-		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", realWorldView.SampleRelease, time.Hour)
+		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", realWorldView.SampleRelease, time.Hour, 0)
 		require.NoError(t, err)
 
 		url, err := GenerateTestDetailsURL(
@@ -343,9 +343,9 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		}
 
 		// Get release options from the view with variants
-		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", viewWithVariants.BaseRelease, 0)
+		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", viewWithVariants.BaseRelease, 0, 0)
 		require.NoError(t, err)
-		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", viewWithVariants.SampleRelease, 0)
+		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", viewWithVariants.SampleRelease, 0, 0)
 		require.NoError(t, err)
 
 		url, err := GenerateTestDetailsURL(
@@ -416,9 +416,9 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			},
 		}
 
-		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", viewWithCrossCompare.BaseRelease, 0)
+		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", viewWithCrossCompare.BaseRelease, 0, 0)
 		require.NoError(t, err)
-		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", viewWithCrossCompare.SampleRelease, 0)
+		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", viewWithCrossCompare.SampleRelease, 0, 0)
 		require.NoError(t, err)
 
 		url, err := GenerateTestDetailsURL(

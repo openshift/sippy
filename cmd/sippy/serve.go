@@ -196,6 +196,7 @@ func NewServeCommand() *cobra.Command {
 				pinnedDateTime,
 				cacheClient,
 				f.ComponentReadinessFlags.CRTimeRoundingFactor,
+				f.ComponentReadinessFlags.CRTimeRoundingOffset,
 				views,
 				config,
 				f.APIFlags.EnableWriteEndpoints,
@@ -211,7 +212,7 @@ func NewServeCommand() *cobra.Command {
 					bigQueryClient,
 					crDataProvider,
 					util.GetReportEnd(pinnedDateTime),
-					cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
+					cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
 					views.ComponentReadiness)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
@@ -231,7 +232,7 @@ func NewServeCommand() *cobra.Command {
 								bigQueryClient,
 								crDataProvider,
 								util.GetReportEnd(pinnedDateTime),
-								cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
+								cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
 								views.ComponentReadiness)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")

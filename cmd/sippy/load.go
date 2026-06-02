@@ -222,6 +222,7 @@ func NewLoadCommand() *cobra.Command {
 					rcl, err := regressioncacheloader.New(
 						dbc, bqc, config, views.ComponentReadiness, releaseConfigs,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor,
+						f.ComponentReadinessFlags.CRTimeRoundingOffset,
 						regressionStore,
 					)
 					if err != nil {

@@ -340,6 +340,7 @@ type fallbackTestQueryReleasesGeneratorCacheKey struct {
 	VariantDBGroupBy sets.String
 	// CRTimeRoundingFactor is used by GetReleaseDatesFromBigQuery
 	CRTimeRoundingFactor time.Duration
+	CRTimeRoundingOffset time.Duration
 	// KeyTestNames affects the BuildComponentReportQuery results via filtering logic
 	KeyTestNames []string
 }
@@ -354,6 +355,7 @@ func (f *fallbackTestQueryReleasesGenerator) getCacheKey() fallbackTestQueryRele
 		BaseEnd:              f.BaseEnd,
 		VariantDBGroupBy:     f.ReqOptions.VariantOption.DBGroupBy,
 		CRTimeRoundingFactor: f.ReqOptions.CacheOption.CRTimeRoundingFactor,
+		CRTimeRoundingOffset: f.ReqOptions.CacheOption.CRTimeRoundingOffset,
 		KeyTestNames:         f.ReqOptions.AdvancedOption.KeyTestNames,
 	}
 }

@@ -146,7 +146,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
 			}
 
-			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
+			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor, CRTimeRoundingOffset: f.ComponentReadinessFlags.CRTimeRoundingOffset}
 
 			views, err := f.ComponentReadinessFlags.ParseViewsFile()
 			if err != nil {

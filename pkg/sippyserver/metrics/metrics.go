@@ -206,13 +206,13 @@ func updateComponentReadinessMetricsForView(ctx context.Context, provider datapr
 	logger.Info("generating report for view")
 
 	baseRelease, err := utils.GetViewReleaseOptions(
-		releases, "basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor)
+		releases, "basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor, cacheOptions.CRTimeRoundingOffset)
 	if err != nil {
 		return err
 	}
 
 	sampleRelease, err := utils.GetViewReleaseOptions(
-		releases, "sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor)
+		releases, "sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor, cacheOptions.CRTimeRoundingOffset)
 	if err != nil {
 		return err
 	}
