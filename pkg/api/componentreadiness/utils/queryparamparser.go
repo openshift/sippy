@@ -23,7 +23,7 @@ func ParseComponentReportRequest(
 	releases []v1.Release,
 	req *http.Request,
 	allJobVariants crtest.JobVariants,
-	crTimeRoundingFactor time.Duration,
+	crTimeRoundingFactor, crTimeRoundingOffset time.Duration,
 ) (
 	opts reqopts.RequestOptions,
 	warnings []string,
@@ -41,11 +41,11 @@ func ParseComponentReportRequest(
 		opts.VariantOption = view.VariantOptions
 		opts.AdvancedOption = view.AdvancedOptions
 		opts.TestFilters = view.TestFilters
-		opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
+		opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor, crTimeRoundingOffset)
 		if err != nil {
 			return
 		}
-		opts.SampleRelease, err = GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor)
+		opts.SampleRelease, err = GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor, crTimeRoundingOffset)
 		if err != nil {
 			return
 		}
@@ -160,13 +160,13 @@ func ParseComponentReportRequest(
 
 	// Date ranges override view defaults
 	if hasDateRangeInURL(req, "baseStartTime", "baseEndTime") {
-		opts.BaseRelease, err = parseDateRange(releases, req, opts.BaseRelease, "baseStartTime", "baseEndTime", crTimeRoundingFactor)
+		opts.BaseRelease, err = parseDateRange(releases, req, opts.BaseRelease, "baseStartTime", "baseEndTime", crTimeRoundingFactor, crTimeRoundingOffset)
 		if err != nil {
 			return
 		}
 	}
 	if hasDateRangeInURL(req, "sampleStartTime", "sampleEndTime") {
-		opts.SampleRelease, err = parseDateRange(releases, req, opts.SampleRelease, "sampleStartTime", "sampleEndTime", crTimeRoundingFactor)
+		opts.SampleRelease, err = parseDateRange(releases, req, opts.SampleRelease, "sampleStartTime", "sampleEndTime", crTimeRoundingFactor, crTimeRoundingOffset)
 		if err != nil {
 			return
 		}
@@ -210,7 +210,7 @@ func ParseComponentReportRequest(
 		}
 	}
 
-	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor)
+	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
 	if err != nil {
 		return
@@ -241,16 +241,16 @@ func GetViewReleaseOptions(
 	releases []v1.Release,
 	releaseType string,
 	viewRelease reqopts.RelativeRelease,
-	roundingFactor time.Duration,
+	roundingFactor, roundingOffset time.Duration,
 ) (reqopts.Release, error) {
 
 	var err error
 	opts := reqopts.Release{Name: viewRelease.Name}
-	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor)
+	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor, roundingOffset)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
 	}
-	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor)
+	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor, roundingOffset)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
 	}
@@ -411,18 +411,18 @@ func parseAdvancedOptions(req *http.Request) (advancedOption reqopts.Advanced, e
 func parseDateRange(allReleases []v1.Release, req *http.Request,
 	releaseOpts reqopts.Release,
 	startName string, endName string,
-	roundingFactor time.Duration,
+	roundingFactor, roundingOffset time.Duration,
 ) (reqopts.Release, error) {
 	var err error
 
 	timeStr := req.URL.Query().Get(startName)
-	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, true, nil, roundingFactor)
+	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, true, nil, roundingFactor, roundingOffset)
 	if err != nil {
 		return releaseOpts, errors.New(startName + " in wrong format")
 	}
 
 	timeStr = req.URL.Query().Get(endName)
-	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, false, nil, roundingFactor)
+	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, false, nil, roundingFactor, roundingOffset)
 	if err != nil {
 		return releaseOpts, errors.New(endName + " in wrong format")
 	}

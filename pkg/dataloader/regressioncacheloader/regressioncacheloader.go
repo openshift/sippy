@@ -49,6 +49,7 @@ type RegressionCacheLoader struct {
 	config               *configv1.SippyConfig
 	releases             []apiv1.Release
 	crTimeRoundingFactor time.Duration
+	crTimeRoundingOffset time.Duration
 
 	// Regression tracking deps
 	regressionStore componentreadiness.RegressionStore
@@ -61,6 +62,7 @@ func New(
 	views []crview.View,
 	releases []apiv1.Release,
 	crTimeRoundingFactor time.Duration,
+	crTimeRoundingOffset time.Duration,
 	regressionStore componentreadiness.RegressionStore,
 ) (*RegressionCacheLoader, error) {
 	if regressionStore == nil {
@@ -74,6 +76,7 @@ func New(
 		views:                views,
 		releases:             releases,
 		crTimeRoundingFactor: crTimeRoundingFactor,
+		crTimeRoundingOffset: crTimeRoundingOffset,
 		regressionStore:      regressionStore,
 		logger:               log.WithField("loader", "regression-cache"),
 	}, nil
@@ -93,6 +96,7 @@ func (l *RegressionCacheLoader) Load() {
 
 	cacheOpts := cache.RequestOptions{
 		CRTimeRoundingFactor: l.crTimeRoundingFactor,
+		CRTimeRoundingOffset: l.crTimeRoundingOffset,
 		RefreshRecent:        true,
 		StableAge:            cache.StandardStableAgeCR,
 		StableExpiry:         cache.StandardStableExpiryCR,
@@ -480,13 +484,13 @@ func (l *RegressionCacheLoader) buildGenerator(
 ) (*componentreadiness.ComponentReportGenerator, error) {
 
 	baseRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor)
+		l.releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
 	if err != nil {
 		return nil, err
 	}
 
 	sampleRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor)
+		l.releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
 	if err != nil {
 		return nil, err
 	}

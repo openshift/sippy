@@ -700,11 +700,11 @@ func syncRegressions(dbc *db.DB) error {
 	rLog := log.WithField("source", "seed-regression-sync")
 
 	for _, view := range views.ComponentReadiness {
-		baseRelease, err := utils.GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0)
+		baseRelease, err := utils.GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
 		if err != nil {
 			return fmt.Errorf("error getting base release for view %s: %w", view.Name, err)
 		}
-		sampleRelease, err := utils.GetViewReleaseOptions(releases, "sample", view.SampleRelease, 0)
+		sampleRelease, err := utils.GetViewReleaseOptions(releases, "sample", view.SampleRelease, 0, 0)
 		if err != nil {
 			return fmt.Errorf("error getting sample release for view %s: %w", view.Name, err)
 		}

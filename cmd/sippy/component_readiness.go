@@ -205,6 +205,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		nil,
 		cacheClient,
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
+		f.ComponentReadinessFlags.CRTimeRoundingOffset,
 		views,
 		config,
 		f.APIFlags.EnableWriteEndpoints,
@@ -220,7 +221,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			bigQueryClient,
 			crDataProvider,
 			time.Time{},
-			cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
+			cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
 			views.ComponentReadiness)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
@@ -240,7 +241,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 						bigQueryClient,
 						crDataProvider,
 						time.Time{},
-						cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
+						cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
 						views.ComponentReadiness)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")

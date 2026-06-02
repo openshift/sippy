@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -143,7 +144,8 @@ func CalculateRoundedCacheDuration(cacheOptions cache.RequestOptions) time.Durat
 	if cacheOptions.CRTimeRoundingFactor > 0 {
 		now := time.Now().UTC()
 		// Only cache until the next rounding duration
-		cacheDuration = now.Truncate(cacheOptions.CRTimeRoundingFactor).Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
+		truncated := util.TruncateAligned(now, cacheOptions.CRTimeRoundingFactor, cacheOptions.CRTimeRoundingOffset)
+		cacheDuration = truncated.Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
 	}
 	return cacheDuration
 }

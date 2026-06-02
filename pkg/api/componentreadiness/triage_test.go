@@ -766,7 +766,7 @@ func TestInjectRegressionHATEOASLinks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			InjectRegressionHATEOASLinks(tt.regression, views, releases, 0, "http://api", "http://frontend")
+			InjectRegressionHATEOASLinks(tt.regression, views, releases, 0, 0, "http://api", "http://frontend")
 
 			assert.Contains(t, tt.regression.Links, "self")
 

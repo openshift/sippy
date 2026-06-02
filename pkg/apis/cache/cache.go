@@ -23,8 +23,11 @@ type RequestOptions struct {
 	Expiry time.Duration
 
 	// CRTimeRoundingFactor is used to round cache expiration time to the nearest time boundary of blocks that size.
-	// for example, when set to 4 hours, the day is divided into 4-hour blocks and the TTL will be at the next boundary.
+	// for example, when set to 12 hours, the day is divided into 12-hour blocks and the TTL will be at the next boundary.
 	CRTimeRoundingFactor time.Duration
+	// CRTimeRoundingOffset shifts the rounding boundaries by this duration.
+	// For example, 4h shifts 12h boundaries from 00:00/12:00 UTC to 04:00/16:00 UTC.
+	CRTimeRoundingOffset time.Duration
 
 	// SkipCacheWrites will disable setting keys in the cache. Used in some scenarios where a lot of data is in play and serves no purpose being in the cache.
 	SkipCacheWrites bool
@@ -41,9 +44,10 @@ type RequestOptions struct {
 
 var StandardStableAgeCR = time.Hour * 24 * 7    // age at which component readiness data should be considered "stable"
 var StandardStableExpiryCR = time.Hour * 24 * 7 // how long to cache stable component readiness data
-func NewStandardCROptions(crTimeRoundingFactor time.Duration) RequestOptions {
+func NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset time.Duration) RequestOptions {
 	return RequestOptions{
 		CRTimeRoundingFactor: crTimeRoundingFactor,
+		CRTimeRoundingOffset: crTimeRoundingOffset,
 		StableAge:            StandardStableAgeCR,
 		StableExpiry:         StandardStableExpiryCR,
 	}

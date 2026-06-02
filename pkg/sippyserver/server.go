@@ -88,6 +88,7 @@ func NewServer(
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
+	crTimeRoundingOffset time.Duration,
 	views *apitype.SippyViews,
 	config *v1.SippyConfig,
 	enableWriteEndpoints bool,
@@ -112,6 +113,7 @@ func NewServer(
 		gcsBucket:            gcsBucket,
 		cache:                cacheClient,
 		crTimeRoundingFactor: crTimeRoundingFactor,
+		crTimeRoundingOffset: crTimeRoundingOffset,
 		views:                views,
 		config:               config,
 		enableWriteAPIs:      enableWriteEndpoints,
@@ -171,6 +173,7 @@ type Server struct {
 	gcsBucket            string
 	cache                cache.Cache
 	crTimeRoundingFactor time.Duration
+	crTimeRoundingOffset time.Duration
 	capabilities         []string
 	views                *apitype.SippyViews
 	config               *v1.SippyConfig
@@ -967,7 +970,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 	viewsCopy := make([]crview.View, len(s.views.ComponentReadiness))
 	copy(viewsCopy, s.views.ComponentReadiness)
 	for i := range viewsCopy {
-		rro, err := utils.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
+		rro, err := utils.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -975,7 +978,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 		viewsCopy[i].BaseRelease.Start = rro.Start
 		viewsCopy[i].BaseRelease.End = rro.End
 
-		rro, err = utils.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
+		rro, err = utils.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -1023,7 +1026,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		return componentreport.ComponentReport{}, err
 	}
 
-	options, warnings, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
+	options, warnings, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
 
 	if err != nil {
 		return componentreport.ComponentReport{}, err
@@ -1077,7 +1080,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		return
 	}
 
-	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
+	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
 
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1853,7 +1856,7 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	regressions, err := componentreadiness.ListRegressions(s.db, view.SampleRelease.Name, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+	regressions, err := componentreadiness.ListRegressions(s.db, view.SampleRelease.Name, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1926,7 +1929,7 @@ func (s *Server) jsonGetRegressions(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	regressions, err := componentreadiness.ListRegressions(s.db, release, views, allReleases, s.crTimeRoundingFactor, req)
+	regressions, err := componentreadiness.ListRegressions(s.db, release, views, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1952,7 +1955,7 @@ func (s *Server) jsonGetRegressionByID(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	regression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+	regression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1989,7 +1992,7 @@ func (s *Server) jsonRegressionPotentialMatchingTriages(w http.ResponseWriter, r
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting releases: %v", err))
 		return
 	}
-	regression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+	regression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting regression: %v", err))
 	}

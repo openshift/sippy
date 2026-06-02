@@ -34,7 +34,7 @@ func (c *releaseDateQuerier) QueryReleaseDates(ctx context.Context) ([]crtest.Re
 	for _, release := range releases {
 		timeRange := crtest.ReleaseTimeRange{Release: release.Release}
 		if release.GADate != nil {
-			prior := util.AdjustReleaseTime(*release.GADate, true, "30", c.reqOptions.CacheOption.CRTimeRoundingFactor)
+			prior := util.AdjustReleaseTime(*release.GADate, true, "30", c.reqOptions.CacheOption.CRTimeRoundingFactor, c.reqOptions.CacheOption.CRTimeRoundingOffset)
 			timeRange.Start = &prior
 			timeRange.End = release.GADate
 		}

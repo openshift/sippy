@@ -11,6 +11,16 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
 
+// TruncateAligned rounds t down to the nearest multiple of factor, aligned to a
+// timezone offset. For example, with factor=12h and offset=4h,
+// boundaries land at 04:00 and 16:00 UTC.
+func TruncateAligned(t time.Time, factor, offset time.Duration) time.Time {
+	if factor <= 0 {
+		return t
+	}
+	return t.Add(-offset).Truncate(factor).Add(offset)
+}
+
 type FailureGroupStats struct {
 	Count      int
 	CountPrev  int
@@ -115,7 +125,7 @@ var releaseRelativeRE = regexp.MustCompile(`^(now|ga|end)(?:-([0-9]+)([d]))?$`)
 // For isStart=false we would round up to 23:59:59.
 //
 // endTime must be specified if your timeStr uses the end directive. (end-90d) Otherwise it is not required or used.
-func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isStart bool, endTime *time.Time, crTimeRoundingFactor time.Duration) (time.Time, error) {
+func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isStart bool, endTime *time.Time, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) (time.Time, error) {
 
 	var relTime time.Time
 
@@ -147,7 +157,7 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 			}
 			relTime = *endTime
 		}
-		return AdjustReleaseTime(relTime, isStart, matches[2], crTimeRoundingFactor), nil
+		return AdjustReleaseTime(relTime, isStart, matches[2], crTimeRoundingFactor, crTimeRoundingOffset), nil
 	}
 
 	// Parse as a fully qualified timestamp:
@@ -160,12 +170,12 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 	// Apply the rounding factor:
 	now := time.Now().UTC()
 	if crTimeRoundingFactor > 0 && now.Format("2006-01-02") == relTime.Format("2006-01-02") {
-		relTime = now.Truncate(crTimeRoundingFactor)
+		relTime = TruncateAligned(now, crTimeRoundingFactor, crTimeRoundingOffset)
 	}
 	return relTime, nil
 }
 
-func AdjustReleaseTime(relTime time.Time, isStart bool, daysAdjustment string, crTimeRoundingFactor time.Duration) time.Time {
+func AdjustReleaseTime(relTime time.Time, isStart bool, daysAdjustment string, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) time.Time {
 	// adjust by number of days:
 	adjustDays, _ := strconv.ParseInt(daysAdjustment, 10, 64)
 	adjustDur := time.Duration(adjustDays) * 24 * time.Hour
@@ -178,7 +188,7 @@ func AdjustReleaseTime(relTime time.Time, isStart bool, daysAdjustment string, c
 		// Apply the rounding factor if using today:
 		now := time.Now().UTC()
 		if crTimeRoundingFactor > 0 && now.Format("2006-01-02") == relTime.Format("2006-01-02") {
-			relTime = now.Truncate(crTimeRoundingFactor)
+			relTime = TruncateAligned(now, crTimeRoundingFactor, crTimeRoundingOffset)
 		} else {
 			// otherwise round up to end of day
 			relTime = time.Date(relTime.Year(), relTime.Month(), relTime.Day(), 23, 59, 59, 0, time.UTC)

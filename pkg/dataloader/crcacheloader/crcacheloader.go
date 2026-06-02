@@ -39,6 +39,7 @@ type ComponentReadinessCacheLoader struct {
 	dataProvider         dataprovider.DataProvider
 	config               *v1.SippyConfig
 	crTimeRoundingFactor time.Duration
+	crTimeRoundingOffset time.Duration
 }
 
 func New(
@@ -48,7 +49,7 @@ func New(
 	config *v1.SippyConfig,
 	views *sippytypes.SippyViews,
 	releases []apiv1.Release,
-	crTimeRoundingFactor time.Duration) *ComponentReadinessCacheLoader {
+	crTimeRoundingFactor, crTimeRoundingOffset time.Duration) *ComponentReadinessCacheLoader {
 
 	return &ComponentReadinessCacheLoader{
 		dbc:                  dbc,
@@ -60,6 +61,7 @@ func New(
 		dataProvider:         bqprovider.NewBigQueryProvider(bqClient),
 		config:               config,
 		crTimeRoundingFactor: crTimeRoundingFactor,
+		crTimeRoundingOffset: crTimeRoundingOffset,
 	}
 }
 
@@ -71,12 +73,13 @@ func (l *ComponentReadinessCacheLoader) Load() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 	defer cancel()
 	// This command should be called in a kube cronjob matching the time rounding factor.
-	// Today we push our Sample end time out to the next even 4 hour interval UTC, i.e. 4am, 8am, 12pm, 4pm, etc.
+	// We push our Sample end time out to the next rounding boundary (e.g. every 12h at 04:00/16:00 UTC).
 	// We then use the delta to that time when caching as the duration for that key.
-	// This command should be run in a kube cronjob then at those precise times meaning all but the most unlucky
-	// requests between say 4:00:00am and 4:00:45am, should always hit the cache.
+	// This command should be run in a kube cronjob at those precise times meaning all but the most unlucky
+	// requests should always hit the cache.
 	cacheOpts := cache.RequestOptions{
 		CRTimeRoundingFactor: l.crTimeRoundingFactor,
+		CRTimeRoundingOffset: l.crTimeRoundingOffset,
 		RefreshRecent:        true,                         // always refresh recent data with the standard expiry
 		StableAge:            cache.StandardStableAgeCR,    // but data a week old is unlikely to change
 		StableExpiry:         cache.StandardStableExpiryCR, // so cache it for longer
@@ -237,13 +240,13 @@ func (l *ComponentReadinessCacheLoader) buildGenerator(
 ) (*componentreadiness.ComponentReportGenerator, error) {
 
 	baseRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor)
+		l.releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
 	if err != nil {
 		return nil, err
 	}
 
 	sampleRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor)
+		l.releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
 	if err != nil {
 		return nil, err
 	}

@@ -75,7 +75,8 @@ func TestRegressionCacheLoader(t *testing.T) {
 		&configv1.SippyConfig{},
 		sippyViews.ComponentReadiness,
 		releaseConfigs,
-		4*time.Hour, // default CRTimeRoundingFactor
+		12*time.Hour, // default CRTimeRoundingFactor
+		4*time.Hour,  // default CRTimeRoundingOffset
 		regressionStore,
 	)
 	require.NoError(t, err)

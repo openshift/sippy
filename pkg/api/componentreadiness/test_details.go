@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/sirupsen/logrus"
 
@@ -271,16 +272,17 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 			report.Links = make(map[string]string)
 		}
 
-		// Calculate default sample date range: 7 days ago to now, rounded to nearest 4 hours EST
+		// Calculate default sample date range: 7 days ago to now, rounded to nearest rounding factor
 		roundingFactor := c.ReqOptions.CacheOption.CRTimeRoundingFactor
 		if roundingFactor == 0 {
-			roundingFactor = 4 * time.Hour // default from flags/component_readiness.go
+			roundingFactor = 12 * time.Hour // default from flags/component_readiness.go
 		}
+		roundingOffset := c.ReqOptions.CacheOption.CRTimeRoundingOffset
 
 		// Create updated sample release options with the newer date range
 		// End time: now, rounded down to nearest rounding factor
 		now := time.Now().UTC()
-		newSampleEnd := now.Truncate(roundingFactor)
+		newSampleEnd := util.TruncateAligned(now, roundingFactor, roundingOffset)
 
 		// Start time: 7 days before the end time, rounded to start of day
 		newSampleStart := newSampleEnd.Add(-7 * 24 * time.Hour)
