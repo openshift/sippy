@@ -16,9 +16,8 @@ echo "==> Installing Claude Code..."
 curl -fsSL https://claude.ai/install.sh | sh
 
 echo "==> Setting up MCP server venv..."
-python3 -m venv mcp/.venv
-mcp/.venv/bin/pip install --upgrade pip -q
-mcp/.venv/bin/pip install -r mcp/requirements.txt -q
+uv venv --clear mcp/.venv
+uv pip install --python mcp/.venv/bin/python3 -r mcp/requirements.txt -q
 
 echo "==> Building sippy and seeding database..."
 make sippy

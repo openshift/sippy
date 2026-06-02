@@ -44,9 +44,11 @@ RUN ARCH=$(uname -m) && \
     ln -s /opt/google-cloud-sdk/bin/bq /usr/local/bin/bq
 
 RUN groupadd -g 1000 vscode && \
-    useradd -u 1000 -g 1000 -m -s /bin/bash vscode && \
+    useradd -u 1000 -g 0 -G 1000 -m -s /bin/bash vscode && \
     echo "vscode ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/vscode && \
     git config --system --add safe.directory /workspace
+
+RUN chgrp -R 0 /home/vscode && chmod -R g=u /home/vscode
 
 ENV GOPATH=/home/vscode/go
 ENV PATH="/home/vscode/.local/bin:${GOPATH}/bin:/usr/local/go/bin:${PATH}"
