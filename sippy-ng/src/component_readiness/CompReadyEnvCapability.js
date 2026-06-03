@@ -77,11 +77,7 @@ export default function CompReadyEnvCapability(props) {
     setTriageActionTaken(false)
   }, [triageActionTaken, urlParams, capability])
 
-  const fetchData = (fresh) => {
-    if (fresh) {
-      apiCallStr += '&forceRefresh=true'
-    }
-
+  const fetchData = () => {
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
@@ -118,11 +114,6 @@ export default function CompReadyEnvCapability(props) {
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
-  }
-
-  const forceRefresh = () => {
-    setIsLoaded(false)
-    fetchData(true)
   }
 
   if (fetchError !== '') {
@@ -219,7 +210,6 @@ export default function CompReadyEnvCapability(props) {
         data={data}
         filterVals={filterVals}
         setTriageActionTaken={setTriageActionTaken}
-        forceRefresh={forceRefresh}
       />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">

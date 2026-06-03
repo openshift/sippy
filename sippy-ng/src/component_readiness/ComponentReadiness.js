@@ -329,7 +329,7 @@ export default function ComponentReadiness(props) {
     )
   }
 
-  const fetchData = (fresh) => {
+  const fetchData = () => {
     // prevent a slightly expensive duplicate request when user navs to /main with no query params,
     // and we're still in the process of setting the default view to use
     // Only skip if we have views AND we're in the process of setting a default view
@@ -346,9 +346,6 @@ export default function ComponentReadiness(props) {
 
     let formattedApiCallStr = showValuesForReport()
     console.log('fetchData api call str: ' + formattedApiCallStr)
-    if (fresh) {
-      formattedApiCallStr += '&forceRefresh=true'
-    }
     fetch(formattedApiCallStr, { signal: abortController.signal })
       .then((response) => {
         if (response.status !== 200) {
@@ -385,11 +382,6 @@ export default function ComponentReadiness(props) {
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
-  }
-
-  const forceRefresh = () => {
-    setIsLoaded(false)
-    fetchData(true)
   }
 
   // Helper function to get only report-related parameters (excluding UI state params)
@@ -635,7 +627,6 @@ export default function ComponentReadiness(props) {
                           data={data}
                           filterVals={getUpdatedUrlParts(varsContext)}
                           setTriageActionTaken={setTriageActionTaken}
-                          forceRefresh={forceRefresh}
                         />
                         <TableContainer
                           component="div"
