@@ -118,11 +118,6 @@ export default function CompReadyEnvCapabilityTest(props) {
     `&testId=${safeTestId}` +
     (environment ? expandEnvironment(environment) : '')
 
-  const forceRefresh = () => {
-    setIsLoaded(false)
-    fetchData(true)
-  }
-
   useEffect(() => {
     setIsLoaded(false)
     if (!testId) return // wait until vars are initialized from params
@@ -130,11 +125,7 @@ export default function CompReadyEnvCapabilityTest(props) {
     setTriageActionTaken(false)
   }, [triageActionTaken, urlParams, testId])
 
-  const fetchData = (fresh) => {
-    if (fresh) {
-      apiCallStr += '&forceRefresh=true'
-    }
-
+  const fetchData = () => {
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
@@ -213,7 +204,6 @@ export default function CompReadyEnvCapabilityTest(props) {
         data={data}
         filterVals={filterVals}
         setTriageActionTaken={setTriageActionTaken}
-        forceRefresh={forceRefresh}
       />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">

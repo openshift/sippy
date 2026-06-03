@@ -78,11 +78,7 @@ export default function CompReadyEnvCapabilities(props) {
     setTriageActionTaken(false)
   }, [triageActionTaken, component, urlParams])
 
-  const fetchData = (fresh) => {
-    if (fresh) {
-      apiCallStr += '&forceRefresh=true'
-    }
-
+  const fetchData = () => {
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
@@ -122,10 +118,6 @@ export default function CompReadyEnvCapabilities(props) {
       })
   }
 
-  const forceRefresh = () => {
-    setIsLoaded(false)
-    fetchData(true)
-  }
   const [searchRowRegexURL, setSearchRowRegexURL] = useQueryParam(
     'searchRow',
     StringParam
@@ -224,7 +216,6 @@ export default function CompReadyEnvCapabilities(props) {
         data={data}
         filterVals={filterVals}
         setTriageActionTaken={setTriageActionTaken}
-        forceRefresh={forceRefresh}
       />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">

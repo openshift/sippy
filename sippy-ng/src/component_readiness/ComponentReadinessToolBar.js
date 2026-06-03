@@ -21,7 +21,6 @@ import {
   HelpCenter,
   InsertLink,
   LocalHospital,
-  Refresh,
   ViewColumn,
   Widgets,
 } from '@mui/icons-material'
@@ -340,22 +339,6 @@ export default function ComponentReadinessToolBar(props) {
             )}
 
             <Box sx={{ flexGrow: 1 }} />
-            {props.forceRefresh ? (
-              <Box sx={{ display: { md: 'flex' } }}>
-                <IconButton
-                  size="large"
-                  aria-label="Force data refresh"
-                  color="inherit"
-                  onClick={props.forceRefresh}
-                >
-                  <Tooltip title="Force data refresh">
-                    <Refresh />
-                  </Tooltip>
-                </IconButton>
-              </Box>
-            ) : (
-              <></>
-            )}
             <Box sx={{ display: { md: 'flex' } }}>
               <IconButton
                 size="large"
@@ -458,7 +441,6 @@ ComponentReadinessToolBar.propTypes = {
   handleRedOnlyCheckboxChange: PropTypes.func,
   clearSearches: PropTypes.func,
   data: PropTypes.object,
-  forceRefresh: PropTypes.func,
   setTriageActionTaken: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
 }
