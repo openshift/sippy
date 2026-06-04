@@ -444,6 +444,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	testStats := testdetails.TestComparison{
 		Explanations:       []string{},
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
+		Explanations:       []string{},
 		SampleStats: testdetails.ReleaseStats{
 			Release: c.ReqOptions.SampleRelease.Name,
 			Start:   &c.ReqOptions.SampleRelease.Start,
