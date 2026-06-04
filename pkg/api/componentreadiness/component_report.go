@@ -613,7 +613,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 	keySet := sets.NewString(slices.Collect(maps.Keys(basisStatusMap))...)
 	keySet.Insert(slices.Collect(maps.Keys(sampleStatusMap))...)
 	for testKeyStr := range keySet {
-		cellReport := testdetails.TestComparison{Explanations: []string{}} // The actual stats we return over the API
+		cell := testdetails.TestComparison{Explanations: []string{}}
 		sampleStatus, sampleThere := sampleStatusMap[testKeyStr]
 		basisStatus, basisThere := basisStatusMap[testKeyStr]
 
@@ -630,23 +630,23 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 		if !sampleThere {
 			// we use this to find tests associated with the basis that we don't see now in sample,
 			// meaning they have been renamed or removed. no further analysis is needed.
-			cellReport.ReportStatus = crtest.MissingSample
+			cell.ReportStatus = crtest.MissingSample
 		} else {
 			// Initialize the test analysis before we start passing it around to the middleware
 			if basisThere {
-				initTestAnalysisStruct(&cellReport, c.ReqOptions, sampleStatus, &basisStatus)
+				initTestAnalysisStruct(&cell, c.ReqOptions, sampleStatus, &basisStatus)
 			} else {
-				initTestAnalysisStruct(&cellReport, c.ReqOptions, sampleStatus, nil)
+				initTestAnalysisStruct(&cell, c.ReqOptions, sampleStatus, nil)
 			}
 
 			// Give middleware a chance to adjust parameters prior to analysis
-			if err := c.middlewares.PreAnalysis(testKey, &cellReport); err != nil {
+			if err := c.middlewares.PreAnalysis(testKey, &cell); err != nil {
 				return crtype.ComponentReport{}, err
 			}
 
-			c.assessComponentStatus(&cellReport, log.NewEntry(log.New()))
+			c.assessComponentStatus(&cell, log.NewEntry(log.New()))
 			if lastFailure := sampleStatus.LastFailure; !lastFailure.IsZero() {
-				cellReport.LastFailure = &lastFailure // it's a copy, for pointer hygiene
+				cell.LastFailure = &lastFailure // it's a copy, for pointer hygiene
 			}
 		}
 
@@ -655,7 +655,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 			return crtype.ComponentReport{}, err
 		}
 		updateCellStatus(
-			rowIdentifications, columnIdentifications, testKey, cellReport, // inputs
+			rowIdentifications, columnIdentifications, testKey, cell, // inputs
 			aggregatedStatus, allRows, allColumns, // these three are maps to be updated
 		)
 	}
