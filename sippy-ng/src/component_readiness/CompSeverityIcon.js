@@ -10,7 +10,7 @@ import React, { useContext } from 'react'
 export default function CompSeverityIcon(props) {
   const theme = useTheme()
   const { accessibilityModeOn } = useContext(AccessibilityModeContext)
-  const { explanations, status, grayFactor, count } = props
+  const { explanations = [], status, grayFactor, count } = props
 
   const [statusStr, icon] = getStatusAndIcon(
     status,
@@ -19,7 +19,7 @@ export default function CompSeverityIcon(props) {
   )
 
   let toolTip = statusStr
-  if (explanations != null && explanations.length > 0) {
+  if (explanations.length > 0) {
     toolTip = explanations.join(' ')
   }
 

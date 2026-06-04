@@ -760,6 +760,9 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crte
 // (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
 // cross variant compare, rarely run jobs, etc.)
 func (c *ComponentReportGenerator) assessComponentStatus(testStats *testdetails.TestComparison, logger *log.Entry) {
+	if testStats.Explanations == nil {
+		testStats.Explanations = []string{}
+	}
 	// Catch unset required confidence, typically unit tests
 	opts := c.ReqOptions.AdvancedOption
 	if testStats.RequiredConfidence == 0 {

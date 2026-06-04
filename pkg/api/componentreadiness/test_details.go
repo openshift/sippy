@@ -442,7 +442,6 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	totalBase, totalSample, report, result, lastFailure := c.summarizeRecordedTestStats(baseStatus, sampleStatus, testKey)
 
 	testStats := testdetails.TestComparison{
-		Explanations:       []string{},
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
 		SampleStats: testdetails.ReleaseStats{
 			Release: c.ReqOptions.SampleRelease.Name,
