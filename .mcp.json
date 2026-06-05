@@ -5,7 +5,7 @@
       "command": "sh",
       "args": [
         "-c",
-        "npx @playwright/mcp@0.0.75 --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"
+        "npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"
       ]
     },
     "sippy-dev": {
