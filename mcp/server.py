@@ -761,5 +761,78 @@ async def run_e2e(
     )
 
 
+@mcp.tool()
+async def check_services() -> str:
+    """Check that required services are healthy and data is loaded.
+
+    Validates postgres connectivity, redis connectivity, sippy binary
+    existence, and seed data presence. Useful after initial setup or
+    to diagnose issues during development.
+    """
+    results: list[str] = []
+
+    dsn = os.environ.get("SIPPY_DATABASE_DSN", _default_database_dsn())
+    redis = os.environ.get("REDIS_URL", _default_redis_url())
+
+    # Check postgres
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "psql", dsn, "-c", "SELECT 1",
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
+        if proc.returncode == 0:
+            results.append("postgres: OK")
+        else:
+            results.append(f"postgres: FAILED ({stderr.decode().strip()})")
+    except Exception as e:
+        results.append(f"postgres: FAILED ({e})")
+
+    # Check redis
+    redis_host = redis.replace("redis://", "").replace("rediss://", "").split("/")[0]
+    host, _, port = redis_host.partition(":")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "redis-cli", "-h", host or "localhost", "-p", port or "6379", "PING",
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+        if b"PONG" in stdout:
+            results.append("redis: OK")
+        else:
+            results.append(f"redis: FAILED (no PONG, got: {stdout.decode().strip()})")
+    except Exception as e:
+        results.append(f"redis: FAILED ({e})")
+
+    # Check sippy binary
+    sippy_bin = REPO_ROOT / "sippy"
+    if sippy_bin.is_file():
+        results.append("sippy binary: OK")
+    else:
+        results.append("sippy binary: NOT FOUND (run 'make sippy')")
+
+    # Check seed data
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "psql", dsn, "-t", "-c", "SELECT count(*) FROM prow_job_runs",
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
+        if proc.returncode != 0:
+            hint = stderr.decode().strip()[:200] if stderr else "unknown error"
+            results.append(f"seed data: FAILED (psql exit {proc.returncode}: {hint})")
+        else:
+            count = stdout.decode().strip()
+            if int(count) > 0:
+                results.append(f"seed data: OK ({count} job runs)")
+            else:
+                results.append("seed data: EMPTY (run './sippy seed-data --init-database')")
+    except Exception as e:
+        results.append(f"seed data: FAILED ({e})")
+
+    status = "READY" if all("OK" in r for r in results) else "NOT READY"
+    return f"Environment: {status}\n" + "\n".join(f"  {r}" for r in results)
+
+
 if __name__ == "__main__":
     mcp.run()
