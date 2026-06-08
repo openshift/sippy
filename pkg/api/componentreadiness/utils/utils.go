@@ -34,9 +34,13 @@ func PreviousRelease(release string, releaseConfigs []sippyv1.Release) (string, 
 // The start time is calculated as 30 days before the GA date, and the end time is the GA date.
 func FindStartEndTimesForRelease(timeRanges []crtest.ReleaseTimeRange, release string) (*time.Time, *time.Time, error) {
 	for _, r := range timeRanges {
-		if r.Release == release {
-			return r.Start, r.End, nil
+		if r.Release != release {
+			continue
 		}
+		if r.Start == nil || r.End == nil {
+			return nil, nil, fmt.Errorf("release %s has no GA date", release)
+		}
+		return r.Start, r.End, nil
 	}
 	return nil, nil, fmt.Errorf("release %s not found", release)
 }
