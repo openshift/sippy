@@ -62,7 +62,7 @@ func ParseComponentReportRequest(
 				RelativeStart: view.SpotCheckSample.RelativeStart,
 				RelativeEnd:   view.SpotCheckSample.RelativeEnd,
 			}
-			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check", spotCheckRelative, crTimeRoundingFactor)
+			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check", spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
 			if resolveErr != nil {
 				err = resolveErr
 				return
