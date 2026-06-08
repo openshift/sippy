@@ -151,7 +151,7 @@ func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup
 				s.sampleJobDetails = map[string][]dataprovider.JobRunDetail{}
 			}
 			s.sampleJobDetails[testKey.KeyOrDie()] = details
-			s.log.Infof("loaded %d spot-check job run details for %s", len(details), testIDOpt.TestID)
+			s.log.WithField("variants", testIDOpt.RequestedVariants).Infof("loaded %d spot-check job run details for %s", len(details), testIDOpt.TestID)
 		})
 	}
 }
