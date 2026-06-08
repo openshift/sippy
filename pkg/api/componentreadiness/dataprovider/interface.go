@@ -69,20 +69,20 @@ type JobQuerier interface {
 // SpotCheckQuerier fetches job-level pass/fail data for spot-check analysis.
 type SpotCheckQuerier interface {
 	// QuerySpotCheckJobRuns returns aggregated pass/fail per spot-check group,
-	// grouped by variant columns. Queries the jobs table, not junit.
-	// jobNameSubstrings filters to jobs whose name contains ALL of the given substrings.
+	// grouped by SpotCheckComponent, SpotCheckCapability, and the column group-by variants.
+	// Queries the jobs table, not junit. During the transition period, falls back to
+	// job name substring matching when SpotCheckComponent/SpotCheckCapability variants
+	// are not yet populated in the job_variants table.
 	QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
 		allJobVariants crtest.JobVariants,
-		jobNameSubstrings []string,
 		start, end time.Time) ([]SpotCheckGroup, error)
 
 	// QuerySpotCheckJobRunDetails returns individual job runs for a specific
 	// spot-check group, used for test details drill-down.
-	// jobNameSubstrings filters to jobs whose name contains ALL of the given substrings.
 	QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
 		allJobVariants crtest.JobVariants,
 		variants map[string]string,
-		jobNameSubstrings []string,
+		component, capability string,
 		start, end time.Time) ([]JobRunDetail, error)
 }
 
@@ -108,8 +108,10 @@ type JobRunStats struct {
 }
 
 // SpotCheckGroup contains aggregated pass/fail for a set of spot-check jobs
-// sharing the same variant column values.
+// sharing the same component, capability, and variant column values.
 type SpotCheckGroup struct {
+	Component      string            `json:"component"`
+	Capability     string            `json:"capability"`
 	Variants       map[string]string `json:"variants"`
 	TotalRuns      int               `json:"total_runs"`
 	SuccessfulRuns int               `json:"successful_runs"`
