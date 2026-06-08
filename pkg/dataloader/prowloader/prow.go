@@ -237,9 +237,8 @@ func (pl *ProwLoader) Load() {
 
 	// Ensure we have partitions for the new data
 	if err := pl.ensurePartitions(); err != nil {
-		log.WithError(err).Warning("failed to ensure partitions, continuing with load")
-		// Don't fail the entire load if partition creation fails
-		// Data will still be written if partitions exist or to DEFAULT partition
+		pl.errors = append(pl.errors, errors.Wrap(err, "failed to ensure partitions"))
+		return
 	}
 
 	// Clean up old partitions (detach partitions older than 100 days, drop detached partitions older than 110 days)

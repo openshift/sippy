@@ -149,7 +149,8 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	// Currently we need RunMigrations to run prior
-	// to AutoMigrate so expected tables GORM has dependencies exists
+	// to AutoMigrate so that tables GORM depends on exist
+	// prior to AutoMigrate
 	// As we migrate more of the JobRuns based tables the
 	// Dependencies change, and we likely need to run this first
 	for _, model := range modelsToMigrate {
