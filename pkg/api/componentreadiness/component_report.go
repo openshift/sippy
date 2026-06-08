@@ -277,7 +277,7 @@ func (c *ComponentReportGenerator) getCache() cache.Cache {
 func (c *ComponentReportGenerator) initializeMiddleware() {
 	c.middlewares = middleware.List{}
 	// Initialize all our middleware applicable to this request.
-	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
+	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && c.ReqOptions.SampleRelease.PullRequestOptions == nil {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.dataProvider, c.ReqOptions, c.releaseConfigs))
 	}
 	if c.dbc != nil {
