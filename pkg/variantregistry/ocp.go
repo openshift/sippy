@@ -1277,7 +1277,7 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-lpmainline-lp-ocp-compat-cr--acs-", "lp-ocp-compat--acs--lpMainline"},
 		{"-lpga-lp-ocp-compat-cr--acs-", "lp-ocp-compat--acs--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--odf-", "lp-ocp-compat--odf--lpGA"},
-		{"-lpga-lp-ocp-compat-cr--redhat-openshift-gitops-", "lp-ocp-compat--gitops--lpGA"},
+		{"-lpga-lp-ocp-compat-cr--gitops-", "lp-ocp-compat--gitops--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--fusion-access-", "lp-ocp-compat--fusion-access--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--mta-", "lp-ocp-compat--mta--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--oadp-", "lp-ocp-compat--oadp--lpGA"},
