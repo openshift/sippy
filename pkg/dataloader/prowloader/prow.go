@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -174,6 +173,35 @@ func (pl *ProwLoader) Errors() []error {
 	return pl.errors
 }
 
+// ensurePartitions creates necessary partitions for partitioned tables.
+// It uses the release list from pl.releases and determines the date range based on:
+//   - pl.loadSince if available, otherwise looks back one week
+//   - Creates partitions 2 days forward from now
+func (pl *ProwLoader) ensurePartitions() error {
+	// Determine start date
+	var startDate time.Time
+	if pl.loadSince != nil {
+		startDate = *pl.loadSince
+	} else {
+		// Look back one week if loadSince is not specified
+		startDate = time.Now().AddDate(0, 0, -7)
+	}
+
+	// Create partitions 2 days forward from now
+	endDate := time.Now().AddDate(0, 0, 2)
+
+	log.Infof("Ensuring partitions for releases %v from %s to %s",
+		pl.releases, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+
+	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate, endDate, false)
+	if err != nil {
+		return fmt.Errorf("failed to ensure partitions: %w", err)
+	}
+
+	log.Infof("Ensured %d partitions across all partitioned tables", count)
+	return nil
+}
+
 func (pl *ProwLoader) Load() {
 	start := time.Now()
 
@@ -205,6 +233,21 @@ func (pl *ProwLoader) Load() {
 			pl.errors = append(pl.errors, errors.Wrap(err, "error decoding job JSON data from prow"))
 			return
 		}
+	}
+
+	// Ensure we have partitions for the new data
+	if err := pl.ensurePartitions(); err != nil {
+		log.WithError(err).Warning("failed to ensure partitions, continuing with load")
+		// Don't fail the entire load if partition creation fails
+		// Data will still be written if partitions exist or to DEFAULT partition
+	}
+
+	// Clean up old partitions (detach partitions older than 100 days, drop detached partitions older than 110 days)
+	if detached, dropped, err := pl.dbc.CleanupPartitions(false); err != nil {
+		log.WithError(err).Warning("failed to cleanup old partitions, continuing with load")
+		// Don't fail the entire load if partition cleanup fails
+	} else {
+		log.Infof("Partition cleanup complete: detached %d, dropped %d", detached, dropped)
 	}
 
 	queue := make(chan *prow.ProwJob)
@@ -389,21 +432,6 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 		dLog := log.WithField("date", dateToImport)
 
 		dLog.Infof("Loading test analysis by job daily summaries")
-		nextDay, err := NextDay(dateToImport)
-		if err != nil {
-			return errors.Wrapf(err, "error parsing next day from %s", dateToImport)
-		}
-
-		// create a partition for this date
-		partitionSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS test_analysis_by_job_by_dates_%s PARTITION OF test_analysis_by_job_by_dates
-    		FOR VALUES FROM ('%s') TO ('%s');`, strings.ReplaceAll(dateToImport, "-", "_"), dateToImport, nextDay)
-		dLog.Info(partitionSQL)
-
-		if res := pl.dbc.DB.Exec(partitionSQL); res.Error != nil {
-			log.WithError(res.Error).Error("error creating partition")
-			return res.Error
-		}
-		dLog.Warnf("partition created for releases %v", pl.releases)
 
 		q := pl.bigQueryClient.Query(ctx, bqlabel.ProwLoaderTestAnalysis, fmt.Sprintf(`WITH
   deduped_testcases AS (

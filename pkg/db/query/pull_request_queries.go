@@ -28,6 +28,8 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 		Joins("INNER JOIN prow_job_runs on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id").
 		Joins("INNER JOIN prow_jobs on prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_jobs.release = ?", release).
+		Where("prow_job_runs.prow_job_release = ?", release).
+		Where("prow_job_run_prow_pull_requests.prow_job_run_release = ?", release).
 		Select("DISTINCT ON(prow_pull_requests.link) prow_pull_requests.*, ci.release_tag AS first_ci_payload, ci.phase AS first_ci_payload_phase, ci.release as first_ci_payload_release, nightly.release_tag as first_nightly_payload, nightly.phase as first_nightly_payload_phase, nightly.release as first_nightly_payload_release")
 
 	results := make([]api.PullRequest, 0)

@@ -444,7 +444,7 @@ github.com/jackc/pgpassfile
 # github.com/jackc/pgproto3/v2 v2.3.3
 ## explicit; go 1.12
 github.com/jackc/pgproto3/v2
-# github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a
+# github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761
 ## explicit; go 1.14
 github.com/jackc/pgservicefile
 # github.com/jackc/pgtype v1.14.0
@@ -464,7 +464,7 @@ github.com/jferrl/go-githubauth
 # github.com/jinzhu/inflection v1.0.0
 ## explicit
 github.com/jinzhu/inflection
-# github.com/jinzhu/now v1.1.2
+# github.com/jinzhu/now v1.1.5
 ## explicit; go 1.12
 github.com/jinzhu/now
 # github.com/jtolds/gls v4.20.0+incompatible
@@ -504,6 +504,9 @@ github.com/montanaflynn/stats
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
+# github.com/neisw/gopar v0.0.0-20260606121604-bb7bd85e6510
+## explicit; go 1.24.1
+github.com/neisw/gopar/partitioning
 # github.com/onsi/ginkgo v1.16.5
 ## explicit; go 1.16
 # github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a
@@ -582,7 +585,7 @@ github.com/spf13/cast
 # github.com/spf13/cobra v1.7.0
 ## explicit; go 1.15
 github.com/spf13/cobra
-# github.com/spf13/pflag v1.0.5
+# github.com/spf13/pflag v1.0.9
 ## explicit; go 1.12
 github.com/spf13/pflag
 # github.com/spiffe/go-spiffe/v2 v2.6.0

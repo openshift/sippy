@@ -102,6 +102,7 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 			failures * 100.0 / NULLIF(runs, 0) AS fail_percentage`).
 		Joins("INNER JOIN prow_jobs on prow_jobs.name = job_name").
 		Where("prow_jobs.release = ?", release).
+		Where("test_analysis_by_job_by_dates.release = ?", release).
 		Where("test_name = ?", testName).
 		Where("date <= ?", reportEnd).
 		Where("date >= ?", reportEnd.Add(-24*14*time.Hour)).

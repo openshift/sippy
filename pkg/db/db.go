@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/neisw/gopar/partitioning"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -19,10 +22,13 @@ import (
 type SchemaHashType string
 
 const (
-	hashTypeMatView      SchemaHashType = "matview"
-	hashTypeView         SchemaHashType = "view"
-	hashTypeMatViewIndex SchemaHashType = "matview_index"
-	hashTypeFunction     SchemaHashType = "function"
+	hashTypeMatView                          SchemaHashType = "matview"
+	hashTypeView                             SchemaHashType = "view"
+	hashTypeMatViewIndex                     SchemaHashType = "matview_index"
+	hashTypeFunction                         SchemaHashType = "function"
+	partitionedTableProwJobRunTests                         = "prow_job_run_tests"
+	partitionedTableProwJobRunTestsOutputs                  = "prow_job_run_test_outputs"
+	partitionedTableTestAnalysisByJobByDates                = "test_analysis_by_job_by_dates"
 )
 
 type DB struct {
@@ -31,6 +37,9 @@ type DB struct {
 	// BatchSize is used for how many insertions we should do at once. Postgres supports
 	// a maximum of 2^16 records per insert.
 	BatchSize int
+
+	// GoparPartitions provides partition creation/management operations
+	GoparPartitions *partitioning.DB_PARTITIONS
 }
 
 // log2LogrusWriter bridges gorm logging to logrus logging.
@@ -54,20 +63,48 @@ func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
 		},
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	pgxConfig, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+	// Prevent PostgreSQL from generating generic plans for prepared statements.
+	// With 10k+ partitions on tables like test_analysis_by_job_by_dates, generic
+	// plan generation alone can take 17+ minutes as the planner enumerates all
+	// partitions. Custom plans use actual parameter values for partition pruning.
+	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
+	pgxConfig.RuntimeParams["work_mem"] = "128MB"
+
+	connPool := stdlib.OpenDB(*pgxConfig)
+
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		Conn: connPool,
+	}), &gorm.Config{
 		Logger: gormLogger,
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	// Get underlying sql.DB for gopar
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sql.DB: %w", err)
+	}
+
 	return &DB{
-		DB:        db,
-		BatchSize: 1024,
+		DB:              db,
+		BatchSize:       1024,
+		GoparPartitions: partitioning.NewPartitions(sqlDB),
 	}, nil
 }
 
 func (d *DB) UpdateSchema(reportEnd *time.Time) error {
-	// Run versioned migrations (golang-migrate).
+
+	// Run versioned migrations (golang-migrate) BEFORE AutoMigrate.
+	// This ensures tables like prow_job_run_tests exist before
+	// prow_job_runs trys to create it via AutoMigrate
+	// when we move prow_job_runs to be managed via RunMigrations
+	// we may need GORM AutoMigrate to run first
 	if err := sippymigrate.RunMigrations(d.DB); err != nil {
 		return err
 	}
@@ -89,8 +126,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},
-		&models.ProwJobRunTest{},
-		&models.ProwJobRunTestOutput{},
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
@@ -113,7 +148,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&jobrunscan.Symptom{},
 	}
 
-	// Migrate each model
+	// Currently we need RunMigrations to run prior
+	// to AutoMigrate so expected tables GORM has dependencies exists
+	// As we migrate more of the JobRuns based tables the
+	// Dependencies change, and we likely need to run this first
 	for _, model := range modelsToMigrate {
 		if err := d.DB.AutoMigrate(model); err != nil {
 			return err
@@ -141,6 +179,180 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	return syncPostgresFunctions(d.DB)
+}
+
+// PartitionedTables returns the list of tables that are partitioned
+// and managed by gopar partition lifecycle management.
+func (d *DB) PartitionedTables() []string {
+	return []string{
+		partitionedTableProwJobRunTests,
+		partitionedTableProwJobRunTestsOutputs,
+		partitionedTableTestAnalysisByJobByDates,
+	}
+}
+
+// EnsurePartitions creates missing partitions for all managed partitioned tables.
+// It uses LIST→RANGE nested partitioning where:
+//   - Level 1: LIST partition by release (e.g., "4.17", "4.18")
+//   - Level 2: RANGE sub-partition by timestamp (daily granularity)
+//
+// Parameters:
+//   - releases: List of releases to create partitions for (e.g., ["4.17", "4.18", "4.19"])
+//   - startDate: Start date for partition creation
+//   - endDate: End date for partition creation
+//   - dryRun: If true, only preview what would be created
+//
+// Returns the total number of partitions created across all tables.
+func (d *DB) EnsurePartitions(releases []string, startDate, endDate time.Time, dryRun bool) (int, error) {
+	totalCreated := 0
+
+	for _, tableName := range d.PartitionedTables() {
+		var dateColumn string
+		switch tableName {
+		case partitionedTableProwJobRunTests:
+			dateColumn = "prow_job_run_timestamp"
+		case partitionedTableProwJobRunTestsOutputs:
+			dateColumn = "prow_job_run_test_timestamp"
+		case partitionedTableTestAnalysisByJobByDates:
+			dateColumn = "date"
+		default:
+			log.Warnf("unknown partitioned table: %s", tableName)
+			continue
+		}
+
+		log.Infof("Creating partitions for %s (releases: %v, dates: %s to %s)",
+			tableName, releases, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+
+		count, err := d.GoparPartitions.CreateMissingPartitionsListToRange(
+			tableName,
+			releases,
+			startDate,
+			endDate,
+			dateColumn,
+			true, // usePartmanFormat - use partman-style partition naming
+			dryRun,
+		)
+		if err != nil {
+			return totalCreated, fmt.Errorf("failed to create partitions for %s: %w", tableName, err)
+		}
+
+		totalCreated += count
+		log.Infof("Created %d partitions for %s", count, tableName)
+	}
+
+	return totalCreated, nil
+}
+
+// DetachOldPartitions detaches partitions older than the specified retention period.
+// This is a safer alternative to immediate deletion - detached partitions can be
+// archived or reviewed before permanent deletion.
+//
+// Parameters:
+//   - retentionDays: Age threshold in days (e.g., 100 means detach partitions older than 100 days)
+//   - dryRun: If true, only preview what would be detached
+//
+// Returns the total number of partitions detached across all tables.
+func (d *DB) DetachOldPartitions(retentionDays int, dryRun bool) (int, error) {
+	totalDetached := 0
+
+	for _, tableName := range d.PartitionedTables() {
+		log.Infof("Finding partitions to detach for %s (older than %d days)",
+			tableName, retentionDays)
+
+		// Get partitions that are attached and older than retention period
+		partitions, err := d.GoparPartitions.GetPartitionsForRemoval(tableName, retentionDays, true)
+		if err != nil {
+			return totalDetached, fmt.Errorf("failed to get partitions for removal from %s: %w", tableName, err)
+		}
+
+		log.Infof("Found %d partitions to detach for %s", len(partitions), tableName)
+
+		for _, partition := range partitions {
+			if err := d.GoparPartitions.DetachPartition(partition.TableName, dryRun); err != nil {
+				log.WithError(err).Errorf("failed to detach partition %s", partition.TableName)
+				return totalDetached, fmt.Errorf("failed to detach partition %s: %w", partition.TableName, err)
+			}
+			totalDetached++
+			if dryRun {
+				log.Infof("[DRY RUN] Would detach partition %s", partition.TableName)
+			} else {
+				log.Infof("Detached partition %s", partition.TableName)
+			}
+		}
+	}
+
+	return totalDetached, nil
+}
+
+// DropDetachedPartitions drops partitions that have been detached for longer than
+// the specified period. This permanently deletes the data.
+//
+// Parameters:
+//   - detachedDays: Minimum age in days since detachment (e.g., 110 means drop partitions detached more than 110 days ago)
+//   - dryRun: If true, only preview what would be dropped
+//
+// Returns the total number of partitions dropped across all tables.
+func (d *DB) DropDetachedPartitions(detachedDays int, dryRun bool) (int, error) {
+	totalDropped := 0
+
+	for _, tableName := range d.PartitionedTables() {
+		log.Infof("Finding detached partitions to drop for %s (detached more than %d days ago)",
+			tableName, detachedDays)
+
+		// Get partitions that are detached and older than detached period
+		partitions, err := d.GoparPartitions.GetPartitionsForRemoval(tableName, detachedDays, false)
+		if err != nil {
+			return totalDropped, fmt.Errorf("failed to get detached partitions for removal from %s: %w", tableName, err)
+		}
+
+		log.Infof("Found %d detached partitions to drop for %s", len(partitions), tableName)
+
+		for _, partition := range partitions {
+			if err := d.GoparPartitions.DropPartition(partition.TableName, dryRun); err != nil {
+				log.WithError(err).Errorf("failed to drop partition %s", partition.TableName)
+				return totalDropped, fmt.Errorf("failed to drop partition %s: %w", partition.TableName, err)
+			}
+			totalDropped++
+			if dryRun {
+				log.Infof("[DRY RUN] Would drop partition %s", partition.TableName)
+			} else {
+				log.Infof("Dropped partition %s", partition.TableName)
+			}
+		}
+	}
+
+	return totalDropped, nil
+}
+
+// CleanupPartitions performs the full partition lifecycle cleanup:
+// 1. Detaches partitions older than 100 days
+// 2. Drops detached partitions older than 110 days
+//
+// This provides a 10-day safety window between detachment and permanent deletion.
+//
+// Parameters:
+//   - dryRun: If true, only preview what would be done
+//
+// Returns the number of partitions detached and dropped.
+func (d *DB) CleanupPartitions(dryRun bool) (detached, dropped int, err error) {
+	log.Info("Starting partition cleanup...")
+
+	// First, drop old detached partitions (110 days)
+	dropped, err = d.DropDetachedPartitions(110, dryRun)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to drop detached partitions: %w", err)
+	}
+	log.Infof("Dropped %d detached partitions", dropped)
+
+	// Then, detach old attached partitions (100 days)
+	detached, err = d.DetachOldPartitions(100, dryRun)
+	if err != nil {
+		return detached, dropped, fmt.Errorf("failed to detach old partitions: %w", err)
+	}
+	log.Infof("Detached %d old partitions", detached)
+
+	log.Infof("Partition cleanup complete: detached=%d, dropped=%d", detached, dropped)
+	return detached, dropped, nil
 }
 
 // syncSchema will update generic db resources if their schema has changed. (functions, materialized views, indexes)

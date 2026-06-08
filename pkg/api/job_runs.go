@@ -90,7 +90,7 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 		ranTestFilter, remainingFilter := filterOpts.Filter.Split([]string{"ran_test_names"})
 		filterOpts.Filter = remainingFilter
 		for _, item := range ranTestFilter.Items {
-			baseSubquery := "EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs_report_matview.id AND tests.name %s ?)"
+			baseSubquery := "EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs_report_matview.id AND prow_job_run_tests.prow_job_run_release = prow_job_runs_report_matview.release AND tests.name %s ?)"
 			var pattern string
 			switch item.Operator {
 			case filter.OperatorHasEntry, filter.OperatorEquals:
@@ -144,7 +144,11 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 			ids[i] = jr.ID
 		}
 		var annotations []models.ProwJobRunAnnotation
-		if err := dbc.DB.Where("prow_job_run_id IN ?", ids).Find(&annotations).Error; err != nil {
+		annotationQuery := dbc.DB.Where("prow_job_run_id IN ?", ids)
+		if len(release) > 0 {
+			annotationQuery = annotationQuery.Where("prow_job_run_release = ?", release)
+		}
+		if err := annotationQuery.Find(&annotations).Error; err != nil {
 			return nil, err
 		}
 		annotationsByRun := make(map[string]apitype.AnnotationMap)
@@ -199,7 +203,7 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []strin
 		return nil, res.Error
 	}
 
-	jobRunTestCount, err := query.JobRunTestCount(dbc, jobRunID)
+	jobRunTestCount, err := query.JobRunTestCount(dbc, jobRunID, jobRun.ProwJobRelease)
 	if err != nil { // should be unusual
 		logger.WithError(err).Errorf("Error getting test count for job run %d", jobRunID)
 		jobRunTestCount = -1
@@ -336,7 +340,7 @@ func JobRunRiskAnalysis(
 		compareRelease = ar[0].Release
 	}
 
-	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID)
+	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID, compareRelease)
 
 	// if we had an error we will continue the risk analysis and not elevate based on test counts
 	if err != nil {
@@ -426,7 +430,7 @@ func JobRunRiskAnalysis(
 
 	return runJobRunAnalysis(ctx,
 		bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger,
-		jobNamesTestResultFunc(dbc),
+		jobNamesTestResultFunc(dbc, compareRelease),
 		variantsTestResultFunc(ctx, dbc, cacheClient),
 		compareOtherPRs,
 	)
@@ -438,7 +442,7 @@ type testResultsByJobNameFunc func(testName string, jobNames []string) (*apitype
 type testResultsByVariantsFunc func(testName string, release, suite string, variants []string, jobNames []string) (*apitype.Test, error)
 
 // jobNamesTestResultFunc looks to match job runs based on the jobnames
-func jobNamesTestResultFunc(dbc *db.DB) testResultsByJobNameFunc {
+func jobNamesTestResultFunc(dbc *db.DB, release string) testResultsByJobNameFunc {
 	return func(testName string, jobNames []string) (*apitype.Test, error) {
 		if len(jobNames) == 0 {
 			return nil, nil
@@ -446,7 +450,7 @@ func jobNamesTestResultFunc(dbc *db.DB) testResultsByJobNameFunc {
 
 		analyzeSince := time.Now().Add(-14 * 24 * time.Hour)
 
-		q := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, testName, jobNames)
+		q := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, testName, jobNames, release)
 		if q.Error != nil {
 			return nil, q.Error
 		}
