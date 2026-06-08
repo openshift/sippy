@@ -87,20 +87,14 @@ func (s *SpotCheckJobs) Query(ctx context.Context, wg *sync.WaitGroup,
 			}
 			keyStr := testKey.KeyOrDie()
 
-			atLeastOnePass := group.SuccessfulRuns >= 1
-			successCount := 0
-			if atLeastOnePass {
-				successCount = 1
-			}
-
 			sampleStatus[keyStr] = crstatus.TestStatus{
 				TestName:     syntheticTestName(group.Component, group.Capability),
 				Component:    group.Component,
 				Capabilities: []string{group.Capability},
 				Variants:     variantMapToSlice(group.Variants),
 				Count: crtest.Count{
-					TotalCount:   1,
-					SuccessCount: successCount,
+					TotalCount:   group.TotalRuns,
+					SuccessCount: group.SuccessfulRuns,
 				},
 			}
 		}
@@ -178,16 +172,19 @@ func (s *SpotCheckJobs) Analyze(testKey crtest.Identification,
 	}
 
 	sampleDays := int(s.reqOptions.SpotCheckSample.End.Sub(s.reqOptions.SpotCheckSample.Start).Hours() / 24)
+	totalRuns := testStats.SampleStats.Total()
+	successfulRuns := testStats.SampleStats.SuccessCount
 
-	if testStats.SampleStats.SuccessCount > 0 {
+	if successfulRuns > 0 {
 		testStats.ReportStatus = crtest.NotSignificant
 		testStats.Explanations = append(testStats.Explanations,
-			fmt.Sprintf("Spot-check job passed at least once in the %d-day sample window", sampleDays))
+			fmt.Sprintf("Spot-check job passed %d out of %d runs in the %d-day sample window",
+				successfulRuns, totalRuns, sampleDays))
 	} else {
 		testStats.ReportStatus = crtest.ExtremeRegression
 		testStats.Explanations = append(testStats.Explanations,
 			fmt.Sprintf("Spot-check job did not pass in the %d-day sample window (%d runs, 0 successes)",
-				sampleDays, testStats.SampleStats.Total()))
+				sampleDays, totalRuns))
 	}
 
 	testStats.Comparison = crtest.SpotCheck
