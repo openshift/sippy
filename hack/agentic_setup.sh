@@ -10,6 +10,7 @@ export SIPPY_DATABASE_DSN="postgresql://postgres@localhost:5432/postgres?sslmode
 export SIPPY_SEED_DATABASE_DSN="${SIPPY_DATABASE_DSN}"
 export SIPPY_PRODLIKE_DATABASE_DSN="postgresql://postgres@localhost:5432/prodlike?sslmode=disable"
 export REDIS_URL="redis://localhost:6379"
+export SIPPY_E2E_REDIS_URL="redis://localhost:6379/1"
 
 echo "Starting services..."
 "${REPO_ROOT}/.devcontainer/init-services.sh"
