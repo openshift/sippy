@@ -22,10 +22,13 @@ import (
 type SchemaHashType string
 
 const (
-	hashTypeMatView      SchemaHashType = "matview"
-	hashTypeView         SchemaHashType = "view"
-	hashTypeMatViewIndex SchemaHashType = "matview_index"
-	hashTypeFunction     SchemaHashType = "function"
+	hashTypeMatView                          SchemaHashType = "matview"
+	hashTypeView                             SchemaHashType = "view"
+	hashTypeMatViewIndex                     SchemaHashType = "matview_index"
+	hashTypeFunction                         SchemaHashType = "function"
+	partitionedTableProwJobRunTests                         = "prow_job_run_tests"
+	partitionedTableProwJobRunTestsOutputs                  = "prow_job_run_test_outputs"
+	partitionedTableTestAnalysisByJobByDates                = "test_analysis_by_job_by_dates"
 )
 
 type DB struct {
@@ -145,8 +148,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&jobrunscan.Symptom{},
 	}
 
-	// Run GORM AutoMigrate FIRST?? to create non-partitioned tables (like prow_jobs, prow_pull_requests)
-	// before versioned migrations that may reference them with foreign keys.
+	// Currently we need RunMigrations to run prior
+	// to AutoMigrate so expected tables GORM has dependencies exists
+	// As we migrate more of the JobRuns based tables the
+	// Dependencies change, and we likely need to run this first
 	for _, model := range modelsToMigrate {
 		if err := d.DB.AutoMigrate(model); err != nil {
 			return err
@@ -180,9 +185,9 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 // and managed by gopar partition lifecycle management.
 func (d *DB) PartitionedTables() []string {
 	return []string{
-		"prow_job_run_tests",
-		"prow_job_run_test_outputs",
-		"test_analysis_by_job_by_dates",
+		partitionedTableProwJobRunTests,
+		partitionedTableProwJobRunTestsOutputs,
+		partitionedTableTestAnalysisByJobByDates,
 	}
 }
 
@@ -204,11 +209,11 @@ func (d *DB) EnsurePartitions(releases []string, startDate, endDate time.Time, d
 	for _, tableName := range d.PartitionedTables() {
 		var dateColumn string
 		switch tableName {
-		case "prow_job_run_tests":
+		case partitionedTableProwJobRunTests:
 			dateColumn = "prow_job_run_timestamp"
-		case "prow_job_run_test_outputs":
+		case partitionedTableProwJobRunTestsOutputs:
 			dateColumn = "prow_job_run_test_timestamp"
-		case "test_analysis_by_job_by_dates":
+		case partitionedTableTestAnalysisByJobByDates:
 			dateColumn = "date"
 		default:
 			log.Warnf("unknown partitioned table: %s", tableName)
