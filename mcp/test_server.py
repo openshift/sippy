@@ -1,3 +1,4 @@
+import contextlib
 import os
 import tempfile
 from pathlib import Path
@@ -172,8 +173,14 @@ class TestResolveBigqueryCreds:
 
 
 class TestDataMode:
-    def _patch_dotenv(self, vals):
-        return mock.patch("server.dotenv_values", return_value=vals)
+    @staticmethod
+    @contextlib.contextmanager
+    def _patch_dotenv(vals):
+        mock_env_path = mock.MagicMock()
+        mock_env_path.is_file.return_value = True
+        with mock.patch("server._DEVCONTAINER_ENV", mock_env_path), \
+             mock.patch("server.dotenv_values", return_value=vals):
+            yield
 
     def test_default_is_seed(self):
         with self._patch_dotenv({}):

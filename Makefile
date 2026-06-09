@@ -33,7 +33,7 @@ sippy: builddir
 sippy-daemon: builddir
 	go build $(LDFLAGS) -mod=vendor ./cmd/sippy-daemon/...
 
-test: builddir npm
+test: builddir npm mcp-venv
 ifeq ($(ARTIFACT_DIR),)
 	@echo "ARTIFACT_DIR is not defined. Using default JUnit file location."
 	gotestsum --junitfile ./junit.xml ./pkg/...
@@ -42,6 +42,7 @@ else
 	gotestsum --junitfile $(ARTIFACT_DIR)/junit.xml ./pkg/...
 endif
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
+	cd mcp; .venv/bin/pytest test_server.py -v
 
 lint: builddir npm
 	./hack/go-lint.sh run ./...
@@ -57,6 +58,17 @@ sippy-ng/node_modules/.package-lock.json: sippy-ng/package-lock.json
 	npm config set fetch-retry-mintimeout 20000
 	npm config set fetch-retry-maxtimeout 120000
 	cd sippy-ng; npm ci --no-audit --ignore-scripts
+
+PYTHON := $(shell command -v python3.12 2>/dev/null || command -v python3 2>/dev/null)
+
+mcp-venv: mcp/.venv/.installed
+
+mcp/.venv/.installed: mcp/requirements-test.txt mcp/requirements.txt
+	@test -n "$(PYTHON)" || { echo "ERROR: python3.12 or python3 not found in PATH"; exit 1; }
+	@test -x mcp/.venv/bin/python || (rm -rf mcp/.venv && $(PYTHON) -m venv mcp/.venv)
+	mcp/.venv/bin/pip install --upgrade pip -q
+	mcp/.venv/bin/pip install -r mcp/requirements-test.txt -q
+	@touch $@
 
 clean:
 	rm -f sippy
