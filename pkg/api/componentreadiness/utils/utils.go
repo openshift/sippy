@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -34,9 +35,13 @@ func PreviousRelease(release string, releaseConfigs []sippyv1.Release) (string, 
 // The start time is calculated as 30 days before the GA date, and the end time is the GA date.
 func FindStartEndTimesForRelease(timeRanges []crtest.ReleaseTimeRange, release string) (*time.Time, *time.Time, error) {
 	for _, r := range timeRanges {
-		if r.Release == release {
-			return r.Start, r.End, nil
+		if r.Release != release {
+			continue
 		}
+		if r.Start == nil || r.End == nil {
+			return nil, nil, fmt.Errorf("release %s has no GA date", release)
+		}
+		return r.Start, r.End, nil
 	}
 	return nil, nil, fmt.Errorf("release %s not found", release)
 }
@@ -332,4 +337,15 @@ func GenerateTestDetailsURL(
 
 	u.RawQuery = params.Encode()
 	return u.String(), nil
+}
+
+// EnqueueAsync is a helper function to asynchronously enqueue something (like errors) on a channel from a synchronous context.
+func EnqueueAsync[T any](wg *sync.WaitGroup, channel chan T, things ...T) {
+	wg.Add(1)
+	go func() {
+		for _, thing := range things {
+			channel <- thing
+		}
+		wg.Done()
+	}()
 }
