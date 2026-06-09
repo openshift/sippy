@@ -54,12 +54,9 @@ const defaultIncludeVariants = [
 
 // with ReleaseContext, use the list of GA releases and their dates to determine the default base and sample releases.
 function gaReleaseInfo(releases) {
-  if (
-    !releases ||
-    !releases.ga_dates ||
-    !releases.releases ||
-    !releases.release_attrs
-  ) {
+  const hasReleaseData =
+    releases && releases.ga_dates && releases.releases && releases.release_attrs
+  if (!hasReleaseData) {
     return {
       defaultBaseRelease: '',
       defaultSampleRelease: '',
