@@ -17,7 +17,7 @@ all: test build
 
 build: builddir clean npm frontend sippy sippy-daemon
 
-.PHONY: verify apm verify-apm
+.PHONY: verify apm verify-apm test mcp-venv
 verify: lint verify-apm
 
 builddir:
