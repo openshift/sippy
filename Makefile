@@ -42,7 +42,7 @@ else
 	gotestsum --junitfile $(ARTIFACT_DIR)/junit.xml ./pkg/...
 endif
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
-	uv run --with pytest --with-requirements mcp/requirements.txt pytest mcp/test_server.py
+	uv run --with pytest --with-requirements mcp/requirements.txt pytest mcp/
 
 lint: builddir npm
 	./hack/go-lint.sh run ./...
