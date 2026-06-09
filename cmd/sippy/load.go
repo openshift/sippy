@@ -125,9 +125,8 @@ func NewLoadCommand() *cobra.Command {
 			loaders := make([]dataloader.DataLoader, 0)
 			allErrs := []error{}
 
-			// Cancel syncing after 14 hours
-			// Default is 4 hour but increased for migration due to potential delay and backlog for syncing
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*14)
+			// Cancel syncing after 4 hours
+			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
 			defer cancel()
 
 			start := time.Now()
