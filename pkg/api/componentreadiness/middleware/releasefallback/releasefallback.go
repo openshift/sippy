@@ -194,16 +194,8 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 	// Lookup all release dates, we're going to need them
 	timeRanges, errs := r.dataProvider.QueryReleaseDates(ctx, r.reqOptions)
-	defer func() {
-		wg.Add(1)
-		go func() { // method is called synchronously, would block on writing channel
-			for _, err := range errs {
-				errCh <- err
-			}
-			wg.Done()
-		}()
-	}()
 	if errs != nil {
+		utils.EnqueueAsync(wg, errCh, errs...)
 		return
 	}
 
@@ -231,7 +223,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, release)
 		if err != nil {
-			errs = append(errs, err)
+			utils.EnqueueAsync(wg, errCh, err)
 			return
 		}
 

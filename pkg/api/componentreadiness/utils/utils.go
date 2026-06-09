@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -336,4 +337,15 @@ func GenerateTestDetailsURL(
 
 	u.RawQuery = params.Encode()
 	return u.String(), nil
+}
+
+// EnqueueAsync is a helper function to asynchronously enqueue something (like errors) on a channel from a synchronous context.
+func EnqueueAsync[T any](wg *sync.WaitGroup, channel chan T, things ...T) {
+	wg.Add(1)
+	go func() {
+		for _, thing := range things {
+			channel <- thing
+		}
+		wg.Done()
+	}()
 }

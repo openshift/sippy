@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -53,14 +54,14 @@ type RegressionTracker struct {
 func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
 	err := r.ensureRegressionsLoaded()
 	if err != nil {
-		errCh <- err
+		utils.EnqueueAsync(wg, errCh, err)
 	}
 }
 
 func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
 	err := r.ensureRegressionsLoaded()
 	if err != nil {
-		errCh <- err
+		utils.EnqueueAsync(wg, errCh, err)
 	}
 }
 
