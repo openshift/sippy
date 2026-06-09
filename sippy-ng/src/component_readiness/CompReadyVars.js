@@ -54,6 +54,18 @@ const defaultIncludeVariants = [
 
 // with ReleaseContext, use the list of GA releases and their dates to determine the default base and sample releases.
 function gaReleaseInfo(releases) {
+  if (
+    !releases ||
+    !releases.ga_dates ||
+    !releases.releases ||
+    !releases.release_attrs
+  ) {
+    return {
+      defaultBaseRelease: '',
+      defaultSampleRelease: '',
+      getReleaseDate: () => new Date(),
+    }
+  }
   const gaReleases = Object.keys(releases.ga_dates)
   gaReleases.sort(
     (a, b) => new Date(releases.ga_dates[b]) - new Date(releases.ga_dates[a])
