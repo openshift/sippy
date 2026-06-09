@@ -175,6 +175,7 @@ class TestResolveBigqueryCreds:
 class TestDataMode:
     @contextlib.contextmanager
     def _patch_dotenv(self, vals):
+        """Stub _DEVCONTAINER_ENV as an existing file and inject *vals* as its parsed content."""
         mock_env = mock.MagicMock()
         mock_env.is_file.return_value = True
         with mock.patch("server._DEVCONTAINER_ENV", mock_env), \
