@@ -13,5 +13,10 @@ applyTo: "**"
 * When new conventions, workflows, or tooling are introduced, consider
   adding or updating an `.apm/instructions/` file so that AI coding
   assistants stay aligned with the project's practices.
+* When your change affects a feature documented in `docs/features/`,
+  update the relevant feature doc in the same PR. Feature docs describe
+  purpose, data flow, and key code locations; keep them accurate as
+  the implementation evolves. If you add a new major feature, create a
+  new doc in `docs/features/`.
 * Documentation and code belong in the same PR — never treat a docs update
   as a follow-up task.
