@@ -73,6 +73,7 @@ type ProwLoader struct {
 	syntheticTestManager         synthetictests.SyntheticTestManager
 	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides
 	releases                     []string
+	releaseSet                   map[string]bool
 	config                       *v1config.SippyConfig
 	ghCommenter                  *commenter.GitHubCommenter
 	jobsImportedCount            atomic.Int32
@@ -112,11 +113,20 @@ func New(
 		syntheticReleaseJobOverrides: syntheticReleaseJobOverrides,
 		variantManager:               variantManager,
 		releases:                     releases,
+		releaseSet:                   toSet(releases),
 		config:                       config,
 		ghCommenter:                  ghCommenter,
 		promPusher:                   promPusher,
 		loadSince:                    loadSince,
 	}
+}
+
+func toSet(items []string) map[string]bool {
+	s := make(map[string]bool, len(items))
+	for _, item := range items {
+		s[item] = true
+	}
+	return s
 }
 
 var clusterDataDateTimeName = regexp.MustCompile(`cluster-data_(?P<DATE>.*)-(?P<TIME>.*).json`)
@@ -569,10 +579,20 @@ func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) erro
 
 	// Synthetic release claims take priority over all other matching.
 	if release, ok := pl.syntheticReleaseJobOverrides.Lookup(pj.Spec.Job); ok {
-		if err := pl.prowJobToJobRun(ctx, pj, release); err != nil {
-			err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
-			pjLog.WithError(err).Warning("prow import error")
-			return err
+
+		// make sure this is a known release
+		// default loads all known releases but
+		// explicit release can also be specified
+		// we should not process unknown releases
+		// in that case
+		if pl.releaseSet[release] {
+			if err := pl.prowJobToJobRun(ctx, pj, release); err != nil {
+				err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
+				pjLog.WithError(err).Warning("prow import error")
+				return err
+			}
+		} else {
+			log.Warningf("known release not found for release %q", release)
 		}
 		return nil
 	}
