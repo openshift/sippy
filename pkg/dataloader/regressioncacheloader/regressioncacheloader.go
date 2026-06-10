@@ -484,7 +484,7 @@ func (l *RegressionCacheLoader) buildGenerator(
 ) (*componentreadiness.ComponentReportGenerator, error) {
 
 	baseRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
+		l.releases, "basis", view.BaseRelease, 0, 0)
 	if err != nil {
 		return nil, err
 	}

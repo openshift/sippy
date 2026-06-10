@@ -1,6 +1,8 @@
 package componentreadiness
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -98,8 +100,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 		view417cross,
 	}
 
-	now := time.Now()
-	nowRoundUp := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
+	now := time.Now().UTC()
+	nowTruncatedAligned := util.TruncateAligned(now, 12*time.Hour, 4*time.Hour)
 
 	adjustDur := time.Duration(7) * 24 * time.Hour
 	nowMinus7Days := now.Add(-adjustDur)
@@ -170,9 +172,11 @@ func TestParseComponentReportRequest(t *testing.T) {
 				IgnoreDisruption: true,
 			},
 			cacheOption: cache.RequestOptions{
-				ForceRefresh: false,
-				StableAge:    cache.StandardStableAgeCR,
-				StableExpiry: cache.StandardStableExpiryCR,
+				ForceRefresh:         false,
+				CRTimeRoundingFactor: 12 * time.Hour,
+				CRTimeRoundingOffset: 4 * time.Hour,
+				StableAge:            cache.StandardStableAgeCR,
+				StableExpiry:         cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -226,9 +230,11 @@ func TestParseComponentReportRequest(t *testing.T) {
 				IgnoreDisruption: true,
 			},
 			cacheOption: cache.RequestOptions{
-				ForceRefresh: false,
-				StableAge:    cache.StandardStableAgeCR,
-				StableExpiry: cache.StandardStableExpiryCR,
+				ForceRefresh:         false,
+				CRTimeRoundingFactor: 12 * time.Hour,
+				CRTimeRoundingOffset: 4 * time.Hour,
+				StableAge:            cache.StandardStableAgeCR,
+				StableExpiry:         cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -254,7 +260,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			sampleRelease: reqopts.Release{
 				Name:  "4.17",
 				Start: time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
-				End:   nowRoundUp,
+				End:   nowTruncatedAligned,
 			},
 			testIDOption: reqopts.TestIdentification{
 				RequestedVariants: map[string]string{},
@@ -267,9 +273,11 @@ func TestParseComponentReportRequest(t *testing.T) {
 				IgnoreDisruption: true,
 			},
 			cacheOption: cache.RequestOptions{
-				ForceRefresh: false,
-				StableAge:    cache.StandardStableAgeCR,
-				StableExpiry: cache.StandardStableExpiryCR,
+				ForceRefresh:         false,
+				CRTimeRoundingFactor: 12 * time.Hour,
+				CRTimeRoundingOffset: 4 * time.Hour,
+				StableAge:            cache.StandardStableAgeCR,
+				StableExpiry:         cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -304,7 +312,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			sampleRelease: reqopts.Release{
 				Name:  "4.17",
 				Start: time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
-				End:   nowRoundUp,
+				End:   nowTruncatedAligned,
 			},
 			testIDOption: reqopts.TestIdentification{
 				RequestedVariants: map[string]string{},
@@ -317,9 +325,11 @@ func TestParseComponentReportRequest(t *testing.T) {
 				IgnoreDisruption: true,
 			},
 			cacheOption: cache.RequestOptions{
-				ForceRefresh: false,
-				StableAge:    cache.StandardStableAgeCR,
-				StableExpiry: cache.StandardStableExpiryCR,
+				ForceRefresh:         false,
+				CRTimeRoundingFactor: 12 * time.Hour,
+				CRTimeRoundingOffset: 4 * time.Hour,
+				StableAge:            cache.StandardStableAgeCR,
+				StableExpiry:         cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -383,9 +393,11 @@ func TestParseComponentReportRequest(t *testing.T) {
 				IgnoreDisruption: true,
 			},
 			cacheOption: cache.RequestOptions{
-				ForceRefresh: false,
-				StableAge:    cache.StandardStableAgeCR,
-				StableExpiry: cache.StandardStableExpiryCR,
+				ForceRefresh:         false,
+				CRTimeRoundingFactor: 12 * time.Hour,
+				CRTimeRoundingOffset: 4 * time.Hour,
+				StableAge:            cache.StandardStableAgeCR,
+				StableExpiry:         cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -416,7 +428,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			sampleRelease: reqopts.Release{
 				Name:  "4.17",
 				Start: time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
-				End:   nowRoundUp,
+				End:   nowTruncatedAligned,
 			},
 			testIDOption: reqopts.TestIdentification{
 				RequestedVariants: map[string]string{},
@@ -429,9 +441,11 @@ func TestParseComponentReportRequest(t *testing.T) {
 				IgnoreDisruption: true,
 			},
 			cacheOption: cache.RequestOptions{
-				ForceRefresh: false,
-				StableAge:    cache.StandardStableAgeCR,
-				StableExpiry: cache.StandardStableExpiryCR,
+				ForceRefresh:         false,
+				CRTimeRoundingFactor: 12 * time.Hour,
+				CRTimeRoundingOffset: 4 * time.Hour,
+				StableAge:            cache.StandardStableAgeCR,
+				StableExpiry:         cache.StandardStableExpiryCR,
 			},
 		},
 	}
@@ -446,7 +460,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			// path/body are irrelevant at this point in time, we only parse query params in the func being tested
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
-			options, _, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, time.Duration(0), time.Duration(0))
+			options, _, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, 12*time.Hour, 4*time.Hour)
 
 			if tc.errMessage != "" {
 				require.Error(t, err)
@@ -467,4 +481,135 @@ func TestParseComponentReportRequest(t *testing.T) {
 		})
 	}
 
+}
+
+// TestHATEOASLinkCacheConsistency verifies that the cache key produced by the cache preloader
+// (which resolves dates from a view) matches the cache key produced when a user follows a
+// HATEOAS link (which embeds those dates as explicit query params). A mismatch means cache misses.
+func TestHATEOASLinkCacheConsistency(t *testing.T) {
+	roundingFactor := 12 * time.Hour
+	roundingOffset := 4 * time.Hour
+
+	releases := []v1.Release{
+		{Release: "4.16", Status: "", GADate: util.DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
+		{Release: "4.17", Status: "", GADate: util.DatePtr(2024, 12, 10, 0, 0, 0, 0, time.UTC)},
+	}
+
+	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
+		"Architecture":   {"amd64", "arm64"},
+		"FeatureSet":     {"default", "techpreview"},
+		"Installer":      {"ipi", "upi"},
+		"LayeredProduct": {"none"},
+		"Network":        {"ovn"},
+		"Platform":       {"aws", "gcp"},
+		"Suite":          {"unknown"},
+		"Topology":       {"ha", "single"},
+		"Upgrade":        {"micro", "minor", "none"},
+	}}
+
+	view := crview.View{
+		Name: "4.17-main",
+		BaseRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.16",
+			},
+			RelativeStart: "ga-30d",
+			RelativeEnd:   "ga",
+		},
+		SampleRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.17",
+			},
+			RelativeStart: "now-7d",
+			RelativeEnd:   "now",
+		},
+		VariantOptions: reqopts.Variants{
+			ColumnGroupBy:   defaultColumnGroupByVariants,
+			DBGroupBy:       defaultDBGroupByVariants,
+			IncludeVariants: includeVariants,
+		},
+		AdvancedOptions: reqopts.Advanced{
+			MinimumFailure:   3,
+			Confidence:       95,
+			PityFactor:       5,
+			IgnoreMissing:    false,
+			IgnoreDisruption: true,
+		},
+	}
+	views := []crview.View{view}
+
+	// Step 1: Simulate the cache preloader path — resolve dates from the view
+	baseReleaseOpts, err := utils.GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
+	require.NoError(t, err)
+	sampleReleaseOpts, err := utils.GetViewReleaseOptions(releases, "sample", view.SampleRelease, roundingFactor, roundingOffset)
+	require.NoError(t, err)
+
+	// Base release times must always be start-of-day / end-of-day, never TruncateAligned
+	assert.Equal(t, 0, baseReleaseOpts.Start.Hour(), "base start must be 00:00 UTC (start-of-day)")
+	assert.Equal(t, 0, baseReleaseOpts.Start.Minute(), "base start must be 00:00 UTC (start-of-day)")
+	assert.Equal(t, 23, baseReleaseOpts.End.Hour(), "base end must be 23:59:59 UTC (end-of-day)")
+	assert.Equal(t, 59, baseReleaseOpts.End.Minute(), "base end must be 23:59:59 UTC (end-of-day)")
+	assert.Equal(t, 59, baseReleaseOpts.End.Second(), "base end must be 23:59:59 UTC (end-of-day)")
+
+	preloaderKey := GeneratorCacheKey{
+		BaseRelease:    baseReleaseOpts,
+		SampleRelease:  sampleReleaseOpts,
+		VariantOption:  view.VariantOptions,
+		AdvancedOption: view.AdvancedOptions,
+		TestIDOptions: []reqopts.TestIdentification{
+			{
+				TestID:            "openshift-tests:abc123",
+				Component:         "TestComponent",
+				Capability:        "TestCapability",
+				RequestedVariants: map[string]string{"Architecture": "amd64", "Platform": "aws"},
+			},
+		},
+	}
+
+	// Step 2: Generate a HATEOAS link URL from those resolved dates (as the API would)
+	hateoasURL, err := utils.GenerateTestDetailsURL(
+		"openshift-tests:abc123",
+		"https://sippy.example.com",
+		view.Name,
+		baseReleaseOpts,
+		sampleReleaseOpts,
+		view.AdvancedOptions,
+		view.VariantOptions,
+		reqopts.TestFilters{},
+		"TestComponent",
+		"TestCapability",
+		[]string{"Architecture:amd64", "Platform:aws"},
+		"",
+	)
+	require.NoError(t, err)
+
+	// Step 3: Parse the HATEOAS URL as if a browser clicked it — this simulates the server
+	// receiving the request and resolving options from URL params
+	parsedURL, err := url.Parse(hateoasURL)
+	require.NoError(t, err)
+	req, err := http.NewRequest("GET", parsedURL.String(), nil)
+	require.NoError(t, err)
+	parsedOpts, _, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, roundingFactor, roundingOffset)
+	require.NoError(t, err)
+
+	requestKey := GeneratorCacheKey{
+		BaseRelease:    parsedOpts.BaseRelease,
+		SampleRelease:  parsedOpts.SampleRelease,
+		VariantOption:  parsedOpts.VariantOption,
+		AdvancedOption: parsedOpts.AdvancedOption,
+		TestIDOptions:  parsedOpts.TestIDOptions,
+	}
+
+	// Step 4: The cache keys must match — if they don't, HATEOAS links will miss the cache
+	preloaderJSON, err := json.Marshal(preloaderKey)
+	require.NoError(t, err)
+	requestJSON, err := json.Marshal(requestKey)
+	require.NoError(t, err)
+
+	assert.Equal(t, preloaderKey.BaseRelease, requestKey.BaseRelease,
+		"base release mismatch between preloader and HATEOAS link request")
+	assert.Equal(t, preloaderKey.SampleRelease, requestKey.SampleRelease,
+		"sample release mismatch between preloader and HATEOAS link request")
+	assert.JSONEq(t, string(preloaderJSON), string(requestJSON),
+		fmt.Sprintf("cache key mismatch — preloader and HATEOAS link produce different keys.\nPreloader: %s\nRequest:   %s", preloaderJSON, requestJSON))
 }
