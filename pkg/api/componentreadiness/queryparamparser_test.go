@@ -601,8 +601,10 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 	}
 
 	// Step 4: The cache keys must match — if they don't, HATEOAS links will miss the cache
-	preloaderJSON, _ := json.Marshal(preloaderKey)
-	requestJSON, _ := json.Marshal(requestKey)
+	preloaderJSON, err := json.Marshal(preloaderKey)
+	require.NoError(t, err)
+	requestJSON, err := json.Marshal(requestKey)
+	require.NoError(t, err)
 
 	assert.Equal(t, preloaderKey.BaseRelease, requestKey.BaseRelease,
 		"base release mismatch between preloader and HATEOAS link request")
