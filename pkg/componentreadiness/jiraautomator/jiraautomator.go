@@ -114,7 +114,7 @@ func NewJiraAutomator(
 }
 
 func (j JiraAutomator) getRequestOptionForView(view crview.View) (reqopts.RequestOptions, error) {
-	baseRelease, err := utils.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor, j.cacheOptions.CRTimeRoundingOffset)
+	baseRelease, err := utils.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, 0, 0)
 	if err != nil {
 		return reqopts.RequestOptions{}, err
 	}
