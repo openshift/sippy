@@ -116,6 +116,7 @@ type SpotCheckGroup struct {
 	TotalRuns      int               `json:"total_runs"`
 	SuccessfulRuns int               `json:"successful_runs"`
 	JobNames       []string          `json:"job_names"`
+	LastFailure    time.Time         `json:"last_failure"`
 }
 
 // JobRunDetail contains data for a single job run, used in test details drill-down.

@@ -96,6 +96,7 @@ func (s *SpotCheckJobs) Query(ctx context.Context, wg *sync.WaitGroup,
 					TotalCount:   group.TotalRuns,
 					SuccessCount: group.SuccessfulRuns,
 				},
+				LastFailure: group.LastFailure,
 			}
 		}
 
@@ -161,9 +162,14 @@ func (s *SpotCheckJobs) PreAnalysis(_ crtest.Identification,
 	return nil
 }
 
-// Analyze claims spot-check tests and applies a simple heuristic: any successful run in
-// the sample window means the job is healthy (NotSignificant), zero successes means
-// ExtremeRegression. Returns false for non-spot-check tests to defer to other analyzers.
+// Analyze claims spot-check tests and determines their status. The heuristic is:
+//   - Any successful run in the sample window = healthy (NotSignificant)
+//   - A single failed run with no successes = pending retry (MissingSample), since an
+//     external component will trigger a retry for failed spot-check jobs
+//   - Two or more failed runs with no successes = confirmed regression (ExtremeRegression)
+//   - No runs at all = no data (MissingSample)
+//
+// Returns false for non-spot-check tests to defer to other analyzers.
 func (s *SpotCheckJobs) Analyze(testKey crtest.Identification,
 	testStats *testdetails.TestComparison) (bool, error) {
 
@@ -174,17 +180,34 @@ func (s *SpotCheckJobs) Analyze(testKey crtest.Identification,
 	sampleDays := int(s.reqOptions.SpotCheckSample.End.Sub(s.reqOptions.SpotCheckSample.Start).Hours() / 24)
 	totalRuns := testStats.SampleStats.Total()
 	successfulRuns := testStats.SampleStats.SuccessCount
+	failedRuns := totalRuns - successfulRuns
 
-	if successfulRuns > 0 {
+	switch {
+	case successfulRuns > 0:
 		testStats.ReportStatus = crtest.NotSignificant
 		testStats.Explanations = append(testStats.Explanations,
 			fmt.Sprintf("Spot-check job passed %d out of %d runs in the %d-day sample window",
 				successfulRuns, totalRuns, sampleDays))
-	} else {
+	case failedRuns >= 3:
 		testStats.ReportStatus = crtest.ExtremeRegression
 		testStats.Explanations = append(testStats.Explanations,
 			fmt.Sprintf("Spot-check job did not pass in the %d-day sample window (%d runs, 0 successes)",
 				sampleDays, totalRuns))
+	case failedRuns == 2:
+		testStats.ReportStatus = crtest.SignificantRegression
+		testStats.Explanations = append(testStats.Explanations,
+			fmt.Sprintf("Spot-check job failed %d times in the %d-day sample window with no successes",
+				failedRuns, sampleDays))
+	case failedRuns == 1:
+		testStats.ReportStatus = crtest.MissingSample
+		testStats.Explanations = append(testStats.Explanations,
+			fmt.Sprintf("Spot-check job failed once in the %d-day sample window; awaiting retry before flagging regression",
+				sampleDays))
+	default:
+		// No runs at all
+		testStats.ReportStatus = crtest.MissingSample
+		testStats.Explanations = append(testStats.Explanations,
+			fmt.Sprintf("No spot-check job runs found in the %d-day sample window", sampleDays))
 	}
 
 	testStats.Comparison = crtest.SpotCheck

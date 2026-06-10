@@ -470,7 +470,8 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 			%s AS spot_check_capability,
 			COUNT(DISTINCT jobs.prowjob_build_id) AS total_runs,
 			COUNT(DISTINCT IF(jobs.prowjob_state = 'success', jobs.prowjob_build_id, NULL)) AS successful_runs,
-			ARRAY_AGG(DISTINCT jobs.prowjob_job_name) AS job_names
+			ARRAY_AGG(DISTINCT jobs.prowjob_job_name) AS job_names,
+			MAX(IF(jobs.prowjob_state != 'success', TIMESTAMP(jobs.prowjob_start), NULL)) AS last_failure
 		FROM %s.jobs jobs
 		%s
 		WHERE jobs.prowjob_start >= DATETIME(@From)
@@ -535,6 +536,9 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 			for _, jn := range val.([]bigquery.Value) {
 				group.JobNames = append(group.JobNames, jn.(string))
 			}
+		}
+		if val, ok := rawRow["last_failure"]; ok && val != nil {
+			group.LastFailure = val.(time.Time)
 		}
 		results = append(results, group)
 	}
