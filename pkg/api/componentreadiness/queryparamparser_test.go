@@ -496,15 +496,15 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 	}
 
 	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
-		"Architecture":  {"amd64", "arm64"},
-		"FeatureSet":    {"default", "techpreview"},
-		"Installer":     {"ipi", "upi"},
+		"Architecture":   {"amd64", "arm64"},
+		"FeatureSet":     {"default", "techpreview"},
+		"Installer":      {"ipi", "upi"},
 		"LayeredProduct": {"none"},
-		"Network":       {"ovn"},
-		"Platform":      {"aws", "gcp"},
-		"Suite":         {"unknown"},
-		"Topology":      {"ha", "single"},
-		"Upgrade":       {"micro", "minor", "none"},
+		"Network":        {"ovn"},
+		"Platform":       {"aws", "gcp"},
+		"Suite":          {"unknown"},
+		"Topology":       {"ha", "single"},
+		"Upgrade":        {"micro", "minor", "none"},
 	}}
 
 	view := crview.View{
@@ -613,4 +613,3 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 	assert.JSONEq(t, string(preloaderJSON), string(requestJSON),
 		fmt.Sprintf("cache key mismatch — preloader and HATEOAS link produce different keys.\nPreloader: %s\nRequest:   %s", preloaderJSON, requestJSON))
 }
-
