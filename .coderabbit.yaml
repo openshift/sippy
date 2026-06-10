@@ -56,6 +56,14 @@ reviews:
         relative to its package or receiver. When adding new functions, types,
         or fields, include a brief godoc if the name alone would not make the
         purpose obvious to someone unfamiliar with the feature.
+    - path: "pkg/**/jobrun{scan,annotator}/**"
+      instructions: |
+        These files are part of the symptoms feature summarized in docs/features/job-analysis-symptoms.md.
+        Suggest a docs update if not included with changes to data models, API surface, or data flow.
+    - path: "sippy-ng/src/component_readiness/JobArtifactQuery.js"
+      instructions: |
+        This file is part of the symptoms feature summarized in docs/features/job-analysis-symptoms.md.
+        Suggest a docs update if not included with changes to data models, API surface, or data flow.
   tools:
     shellcheck:
       enabled: true
@@ -139,5 +147,13 @@ reviews:
           - Methods with more than a few parameters or results, often due to handling too many concepts that should be chunked into a type
           - Overly-broad packages or structs accumulating miscellaneous functionality
 
+      - name: "Feature Documentation"
+        mode: warning
+        instructions: |
+          Keep feature documentation updated with changes:
+          - Features are documented in docs/features/
+          - When code for a feature is changed, check whether its doc needs updating.
+          - Look for changes to data models, data flow, API endpoints, or core concepts described in the doc.
+          - Relevant docs updates are strongly encouraged but not strictly required.
 chat:
   auto_reply: true
