@@ -224,6 +224,16 @@ func ParseComponentReportRequest(
 		}
 	}
 
+	// If no view provided SpotCheckSample, default it from the sample release dates
+	// so spot-check middleware runs on drill-down requests too.
+	if opts.SpotCheckSample == nil && !opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
+		opts.SpotCheckSample = &reqopts.Release{
+			Name:  opts.SampleRelease.Name,
+			Start: opts.SampleRelease.Start,
+			End:   opts.SampleRelease.End,
+		}
+	}
+
 	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
 	if err != nil {
