@@ -252,7 +252,7 @@ pre_agg AS (
   FROM
     prow_job_run_tests
   WHERE
-    prow_job_run_timestamp >= |||START|||
+    prow_job_run_timestamp >= |||START||| AND prow_job_run_timestamp <= |||END|||
   GROUP BY
     prow_job_id, test_id, suite_id, prow_job_run_release
 )
@@ -262,14 +262,14 @@ SELECT
     suites.name AS suite_name,
     jira_components.name AS jira_component,
     jira_components.id AS jira_component_id,
-    SUM(pre_agg.previous_successes) AS previous_successes,
-    SUM(pre_agg.previous_flakes) AS previous_flakes,
-    SUM(pre_agg.previous_failures) AS previous_failures,
-    SUM(pre_agg.previous_runs) AS previous_runs,
-    SUM(pre_agg.current_successes) AS current_successes,
-    SUM(pre_agg.current_flakes) AS current_flakes,
-    SUM(pre_agg.current_failures) AS current_failures,
-    SUM(pre_agg.current_runs) AS current_runs,
+    SUM(pre_agg.previous_successes)::bigint AS previous_successes,
+    SUM(pre_agg.previous_flakes)::bigint AS previous_flakes,
+    SUM(pre_agg.previous_failures)::bigint AS previous_failures,
+    SUM(pre_agg.previous_runs)::bigint AS previous_runs,
+    SUM(pre_agg.current_successes)::bigint AS current_successes,
+    SUM(pre_agg.current_flakes)::bigint AS current_flakes,
+    SUM(pre_agg.current_failures)::bigint AS current_failures,
+    SUM(pre_agg.current_runs)::bigint AS current_runs,
     open_bugs.open_bugs AS open_bugs,
     prow_jobs.variants,
     pre_agg.prow_job_run_release AS release
@@ -283,8 +283,6 @@ FROM
     JOIN prow_jobs ON pre_agg.prow_job_id = prow_jobs.id
 GROUP BY
     tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, pre_agg.prow_job_run_release
-ORDER BY
-    pre_agg.prow_job_run_release, tests.name
 `
 
 const testAnalysisByVariantView = `
