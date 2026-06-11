@@ -75,9 +75,17 @@ func (s *SpotCheckJobs) Query(ctx context.Context, wg *sync.WaitGroup,
 		}
 
 		sampleStatus := map[string]crstatus.TestStatus{}
+		requestedVariants := map[string]string{}
+		if len(s.reqOptions.TestIDOptions) > 0 {
+			requestedVariants = s.reqOptions.TestIDOptions[0].RequestedVariants
+		}
 		for _, group := range groups {
 			if group.Component == "" || group.Capability == "" {
 				s.log.Warnf("skipping spot-check group with empty component/capability: %+v", group)
+				continue
+			}
+
+			if !variantsMatch(group.Variants, requestedVariants) {
 				continue
 			}
 
@@ -301,6 +309,15 @@ func syntheticTestNameFromID(testID string) string {
 			parts[1], strings.ReplaceAll(parts[2], "-", " "))
 	}
 	return testID
+}
+
+func variantsMatch(groupVariants, requestedVariants map[string]string) bool {
+	for k, v := range requestedVariants {
+		if gv, ok := groupVariants[k]; !ok || gv != v {
+			return false
+		}
+	}
+	return true
 }
 
 func variantMapToSlice(m map[string]string) []string {
