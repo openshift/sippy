@@ -742,8 +742,8 @@ func setSpotCheckClassification(_ logrus.FieldLogger, variants map[string]string
 		component  string
 		capability string
 	}{
-		{[]string{"-cpu-partitioning"}, "Node", "CPU Partitioning"},
-		{[]string{"-etcd-scaling"}, "etcd", "Scaling"},
+		{[]string{"-cpu-partitioning"}, "Node / kubelet", "CPU Partitioning"},
+		{[]string{"-etcd-scaling"}, "Etcd", "Scaling"},
 	}
 
 	for _, p := range spotCheckPatterns {
