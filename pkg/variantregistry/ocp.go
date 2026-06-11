@@ -260,7 +260,28 @@ ORDER BY j.prowjob_job_name;
 	dur := time.Since(start)
 	log.WithField("count", count.Load()).Infof("processed primary job list in %s", dur)
 
+	var errs []string
+	for jobName, variants := range variantsByJob {
+		if err := validateSpotCheckVariants(jobName, variants); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		return nil, errors.New("variant registry validation failed:\n" + strings.Join(errs, "\n"))
+	}
+
 	return variantsByJob, nil
+}
+
+// validateSpotCheckVariants returns an error if a job has JobTier=spotcheck without both
+// SpotCheckComponent and SpotCheckCapability defined.
+func validateSpotCheckVariants(jobName string, variants map[string]string) error {
+	if variants[VariantJobTier] == "spotcheck" {
+		if variants[VariantSpotCheckComponent] == "" || variants[VariantSpotCheckCapability] == "" {
+			return fmt.Errorf("job %q has JobTier=spotcheck but is missing SpotCheckComponent or SpotCheckCapability", jobName)
+		}
+	}
+	return nil
 }
 
 // fileVariantsToIgnore are values in the cluster-data.json that vary by run, and are not consistent for the job itself.
@@ -734,6 +755,8 @@ func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[st
 // assessed on a simple pass/fail basis rather than per-test-case junit analysis.
 // The SpotCheckComponent and SpotCheckCapability variants control where these synthetic
 // results appear in the component readiness report.
+//
+// Be sure to use real Component names from OCPBUGS.
 func setSpotCheckClassification(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
