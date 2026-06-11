@@ -62,6 +62,8 @@ func PrintJobAnalysisJSONFromDB(
 	           sum(case when overall_result = 'A' then 1 else 0 end) AS "A"`, period).
 		Joins("INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_jobs.id IN ?", jobs).
+		Where("prow_job_runs.prow_job_release = ?", release).
+		Where("prow_job_runs.timestamp BETWEEN ? AND ?", start, end).
 		Group("period")
 
 	sumResults.Scan(&sums)

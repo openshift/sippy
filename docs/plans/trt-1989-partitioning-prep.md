@@ -83,9 +83,8 @@ When `prow_job_runs` is partitioned:
    `(id, prow_job_release, timestamp)`).
 2. All tables with FKs into `prow_job_runs` must reference the full
    composite key — meaning they need the partition key columns too.
-3. Tables with FKs **from** `prow_job_runs` to non-partitioned tables
-   (annotations, pull request join table) must either be co-partitioned
-   or have their FKs dropped.
+3. Tables with FKs **to** `prow_job_runs` (annotations, pull request
+   join table) must either be co-partitioned or have their FKs dropped.
 
 This means `prow_job_runs`, `prow_job_run_annotations`, and
 `prow_job_run_prow_pull_requests` must all migrate to partitioned in a

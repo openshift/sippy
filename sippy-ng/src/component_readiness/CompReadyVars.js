@@ -295,7 +295,9 @@ export const CompReadyVarsProvider = ({ children }) => {
     // Initialize includeVariantsCheckedItems
     setIncludeVariantsCheckedItems(
       convertParamToVariantItems(
-        params.includeVariant || defaultIncludeVariants
+        params.includeVariant ||
+          // when environment supplies the filter we don't want the default filter
+          (params.environment ? [] : defaultIncludeVariants)
       )
     )
 

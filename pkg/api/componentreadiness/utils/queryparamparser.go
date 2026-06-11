@@ -41,7 +41,7 @@ func ParseComponentReportRequest(
 		opts.VariantOption = view.VariantOptions
 		opts.AdvancedOption = view.AdvancedOptions
 		opts.TestFilters = view.TestFilters
-		opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor, crTimeRoundingOffset)
+		opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
 		if err != nil {
 			return
 		}
@@ -160,7 +160,7 @@ func ParseComponentReportRequest(
 
 	// Date ranges override view defaults
 	if hasDateRangeInURL(req, "baseStartTime", "baseEndTime") {
-		opts.BaseRelease, err = parseDateRange(releases, req, opts.BaseRelease, "baseStartTime", "baseEndTime", crTimeRoundingFactor, crTimeRoundingOffset)
+		opts.BaseRelease, err = parseDateRange(releases, req, opts.BaseRelease, "baseStartTime", "baseEndTime", 0, 0)
 		if err != nil {
 			return
 		}

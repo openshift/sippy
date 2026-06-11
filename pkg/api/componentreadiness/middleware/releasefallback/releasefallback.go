@@ -46,7 +46,7 @@ func NewReleaseFallbackMiddleware(
 
 // ReleaseFallback middleware allows us to use the best pass rate data from the past
 // several releases for our basis instead of just the requested basis. This helps prevent
-// minor gradual degredation of quality, and also simplifies the process of accepting
+// minor gradual degradation of quality, and also simplifies the process of accepting
 // intentional regressions shortly before release, as we'll then automatically use the data
 // from prior releases.
 //
@@ -81,7 +81,6 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 			r.log.Infof("Context canceled while fetching fallback query status")
 			return
 		default:
-			// TODO: should we pass the same wg through rather than using another?
 			errs := r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Name, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
 			if len(errs) > 0 {
 				for _, err := range errs {
@@ -195,10 +194,8 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 	// Lookup all release dates, we're going to need them
 	timeRanges, errs := r.dataProvider.QueryReleaseDates(ctx, r.reqOptions)
-	for _, err := range errs {
-		errCh <- err
-	}
 	if errs != nil {
+		utils.EnqueueAsync(wg, errCh, errs...)
 		return
 	}
 
@@ -226,7 +223,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, release)
 		if err != nil {
-			errCh <- err
+			utils.EnqueueAsync(wg, errCh, err)
 			return
 		}
 
@@ -244,10 +241,10 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 				fallbackReqOpts.BaseRelease.End = *end
 				fallbackReqOpts.TestIDOptions = testIDOpts
 
-				baseStatus, errs := r.dataProvider.QueryBaseJobRunTestStatus(ctx, fallbackReqOpts, allJobVariants)
+				baseStatus, bsErrs := r.dataProvider.QueryBaseJobRunTestStatus(ctx, fallbackReqOpts, allJobVariants)
 
-				for _, err := range errs {
-					errCh <- err
+				for _, bsErr := range bsErrs {
+					errCh <- bsErr
 				}
 
 				// Now that we've queried all the results for a fallback release, we need to chop them up into
@@ -275,7 +272,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 				r.baseOverrideMutex.Unlock()
 
-				r.log.Infof("queried fallback base override job run test status: %d jobs, %d errors", len(r.baseOverrideStatus), len(errs))
+				r.log.Infof("queried fallback base override job run test status: %d jobs, %d errors", len(r.baseOverrideStatus), len(bsErrs))
 			}
 		}()
 	}

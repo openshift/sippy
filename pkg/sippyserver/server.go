@@ -970,7 +970,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 	viewsCopy := make([]crview.View, len(s.views.ComponentReadiness))
 	copy(viewsCopy, s.views.ComponentReadiness)
 	for i := range viewsCopy {
-		rro, err := utils.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
+		rro, err := utils.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, 0, 0)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return

@@ -310,6 +310,9 @@ WITH deduped AS (
     JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
     WHERE pj.release = ?
       AND pjr.timestamp >= ? AND pjr.timestamp < ?
+      AND pjr.prow_job_release = ?
+      AND pjrt.prow_job_run_release = ?
+      AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
       AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
       AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])
     ORDER BY pjrt.prow_job_run_id, pjrt.test_id, pjrt.suite_id,
@@ -340,7 +343,7 @@ func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, 
 	dbGroupBy map[string]bool) (map[string]crstatus.TestStatus, []error) {
 
 	var rows []testStatusRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(testStatusQuery, release, start, end).Scan(&rows).Error; err != nil {
+	if err := p.dbc.DB.WithContext(ctx).Raw(testStatusQuery, release, start, end, release, release, start, end).Scan(&rows).Error; err != nil {
 		return nil, []error{fmt.Errorf("querying test status: %w", err)}
 	}
 
@@ -517,6 +520,9 @@ JOIN test_ownerships tow ON tow.test_id = pjrt.test_id
     AND (tow.suite_id = pjrt.suite_id OR (tow.suite_id IS NULL AND pjrt.suite_id IS NULL))
 WHERE pj.release = ?
     AND pjr.timestamp >= ? AND pjr.timestamp < ?
+    AND pjr.prow_job_release = ?
+    AND pjrt.prow_job_run_release = ?
+    AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
     AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
     AND tow.staff_approved_obsolete = false
     AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])
@@ -528,7 +534,7 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 	includeVariants map[string][]string) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	var rows []testDetailRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(testDetailQuery, release, start, end).Scan(&rows).Error; err != nil {
+	if err := p.dbc.DB.WithContext(ctx).Raw(testDetailQuery, release, start, end, release, release, start, end).Scan(&rows).Error; err != nil {
 		return nil, []error{fmt.Errorf("querying test details: %w", err)}
 	}
 
@@ -680,11 +686,12 @@ func (p *PostgresProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.
 		JOIN prow_job_runs pjr ON pjr.prow_job_id = pj.id
 		WHERE pj.release = ?
 			AND pjr.timestamp >= ? AND pjr.timestamp < ?
+			AND pjr.prow_job_release = ?
 			AND pj.deleted_at IS NULL AND pjr.deleted_at IS NULL
 			AND (pj.name LIKE 'periodic-%%' OR pj.name LIKE 'release-%%' OR pj.name LIKE 'aggregator-%%')
 		GROUP BY pj.name
 		ORDER BY pj.name
-	`, release, start, end).Scan(&rows).Error
+	`, release, start, end, release).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("querying job runs: %w", err)
 	}
