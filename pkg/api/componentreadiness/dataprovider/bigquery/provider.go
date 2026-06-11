@@ -382,8 +382,8 @@ func (p *BigQueryProvider) LookupJobVariants(ctx context.Context, jobName string
 // syncer has run and all spot-check jobs have the new variants.
 const spotCheckComponentFallback = `COALESCE(jv_SpotCheckComponent.variant_value,
 		CASE
-			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%cpu-partitioning%%' THEN 'Node'
-			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%etcd-scaling%%' THEN 'etcd'
+			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%cpu-partitioning%%' THEN 'Node / Kubelet'
+			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%etcd-scaling%%' THEN 'Etcd'
 		END)`
 
 const spotCheckCapabilityFallback = `COALESCE(jv_SpotCheckCapability.variant_value,
