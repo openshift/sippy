@@ -267,6 +267,7 @@ ORDER BY j.prowjob_job_name;
 		}
 	}
 	if len(errs) > 0 {
+		sort.Strings(errs)
 		return nil, errors.New("variant registry validation failed:\n" + strings.Join(errs, "\n"))
 	}
 
