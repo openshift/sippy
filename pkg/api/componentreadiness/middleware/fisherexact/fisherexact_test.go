@@ -1,6 +1,7 @@
 package fisherexact
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -190,12 +191,8 @@ func TestFisherExactAnalyze(t *testing.T) {
 			if tt.explanationContains != "" {
 				assert.True(t, func() bool {
 					for _, e := range tt.inputStats.Explanations {
-						if len(e) >= len(tt.explanationContains) {
-							for i := 0; i <= len(e)-len(tt.explanationContains); i++ {
-								if e[i:i+len(tt.explanationContains)] == tt.explanationContains {
-									return true
-								}
-							}
+						if strings.Contains(e, tt.explanationContains) {
+							return true
 						}
 					}
 					return false
