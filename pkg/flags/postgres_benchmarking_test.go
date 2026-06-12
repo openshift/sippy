@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -499,8 +500,9 @@ func getBenchmarkDBClient(t *testing.T) (*db.DB, string) {
 	}
 
 	dbFlags := &PostgresFlags{
-		LogLevel: 4,
-		DSN:      dsn,
+		LogLevel:            4,
+		DSN:                 dsn,
+		EnablePartitionwise: os.Getenv("enable_partitionwise") != "",
 	}
 
 	dbc, err := dbFlags.GetDBClient()
@@ -516,6 +518,11 @@ func getBenchmarkDBClient(t *testing.T) (*db.DB, string) {
 			t.Logf("failed to close DB client: %v", err)
 		}
 	})
+
+	if dbFlags.EnablePartitionwise {
+		t.Log("enabled partitionwise aggregate and join")
+	}
+
 	return dbc, extractConnectionName(dsn)
 }
 
@@ -1086,6 +1093,23 @@ func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
 	}, 3))
 
 	printSummaryTable(t, results, connName)
+}
+
+func Test_BenchmarkRefreshData(t *testing.T) {
+	dbc, connName := getBenchmarkDBClient(t)
+
+	if err := dbc.UpdateSchema(nil); err != nil {
+		t.Fatalf("could not migrate db: %v", err)
+	}
+
+	r := runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "RefreshData",
+		fn: func(dbc *db.DB) error {
+			sippyserver.RefreshData(dbc, nil, false)
+			return nil
+		},
+	}, 1)
+	printSummaryTable(t, []benchmarkResult{r}, connName)
 }
 
 func Test_BenchmarkAPI(t *testing.T) {

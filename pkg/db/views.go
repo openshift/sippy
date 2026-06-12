@@ -156,22 +156,26 @@ func syncPostgresViews(db *gorm.DB, reportEnd *time.Time) error {
 const jobRunsReportMatView = `
 WITH failed_test_results AS (
 	SELECT prow_job_run_tests.prow_job_run_id,
+		prow_job_run_tests.prow_job_run_release,
 		array_agg(tests.id) AS test_ids,
 		count(tests.id) AS test_count,
 		array_agg(tests.name) AS test_names
 	FROM prow_job_run_tests
 		JOIN tests ON tests.id = prow_job_run_tests.test_id
 	WHERE prow_job_run_tests.status = 12
-	GROUP BY prow_job_run_tests.prow_job_run_id
+		AND prow_job_run_tests.prow_job_run_timestamp >= CURRENT_TIMESTAMP - interval '90 days'
+	GROUP BY prow_job_run_tests.prow_job_run_id, prow_job_run_tests.prow_job_run_release
 ), flaked_test_results AS (
 	SELECT prow_job_run_tests.prow_job_run_id,
+		prow_job_run_tests.prow_job_run_release,
 		array_agg(tests.id) AS test_ids,
 		count(tests.id) AS test_count,
 		array_agg(tests.name) AS test_names
 	FROM prow_job_run_tests
 		JOIN tests ON tests.id = prow_job_run_tests.test_id
 	WHERE prow_job_run_tests.status = 13
-	GROUP BY prow_job_run_tests.prow_job_run_id
+		AND prow_job_run_tests.prow_job_run_timestamp >= CURRENT_TIMESTAMP - interval '90 days'
+	GROUP BY prow_job_run_tests.prow_job_run_id, prow_job_run_tests.prow_job_run_release
 ),
 pull_requests AS (
 	SELECT
@@ -209,7 +213,7 @@ SELECT prow_job_runs.id,
    flaked_test_results.test_names AS flaked_test_names,
    flaked_test_results.test_count AS test_flakes,
    failed_test_results.test_names AS failed_test_names,
-   failed_test_results.test_count AS test_failures,
+   COALESCE(failed_test_results.test_count, prow_job_runs.test_failures) AS test_failures,
    pull_requests.link as pull_request_link,
    pull_requests.sha as pull_request_sha,
    pull_requests.org as pull_request_org,
@@ -217,7 +221,9 @@ SELECT prow_job_runs.id,
    pull_requests.author as pull_request_author
 FROM prow_job_runs
    LEFT JOIN failed_test_results ON failed_test_results.prow_job_run_id = prow_job_runs.id
+       AND failed_test_results.prow_job_run_release = prow_job_runs.prow_job_release
    LEFT JOIN flaked_test_results ON flaked_test_results.prow_job_run_id = prow_job_runs.id
+       AND flaked_test_results.prow_job_run_release = prow_job_runs.prow_job_release
    LEFT JOIN pull_requests ON pull_requests.id = prow_job_runs.id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 `
