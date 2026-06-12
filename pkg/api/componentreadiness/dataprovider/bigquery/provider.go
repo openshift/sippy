@@ -385,14 +385,14 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 	allJobVariants crtest.JobVariants,
 	start, end time.Time) ([]dataprovider.SpotCheckGroup, error) {
 
-	columnGroupByVariants := reqOptions.VariantOption.ColumnGroupBy
-	if len(columnGroupByVariants) == 0 {
-		columnGroupByVariants = sets.NewString("Platform", "Architecture", "Network")
+	groupByVariantSet := reqOptions.VariantOption.DBGroupBy
+	if len(groupByVariantSet) == 0 {
+		groupByVariantSet = sets.NewString("Platform", "Architecture", "Network")
 	}
 
 	var selectVariants, joinVariants string
 	var groupByParts []string
-	for _, v := range columnGroupByVariants.List() {
+	for _, v := range groupByVariantSet.List() {
 		cleanV := param.Cleanse(v)
 		joinVariants += fmt.Sprintf(
 			"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
@@ -417,7 +417,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		p.client.Dataset)
 
 	// Track which variant groups already have JOINs
-	joinedVariants := sets.NewString(columnGroupByVariants.List()...)
+	joinedVariants := sets.NewString(groupByVariantSet.List()...)
 	joinedVariants.Insert("Release", "JobTier", "SpotCheckComponent", "SpotCheckCapability")
 
 	// Build include variant filters (Platform, Architecture, etc.) but skip JobTier and SpotCheck variants
@@ -502,7 +502,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		if val, ok := rawRow["spot_check_capability"]; ok && val != nil {
 			group.Capability = val.(string)
 		}
-		for _, v := range columnGroupByVariants.List() {
+		for _, v := range groupByVariantSet.List() {
 			cleanV := param.Cleanse(v)
 			if val, ok := rawRow["variant_"+cleanV]; ok && val != nil {
 				group.Variants[v] = val.(string)
