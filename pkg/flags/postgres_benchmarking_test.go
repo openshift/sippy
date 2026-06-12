@@ -1095,6 +1095,128 @@ func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
 	printSummaryTable(t, results, connName)
 }
 
+func Test_BenchmarkJobRunsReportMatview(t *testing.T) {
+	dbc, connName := getBenchmarkDBClient(t)
+
+	var source db.PostgresView
+	for _, mv := range db.PostgresMatViews {
+		if mv.Name == "prow_job_runs_report_matview" {
+			source = mv
+			break
+		}
+	}
+	if source.Name == "" {
+		t.Fatal("prow_job_runs_report_matview not found in PostgresMatViews")
+	}
+
+	matviewName := "bench_job_runs_report"
+	viewDef := source.Definition
+	for k, v := range source.ReplaceStrings {
+		viewDef = strings.ReplaceAll(viewDef, k, v)
+	}
+	viewDef = strings.ReplaceAll(viewDef, "|||TIMENOW|||", "NOW()")
+
+	t.Cleanup(func() {
+		if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
+			t.Logf("failed to drop materialized view %s during cleanup: %v", matviewName, err)
+		}
+	})
+	if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
+		t.Fatalf("failed to drop pre-existing materialized view %s: %v", matviewName, err)
+	}
+
+	iterations := 3
+	var results []benchmarkResult
+
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "CreateMatview",
+		fn: func(dbc *db.DB) error {
+			if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
+				return err
+			}
+			res := dbc.DB.Exec(fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH DATA", matviewName, viewDef))
+			if res.Error != nil {
+				return res.Error
+			}
+			var count int64
+			if err := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matviewName)).Scan(&count).Error; err != nil {
+				return err
+			}
+			log.Printf("CreateMatview: %s populated with %d rows", matviewName, count)
+			return nil
+		},
+	}, iterations))
+
+	indexName := fmt.Sprintf("idx_%s", matviewName)
+	indexCols := strings.Join(source.IndexColumns, ", ")
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "CreateIndex",
+		fn: func(dbc *db.DB) error {
+			dbc.DB.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName))
+			res := dbc.DB.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, matviewName, indexCols))
+			return res.Error
+		},
+	}, iterations))
+
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "RefreshConcurrently",
+		fn: func(dbc *db.DB) error {
+			res := dbc.DB.Exec(fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", matviewName))
+			return res.Error
+		},
+	}, iterations))
+
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "QueryByRelease",
+		fn: func(dbc *db.DB) error {
+			var jobRuns []apitype.JobRun
+			res := dbc.DB.Table(matviewName).
+				Where("release = ?", benchmarkRelease).
+				Order("timestamp desc").
+				Limit(100).
+				Scan(&jobRuns)
+			if res.Error != nil {
+				return res.Error
+			}
+			log.Printf("QueryByRelease: %d rows from %s", len(jobRuns), matviewName)
+			return nil
+		},
+	}, iterations))
+
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "QueryByJob",
+		fn: func(dbc *db.DB) error {
+			var jobRuns []apitype.JobRun
+			res := dbc.DB.Table(matviewName).
+				Where("release = ? AND name = ?", benchmarkRelease, benchmarkJobName).
+				Order("timestamp desc").
+				Scan(&jobRuns)
+			if res.Error != nil {
+				return res.Error
+			}
+			log.Printf("QueryByJob: %d rows from %s", len(jobRuns), matviewName)
+			return nil
+		},
+	}, iterations))
+
+	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
+		name: "CountWithFailures",
+		fn: func(dbc *db.DB) error {
+			var count int64
+			res := dbc.DB.Table(matviewName).
+				Where("release = ? AND test_failures > 0", benchmarkRelease).
+				Count(&count)
+			if res.Error != nil {
+				return res.Error
+			}
+			log.Printf("CountWithFailures: %d rows from %s", count, matviewName)
+			return nil
+		},
+	}, iterations))
+
+	printSummaryTable(t, results, connName)
+}
+
 func Test_BenchmarkRefreshData(t *testing.T) {
 	dbc, connName := getBenchmarkDBClient(t)
 
