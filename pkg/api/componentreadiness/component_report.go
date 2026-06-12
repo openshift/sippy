@@ -280,7 +280,7 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	// Initialize all our middleware applicable to this request.
 
 	// middlewares that inject synthetic tests must run first so results are in place for other middleware.
-	if c.ReqOptions.SpotCheckSample != nil {
+	if len(c.ReqOptions.SpotCheckJobSamples) > 0 {
 		c.middlewares = append(c.middlewares, spotcheckjobs.NewSpotCheckJobsMiddleware(c.dataProvider, c.ReqOptions))
 	}
 

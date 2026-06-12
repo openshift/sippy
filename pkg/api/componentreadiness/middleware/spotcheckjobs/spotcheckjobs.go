@@ -25,6 +25,10 @@ var _ middleware.Middleware = &SpotCheckJobs{}
 // Jobs are identified by the SpotCheckComponent and SpotCheckCapability variants in the
 // variant registry. The component/capability values control where the synthetic test
 // results appear in the component readiness report.
+//
+// Multiple spot-check samples can be configured (e.g. spotcheck-30d, spotcheck-90d),
+// each with its own time window and variant filters. Each sample produces a separate
+// set of synthetic test results.
 func NewSpotCheckJobsMiddleware(
 	provider dataprovider.DataProvider,
 	reqOptions reqopts.RequestOptions,
@@ -46,71 +50,72 @@ type SpotCheckJobs struct {
 	sampleJobDetailsMutex sync.Mutex
 }
 
-// Query fetches aggregated spot-check job results from BigQuery, creates synthetic
-// test statuses (one per component/capability/variant group), and injects them into
-// the sample status channel. Each synthetic test uses a binary pass/fail:
-// >=1 successful run = pass.
+// Query fetches aggregated spot-check job results from BigQuery for each configured
+// sample, creates synthetic test statuses (one per component/capability/variant group
+// per sample), and injects them into the sample status channel.
 func (s *SpotCheckJobs) Query(ctx context.Context, wg *sync.WaitGroup,
 	allJobVariants crtest.JobVariants,
 	_, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
 
-	if s.reqOptions.SpotCheckSample == nil {
+	if len(s.reqOptions.SpotCheckJobSamples) == 0 {
 		return
 	}
 
-	wg.Go(func() {
-		select {
-		case <-ctx.Done():
-			s.log.Info("context canceled during spot check query")
-			return
-		default:
-		}
-
-		groups, err := s.dataProvider.QuerySpotCheckJobRuns(ctx,
-			s.reqOptions, allJobVariants,
-			s.reqOptions.SpotCheckSample.Start, s.reqOptions.SpotCheckSample.End)
-		if err != nil {
-			errCh <- fmt.Errorf("spot check query failed: %w", err)
-			return
-		}
-
-		sampleStatus := map[string]crstatus.TestStatus{}
-		requestedVariants := map[string]string{}
-		if len(s.reqOptions.TestIDOptions) > 0 {
-			requestedVariants = s.reqOptions.TestIDOptions[0].RequestedVariants
-		}
-		for _, group := range groups {
-			if group.Component == "" || group.Capability == "" {
-				s.log.Warnf("skipping spot-check group with empty component/capability: %+v", group)
-				continue
+	for _, sample := range s.reqOptions.SpotCheckJobSamples {
+		wg.Go(func() {
+			select {
+			case <-ctx.Done():
+				s.log.Info("context canceled during spot check query")
+				return
+			default:
 			}
 
-			if !variantsMatch(group.Variants, requestedVariants) {
-				continue
+			groups, err := s.dataProvider.QuerySpotCheckJobRuns(ctx,
+				s.reqOptions, allJobVariants, sample.IncludeVariants,
+				sample.Start, sample.End)
+			if err != nil {
+				errCh <- fmt.Errorf("spot check query failed for %s: %w", sample.Name, err)
+				return
 			}
 
-			testKey := crtest.KeyWithVariants{
-				TestID:   syntheticTestID(group.Component, group.Capability),
-				Variants: group.Variants,
+			sampleStatus := map[string]crstatus.TestStatus{}
+			requestedVariants := map[string]string{}
+			if len(s.reqOptions.TestIDOptions) > 0 {
+				requestedVariants = s.reqOptions.TestIDOptions[0].RequestedVariants
 			}
-			keyStr := testKey.KeyOrDie()
+			for _, group := range groups {
+				if group.Component == "" || group.Capability == "" {
+					s.log.Warnf("skipping spot-check group with empty component/capability: %+v", group)
+					continue
+				}
 
-			sampleStatus[keyStr] = crstatus.TestStatus{
-				TestName:     syntheticTestName(group.Component, group.Capability),
-				Component:    group.Component,
-				Capabilities: []string{group.Capability},
-				Variants:     variantMapToSlice(group.Variants),
-				Count: crtest.Count{
-					TotalCount:   group.TotalRuns,
-					SuccessCount: group.SuccessfulRuns,
-				},
-				LastFailure: group.LastFailure,
+				if !variantsMatch(group.Variants, requestedVariants) {
+					continue
+				}
+
+				testKey := crtest.KeyWithVariants{
+					TestID:   syntheticTestID(sample.Name, group.Component, group.Capability),
+					Variants: group.Variants,
+				}
+				keyStr := testKey.KeyOrDie()
+
+				sampleStatus[keyStr] = crstatus.TestStatus{
+					TestName:     syntheticTestName(group.Component, group.Capability),
+					Component:    group.Component,
+					Capabilities: []string{group.Capability},
+					Variants:     variantMapToSlice(group.Variants),
+					Count: crtest.Count{
+						TotalCount:   group.TotalRuns,
+						SuccessCount: group.SuccessfulRuns,
+					},
+					LastFailure: group.LastFailure,
+				}
 			}
-		}
 
-		s.log.Infof("injecting %d spot-check synthetic test results", len(sampleStatus))
-		sampleStatusCh <- sampleStatus
-	})
+			s.log.Infof("injecting %d spot-check synthetic test results for sample %s", len(sampleStatus), sample.Name)
+			sampleStatusCh <- sampleStatus
+		})
+	}
 }
 
 // QueryTestDetails fetches individual job run details for spot-check synthetic tests,
@@ -118,7 +123,7 @@ func (s *SpotCheckJobs) Query(ctx context.Context, wg *sync.WaitGroup,
 func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup,
 	errCh chan error, allJobVariants crtest.JobVariants) {
 
-	if s.reqOptions.SpotCheckSample == nil {
+	if len(s.reqOptions.SpotCheckJobSamples) == 0 {
 		return
 	}
 
@@ -127,9 +132,15 @@ func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup
 			continue
 		}
 
-		component, capability := componentCapabilityFromTestID(testIDOpt.TestID)
+		sampleName, component, capability := componentCapabilityFromTestID(testIDOpt.TestID)
 		if component == "" || capability == "" {
 			s.log.Warnf("could not parse component/capability from spot-check test ID %s", testIDOpt.TestID)
+			continue
+		}
+
+		sample := s.findSample(sampleName)
+		if sample == nil {
+			s.log.Warnf("no spot-check sample found for tier %s in test ID %s", sampleName, testIDOpt.TestID)
 			continue
 		}
 
@@ -141,9 +152,9 @@ func (s *SpotCheckJobs) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup
 			}
 
 			details, err := s.dataProvider.QuerySpotCheckJobRunDetails(ctx,
-				s.reqOptions, allJobVariants,
+				s.reqOptions, allJobVariants, sample.IncludeVariants,
 				testIDOpt.RequestedVariants, component, capability,
-				s.reqOptions.SpotCheckSample.Start, s.reqOptions.SpotCheckSample.End)
+				sample.Start, sample.End)
 			if err != nil {
 				errCh <- fmt.Errorf("spot check details query failed: %w", err)
 				return
@@ -185,7 +196,13 @@ func (s *SpotCheckJobs) Analyze(testKey crtest.Identification,
 		return false, nil
 	}
 
-	sampleDays := int(s.reqOptions.SpotCheckSample.End.Sub(s.reqOptions.SpotCheckSample.Start).Hours() / 24)
+	sampleName, _, _ := componentCapabilityFromTestID(testKey.TestID)
+	sample := s.findSample(sampleName)
+	sampleDays := 0
+	if sample != nil {
+		sampleDays = int(sample.End.Sub(sample.Start).Hours() / 24)
+	}
+
 	totalRuns := testStats.SampleStats.Total()
 	successfulRuns := testStats.SampleStats.SuccessCount
 	failedRuns := totalRuns - successfulRuns
@@ -270,29 +287,34 @@ func (s *SpotCheckJobs) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants,
 	return nil
 }
 
-func isSpotCheckTestID(testID string) bool {
-	return strings.HasPrefix(testID, "spotcheck:")
+func (s *SpotCheckJobs) findSample(name string) *reqopts.SpotCheckJobSampleOpts {
+	for i := range s.reqOptions.SpotCheckJobSamples {
+		if s.reqOptions.SpotCheckJobSamples[i].Name == name {
+			return &s.reqOptions.SpotCheckJobSamples[i]
+		}
+	}
+	return nil
 }
 
-// componentCapabilityFromTestID extracts the component and capability from a synthetic
-// spot-check test ID. The format is "spotcheck:<component>:<capability>" where the
-// component is lowercased and capability has spaces replaced with dashes.
-func componentCapabilityFromTestID(testID string) (string, string) {
+func isSpotCheckTestID(testID string) bool {
+	return strings.HasPrefix(testID, "spotcheck-")
+}
+
+// componentCapabilityFromTestID extracts the sample name, component and capability from
+// a synthetic spot-check test ID. The format is "spotcheck-30d:component:capability".
+func componentCapabilityFromTestID(testID string) (string, string, string) {
 	parts := strings.SplitN(testID, ":", 3)
 	if len(parts) != 3 {
-		return "", ""
+		return "", "", ""
 	}
-	// The test ID stores lowercased component and dash-separated capability.
-	// We need to convert back to the original format for the BigQuery query.
-	// The COALESCE fallback in the query matches exact component/capability values,
-	// so we need title case for component and space-separated for capability.
 	component := parts[1]
 	capability := strings.ReplaceAll(parts[2], "-", " ")
-	return component, capability
+	return parts[0], component, capability
 }
 
-func syntheticTestID(component, capability string) string {
-	return fmt.Sprintf("spotcheck:%s:%s",
+func syntheticTestID(sampleName, component, capability string) string {
+	return fmt.Sprintf("%s:%s:%s",
+		sampleName,
 		strings.ToLower(component),
 		strings.ToLower(strings.ReplaceAll(capability, " ", "-")))
 }

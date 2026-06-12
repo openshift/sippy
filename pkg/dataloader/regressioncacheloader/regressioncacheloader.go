@@ -505,18 +505,22 @@ func (l *RegressionCacheLoader) buildGenerator(
 		TestFilters:    view.TestFilters,
 	}
 
-	if view.SpotCheckSample != nil {
+	for name, sample := range view.SpotCheckJobSamples {
 		spotCheckRelative := reqopts.RelativeRelease{
 			Release:       reqopts.Release{Name: view.SampleRelease.Name},
-			RelativeStart: view.SpotCheckSample.RelativeStart,
-			RelativeEnd:   view.SpotCheckSample.RelativeEnd,
+			RelativeStart: sample.RelativeStart,
+			RelativeEnd:   sample.RelativeEnd,
 		}
 		resolved, err := utils.GetViewReleaseOptions(
-			l.releases, "spot_check", spotCheckRelative, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
+			l.releases, "spot_check_"+name, spotCheckRelative, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
 		if err != nil {
 			return nil, err
 		}
-		reqOpts.SpotCheckSample = &resolved
+		reqOpts.SpotCheckJobSamples = append(reqOpts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
+			Name:            name,
+			Release:         resolved,
+			IncludeVariants: sample.IncludeVariants,
+		})
 	}
 
 	generator := componentreadiness.NewComponentReportGenerator(

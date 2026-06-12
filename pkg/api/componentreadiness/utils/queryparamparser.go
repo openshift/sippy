@@ -56,18 +56,22 @@ func ParseComponentReportRequest(
 			warnings = append(warnings, viewWarnings...)
 		}
 
-		if view.SpotCheckSample != nil {
+		for name, sample := range view.SpotCheckJobSamples {
 			spotCheckRelative := reqopts.RelativeRelease{
 				Release:       reqopts.Release{Name: view.SampleRelease.Name},
-				RelativeStart: view.SpotCheckSample.RelativeStart,
-				RelativeEnd:   view.SpotCheckSample.RelativeEnd,
+				RelativeStart: sample.RelativeStart,
+				RelativeEnd:   sample.RelativeEnd,
 			}
-			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check", spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
+			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check_"+name, spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
 			if resolveErr != nil {
 				err = resolveErr
 				return
 			}
-			opts.SpotCheckSample = &resolved
+			opts.SpotCheckJobSamples = append(opts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
+				Name:            name,
+				Release:         resolved,
+				IncludeVariants: sample.IncludeVariants,
+			})
 		}
 	}
 
@@ -224,13 +228,21 @@ func ParseComponentReportRequest(
 		}
 	}
 
-	// If no view provided SpotCheckSample, default it from the sample release dates
+	// If no view provided SpotCheckJobSamples, default from the sample release dates
 	// so spot-check middleware runs on drill-down requests too.
-	if opts.SpotCheckSample == nil && !opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
-		opts.SpotCheckSample = &reqopts.Release{
-			Name:  opts.SampleRelease.Name,
-			Start: opts.SampleRelease.Start,
-			End:   opts.SampleRelease.End,
+	if len(opts.SpotCheckJobSamples) == 0 && !opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
+		opts.SpotCheckJobSamples = []reqopts.SpotCheckJobSampleOpts{
+			{
+				Name: "spotcheck-30d",
+				Release: reqopts.Release{
+					Name:  opts.SampleRelease.Name,
+					Start: opts.SampleRelease.Start,
+					End:   opts.SampleRelease.End,
+				},
+				IncludeVariants: map[string][]string{
+					"JobTier": {"spotcheck-30d"},
+				},
+			},
 		}
 	}
 

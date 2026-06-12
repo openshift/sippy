@@ -25,12 +25,12 @@ type stubProvider struct {
 }
 
 func (s *stubProvider) QuerySpotCheckJobRuns(_ context.Context, _ reqopts.RequestOptions,
-	_ crtest.JobVariants, _, _ time.Time) ([]dataprovider.SpotCheckGroup, error) {
+	_ crtest.JobVariants, _ map[string][]string, _, _ time.Time) ([]dataprovider.SpotCheckGroup, error) {
 	return s.groups, nil
 }
 
 func (s *stubProvider) QuerySpotCheckJobRunDetails(_ context.Context, _ reqopts.RequestOptions,
-	_ crtest.JobVariants, _ map[string]string, _, _ string, _, _ time.Time) ([]dataprovider.JobRunDetail, error) {
+	_ crtest.JobVariants, _ map[string][]string, _ map[string]string, _, _ string, _, _ time.Time) ([]dataprovider.JobRunDetail, error) {
 	return nil, nil
 }
 
@@ -111,9 +111,20 @@ func TestVariantsMatch(t *testing.T) {
 	}
 }
 
-func TestQueryFiltering(t *testing.T) {
-	spotCheckSample := reqopts.Release{Start: time.Now().Add(-30 * 24 * time.Hour), End: time.Now()}
+func newSpotCheckSamples() []reqopts.SpotCheckJobSampleOpts {
+	return []reqopts.SpotCheckJobSampleOpts{
+		{
+			Name: "spotcheck-30d",
+			Release: reqopts.Release{
+				Start: time.Now().Add(-30 * 24 * time.Hour),
+				End:   time.Now(),
+			},
+			IncludeVariants: map[string][]string{"JobTier": {"spotcheck-30d"}},
+		},
+	}
+}
 
+func TestQueryFiltering(t *testing.T) {
 	allGroups := []dataprovider.SpotCheckGroup{
 		{Component: "Etcd", Capability: "Scaling", Variants: map[string]string{"Network": "ovn", "Platform": "aws", "Topology": "ha"}, TotalRuns: 3, SuccessfulRuns: 2},
 		{Component: "Etcd", Capability: "Scaling", Variants: map[string]string{"Network": "ovn", "Platform": "gcp", "Topology": "ha"}, TotalRuns: 3, SuccessfulRuns: 3},
@@ -130,18 +141,18 @@ func TestQueryFiltering(t *testing.T) {
 		{
 			name:              "no filter - all groups injected",
 			requestedVariants: map[string]string{},
-			expectedKeys:      []string{"spotcheck:etcd:scaling", "spotcheck:node / kubelet:cpu-partitioning"},
+			expectedKeys:      []string{"spotcheck-30d:etcd:scaling", "spotcheck-30d:node / kubelet:cpu-partitioning"},
 		},
 		{
 			name:              "environment filter Platform=aws - excludes gcp",
 			requestedVariants: map[string]string{"Platform": "aws"},
-			expectedKeys:      []string{"spotcheck:etcd:scaling", "spotcheck:node / kubelet:cpu-partitioning"},
+			expectedKeys:      []string{"spotcheck-30d:etcd:scaling", "spotcheck-30d:node / kubelet:cpu-partitioning"},
 			notExpectedKeys:   []string{},
 		},
 		{
 			name:              "environment filter Platform=gcp - only gcp etcd",
 			requestedVariants: map[string]string{"Platform": "gcp"},
-			notExpectedKeys:   []string{"spotcheck:node / kubelet:cpu-partitioning"},
+			notExpectedKeys:   []string{"spotcheck-30d:node / kubelet:cpu-partitioning"},
 		},
 		{
 			name:              "environment filter Platform=metal - nothing matches",
@@ -155,7 +166,7 @@ func TestQueryFiltering(t *testing.T) {
 			mw := &SpotCheckJobs{
 				dataProvider: &stubProvider{groups: allGroups},
 				reqOptions: reqopts.RequestOptions{
-					SpotCheckSample: &spotCheckSample,
+					SpotCheckJobSamples: newSpotCheckSamples(),
 					TestIDOptions: []reqopts.TestIdentification{
 						{Component: tt.requestedComp, RequestedVariants: tt.requestedVariants},
 					},
@@ -189,20 +200,20 @@ func TestAnalyze(t *testing.T) {
 	sampleStart := now.Add(-30 * 24 * time.Hour)
 	sampleEnd := now
 
-	spotCheckSample := reqopts.Release{
-		Start: sampleStart,
-		End:   sampleEnd,
-	}
-
 	mw := &SpotCheckJobs{
 		reqOptions: reqopts.RequestOptions{
-			SpotCheckSample: &spotCheckSample,
+			SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
+				{
+					Name:    "spotcheck-30d",
+					Release: reqopts.Release{Start: sampleStart, End: sampleEnd},
+				},
+			},
 		},
 	}
 
 	spotCheckTestKey := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
-			TestID: "spotcheck:etcd:scaling",
+			TestID: "spotcheck-30d:etcd:scaling",
 		},
 	}
 

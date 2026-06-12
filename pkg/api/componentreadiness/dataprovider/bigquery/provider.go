@@ -380,26 +380,15 @@ func (p *BigQueryProvider) LookupJobVariants(ctx context.Context, jobName string
 // from job names when the SpotCheckComponent/SpotCheckCapability variants are not yet
 // populated in the job_variants table. This fallback can be removed once the variant
 // syncer has run and all spot-check jobs have the new variants.
-const spotCheckComponentFallback = `COALESCE(jv_SpotCheckComponent.variant_value,
-		CASE
-			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%cpu-partitioning%%' THEN 'Node / Kubelet'
-			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%etcd-scaling%%' THEN 'Etcd'
-		END)`
-
-const spotCheckCapabilityFallback = `COALESCE(jv_SpotCheckCapability.variant_value,
-		CASE
-			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%cpu-partitioning%%' THEN 'CPU Partitioning'
-			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%etcd-scaling%%' THEN 'Scaling'
-		END)`
-
-// QuerySpotCheckJobRuns queries the jobs table (not junit) for spotcheck-tier periodic/release
-// jobs, grouping by component, capability, and the requested variant columns.
+// QuerySpotCheckJobRuns queries the jobs table (not junit) for spot-check periodic/release
+// jobs, grouping by component, capability, and the DB group-by variants.
 // Returns aggregated pass/fail counts per group so the middleware can create
 // synthetic test results without needing individual test case data.
-// During the transition period, also matches jobs with the legacy 'rare' tier and uses
-// COALESCE fallback SQL to derive component/capability from job name substrings.
+// includeVariants specifies variant filters (ANDed) from the spot-check sample config,
+// typically including JobTier to select the correct spot-check tier.
 func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
+	spotCheckIncludeVariants map[string][]string,
 	start, end time.Time) ([]dataprovider.SpotCheckGroup, error) {
 
 	groupByVariantSet := reqOptions.VariantOption.DBGroupBy
@@ -419,12 +408,9 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 	}
 	groupByVariants := strings.Join(groupByParts, ", ")
 
-	// Always join Release, JobTier, SpotCheckComponent, SpotCheckCapability
+	// Always join Release, SpotCheckComponent, SpotCheckCapability
 	joinVariants += fmt.Sprintf(
 		"LEFT JOIN %s.job_variants jv_Release ON jobs.prowjob_job_name = jv_Release.job_name AND jv_Release.variant_name = 'Release'\n",
-		p.client.Dataset)
-	joinVariants += fmt.Sprintf(
-		"LEFT JOIN %s.job_variants jv_JobTier ON jobs.prowjob_job_name = jv_JobTier.job_name AND jv_JobTier.variant_name = 'JobTier'\n",
 		p.client.Dataset)
 	joinVariants += fmt.Sprintf(
 		"LEFT JOIN %s.job_variants jv_SpotCheckComponent ON jobs.prowjob_job_name = jv_SpotCheckComponent.job_name AND jv_SpotCheckComponent.variant_name = 'SpotCheckComponent'\n",
@@ -435,16 +421,18 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 
 	// Track which variant groups already have JOINs
 	joinedVariants := sets.NewString(groupByVariantSet.List()...)
-	joinedVariants.Insert("Release", "JobTier", "SpotCheckComponent", "SpotCheckCapability")
+	joinedVariants.Insert("Release", "SpotCheckComponent", "SpotCheckCapability")
 
-	// Build include variant filters (Platform, Architecture, etc.) but skip JobTier and SpotCheck variants
+	// Build variant filters from both view-level and spot-check sample-level include_variants
 	variantFilters := ""
 	var params []bigquery.QueryParameter
-	includeVariants := reqOptions.VariantOption.IncludeVariants
-	if includeVariants == nil {
-		includeVariants = map[string][]string{}
+
+	// Apply view-level include variant filters, but skip SpotCheck-specific variants
+	viewIncludeVariants := reqOptions.VariantOption.IncludeVariants
+	if viewIncludeVariants == nil {
+		viewIncludeVariants = map[string][]string{}
 	}
-	for _, group := range sortedKeys(includeVariants) {
+	for _, group := range sortedKeys(viewIncludeVariants) {
 		if group == "JobTier" || group == "SpotCheckComponent" || group == "SpotCheckCapability" {
 			continue
 		}
@@ -459,15 +447,32 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		variantFilters += fmt.Sprintf(" AND (jv_%s.variant_value IN UNNEST(@%s))", cleanGroup, paramName)
 		params = append(params, bigquery.QueryParameter{
 			Name:  paramName,
-			Value: includeVariants[group],
+			Value: viewIncludeVariants[group],
+		})
+	}
+
+	// Apply spot-check sample-level include variant filters (e.g. JobTier: spotcheck-30d)
+	for _, group := range sortedKeys(spotCheckIncludeVariants) {
+		cleanGroup := param.Cleanse(group)
+		if !joinedVariants.Has(group) {
+			joinVariants += fmt.Sprintf(
+				"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, group)
+			joinedVariants.Insert(group)
+		}
+		paramName := fmt.Sprintf("spotCheck_%s", cleanGroup)
+		variantFilters += fmt.Sprintf(" AND (jv_%s.variant_value IN UNNEST(@%s))", cleanGroup, paramName)
+		params = append(params, bigquery.QueryParameter{
+			Name:  paramName,
+			Value: spotCheckIncludeVariants[group],
 		})
 	}
 
 	queryString := fmt.Sprintf(`
 		SELECT
 			%s
-			%s AS spot_check_component,
-			%s AS spot_check_capability,
+			jv_SpotCheckComponent.variant_value AS spot_check_component,
+			jv_SpotCheckCapability.variant_value AS spot_check_capability,
 			COUNT(DISTINCT jobs.prowjob_build_id) AS total_runs,
 			COUNT(DISTINCT IF(jobs.prowjob_state = 'success', jobs.prowjob_build_id, NULL)) AS successful_runs,
 			ARRAY_AGG(DISTINCT jobs.prowjob_job_name) AS job_names,
@@ -477,13 +482,11 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		WHERE jobs.prowjob_start >= DATETIME(@From)
 			AND jobs.prowjob_start < DATETIME(@To)
 			AND jv_Release.variant_value = @Release
-			AND jv_JobTier.variant_value IN ('spotcheck', 'rare')
 			AND (jobs.prowjob_job_name LIKE 'periodic-%%' OR jobs.prowjob_job_name LIKE 'release-%%')
 			%s
 		GROUP BY %s, spot_check_component, spot_check_capability
 		HAVING spot_check_component IS NOT NULL AND spot_check_capability IS NOT NULL
-	`, selectVariants, spotCheckComponentFallback, spotCheckCapabilityFallback,
-		p.client.Dataset, joinVariants, variantFilters,
+	`, selectVariants, p.client.Dataset, joinVariants, variantFilters,
 		groupByVariants)
 
 	params = append(params,
@@ -550,10 +553,10 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 // QuerySpotCheckJobRunDetails returns individual job runs matching the given variant
 // and component/capability filters, used to populate the test details drill-down page
 // for a specific spot-check synthetic test.
-// During the transition period, also matches jobs with the legacy 'rare' tier and uses
-// COALESCE fallback SQL to derive component/capability from job name substrings.
+// includeVariants specifies variant filters (ANDed) from the spot-check sample config.
 func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
+	spotCheckIncludeVariants map[string][]string,
 	variants map[string]string,
 	component, capability string,
 	start, end time.Time) ([]dataprovider.JobRunDetail, error) {
@@ -562,27 +565,48 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 		"LEFT JOIN %s.job_variants jv_Release ON jobs.prowjob_job_name = jv_Release.job_name AND jv_Release.variant_name = 'Release'\n",
 		p.client.Dataset)
 	joinVariants += fmt.Sprintf(
-		"LEFT JOIN %s.job_variants jv_JobTier ON jobs.prowjob_job_name = jv_JobTier.job_name AND jv_JobTier.variant_name = 'JobTier'\n",
-		p.client.Dataset)
-	joinVariants += fmt.Sprintf(
 		"LEFT JOIN %s.job_variants jv_SpotCheckComponent ON jobs.prowjob_job_name = jv_SpotCheckComponent.job_name AND jv_SpotCheckComponent.variant_name = 'SpotCheckComponent'\n",
 		p.client.Dataset)
 	joinVariants += fmt.Sprintf(
 		"LEFT JOIN %s.job_variants jv_SpotCheckCapability ON jobs.prowjob_job_name = jv_SpotCheckCapability.job_name AND jv_SpotCheckCapability.variant_name = 'SpotCheckCapability'\n",
 		p.client.Dataset)
 
+	joinedVariants := sets.NewString("Release", "SpotCheckComponent", "SpotCheckCapability")
+
 	variantFilters := ""
 	var params []bigquery.QueryParameter
+
+	// Join and filter by the requested variant dimensions (e.g. Platform, Architecture)
 	for k, v := range variants {
 		cleanK := param.Cleanse(k)
-		joinVariants += fmt.Sprintf(
-			"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-			p.client.Dataset, cleanK, cleanK, cleanK, k)
+		if !joinedVariants.Has(k) {
+			joinVariants += fmt.Sprintf(
+				"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+				p.client.Dataset, cleanK, cleanK, cleanK, k)
+			joinedVariants.Insert(k)
+		}
 		paramName := fmt.Sprintf("variant_%s", cleanK)
 		variantFilters += fmt.Sprintf(" AND jv_%s.variant_value = @%s", cleanK, paramName)
 		params = append(params, bigquery.QueryParameter{
 			Name:  paramName,
 			Value: v,
+		})
+	}
+
+	// Apply spot-check sample-level include variant filters (e.g. JobTier: spotcheck-30d)
+	for _, group := range sortedKeys(spotCheckIncludeVariants) {
+		cleanGroup := param.Cleanse(group)
+		if !joinedVariants.Has(group) {
+			joinVariants += fmt.Sprintf(
+				"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, group)
+			joinedVariants.Insert(group)
+		}
+		paramName := fmt.Sprintf("spotCheck_%s", cleanGroup)
+		variantFilters += fmt.Sprintf(" AND (jv_%s.variant_value IN UNNEST(@%s))", cleanGroup, paramName)
+		params = append(params, bigquery.QueryParameter{
+			Name:  paramName,
+			Value: spotCheckIncludeVariants[group],
 		})
 	}
 
@@ -598,15 +622,12 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 		WHERE jobs.prowjob_start >= DATETIME(@From)
 			AND jobs.prowjob_start < DATETIME(@To)
 			AND jv_Release.variant_value = @Release
-			AND jv_JobTier.variant_value IN ('spotcheck', 'rare')
 			AND (jobs.prowjob_job_name LIKE 'periodic-%%' OR jobs.prowjob_job_name LIKE 'release-%%')
-			AND LOWER(%s) = LOWER(@SpotCheckComponent)
-			AND LOWER(%s) = LOWER(@SpotCheckCapability)
+			AND LOWER(jv_SpotCheckComponent.variant_value) = LOWER(@SpotCheckComponent)
+			AND LOWER(jv_SpotCheckCapability.variant_value) = LOWER(@SpotCheckCapability)
 			%s
 		ORDER BY jobs.prowjob_start DESC
-	`, p.client.Dataset, joinVariants,
-		spotCheckComponentFallback, spotCheckCapabilityFallback,
-		variantFilters)
+	`, p.client.Dataset, joinVariants, variantFilters)
 
 	params = append(params,
 		bigquery.QueryParameter{Name: "From", Value: start},

@@ -276,9 +276,9 @@ ORDER BY j.prowjob_job_name;
 // validateSpotCheckVariants returns an error if a job has JobTier=spotcheck without both
 // SpotCheckComponent and SpotCheckCapability defined.
 func validateSpotCheckVariants(jobName string, variants map[string]string) error {
-	if variants[VariantJobTier] == "spotcheck" {
+	if strings.HasPrefix(variants[VariantJobTier], "spotcheck-") {
 		if variants[VariantSpotCheckComponent] == "" || variants[VariantSpotCheckCapability] == "" {
-			return fmt.Errorf("job %q has JobTier=spotcheck but is missing SpotCheckComponent or SpotCheckCapability", jobName)
+			return fmt.Errorf("job %q has JobTier=%s but is missing SpotCheckComponent or SpotCheckCapability", jobName, variants[VariantJobTier])
 		}
 	}
 	return nil
@@ -798,9 +798,9 @@ func setSpotCheckClassification(_ logrus.FieldLogger, variants map[string]string
 // Note: blocking/informing/standard tiers may be downgraded to candidate by
 // adjustJobTierBasedOnView if the job's variants don't match the release-main view.
 func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
-	// Jobs classified as spot-check get the spotcheck tier automatically.
+	// Jobs classified as spot-check get the spotcheck-30d tier automatically.
 	if _, ok := variants[VariantSpotCheckComponent]; ok {
-		variants[VariantJobTier] = "spotcheck"
+		variants[VariantJobTier] = "spotcheck-30d"
 		return
 	}
 

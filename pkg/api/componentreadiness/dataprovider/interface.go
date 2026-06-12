@@ -69,18 +69,19 @@ type JobQuerier interface {
 // SpotCheckQuerier fetches job-level pass/fail data for spot-check analysis.
 type SpotCheckQuerier interface {
 	// QuerySpotCheckJobRuns returns aggregated pass/fail per spot-check group,
-	// grouped by SpotCheckComponent, SpotCheckCapability, and the column group-by variants.
-	// Queries the jobs table, not junit. During the transition period, falls back to
-	// job name substring matching when SpotCheckComponent/SpotCheckCapability variants
-	// are not yet populated in the job_variants table.
+	// grouped by SpotCheckComponent, SpotCheckCapability, and the DB group-by variants.
+	// includeVariants specifies variant filters (ANDed) from the spot-check sample config.
 	QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
 		allJobVariants crtest.JobVariants,
+		includeVariants map[string][]string,
 		start, end time.Time) ([]SpotCheckGroup, error)
 
 	// QuerySpotCheckJobRunDetails returns individual job runs for a specific
 	// spot-check group, used for test details drill-down.
+	// includeVariants specifies variant filters (ANDed) from the spot-check sample config.
 	QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
 		allJobVariants crtest.JobVariants,
+		includeVariants map[string][]string,
 		variants map[string]string,
 		component, capability string,
 		start, end time.Time) ([]JobRunDetail, error)

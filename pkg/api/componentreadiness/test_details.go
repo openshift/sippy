@@ -195,7 +195,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	if testIDOption.TestID == "" {
 		return testdetails.Report{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
-	isSpotCheck := strings.HasPrefix(testIDOption.TestID, "spotcheck:")
+	isSpotCheck := strings.HasPrefix(testIDOption.TestID, "spotcheck-")
 	if !isSpotCheck {
 		for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
 			if _, ok := testIDOption.RequestedVariants[v]; !ok {
