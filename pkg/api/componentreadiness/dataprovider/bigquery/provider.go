@@ -377,10 +377,27 @@ func (p *BigQueryProvider) LookupJobVariants(ctx context.Context, jobName string
 // --- SpotCheckQuerier ---
 
 // spotCheckFallbackSQL provides a CASE expression for deriving component/capability
+// from job names when the SpotCheckComponent/SpotCheckCapability variants are not yet
+// populated in the job_variants table. This fallback can be removed once the variant
+// syncer has run and all spot-check jobs have the new variants.
+const spotCheckComponentFallback = `COALESCE(jv_SpotCheckComponent.variant_value,
+		CASE
+			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%cpu-partitioning%%' THEN 'Node / Kubelet'
+			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%etcd-scaling%%' THEN 'Etcd'
+		END)`
+
+const spotCheckCapabilityFallback = `COALESCE(jv_SpotCheckCapability.variant_value,
+		CASE
+			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%cpu-partitioning%%' THEN 'CPU Partitioning'
+			WHEN LOWER(jobs.prowjob_job_name) LIKE '%%etcd-scaling%%' THEN 'Scaling'
+		END)`
+
 // QuerySpotCheckJobRuns queries the jobs table (not junit) for spotcheck-tier periodic/release
 // jobs, grouping by component, capability, and the requested variant columns.
 // Returns aggregated pass/fail counts per group so the middleware can create
 // synthetic test results without needing individual test case data.
+// During the transition period, also matches jobs with the legacy 'rare' tier and uses
+// COALESCE fallback SQL to derive component/capability from job name substrings.
 func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	start, end time.Time) ([]dataprovider.SpotCheckGroup, error) {
@@ -449,8 +466,8 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 	queryString := fmt.Sprintf(`
 		SELECT
 			%s
-			jv_SpotCheckComponent.variant_value AS spot_check_component,
-			jv_SpotCheckCapability.variant_value AS spot_check_capability,
+			%s AS spot_check_component,
+			%s AS spot_check_capability,
 			COUNT(DISTINCT jobs.prowjob_build_id) AS total_runs,
 			COUNT(DISTINCT IF(jobs.prowjob_state = 'success', jobs.prowjob_build_id, NULL)) AS successful_runs,
 			ARRAY_AGG(DISTINCT jobs.prowjob_job_name) AS job_names,
@@ -460,12 +477,13 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		WHERE jobs.prowjob_start >= DATETIME(@From)
 			AND jobs.prowjob_start < DATETIME(@To)
 			AND jv_Release.variant_value = @Release
-			AND jv_JobTier.variant_value = 'spotcheck'
+			AND jv_JobTier.variant_value IN ('spotcheck', 'rare')
 			AND (jobs.prowjob_job_name LIKE 'periodic-%%' OR jobs.prowjob_job_name LIKE 'release-%%')
 			%s
 		GROUP BY %s, spot_check_component, spot_check_capability
 		HAVING spot_check_component IS NOT NULL AND spot_check_capability IS NOT NULL
-	`, selectVariants, p.client.Dataset, joinVariants, variantFilters,
+	`, selectVariants, spotCheckComponentFallback, spotCheckCapabilityFallback,
+		p.client.Dataset, joinVariants, variantFilters,
 		groupByVariants)
 
 	params = append(params,
@@ -532,6 +550,8 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 // QuerySpotCheckJobRunDetails returns individual job runs matching the given variant
 // and component/capability filters, used to populate the test details drill-down page
 // for a specific spot-check synthetic test.
+// During the transition period, also matches jobs with the legacy 'rare' tier and uses
+// COALESCE fallback SQL to derive component/capability from job name substrings.
 func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	variants map[string]string,
@@ -578,13 +598,15 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 		WHERE jobs.prowjob_start >= DATETIME(@From)
 			AND jobs.prowjob_start < DATETIME(@To)
 			AND jv_Release.variant_value = @Release
-			AND jv_JobTier.variant_value = 'spotcheck'
+			AND jv_JobTier.variant_value IN ('spotcheck', 'rare')
 			AND (jobs.prowjob_job_name LIKE 'periodic-%%' OR jobs.prowjob_job_name LIKE 'release-%%')
-			AND LOWER(jv_SpotCheckComponent.variant_value) = LOWER(@SpotCheckComponent)
-			AND LOWER(jv_SpotCheckCapability.variant_value) = LOWER(@SpotCheckCapability)
+			AND LOWER(%s) = LOWER(@SpotCheckComponent)
+			AND LOWER(%s) = LOWER(@SpotCheckCapability)
 			%s
 		ORDER BY jobs.prowjob_start DESC
-	`, p.client.Dataset, joinVariants, variantFilters)
+	`, p.client.Dataset, joinVariants,
+		spotCheckComponentFallback, spotCheckCapabilityFallback,
+		variantFilters)
 
 	params = append(params,
 		bigquery.QueryParameter{Name: "From", Value: start},
