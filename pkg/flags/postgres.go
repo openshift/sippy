@@ -124,8 +124,8 @@ func (f *PostgresFlags) BindFlags(fs *pflag.FlagSet) {
 func (f *PostgresFlags) GetDBClient() (*db.DB, error) {
 	dbc, err := db.New(f.DSN, logger.LogLevel(f.LogLevel), db.WithPartitionwise(f.EnablePartitionwise))
 	if err != nil {
-		log.WithError(err).Error("could not connect to db")
-		return nil, err
+		log.Error("could not connect to db")
+		return nil, fmt.Errorf("could not connect to db: %w", err)
 	}
 
 	return dbc, nil

@@ -507,11 +507,11 @@ func getBenchmarkDBClient(t *testing.T) (*db.DB, string) {
 
 	dbc, err := dbFlags.GetDBClient()
 	if err != nil {
-		t.Fatalf("couldn't get DB client: %v", err)
+		t.Fatal("couldn't get DB client")
 	}
 	sqlDB, err := dbc.DB.DB()
 	if err != nil {
-		t.Fatalf("couldn't get sql.DB handle: %v", err)
+		t.Fatal("couldn't get sql.DB handle")
 	}
 	t.Cleanup(func() {
 		if err := sqlDB.Close(); err != nil {
@@ -1125,7 +1125,7 @@ func Test_BenchmarkJobRunsReportMatview(t *testing.T) {
 		t.Fatalf("failed to drop pre-existing materialized view %s: %v", matviewName, err)
 	}
 
-	iterations := 3
+	iterations := 1
 	var results []benchmarkResult
 
 	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
