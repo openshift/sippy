@@ -123,11 +123,15 @@ func New(
 
 const DefaultLookbackDays = 14
 
-func (pl *ProwLoader) resolveLoadSince() time.Time {
-	if pl.loadSince != nil {
-		return *pl.loadSince
+func resolveFrom(since *time.Time, to time.Time) time.Time {
+	if since != nil {
+		return *since
 	}
-	return time.Now().AddDate(0, 0, -DefaultLookbackDays)
+	return to.AddDate(0, 0, -DefaultLookbackDays)
+}
+
+func (pl *ProwLoader) resolveLoadSince() time.Time {
+	return resolveFrom(pl.loadSince, time.Now())
 }
 
 func toSet(items []string) map[string]bool {
@@ -361,13 +365,7 @@ func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time, loadSince 
 
 	// If this is a new db, do an initial larger import:
 	if lastDailySummary.IsZero() {
-		var from time.Time
-		if loadSince != nil {
-			from = *loadSince
-		} else {
-			from = to.AddDate(0, 0, -DefaultLookbackDays)
-		}
-		return DaysBetween(from, to)
+		return DaysBetween(resolveFrom(loadSince, to), to)
 	}
 
 	ldsStr := lastDailySummary.UTC().Format("2006-01-02")
