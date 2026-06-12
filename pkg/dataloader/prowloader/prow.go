@@ -121,6 +121,19 @@ func New(
 	}
 }
 
+const DefaultLookbackDays = 14
+
+func resolveFrom(since *time.Time, to time.Time) time.Time {
+	if since != nil {
+		return *since
+	}
+	return to.AddDate(0, 0, -DefaultLookbackDays)
+}
+
+func (pl *ProwLoader) resolveLoadSince() time.Time {
+	return resolveFrom(pl.loadSince, time.Now())
+}
+
 func toSet(items []string) map[string]bool {
 	s := make(map[string]bool, len(items))
 	for _, item := range items {
@@ -188,14 +201,7 @@ func (pl *ProwLoader) Errors() []error {
 //   - pl.loadSince if available, otherwise looks back one week
 //   - Creates partitions 2 days forward from now
 func (pl *ProwLoader) ensurePartitions() error {
-	// Determine start date
-	var startDate time.Time
-	if pl.loadSince != nil {
-		startDate = *pl.loadSince
-	} else {
-		// Look back one week if loadSince is not specified
-		startDate = time.Now().AddDate(0, 0, -7)
-	}
+	startDate := pl.resolveLoadSince()
 
 	// Create partitions 2 days forward from now
 	endDate := time.Now().AddDate(0, 0, 2)
@@ -203,7 +209,9 @@ func (pl *ProwLoader) ensurePartitions() error {
 	log.Infof("Ensuring partitions for releases %v from %s to %s",
 		pl.releases, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate, endDate, false)
+	// https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473 bq imports based on modified time which can include job_run_start_time a day earlier
+	// add grace to ensure we have a valid partition for new dbs.
+	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate.AddDate(0, 0, -1), endDate, false)
 	if err != nil {
 		return fmt.Errorf("failed to ensure partitions: %w", err)
 	}
@@ -352,13 +360,12 @@ type tempBQTestAnalysisByJobForDate struct {
 // pick up at that date the next time.
 //
 // At present in prod, each day takes about 20 minutes
-func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time) []string {
+func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time, loadSince *time.Time) []string {
 	to := now.UTC().Add(-32 * time.Hour)
 
 	// If this is a new db, do an initial larger import:
 	if lastDailySummary.IsZero() {
-		from := to.Add(-14 * 24 * time.Hour)
-		return DaysBetween(from, to)
+		return DaysBetween(resolveFrom(loadSince, to), to)
 	}
 
 	ldsStr := lastDailySummary.UTC().Format("2006-01-02")
@@ -418,7 +425,7 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 	// Ignoring error, the function below handles the zero time if needed: (new db)
 	_ = row.Scan(&lastDailySummary)
 
-	importDates := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now())
+	importDates := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now(), pl.loadSince)
 	if len(importDates) == 0 {
 		log.Info("test analysis summary already completed today")
 		return nil

@@ -26,8 +26,8 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").Row()
 		err := row.Scan(&lastProwJobRun)
 		if err != nil || lastProwJobRun.IsZero() {
-			log.WithError(err).Warn("no last prow job run found (new database?), importing last two weeks")
-			lastProwJobRun = time.Now().Add(-14 * 24 * time.Hour)
+			log.WithError(err).Warnf("no last prow job run found (new database?), importing previous %d days", DefaultLookbackDays)
+			lastProwJobRun = time.Now().AddDate(0, 0, -DefaultLookbackDays)
 		} else {
 			// adjust the last job run time, we're querying all jobs that have completed since our last recorded
 			// job START time, but we need to subtract our max job runtime in-case a job ended early and was our last
