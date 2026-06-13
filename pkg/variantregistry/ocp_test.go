@@ -390,7 +390,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantContainerRuntime: "crun",
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
-				VariantOS:               "rhcos9",
+				VariantOS:               "rhcos10",
 			},
 		},
 		{
