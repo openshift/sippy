@@ -1325,8 +1325,11 @@ func setOS(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	switch {
 	case variants[VariantReleaseMajor] == "4":
 		variants[VariantOS] = "rhcos9"
-	case variants[VariantReleaseMajor] == "5" || isMainBranch:
-		// OCP 5 currently defaults to rhcos9. Update this when the default changes.
+	case (variants[VariantReleaseMajor] == "5" || isMainBranch) &&
+		(variants[VariantUpgrade] == VariantNoValue || variants[VariantFromReleaseMajor] == "5"):
+		variants[VariantOS] = "rhcos10"
+	case (variants[VariantReleaseMajor] == "5" || isMainBranch) &&
+		variants[VariantFromReleaseMajor] != "5":
 		variants[VariantOS] = "rhcos9"
 	default:
 		variants[VariantOS] = "unknown"
