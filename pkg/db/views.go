@@ -187,6 +187,7 @@ pull_requests AS (
                 prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id
         INNER JOIN
                 prow_job_runs ON prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
+        WHERE prow_job_runs."timestamp" >= CURRENT_TIMESTAMP - interval '90 days'
         GROUP BY prow_job_runs.id, prow_pull_requests.link, prow_pull_requests.sha, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.author
 )
 SELECT prow_job_runs.id,
@@ -208,7 +209,7 @@ SELECT prow_job_runs.id,
    test_results.flaked_test_names AS flaked_test_names,
    test_results.flaked_test_count AS test_flakes,
    test_results.failed_test_names AS failed_test_names,
-   COALESCE(test_results.failed_test_count, prow_job_runs.test_failures) AS test_failures,
+   test_results.failed_test_count AS test_failures,
    pull_requests.link as pull_request_link,
    pull_requests.sha as pull_request_sha,
    pull_requests.org as pull_request_org,
