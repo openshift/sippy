@@ -1,7 +1,9 @@
 package variantregistry
 
 import (
+	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -34,6 +36,7 @@ func NewVariantSnapshot(config *v1.SippyConfig, views []crview.View, syntheticRe
 func (s *VariantSnapshot) Identify() (JobVariants, error) {
 	newVariants := map[string]map[string]string{}
 	variantSyncer := OCPVariantLoader{config: s.config, views: s.views, syntheticReleaseJobOverrides: s.syntheticReleaseJobOverrides}
+	var errs []string
 	for _, releaseCfg := range s.config.Releases {
 		for job := range releaseCfg.Jobs {
 			if isIgnoredJob(job) {
@@ -42,8 +45,17 @@ func (s *VariantSnapshot) Identify() (JobVariants, error) {
 			if _, done := newVariants[job]; done {
 				continue
 			}
-			newVariants[job] = variantSyncer.CalculateVariantsForJob(s.log, job, nil)
+			variants := variantSyncer.CalculateVariantsForJob(s.log, job, nil)
+			newVariants[job] = variants
+			if err := validateSpotCheckVariants(job, variants); err != nil {
+				errs = append(errs, err.Error())
+			}
 		}
+	}
+
+	if len(errs) > 0 {
+		sort.Strings(errs)
+		return nil, fmt.Errorf("variant registry validation failed:\n%s", strings.Join(errs, "\n"))
 	}
 
 	return newVariants, nil

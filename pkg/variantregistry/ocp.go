@@ -260,7 +260,29 @@ ORDER BY j.prowjob_job_name;
 	dur := time.Since(start)
 	log.WithField("count", count.Load()).Infof("processed primary job list in %s", dur)
 
+	var errs []string
+	for jobName, variants := range variantsByJob {
+		if err := validateSpotCheckVariants(jobName, variants); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		sort.Strings(errs)
+		return nil, errors.New("variant registry validation failed:\n" + strings.Join(errs, "\n"))
+	}
+
 	return variantsByJob, nil
+}
+
+// validateSpotCheckVariants returns an error if a job has JobTier=spotcheck without both
+// SpotCheckComponent and SpotCheckCapability defined.
+func validateSpotCheckVariants(jobName string, variants map[string]string) error {
+	if strings.HasPrefix(variants[VariantJobTier], "spotcheck-") {
+		if variants[VariantSpotCheckComponent] == "" || variants[VariantSpotCheckCapability] == "" {
+			return fmt.Errorf("job %q has JobTier=%s but is missing SpotCheckComponent or SpotCheckCapability", jobName, variants[VariantJobTier])
+		}
+	}
+	return nil
 }
 
 // fileVariantsToIgnore are values in the cluster-data.json that vary by run, and are not consistent for the job itself.
@@ -427,34 +449,36 @@ var (
 )
 
 const (
-	VariantAggregation      = "Aggregation" // aggregated or none
-	VariantArch             = "Architecture"
-	VariantFeatureSet       = "FeatureSet" // techpreview / standard
-	VariantInstaller        = "Installer"  // ipi / upi / assisted
-	VariantNetwork          = "Network"
-	VariantNetworkAccess    = "NetworkAccess" // disconnected / proxy / standard
-	VariantNetworkStack     = "NetworkStack"  // ipv4 / ipv6 / dual
-	VariantOwner            = "Owner"         // eng / osd
-	VariantPlatform         = "Platform"
-	VariantScheduler        = "Scheduler"    // realtime / standard
-	VariantSecurityMode     = "SecurityMode" // fips / default
-	VariantSuite            = "Suite"        // parallel / serial
-	VariantProcedure        = "Procedure"    // for jobs that do a specific procedure on the cluster (etcd scaling, cpu partitioning, etc.), and then optionally run conformance
-	VariantJobTier          = "JobTier"      // specifies rare, blocking, informing, standard jobs
-	VariantTopology         = "Topology"     // ha / single / compact / external
-	VariantUpgrade          = "Upgrade"
-	VariantContainerRuntime = "ContainerRuntime" // runc / crun
-	VariantCGroupMode       = "CGroupMode"       // v2 / v1
-	VariantRelease          = "Release"
-	VariantReleaseMinor     = "ReleaseMinor"
-	VariantReleaseMajor     = "ReleaseMajor"
-	VariantFromRelease      = "FromRelease"
-	VariantFromReleaseMinor = "FromReleaseMinor"
-	VariantFromReleaseMajor = "FromReleaseMajor"
-	VariantLayeredProduct   = "LayeredProduct"
-	VariantOS               = "OS"
-	VariantDefaultValue     = "default"
-	VariantNoValue          = "none"
+	VariantAggregation         = "Aggregation" // aggregated or none
+	VariantArch                = "Architecture"
+	VariantFeatureSet          = "FeatureSet" // techpreview / standard
+	VariantInstaller           = "Installer"  // ipi / upi / assisted
+	VariantNetwork             = "Network"
+	VariantNetworkAccess       = "NetworkAccess" // disconnected / proxy / standard
+	VariantNetworkStack        = "NetworkStack"  // ipv4 / ipv6 / dual
+	VariantOwner               = "Owner"         // eng / osd
+	VariantPlatform            = "Platform"
+	VariantScheduler           = "Scheduler"    // realtime / standard
+	VariantSecurityMode        = "SecurityMode" // fips / default
+	VariantSuite               = "Suite"        // parallel / serial
+	VariantProcedure           = "Procedure"    // for jobs that do a specific procedure on the cluster (etcd scaling, cpu partitioning, etc.), and then optionally run conformance
+	VariantJobTier             = "JobTier"      // specifies rare, blocking, informing, standard jobs
+	VariantTopology            = "Topology"     // ha / single / compact / external
+	VariantUpgrade             = "Upgrade"
+	VariantContainerRuntime    = "ContainerRuntime" // runc / crun
+	VariantCGroupMode          = "CGroupMode"       // v2 / v1
+	VariantRelease             = "Release"
+	VariantReleaseMinor        = "ReleaseMinor"
+	VariantReleaseMajor        = "ReleaseMajor"
+	VariantFromRelease         = "FromRelease"
+	VariantFromReleaseMinor    = "FromReleaseMinor"
+	VariantFromReleaseMajor    = "FromReleaseMajor"
+	VariantLayeredProduct      = "LayeredProduct"
+	VariantOS                  = "OS"
+	VariantSpotCheckComponent  = "SpotCheckComponent"  // component readiness component for spot-check jobs
+	VariantSpotCheckCapability = "SpotCheckCapability" // component readiness capability for spot-check jobs
+	VariantDefaultValue        = "default"
+	VariantNoValue             = "none"
 )
 
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
@@ -480,6 +504,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		setContainerRuntime,
 		setProcedure,
 		setOS,
+		setSpotCheckClassification,
 		v.setJobTier, // Keep this near last, it relies on other variants like owner
 	} {
 		setter(jLog, variants, jobName)
@@ -726,29 +751,69 @@ func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[st
 	}
 }
 
+// setSpotCheckClassification identifies jobs that should be evaluated as spot-check jobs
+// in Component Readiness. These jobs run infrequently ("rare" tier historically) and
+// must fully pass at least once in the sample window. (with retries if needed)
+// They are intended for stable, non-core functionality that does not need in depth
+// statistical regression monitoring.
+//
+// The SpotCheckComponent and SpotCheckCapability variants control where these synthetic
+// results appear in the component readiness report.
+//
+// Be sure to use real Component names from OCPBUGS.
+func setSpotCheckClassification(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	spotCheckPatterns := []struct {
+		substrings []string
+		component  string
+		capability string
+	}{
+		{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning"},
+		{[]string{"-etcd-scaling"}, "Etcd", "Scaling"},
+	}
+
+	for _, p := range spotCheckPatterns {
+		allMatch := true
+		for _, sub := range p.substrings {
+			if !strings.Contains(jobNameLower, sub) {
+				allMatch = false
+				break
+			}
+		}
+		if allMatch {
+			variants[VariantSpotCheckComponent] = p.component
+			variants[VariantSpotCheckCapability] = p.capability
+			return
+		}
+	}
+}
+
 // setJobTier sets the jobTier for a job, with values like this:
 //
-//		blocking: blocking job on payloads, covered by component readiness
-//		informing: informing job on payloads, covered by component readiness
-//		standard: should be visible in default views (component readiness, sippy), covered by component readiness
-//	 	rare: highly reliable jobs that run at a reduced frequency
-//		candidate: not covered by component readiness, but may be promoted in the future
-//		hidden: data should still be synced, but not shown by default
-//		excluded: data should not be synced, and excluded from all views
+//	blocking: blocking job on payloads, covered by component readiness
+//	informing: informing job on payloads, covered by component readiness
+//	standard: should be visible in default views (component readiness, sippy), covered by component readiness
+//	spotcheck: jobs evaluated by spot-check analysis (job pass/fail, not junit); views opt in via JobTier include
+//	candidate: not covered by component readiness, but may be promoted in the future
+//	hidden: data should still be synced, but not shown by default
+//	excluded: data should not be synced, and excluded from all views
 //
 // Note: blocking/informing/standard tiers may be downgraded to candidate by
 // adjustJobTierBasedOnView if the job's variants don't match the release-main view.
 func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	// Jobs classified as spot-check get the spotcheck-30d tier automatically.
+	if _, ok := variants[VariantSpotCheckComponent]; ok {
+		variants[VariantJobTier] = "spotcheck-30d"
+		return
+	}
+
 	jobNameLower := strings.ToLower(jobName)
 
 	jobTierPatterns := []struct {
 		substrings []string
 		jobTier    string
 	}{
-		// Rarely run
-		{[]string{"-cpu-partitioning"}, "rare"},
-		{[]string{"-etcd-scaling"}, "rare"},
-
 		// QE jobs allowlisted for Component Readiness
 		{[]string{"-automated-release"}, "standard"},
 
