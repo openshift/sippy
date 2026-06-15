@@ -850,7 +850,7 @@ function TestTable(props) {
     },
     current_flakes: {
       field: 'current_flakes',
-      headerName: 'Current failures',
+      headerName: 'Current flakes',
       type: 'number',
     },
     current_pass_percentage: {
@@ -882,7 +882,7 @@ function TestTable(props) {
     },
     previous_flakes: {
       field: 'previous_flakes',
-      headerName: 'Previous failures',
+      headerName: 'Previous flakes',
       type: 'number',
     },
     previous_pass_percentage: {
