@@ -1284,6 +1284,7 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-lpga-lp-ocp-compat-cr--oadp-", "lp-ocp-compat--oadp--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--servicemesh-", "lp-ocp-compat--servicemesh--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--operator-e2e-", "lp-ocp-compat--serverless--lpGA"},
+		{"-lpga-lp-chaos-cr--ocp-", "lp-chaos--ocp--lpGA"},
 		{"-coo-", "lp-interop-coo"},
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
