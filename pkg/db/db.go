@@ -52,7 +52,23 @@ func (w log2LogrusWriter) Printf(msg string, args ...any) {
 	w.entry.Debugf(msg, args...)
 }
 
-func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
+type Option func(*options)
+
+type options struct {
+	enablePartitionwise bool
+}
+
+func WithPartitionwise(enable bool) Option {
+	return func(o *options) {
+		o.enablePartitionwise = enable
+	}
+}
+
+func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) {
+	var cfg options
+	for _, o := range opts {
+		o(&cfg)
+	}
 	gormLogger := gormlogger.New(
 		log2LogrusWriter{entry: log.WithField("source", "gorm")},
 		gormlogger.Config{
@@ -73,6 +89,10 @@ func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
 	// partitions. Custom plans use actual parameter values for partition pruning.
 	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
+	if cfg.enablePartitionwise {
+		pgxConfig.RuntimeParams["enable_partitionwise_aggregate"] = "on"
+		pgxConfig.RuntimeParams["enable_partitionwise_join"] = "on"
+	}
 
 	connPool := stdlib.OpenDB(*pgxConfig)
 

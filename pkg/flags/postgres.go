@@ -94,8 +94,9 @@ func (f *PostgresFlags) GetPinnedTime() *time.Time {
 
 // PostgresFlags contains the set of flags needed to connect to a postgres database.
 type PostgresFlags struct {
-	LogLevel logLevel
-	DSN      string
+	LogLevel            logLevel
+	DSN                 string
+	EnablePartitionwise bool
 
 	// pinnedTime should not be exported. Use GetPinnedTime() instead.
 	pinnedTime PinnedTime
@@ -117,13 +118,14 @@ func (f *PostgresFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.Var(&f.LogLevel, "db-log-level", "GORM database log level")
 	fs.StringVar(&f.DSN, "database-dsn", f.DSN, "Database DSN for connecting to Postgres")
 	fs.Var(&f.pinnedTime, "pinned-date-time", "Pin database results to a fixed end date/time")
+	fs.BoolVar(&f.EnablePartitionwise, "enable-partitionwise", false, "Enable PostgreSQL partitionwise aggregate and join optimizations")
 }
 
 func (f *PostgresFlags) GetDBClient() (*db.DB, error) {
-	dbc, err := db.New(f.DSN, logger.LogLevel(f.LogLevel))
+	dbc, err := db.New(f.DSN, logger.LogLevel(f.LogLevel), db.WithPartitionwise(f.EnablePartitionwise))
 	if err != nil {
-		log.WithError(err).Error("could not connect to db")
-		return nil, err
+		log.Error("could not connect to db")
+		return nil, fmt.Errorf("could not connect to db: %w", err)
 	}
 
 	return dbc, nil
