@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
-	sorting "sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -290,45 +289,10 @@ func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatvie
 		}(lookback)
 	}
 	wg.Wait()
-	// create a channel for work "tasks"
-	ch := make(chan string)
-
-	wg = sync.WaitGroup{}
-
-	// allow concurrent workers for refreshing matviews in parallel
-	for t := 0; t < 2; t++ {
-		wg.Add(1)
-		go refreshMatview(dbc, cacheClient, refreshMatviewOnlyIfEmpty, ch, &wg)
-	}
-
-	// Sort materialized views so prow_test_report_2d_matview runs last to avoid CPU overload
-	sortedMatViews := make([]db.PostgresView, len(db.PostgresMatViews))
-	copy(sortedMatViews, db.PostgresMatViews)
-	sorting.SliceStable(sortedMatViews, func(i, j int) bool {
-		// Move prow_test_report_2d_matview to the end
-		if sortedMatViews[i].Name == "prow_test_report_2d_matview" {
-			return false
-		}
-		if sortedMatViews[j].Name == "prow_test_report_2d_matview" {
-			return true
-		}
-
-		// Move prow_test_report_7d_matview to the beginning
-		if sortedMatViews[i].Name == "prow_test_report_7d_matview" {
-			return true
-		}
-		if sortedMatViews[j].Name == "prow_test_report_7d_matview" {
-			return false
-		}
-		return false
+	db.RefreshByPhase(db.PostgresMatViews, func(phaseMatViews []db.PostgresView) {
+		log.Infof("refreshing %d materialized views", len(phaseMatViews))
+		refreshMatviews(dbc, cacheClient, refreshMatviewOnlyIfEmpty, phaseMatViews)
 	})
-
-	for _, pmv := range sortedMatViews {
-		ch <- pmv.Name
-	}
-
-	close(ch)
-	wg.Wait()
 
 	allElapsed := time.Since(allStart)
 	log.WithField("elapsed", allElapsed).Info("refreshed all materialized views")
@@ -342,6 +306,20 @@ func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatvie
 			log.Info("successfully pushed metrics to prometheus gateway")
 		}
 	}
+}
+
+func refreshMatviews(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, matviews []db.PostgresView) {
+	ch := make(chan string)
+	wg := sync.WaitGroup{}
+	for t := 0; t < 2; t++ {
+		wg.Add(1)
+		go refreshMatview(dbc, cacheClient, refreshMatviewOnlyIfEmpty, ch, &wg)
+	}
+	for _, pmv := range matviews {
+		ch <- pmv.Name
+	}
+	close(ch)
+	wg.Wait()
 }
 
 func refreshMatview(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
