@@ -460,12 +460,12 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	// assembled our final temporary table.
 	var rawFilter, processedFilter *filter.Filter
 	if spec.Filter != nil {
-		// The collapsed matview has no variants column, so only split on name.
-		rawFields := []string{"name", "variants"}
+		filterToSplit := spec.Filter
 		if spec.Collapse {
-			rawFields = []string{"name"}
+			// The collapsed matview has no variants column, so strip variant filters.
+			_, filterToSplit = spec.Filter.Split([]string{"variants"})
 		}
-		rawFilter, processedFilter = spec.Filter.Split(rawFields)
+		rawFilter, processedFilter = filterToSplit.Split([]string{"name", "variants"})
 	}
 
 	rawQuery := dbc.DB.WithContext(ctx).
