@@ -29,6 +29,8 @@ import (
 const (
 	testReport7dMatView          = "prow_test_report_7d_matview"
 	testReport2dMatView          = "prow_test_report_2d_matview"
+	testReport7dCollapsedMatView = "prow_test_report_7d_collapsed_matview"
+	testReport2dCollapsedMatView = "prow_test_report_2d_collapsed_matview"
 	payloadFailedTests14dMatView = "payload_test_failures_14d_matview"
 )
 
@@ -424,16 +426,23 @@ const testResultsCacheDuration = time.Hour
 
 func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) (testResults, error) {
 	matview := testReport7dMatView
+	collapsedMatview := testReport7dCollapsedMatView
 	if spec.Period == "twoDay" {
 		matview = testReport2dMatView
+		collapsedMatview = testReport2dCollapsedMatView
+	}
+
+	queryMatview := matview
+	if spec.Collapse {
+		queryMatview = collapsedMatview
 	}
 
 	generator := func(ctx context.Context) (testResults, []error) {
-		return spec.buildTestsResultsPGGenerator(ctx, dbc, matview)
+		return spec.buildTestsResultsPGGenerator(ctx, dbc, queryMatview)
 	}
 	result, errs := GetDataFromCacheOrMatview(ctx, cacheClient,
 		NewCacheSpec(spec, "PostgresTestsResults~", nil),
-		matview, testResultsCacheDuration,
+		queryMatview, testResultsCacheDuration,
 		generator,
 		testResults{},
 	)
@@ -451,7 +460,12 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	// assembled our final temporary table.
 	var rawFilter, processedFilter *filter.Filter
 	if spec.Filter != nil {
-		rawFilter, processedFilter = spec.Filter.Split([]string{"name", "variants"})
+		// The collapsed matview has no variants column, so only split on name.
+		rawFields := []string{"name", "variants"}
+		if spec.Collapse {
+			rawFields = []string{"name"}
+		}
+		rawFilter, processedFilter = spec.Filter.Split(rawFields)
 	}
 
 	rawQuery := dbc.DB.WithContext(ctx).
@@ -461,7 +475,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
 	variantSelect := ""
 	if spec.Collapse {
-		rawQuery = rawQuery.Select(`suite_name,name,jira_component,jira_component_id,` + query.QueryTestSummer).Group("suite_name,name,jira_component,jira_component_id")
+		rawQuery = rawQuery.Select(`suite_name,name,jira_component,jira_component_id,` + query.QueryTestFields)
 	} else {
 		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, spec.Release, matview)
 		variantSelect = "suite_name, variants," +
