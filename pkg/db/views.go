@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -28,7 +27,6 @@ var PostgresMatViews = []PostgresView{
 		Name:         "prow_test_report_2d_matview",
 		Definition:   testReportMatView,
 		IndexColumns: []string{"release", "name", "id", "variants", "suite_name"},
-		RefreshPhase: 1, // avoid CPU overload from refreshing concurrently with the 7d matview
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "|||TIMENOW||| - INTERVAL '9 DAY'",
 			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '2 DAY'",
@@ -54,24 +52,6 @@ var PostgresMatViews = []PostgresView{
 		IndexColumns: []string{"period", "prow_job_id", "test_name"},
 		ReplaceStrings: map[string]string{
 			"|||BY|||": "hour",
-		},
-	},
-	{
-		Name:         "prow_test_report_7d_collapsed_matview",
-		Definition:   testReportCollapsedMatView,
-		IndexColumns: []string{"release", "name", "suite_name", "jira_component", "jira_component_id"},
-		RefreshPhase: 2, // reads from prow_test_report_7d_matview, which refreshes in phase 0
-		ReplaceStrings: map[string]string{
-			"|||SOURCE|||": "prow_test_report_7d_matview",
-		},
-	},
-	{
-		Name:         "prow_test_report_2d_collapsed_matview",
-		Definition:   testReportCollapsedMatView,
-		IndexColumns: []string{"release", "name", "suite_name", "jira_component", "jira_component_id"},
-		RefreshPhase: 2, // reads from prow_test_report_2d_matview, which refreshes in phase 1
-		ReplaceStrings: map[string]string{
-			"|||SOURCE|||": "prow_test_report_2d_matview",
 		},
 	},
 	{
@@ -103,32 +83,6 @@ type PostgresView struct {
 	// replaced if changes are made to these values. IndexColumns are required as we need them defined to be able to
 	// refresh materialized views concurrently. (avoiding locking reads for several minutes while we update)
 	IndexColumns []string
-	// RefreshPhase controls the order in which matviews are refreshed. All matviews
-	// in phase 0 refresh first (concurrently), then all in phase 1, and so on.
-	// Use this when a matview reads from another matview and needs it to be up-to-date.
-	// The default zero value means phase 0.
-	RefreshPhase int
-}
-
-// RefreshByPhase groups matviews by RefreshPhase and calls refreshFn for each
-// phase in order. All matviews in a phase are passed to refreshFn together
-// (the caller is responsible for concurrent execution within a phase).
-func RefreshByPhase(matviews []PostgresView, refreshFn func([]PostgresView)) {
-	sorted := make([]PostgresView, len(matviews))
-	copy(sorted, matviews)
-	slices.SortFunc(sorted, func(a, b PostgresView) int {
-		return a.RefreshPhase - b.RefreshPhase
-	})
-
-	for i := 0; i < len(sorted); {
-		phase := sorted[i].RefreshPhase
-		j := i
-		for j < len(sorted) && sorted[j].RefreshPhase == phase {
-			j++
-		}
-		refreshFn(sorted[i:j])
-		i = j
-	}
 }
 
 func syncPostgresMaterializedViews(db *gorm.DB, reportEnd *time.Time) error {
@@ -348,21 +302,6 @@ FROM (
         tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, pre_agg.prow_job_run_release
 ) AS base
 WINDOW w AS (PARTITION BY base.id, base.suite_name, base.release)
-`
-
-const testReportCollapsedMatView = `
-SELECT suite_name, name, jira_component, jira_component_id, release,
-    SUM(current_runs)::bigint AS current_runs,
-    SUM(current_successes)::bigint AS current_successes,
-    SUM(current_failures)::bigint AS current_failures,
-    SUM(current_flakes)::bigint AS current_flakes,
-    SUM(previous_runs)::bigint AS previous_runs,
-    SUM(previous_successes)::bigint AS previous_successes,
-    SUM(previous_failures)::bigint AS previous_failures,
-    SUM(previous_flakes)::bigint AS previous_flakes,
-    (array_agg(open_bugs))[1] AS open_bugs
-FROM |||SOURCE|||
-GROUP BY suite_name, name, jira_component, jira_component_id, release
 `
 
 const testAnalysisByVariantView = `
