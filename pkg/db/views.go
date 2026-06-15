@@ -223,67 +223,85 @@ FROM prow_job_runs
 WHERE prow_job_runs."timestamp" >= CURRENT_TIMESTAMP - interval '90 days'
 `
 const testReportMatView = `
-WITH open_bugs AS (
-  SELECT
-    test_id,
-    COUNT(DISTINCT bugs.id) AS open_bugs
-  FROM
-    bug_tests
-    INNER JOIN tests ON tests.id = bug_tests.test_id
-    INNER JOIN bugs ON bug_tests.bug_id = bugs.id
-  WHERE
-    LOWER(bugs.status) <> 'closed'
-  GROUP BY
-    test_id
-),
-pre_agg AS (
-  SELECT
-    prow_job_id,
-    test_id,
-    suite_id,
-    prow_job_run_release,
-    COUNT(*) FILTER (WHERE status = 1  AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_successes,
-    COUNT(*) FILTER (WHERE status = 13 AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_flakes,
-    COUNT(*) FILTER (WHERE status = 12 AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_failures,
-    COUNT(*) FILTER (WHERE prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_runs,
-    COUNT(*) FILTER (WHERE status = 1  AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_successes,
-    COUNT(*) FILTER (WHERE status = 13 AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_flakes,
-    COUNT(*) FILTER (WHERE status = 12 AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_failures,
-    COUNT(*) FILTER (WHERE prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_runs
-  FROM
-    prow_job_run_tests
-  WHERE
-    prow_job_run_timestamp >= |||START||| AND prow_job_run_timestamp <= |||END|||
-  GROUP BY
-    prow_job_id, test_id, suite_id, prow_job_run_release
-)
-SELECT
-    tests.id,
-    tests.name,
-    suites.name AS suite_name,
-    jira_components.name AS jira_component,
-    jira_components.id AS jira_component_id,
-    SUM(pre_agg.previous_successes)::bigint AS previous_successes,
-    SUM(pre_agg.previous_flakes)::bigint AS previous_flakes,
-    SUM(pre_agg.previous_failures)::bigint AS previous_failures,
-    SUM(pre_agg.previous_runs)::bigint AS previous_runs,
-    SUM(pre_agg.current_successes)::bigint AS current_successes,
-    SUM(pre_agg.current_flakes)::bigint AS current_flakes,
-    SUM(pre_agg.current_failures)::bigint AS current_failures,
-    SUM(pre_agg.current_runs)::bigint AS current_runs,
-    open_bugs.open_bugs AS open_bugs,
-    prow_jobs.variants,
-    pre_agg.prow_job_run_release AS release
-FROM
-    pre_agg
-    JOIN tests ON tests.id = pre_agg.test_id
-    LEFT JOIN open_bugs ON pre_agg.test_id = open_bugs.test_id
-    LEFT JOIN suites ON suites.id = pre_agg.suite_id
-    LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND pre_agg.suite_id = test_ownerships.suite_id)
-    LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
-    JOIN prow_jobs ON pre_agg.prow_job_id = prow_jobs.id
-GROUP BY
-    tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, pre_agg.prow_job_run_release
+SELECT base.*,
+    COALESCE(base.current_successes * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_pass_percentage,
+    COALESCE(base.current_failures * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_failure_percentage,
+    COALESCE(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_flake_percentage,
+    COALESCE((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_working_percentage,
+    COALESCE(base.previous_successes * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_pass_percentage,
+    COALESCE(base.previous_failures * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_failure_percentage,
+    COALESCE(base.previous_flakes * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_flake_percentage,
+    COALESCE((base.previous_successes + base.previous_flakes) * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_working_percentage,
+    AVG((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS working_average,
+    STDDEV((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS working_standard_deviation,
+    AVG(base.current_successes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS passing_average,
+    STDDEV(base.current_successes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS passing_standard_deviation,
+    AVG(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS flake_average,
+    STDDEV(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS flake_standard_deviation
+FROM (
+    WITH open_bugs AS (
+      SELECT
+        test_id,
+        COUNT(DISTINCT bugs.id) AS open_bugs
+      FROM
+        bug_tests
+        INNER JOIN tests ON tests.id = bug_tests.test_id
+        INNER JOIN bugs ON bug_tests.bug_id = bugs.id
+      WHERE
+        LOWER(bugs.status) <> 'closed'
+      GROUP BY
+        test_id
+    ),
+    pre_agg AS (
+      SELECT
+        prow_job_id,
+        test_id,
+        suite_id,
+        prow_job_run_release,
+        COUNT(*) FILTER (WHERE status = 1  AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_successes,
+        COUNT(*) FILTER (WHERE status = 13 AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_flakes,
+        COUNT(*) FILTER (WHERE status = 12 AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_failures,
+        COUNT(*) FILTER (WHERE prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_runs,
+        COUNT(*) FILTER (WHERE status = 1  AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_successes,
+        COUNT(*) FILTER (WHERE status = 13 AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_flakes,
+        COUNT(*) FILTER (WHERE status = 12 AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_failures,
+        COUNT(*) FILTER (WHERE prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_runs
+      FROM
+        prow_job_run_tests
+      WHERE
+        prow_job_run_timestamp >= |||START||| AND prow_job_run_timestamp <= |||END|||
+      GROUP BY
+        prow_job_id, test_id, suite_id, prow_job_run_release
+    )
+    SELECT
+        tests.id,
+        tests.name,
+        suites.name AS suite_name,
+        jira_components.name AS jira_component,
+        jira_components.id AS jira_component_id,
+        SUM(pre_agg.previous_successes)::bigint AS previous_successes,
+        SUM(pre_agg.previous_flakes)::bigint AS previous_flakes,
+        SUM(pre_agg.previous_failures)::bigint AS previous_failures,
+        SUM(pre_agg.previous_runs)::bigint AS previous_runs,
+        SUM(pre_agg.current_successes)::bigint AS current_successes,
+        SUM(pre_agg.current_flakes)::bigint AS current_flakes,
+        SUM(pre_agg.current_failures)::bigint AS current_failures,
+        SUM(pre_agg.current_runs)::bigint AS current_runs,
+        open_bugs.open_bugs AS open_bugs,
+        prow_jobs.variants,
+        pre_agg.prow_job_run_release AS release
+    FROM
+        pre_agg
+        JOIN tests ON tests.id = pre_agg.test_id
+        LEFT JOIN open_bugs ON pre_agg.test_id = open_bugs.test_id
+        LEFT JOIN suites ON suites.id = pre_agg.suite_id
+        LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND pre_agg.suite_id = test_ownerships.suite_id)
+        LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
+        JOIN prow_jobs ON pre_agg.prow_job_id = prow_jobs.id
+    GROUP BY
+        tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, pre_agg.prow_job_run_release
+) AS base
+WINDOW w AS (PARTITION BY base.id, base.suite_name, base.release)
 `
 
 const testAnalysisByVariantView = `
