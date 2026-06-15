@@ -127,7 +127,7 @@ job's bucket entry is included by the html lens.
 | `pkg/sippyclient/jobrunscan/` | Go client library for symptom/label APIs (used by cloud function). |
 | `pkg/componentreadiness/jobrunannotator/jobrunannotator.go` | `JobRunAnnotator` - the `annotate-job-runs` tool which can add labels but doesn't (yet) know about symptoms. |
 | `pkg/componentreadiness/jobrunannotator/prow_bucket.go` | `JobRunBucketLabel`, `WriteHTMLSummaryToBucket` - writes label files and HTML summaries to GCS. Shared with cloud function. |
-| `pkg/api/jobartifacts/` | `JobArtifactQuery`, `ContentMatcher` - the artifact querying and matching engine used by JAQ and symptom evaluation. |
+| `pkg/api/jobartifacts/` | `JobArtifactQuery`, `ContentMatcher` - the artifact querying and matching engine used by JAQ and symptom evaluation. Results (matched lines per file) are cached by `(jobRunID, pathGlob, matcherKey)` to avoid re-scanning the same job run for the same query; this does **not** cache raw GCS file contents. |
 | `pkg/dataloader/prowloader/prow.go` | `GatherLabelsFromBQ` - reads labels from BQ during fetchdata. |
 | `pkg/api/componentreadiness/regressiontracker.go` | `SyncTriageSymptoms` - links symptoms to triage records. |
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
