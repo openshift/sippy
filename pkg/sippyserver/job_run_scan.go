@@ -170,3 +170,42 @@ func (s *Server) jsonDeleteSymptom(w http.ResponseWriter, req *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// Job run symptom re-evaluation handler
+
+func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.Request) {
+	user := getUserForRequest(req)
+	log.Infof("symptom re-evaluation POST made by user: %s", user)
+
+	var body struct {
+		ProwJobBuildIDs []string `json:"prow_job_build_ids"`
+		DryRun          bool     `json:"dry_run"`
+	}
+	req.Body = http.MaxBytesReader(w, req.Body, 1<<20) // 1 MiB limit to prevent DoS
+	dec := json.NewDecoder(req.Body)
+	dec.DisallowUnknownFields() // catch client errors faster
+	if err := dec.Decode(&body); err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	if err := apijobrunscan.ValidateReEvalRequest(body.ProwJobBuildIDs); err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if s.bigQueryClient == nil || s.gcsClient == nil || s.gcsBucket == "" {
+		failureResponse(w, http.StatusServiceUnavailable, "symptom re-evaluation requires BigQuery and GCS configuration")
+		return
+	}
+
+	re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, body.DryRun)
+	results, err := re.ReEvaluateJobRuns(req.Context(), body.ProwJobBuildIDs)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resp := apijobrunscan.ReEvaluationResponse{Results: results}
+	apijobrunscan.InjectReEvalHATEOASLinks(&resp, api.GetBaseURL(req))
+	api.RespondWithJSON(http.StatusOK, w, resp)
+}

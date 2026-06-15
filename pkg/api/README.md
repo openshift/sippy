@@ -396,6 +396,62 @@ A summary of runs for job(s). Results contains of the following values for each 
 | job      | String         | Return only jobs containing only containing this value in their name                                                     | N/A                                      |
 | limit    | Integer        | The maximum amount of results to return                                                                                  | N/A                                      |
 
+## Re-evaluate Job Run Symptoms
+
+Endpoint: `POST /api/jobs/runs/reevaluate`
+
+Re-runs all symptom definitions against the artifacts for specified job runs and updates
+BigQuery, GCS, and PostgreSQL with the results. Requires `--enable-write-endpoints`.
+
+### Request
+
+```json
+{
+  "prow_job_build_ids": ["1234567890", "0987654321"],
+  "dry_run": false
+}
+```
+
+Maximum 50 job run IDs per request. IDs must be numeric strings.
+
+### Response (200 OK)
+
+```json
+{
+  "results": [
+    {
+      "prow_job_build_id": "1234567890",
+      "status": "success",
+      "symptoms_evaluated": 42,
+      "symptoms_matched": ["CreatePodSandboxForPodFailedInJournal"],
+      "labels_applied": ["InfraFailure", "NodeProblem"],
+      "bq_entries_written": 2,
+      "gcs_artifacts_written": 2,
+      "postgres_updated": true,
+      "links": {
+        "job_run": "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/.../1234567890",
+        "symptom:CreatePodSandboxForPodFailedInJournal": "http://localhost:8080/api/jobs/symptoms/SomeSymptom"
+      }
+    },
+    {
+      "prow_job_build_id": "0987654321",
+      "status": "missing_error",
+      "error": "job run 0987654321 not found in database"
+    }
+  ],
+  "links": {
+    "self": "http://localhost:8080/api/jobs/runs/reevaluate"
+  }
+}
+```
+
+### Status Values
+
+- `success` - re-evaluation completed and all backends updated.
+- `missing_error` - the job run ID was not found in the database.
+- `eval_error` - artifact scanning failed (timeout, GCS error, database error).
+- `rewrite_error` - scanning succeeded but writing to BQ/GCS/PostgreSQL failed.
+
 ## Tests
 
 Endpoint: `/api/tests`
