@@ -318,8 +318,6 @@ github.com/morikuni/aec v1.0.0 h1:nP9CBfwrvYnBRgY6qfDQkygYDmYwOilePFkwzv4dU8A=
 github.com/morikuni/aec v1.0.0/go.mod h1:BbKIizmSmc5MMPqRYbxO4ZU0S0+P200+tUnFx7PXmsc=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/neisw/gopar v0.0.0-20260606121604-bb7bd85e6510 h1:XEDO4SFuGYy8gbxWx1yQSX2StOQyc03E1RXUxV3syFk=
-github.com/neisw/gopar v0.0.0-20260606121604-bb7bd85e6510/go.mod h1:DXMwKvaTxHxv8SYM3ZwdfMiZNLk3o1ubIronABIcDiw=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
@@ -337,6 +335,8 @@ github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQ
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
 github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a h1:bH+5JOkdlBENYZo6OaTA3ra2RjJsFFK+upv5CUAL6mM=
 github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a/go.mod h1:HtbWQQG60/CJDMXoRkRvcdR2WJniLk4osp2kUCW4Q3E=
+github.com/openshift-eng/gopar v0.0.0-20260616192337-b77b4437ef28 h1:7TTfcwNfwbZVVAZbbPDARw8jg73QODSgJq6tvz6DxtM=
+github.com/openshift-eng/gopar v0.0.0-20260616192337-b77b4437ef28/go.mod h1:Yesw1IJMG98mQkZlXO48osQt5vegYpVKlr+H9bXkI0E=
 github.com/pierrec/lz4/v4 v4.1.18 h1:xaKrnTkyoqfh1YItXl56+6KJNVYWlEEPuAQW9xsplYQ=
 github.com/pierrec/lz4/v4 v4.1.18/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pjbgf/sha1cd v0.6.0 h1:3WJ8Wz8gvDz29quX1OcEmkAlUg9diU4GxJHqs0/XiwU=
