@@ -4,6 +4,7 @@ import re
 import signal
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
@@ -576,7 +577,7 @@ async def _wait_for_ready(url: str, timeout: int, proc: subprocess.Popen) -> str
         try:
             await asyncio.to_thread(urllib.request.urlopen, url, None, 2)
             return None
-        except Exception:
+        except (urllib.error.URLError, OSError, TimeoutError):
             await asyncio.sleep(1)
     return f"not ready after {timeout}s (checked {url})"
 
@@ -604,7 +605,7 @@ async def _wait_for_url(url: str, timeout: int, pids: list[int]) -> str | None:
         try:
             await asyncio.to_thread(urllib.request.urlopen, url, None, 2)
             return None
-        except Exception:
+        except (urllib.error.URLError, OSError, TimeoutError):
             await asyncio.sleep(1)
     return f"not ready after {timeout}s (checked {url})"
 
