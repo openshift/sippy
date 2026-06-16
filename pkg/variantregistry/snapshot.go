@@ -3,6 +3,7 @@ package variantregistry
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -53,6 +54,7 @@ func (s *VariantSnapshot) Identify() (JobVariants, error) {
 	}
 
 	if len(errs) > 0 {
+		sort.Strings(errs)
 		return nil, fmt.Errorf("variant registry validation failed:\n%s", strings.Join(errs, "\n"))
 	}
 

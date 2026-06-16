@@ -232,44 +232,16 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 	return results, nil
 }
 
-// TestsByNURPAndStandardDeviation returns a test report for every test in the db matching the given substrings, separated by variant.
-// Result will include current and previous test rates such as passing, flaking, failing rates.
-// In addition, it includes the following calculated rates to help identify bad nurps.
-// working_average shows the average working percentage among all variants.
-// working_standard_deviation shows the standard deviation of the working percentage among variants. The number reflects how much working percentage differs among variants.
-// delta_from_working_average shows how much each variant differs from the working_average. This can be used to identify outliers.
-// passing_average shows the average passing percentage among all variants.
-// passing_standard_deviation shows the standard deviation of the passing percentage among variants. The number reflects how much passing percentage differs among variants.
-// delta_from_passing_average shows how much each variant differs from the passing_average. This can be used to identify outliers.
-// flake_average shows the average flake percentage among all variants.
-// flake_standard_deviation shows the standard deviation of the flake percentage among variants. The number reflects how much flake percentage differs among variants.
-// delta_from_flake_average shows how much each variant differs from the flake_average. This can be used to identify outliers.
+// TestsByNURPAndStandardDeviation returns a test report for every test in the db, separated by variant.
+// Each row includes current/previous test rates and cross-variant statistics (AVG, STDDEV, delta)
+// that are pre-computed in the matview. Only the deltas are computed at query time.
 func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB {
-	// 1. Create a virtual stats table. There is a single row for each test.
-	stats := dbc.DB.Table(table).
-		Select(`
-                 id                                                                             AS test_id,
-                 suite_name                                                                     AS stats_suite_name,
-                 avg((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0))    AS working_average,
-                 stddev((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0)) AS working_standard_deviation,
-                 avg(current_successes * 100.0 / NULLIF(current_runs, 0))                       AS passing_average,
-                 stddev(current_successes * 100.0 / NULLIF(current_runs, 0))                    AS passing_standard_deviation,
-                 avg(current_flakes * 100.0 / NULLIF(current_runs, 0))                          AS flake_average,
-                 stddev(current_flakes * 100.0 / NULLIF(current_runs, 0))                       AS flake_standard_deviation`).
-		Where(`release = ?`, release).
-		Group("id, suite_name")
-
-	// 2. Collect standard stats for all tests. Each row applies to one variant of a test.
-	passRates := dbc.DB.Table(table).
-		Select(`id as test_id, suite_name as pass_rate_suite_name, variants as pass_rate_variants, `+QueryTestPercentages).
-		Where(`release = ?`, release)
-
-	// 3. Join the tables to produce test report. Each row represent one variant of a test and contains all stats, both unique to the specific variant and average across all variants.
 	return dbc.DB.
 		Table(table).
-		Select("*, (current_working_percentage - working_average) as delta_from_working_average, (current_pass_percentage - passing_average) as delta_from_passing_average, (current_flake_percentage - flake_average) as delta_from_flake_average").
-		Joins(fmt.Sprintf(`INNER JOIN (?) as pass_rates on pass_rates.test_id = %s.id AND pass_rates.pass_rate_suite_name IS NOT DISTINCT FROM %s.suite_name AND pass_rates.pass_rate_variants = %s.variants`, table, table, table), passRates).
-		Joins(fmt.Sprintf(`JOIN (?) as stats ON stats.test_id = %s.id AND stats.stats_suite_name IS NOT DISTINCT FROM %s.suite_name`, table, table), stats).
+		Select(`*,
+			(current_working_percentage - working_average) AS delta_from_working_average,
+			(current_pass_percentage - passing_average) AS delta_from_passing_average,
+			(current_flake_percentage - flake_average) AS delta_from_flake_average`).
 		Where(`release = ?`, release).
 		Where(fmt.Sprintf("NOT ('never-stable'=any(%s.variants))", table))
 }

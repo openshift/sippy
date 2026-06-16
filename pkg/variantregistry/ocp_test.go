@@ -55,7 +55,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantContainerRuntime: "crun",
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
-				VariantOS:               "rhcos9",
+				VariantOS:               "rhcos10",
 			},
 		},
 		{
@@ -86,7 +86,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantContainerRuntime: "crun",
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
-				VariantOS:               "rhcos9",
+				VariantOS:               "rhcos10",
 			},
 		},
 		{
@@ -148,7 +148,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantContainerRuntime: "crun",
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
-				VariantOS:               "rhcos9",
+				VariantOS:               "rhcos10",
 			},
 		},
 		{
@@ -363,6 +363,34 @@ func TestVariantSyncer(t *testing.T) {
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
 				VariantOS:               "rhcos9",
+			},
+		},
+		{
+			job: "periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-azure-v2-self-managed",
+			expected: map[string]string{
+				VariantRelease:          "5.0",
+				VariantReleaseMajor:     "5",
+				VariantReleaseMinor:     "0",
+				VariantArch:             "amd64",
+				VariantInstaller:        "hypershift",
+				VariantPlatform:         "azure",
+				VariantProcedure:        "none",
+				VariantJobTier:          "standard",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng",
+				VariantTopology:         "external",
+				VariantSuite:            "unknown",
+				VariantUpgrade:          VariantNoValue,
+				VariantAggregation:      VariantNoValue,
+				VariantFeatureSet:       VariantDefaultValue,
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+				VariantOS:               "rhcos10",
 			},
 		},
 		{
@@ -1156,7 +1184,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantSecurityMode:   VariantDefaultValue,
 				VariantCGroupMode:     "v2",
 				VariantLayeredProduct: VariantNoValue,
-				VariantOS:             "rhcos9",
+				VariantOS:             "rhcos10",
 			},
 		},
 		{
@@ -2118,7 +2146,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantContainerRuntime: "crun",
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
-				VariantOS:               "rhcos9",
+				VariantOS:               "rhcos10",
 			},
 		},
 		{
@@ -2146,7 +2174,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantContainerRuntime: "crun",
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
-				VariantOS:               "rhcos9",
+				VariantOS:               "rhcos10",
 			},
 		},
 		{
@@ -2202,7 +2230,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantCGroupMode:          "v2",
 				VariantLayeredProduct:      VariantNoValue,
 				VariantOS:                  "rhcos9",
-				VariantSpotCheckComponent:  "Node / kubelet",
+				VariantSpotCheckComponent:  "Node / Kubelet",
 				VariantSpotCheckCapability: "CPU Partitioning",
 			},
 		},
@@ -2706,6 +2734,112 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 			}
 			loader.adjustJobTierBasedOnView(jLog, "test-job", variants)
 			assert.Equal(t, tt.expectedTier, variants[VariantJobTier])
+		})
+	}
+}
+
+func TestSetOS(t *testing.T) {
+	tests := []struct {
+		name       string
+		jobName    string
+		variants   map[string]string
+		expectedOS string
+	}{
+		{
+			name:    "5.x non-upgrade defaults to rhcos10",
+			jobName: "periodic-ci-openshift-release-master-nightly-5.0-e2e-aws-ovn",
+			variants: map[string]string{
+				VariantReleaseMajor: "5",
+				VariantUpgrade:      VariantNoValue,
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name:    "5-to-5 upgrade defaults to rhcos10",
+			jobName: "periodic-ci-openshift-release-master-ci-5.1-upgrade-from-stable-5.0-e2e-aws-upgrade",
+			variants: map[string]string{
+				VariantReleaseMajor:     "5",
+				VariantUpgrade:          "minor",
+				VariantFromReleaseMajor: "5",
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name:    "5.x upgrade from 4.x defaults to rhcos9",
+			jobName: "periodic-ci-openshift-release-master-ci-5.0-upgrade-from-stable-4.22-e2e-aws-upgrade",
+			variants: map[string]string{
+				VariantReleaseMajor:     "5",
+				VariantUpgrade:          "major",
+				VariantFromReleaseMajor: "4",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name:    "main branch non-upgrade defaults to rhcos10",
+			jobName: "periodic-ci-openshift-release-main-nightly-e2e-aws-ovn",
+			variants: map[string]string{
+				VariantReleaseMajor: "5",
+				VariantUpgrade:      VariantNoValue,
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name:    "main branch upgrade from 4.x defaults to rhcos9",
+			jobName: "periodic-ci-openshift-release-main-ci-upgrade-from-stable-4.22-e2e-aws-upgrade",
+			variants: map[string]string{
+				VariantReleaseMajor:     "5",
+				VariantUpgrade:          "major",
+				VariantFromReleaseMajor: "4",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name:    "4.x defaults to rhcos9",
+			jobName: "periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn",
+			variants: map[string]string{
+				VariantReleaseMajor: "4",
+				VariantUpgrade:      VariantNoValue,
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name:    "explicit rhcos10 in job name overrides version logic",
+			jobName: "periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn-rhcos10",
+			variants: map[string]string{
+				VariantReleaseMajor: "4",
+				VariantUpgrade:      VariantNoValue,
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name:    "explicit rhcos9 in job name overrides version logic",
+			jobName: "periodic-ci-openshift-release-master-nightly-5.0-e2e-aws-ovn-rhcos9",
+			variants: map[string]string{
+				VariantReleaseMajor: "5",
+				VariantUpgrade:      VariantNoValue,
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name:    "explicit rhcos9-10 in job name",
+			jobName: "periodic-ci-openshift-release-master-nightly-5.0-e2e-aws-ovn-rhcos9-10",
+			variants: map[string]string{
+				VariantReleaseMajor: "5",
+				VariantUpgrade:      VariantNoValue,
+			},
+			expectedOS: "rhcos9-10",
+		},
+	}
+
+	jLog := logrus.WithField("test", "TestSetOS")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			variants := make(map[string]string)
+			for k, v := range tt.variants {
+				variants[k] = v
+			}
+			setOS(jLog, variants, tt.jobName)
+			assert.Equal(t, tt.expectedOS, variants[VariantOS])
 		})
 	}
 }

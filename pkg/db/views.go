@@ -153,25 +153,24 @@ func syncPostgresViews(db *gorm.DB, reportEnd *time.Time) error {
 	return nil
 }
 
+// jobRunsReportMatView limits all data to a 90-day window. This is intentional:
+// prow_job_run_tests is heavily partitioned and scanning beyond 90 days is expensive
+// with no consumer needing older per-test failure/flake details in this view.
 const jobRunsReportMatView = `
-WITH failed_test_results AS (
+WITH test_results AS (
 	SELECT prow_job_run_tests.prow_job_run_id,
-		array_agg(tests.id) AS test_ids,
-		count(tests.id) AS test_count,
-		array_agg(tests.name) AS test_names
+		prow_job_run_tests.prow_job_run_release,
+		array_agg(tests.id)   FILTER (WHERE prow_job_run_tests.status = 12) AS failed_test_ids,
+		count(tests.id)       FILTER (WHERE prow_job_run_tests.status = 12) AS failed_test_count,
+		array_agg(tests.name) FILTER (WHERE prow_job_run_tests.status = 12) AS failed_test_names,
+		array_agg(tests.id)   FILTER (WHERE prow_job_run_tests.status = 13) AS flaked_test_ids,
+		count(tests.id)       FILTER (WHERE prow_job_run_tests.status = 13) AS flaked_test_count,
+		array_agg(tests.name) FILTER (WHERE prow_job_run_tests.status = 13) AS flaked_test_names
 	FROM prow_job_run_tests
 		JOIN tests ON tests.id = prow_job_run_tests.test_id
-	WHERE prow_job_run_tests.status = 12
-	GROUP BY prow_job_run_tests.prow_job_run_id
-), flaked_test_results AS (
-	SELECT prow_job_run_tests.prow_job_run_id,
-		array_agg(tests.id) AS test_ids,
-		count(tests.id) AS test_count,
-		array_agg(tests.name) AS test_names
-	FROM prow_job_run_tests
-		JOIN tests ON tests.id = prow_job_run_tests.test_id
-	WHERE prow_job_run_tests.status = 13
-	GROUP BY prow_job_run_tests.prow_job_run_id
+	WHERE prow_job_run_tests.status IN (12, 13)
+		AND prow_job_run_tests.prow_job_run_timestamp >= CURRENT_TIMESTAMP - interval '90 days'
+	GROUP BY prow_job_run_tests.prow_job_run_id, prow_job_run_tests.prow_job_run_release
 ),
 pull_requests AS (
 	SELECT
@@ -188,6 +187,7 @@ pull_requests AS (
                 prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id
         INNER JOIN
                 prow_job_runs ON prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
+        WHERE prow_job_runs."timestamp" >= CURRENT_TIMESTAMP - interval '90 days'
         GROUP BY prow_job_runs.id, prow_pull_requests.link, prow_pull_requests.sha, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.author
 )
 SELECT prow_job_runs.id,
@@ -206,66 +206,102 @@ SELECT prow_job_runs.id,
    prow_job_runs.id AS prow_id,
    prow_job_runs.cluster AS cluster,
    prow_job_runs.labels as labels,
-   flaked_test_results.test_names AS flaked_test_names,
-   flaked_test_results.test_count AS test_flakes,
-   failed_test_results.test_names AS failed_test_names,
-   failed_test_results.test_count AS test_failures,
+   test_results.flaked_test_names AS flaked_test_names,
+   test_results.flaked_test_count AS test_flakes,
+   test_results.failed_test_names AS failed_test_names,
+   test_results.failed_test_count AS test_failures,
    pull_requests.link as pull_request_link,
    pull_requests.sha as pull_request_sha,
    pull_requests.org as pull_request_org,
    pull_requests.repo as pull_request_repo,
    pull_requests.author as pull_request_author
 FROM prow_job_runs
-   LEFT JOIN failed_test_results ON failed_test_results.prow_job_run_id = prow_job_runs.id
-   LEFT JOIN flaked_test_results ON flaked_test_results.prow_job_run_id = prow_job_runs.id
+   LEFT JOIN test_results ON test_results.prow_job_run_id = prow_job_runs.id
+       AND test_results.prow_job_run_release = prow_job_runs.prow_job_release
    LEFT JOIN pull_requests ON pull_requests.id = prow_job_runs.id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
+WHERE prow_job_runs."timestamp" >= CURRENT_TIMESTAMP - interval '90 days'
 `
 const testReportMatView = `
-WITH open_bugs AS (
-  SELECT
-    test_id,
-    COUNT(DISTINCT bugs.id) AS open_bugs
-  FROM
-    bug_tests
-    INNER JOIN tests ON tests.id = bug_tests.test_id
-    INNER JOIN bugs ON bug_tests.bug_id = bugs.id
-  WHERE
-    LOWER(bugs.status) <> 'closed'
-  GROUP BY
-    test_id
-)
-SELECT
-    tests.id,
-    tests.name,
-    suites.name AS suite_name,
-    jira_components.name AS jira_component,
-    jira_components.id AS jira_component_id,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_successes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_failures,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_runs,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_successes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_failures,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_runs,
-    open_bugs.open_bugs AS open_bugs,
-    prow_jobs.variants,
-    prow_job_run_tests.prow_job_run_release AS release
-FROM
-    prow_job_run_tests
-    JOIN tests ON tests.id = prow_job_run_tests.test_id
-    LEFT JOIN open_bugs ON prow_job_run_tests.test_id = open_bugs.test_id
-    LEFT JOIN suites ON suites.id = prow_job_run_tests.suite_id
-    LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND prow_job_run_tests.suite_id = test_ownerships.suite_id)
-    LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
-    JOIN prow_jobs ON prow_jobs.id = prow_job_run_tests.prow_job_id
-WHERE
-    prow_job_run_tests.prow_job_run_timestamp >= |||START|||
-GROUP BY
-    tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_job_run_tests.prow_job_run_release
-ORDER BY
-    prow_job_run_tests.prow_job_run_release, tests.name
+SELECT base.*,
+    COALESCE(base.current_successes * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_pass_percentage,
+    COALESCE(base.current_failures * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_failure_percentage,
+    COALESCE(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_flake_percentage,
+    COALESCE((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_working_percentage,
+    COALESCE(base.previous_successes * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_pass_percentage,
+    COALESCE(base.previous_failures * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_failure_percentage,
+    COALESCE(base.previous_flakes * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_flake_percentage,
+    COALESCE((base.previous_successes + base.previous_flakes) * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_working_percentage,
+    AVG((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS working_average,
+    STDDEV((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS working_standard_deviation,
+    AVG(base.current_successes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS passing_average,
+    STDDEV(base.current_successes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS passing_standard_deviation,
+    AVG(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS flake_average,
+    STDDEV(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS flake_standard_deviation
+FROM (
+    WITH open_bugs AS (
+      SELECT
+        test_id,
+        COUNT(DISTINCT bugs.id) AS open_bugs
+      FROM
+        bug_tests
+        INNER JOIN tests ON tests.id = bug_tests.test_id
+        INNER JOIN bugs ON bug_tests.bug_id = bugs.id
+      WHERE
+        LOWER(bugs.status) <> 'closed'
+      GROUP BY
+        test_id
+    ),
+    pre_agg AS (
+      SELECT
+        prow_job_id,
+        test_id,
+        suite_id,
+        prow_job_run_release,
+        COUNT(*) FILTER (WHERE status = 1  AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_successes,
+        COUNT(*) FILTER (WHERE status = 13 AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_flakes,
+        COUNT(*) FILTER (WHERE status = 12 AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_failures,
+        COUNT(*) FILTER (WHERE prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_runs,
+        COUNT(*) FILTER (WHERE status = 1  AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_successes,
+        COUNT(*) FILTER (WHERE status = 13 AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_flakes,
+        COUNT(*) FILTER (WHERE status = 12 AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_failures,
+        COUNT(*) FILTER (WHERE prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_runs
+      FROM
+        prow_job_run_tests
+      WHERE
+        prow_job_run_timestamp >= |||START||| AND prow_job_run_timestamp <= |||END|||
+      GROUP BY
+        prow_job_id, test_id, suite_id, prow_job_run_release
+    )
+    SELECT
+        tests.id,
+        tests.name,
+        suites.name AS suite_name,
+        jira_components.name AS jira_component,
+        jira_components.id AS jira_component_id,
+        SUM(pre_agg.previous_successes)::bigint AS previous_successes,
+        SUM(pre_agg.previous_flakes)::bigint AS previous_flakes,
+        SUM(pre_agg.previous_failures)::bigint AS previous_failures,
+        SUM(pre_agg.previous_runs)::bigint AS previous_runs,
+        SUM(pre_agg.current_successes)::bigint AS current_successes,
+        SUM(pre_agg.current_flakes)::bigint AS current_flakes,
+        SUM(pre_agg.current_failures)::bigint AS current_failures,
+        SUM(pre_agg.current_runs)::bigint AS current_runs,
+        open_bugs.open_bugs AS open_bugs,
+        prow_jobs.variants,
+        pre_agg.prow_job_run_release AS release
+    FROM
+        pre_agg
+        JOIN tests ON tests.id = pre_agg.test_id
+        LEFT JOIN open_bugs ON pre_agg.test_id = open_bugs.test_id
+        LEFT JOIN suites ON suites.id = pre_agg.suite_id
+        LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND pre_agg.suite_id = test_ownerships.suite_id)
+        LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
+        JOIN prow_jobs ON pre_agg.prow_job_id = prow_jobs.id
+    GROUP BY
+        tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, pre_agg.prow_job_run_release
+) AS base
+WINDOW w AS (PARTITION BY base.id, base.suite_name, base.release)
 `
 
 const testAnalysisByVariantView = `
