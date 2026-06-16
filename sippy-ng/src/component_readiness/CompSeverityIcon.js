@@ -19,7 +19,7 @@ export default function CompSeverityIcon(props) {
   )
 
   let toolTip = statusStr
-  if (explanations !== undefined && explanations.length > 0) {
+  if (explanations != null && explanations.length > 0) {
     toolTip = explanations.join(' ')
   }
 
