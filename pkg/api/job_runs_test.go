@@ -313,6 +313,48 @@ func getTestRisk(result apitype.ProwJobRunRiskAnalysis, testName string) *apityp
 
 }
 
+func TestSplitTestPreloads(t *testing.T) {
+	tests := []struct {
+		name                string
+		preloads            []string
+		expectedOther       []string
+		expectedTestRelated []string
+	}{
+		{
+			name:                "nil preloads",
+			preloads:            nil,
+			expectedOther:       nil,
+			expectedTestRelated: nil,
+		},
+		{
+			name:                "no Tests-related preloads",
+			preloads:            []string{"PullRequests", "Annotations"},
+			expectedOther:       []string{"PullRequests", "Annotations"},
+			expectedTestRelated: nil,
+		},
+		{
+			name:                "only Tests-related preloads",
+			preloads:            []string{"Tests.ProwJobRunTestOutput", "Tests.Suite"},
+			expectedOther:       nil,
+			expectedTestRelated: []string{"ProwJobRunTestOutput", "Suite"},
+		},
+		{
+			name:                "mixed preloads",
+			preloads:            []string{"PullRequests", "Tests.ProwJobRunTestOutput", "Annotations"},
+			expectedOther:       []string{"PullRequests", "Annotations"},
+			expectedTestRelated: []string{"ProwJobRunTestOutput"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			other, testRelated := splitTestPreloads(tc.preloads)
+			assert.Equal(t, tc.expectedOther, other)
+			assert.Equal(t, tc.expectedTestRelated, testRelated)
+		})
+	}
+}
+
 func TestSubSliceEqual(t *testing.T) {
 
 	tests := []struct {
