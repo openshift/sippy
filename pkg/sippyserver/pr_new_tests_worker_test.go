@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/prow"
@@ -79,8 +77,24 @@ func TestAssessJobRisks(t *testing.T) {
 	if !assert.True(t, numRuns > 1, "Expected at least 2 job runs") {
 		return
 	}
-	// skippingNewTestFilter alternately filters out new tests found to simulate missing tests
-	ntw.newTestFilter = &skippingNewTestFilter{newTestFilter: ntw.newTestFilter, sawPrevious: map[string]bool{}}
+	// Wrap fetchJobRun to alternately drop new tests, simulating a test missing in some runs
+	realFetch := ntw.fetchJobRun
+	sawPrevious := map[string]bool{}
+	ntw.fetchJobRun = func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+		jr, err := realFetch(dbc, jobRunID, onlyNewTests, preloads, logger)
+		if err != nil || jr == nil {
+			return jr, err
+		}
+		var filtered []models.ProwJobRunTest
+		for _, test := range jr.Tests {
+			sawPrevious[test.Test.Name] = !sawPrevious[test.Test.Name]
+			if sawPrevious[test.Test.Name] {
+				filtered = append(filtered, test)
+			}
+		}
+		jr.Tests = filtered
+		return jr, nil
+	}
 	jobRisks = ntw.assessJobRisks(logger, jobRuns)
 	failed, ok = jobRisks["a failed test that has never been seen before"]
 	if assert.True(t, ok, "Should have found failed test") {
@@ -115,8 +129,19 @@ func TestAssessCrossJobRisks(t *testing.T) {
 		return
 	}
 
-	// run just the new test analysis, but only find new tests in one job
-	ntw.newTestFilter = &oneJobNewTestFilter{newTestFilter: ntw.newTestFilter, jobName: "pull-ci-openshift-origin-master-e2e-aws-ovn-single-node"}
+	// Wrap fetchJobRun to only return new tests for one specific job
+	targetJob := "pull-ci-openshift-origin-master-e2e-aws-ovn-single-node"
+	realFetch := ntw.fetchJobRun
+	ntw.fetchJobRun = func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+		jr, err := realFetch(dbc, jobRunID, onlyNewTests, preloads, logger)
+		if err != nil || jr == nil {
+			return jr, err
+		}
+		if jr.ProwJob.Name != targetJob {
+			jr.Tests = nil
+		}
+		return jr, nil
+	}
 	for idx, jobInfo := range completedJobs {
 		completedJobs[idx].prowJobRuns = aw.buildProwJobRuns(logger, jobInfo.bucketPrefix)
 		completedJobs[idx].prShaSum = "8849ed78d4c51e2add729a68a2cbf8551c6d60c9" // so we can check whether runs are against the expected PR commit
@@ -224,14 +249,13 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		fetchJobRun   func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
-		testFilter    NewTestFilter
+		fetchJobRun   func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
 		expectedTests []NewTest
 		expectedError error
 	}{
 		{
 			name: "successful fetch",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				pjr := models.ProwJobRun{
 					ProwJobRelease: "4.12",
 					Tests: []models.ProwJobRunTest{
@@ -243,31 +267,16 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 				pjr.ID = 12345 // Gorm model ID for some reason can't be put in the struct literal
 				return &pjr, nil
 			},
-			testFilter: &oneNewTestFilter{}, // filters to only "test2"
 			expectedTests: []NewTest{
+				{JobName: "test-jobRun", JobRunID: 12345, TestName: "test1", Success: true, Failure: false},
 				{JobName: "test-jobRun", JobRunID: 12345, TestName: "test2", Success: false, Failure: true},
+				{JobName: "test-jobRun", JobRunID: 12345, TestName: "test3", Success: true, Failure: true},
 			},
 			expectedError: nil,
 		},
 		{
-			name: "error on filtering",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
-				pjr := models.ProwJobRun{
-					ProwJobRelease: "4.12",
-					Tests: []models.ProwJobRunTest{
-						{ProwJobID: 1, ProwJobRunRelease: "4.12", Test: models.Test{Name: "test1"}, Status: int(v1.TestStatusSuccess)},
-					},
-				}
-				pjr.ID = 12345 // Gorm model ID for some reason can't be put in the struct literal
-				return &pjr, nil
-			},
-			testFilter:    &errorNewTestFilter{}, // mocks a failure in the filter
-			expectedTests: nil,
-			expectedError: errors.New("filter error"),
-		},
-		{
 			name: "jobRun run not found",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				return nil, gorm.ErrRecordNotFound
 			},
 			expectedTests: nil,
@@ -275,7 +284,7 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 		},
 		{
 			name: "error fetching jobRun run",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				return nil, errors.New("fetch error")
 			},
 			expectedTests: nil,
@@ -285,58 +294,15 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ntw := &NewTestsWorker{
-				dbc:           nil,
-				newTestFilter: tt.testFilter,
-				fetchJobRun:   tt.fetchJobRun,
-				jobRunFilter:  &jobRunUnfiltered{},
+				dbc:          nil,
+				fetchJobRun:  tt.fetchJobRun,
+				jobRunFilter: &jobRunUnfiltered{},
 			}
 			newTests, err := ntw.getNewTestsForJobRun(logger, jobRun)
 			assert.Equal(t, tt.expectedTests, newTests)
 			assert.Equal(t, tt.expectedError, err)
 		})
 	}
-}
-
-type oneNewTestFilter struct{}
-type errorNewTestFilter struct{}
-type skippingNewTestFilter struct { // alternate skipping or including actual new tests
-	newTestFilter NewTestFilter
-	sawPrevious   map[string]bool
-}
-type oneJobNewTestFilter struct { // only return new tests against one job
-	newTestFilter NewTestFilter
-	jobName       string
-}
-
-func (m *oneNewTestFilter) IsNewTest(_ *logrus.Entry, test models.ProwJobRunTest) (bool, error) {
-	if test.Test.Name == "test2" {
-		return true, nil
-	}
-	return false, nil
-}
-func (m *errorNewTestFilter) IsNewTest(_ *logrus.Entry, _ models.ProwJobRunTest) (bool, error) {
-	return false, errors.New("filter error")
-}
-
-func (ntf *skippingNewTestFilter) IsNewTest(logger *logrus.Entry, test models.ProwJobRunTest) (bool, error) {
-	if isNew, err := ntf.newTestFilter.IsNewTest(logger, test); err != nil {
-		return false, err
-	} else if isNew {
-		ntf.sawPrevious[test.Test.Name] = !ntf.sawPrevious[test.Test.Name] // alternate skipping or including actual new tests
-		if ntf.sawPrevious[test.Test.Name] {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-func (ntf *oneJobNewTestFilter) IsNewTest(logger *logrus.Entry, test models.ProwJobRunTest) (bool, error) {
-
-	if isNew, err := ntf.newTestFilter.IsNewTest(logger, test); err != nil {
-		return false, err
-	} else if isNew && ntf.jobName == test.ProwJobRun.ProwJob.Name {
-		return true, nil
-	}
-	return false, nil
 }
 
 type jobRunUnfiltered struct{}
@@ -350,7 +316,7 @@ func (n *jobRunUnfiltered) JobFailedEarly(_ *logrus.Entry, _ *models.ProwJobRun)
 }
 
 func TestFunc_getNewTestsForJobRun(t *testing.T) {
-	ntf, ntw := internalNewTestsWorker(util.GetDbHandle(t))
+	ntw := StandardNewTestsWorker(util.GetDbHandle(t))
 
 	// try with a known job run
 	jobRun := &prow.ProwJob{
@@ -364,40 +330,4 @@ func TestFunc_getNewTestsForJobRun(t *testing.T) {
 	fmt.Printf("new tests: %v\n", newTests)
 	assert.NoError(t, err, "Failed to get new tests")
 	assert.Equal(t, 2, len(newTests), "Unexpected number of new tests")
-	assert.True(t, ntf.notNewTests.Has(522), "Test 522 should be considered not new")
-	assert.False(t, ntf.notNewTests.Has(160471), "Test 160471 should be left out to be considered new")
-	assert.False(t, ntf.notNewTests.Has(160472), "Test 160472 should be left out to be considered new")
-}
-
-func TestIsNewTest(t *testing.T) {
-	dbc := util.GetDbHandle(t)
-
-	ntf := &pgNewTestFilter{
-		dbc:         dbc,
-		notNewTests: sets.Set[uint]{},
-		nnTmutex:    &sync.Mutex{},
-	}
-	logrus.SetLevel(logrus.DebugLevel)
-	logger := logrus.WithContext(context.TODO())
-
-	test := models.Test{Name: "[sig-sippy] openshift-tests should work"}
-	test.ID = 522
-	testRun := models.ProwJobRunTest{
-		Test:      test,
-		TestID:    test.ID,
-		CreatedAt: time.Now(),
-	}
-	isNew, err := ntf.IsNewTest(logger, testRun)
-
-	assert.Nil(t, err, "Failed to check if test is new")
-	assert.Equal(t, false, isNew, "Test should not be new")
-
-	test.Name = "a failed test that has never been seen before"
-	test.ID = 160471
-	testRun.Test = test
-	testRun.TestID = test.ID
-	isNew, err = ntf.IsNewTest(logger, testRun)
-
-	assert.Nil(t, err, "Failed to check if test is new")
-	assert.Equal(t, true, isNew, "Test should be new")
 }
