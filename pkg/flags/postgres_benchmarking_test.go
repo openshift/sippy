@@ -415,20 +415,23 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "JobRunTestCount",
 			fn: func(dbc *db.DB) error {
-				var jobRunID int64
+				var result struct {
+					ID        int64
+					Timestamp time.Time
+				}
 				res := dbc.DB.Table("prow_job_runs").
 					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
 					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
 					Order("prow_job_runs.timestamp DESC").
 					Limit(1).
-					Select("prow_job_runs.id").
-					Scan(&jobRunID)
+					Select("prow_job_runs.id, prow_job_runs.timestamp").
+					Scan(&result)
 				if res.Error != nil {
 					return res.Error
 				}
-				count, err := query.JobRunTestCount(dbc, jobRunID, benchmarkRelease)
+				count, err := query.JobRunTestCount(dbc, result.ID, benchmarkRelease, result.Timestamp)
 				if err == nil {
-					log.Printf("JobRunTestCount for run %d: %d tests", jobRunID, count)
+					log.Printf("JobRunTestCount for run %d: %d tests", result.ID, count)
 				}
 				return err
 			},

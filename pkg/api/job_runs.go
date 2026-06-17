@@ -203,7 +203,7 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []strin
 		return nil, res.Error
 	}
 
-	jobRunTestCount, err := query.JobRunTestCount(dbc, jobRunID, jobRun.ProwJobRelease)
+	jobRunTestCount, err := query.JobRunTestCount(dbc, jobRunID, jobRun.ProwJobRelease, jobRun.Timestamp)
 	if err != nil { // should be unusual
 		logger.WithError(err).Errorf("Error getting test count for job run %d", jobRunID)
 		jobRunTestCount = -1
