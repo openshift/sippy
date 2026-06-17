@@ -396,8 +396,9 @@ func BuildComponentReportQuery(
 	joinVariants := ""
 	groupByVariants := ""
 	for _, v := range sortedKeys(allJobVariants.Variants) {
+		cleanV := param.Cleanse(v)
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON junit_data.variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-			client.Dataset, v, v, v, v)
+			client.Dataset, cleanV, cleanV, cleanV, cleanV)
 	}
 	for _, v := range reqOptions.VariantOption.DBGroupBy.List() {
 		v = param.Cleanse(v)

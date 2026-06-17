@@ -209,7 +209,7 @@ func (p *BigQueryProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.
 		cleanV := param.Cleanse(v)
 		joinVariants += fmt.Sprintf(
 			"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-			p.client.Dataset, cleanV, cleanV, cleanV, v)
+			p.client.Dataset, cleanV, cleanV, cleanV, cleanV)
 	}
 
 	variantFilters := ""
@@ -402,7 +402,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		cleanV := param.Cleanse(v)
 		joinVariants += fmt.Sprintf(
 			"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-			p.client.Dataset, cleanV, cleanV, cleanV, v)
+			p.client.Dataset, cleanV, cleanV, cleanV, cleanV)
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", cleanV, cleanV)
 		groupByParts = append(groupByParts, fmt.Sprintf("jv_%s.variant_value", cleanV))
 	}
@@ -440,7 +440,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		if !joinedVariants.Has(group) {
 			joinVariants += fmt.Sprintf(
 				"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, group)
+				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, cleanGroup)
 			joinedVariants.Insert(group)
 		}
 		paramName := fmt.Sprintf("variantGroup_%s", cleanGroup)
@@ -457,7 +457,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRuns(ctx context.Context, reqOptions
 		if !joinedVariants.Has(group) {
 			joinVariants += fmt.Sprintf(
 				"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, group)
+				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, cleanGroup)
 			joinedVariants.Insert(group)
 		}
 		paramName := fmt.Sprintf("spotCheck_%s", cleanGroup)
@@ -582,7 +582,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 		if !joinedVariants.Has(k) {
 			joinVariants += fmt.Sprintf(
 				"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-				p.client.Dataset, cleanK, cleanK, cleanK, k)
+				p.client.Dataset, cleanK, cleanK, cleanK, cleanK)
 			joinedVariants.Insert(k)
 		}
 		paramName := fmt.Sprintf("variant_%s", cleanK)
@@ -599,7 +599,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 		if !joinedVariants.Has(group) {
 			joinVariants += fmt.Sprintf(
 				"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, group)
+				p.client.Dataset, cleanGroup, cleanGroup, cleanGroup, cleanGroup)
 			joinedVariants.Insert(group)
 		}
 		paramName := fmt.Sprintf("spotCheck_%s", cleanGroup)
