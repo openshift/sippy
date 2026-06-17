@@ -2,9 +2,11 @@ package query
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -54,7 +56,9 @@ func ProwJobSimilarName(dbc *db.DB, rootName, release string) ([]models.ProwJob,
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	q.Scan(&jobs)
+	if err := q.Scan(&jobs).Error; err != nil {
+		return nil, err
+	}
 
 	return jobs, nil
 }
@@ -66,7 +70,9 @@ func ProwJobRunIDs(dbc *db.DB, prowJobID uint) ([]uint, error) {
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	q.Scan(&jobIDs)
+	if err := q.Scan(&jobIDs).Error; err != nil {
+		return nil, err
+	}
 
 	return jobIDs, nil
 }
@@ -86,7 +92,12 @@ func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (in
 		return 0, q.Error
 	}
 
-	q.First(&historicalProwJobRunTestCount)
+	if err := q.First(&historicalProwJobRunTestCount).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
 
 	return int(historicalProwJobRunTestCount), nil
 }
@@ -105,7 +116,9 @@ func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, st
 		return jobReports, err
 	}
 
-	q.Scan(&jobReports)
+	if err := q.Scan(&jobReports).Error; err != nil {
+		return nil, err
+	}
 	elapsed := time.Since(now)
 	log.Infof("JobReports completed in %s with %d results from db", elapsed, len(jobReports))
 
@@ -149,7 +162,9 @@ ORDER BY current_pass_percentage ASC;
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	q.Scan(&variantResults)
+	if err := q.Scan(&variantResults).Error; err != nil {
+		return nil, err
+	}
 	return variantResults, nil
 }
 
@@ -162,7 +177,9 @@ func ListFilteredJobIDs(dbc *db.DB, release string, fil *filter.Filter, start, b
 	}
 
 	jobs := make([]int, 0)
-	q.Pluck("id", &jobs)
+	if err := q.Pluck("id", &jobs).Error; err != nil {
+		return nil, err
+	}
 	log.WithField("jobIDs", jobs).Debug("found job IDs after filtering")
 	return jobs, nil
 }

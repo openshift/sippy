@@ -66,7 +66,9 @@ func PrintJobAnalysisJSONFromDB(
 		Where("prow_job_runs.timestamp BETWEEN ? AND ?", start, end).
 		Group("period")
 
-	sumResults.Scan(&sums)
+	if err := sumResults.Scan(&sums).Error; err != nil {
+		return result, err
+	}
 
 	// collect the results
 	results := apitype.JobAnalysisResult{
@@ -114,8 +116,10 @@ func PrintJobAnalysisJSONFromDB(
 		jr = dbc.DB.Table("prow_job_failed_tests_by_hour_matview")
 	}
 
-	jr.Select("period, test_name, count").
-		Where("prow_job_id IN ?", jobs).Scan(&tr)
+	if err := jr.Select("period, test_name, count").
+		Where("prow_job_id IN ?", jobs).Scan(&tr).Error; err != nil {
+		return results, err
+	}
 
 	for _, t := range tr {
 		dateKey := t.Period.UTC().Format(formatter)

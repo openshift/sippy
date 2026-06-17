@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -120,7 +121,9 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 
 	// Get the row count before pagination
 	var rowCount int64
-	q.Count(&rowCount)
+	if err := q.Count(&rowCount).Error; err != nil {
+		return nil, err
+	}
 
 	// Paginate the results:
 	if pagination == nil {
@@ -456,7 +459,12 @@ func jobNamesTestResultFunc(dbc *db.DB, release string) testResultsByJobNameFunc
 		}
 
 		testReport := apitype.Test{}
-		q.First(&testReport)
+		if err := q.First(&testReport).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, nil
+			}
+			return nil, err
+		}
 		testReport.Name = testName
 		return &testReport, nil
 	}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
@@ -47,7 +48,10 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 	}
 
 	prs := make([]models.ReleasePullRequest, 0)
-	q.Find(&prs)
+	if err := q.Find(&prs).Error; err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		return
+	}
 	RespondWithJSON(http.StatusOK, w, prs)
 }
 
@@ -132,7 +136,9 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 	if err != nil {
 		return nil, err
 	}
-	q.Find(&failedTests)
+	if err := q.Find(&failedTests).Error; err != nil {
+		return nil, err
+	}
 	logger.WithField("failedTestCount", len(failedTests)).Debug("found failed tests")
 
 	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.
@@ -208,11 +214,13 @@ func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogge
 	}
 
 	payload := &models.ReleaseTag{}
-	dbc.DB.Where("release_tag = ?", payloadTag).First(payload)
-	logger.Infof("got payload: %+v", payload)
-	if payload.ID == 0 {
-		return result.TestFailures, fmt.Errorf("no payload release tag found for: %s", payloadTag)
+	if err := dbc.DB.Where("release_tag = ?", payloadTag).First(payload).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return result.TestFailures, fmt.Errorf("no payload release tag found for: %s", payloadTag)
+		}
+		return nil, fmt.Errorf("error looking up payload release tag %s: %w", payloadTag, err)
 	}
+	logger.Infof("got payload: %+v", payload)
 
 	result.PayloadsAnalyzed = 1
 
@@ -304,7 +312,9 @@ func GetPayloadEvents(dbClient *db.DB, release string, filterOpts *filter.Filter
 		q = q.Where("release_time <= ?", end)
 	}
 
-	q.Scan(&releases)
+	if err := q.Scan(&releases).Error; err != nil {
+		return nil, err
+	}
 
 	return releases, nil
 }
@@ -337,9 +347,9 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 
 	// This join looks up the names of failed jobs, if any, and returns them as
 	// a JSON aggregation (i.e. failedJobNames will contain a JSON array).
-	q.Table("release_tags").
+	result := q.Table("release_tags").
 		Select(`release_tags.*, release_job_runs.failed_job_names`).
-		Joins(`LEFT OUTER JOIN 
+		Joins(`LEFT OUTER JOIN
    			(
 				SELECT
 					release_tags.release_tag, array_agg(release_job_runs.job_name ORDER BY release_job_runs.job_name asc) AS failed_job_names
@@ -353,6 +363,10 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 					release_tags.release_tag
 			) release_job_runs using (release_tag)`).
 		Scan(&releases)
+	if result.Error != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": result.Error.Error()})
+		return
+	}
 
 	RespondWithJSON(http.StatusOK, w, releases)
 }
@@ -373,30 +387,30 @@ func ReleaseHealthReports(dbClient *db.DB, release string, reportEnd time.Time) 
 	for _, archStream := range results {
 		phase, count, err := query.GetLastPayloadStatus(dbClient.DB, archStream.Architecture, archStream.Stream, release, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding last %s payload status for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding last %s payload status for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
 		totalPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 		totalAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
 		weekAgo := reportEnd.Add(-7 * 24 * time.Hour)
 		currentWeekPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 		currentWeekAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 

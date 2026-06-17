@@ -576,7 +576,9 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 			Name: "Overall",
 		}
 		// TODO: column open_bugs does not exist here?
-		summaryResult.Scan(overallTest)
+		if err := summaryResult.Scan(overallTest).Error; err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	elapsed := time.Since(now)
