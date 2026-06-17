@@ -585,7 +585,7 @@ async def _wait_for_ready(url: str, timeout: int, proc: subprocess.Popen) -> str
 def _pid_alive(pid: int) -> bool:
     """Return True if *pid* is still running."""
     try:
-        os.kill(pid, 0)
+        os.kill(pid, 0)  # signal 0: no signal sent, just checks process exists
         return True
     except OSError:
         return False
