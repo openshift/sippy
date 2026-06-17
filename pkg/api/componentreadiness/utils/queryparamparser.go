@@ -55,24 +55,6 @@ func ParseComponentReportRequest(
 			viewWarnings := api.ValidateVariants(allJobVariants, opts.VariantOption.IncludeVariants, " from view")
 			warnings = append(warnings, viewWarnings...)
 		}
-
-		for name, sample := range view.SpotCheckJobSamples {
-			spotCheckRelative := reqopts.RelativeRelease{
-				Release:       reqopts.Release{Name: view.SampleRelease.Name},
-				RelativeStart: sample.RelativeStart,
-				RelativeEnd:   sample.RelativeEnd,
-			}
-			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check_"+name, spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
-			if resolveErr != nil {
-				err = resolveErr
-				return
-			}
-			opts.SpotCheckJobSamples = append(opts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
-				Name:            name,
-				Release:         resolved,
-				IncludeVariants: sample.IncludeVariants,
-			})
-		}
 	}
 
 	// Parse URL parameters - these override view defaults if view was provided
@@ -187,6 +169,28 @@ func ParseComponentReportRequest(
 		opts.SampleRelease, err = parseDateRange(releases, req, opts.SampleRelease, "sampleStartTime", "sampleEndTime", crTimeRoundingFactor, crTimeRoundingOffset)
 		if err != nil {
 			return
+		}
+	}
+
+	// Resolve spot-check samples after all URL overrides (sampleRelease, date ranges)
+	// so they use the final release name and time context.
+	if view != nil {
+		for name, sample := range view.SpotCheckJobSamples {
+			spotCheckRelative := reqopts.RelativeRelease{
+				Release:       reqopts.Release{Name: opts.SampleRelease.Name},
+				RelativeStart: sample.RelativeStart,
+				RelativeEnd:   sample.RelativeEnd,
+			}
+			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check_"+name, spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
+			if resolveErr != nil {
+				err = resolveErr
+				return
+			}
+			opts.SpotCheckJobSamples = append(opts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
+				Name:            name,
+				Release:         resolved,
+				IncludeVariants: sample.IncludeVariants,
+			})
 		}
 	}
 
