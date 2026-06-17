@@ -41,22 +41,6 @@ var PostgresMatViews = []PostgresView{
 		IndexColumns: []string{"id"},
 	},
 	{
-		Name:         "prow_job_failed_tests_by_day_matview",
-		Definition:   prowJobFailedTestsMatView,
-		IndexColumns: []string{"period", "prow_job_id", "test_name"},
-		ReplaceStrings: map[string]string{
-			"|||BY|||": "day",
-		},
-	},
-	{
-		Name:         "prow_job_failed_tests_by_hour_matview",
-		Definition:   prowJobFailedTestsMatView,
-		IndexColumns: []string{"period", "prow_job_id", "test_name"},
-		ReplaceStrings: map[string]string{
-			"|||BY|||": "hour",
-		},
-	},
-	{
 		Name:         "prow_test_report_7d_collapsed_matview",
 		Definition:   testReportCollapsedMatView,
 		IndexColumns: []string{"release", "id", "suite_name", "jira_component", "jira_component_id"},
@@ -419,17 +403,6 @@ WHERE
     prow_job_run_tests.prow_job_run_timestamp > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY
     tests.name, tests.id, date(prow_job_run_tests.prow_job_run_timestamp), prow_job_run_tests.prow_job_run_release, prow_jobs.name
-`
-
-const prowJobFailedTestsMatView = `
-SELECT date_trunc('|||BY|||'::text, pjrt.prow_job_run_timestamp) AS period,
-   pjrt.prow_job_id,
-   tests.name AS test_name,
-   count(tests.name) AS count
-FROM prow_job_run_tests pjrt
-   JOIN tests tests ON pjrt.test_id = tests.id
-WHERE pjrt.status = 12
-GROUP BY tests.name, (date_trunc('|||BY|||'::text, pjrt.prow_job_run_timestamp)), pjrt.prow_job_id
 `
 
 // TODO: remove distinct once bug fixed re dupes in release_job_runs
