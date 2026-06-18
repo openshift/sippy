@@ -36,9 +36,10 @@ var PostgresMatViews = []PostgresView{
 		},
 	},
 	{
-		Name:         "prow_job_runs_report_matview",
-		Definition:   jobRunsReportMatView,
-		IndexColumns: []string{"id"},
+		Name:              "prow_job_runs_report_matview",
+		Definition:        jobRunsReportMatView,
+		IndexColumns:      []string{"id"},
+		AdditionalIndexes: []string{"release, timestamp DESC"},
 	},
 	{
 		Name:         "prow_job_failed_tests_by_day_matview",
@@ -103,6 +104,10 @@ type PostgresView struct {
 	// replaced if changes are made to these values. IndexColumns are required as we need them defined to be able to
 	// refresh materialized views concurrently. (avoiding locking reads for several minutes while we update)
 	IndexColumns []string
+	// AdditionalIndexes are non-unique indexes to create on the materialized view for query performance.
+	// Each entry is a raw column expression (e.g. "release, timestamp DESC") and will be named
+	// idx_[Name]_[sequence].
+	AdditionalIndexes []string
 	// RefreshPhase controls the order in which matviews are refreshed. All matviews
 	// in phase 0 refresh first (concurrently), then all in phase 1, and so on.
 	// Use this when a matview reads from another matview and needs it to be up-to-date.
@@ -163,6 +168,15 @@ func syncPostgresMaterializedViews(db *gorm.DB, reportEnd *time.Time) error {
 		dropSQL = fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName)
 		if _, err := syncSchema(db, hashTypeMatViewIndex, indexName, index, dropSQL, matViewUpdated); err != nil {
 			return err
+		}
+
+		for i, cols := range pmv.AdditionalIndexes {
+			idxName := fmt.Sprintf("idx_%s_%d", pmv.Name, i)
+			idxSQL := fmt.Sprintf("CREATE INDEX %s ON %s(%s)", idxName, pmv.Name, cols)
+			dropSQL = fmt.Sprintf("DROP INDEX IF EXISTS %s", idxName)
+			if _, err := syncSchema(db, hashTypeMatViewIndex, idxName, idxSQL, dropSQL, matViewUpdated); err != nil {
+				return err
+			}
 		}
 	}
 
