@@ -3,7 +3,7 @@ export PATH := ${HOME}/go/bin:/go/bin:${PATH}
 DOCKER := $(or $(DOCKER),podman)
 NO_DEP_CHECK_TARGETS := devcontainer-up devcontainer-claude
 ifeq ($(filter $(NO_DEP_CHECK_TARGETS),$(MAKECMDGOALS)),)
-DEPS = npm go
+DEPS = npm go python3
 CHECK := $(foreach dep,$(DEPS),\
         $(if $(shell which $(dep)),"$(dep) found",$(error "Missing $(dep) in PATH")))
 endif
