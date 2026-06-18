@@ -109,6 +109,7 @@ func PrintJobAnalysisJSONFromDB(
 	}
 	tr := make([]testResult, 0)
 
+	// These matviews only contain data for the last ~14 days.
 	jr := dbc.DB.Table("prow_job_failed_tests_by_day_matview")
 	if period == PeriodHour {
 		jr = dbc.DB.Table("prow_job_failed_tests_by_hour_matview")
