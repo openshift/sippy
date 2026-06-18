@@ -169,7 +169,7 @@ WITH test_results AS (
 	FROM prow_job_run_tests
 		JOIN tests ON tests.id = prow_job_run_tests.test_id
 	WHERE prow_job_run_tests.status IN (12, 13)
-		AND prow_job_run_tests.prow_job_run_timestamp >= CURRENT_TIMESTAMP - interval '90 days'
+		AND prow_job_run_tests.prow_job_run_timestamp >= |||TIMENOW||| - interval '90 days'
 	GROUP BY prow_job_run_tests.prow_job_run_id, prow_job_run_tests.prow_job_run_release
 ),
 pull_requests AS (
@@ -187,7 +187,7 @@ pull_requests AS (
                 prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id
         INNER JOIN
                 prow_job_runs ON prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
-        WHERE prow_job_runs."timestamp" >= CURRENT_TIMESTAMP - interval '90 days'
+        WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
         GROUP BY prow_job_runs.id, prow_pull_requests.link, prow_pull_requests.sha, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.author
 )
 SELECT prow_job_runs.id,
@@ -220,7 +220,7 @@ FROM prow_job_runs
        AND test_results.prow_job_run_release = prow_job_runs.prow_job_release
    LEFT JOIN pull_requests ON pull_requests.id = prow_job_runs.id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
-WHERE prow_job_runs."timestamp" >= CURRENT_TIMESTAMP - interval '90 days'
+WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
 `
 const testReportMatView = `
 SELECT base.*,
