@@ -103,9 +103,9 @@ func (r *JobOverallResult) String() string {
 	}
 }
 
-// JobRunResult represents a single invocation of a prow job and it's status, as well as any failed tests.
+// JobRunResult represents a single invocation of a prow job and its status, as well as any failed tests.
 type JobRunResult struct {
-	ProwID          uint     `json:"prowID"`
+	ProwID          string   `json:"prowID"`
 	Job             string   `json:"job"`
 	URL             string   `json:"url"`
 	TestFailures    int      `json:"testFailures"`
