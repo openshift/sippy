@@ -47,7 +47,6 @@ component_readiness:
       - blocking
       - informing
       - standard
-      - spotcheck-30d
       LayeredProduct:
       - none
       - virt
