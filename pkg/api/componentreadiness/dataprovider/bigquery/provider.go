@@ -662,7 +662,7 @@ func (p *BigQueryProvider) QuerySpotCheckJobRunDetails(ctx context.Context, reqO
 			AND LOWER(%s) = LOWER(@SpotCheckComponent)
 			AND LOWER(%s) = LOWER(@SpotCheckCapability)
 			%s
-		ORDER BY jobs.prowjob_start DESC
+		ORDER BY jobs.prowjob_start ASC
 	`, p.client.Dataset, joinVariants,
 		spotCheckComponentFallback, spotCheckCapabilityFallback,
 		variantFilters)
