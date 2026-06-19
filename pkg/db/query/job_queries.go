@@ -28,12 +28,13 @@ func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 	return prowJobCache, nil
 }
 
-func JobRunTestCount(dbc *db.DB, jobRunID int64, release string) (int, error) {
+func JobRunTestCount(dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {
 	var prowJobRunTestCount int64
 
 	res := dbc.DB.Model(&models.ProwJobRunTest{}).
 		Where("prow_job_run_id = ?", jobRunID).
 		Where("prow_job_run_release = ?", release).
+		Where("prow_job_run_timestamp = ?", timestamp).
 		Count(&prowJobRunTestCount)
 	if res.Error != nil {
 		return -1, res.Error

@@ -175,8 +175,9 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 }
 
 // FetchJobRun returns a single job run loaded from postgres and populated with the ProwJob and test results.
-// If unknownTests is true, all tests not registered in test_ownerships are loaded; otherwise any failed tests are loaded.
-func FetchJobRun(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *log.Entry) (*models.ProwJobRun, error) {
+// If onlyNewTests is true, only new tests are loaded: those not registered in test_ownerships and not
+// previously seen in a merged pull request. Otherwise any failed tests are loaded.
+func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *log.Entry) (*models.ProwJobRun, error) {
 	jobRun := &models.ProwJobRun{}
 
 	// Load the ProwJobRun, ProwJob, and (failed|unknown) tests:
@@ -184,26 +185,52 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []strin
 	q := dbc.DB.Joins("ProwJob").
 		Preload("PullRequests")
 
-	if len(preloads) > 0 {
-		for _, preload := range preloads {
-			q = q.Preload(preload)
-		}
+	// Tests are loaded separately with partition pruning keys, so
+	// split any Tests-related preloads from the main query.
+	otherPreloads, testPreloads := splitTestPreloads(preloads)
+	for _, preload := range otherPreloads {
+		q = q.Preload(preload)
 	}
 
-	if unknownTests {
-		// this doesn't establish that the tests are new, but it does filter out any that sippy registers
-		q = q.Preload("Tests", "test_id not in (select test_id from test_ownerships)")
-	} else { // load only failures
-		q = q.Preload("Tests", "status = ?", sippyprocessingv1.TestStatusFailure)
-	}
-	res := q.Preload("Tests.Test").
-		Preload("Tests.Suite").
-		First(jobRun, jobRunID)
+	// Load the job run first, then query tests separately with partition
+	// pruning keys for performance on the heavily partitioned
+	// prow_job_run_tests table (~3,500 partitions).
+	res := q.First(jobRun, jobRunID)
 	if res.Error != nil {
 		return nil, res.Error
 	}
 
-	jobRunTestCount, err := query.JobRunTestCount(dbc, jobRunID, jobRun.ProwJobRelease)
+	var tests []models.ProwJobRunTest
+	testQuery := dbc.DB.
+		Where("prow_job_run_id = ? AND prow_job_run_release = ? AND prow_job_run_timestamp = ?",
+			jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp)
+
+	if onlyNewTests {
+		// A test is "new" if it is not registered in test_ownerships and has
+		// not appeared in any job run associated with a merged pull request.
+		testQuery = testQuery.
+			Where("NOT EXISTS (SELECT 1 FROM test_ownerships tow WHERE tow.test_id = prow_job_run_tests.test_id)").
+			Where(`NOT EXISTS (
+				SELECT 1 FROM prow_job_run_tests t2
+				INNER JOIN prow_job_run_prow_pull_requests prmap ON prmap.prow_job_run_id = t2.prow_job_run_id
+				INNER JOIN prow_pull_requests prs ON prs.id = prmap.prow_pull_request_id
+				WHERE t2.test_id = prow_job_run_tests.test_id
+				  AND t2.prow_job_run_release = prow_job_run_tests.prow_job_run_release
+				  AND prs.merged_at IS NOT NULL)`)
+	} else {
+		testQuery = testQuery.Where("status = ?", sippyprocessingv1.TestStatusFailure)
+	}
+
+	testQuery = testQuery.Preload("Test").Preload("Suite")
+	for _, preload := range testPreloads {
+		testQuery = testQuery.Preload(preload)
+	}
+	if err := testQuery.Find(&tests).Error; err != nil {
+		return nil, err
+	}
+	jobRun.Tests = tests
+
+	jobRunTestCount, err := query.JobRunTestCount(dbc, jobRunID, jobRun.ProwJobRelease, jobRun.Timestamp)
 	if err != nil { // should be unusual
 		logger.WithError(err).Errorf("Error getting test count for job run %d", jobRunID)
 		jobRunTestCount = -1
@@ -211,6 +238,20 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []strin
 	jobRun.TestCount = jobRunTestCount
 
 	return jobRun, nil
+}
+
+// splitTestPreloads separates Tests-related preloads (e.g. "Tests.ProwJobRunTestOutput")
+// from other preloads. Tests-related preloads are returned with the "Tests." prefix stripped
+// so they can be applied to the manual test query.
+func splitTestPreloads(preloads []string) (other, testRelated []string) {
+	for _, p := range preloads {
+		if strings.HasPrefix(p, "Tests.") {
+			testRelated = append(testRelated, strings.TrimPrefix(p, "Tests."))
+		} else {
+			other = append(other, p)
+		}
+	}
+	return
 }
 
 // findReleaseMatchJobNames looks for the first matches with a common root job name specific to the

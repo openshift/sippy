@@ -8,6 +8,7 @@ import (
 	"net/http"
 	gosort "sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -30,6 +31,8 @@ import (
 const (
 	testReport7dMatView          = "prow_test_report_7d_matview"
 	testReport2dMatView          = "prow_test_report_2d_matview"
+	testReport7dCollapsedMatView = "prow_test_report_7d_collapsed_matview"
+	testReport2dCollapsedMatView = "prow_test_report_2d_collapsed_matview"
 	payloadFailedTests14dMatView = "payload_test_failures_14d_matview"
 )
 
@@ -444,6 +447,40 @@ func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, 
 	return result, nil
 }
 
+// variantFiltersCoveredByCollapsedMatview returns true if all variant filter items
+// are "NOT has entry" exclusions for values that are already pre-excluded in the
+// collapsed matview. When true, these filters can be dropped and the collapsed
+// matview used directly.
+// variantFiltersCoveredByCollapsedMatview returns true if the variant filters
+// exactly match the exclusions baked into the collapsed matview. Every filter
+// item must be a "NOT has entry" for one of the pre-excluded values, and every
+// pre-excluded value must have a corresponding filter item.
+func variantFiltersCoveredByCollapsedMatview(variantFilter *filter.Filter) bool {
+	if variantFilter == nil || len(variantFilter.Items) == 0 {
+		return false
+	}
+
+	matched := make(map[string]bool)
+	for _, item := range variantFilter.Items {
+		if !item.Not || item.Operator != filter.OperatorHasEntry {
+			return false
+		}
+		found := false
+		for _, excluded := range db.CollapsedVariantExclusions {
+			if item.Value == excluded {
+				matched[excluded] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return len(matched) == len(db.CollapsedVariantExclusions)
+}
+
 func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, dbc *db.DB, matview string) (result testResults, errs []error) {
 	now := time.Now()
 
@@ -457,20 +494,39 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		nameFilter, variantFilter = rawFilter.Split([]string{"name"})
 	}
 
+	// When collapsing and the variant filters are only the default exclusions (never-stable,
+	// aggregated), use the pre-filtered collapsed matview which has these exclusions baked in
+	// and the GROUP BY pre-computed. This reduces query time from ~5s to ~430ms.
+	useCollapsedMatview := spec.Collapse && variantFiltersCoveredByCollapsedMatview(variantFilter)
+	if useCollapsedMatview {
+		collapsedMatview := testReport7dCollapsedMatView
+		if spec.Period == "twoDay" {
+			collapsedMatview = testReport2dCollapsedMatView
+		}
+		matview = collapsedMatview
+	}
+
 	rawQuery := dbc.DB.WithContext(ctx).
 		Table(matview).
 		Where("release = ?", spec.Release)
 
 	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
-	variantSelect := ""
+	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id"}
+	var variantColumns []string
 	if spec.Collapse {
-		rawQuery = rawQuery.Select(`suite_name,name,jira_component,jira_component_id,` + query.QueryTestSummer).Group("suite_name,name,jira_component,jira_component_id")
+		if useCollapsedMatview {
+			rawQuery = rawQuery.Select(strings.Join(append(testMetadataColumns, query.QueryTestFields), ","))
+		} else {
+			rawQuery = rawQuery.Select(strings.Join(append(testMetadataColumns, query.QueryTestSummer), ",")).Group(strings.Join(testMetadataColumns, ","))
+		}
 	} else {
 		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, spec.Release, matview)
-		variantSelect = "suite_name, variants," +
-			"delta_from_working_average, working_average, working_standard_deviation, " +
-			"delta_from_passing_average, passing_average, passing_standard_deviation, " +
-			"delta_from_flake_average, flake_average, flake_standard_deviation, "
+		variantColumns = []string{
+			"suite_name", "variants",
+			"delta_from_working_average", "working_average", "working_standard_deviation",
+			"delta_from_passing_average", "passing_average", "passing_standard_deviation",
+			"delta_from_flake_average", "flake_average", "flake_standard_deviation",
+		}
 	}
 
 	// Apply name and variant filters via dimension table lookups rather than directly on
@@ -480,14 +536,20 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		testSubquery := nameFilter.ToSQL(dbc.DB.Model(&models.Test{}).Select("id"), apitype.Test{})
 		rawQuery = rawQuery.Where("id IN (?)", testSubquery)
 	}
-	if variantFilter != nil && len(variantFilter.Items) > 0 {
+	// Variant filters are already applied in the collapsed matview; only apply them
+	// when using the base matview.
+	if !useCollapsedMatview && variantFilter != nil && len(variantFilter.Items) > 0 {
 		rawQuery = variantFilter.ToSQL(rawQuery, apitype.Test{})
 	}
 
 	testReports := make([]apitype.Test, 0)
 	// FIXME: Add test id to matview, for now generate with ROW_NUMBER OVER
+	selectColumns := []string{"ROW_NUMBER() OVER() as id"}
+	selectColumns = append(selectColumns, testMetadataColumns...)
+	selectColumns = append(selectColumns, variantColumns...)
+	selectColumns = append(selectColumns, query.QueryTestSummarizer)
 	processedResults := dbc.DB.Table("(?) as results", rawQuery).
-		Select(`ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id,` + variantSelect + query.QueryTestSummarizer).
+		Select(strings.Join(selectColumns, ",")).
 		Where("current_runs > 0 or previous_runs > 0")
 
 	finalResults := dbc.DB.Table("(?) as final_results", processedResults)

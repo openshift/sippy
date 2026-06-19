@@ -4,6 +4,7 @@ import re
 import signal
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
@@ -383,6 +384,9 @@ async def sippy_serve(
     Long-running: returns after spawn with PID, log path, and listen address. Skips starting
     if a matching ``sippy serve`` process is already running, unless ``restart`` is True.
 
+    Always verifies HTTP readiness by polling the listen address before reporting ready,
+    even when a process is already running.
+
     Defaults are derived from ``SIPPY_DATA_MODE`` (``seed`` or ``prod-like``):
 
     - **seed** (default): ``data_provider=postgres``, ``views_file=config/seed-views.yaml``,
@@ -420,8 +424,14 @@ async def sippy_serve(
         if not restart:
             host_hint = f"http://127.0.0.1{listen}" if listen.startswith(":") else listen
             pids = ", ".join(str(p) for p in existing)
+            err = await _wait_for_url(host_hint, 120, existing)
+            if err:
+                return (
+                    f"sippy_serve already running (pid(s) {pids}) but {err}. Listen: {host_hint} "
+                    f"log: {log_path}. Call with restart=True to restart."
+                )
             return (
-                f"sippy_serve already running (pid(s) {pids}). Listen: {host_hint} "
+                f"sippy_serve already running and ready (pid(s) {pids}). Listen: {host_hint} "
                 f"log: {log_path}. Call with restart=True to restart."
             )
         await _stop_pids(existing)
@@ -505,6 +515,9 @@ async def sippy_ng_start(
     CRA defaults to port 3000. ``log_file`` is resolved relative to the repo root;
     absolute paths outside the repo are rejected. Skips starting if a matching
     ``npm start`` / react-scripts process is already running, unless ``restart`` is True.
+
+    Always verifies HTTP readiness by polling the listen address before reporting ready,
+    even when a process is already running.
     """
     ng_dir = REPO_ROOT / "sippy-ng"
     if not (ng_dir / "package.json").is_file():
@@ -519,8 +532,15 @@ async def sippy_ng_start(
     if existing:
         if not restart:
             pids = ", ".join(str(p) for p in existing)
+            err = await _wait_for_url("http://127.0.0.1:3000/sippy-ng", 120, existing)
+            if err:
+                return (
+                    f"sippy_ng_start already running (pid(s) {pids}) but {err}. "
+                    f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
+                    f"Call with restart=True to restart."
+                )
             return (
-                f"sippy_ng_start already running (pid(s) {pids}). "
+                f"sippy_ng_start already running and ready (pid(s) {pids}). "
                 f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
                 f"Call with restart=True to restart."
             )
@@ -557,7 +577,35 @@ async def _wait_for_ready(url: str, timeout: int, proc: subprocess.Popen) -> str
         try:
             await asyncio.to_thread(urllib.request.urlopen, url, None, 2)
             return None
-        except Exception:
+        except (urllib.error.URLError, OSError, TimeoutError):
+            await asyncio.sleep(1)
+    return f"not ready after {timeout}s (checked {url})"
+
+
+def _pid_alive(pid: int) -> bool:
+    """Return True if *pid* is still running."""
+    try:
+        os.kill(pid, 0)  # signal 0: no signal sent, just checks process exists
+        return True
+    except OSError:
+        return False
+
+
+async def _wait_for_url(url: str, timeout: int, pids: list[int]) -> str | None:
+    """Poll *url* until it responds or *timeout* seconds elapse.
+
+    Like ``_wait_for_ready`` but works with bare PIDs instead of a ``Popen`` object.
+    Returns an error string or ``None`` on success.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
+        if not any(_pid_alive(p) for p in pids):
+            return "process(es) exited while waiting for readiness"
+        try:
+            await asyncio.to_thread(urllib.request.urlopen, url, None, 2)
+            return None
+        except (urllib.error.URLError, OSError, TimeoutError):
             await asyncio.sleep(1)
     return f"not ready after {timeout}s (checked {url})"
 

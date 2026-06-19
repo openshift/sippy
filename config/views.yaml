@@ -323,6 +323,9 @@ component_readiness:
       - vsphere
       Topology:
       - external
+  test_filters:
+    lifecycles:
+    - blocking
   advanced_options:
     minimum_failure: 3
     confidence: 95
@@ -398,6 +401,9 @@ component_readiness:
       - multi
     variant_cross_compare:
     - Architecture
+  test_filters:
+    lifecycles:
+    - blocking
   advanced_options:
     minimum_failure: 3
     confidence: 95
@@ -475,6 +481,9 @@ component_readiness:
       - rhcos9
     variant_cross_compare:
     - OS
+  test_filters:
+    lifecycles:
+    - blocking
   advanced_options:
     minimum_failure: 4
     confidence: 95
@@ -923,6 +932,9 @@ component_readiness:
       ContainerRuntime:
       - runc
       - crun
+  test_filters:
+    lifecycles:
+    - blocking
   advanced_options:
     minimum_failure: 3
     confidence: 95
@@ -1000,6 +1012,9 @@ component_readiness:
       ContainerRuntime:
       - runc
       - crun
+  test_filters:
+    lifecycles:
+    - blocking
   advanced_options:
     minimum_failure: 3
     confidence: 95

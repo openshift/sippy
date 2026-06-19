@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
-	"github.com/neisw/gopar/partitioning"
+	"github.com/openshift-eng/gopar/partitioning"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -382,15 +382,13 @@ func (d *DB) CleanupPartitions(dryRun bool) (detached, dropped int, err error) {
 //
 // desiredSchema should be the full SQL command we would issue to create the resource fresh. It will be hashed and
 // compared to a pre-existing value in the db of the given name and type, if any exists. If none exists, or the hashes
-// have changed, the resource will be recreated.
+// have changed, the resource will be recreated. If the hash matches but the resource is missing from the database
+// (e.g. dropped externally), it will also be recreated.
 //
 // dropSQL is the full SQL command we will run if we detect that the resource needs updating. It should include
 // "IF EXISTS" as it will be attempted even when no previous resource exists. (i.e. new databases)
 //
-// This function does not check for existence of the resource in the db, thus if you ever delete something manually, it will
-// not be recreated until you also delete the corresponding row from schema_hashes.
-//
-// returns true if schema change was detected
+// returns true if the resource was recreated
 func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropSQL string, forceUpdate bool) (bool, error) {
 
 	// Calculate hash of our schema to see if anything has changed.
@@ -422,6 +420,15 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 	case forceUpdate:
 		vlog.Debug("schema hash has not changed but a force update was requested, recreating")
 		updateRequired = true
+	default:
+		exists, err := resourceExists(db, hashType, name)
+		if err != nil {
+			return false, err
+		}
+		if !exists {
+			vlog.Warn("schema hash matches but resource is missing from database, recreating")
+			updateRequired = true
+		}
 	}
 
 	if updateRequired {
@@ -453,6 +460,30 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 		vlog.Debug("no schema update required")
 	}
 	return updateRequired, nil
+}
+
+// resourceExists checks whether a database resource actually exists by querying
+// the PostgreSQL system catalogs. This catches cases where a resource was dropped
+// externally but its schema_hashes record remained.
+func resourceExists(db *gorm.DB, hashType SchemaHashType, name string) (bool, error) {
+	var query string
+	switch hashType {
+	case hashTypeMatView:
+		query = "SELECT 1 FROM pg_class WHERE relname = ? AND relkind = 'm'"
+	case hashTypeView:
+		query = "SELECT 1 FROM pg_class WHERE relname = ? AND relkind = 'v'"
+	case hashTypeMatViewIndex:
+		query = "SELECT 1 FROM pg_class WHERE relname = ? AND relkind = 'i'"
+	case hashTypeFunction:
+		query = "SELECT 1 FROM pg_proc WHERE proname = ?"
+	default:
+		return false, fmt.Errorf("unknown schema hash type: %s", hashType)
+	}
+	var exists int
+	if res := db.Raw(query, name).Scan(&exists); res.Error != nil || res.RowsAffected == 0 {
+		return false, nil
+	}
+	return true, nil
 }
 
 // createAuditLogIndexes creates GIN indexes for JSONB columns in audit_logs table

@@ -6,11 +6,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	sippyApi "github.com/openshift/sippy/pkg/api"
 	apiModels "github.com/openshift/sippy/pkg/apis/api"
@@ -64,20 +62,6 @@ func SortByJobNameNT(risks []*JobNewTestRisks) {
 	})
 }
 
-type NewTestFilter interface {
-	// IsNewTest given a candidate test determines if it is really new with this PR
-	IsNewTest(logger *logrus.Entry, test models.ProwJobRunTest) (bool, error)
-}
-
-// pgNewTestFilter queries postgres to determine if a test is new. We can share
-// a single instance between workers and cache results so we are not constantly
-// querying postgres for the same test.
-type pgNewTestFilter struct {
-	dbc         *db.DB
-	notNewTests sets.Set[uint] // cache of test names that turn out not to be new
-	nnTmutex    *sync.Mutex    // protect notNewTests from concurrent access
-}
-
 type JobRunFilter interface {
 	// OnlyLatestSha filters out runs that are not against the PR's latest sha
 	OnlyLatestSha(entry *logrus.Entry, info prJobInfo) []*prow.ProwJob
@@ -92,27 +76,18 @@ type pgJobRunFilter struct {
 
 // NewTestsWorker analyzes PR jobs looking for new tests and determining their risks.
 type NewTestsWorker struct {
-	dbc           *db.DB
-	newTestFilter NewTestFilter
-	jobRunFilter  JobRunFilter
-	fetchJobRun   func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
+	dbc          *db.DB
+	jobRunFilter JobRunFilter
+	fetchJobRun  func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
 }
 
 // StandardNewTestsWorker is a convenience method to create a NewTestsWorker with standard filters
 func StandardNewTestsWorker(dbc *db.DB) *NewTestsWorker {
-	_, ntw := internalNewTestsWorker(dbc)
-	return ntw
-}
-func internalNewTestsWorker(dbc *db.DB) (*pgNewTestFilter, *NewTestsWorker) {
-	ntf := &pgNewTestFilter{dbc: dbc, notNewTests: sets.Set[uint]{}, nnTmutex: &sync.Mutex{}}
-	jrf := &pgJobRunFilter{dbc: dbc, historicalTestCount: map[uint]int{}}
-	ntw := &NewTestsWorker{
-		dbc:           dbc,
-		newTestFilter: ntf,
-		jobRunFilter:  jrf,
-		fetchJobRun:   sippyApi.FetchJobRun,
+	return &NewTestsWorker{
+		dbc:          dbc,
+		jobRunFilter: &pgJobRunFilter{dbc: dbc, historicalTestCount: map[uint]int{}},
+		fetchJobRun:  sippyApi.FetchJobRun,
 	}
-	return ntf, ntw // for tests it can be useful to have these explicitly
 }
 
 // analyzeRisks processes one job's runs looking for new tests and assessing their risk
@@ -331,72 +306,15 @@ func (ntw *NewTestsWorker) getNewTestsForJobRun(logger *logrus.Entry, prowjob *p
 	}
 
 	for _, test := range jobRun.Tests {
-		test.ProwJobRun = *jobRun // sometimes handy for a test to know whence it came
-		if isNew, err := ntw.newTestFilter.IsNewTest(logger, test); err != nil {
-			logger.WithError(err).Error("Error checking if test is new")
-			return nil, err // if this errors, it muddies this job's analysis, so throw it out
-		} else if isNew {
-			newTests = append(newTests, NewTest{
-				JobName:  prowjob.Spec.Job,
-				JobRunID: jobRun.ID,
-				TestName: test.Test.Name,
-				Success:  test.Status == int(spv1.TestStatusSuccess) || test.Status == int(spv1.TestStatusFlake),
-				Failure:  test.Status == int(spv1.TestStatusFailure) || test.Status == int(spv1.TestStatusFlake),
-			})
-		}
+		newTests = append(newTests, NewTest{
+			JobName:  prowjob.Spec.Job,
+			JobRunID: jobRun.ID,
+			TestName: test.Test.Name,
+			Success:  test.Status == int(spv1.TestStatusSuccess) || test.Status == int(spv1.TestStatusFlake),
+			Failure:  test.Status == int(spv1.TestStatusFailure) || test.Status == int(spv1.TestStatusFlake),
+		})
 	}
 	return newTests, nil
-}
-
-/*
-IsNewTest queries postgres to determine if a test not registered in `test_ownerships`
-is in fact new. For various $reasons, not all tests that we import in sippy are registered
-in that table, so we need additional verification to prevent flagging the same test as
-"new" over and over again.
-
-The search strategy is to look for instances of the test that ran against
-PRs that merged before the test under consideration began. If there are any,
-we can cache that test name as not new. If there are none, then consider this
-a new test.
-Records for PRs and potential PR comments are both created/updated at the same time,
-so this should be a reasonably robust strategy, though not infallible.
-*/
-func (ntf *pgNewTestFilter) IsNewTest(logger *logrus.Entry, testRun models.ProwJobRunTest) (bool, error) {
-	logger = logger.WithField("func", "IsNewTest").WithField("test", testRun.Test.Name)
-	ntf.nnTmutex.Lock()
-	if ntf.notNewTests.Has(testRun.TestID) {
-		// some past query found a PR that merged with this test.
-		logger.Debug("Test previously cached as not new")
-		ntf.nnTmutex.Unlock()
-		return false, nil
-	}
-	ntf.nnTmutex.Unlock()
-
-	pjpr := models.ProwPullRequest{}
-	res := ntf.dbc.DB.
-		Table("prow_job_run_tests as t").
-		Joins("INNER JOIN prow_job_run_prow_pull_requests as prmap on prmap.prow_job_run_id = t.prow_job_run_id").
-		Joins("INNER JOIN prow_pull_requests as prs on prs.id = prmap.prow_pull_request_id").
-		Where("t.test_id = ?", testRun.TestID).
-		Where("t.prow_job_run_release = ?", testRun.ProwJobRunRelease).
-		Where("merged_at is not null").
-		Select("org, repo, number, sha, merged_at").
-		Limit(1).Find(&pjpr) // any result demonstrates this is not new
-	if res.Error != nil {
-		logger.WithError(res.Error).Error("Error querying for PRs that included this test.")
-		return false, res.Error
-	}
-	if pjpr.MergedAt != nil {
-		// means such a record was found, so this is not new
-		logger.Debugf("Test ran in previously-merged PR %s/%s#%d@%s", pjpr.Org, pjpr.Repo, pjpr.Number, pjpr.SHA)
-		ntf.nnTmutex.Lock()
-		ntf.notNewTests.Insert(testRun.TestID) // do not need to look up next time
-		ntf.nnTmutex.Unlock()
-		return false, nil
-	}
-	// query succeeded but no such record was found, so this is new
-	logger.Debug("Test has not run in any previously-merged PR, considering it new.")
-	return true, nil
 }
 
 // summarizeNewTestRisks looks at all the risks spread across jobs and consolidates the stats;
