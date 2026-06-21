@@ -40,6 +40,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/dataloader/testownershiploader"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
 )
@@ -347,7 +348,7 @@ func NewLoadCommand() *cobra.Command {
 			log.WithField("elapsed", elapsed).Info("database load complete")
 
 			if refreshMatviews && !f.SkipMatviewRefresh {
-				sippyserver.RefreshData(dbc, cacheClient, false)
+				sippyserver.RefreshData(dbc, cacheClient, false, dailysummary.Options{})
 			}
 
 			elapsed = time.Since(start)

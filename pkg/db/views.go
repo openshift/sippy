@@ -306,21 +306,21 @@ FROM (
         prow_job_id,
         test_id,
         suite_id,
-        prow_job_run_release,
-        COUNT(*) FILTER (WHERE status = 1  AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_successes,
-        COUNT(*) FILTER (WHERE status = 13 AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_flakes,
-        COUNT(*) FILTER (WHERE status = 12 AND prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_failures,
-        COUNT(*) FILTER (WHERE prow_job_run_timestamp BETWEEN |||START||| AND |||BOUNDARY|||) AS previous_runs,
-        COUNT(*) FILTER (WHERE status = 1  AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_successes,
-        COUNT(*) FILTER (WHERE status = 13 AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_flakes,
-        COUNT(*) FILTER (WHERE status = 12 AND prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_failures,
-        COUNT(*) FILTER (WHERE prow_job_run_timestamp BETWEEN |||BOUNDARY||| AND |||END|||) AS current_runs
+        release AS prow_job_run_release,
+        COALESCE(SUM(successes) FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_successes,
+        COALESCE(SUM(flakes)    FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_flakes,
+        COALESCE(SUM(failures)  FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_failures,
+        COALESCE(SUM(runs)      FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_runs,
+        COALESCE(SUM(successes) FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_successes,
+        COALESCE(SUM(flakes)    FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_flakes,
+        COALESCE(SUM(failures)  FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_failures,
+        COALESCE(SUM(runs)      FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_runs
       FROM
-        prow_job_run_tests
+        test_daily_summaries
       WHERE
-        prow_job_run_timestamp >= |||START||| AND prow_job_run_timestamp <= |||END|||
+        summary_date >= |||START||| AND summary_date <= |||END|||
       GROUP BY
-        prow_job_id, test_id, suite_id, prow_job_run_release
+        prow_job_id, test_id, suite_id, release
     )
     SELECT
         tests.id,

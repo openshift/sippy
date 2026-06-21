@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/flags"
@@ -433,7 +434,8 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 
 	log.Info("Refreshing materialized views...")
-	sippyserver.RefreshData(dbc, nil, false)
+	seedStart := time.Now().Add(-190 * 24 * time.Hour)
+	sippyserver.RefreshData(dbc, nil, false, dailysummary.Options{StartOverride: &seedStart})
 
 	log.Info("Syncing regressions...")
 	if err := syncRegressions(dbc); err != nil {
