@@ -268,11 +268,11 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 		Where("prow_job_run_test_outputs.prow_job_run_test_release = ?", release)
 
 	for _, variant := range includedVariants {
-		q = q.Where("? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	for _, variant := range excludedVariants {
-		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	res := q.
@@ -301,11 +301,11 @@ func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedV
 		Where("prow_job_run_tests.prow_job_run_release = ?", release)
 
 	for _, variant := range includedVariants {
-		q = q.Where("? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	for _, variant := range excludedVariants {
-		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	res := q.
