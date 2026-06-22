@@ -170,7 +170,7 @@ export default function RegressionPotentialMatchesTab({
     {
       field: 'resolution_date',
       valueGetter: (params) => {
-        return params.row.triage.resolved?.Valid
+        return params.row.triage?.resolved?.Valid
           ? params.row.triage.resolved.Time
           : ''
       },
@@ -198,7 +198,7 @@ export default function RegressionPotentialMatchesTab({
       headerName: 'Description',
       flex: 25,
       valueGetter: (params) => {
-        return params.row.triage.description
+        return params.row.triage?.description
       },
       renderCell: (param) => (
         <Tooltip title={param.value || 'No description'}>
@@ -213,7 +213,7 @@ export default function RegressionPotentialMatchesTab({
       headerName: 'Type',
       flex: 8,
       valueGetter: (params) => {
-        return params.row.triage.type
+        return params.row.triage?.type
       },
       renderCell: (param) => (
         <Typography variant="body2">{param.value}</Typography>
@@ -222,7 +222,7 @@ export default function RegressionPotentialMatchesTab({
     {
       field: 'url',
       valueGetter: (params) => {
-        const url = params.row.triage.url
+        const url = params.row.triage?.url
         const val = {
           url,
           text: url,
@@ -316,7 +316,7 @@ export default function RegressionPotentialMatchesTab({
       align: 'center',
       sortable: false,
       valueGetter: (value) => {
-        return value.row.triage.id
+        return value.row.triage?.id ?? ''
       },
       renderCell: (param) => (
         <a
@@ -359,7 +359,7 @@ export default function RegressionPotentialMatchesTab({
           sortModel={[{ field: 'confidence_level', sort: 'desc' }]}
           rows={matches}
           columns={columns}
-          getRowId={(row) => row.triage.id}
+          getRowId={(row) => row.triage?.id}
           pageSize={Math.max(3, matches.length)}
           rowHeight={100}
           autoHeight={true}
