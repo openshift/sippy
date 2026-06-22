@@ -1,6 +1,15 @@
 import './ComponentReadiness.css'
 import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
+  Box,
+  Grid,
+  Tab,
+  TableContainer,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@mui/material'
+import {
   cancelledDataTable,
   formColumnName,
   getColumns,
@@ -12,11 +21,11 @@ import {
   makePageTitle,
   makeRFC3339Time,
   noDataTable,
+  StatusLegend,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { escapeRegex } from '../helpers'
 import { grey } from '@mui/material/colors'
-import { Grid, TableContainer, Tooltip, Typography } from '@mui/material'
 import { makeStyles, useTheme } from '@mui/styles'
 import {
   Navigate,
@@ -145,15 +154,16 @@ const useStyles = makeStyles((theme) => ({
     top: 0,
     left: 0,
     zIndex: 1,
+    wordBreak: 'break-word',
   },
   crColJobName: {
     verticalAlign: 'top',
     backgroundColor: theme.palette.mode === 'dark' ? grey[900] : grey['A200'],
   },
   componentName: {
-    width: 175,
-    minWidth: 175,
-    maxWidth: 175,
+    width: 220,
+    minWidth: 220,
+    maxWidth: 220,
     backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
     fontWeight: 'bold',
     position: 'sticky',
@@ -162,17 +172,17 @@ const useStyles = makeStyles((theme) => ({
   },
   crCellResult: {
     backgroundColor: theme.palette.mode === 'dark' ? grey[100] : 'white',
-    height: 50,
-    width: 50,
-    padding: '5px !important',
-    lineHeight: '13px !important',
+    minHeight: 60,
+    padding: '8px !important',
+    lineHeight: '16px !important',
     border: '1px solid #EEE',
+    textAlign: 'center',
   },
   crCellName: {
-    fontSize: '11px !important',
+    fontSize: '14px !important',
   },
   crCellCapabCol: {
-    fontSize: '11px !important',
+    fontSize: '13px !important',
     width: '300px',
   },
 }))
@@ -242,6 +252,7 @@ export default function ComponentReadiness(props) {
   const [warnings, setWarnings] = React.useState([])
 
   const [triageActionTaken, setTriageActionTaken] = React.useState(false)
+  const [componentTab, setComponentTab] = React.useState(0)
 
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
   const copyPopoverOpen = Boolean(copyPopoverEl)
@@ -628,11 +639,15 @@ export default function ComponentReadiness(props) {
                           filterVals={getUpdatedUrlParts(varsContext)}
                           setTriageActionTaken={setTriageActionTaken}
                         />
-                        <TableContainer
-                          component="div"
-                          className="cr-table-wrapper"
-                        >
-                          <Table className="cr-comp-read-table">
+                        {(() => {
+                          const filteredColumns = columnNames.filter(
+                            (column, idx) =>
+                              column.match(
+                                new RegExp(escapeRegex(searchColumnRegex), 'i')
+                              ) && keepColumnsList[idx]
+                          )
+
+                          const renderColumnHeaders = (keyPrefix) => (
                             <TableHead>
                               <TableRow>
                                 <TableCell className={classes.crColResultFull}>
@@ -640,111 +655,157 @@ export default function ComponentReadiness(props) {
                                     Name
                                   </Typography>
                                 </TableCell>
-                                {columnNames
-                                  .filter(
-                                    (column, idx) =>
-                                      column.match(
-                                        new RegExp(
-                                          escapeRegex(searchColumnRegex),
-                                          'i'
-                                        )
-                                      ) && keepColumnsList[idx]
-                                  )
-                                  .map((column, idx) => {
-                                    if (column !== 'Name') {
-                                      return (
-                                        <TableCell
-                                          className={classes.crColResult}
-                                          key={'column' + '-' + idx}
+                                {filteredColumns.map((column, idx) => {
+                                  if (column !== 'Name') {
+                                    return (
+                                      <TableCell
+                                        className={classes.crColResult}
+                                        key={keyPrefix + '-column' + '-' + idx}
+                                      >
+                                        <Tooltip
+                                          title={
+                                            'Single row report for ' + column
+                                          }
                                         >
-                                          <Tooltip
-                                            title={
-                                              'Single row report for ' + column
-                                            }
+                                          <Typography
+                                            className={classes.crCellName}
                                           >
-                                            <Typography
-                                              className={classes.crCellName}
-                                            >
-                                              {' '}
-                                              {column}
-                                            </Typography>
-                                          </Tooltip>
-                                        </TableCell>
-                                      )
-                                    }
-                                  })}
+                                            {' '}
+                                            {column}
+                                          </Typography>
+                                        </Tooltip>
+                                      </TableCell>
+                                    )
+                                  }
+                                })}
                               </TableRow>
                             </TableHead>
-                            <TableBody>
-                              {data.rows
-                                ? Object.keys(data.rows)
-                                    .filter((componentIndex) =>
-                                      data.rows[componentIndex].component.match(
-                                        new RegExp(
-                                          escapeRegex(searchRowRegex),
-                                          'i'
-                                        )
-                                      )
+                          )
+
+                          const renderRow = (componentIndex, keyPrefix) => (
+                            <CompReadyRow
+                              key={keyPrefix + '-' + componentIndex}
+                              componentName={
+                                data.rows[componentIndex].component
+                              }
+                              results={data.rows[componentIndex].columns.filter(
+                                (column, idx) =>
+                                  formColumnName(column).match(
+                                    new RegExp(
+                                      escapeRegex(searchColumnRegex),
+                                      'i'
                                     )
-                                    .filter((componentIndex) =>
-                                      redOnlyChecked
-                                        ? data.rows[
-                                            componentIndex
-                                          ].columns.some(
-                                            // Filter for rows where any of their columns have status <= -2 and accepted by the regex.
-                                            (column) =>
-                                              column.status <= -2 &&
-                                              formColumnName(column).match(
-                                                new RegExp(
-                                                  escapeRegex(
-                                                    searchColumnRegex
-                                                  ),
-                                                  'i'
-                                                )
-                                              )
-                                          )
-                                        : true
-                                    )
-                                    .map((componentIndex) => (
-                                      <CompReadyRow
-                                        key={componentIndex}
-                                        componentName={
-                                          data.rows[componentIndex].component
-                                        }
-                                        results={data.rows[
-                                          componentIndex
-                                        ].columns.filter(
-                                          (column, idx) =>
-                                            formColumnName(column).match(
-                                              new RegExp(
-                                                escapeRegex(searchColumnRegex),
-                                                'i'
-                                              )
-                                            ) &&
-                                            keepColumnsList &&
-                                            keepColumnsList[idx]
-                                        )}
-                                        columnNames={columnNames.filter(
-                                          (column, idx) =>
-                                            column.match(
-                                              new RegExp(
-                                                escapeRegex(searchColumnRegex),
-                                                'i'
-                                              )
-                                            ) &&
-                                            keepColumnsList &&
-                                            keepColumnsList[idx]
-                                        )}
-                                        grayFactor={redOnlyChecked ? 100 : 0}
-                                        filterVals={getUpdatedUrlParts(
-                                          varsContext
-                                        )}
-                                      />
-                                    ))
-                                : null}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
+                                  ) &&
+                                  keepColumnsList &&
+                                  keepColumnsList[idx]
+                              )}
+                              columnNames={filteredColumns}
+                              grayFactor={redOnlyChecked ? 100 : 0}
+                              filterVals={getUpdatedUrlParts(varsContext)}
+                            />
+                          )
+
+                          const rowMatchesSearch = (componentIndex) =>
+                            data.rows[componentIndex].component.match(
+                              new RegExp(escapeRegex(searchRowRegex), 'i')
+                            )
+
+                          const rowVisibleColumns = (componentIndex) =>
+                            data.rows[componentIndex].columns.filter(
+                              (column, idx) =>
+                                formColumnName(column).match(
+                                  new RegExp(
+                                    escapeRegex(searchColumnRegex),
+                                    'i'
+                                  )
+                                ) &&
+                                keepColumnsList &&
+                                keepColumnsList[idx]
+                            )
+
+                          const rowHasRegression = (componentIndex) =>
+                            rowVisibleColumns(componentIndex).some(
+                              (column) => column.status <= -200
+                            )
+
+                          const rowMatchesRedOnly = (componentIndex) =>
+                            rowVisibleColumns(componentIndex).some(
+                              (column) => column.status <= -2
+                            )
+
+                          const searchFilteredRows = data.rows
+                            ? Object.keys(data.rows).filter(rowMatchesSearch)
+                            : []
+
+                          const caseInsensitiveSort = (a, b) =>
+                            data.rows[a].component
+                              .toLowerCase()
+                              .localeCompare(
+                                data.rows[b].component.toLowerCase()
+                              )
+
+                          const regressionRows = searchFilteredRows
+                            .filter(rowHasRegression)
+                            .sort(caseInsensitiveSort)
+
+                          const allRowsSorted = [...searchFilteredRows].sort(
+                            caseInsensitiveSort
+                          )
+
+                          const renderTable = (rows, keyPrefix) => (
+                            <TableContainer
+                              component="div"
+                              className="cr-table-wrapper"
+                            >
+                              <Table className="cr-comp-read-table">
+                                {renderColumnHeaders(keyPrefix)}
+                                <TableBody>
+                                  {rows.map((componentIndex) =>
+                                    renderRow(componentIndex, keyPrefix)
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          )
+
+                          return (
+                            <Box>
+                              <StatusLegend />
+                              <Tabs
+                                value={componentTab}
+                                onChange={(e, val) => setComponentTab(val)}
+                                sx={{ marginBottom: 1 }}
+                              >
+                                <Tab
+                                  label={`🔴 Regressed Components (${regressionRows.length})`}
+                                  value={0}
+                                />
+                                <Tab
+                                  label={`📋 All Components (${allRowsSorted.length})`}
+                                  value={1}
+                                />
+                              </Tabs>
+                              {componentTab === 0 &&
+                                (regressionRows.length > 0 ? (
+                                  renderTable(regressionRows, 'reg')
+                                ) : (
+                                  <Typography
+                                    variant="body1"
+                                    sx={{ padding: 2 }}
+                                  >
+                                    No regressions detected.
+                                  </Typography>
+                                ))}
+                              {componentTab === 1 &&
+                                renderTable(
+                                  redOnlyChecked
+                                    ? allRowsSorted.filter(rowMatchesRedOnly)
+                                    : allRowsSorted,
+                                  'all'
+                                )}
+                            </Box>
+                          )
+                        })()}
                         <GeneratedAt time={data.generated_at} />
                         <CopyPageURL apiCallStr={showValuesForReport()} />
                       </div>

@@ -1,3 +1,4 @@
+import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import { alpha, InputBase, Typography } from '@mui/material'
 import { formatInTimeZone } from 'date-fns-tz'
 import { safeEncodeURIComponent } from '../helpers'
@@ -18,7 +19,7 @@ import orange from './orange.svg'
 import orange_3d from './extreme-orange.svg'
 import orange_3d_triaged from './extreme-orange-triaged.svg'
 import orange_triaged from './orange-triaged.svg'
-import React from 'react'
+import React, { useContext } from 'react'
 import red from './regressed.svg'
 import red_3d from './extreme.svg'
 import red_3d_triaged from './extreme-triaged.svg'
@@ -155,8 +156,8 @@ export function getStatusAndIcon(
       <img
         alt="SignificantImprovement"
         src={heart}
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
@@ -168,8 +169,8 @@ export function getStatusAndIcon(
       <img
         src={src}
         alt="MissingBasisAndSample"
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
@@ -180,8 +181,8 @@ export function getStatusAndIcon(
       <img
         src={src}
         alt="MissingBasis"
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         style={{
           filter: `grayscale(${grayFactor}%)`,
         }}
@@ -193,8 +194,8 @@ export function getStatusAndIcon(
     icon = (
       <img
         src={src}
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         alt="NotSignificant"
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
@@ -206,8 +207,8 @@ export function getStatusAndIcon(
       <img
         src={src}
         alt="MissingSample"
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         style={{
           transform: `rotate(180deg)`,
           filter: `grayscale(${grayFactor}%)`,
@@ -217,14 +218,14 @@ export function getStatusAndIcon(
   } else if (status === -150) {
     statusStr = statusStr + 'Fixed (hopefully) regression detected'
     let src = accessibilityMode ? fixed_waiting_accessible : fixed_waiting
-    icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
+    icon = <img width="24px" height="24px" src={src} alt="Fixed regression" />
   } else if (status === -200) {
     statusStr = statusStr + 'SignificantTriagedRegression detected'
     let src = accessibilityMode ? orange_triaged : red_triaged
     icon = (
       <img
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         src={src}
         alt="SignificantTriagedRegression"
       />
@@ -235,8 +236,8 @@ export function getStatusAndIcon(
     let src = accessibilityMode ? orange_3d_triaged : red_3d_triaged
     icon = (
       <img
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         src={src}
         alt="ExtremeTriagedRegression >15%"
       />
@@ -245,22 +246,97 @@ export function getStatusAndIcon(
     statusStr = statusStr + 'SignificantRegression detected'
     let src = accessibilityMode ? orange : red
     icon = (
-      <img width="15px" height="15px" src={src} alt="SignificantRegression" />
+      <img width="24px" height="24px" src={src} alt="SignificantRegression" />
     )
   } else if (status === -500) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
     let src = accessibilityMode ? orange_3d : red_3d
     icon = (
-      <img width="15px" height="15px" src={src} alt="ExtremeRegression >15%" />
+      <img width="24px" height="24px" src={src} alt="ExtremeRegression >15%" />
     )
   } else if (status === -1000) {
     statusStr = statusStr + 'Failed fix detected'
     let src = accessibilityMode ? fix_failed_accessible : fix_failed
-    icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
+    icon = <img width="24px" height="24px" src={src} alt="Fixed regression" />
   }
 
   return [statusStr, icon]
+}
+
+export function StatusLegend() {
+  const { accessibilityModeOn } = useContext(AccessibilityModeContext)
+  const a11y = accessibilityModeOn
+  const items = [
+    { src: a11y ? blue : green, label: 'No Significant Difference' },
+    { src: a11y ? half_blue : green_half_data, label: 'Missing Basis' },
+    {
+      src: a11y ? blue_missing_data : green_missing_data,
+      label: 'Missing Basis & Sample',
+    },
+    {
+      src: a11y ? half_blue : green_half_data,
+      label: 'Missing Sample',
+      style: { transform: 'rotate(180deg)' },
+    },
+    {
+      src: a11y ? fixed_waiting_accessible : fixed_waiting,
+      label: 'Believed Fixed',
+    },
+    { src: a11y ? orange_triaged : red_triaged, label: 'Triaged Regression' },
+    {
+      src: a11y ? orange_3d_triaged : red_3d_triaged,
+      label: 'Extreme Triaged Regression (>15%)',
+    },
+    { src: a11y ? orange : red, label: 'Significant Regression' },
+    { src: a11y ? orange_3d : red_3d, label: 'Extreme Regression (>15%)' },
+    { src: a11y ? fix_failed_accessible : fix_failed, label: 'Failed Fix' },
+  ]
+
+  return (
+    <div
+      style={{
+        padding: '12px 16px',
+        marginBottom: '12px',
+        border: '1px solid #e0e0e0',
+        borderRadius: '4px',
+        textAlign: 'center',
+      }}
+    >
+      <Typography
+        variant="subtitle1"
+        style={{ fontWeight: 'bold', marginBottom: '4px' }}
+      >
+        Status Key
+      </Typography>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '12px 24px',
+          padding: '4px 0',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {items.map((item) => (
+          <div
+            key={item.label}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <img
+              src={item.src}
+              width="20px"
+              height="20px"
+              alt={item.label}
+              style={item.style}
+            />
+            <Typography variant="body2">{item.label}</Typography>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 // The values of a column's key/value pairs (except status) are
