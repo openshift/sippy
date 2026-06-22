@@ -150,7 +150,10 @@ func syncPostgresMaterializedViews(db *gorm.DB, reportEnd *time.Time) error {
 		// This has to occur after the replaceAll above as they might contain the REPLACE_TIME_NOW constant as well
 		viewDef = strings.ReplaceAll(viewDef, replaceTimeNow, reportEndFmt)
 
-		dropSQL := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", pmv.Name)
+		// CASCADE is safe here: dependent matviews (e.g. collapsed matviews) are
+		// all in PostgresMatViews and will be detected as missing and recreated
+		// by this same sync loop.
+		dropSQL := fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s CASCADE", pmv.Name)
 		schema := fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH NO DATA", pmv.Name, viewDef)
 		matViewUpdated, err := syncSchema(db, hashTypeMatView, pmv.Name, schema, dropSQL, false)
 		if err != nil {
