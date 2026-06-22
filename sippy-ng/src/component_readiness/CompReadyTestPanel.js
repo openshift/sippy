@@ -392,6 +392,11 @@ export default function CompReadyTestPanel(props) {
               searchJobRunIds={searchJobRunIds}
               jobRunsLookup={jobRuns}
               handleToggleJAQOpen={handleToggleJAQOpen}
+              forceRefreshURL={(() => {
+                const url = new URL(window.location.href)
+                url.searchParams.set('forceRefresh', 'true')
+                return url.toString()
+              })()}
             />
           </Box>
         </Grid>
