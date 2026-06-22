@@ -88,23 +88,25 @@ func InjectReEvalHATEOASLinks(resp *ReEvaluationResponse, baseURL string) {
 
 // ReEvaluator re-runs symptom detection against job artifacts and updates BQ, GCS, and PostgreSQL.
 type ReEvaluator struct {
-	bqClient  *bqclient.Client
-	gcsClient *storage.Client
-	gcsBucket string
-	db        *db.DB
-	cache     cache.Cache
-	dryRun    bool
+	bqClient    *bqclient.Client
+	gcsClient   *storage.Client
+	gcsBucket   string
+	db          *db.DB
+	cache       cache.Cache
+	artifactMgr *jobartifacts.Manager
+	dryRun      bool
 }
 
 // NewReEvaluator creates a ReEvaluator with the given clients.
-func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBucket string, dbc *db.DB, cacheClient cache.Cache, dryRun bool) *ReEvaluator {
+func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBucket string, dbc *db.DB, cacheClient cache.Cache, artifactMgr *jobartifacts.Manager, dryRun bool) *ReEvaluator {
 	return &ReEvaluator{
-		bqClient:  bqClient,
-		gcsClient: gcsClient,
-		gcsBucket: gcsBucket,
-		db:        dbc,
-		cache:     cacheClient,
-		dryRun:    dryRun,
+		bqClient:    bqClient,
+		gcsClient:   gcsClient,
+		gcsBucket:   gcsBucket,
+		db:          dbc,
+		cache:       cacheClient,
+		artifactMgr: artifactMgr,
+		dryRun:      dryRun,
 	}
 }
 
@@ -242,7 +244,7 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 // evaluateSymptoms runs one artifact query per symptom for the given job run.
 func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRunID int64, symptoms []jobrunscan.Symptom) ([]symptomMatch, error) {
 	var matches []symptomMatch
-	mgr := jobartifacts.NewManager(ctx)
+	mgr := r.artifactMgr
 
 	for _, symptom := range symptoms {
 		contentMatcher, err := ContentMatcherForSymptom(symptom.SymptomContent)

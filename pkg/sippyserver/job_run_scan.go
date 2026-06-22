@@ -199,7 +199,7 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 		return
 	}
 
-	re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, body.DryRun)
+	re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, body.DryRun)
 	results, err := re.ReEvaluateJobRuns(req.Context(), body.ProwJobBuildIDs)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())

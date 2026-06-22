@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
@@ -67,7 +68,7 @@ func functionalTestReEvaluator(t *testing.T) *ReEvaluator {
 	}
 	dbc := &db.DB{DB: gormDB}
 
-	return NewReEvaluator(bqC, gcsC, gcsBucket, dbc, nil, false)
+	return NewReEvaluator(bqC, gcsC, gcsBucket, dbc, nil, jobartifacts.NewManager(ctx), false)
 }
 
 func TestReEvaluateEndToEnd(t *testing.T) {
