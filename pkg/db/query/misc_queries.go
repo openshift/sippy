@@ -1,6 +1,7 @@
 package query
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -28,20 +29,25 @@ func PlatformInfraSuccess(dbc *db.DB, platforms sets.String, period string) (map
 		return nil, fmt.Errorf("unknown period %s", period)
 	}
 
-	raw := dbc.DB.Table(table).
-		Select("*, unnest(variants) as variant").
-		Where("name = ?", testidentification.NewInfrastructureTestName)
-
 	var sqlResults []struct {
 		Variant        string
 		PassPercentage float64
 	}
-	q := dbc.DB.Table("(?) as results", raw).
-		Select(`
-			variant,
-			SUM(current_successes) * 100.0 / NULLIF(SUM(current_runs), 0) AS pass_percentage`).
-		Where("variant in ?", platforms.List()).
-		Group("variant").Scan(&sqlResults)
+	q := dbc.DB.Raw(fmt.Sprintf(`
+		WITH target_variants AS (
+			SELECT vc.id, v.variant
+			FROM variant_combinations vc, unnest(vc.variants) AS v(variant)
+			WHERE v.variant IN @platforms
+		)
+		SELECT tv.variant,
+			SUM(m.current_successes) * 100.0 / NULLIF(SUM(m.current_runs), 0) AS pass_percentage
+		FROM %s m
+		JOIN target_variants tv ON m.variant_combination_id = tv.id
+		WHERE m.name = @testname
+		GROUP BY tv.variant`, table),
+		sql.Named("platforms", platforms.List()),
+		sql.Named("testname", testidentification.NewInfrastructureTestName),
+	).Scan(&sqlResults)
 
 	for _, r := range sqlResults {
 		results[r.Variant] = r.PassPercentage
