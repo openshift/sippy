@@ -148,6 +148,13 @@ export default function UpdateTriagePanel({
               rows={triage.regressions}
               columns={[
                 {
+                  field: 'id',
+                  headerName: 'ID',
+                  flex: 3,
+                  filterable: false,
+                  renderCell: (param) => <div>{param.value}</div>,
+                },
+                {
                   field: 'select',
                   headerName: 'Remove',
                   flex: 6,
