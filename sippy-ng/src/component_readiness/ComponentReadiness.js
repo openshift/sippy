@@ -710,21 +710,27 @@ export default function ComponentReadiness(props) {
                               new RegExp(escapeRegex(searchRowRegex), 'i')
                             )
 
-                          const rowHasRegression = (componentIndex) =>
-                            data.rows[componentIndex].columns.some(
-                              (column) => column.status <= -200
-                            )
-
-                          const rowMatchesRedOnly = (componentIndex) =>
-                            data.rows[componentIndex].columns.some(
-                              (column) =>
-                                column.status <= -2 &&
+                          const rowVisibleColumns = (componentIndex) =>
+                            data.rows[componentIndex].columns.filter(
+                              (column, idx) =>
                                 formColumnName(column).match(
                                   new RegExp(
                                     escapeRegex(searchColumnRegex),
                                     'i'
                                   )
-                                )
+                                ) &&
+                                keepColumnsList &&
+                                keepColumnsList[idx]
+                            )
+
+                          const rowHasRegression = (componentIndex) =>
+                            rowVisibleColumns(componentIndex).some(
+                              (column) => column.status <= -200
+                            )
+
+                          const rowMatchesRedOnly = (componentIndex) =>
+                            rowVisibleColumns(componentIndex).some(
+                              (column) => column.status <= -2
                             )
 
                           const searchFilteredRows = data.rows
@@ -771,7 +777,7 @@ export default function ComponentReadiness(props) {
                                 sx={{ marginBottom: 1 }}
                               >
                                 <Tab
-                                  label={`🔴 Regressions (${regressionRows.length})`}
+                                  label={`🔴 Regressed Components (${regressionRows.length})`}
                                   value={0}
                                 />
                                 <Tab
