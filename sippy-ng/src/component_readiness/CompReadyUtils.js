@@ -155,8 +155,8 @@ export function getStatusAndIcon(
       <img
         alt="SignificantImprovement"
         src={heart}
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
@@ -168,8 +168,8 @@ export function getStatusAndIcon(
       <img
         src={src}
         alt="MissingBasisAndSample"
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
@@ -180,8 +180,8 @@ export function getStatusAndIcon(
       <img
         src={src}
         alt="MissingBasis"
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         style={{
           filter: `grayscale(${grayFactor}%)`,
         }}
@@ -193,8 +193,8 @@ export function getStatusAndIcon(
     icon = (
       <img
         src={src}
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         alt="NotSignificant"
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
@@ -206,8 +206,8 @@ export function getStatusAndIcon(
       <img
         src={src}
         alt="MissingSample"
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         style={{
           transform: `rotate(180deg)`,
           filter: `grayscale(${grayFactor}%)`,
@@ -217,14 +217,14 @@ export function getStatusAndIcon(
   } else if (status === -150) {
     statusStr = statusStr + 'Fixed (hopefully) regression detected'
     let src = accessibilityMode ? fixed_waiting_accessible : fixed_waiting
-    icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
+    icon = <img width="24px" height="24px" src={src} alt="Fixed regression" />
   } else if (status === -200) {
     statusStr = statusStr + 'SignificantTriagedRegression detected'
     let src = accessibilityMode ? orange_triaged : red_triaged
     icon = (
       <img
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         src={src}
         alt="SignificantTriagedRegression"
       />
@@ -235,8 +235,8 @@ export function getStatusAndIcon(
     let src = accessibilityMode ? orange_3d_triaged : red_3d_triaged
     icon = (
       <img
-        width="15px"
-        height="15px"
+        width="24px"
+        height="24px"
         src={src}
         alt="ExtremeTriagedRegression >15%"
       />
@@ -245,22 +245,64 @@ export function getStatusAndIcon(
     statusStr = statusStr + 'SignificantRegression detected'
     let src = accessibilityMode ? orange : red
     icon = (
-      <img width="15px" height="15px" src={src} alt="SignificantRegression" />
+      <img width="24px" height="24px" src={src} alt="SignificantRegression" />
     )
   } else if (status === -500) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
     let src = accessibilityMode ? orange_3d : red_3d
     icon = (
-      <img width="15px" height="15px" src={src} alt="ExtremeRegression >15%" />
+      <img width="24px" height="24px" src={src} alt="ExtremeRegression >15%" />
     )
   } else if (status === -1000) {
     statusStr = statusStr + 'Failed fix detected'
     let src = accessibilityMode ? fix_failed_accessible : fix_failed
-    icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
+    icon = <img width="24px" height="24px" src={src} alt="Fixed regression" />
   }
 
   return [statusStr, icon]
+}
+
+export function StatusLegend() {
+  const items = [
+    { src: green, label: 'No Significant Difference' },
+    { src: heart, label: 'Significant Improvement' },
+    { src: green_half_data, label: 'Missing Basis' },
+    { src: green_missing_data, label: 'Missing Basis & Sample' },
+    { src: fixed_waiting, label: 'Fixed (Hopefully)' },
+    { src: red_triaged, label: 'Triaged Regression' },
+    { src: red_3d_triaged, label: 'Extreme Triaged Regression (>15%)' },
+    { src: red, label: 'Significant Regression' },
+    { src: red_3d, label: 'Extreme Regression (>15%)' },
+    { src: fix_failed, label: 'Failed Fix' },
+  ]
+
+  return (
+    <div style={{ padding: '8px 0', marginBottom: '12px' }}>
+      <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
+        Status Key
+      </Typography>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '12px 24px',
+          padding: '4px 0',
+          alignItems: 'center',
+        }}
+      >
+        {items.map((item) => (
+          <div
+            key={item.label}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <img src={item.src} width="20px" height="20px" alt={item.label} />
+            <Typography variant="body2">{item.label}</Typography>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 // The values of a column's key/value pairs (except status) are
