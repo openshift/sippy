@@ -25,7 +25,7 @@ type ProwJob struct {
 	Kind     ProwKind
 	Name     string         `gorm:"unique"`
 	Release  string         `gorm:"index"`
-	Variants pq.StringArray `gorm:"type:text[];index:idx_prow_jobs_variants,type:gin"`
+	Variants pq.StringArray `gorm:"type:text[]"`
 	// VariantCombinationID references variant_combinations.id, maintained by a
 	// BEFORE INSERT/UPDATE trigger. NULL only when Variants is NULL.
 	VariantCombinationID *uint `gorm:"column:variant_combination_id"`
