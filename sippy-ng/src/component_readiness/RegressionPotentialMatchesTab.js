@@ -163,7 +163,7 @@ export default function RegressionPotentialMatchesTab({
       headerName: 'Triage ID',
       flex: 3,
       valueGetter: (params) => {
-        return params.row.triage.id
+        return params.row.triage?.id ?? ''
       },
       renderCell: (param) => <div>{param.value}</div>,
     },
