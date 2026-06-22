@@ -131,6 +131,7 @@ export function evaluateFilter(row, filter, columns = null) {
     case 'contains':
       match = value.includes(filterValue)
       break
+    case '=':
     case 'equals':
       match = value === filterValue
       break

@@ -167,6 +167,13 @@ export default function UpdateTriagePanel({
                   ),
                 },
                 {
+                  field: 'id',
+                  headerName: 'Regression ID',
+                  type: 'number',
+                  flex: 8,
+                  renderCell: (param) => <div>{param.value}</div>,
+                },
+                {
                   field: 'test_name',
                   headerName: 'Test Name',
                   flex: 50,

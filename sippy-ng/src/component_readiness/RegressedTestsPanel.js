@@ -144,6 +144,14 @@ export default function RegressedTestsPanel(props) {
         ]
       : []),
     {
+      field: 'regression_id',
+      headerName: 'Regression ID',
+      type: 'number',
+      flex: 6,
+      valueGetter: (params) => params.row.regression?.id,
+      renderCell: (param) => <div>{param.value}</div>,
+    },
+    {
       field: 'component',
       headerName: 'Component',
       flex: 20,

@@ -159,6 +159,19 @@ export default function RegressionPotentialMatchesTab({
 
   const columns = [
     {
+      field: 'triage_id',
+      headerName: 'Triage ID',
+      type: 'number',
+      flex: 4,
+      align: 'center',
+      valueGetter: (params) => {
+        return params.row.triage.id
+      },
+      renderCell: (param) => (
+        <Typography variant="body2">{param.value}</Typography>
+      ),
+    },
+    {
       field: 'resolution_date',
       valueGetter: (params) => {
         return params.row.triage.resolved?.Valid

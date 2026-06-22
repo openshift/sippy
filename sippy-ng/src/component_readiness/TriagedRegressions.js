@@ -180,6 +180,16 @@ export default function TriagedRegressions({
 
   const columns = [
     {
+      field: 'id',
+      headerName: 'ID',
+      type: 'number',
+      flex: 2,
+      valueGetter: (value) => {
+        return value.row.id
+      },
+      renderCell: (param) => <div>{param.value}</div>,
+    },
+    {
       field: 'resolution_date',
       valueGetter: (value) => {
         return value.row.resolved?.Valid ? 'Resolved' : 'Unresolved'

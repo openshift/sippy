@@ -105,6 +105,16 @@ export default function TriagedRegressionTestList(props) {
 
   const columns = [
     {
+      field: 'id',
+      headerName: 'Regression ID',
+      type: 'number',
+      flex: 8,
+      valueGetter: (params) => {
+        return params.row.id
+      },
+      renderCell: (param) => <div>{param.value}</div>,
+    },
+    {
       field: 'test_name',
       headerName: 'Test Name',
       flex: 50,
