@@ -24,6 +24,26 @@ func TestMatviewSourcesRefreshBeforeDependents(t *testing.T) {
 	}
 }
 
+func TestMatviewSourcesCreatedBeforeDependents(t *testing.T) {
+	indexByName := make(map[string]int)
+	for i, mv := range PostgresMatViews {
+		indexByName[mv.Name] = i
+	}
+
+	for i, mv := range PostgresMatViews {
+		for _, v := range mv.ReplaceStrings {
+			sourceIndex, ok := indexByName[v]
+			if !ok {
+				continue
+			}
+			if sourceIndex >= i {
+				t.Errorf("%s (index %d) depends on %s (index %d), but source must appear earlier in PostgresMatViews for creation order",
+					mv.Name, i, v, sourceIndex)
+			}
+		}
+	}
+}
+
 func TestRefreshByPhase(t *testing.T) {
 	matviews := []PostgresView{
 		{Name: "c", RefreshPhase: 2},
