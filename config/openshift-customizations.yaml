@@ -34,6 +34,7 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-centralindia-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-e2e-parallel-ocp-nightly: true
+      periodic-ci-Azure-ARO-HCP-main-capz-e2e-production: true
       branch-ci-Azure-ARO-HCP-main-e2e-prod-e2e-parallel: true
   aro-classic-integration:
     synthetic: true
