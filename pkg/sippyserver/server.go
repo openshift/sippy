@@ -2446,6 +2446,13 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonDeleteSymptom,
 		},
 		{
+			EndpointPath: "/api/jobs/runs/reevaluate",
+			Description:  "Re-evaluate symptom matches for specified job runs",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonReEvaluateJobRunSymptoms,
+		},
+		{
 			EndpointPath: "/api/job_variants",
 			Description:  "Reports all job variants defined in BigQuery",
 			Capabilities: []string{ComponentReadinessCapability},

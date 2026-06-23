@@ -112,6 +112,24 @@ Labels are relevant in several Sippy pages:
 They are also displayed in Spyglass (the Deck display of a Prow job) - an HTML summary added to the
 job's bucket entry is included by the html lens.
 
+### 6. Retroactive Re-evaluation
+
+The `POST /api/jobs/runs/reevaluate` endpoint re-runs symptom detection for specified job runs.
+Unlike the cloud function (which processes files as they arrive), the re-evaluator scans all
+artifacts at once for completed job runs.
+
+Flow:
+
+1. Load all active symptom definitions from PostgreSQL (excluding unimplemented matcher types).
+2. For each job run, run one `JobArtifactQuery` per symptom against GCS artifacts.
+3. Delete existing symptom-originated labels (BQ rows with non-empty `symptom_id`, GCS label files).
+4. Write new results to BQ (`job_labels` table), GCS (label JSON files + HTML summary), and
+   PostgreSQL (`prow_job_runs.labels` and `release_job_runs.labels`).
+
+The delete-then-insert strategy makes re-evaluation idempotent: if a symptom is modified, added, or
+removed, re-evaluating produces the correct result. Manually-applied labels (those with empty
+`symptom_id`) are preserved through re-evaluation.
+
 ## Key Code Locations
 
 ### Sippy (`openshift/sippy`)
@@ -122,12 +140,13 @@ job's bucket entry is included by the html lens.
 | `pkg/db/models/job_labels.go` | `JobRunLabel` - BigQuery row schema for the `job_labels` table. |
 | `pkg/db/models/prow.go` | `ProwJobRun.Labels` - the label array stored in Postgres. |
 | `pkg/db/models/triage.go` | `TriageSymptom` - junction table linking symptoms to triage records. |
-| `pkg/api/jobrunscan/` | API handlers for symptom/label CRUD, with validation logic. |
+| `pkg/api/jobrunscan/` | API handlers for symptom/label CRUD and re-evaluation, with validation logic. |
+| `pkg/api/jobrunscan/reevaluate.go` | Re-evaluation service: symptom scanning, BQ/GCS/PostgreSQL write logic. |
 | `pkg/sippyserver/job_run_scan.go` | HTTP route handlers delegating to the jobrunscan API package. |
 | `pkg/sippyclient/jobrunscan/` | Go client library for symptom/label APIs (used by cloud function). |
 | `pkg/componentreadiness/jobrunannotator/jobrunannotator.go` | `JobRunAnnotator` - the `annotate-job-runs` tool which can add labels but doesn't (yet) know about symptoms. |
 | `pkg/componentreadiness/jobrunannotator/prow_bucket.go` | `JobRunBucketLabel`, `WriteHTMLSummaryToBucket` - writes label files and HTML summaries to GCS. Shared with cloud function. |
-| `pkg/api/jobartifacts/` | `JobArtifactQuery`, `ContentMatcher` - the artifact querying and matching engine used by JAQ and symptom evaluation. |
+| `pkg/api/jobartifacts/` | `JobArtifactQuery`, `ContentMatcher` - the artifact querying and matching engine used by JAQ and symptom evaluation. Results (matched lines per file) are cached by `(jobRunID, pathGlob, matcherKey)` to avoid re-scanning the same job run for the same query; this does **not** cache raw GCS file contents. |
 | `pkg/dataloader/prowloader/prow.go` | `GatherLabelsFromBQ` - reads labels from BQ during fetchdata. |
 | `pkg/api/componentreadiness/regressiontracker.go` | `SyncTriageSymptoms` - links symptoms to triage records. |
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
@@ -148,6 +167,7 @@ All endpoints are under `/api/jobs/` and support standard CRUD:
 - `GET/PUT/DELETE /api/jobs/labels/{id}` - read / update / delete
 - `GET/POST /api/jobs/symptoms` - list / create symptoms
 - `GET/PUT/DELETE /api/jobs/symptoms/{id}` - read / update / delete
+- `POST /api/jobs/runs/reevaluate` - re-evaluate symptoms for specified job runs
 
 See `pkg/api/jobrunscan/` for validation rules and `pkg/api/README.md` for broader API
 documentation.
@@ -171,7 +191,7 @@ The symptoms pipeline (definition → detection → labeling → display) is ful
 Active/planned work includes:
 
 - **Retroactive re-evaluation** ([TRT-2695](https://redhat.atlassian.net/browse/TRT-2695))
-  - API and UI to re-run symptom matching for past job runs.
+  - Backend API complete (`POST /api/jobs/runs/reevaluate`). Frontend UI is pending.
 - **Compound symptoms** ([TRT-2466](https://redhat.atlassian.net/browse/TRT-2466))
   - richer CEL-based label composition.
 - **Full management UI** ([TRT-2479](https://redhat.atlassian.net/browse/TRT-2479))
