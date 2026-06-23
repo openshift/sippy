@@ -48,7 +48,7 @@ git checkout -b BRANCH_NAME fork/BRANCH_NAME
 
 1. Run `make test` and `make lint`.
 2. Run e2e tests using the `run_e2e` MCP tool. E2e tests MUST pass before pushing.
-3. For frontend changes, use the Playwright MCP tools to interact with the UI in a headless browser and verify the changes work visually.
+3. For frontend changes, use the Playwright MCP tools to interact with the UI in a headless browser and verify the changes work visually. Take screenshots of the affected pages and upload them using the `upload-screenshot` skill. Include the markdown image links when replying to review comments.
 4. Commit your fixes with a message referencing the review feedback.
 5. Push: `git push fork HEAD` (or `git push origin HEAD`).
 

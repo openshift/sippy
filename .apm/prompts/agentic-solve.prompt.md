@@ -31,7 +31,7 @@ Use the sippy-dev MCP tools to run and test your changes:
 
 Run e2e tests using the `run_e2e` MCP tool. E2e tests MUST pass before pushing.
 
-For frontend changes, use the Playwright MCP tools to interact with the UI in a headless browser and verify the changes work visually.
+For frontend changes, use the Playwright MCP tools to interact with the UI in a headless browser and verify the changes work visually. Take screenshots of the affected pages and upload them using the `upload-screenshot` skill (provide the file path and use the upstream repo for hosting). Include the returned markdown image links in your PR description (Step 5).
 
 ## Step 4: Commit and push
 
