@@ -40,7 +40,7 @@ func (s *Server) jsonGetLabel(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) jsonCreateLabel(w http.ResponseWriter, req *http.Request) {
 	user := getUserForRequest(req)
-	log.Infof("label POST made by user: %s", user)
+	log.WithField("user", user).Info("label POST")
 	var label jobrunscan.Label
 	if err := json.NewDecoder(req.Body).Decode(&label); err != nil {
 		log.WithError(err).Error("error parsing new label")
@@ -59,7 +59,7 @@ func (s *Server) jsonUpdateLabel(w http.ResponseWriter, req *http.Request) {
 	id := mux.Vars(req)["id"]
 
 	user := getUserForRequest(req)
-	log.Infof("label PUT made by user: %s", user)
+	log.WithField("user", user).Info("label PUT")
 	var label jobrunscan.Label
 	if err := json.NewDecoder(req.Body).Decode(&label); err != nil {
 		log.WithError(err).Error("error parsing label update")
@@ -83,7 +83,7 @@ func (s *Server) jsonDeleteLabel(w http.ResponseWriter, req *http.Request) {
 	id := mux.Vars(req)["id"]
 
 	user := getUserForRequest(req)
-	log.Infof("label DELETE made by user: %s", user)
+	log.WithField("user", user).Info("label DELETE")
 	if err := apijobrunscan.DeleteLabel(s.db.DB, id, user); err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -120,7 +120,7 @@ func (s *Server) jsonGetSymptom(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) jsonCreateSymptom(w http.ResponseWriter, req *http.Request) {
 	user := getUserForRequest(req)
-	log.Infof("symptom POST made by user: %s", user)
+	log.WithField("user", user).Info("symptom POST")
 	var symptom jobrunscan.Symptom
 	if err := json.NewDecoder(req.Body).Decode(&symptom); err != nil {
 		log.WithError(err).Error("error parsing new symptom")
@@ -139,7 +139,7 @@ func (s *Server) jsonUpdateSymptom(w http.ResponseWriter, req *http.Request) {
 	id := mux.Vars(req)["id"]
 
 	user := getUserForRequest(req)
-	log.Infof("symptom PUT made by user: %s", user)
+	log.WithField("user", user).Info("symptom PUT")
 	var symptom jobrunscan.Symptom
 	if err := json.NewDecoder(req.Body).Decode(&symptom); err != nil {
 		log.WithError(err).Error("error parsing symptom update")
@@ -163,7 +163,7 @@ func (s *Server) jsonDeleteSymptom(w http.ResponseWriter, req *http.Request) {
 	id := mux.Vars(req)["id"]
 
 	user := getUserForRequest(req)
-	log.Infof("symptom DELETE made by user: %s", user)
+	log.WithField("user", user).Info("symptom DELETE")
 	if err := apijobrunscan.DeleteSymptom(s.db.DB, id, user); err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -174,8 +174,7 @@ func (s *Server) jsonDeleteSymptom(w http.ResponseWriter, req *http.Request) {
 // Job run symptom re-evaluation handler
 
 func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.Request) {
-	user := getUserForRequest(req)
-	log.Infof("symptom re-evaluation POST made by user: %s", user)
+	log.WithField("user", getUserForRequest(req)).Info("symptom re-evaluation POST")
 
 	var body struct {
 		ProwJobBuildIDs []string `json:"prow_job_build_ids"`

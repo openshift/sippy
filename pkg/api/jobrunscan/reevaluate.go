@@ -123,7 +123,7 @@ func (r *ReEvaluator) ReEvaluateJobRuns(ctx context.Context, prowJobBuildIDs []s
 	if err != nil {
 		return nil, fmt.Errorf("loading symptoms: %w", err)
 	}
-	log.Debugf("symptom reEval: loaded %d active symptoms", len(symptoms))
+	log.WithField("activeSymptoms", len(symptoms)).Debug("symptom reEval: loaded active symptoms")
 
 	results := make([]ReEvaluationResult, 0, len(prowJobBuildIDs))
 	for _, buildID := range prowJobBuildIDs {
@@ -154,9 +154,9 @@ func filterRelevantSymptoms(symptoms []jobrunscan.Symptom) []jobrunscan.Symptom 
 		case jobrunscan.MatcherTypeString, jobrunscan.MatcherTypeRegex, jobrunscan.MatcherTypeFile:
 			filtered = append(filtered, s)
 		case jobrunscan.MatcherTypeCEL:
-			log.Warnf("symptom reEval: skipping symptom %q with unimplemented matcher_type %q (TRT-2466)", s.ID, s.MatcherType)
+			log.WithFields(log.Fields{"symptom": s.ID, "matcherType": s.MatcherType}).Warn("symptom reEval: skipping symptom with unimplemented matcher_type (TRT-2466)")
 		default:
-			log.Warnf("symptom reEval: skipping symptom %q with unknown matcher_type %q", s.ID, s.MatcherType)
+			log.WithFields(log.Fields{"symptom": s.ID, "matcherType": s.MatcherType}).Warn("symptom reEval: skipping symptom with unknown matcher_type")
 		}
 	}
 	return filtered
@@ -213,8 +213,12 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	result.LabelsApplied = uniqueLabels(bqLabels)
 
 	if r.dryRun {
-		log.Infof("symptom re-evaluation dry run for %s: %d symptoms matched, %d BQ labels, %d GCS artifacts",
-			buildID, len(result.SymptomsMatched), len(bqLabels), len(bucketLabels))
+		log.WithFields(log.Fields{
+			"buildID":      buildID,
+			"matched":      len(result.SymptomsMatched),
+			"bqLabels":     len(bqLabels),
+			"gcsArtifacts": len(bucketLabels),
+		}).Info("symptom re-evaluation dry run")
 		result.Status = ReEvalSuccess
 		return result
 	}
@@ -249,7 +253,7 @@ func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRunID int64, symp
 	for _, symptom := range symptoms {
 		contentMatcher, err := ContentMatcherForSymptom(symptom.SymptomContent)
 		if err != nil {
-			log.WithError(err).Warnf("symptom reEval: skipping symptom %q due to matcher error", symptom.ID)
+			log.WithError(err).WithField("symptom", symptom.ID).Warn("symptom reEval: skipping symptom due to matcher error")
 			continue
 		}
 
@@ -443,12 +447,12 @@ func (r *ReEvaluator) clearBQLabels(ctx context.Context, buildID string, startTi
 	_, err := q.Read(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "streaming buffer") {
-			log.Warnf("symptom reEval: BQ delete for %s hit streaming buffer, skipping: %v", buildID, err)
+			log.WithError(err).WithField("buildID", buildID).Warn("symptom reEval: BQ delete hit streaming buffer, skipping")
 			return nil
 		}
 		return fmt.Errorf("BQ delete for %s: %w", buildID, err)
 	}
-	log.Debugf("symptom reEval: cleared BQ symptom labels for build %s", buildID)
+	log.WithField("buildID", buildID).Debug("symptom reEval: cleared BQ symptom labels")
 	return nil
 }
 
@@ -473,7 +477,7 @@ func (r *ReEvaluator) clearGCSLabels(ctx context.Context, jobRunPath string) err
 			return fmt.Errorf("deleting GCS object %s: %w", attrs.Name, err)
 		}
 	}
-	log.Debugf("symptom reEval: cleared GCS label artifacts for %s", jobRunPath)
+	log.WithField("jobRunPath", jobRunPath).Debug("symptom reEval: cleared GCS label artifacts")
 	return nil
 }
 
@@ -482,7 +486,7 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 	// Query BQ for existing non-symptom labels for this build ID
 	manualLabels, err := r.queryNonSymptomLabels(ctx, buildID, jobRun.Timestamp)
 	if err != nil {
-		log.WithError(err).Warnf("symptom reEval: could not query non-symptom labels from BQ for %s, using existing PG labels as fallback", buildID)
+		log.WithError(err).WithField("buildID", buildID).Warn("symptom reEval: could not query non-symptom labels from BQ, using existing PG labels as fallback")
 		// Fallback: keep existing labels that aren't from symptoms
 		// We can't distinguish these in PG alone, so keep all existing labels
 		manualLabels = jobRun.Labels
@@ -509,7 +513,7 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 		}
 	}
 
-	log.Debugf("symptom reEval: updated PostgreSQL labels for build %s: %v", buildID, merged)
+	log.WithFields(log.Fields{"buildID": buildID, "labels": merged}).Debug("symptom reEval: updated PostgreSQL labels")
 	return nil
 }
 
