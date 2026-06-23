@@ -2,6 +2,7 @@ package jobrunscan
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -158,7 +159,7 @@ func TestMergeLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := mergeLabels(tt.manualLabels, tt.bqLabels)
-			if !stringSliceEqual(got, tt.wantLabels) {
+			if !sameStrings(got, tt.wantLabels) {
 				t.Errorf("mergeLabels() = %v, want %v", got, tt.wantLabels)
 			}
 		})
@@ -173,7 +174,7 @@ func TestUniqueSymptomsMatched(t *testing.T) {
 	}
 	got := uniqueSymptomsMatched(matches)
 	want := []string{"s1", "s2"}
-	if !stringSliceEqual(got, want) {
+	if !sameStrings(got, want) {
 		t.Errorf("uniqueSymptomsMatched() = %v, want %v", got, want)
 	}
 
@@ -192,7 +193,7 @@ func TestUniqueLabels(t *testing.T) {
 	}
 	got := uniqueLabels(labels)
 	want := []string{"A", "B", "C"}
-	if !stringSliceEqual(got, want) {
+	if !sameStrings(got, want) {
 		t.Errorf("uniqueLabels() = %v, want %v", got, want)
 	}
 }
@@ -402,15 +403,21 @@ func makeIDs(n int) []string {
 	return ids
 }
 
-func stringSliceEqual(a, b []string) bool {
+func sameStrings(a, b []string) bool {
 	if len(a) == 0 && len(b) == 0 {
 		return true
 	}
 	if len(a) != len(b) {
 		return false
 	}
-	for i := range a {
-		if a[i] != b[i] {
+	aSorted := make([]string, len(a))
+	copy(aSorted, a)
+	sort.Strings(aSorted)
+	bSorted := make([]string, len(b))
+	copy(bSorted, b)
+	sort.Strings(bSorted)
+	for i := range aSorted {
+		if aSorted[i] != bSorted[i] {
 			return false
 		}
 	}

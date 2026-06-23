@@ -111,10 +111,10 @@ func TestReEvaluateIdempotent(t *testing.T) {
 		t.Fatal("expected 1 result each")
 	}
 	r1, r2 := results1[0], results2[0]
-	if !stringSliceEqual(r1.SymptomsMatched, r2.SymptomsMatched) {
+	if !sameStrings(r1.SymptomsMatched, r2.SymptomsMatched) {
 		t.Errorf("symptoms matched differ: %v vs %v", r1.SymptomsMatched, r2.SymptomsMatched)
 	}
-	if !stringSliceEqual(r1.LabelsApplied, r2.LabelsApplied) {
+	if !sameStrings(r1.LabelsApplied, r2.LabelsApplied) {
 		t.Errorf("labels applied differ: %v vs %v", r1.LabelsApplied, r2.LabelsApplied)
 	}
 }

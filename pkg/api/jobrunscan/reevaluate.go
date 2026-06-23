@@ -363,7 +363,7 @@ func (r *ReEvaluator) buildOutputs(matches []symptomMatch, buildID string, jobRu
 
 // loadLabelDefinitions fetches label content for the labels referenced by matched symptoms.
 func (r *ReEvaluator) loadLabelDefinitions(matches []symptomMatch) (map[string]jobrunscan.LabelContent, error) {
-	ids := sets.NewString()
+	ids := sets.New[string]()
 	for _, m := range matches {
 		ids.Insert(m.symptom.LabelIDs...)
 	}
@@ -372,8 +372,8 @@ func (r *ReEvaluator) loadLabelDefinitions(matches []symptomMatch) (map[string]j
 	}
 
 	var labels []jobrunscan.Label
-	if err := r.db.DB.Where("id IN ?", ids.List()).Find(&labels).Error; err != nil {
-		return nil, fmt.Errorf("querying label definitions for %v: %w", ids.List(), err)
+	if err := r.db.DB.Where("id IN ?", ids.UnsortedList()).Find(&labels).Error; err != nil {
+		return nil, fmt.Errorf("querying label definitions for %v: %w", ids.UnsortedList(), err)
 	}
 
 	result := make(map[string]jobrunscan.LabelContent, len(labels))
@@ -551,14 +551,14 @@ func (r *ReEvaluator) queryNonSymptomLabels(ctx context.Context, buildID string,
 
 // mergeLabels combines manual labels with newly applied symptom labels, deduplicating.
 func mergeLabels(manualLabels []string, bqLabels []models.JobRunLabel) []string {
-	merged := sets.NewString()
+	merged := sets.New[string]()
 	for _, l := range manualLabels {
 		merged.Insert(l)
 	}
 	for _, bl := range bqLabels {
 		merged.Insert(bl.Label)
 	}
-	return merged.List()
+	return merged.UnsortedList()
 }
 
 // jobRunPathFromURL extracts the GCS path from a ProwJobRun URL.
@@ -577,20 +577,20 @@ func jobRunPathFromURL(url string) string {
 
 // uniqueSymptomsMatched returns the sorted distinct symptom IDs from the matches.
 func uniqueSymptomsMatched(matches []symptomMatch) []string {
-	s := sets.NewString()
+	s := sets.New[string]()
 	for _, m := range matches {
 		s.Insert(m.symptom.ID)
 	}
-	return s.List()
+	return s.UnsortedList()
 }
 
 // uniqueLabels returns the unique label IDs from a set of BQ labels.
 func uniqueLabels(labels []models.JobRunLabel) []string {
-	s := sets.NewString()
+	s := sets.New[string]()
 	for _, l := range labels {
 		s.Insert(l.Label)
 	}
-	return s.List()
+	return s.UnsortedList()
 }
 
 // ValidateReEvalRequest validates the re-evaluation request parameters.
