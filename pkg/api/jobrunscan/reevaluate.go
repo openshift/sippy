@@ -524,7 +524,7 @@ func (r *ReEvaluator) queryNonSymptomLabels(ctx context.Context, buildID string,
 		`SELECT DISTINCT label FROM %s
 		WHERE prowjob_build_id = @buildID
 		AND (symptom_id IS NULL OR symptom_id = '')
-		AND DATE(prowjob_start) >= @startDate`,
+		AND DATE(prowjob_start) = @startDate`,
 		table)
 
 	q := r.bqClient.Query(ctx, bqlabel.JobRunLabelsReEvaluate, queryStr)
