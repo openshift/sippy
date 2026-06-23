@@ -18,5 +18,6 @@ applyTo: "**"
   purpose, data flow, and key code locations; keep them accurate as
   the implementation evolves. If you add a new major feature, create a
   new doc in `docs/features/`.
-* Documentation and code belong in the same PR — never treat a docs update
+* Documentation and code belong in the same PR; never treat a docs update
   as a follow-up task.
+* Do not use em dashes when writing docs. Use commas, parentheses, or periods instead.
