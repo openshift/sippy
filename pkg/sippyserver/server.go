@@ -54,6 +54,7 @@ import (
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
@@ -142,6 +143,12 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Name:    "sippy_all_matviews_refresh_millis",
 	Help:    "Milliseconds to refresh our postgresql materialized views",
 	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
+})
+
+var dailySummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
+	Name:    "sippy_daily_summary_refresh_millis",
+	Help:    "Milliseconds to refresh the daily summary table",
+	Buckets: []float64{1000, 5000, 10000, 30000, 60000, 300000, 600000, 1200000},
 })
 
 var matViewUniqueNumberOfTests = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -380,8 +387,14 @@ func recordMatviewRefreshTime(cacheClient cache.Cache, matView string, tmpLog *l
 	}
 }
 
-func RefreshData(dbc *db.DB, cacheClient cache.Cache, refreshMatviewsOnlyIfEmpty bool) {
+func RefreshData(dbc *db.DB, cacheClient cache.Cache, refreshMatviewsOnlyIfEmpty bool, dailySummaryOpts dailysummary.Options) {
 	log.Infof("Refreshing data")
+	summaryStart := time.Now()
+	if err := dailysummary.Refresh(dbc, dailySummaryOpts); err != nil {
+		log.WithError(err).Error("failed to refresh daily summaries")
+	} else {
+		dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
+	}
 	refreshMaterializedViews(dbc, cacheClient, refreshMatviewsOnlyIfEmpty)
 	log.Info("Refresh complete")
 }

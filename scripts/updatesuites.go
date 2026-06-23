@@ -12,6 +12,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/sippyserver"
 )
@@ -153,7 +154,7 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 	// NOTE: does not update timestamps to invalidate cached matview data; not clear if the use case for this script requires that.
 	sippyserver.RefreshData(&db.DB{
 		DB: dbc,
-	}, nil, false)
+	}, nil, false, dailysummary.Options{Rebuild: true})
 
 	return nil
 }

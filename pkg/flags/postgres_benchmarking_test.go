@@ -13,6 +13,7 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
@@ -1230,7 +1231,7 @@ func Test_BenchmarkRefreshData(t *testing.T) {
 	r := runBenchmarkCase(t, dbc, benchmarkCase{
 		name: "RefreshData",
 		fn: func(dbc *db.DB) error {
-			sippyserver.RefreshData(dbc, nil, false)
+			sippyserver.RefreshData(dbc, nil, false, dailysummary.Options{})
 			return nil
 		},
 	}, 1)
