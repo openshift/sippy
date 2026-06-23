@@ -24,6 +24,7 @@ import (
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
@@ -56,7 +57,7 @@ type JiraAutomator struct {
 	dbc          *db.DB
 	cacheOptions cache.RequestOptions
 	views        []crview.View
-	releases     []v1.Release
+	releases     []models.ReleaseDefinition
 	sippyURL     string
 	// columnThresholds defines a threshold for the number of red cells in a column.
 	// When the number of red cells of a column is over this threshold, a jira card will be created for the
@@ -75,7 +76,7 @@ func NewJiraAutomator(
 	dbc *db.DB,
 	cacheOptions cache.RequestOptions,
 	views []crview.View,
-	releases []v1.Release,
+	releases []models.ReleaseDefinition,
 	sippyURL, jiraAccount string,
 	includeComponents sets.String,
 	columnThresholds map[Variant]int,

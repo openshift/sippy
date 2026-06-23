@@ -152,7 +152,12 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("unable to load views")
 			}
-			releases, err := api.GetReleases(context.Background(), bigQueryClient, false)
+
+			dbc, err := f.PostgresFlags.GetDBClient()
+			if err != nil {
+				log.WithError(err).Fatal("unable to connect to postgres")
+			}
+			releases, err := api.GetReleasesFromDB(ctx, dbc)
 			if err != nil {
 				log.WithError(err).Fatal("error querying releases")
 			}
@@ -178,10 +183,6 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return errors.WithMessage(err, "error validating options")
 			}
 
-			dbc, err := f.PostgresFlags.GetDBClient()
-			if err != nil {
-				log.WithError(err).Fatal("unable to connect to postgres")
-			}
 			j, err := jiraautomator.NewJiraAutomator(
 				jiraClient, bigQueryClient, provider, dbc, cacheOpts,
 				views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount,

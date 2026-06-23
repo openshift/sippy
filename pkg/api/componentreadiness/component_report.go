@@ -31,8 +31,8 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -82,7 +82,7 @@ func GetComponentReport(
 	reqOptions reqopts.RequestOptions,
 	baseURL string,
 ) (report crtype.ComponentReport, errs []error) {
-	releaseConfigs, err := provider.QueryReleases(ctx)
+	releaseConfigs, err := api.GetReleasesFromDB(ctx, dbc)
 	if err != nil {
 		return report, []error{err}
 	}
@@ -151,7 +151,7 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 	return nil
 }
 
-func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions reqopts.RequestOptions, dbc *db.DB, releaseConfigs []v1.Release, baseURL string) ComponentReportGenerator {
+func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions reqopts.RequestOptions, dbc *db.DB, releaseConfigs []models.ReleaseDefinition, baseURL string) ComponentReportGenerator {
 	slices.Sort(reqOptions.Capabilities) // normalize ordering so cache keys match
 	generator := ComponentReportGenerator{
 		dataProvider:   provider,
@@ -175,7 +175,7 @@ type ComponentReportGenerator struct {
 	dbc            *db.DB
 	ReqOptions     reqopts.RequestOptions
 	middlewares    middleware.List
-	releaseConfigs []v1.Release
+	releaseConfigs []models.ReleaseDefinition
 	baseURL        string
 }
 
@@ -278,7 +278,7 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	c.middlewares = middleware.List{}
 	// Initialize all our middleware applicable to this request.
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && c.ReqOptions.SampleRelease.PullRequestOptions == nil {
-		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.dataProvider, c.ReqOptions, c.releaseConfigs))
+		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.dataProvider, c.dbc, c.ReqOptions, c.releaseConfigs))
 	}
 	if c.dbc != nil {
 		c.middlewares = append(c.middlewares, regressiontracker.NewRegressionTrackerMiddleware(c.dbc, c.ReqOptions))

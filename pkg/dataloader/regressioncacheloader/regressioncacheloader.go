@@ -19,7 +19,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	apiv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -47,7 +46,7 @@ type RegressionCacheLoader struct {
 	// Cache priming deps
 	bqClient             *bigquery.Client
 	config               *configv1.SippyConfig
-	releases             []apiv1.Release
+	releases             []models.ReleaseDefinition
 	crTimeRoundingFactor time.Duration
 	crTimeRoundingOffset time.Duration
 
@@ -60,7 +59,7 @@ func New(
 	bqClient *bigquery.Client,
 	config *configv1.SippyConfig,
 	views []crview.View,
-	releases []apiv1.Release,
+	releases []models.ReleaseDefinition,
 	crTimeRoundingFactor time.Duration,
 	crTimeRoundingOffset time.Duration,
 	regressionStore componentreadiness.RegressionStore,

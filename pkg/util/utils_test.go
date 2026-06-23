@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestParseCRReleaseTime(t *testing.T) {
-	releases := []v1.Release{
+	releases := []models.ReleaseDefinition{
 		{Release: "4.16", Status: "", GADate: DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
 	}
 

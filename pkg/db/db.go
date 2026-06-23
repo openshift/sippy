@@ -137,6 +137,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 
 	// List of all models to migrate
 	modelsToMigrate := []any{
+		&models.ReleaseDefinition{},
 		&models.ReleaseTag{},
 		&models.ReleasePullRequest{},
 		&models.ReleaseRepository{},

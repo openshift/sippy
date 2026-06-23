@@ -18,9 +18,9 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	apiv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -33,7 +33,7 @@ type ComponentReadinessCacheLoader struct {
 	dbc                  *db.DB
 	errs                 []error
 	views                *sippytypes.SippyViews
-	releases             []apiv1.Release
+	releases             []models.ReleaseDefinition
 	cacheClient          cache.Cache
 	bqClient             *bigquery.Client
 	dataProvider         dataprovider.DataProvider
@@ -48,7 +48,7 @@ func New(
 	bqClient *bigquery.Client,
 	config *v1.SippyConfig,
 	views *sippytypes.SippyViews,
-	releases []apiv1.Release,
+	releases []models.ReleaseDefinition,
 	crTimeRoundingFactor, crTimeRoundingOffset time.Duration) *ComponentReadinessCacheLoader {
 
 	return &ComponentReadinessCacheLoader{

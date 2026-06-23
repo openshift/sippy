@@ -11,7 +11,6 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/dataloader/regressioncacheloader"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -37,10 +36,12 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
+	releasedefloader "github.com/openshift/sippy/pkg/dataloader/releasedefloader"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/dataloader/testownershiploader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/dailysummary"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
 )
@@ -100,7 +101,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.JiraFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
-	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates"}, "Which data sources to use for data loading")
+	fs.StringArrayVar(&f.Loaders, "loader", []string{"release-definitions", "prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
 	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
@@ -152,8 +153,6 @@ func NewLoadCommand() *cobra.Command {
 				cacheClient = nil // error hygiene, since we pass this down to quite a few functions
 			}
 
-			releaseConfigs := []sippyv1.Release{}
-
 			// initializing a bigquery client different from the normal one
 			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "load")
 			bqc, bigqueryErr := bqcachedclient.New(
@@ -164,20 +163,23 @@ func NewLoadCommand() *cobra.Command {
 				if f.CacheFlags.EnablePersistentCaching {
 					bqc = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqc)
 				}
-				releaseConfigs, err = api.GetReleasesFromBigQuery(context.Background(), bqc)
-				if err != nil {
-					return errors.Wrapf(err, "error querying releases from bq")
-				}
+			}
+
+			// Read release definitions from PG for downstream loader construction.
+			// On the first run the table may be empty; the release-definitions
+			// loader will populate it for subsequent runs.
+			var releaseDefs []models.ReleaseDefinition
+			if dbErr == nil {
+				releaseDefs, _ = api.GetReleasesFromDB(context.Background(), dbc)
 			}
 
 			// Ensure partitions exist for all releases (only when InitDatabase is true)
 			if f.InitDatabase && dbErr == nil {
-				err = ensurePartitionsForReleases(dbc, releaseConfigs)
+				err = ensurePartitionsForReleases(dbc, releaseDefs)
 				if err != nil {
 					return errors.Wrapf(err, "error ensuring partitions")
 				}
 
-				// Clean up old partitions
 				detached, dropped, err := dbc.CleanupPartitions(false)
 				if err != nil {
 					log.WithError(err).Warning("failed to cleanup old partitions, continuing with load")
@@ -201,6 +203,17 @@ func NewLoadCommand() *cobra.Command {
 
 			var regressionCacheAdded bool
 			for _, l := range f.Loaders {
+				if l == "release-definitions" {
+					if bigqueryErr != nil {
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents release-definitions loading")
+					}
+					if dbErr != nil {
+						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents release-definitions loading")
+					}
+					rdl := releasedefloader.NewReleaseDefinitionLoader(ctx, dbc, bqc)
+					loaders = append(loaders, rdl)
+				}
+
 				// TODO: remove "component-readiness-cache" and "regression-tracker" once the cronjob
 				// manifests are updated to use "regression-cache".
 				if l == "component-readiness-cache" || l == "regression-tracker" || l == "regression-cache" {
@@ -237,7 +250,7 @@ func NewLoadCommand() *cobra.Command {
 					regressionStore := componentreadiness.NewPostgresRegressionStore(dbc, jiraClient)
 
 					rcl, err := regressioncacheloader.New(
-						dbc, bqc, config, views.ComponentReadiness, releaseConfigs,
+						dbc, bqc, config, views.ComponentReadiness, releaseDefs,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor,
 						f.ComponentReadinessFlags.CRTimeRoundingOffset,
 						regressionStore,
@@ -252,7 +265,7 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					loaders = append(loaders, releaseloader.New(ctx, dbc, bqc, f.Releases, f.Architectures, releaseConfigs))
+					loaders = append(loaders, releaseloader.New(ctx, dbc, bqc, f.Releases, f.Architectures, releaseDefs))
 				}
 
 				// Prow Loader
@@ -261,7 +274,7 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					prowLoader, err := f.prowLoader(ctx, dbc, config, releaseConfigs, promPusher)
+					prowLoader, err := f.prowLoader(ctx, dbc, config, releaseDefs, promPusher)
 					if err != nil {
 						return err
 					}
@@ -331,7 +344,7 @@ func NewLoadCommand() *cobra.Command {
 				// Feature gates
 				if l == "feature-gates" {
 					refreshMatviews = true
-					fgLoader := featuregateloader.New(dbc, releaseConfigs)
+					fgLoader := featuregateloader.New(dbc, releaseDefs)
 					loaders = append(loaders, fgLoader)
 				}
 
@@ -418,7 +431,7 @@ func (f *LoadFlags) jobVariantsLoader(ctx context.Context) (dataloader.DataLoade
 
 }
 
-func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.SippyConfig, releaseConfigs []sippyv1.Release, promPusher *push.Pusher) (dataloader.DataLoader, error) {
+func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.SippyConfig, releaseDefs []models.ReleaseDefinition, promPusher *push.Pusher) (dataloader.DataLoader, error) {
 	gcsClient, err := gcs.NewGCSClient(ctx,
 		f.GoogleCloudFlags.ServiceAccountCredentialFile,
 		f.GoogleCloudFlags.OAuthClientCredentialFile,
@@ -453,8 +466,8 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 
 	releases := f.Releases
 	if len(releases) == 0 { // if not specified, use those defined in the Releases table
-		for _, config := range releaseConfigs {
-			releases = append(releases, config.Release) // could filter by capability if needed
+		for _, def := range releaseDefs {
+			releases = append(releases, def.Release) // could filter by capability if needed
 		}
 	}
 
@@ -504,10 +517,9 @@ func parseProwLoadSince(val string) (time.Time, error) {
 // ensurePartitionsForReleases creates partitions for all configured releases.
 // It uses a 7 day lookback window plus 2 days forward from today.
 // Errors are logged but ignored to prevent blocking the load process.
-func ensurePartitionsForReleases(dbc *db.DB, releaseConfigs []sippyv1.Release) error {
-	// Extract release names from release configs
-	releases := make([]string, 0, len(releaseConfigs))
-	for _, r := range releaseConfigs {
+func ensurePartitionsForReleases(dbc *db.DB, releaseDefs []models.ReleaseDefinition) error {
+	releases := make([]string, 0, len(releaseDefs))
+	for _, r := range releaseDefs {
 		releases = append(releases, r.Release)
 	}
 

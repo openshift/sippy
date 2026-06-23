@@ -16,10 +16,10 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
-func PreviousRelease(release string, releaseConfigs []sippyv1.Release) (string, error) {
+func PreviousRelease(release string, releaseConfigs []models.ReleaseDefinition) (string, error) {
 	for _, config := range releaseConfigs {
 		if config.Release == release {
 			if config.PreviousRelease != "" {

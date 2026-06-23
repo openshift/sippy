@@ -51,7 +51,6 @@ import (
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/dailysummary"
@@ -189,17 +188,12 @@ type Server struct {
 	rateLimiters         map[string]*rateLimiter
 }
 
-// getReleases returns release data, preferring the BigQuery client with caching
-// when available, falling back to the data provider for mock mode.
-func (s *Server) getReleases(ctx context.Context, forceRefresh ...bool) ([]sippyv1.Release, error) {
-	if s.bigQueryClient != nil {
-		refresh := len(forceRefresh) > 0 && forceRefresh[0]
-		return api.GetReleases(ctx, s.bigQueryClient, refresh)
+// getReleases returns release data from PostgreSQL.
+func (s *Server) getReleases(ctx context.Context) ([]models.ReleaseDefinition, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("no database available for releases")
 	}
-	if s.crDataProvider != nil {
-		return s.crDataProvider.QueryReleases(ctx)
-	}
-	return nil, fmt.Errorf("no data source available for releases")
+	return api.GetReleasesFromDB(ctx, s.db)
 }
 
 type rateLimiter struct {
@@ -907,8 +901,8 @@ func (s *Server) jsonTestRunsAndOutputsFromBigQuery(w http.ResponseWriter, req *
 
 	outputs, err := api.GetTestRunsAndOutputsFromBigQuery(req.Context(), s.bigQueryClient, testID, prowJobRunIDList, prowJobNames, includeSuccess, startDate, endDate)
 	if err != nil {
-		log.WithError(err).Error("error querying test runs from bigquery")
-		failureResponse(w, http.StatusInternalServerError, "error querying test runs from bigquery")
+		log.WithError(err).Error("error querying test runs from database")
+		failureResponse(w, http.StatusInternalServerError, "error querying test runs from database")
 		return
 	}
 
@@ -922,11 +916,11 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 	}
 	outputs, errs := componentreadiness.GetComponentTestVariants(req.Context(), s.crDataProvider)
 	if len(errs) > 0 {
-		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
+		log.Warningf("%d errors were encountered while querying test variants from database:", len(errs))
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying test variants from big query: %v", errs))
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying test variants from database: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -939,11 +933,11 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 	}
 	outputs, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
 	if len(errs) > 0 {
-		log.Warningf("%d errors were encountered while querying job variants from big query:", len(errs))
+		log.Warningf("%d errors were encountered while querying job variants from database:", len(errs))
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying job variants from big query: %v", errs))
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying job variants from database: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -1034,7 +1028,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		baseURL,
 	)
 	if len(errs) > 0 {
-		return componentreport.ComponentReport{}, fmt.Errorf("error querying component from big query: %v", errs)
+		return componentreport.ComponentReport{}, fmt.Errorf("error querying component from database: %v", errs)
 	}
 
 	// Add any warnings from parsing to the report
@@ -1080,11 +1074,11 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 	baseURL := api.GetBaseURL(req)
 	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.crDataProvider, s.db, reqOptions, allReleases, baseURL)
 	if len(errs) > 0 {
-		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
+		log.Warningf("%d errors were encountered while querying component test details from database:", len(errs))
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying component test details from big query: %v", errs))
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying component test details from database: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -1153,8 +1147,7 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Request) {
-	forceRefresh := req.URL.Query().Get("forceRefresh") != ""
-	releases, err := s.getReleases(req.Context(), forceRefresh)
+	releases, err := s.getReleases(req.Context())
 	if err != nil {
 		log.WithError(err).Error("error querying releases")
 		failureResponse(w, http.StatusInternalServerError, "error querying releases")

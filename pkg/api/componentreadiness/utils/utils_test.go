@@ -8,7 +8,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 	// Define releases with GA dates for all tests
 	ga419 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	ga420 := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
-	releases := []v1.Release{
+	releases := []models.ReleaseDefinition{
 		{
 			Release: "4.19",
 			GADate:  &ga419,

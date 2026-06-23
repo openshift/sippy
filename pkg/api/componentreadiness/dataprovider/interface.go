@@ -8,7 +8,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
 
 // TestStatusQuerier fetches aggregated test pass/fail counts.
@@ -39,12 +38,6 @@ type TestDetailsQuerier interface {
 type MetadataQuerier interface {
 	// QueryJobVariants returns all variant names and their possible values.
 	QueryJobVariants(ctx context.Context) (crtest.JobVariants, []error)
-
-	// QueryReleaseDates returns the time ranges for each known release.
-	QueryReleaseDates(ctx context.Context, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error)
-
-	// QueryReleases returns known release configurations.
-	QueryReleases(ctx context.Context) ([]v1.Release, error)
 
 	// QueryUniqueVariantValues returns distinct values for a variant column
 	// from the past 60 days.

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 // TruncateAligned rounds t down to the nearest multiple of factor, aligned to a
@@ -125,7 +125,7 @@ var releaseRelativeRE = regexp.MustCompile(`^(now|ga|end)(?:-([0-9]+)([d]))?$`)
 // For isStart=false we would round up to 23:59:59.
 //
 // endTime must be specified if your timeStr uses the end directive. (end-90d) Otherwise it is not required or used.
-func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isStart bool, endTime *time.Time, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) (time.Time, error) {
+func ParseCRReleaseTime(allReleases []models.ReleaseDefinition, release, timeStr string, isStart bool, endTime *time.Time, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) (time.Time, error) {
 
 	var relTime time.Time
 

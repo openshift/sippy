@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 func (ocp *OCPProject) GetName() string {
@@ -19,7 +19,7 @@ func (ocp *OCPProject) GetRcDomain(architecture string) (domain string) {
 	return architecture + ".ocp.releases.ci.openshift.org"
 }
 
-func (ocp *OCPProject) IsProjectRelease(release v1.Release) bool {
+func (ocp *OCPProject) IsProjectRelease(release models.ReleaseDefinition) bool {
 	return release.Product == "OCP"
 }
 
@@ -46,7 +46,7 @@ func (okd *OKDProject) GetRcDomain(architecture string) (domain string) {
 	return architecture + ".origin.releases.ci.openshift.org"
 }
 
-func (okd *OKDProject) IsProjectRelease(release v1.Release) bool {
+func (okd *OKDProject) IsProjectRelease(release models.ReleaseDefinition) bool {
 	return release.Product == "OKD"
 }
 

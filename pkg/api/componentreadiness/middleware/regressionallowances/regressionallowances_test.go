@@ -8,7 +8,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/stretchr/testify/assert"
 )
@@ -83,7 +83,7 @@ func Test_PreAnalysis(t *testing.T) {
 		},
 	}
 
-	releaseConfigs := []v1.Release{
+	releaseConfigs := []models.ReleaseDefinition{
 		{Release: "4.19", PreviousRelease: "4.18"},
 		{Release: "4.18", PreviousRelease: "4.17"},
 		{Release: "4.17", PreviousRelease: "4.16"},

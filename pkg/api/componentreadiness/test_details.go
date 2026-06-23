@@ -23,10 +23,10 @@ import (
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
-func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
+func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []models.ReleaseDefinition, baseURL string) (testdetails.Report, []error) {
 	generator := NewComponentReportGenerator(provider, reqOptions, dbc, releases, baseURL)
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
@@ -197,9 +197,9 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 		}
 	}
 
-	timeRanges, errs := c.dataProvider.QueryReleaseDates(ctx, c.ReqOptions)
-	if errs != nil {
-		return testdetails.Report{}, errs
+	timeRanges, err := api.GetReleaseDatesFromDB(ctx, c.dbc, c.ReqOptions)
+	if err != nil {
+		return testdetails.Report{}, []error{err}
 	}
 
 	now := time.Now()

@@ -3,12 +3,12 @@ package releaseloader
 import (
 	"time"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 type ReleaseStream struct {
 	Name         string
-	Release      v1.Release
+	Release      models.ReleaseDefinition
 	Stream       string
 	Architecture string
 	Domain       string
@@ -116,7 +116,7 @@ type PayloadProject interface {
 	GetRcDomain(architecture string) (domain string)
 
 	// IsProjectRelease returns true if the release (from Releases table) belongs to this project
-	IsProjectRelease(release v1.Release) bool
+	IsProjectRelease(release models.ReleaseDefinition) bool
 
 	// FullReleaseStream builds a full releaseStream name to look for on the release-controller, or empty string if n/a
 	FullReleaseStream(release, stream, architecture string) string

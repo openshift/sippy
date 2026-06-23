@@ -9,7 +9,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -612,7 +611,7 @@ func TestCompareTriageObjects(t *testing.T) {
 
 func TestInjectRegressionHATEOASLinks(t *testing.T) {
 	ga421 := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
-	releases := []v1.Release{
+	releases := []models.ReleaseDefinition{
 		{Release: "4.20", GADate: &ga421},
 		{Release: "4.21", GADate: &ga421},
 	}

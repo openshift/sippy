@@ -14,7 +14,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +31,7 @@ var (
 
 func TestParseComponentReportRequest(t *testing.T) {
 
-	releases := []v1.Release{
+	releases := []models.ReleaseDefinition{
 		{Release: "4.16", Status: "", GADate: util.DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
 		{Release: "4.15", Status: "", GADate: util.DatePtr(2024, 2, 28, 0, 0, 0, 0, time.UTC)},
 	}
@@ -490,7 +490,7 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 	roundingFactor := 12 * time.Hour
 	roundingOffset := 4 * time.Hour
 
-	releases := []v1.Release{
+	releases := []models.ReleaseDefinition{
 		{Release: "4.16", Status: "", GADate: util.DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
 		{Release: "4.17", Status: "", GADate: util.DatePtr(2024, 12, 10, 0, 0, 0, 0, time.UTC)},
 	}

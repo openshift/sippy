@@ -19,7 +19,6 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
@@ -307,7 +306,7 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 
 // ListRegressions lists all regressions for the provided view OR release.
 // When view is set, it is resolved to that view's sample release and filtering is by release.
-func ListRegressions(dbc *db.DB, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
+func ListRegressions(dbc *db.DB, release string, views []crview.View, releases []models.ReleaseDefinition, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	var err error
 	regressions, err = query.ListRegressions(dbc, release)
@@ -324,7 +323,7 @@ func ListRegressions(dbc *db.DB, release string, views []crview.View, releases [
 }
 
 // GetRegression returns the regression with the matching ID
-func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) (*models.TestRegression, error) {
+func GetRegression(dbc *db.DB, id int, views []crview.View, releases []models.ReleaseDefinition, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) (*models.TestRegression, error) {
 	regression := &models.TestRegression{}
 	res := dbc.DB.Preload("Triages").Preload("JobRuns").Preload("Views").First(regression, id)
 	if res.Error != nil {
@@ -796,7 +795,7 @@ func injectHATEOASLinks(triage *models.Triage, baseURL string) {
 
 // InjectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
 // Per-view test_details links use composite keys: test_details:<view_name>.
-func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, baseAPIURL, baseFrontendURL string) {
+func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []models.ReleaseDefinition, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, baseAPIURL, baseFrontendURL string) {
 	regression.Links = map[string]string{
 		"self": fmt.Sprintf(regressionLink, baseAPIURL, regression.ID),
 	}
@@ -830,7 +829,7 @@ func FindViewByName(name string, views []crview.View) (crview.View, bool) {
 
 // generateTestDetailsURLFromRegression extracts the required data from a regression and view
 // and calls the GenerateTestDetailsURL function.
-func generateTestDetailsURLFromRegression(regression *models.TestRegression, view crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, baseURL string) (string, error) {
+func generateTestDetailsURLFromRegression(regression *models.TestRegression, view crview.View, releases []models.ReleaseDefinition, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, baseURL string) (string, error) {
 	if regression == nil {
 		return "", fmt.Errorf("regression cannot be nil")
 	}

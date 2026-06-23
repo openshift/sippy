@@ -6,6 +6,41 @@ import (
 	"github.com/lib/pq"
 )
 
+// ReleaseDefinition stores release metadata synced from BigQuery's Releases table.
+// This is distinct from ReleaseTag, which tracks individual payload tags.
+type ReleaseDefinition struct {
+	Model
+
+	Release              string         `json:"release" gorm:"uniqueIndex;column:release"`
+	Major                int            `json:"major" gorm:"column:major"`
+	Minor                int            `json:"minor" gorm:"column:minor"`
+	Patch                *int           `json:"patch,omitempty" gorm:"column:patch"`
+	PreviousRelease      string         `json:"previous_release" gorm:"column:previous_release"`
+	GADate               *time.Time     `json:"ga_date,omitempty" gorm:"column:ga_date"`
+	DevelopmentStartDate *time.Time     `json:"development_start_date" gorm:"column:development_start_date"`
+	Product              string         `json:"product" gorm:"column:product"`
+	Status               string         `json:"status" gorm:"column:status"`
+	Capabilities         pq.StringArray `json:"capabilities" gorm:"type:text[];column:capabilities"`
+}
+
+const (
+	CapComponentReadiness = "componentReadiness"
+	CapSippyClassic       = "sippyClassic"
+	CapMetrics            = "metrics"
+	CapPullRequests       = "pullRequests"
+	CapFeatureGates       = "featureGates"
+	CapPayloadTags        = "payloadTags"
+)
+
+func (rd *ReleaseDefinition) HasCapability(cap string) bool {
+	for _, c := range rd.Capabilities {
+		if c == cap {
+			return true
+		}
+	}
+	return false
+}
+
 type ReleaseTag struct {
 	Model
 

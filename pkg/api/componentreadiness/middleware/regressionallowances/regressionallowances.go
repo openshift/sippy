@@ -11,14 +11,14 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	log "github.com/sirupsen/logrus"
 )
 
 var _ middleware.Middleware = &RegressionAllowances{}
 
-func NewRegressionAllowancesMiddleware(reqOptions reqopts.RequestOptions, releaseConfigs []v1.Release) *RegressionAllowances {
+func NewRegressionAllowancesMiddleware(reqOptions reqopts.RequestOptions, releaseConfigs []models.ReleaseDefinition) *RegressionAllowances {
 	return &RegressionAllowances{
 		log:                  log.WithField("middleware", "RegressionAllowances"),
 		reqOptions:           reqOptions,
@@ -34,7 +34,7 @@ func NewRegressionAllowancesMiddleware(reqOptions reqopts.RequestOptions, releas
 type RegressionAllowances struct {
 	log            log.FieldLogger
 	reqOptions     reqopts.RequestOptions
-	releaseConfigs []v1.Release
+	releaseConfigs []models.ReleaseDefinition
 
 	// regressionGetterFunc allows us to unit test without relying on real regression data
 	regressionGetterFunc func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression

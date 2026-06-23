@@ -18,7 +18,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	apiCache "github.com/openshift/sippy/pkg/apis/cache"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/util/param"
@@ -168,14 +167,6 @@ func (p *BigQueryProvider) QueryJobVariants(ctx context.Context) (crtest.JobVari
 		variants.Variants[row.VariantName] = row.VariantValues
 	}
 	return variants, nil
-}
-
-func (p *BigQueryProvider) QueryReleaseDates(ctx context.Context, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error) {
-	return GetReleaseDatesFromBigQuery(ctx, p.client, reqOptions)
-}
-
-func (p *BigQueryProvider) QueryReleases(ctx context.Context) ([]v1.Release, error) {
-	return apiPkg.GetReleasesFromBigQuery(ctx, p.client)
 }
 
 func (p *BigQueryProvider) QueryUniqueVariantValues(ctx context.Context, field string, nested bool) ([]string, error) {

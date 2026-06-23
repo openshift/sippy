@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -39,21 +38,21 @@ type ReleaseLoader struct {
 	db            *db.DB
 	bqClient      *bqcachedclient.Client
 	httpClient    *http.Client
-	releases      map[string]v1.Release
+	releases      map[string]models.ReleaseDefinition
 	architectures []string
 	projects      []PayloadProject
 	errors        []error
 }
 
-func New(ctx context.Context, dbc *db.DB, bqClient *bqcachedclient.Client, releases, architectures []string, releaseConfigs []v1.Release) *ReleaseLoader {
-	configForRelease := make(map[string]v1.Release, len(releaseConfigs))
+func New(ctx context.Context, dbc *db.DB, bqClient *bqcachedclient.Client, releases, architectures []string, releaseConfigs []models.ReleaseDefinition) *ReleaseLoader {
+	configForRelease := make(map[string]models.ReleaseDefinition, len(releaseConfigs))
 	for _, config := range releaseConfigs {
-		if config.Capabilities[v1.PayloadTagsCap] {
+		if config.HasCapability(models.CapPayloadTags) {
 			configForRelease[config.Release] = config
 		}
 	}
 	if len(releases) > 0 {
-		filteredRCs := make(map[string]v1.Release, len(releases))
+		filteredRCs := make(map[string]models.ReleaseDefinition, len(releases))
 		for _, release := range releases {
 			if config, ok := configForRelease[release]; ok {
 				filteredRCs[release] = config
@@ -514,7 +513,7 @@ func (rs *ReleaseStream) baseReleaseStreamURL() string {
 }
 
 // buildReleaseStreams builds relevant release streams for specified releases that belong to the project.
-func buildReleaseStreams(releases map[string]v1.Release, architectures []string, project PayloadProject) []ReleaseStream {
+func buildReleaseStreams(releases map[string]models.ReleaseDefinition, architectures []string, project PayloadProject) []ReleaseStream {
 	releaseStreams := make([]ReleaseStream, 0, len(releases)*len(project.GetStreams()))
 	for release, config := range releases {
 		if project.IsProjectRelease(config) {

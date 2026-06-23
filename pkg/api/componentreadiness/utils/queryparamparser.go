@@ -12,7 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/param"
 )
@@ -20,7 +20,7 @@ import (
 // nolint:gocyclo
 func ParseComponentReportRequest(
 	views []crview.View,
-	releases []v1.Release,
+	releases []models.ReleaseDefinition,
 	req *http.Request,
 	allJobVariants crtest.JobVariants,
 	crTimeRoundingFactor, crTimeRoundingOffset time.Duration,
@@ -238,7 +238,7 @@ func getRequestedView(req *http.Request, views []crview.View) (*crview.View, err
 
 // Translate relative start/end times to actual time.Time:
 func GetViewReleaseOptions(
-	releases []v1.Release,
+	releases []models.ReleaseDefinition,
 	releaseType string,
 	viewRelease reqopts.RelativeRelease,
 	roundingFactor, roundingOffset time.Duration,
@@ -408,7 +408,7 @@ func parseAdvancedOptions(req *http.Request) (advancedOption reqopts.Advanced, e
 	return
 }
 
-func parseDateRange(allReleases []v1.Release, req *http.Request,
+func parseDateRange(allReleases []models.ReleaseDefinition, req *http.Request,
 	releaseOpts reqopts.Release,
 	startName string, endName string,
 	roundingFactor, roundingOffset time.Duration,

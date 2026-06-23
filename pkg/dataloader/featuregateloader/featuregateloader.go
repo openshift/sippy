@@ -10,7 +10,6 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -21,15 +20,15 @@ import (
 )
 
 type FeatureGateLoader struct {
-	dbc            *db.DB
-	errs           []error
-	releaseConfigs []v1.Release
+	dbc         *db.DB
+	errs        []error
+	releaseDefs []models.ReleaseDefinition
 }
 
-func New(dbc *db.DB, configs []v1.Release) *FeatureGateLoader {
+func New(dbc *db.DB, releaseDefs []models.ReleaseDefinition) *FeatureGateLoader {
 	return &FeatureGateLoader{
-		dbc:            dbc,
-		releaseConfigs: configs,
+		dbc:         dbc,
+		releaseDefs: releaseDefs,
 	}
 }
 
@@ -68,9 +67,9 @@ func (l *FeatureGateLoader) Errors() []error {
 
 func (l *FeatureGateLoader) getTargetReleases() []string {
 	var targetReleases []string
-	for _, release := range l.releaseConfigs {
-		if release.Capabilities[v1.FeatureGatesCap] {
-			targetReleases = append(targetReleases, release.Release)
+	for _, def := range l.releaseDefs {
+		if def.HasCapability(models.CapFeatureGates) {
+			targetReleases = append(targetReleases, def.Release)
 		}
 	}
 

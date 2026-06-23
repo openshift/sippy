@@ -17,8 +17,8 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 
@@ -102,7 +102,7 @@ var (
 	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "feature_set", "os", "releaseStatus"})
 )
 
-func getReleaseStatus(releases []v1.Release, release string) string {
+func getReleaseStatus(releases []models.ReleaseDefinition, release string) string {
 	releaseStatus := releaseStatusEOL
 	for _, r := range releases {
 		if r.Release == release && len(r.Status) != 0 {
@@ -119,10 +119,10 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 
-	var releases []v1.Release
-	if crProvider != nil {
+	var releases []models.ReleaseDefinition
+	if dbc != nil {
 		var err error
-		releases, err = crProvider.QueryReleases(ctx)
+		releases, err = api.GetReleasesFromDB(ctx, dbc)
 		if err != nil {
 			return err
 		}
@@ -186,7 +186,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 }
 
 func refreshComponentReadinessMetrics(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB,
-	cacheOptions cache.RequestOptions, views []crview.View, releases []v1.Release) {
+	cacheOptions cache.RequestOptions, views []crview.View, releases []models.ReleaseDefinition) {
 	for _, view := range views {
 		if view.Metrics.Enabled {
 			err := updateComponentReadinessMetricsForView(ctx, provider, dbc, cacheOptions, view, releases)
@@ -200,7 +200,7 @@ func refreshComponentReadinessMetrics(ctx context.Context, provider dataprovider
 }
 
 // updateComponentReadinessTrackingForView queries the report for the given view, and then updates metrics.
-func updateComponentReadinessMetricsForView(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, cacheOptions cache.RequestOptions, view crview.View, releases []v1.Release) error {
+func updateComponentReadinessMetricsForView(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, cacheOptions cache.RequestOptions, view crview.View, releases []models.ReleaseDefinition) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -291,9 +291,9 @@ func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
 	return nil
 }
 
-func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []v1.Release) {
+func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []models.ReleaseDefinition) {
 	for _, r := range releases {
-		if !r.Capabilities[v1.MetricsCap] {
+		if !r.HasCapability(models.CapMetrics) {
 			continue
 		}
 		results, err := api.ReleaseHealthReports(dbc, r.Release, reportEnd)
@@ -339,7 +339,7 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []v1.Releas
 // refreshDisruptionMetrics queries our BigQuery views for current release vs two weeks ago, and previous release GA.
 // Metrics are published for the delta for each NURP which can then be alerted on if certain thresholds are exceeded.
 // The previous GA view should have its release and GA date updated on each release GA.
-func refreshDisruptionMetrics(client *bqclient.Client, releases []v1.Release) error {
+func refreshDisruptionMetrics(client *bqclient.Client, releases []models.ReleaseDefinition) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating disruption metrics as we don't have a bigquery client")
 		return nil
@@ -382,11 +382,11 @@ type promReportType struct {
 	period  string
 }
 
-func buildPromReportTypes(releases []v1.Release) []promReportType {
+func buildPromReportTypes(releases []models.ReleaseDefinition) []promReportType {
 	var promReportTypes []promReportType
 
 	for _, release := range releases {
-		if !release.Capabilities[v1.MetricsCap] {
+		if !release.HasCapability(models.CapMetrics) {
 			continue
 		}
 		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.TwoDayReport)})

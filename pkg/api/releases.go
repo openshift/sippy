@@ -15,6 +15,8 @@ import (
 	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -23,6 +25,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
@@ -445,9 +448,9 @@ func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {
 	return dbc
 }
 
-// GetReleasesFromBigQuery gets all releases defined in the Releases table in BigQuery
-func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]sippyv1.Release, error) {
-	releases := []sippyv1.Release{}
+// GetReleaseRowsFromBigQuery fetches raw release rows from BigQuery's Releases table.
+func GetReleaseRowsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]sippyv1.ReleaseRow, error) {
+	var rows []sippyv1.ReleaseRow
 
 	queryString := fmt.Sprintf("SELECT * FROM `%s` ORDER BY DevelStartDate DESC", client.ReleasesTable)
 
@@ -455,7 +458,7 @@ func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client)
 	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying releases data from bigquery")
-		return releases, err
+		return rows, err
 	}
 
 	for {
@@ -466,40 +469,15 @@ func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client)
 		}
 		if err != nil {
 			log.WithError(err).Error("error parsing release row from bigquery")
-			return releases, err
+			return rows, err
 		}
-		releases = append(releases, transformRelease(r))
+		rows = append(rows, r)
 	}
-	return releases, nil
-}
-
-// transformRelease converts the BQ release row to v1.Release type
-func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
-	release := sippyv1.Release{
-		Release:         r.Release,
-		Status:          r.ReleaseStatus.String(),
-		PreviousRelease: r.PreviousRelease.StringVal,
-		Capabilities:    make(map[sippyv1.ReleaseCapability]bool),
-		Product:         r.Product.StringVal,
-	}
-	if r.GADate.Valid {
-		gaDate := r.GADate.Date.In(time.UTC)
-		release.GADate = &gaDate
-	}
-	if r.DevelStartDate.IsValid() {
-		develStartDate := r.DevelStartDate.In(time.UTC)
-		release.DevelopmentStartDate = &develStartDate
-	}
-	if r.Capabilities != nil {
-		for _, capability := range r.Capabilities {
-			release.Capabilities[capability] = true
-		}
-	}
-	return release
+	return rows, nil
 }
 
 // BuildReleasesResponse creates the API response structure for releases
-func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) apitype.Releases {
+func BuildReleasesResponse(releases []models.ReleaseDefinition, lastUpdated time.Time) apitype.Releases {
 	gaDateMap := make(map[string]time.Time)
 	dateMap := make(map[string]apitype.ReleaseDates)
 	response := apitype.Releases{
@@ -521,16 +499,49 @@ func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) ap
 			releaseDate.DevelopmentStart = release.DevelopmentStartDate
 			response.Dates[release.Release] = releaseDate
 		}
+		caps := make(map[sippyv1.ReleaseCapability]bool, len(release.Capabilities))
+		for _, cap := range release.Capabilities {
+			caps[sippyv1.ReleaseCapability(cap)] = true
+		}
 		response.ReleaseAttrs[release.Release] = apitype.Release{
 			Name:            release.Release,
 			PreviousRelease: release.PreviousRelease,
 			ReleaseDates:    releaseDate,
-			Capabilities:    release.Capabilities,
+			Capabilities:    caps,
 			Product:         release.Product,
 		}
 	}
 
 	return response
+}
+
+// GetReleaseDatesFromDB derives CR time ranges from release_definitions GA dates.
+func GetReleaseDatesFromDB(ctx context.Context, dbc *db.DB, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, error) {
+	defs, err := GetReleasesFromDB(ctx, dbc)
+	if err != nil {
+		return nil, err
+	}
+	var timeRanges []crtest.ReleaseTimeRange
+	for _, def := range defs {
+		tr := crtest.ReleaseTimeRange{Release: def.Release}
+		if def.GADate != nil {
+			prior := util.AdjustReleaseTime(*def.GADate, true, "30", reqOptions.CacheOption.CRTimeRoundingFactor, reqOptions.CacheOption.CRTimeRoundingOffset)
+			tr.Start = &prior
+			tr.End = def.GADate
+		}
+		timeRanges = append(timeRanges, tr)
+	}
+	return timeRanges, nil
+}
+
+// GetReleasesFromDB queries release metadata from the release_definitions table.
+func GetReleasesFromDB(ctx context.Context, dbc *db.DB) ([]models.ReleaseDefinition, error) {
+	var defs []models.ReleaseDefinition
+	err := dbc.DB.WithContext(ctx).Order("development_start_date DESC").Find(&defs).Error
+	if err != nil {
+		return nil, fmt.Errorf("querying release definitions: %w", err)
+	}
+	return defs, nil
 }
 
 // PayloadForJobRun returns the payload release tag that was used for a given job run.
