@@ -65,17 +65,27 @@ releases:
     jobs:
       periodic-ci-openshift-release-main-osd-conformance-aws-k8s-conformance: true
     regexp:
-      # rosa-e2e managed service validation + OCM FVT (current and future versioned jobs)
-      - "^periodic-ci-openshift-online-rosa-e2e-main-.*"
+      # rosa-e2e managed service validation nightlies (all run against staging OCM)
+      - "^periodic-ci-openshift-online-rosa-e2e-main-periodics-.*"
+      # rosa-e2e upgrade tests
+      - "^periodic-ci-openshift-online-rosa-e2e-main-upgrade-.*"
+      # OCM FVT staging
+      - "^periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-.*-staging-.*"
       # ROSA Gap Analysis (all versions)
       - "^periodic-ci-openshift-online-rosa-gap-analysis-main-.*"
       # ROSA HCP conformance (all versions)
       - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-hcp-ovn$"
       # ROSA Classic/STS conformance (all versions)
       - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-sts-ovn$"
+      # SRE operator e2e tests via Prow (staging)
+      - "^periodic-ci-openshift-.*-master-rosa-sts-e2e-promotion-stage$"
   rosa-integration:
     synthetic: true
-    jobs: {}
+    regexp:
+      # OCM FVT integration
+      - "^periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-.*-integration-.*"
+      # SRE operator e2e tests via Prow (integration)
+      - "^periodic-ci-openshift-.*-master-rosa-sts-e2e-promotion-int$"
   rosa-production:
     synthetic: true
     jobs: {}
