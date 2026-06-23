@@ -391,9 +391,10 @@ func RefreshData(dbc *db.DB, cacheClient cache.Cache, refreshMatviewsOnlyIfEmpty
 	log.Infof("Refreshing data")
 	summaryStart := time.Now()
 	if err := dailysummary.Refresh(dbc, dailySummaryOpts); err != nil {
-		log.WithError(err).Error("failed to refresh daily summaries, matview refresh will use stale summary data")
+		log.WithError(err).Error("failed to refresh daily summaries")
+	} else {
+		dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
 	}
-	dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
 	refreshMaterializedViews(dbc, cacheClient, refreshMatviewsOnlyIfEmpty)
 	log.Info("Refresh complete")
 }

@@ -87,13 +87,6 @@ func refreshSummaries(store summaryStore, opts Options) error {
 	loadStart := time.Now()
 	log.Info("refreshing daily summaries")
 
-	if opts.Rebuild {
-		log.Info("rebuild requested, truncating test_daily_summaries")
-		if err := store.Truncate(); err != nil {
-			return fmt.Errorf("truncating table: %w", err)
-		}
-	}
-
 	now := time.Now()
 
 	startDate, endDate, err := dateRange(store, opts, now)
@@ -101,22 +94,27 @@ func refreshSummaries(store summaryStore, opts Options) error {
 		return err
 	}
 
-	log.Infof("aggregating daily summaries from %s to %s",
-		startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-
 	releases, err := store.Releases()
 	if err != nil {
 		return fmt.Errorf("querying releases: %w", err)
 	}
 
 	skipConflictDetection := opts.Rebuild
-	if !skipConflictDetection {
+	if skipConflictDetection {
+		log.Info("rebuild requested, truncating test_daily_summaries")
+		if err := store.Truncate(); err != nil {
+			return fmt.Errorf("truncating table: %w", err)
+		}
+	} else {
 		maxDate, err := store.MaxSummaryDate()
 		if err != nil {
 			return fmt.Errorf("checking if table is empty: %w", err)
 		}
 		skipConflictDetection = maxDate == nil
 	}
+
+	log.Infof("aggregating daily summaries from %s to %s",
+		startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
 	if err := aggregateReleases(store, releases, startDate, endDate, skipConflictDetection); err != nil {
 		return err
@@ -136,7 +134,7 @@ func aggregateReleases(store summaryStore, releases []string, startDate, endDate
 			for release := range work {
 				if err := store.AggregateRangeForRelease(startDate, endDate, release, skipConflictDetection); err != nil {
 					errs <- fmt.Errorf("aggregating release %s: %w", release, err)
-					return
+					continue
 				}
 				log.WithField("release", release).Debug("aggregated daily summary for release")
 			}
@@ -173,6 +171,10 @@ func dateRange(store summaryStore, opts Options, now time.Time) (time.Time, time
 
 	if opts.StartOverride != nil {
 		return *opts.StartOverride, endDate, nil
+	}
+
+	if opts.Rebuild {
+		return now.AddDate(0, 0, -defaultLookbackDays), endDate, nil
 	}
 
 	startDate, err := resolveStartDate(store, now)
