@@ -223,10 +223,8 @@ const jobRunsReportMatView = `
 WITH test_results AS (
 	SELECT prow_job_run_tests.prow_job_run_id,
 		prow_job_run_tests.prow_job_run_release,
-		array_agg(tests.id)   FILTER (WHERE prow_job_run_tests.status = 12) AS failed_test_ids,
 		count(tests.id)       FILTER (WHERE prow_job_run_tests.status = 12) AS failed_test_count,
 		array_agg(tests.name) FILTER (WHERE prow_job_run_tests.status = 12) AS failed_test_names,
-		array_agg(tests.id)   FILTER (WHERE prow_job_run_tests.status = 13) AS flaked_test_ids,
 		count(tests.id)       FILTER (WHERE prow_job_run_tests.status = 13) AS flaked_test_count,
 		array_agg(tests.name) FILTER (WHERE prow_job_run_tests.status = 13) AS flaked_test_names
 	FROM prow_job_run_tests
