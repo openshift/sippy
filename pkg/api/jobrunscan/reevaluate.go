@@ -555,10 +555,7 @@ func (r *ReEvaluator) queryNonSymptomLabels(ctx context.Context, buildID string,
 
 // mergeLabels combines manual labels with newly applied symptom labels, deduplicating.
 func mergeLabels(manualLabels []string, bqLabels []models.JobRunLabel) []string {
-	merged := sets.New[string]()
-	for _, l := range manualLabels {
-		merged.Insert(l)
-	}
+	merged := sets.New[string](manualLabels...)
 	for _, bl := range bqLabels {
 		merged.Insert(bl.Label)
 	}
