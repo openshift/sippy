@@ -1,6 +1,6 @@
 ---
-description: "Address PR review comments for a Jira issue: find PR, fix issues, reply to reviewers, push"
-args: "[issue-key]"
+description: 'Address PR review comments for a Jira issue: find PR, fix issues, reply
+  to reviewers, push'
 ---
 
 # Follow Up on PR Review Comments

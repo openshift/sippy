@@ -1,6 +1,6 @@
 ---
-description: "Solve a Jira issue: fetch details, implement fix, test, push, and write PR description"
-args: "[issue-key]"
+description: 'Solve a Jira issue: fetch details, implement fix, test, push, and write
+  PR description'
 ---
 
 # Solve Jira Issue
