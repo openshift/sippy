@@ -13,6 +13,12 @@ RUN curl -Lso /tmp/golangci-lint.rpm \
         go \
         make \
         npm \
+        python3.14 \
+        python3.14-pip \
         /tmp/golangci-lint.rpm && \
-      rm /tmp/golangci-lint.rpm
+      rm /tmp/golangci-lint.rpm && \
+      dnf clean all && \
+      rm -rf /var/cache/dnf && \
+      alternatives --install /usr/bin/python3 python3 /usr/bin/python3.14 1 && \
+      alternatives --set python3 /usr/bin/python3.14
 RUN go install gotest.tools/gotestsum@latest && mv /root/go/bin/gotestsum /usr/bin
