@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -161,18 +162,24 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 			Variants: tOpt.RequestedVariants,
 		}
 		testKeyStr := testKey.KeyOrDie()
-		if statuses, ok := testKeyTestJobRunStatuses[testKeyStr]; ok {
-			report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
-			if len(generateReportErrs) > 0 {
-				errs = append(errs, generateReportErrs...)
-				continue
+		statuses, ok := testKeyTestJobRunStatuses[testKeyStr]
+		if !ok {
+			// Spot-check synthetic tests won't appear in junit query results.
+			// Create an empty status so GenerateDetailsReportForTest can still run;
+			// the middleware will populate it via PreTestDetailsAnalysis.
+			statuses = crstatus.TestJobRunStatuses{
+				BaseStatus:         map[string][]crstatus.TestJobRunRows{},
+				BaseOverrideStatus: map[string][]crstatus.TestJobRunRows{},
+				SampleStatus:       map[string][]crstatus.TestJobRunRows{},
+				GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
 			}
-			reports = append(reports, report)
-		} else {
-			logrus.Errorf("missing test key in results: %v", testKeyStr)
-
 		}
-
+		report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
+		if len(generateReportErrs) > 0 {
+			errs = append(errs, generateReportErrs...)
+			continue
+		}
+		reports = append(reports, report)
 	}
 	return reports, errs
 }
@@ -188,11 +195,14 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	if testIDOption.TestID == "" {
 		return testdetails.Report{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
-	for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
-		if _, ok := testIDOption.RequestedVariants[v]; !ok {
-			return testdetails.Report{}, []error{
-				fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
-					v, testIDOption.RequestedVariants),
+	isSpotCheck := strings.HasPrefix(testIDOption.TestID, "spotcheck-")
+	if !isSpotCheck {
+		for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
+			if _, ok := testIDOption.RequestedVariants[v]; !ok {
+				return testdetails.Report{}, []error{
+					fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
+						v, testIDOption.RequestedVariants),
+				}
 			}
 		}
 	}
@@ -204,6 +214,15 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 
 	now := time.Now()
 	componentJobRunTestReportStatus.GeneratedAt = &now
+
+	// Let middleware inject data (e.g. spot-check job runs) before generating reports.
+	testKey := crtest.KeyWithVariants{
+		TestID:   testIDOption.TestID,
+		Variants: testIDOption.RequestedVariants,
+	}
+	if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
+		return testdetails.Report{}, []error{err}
+	}
 
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(
@@ -223,14 +242,6 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	var baseOverrideReport *testdetails.Report
 	if testIDOption.BaseOverrideRelease != "" &&
 		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name {
-
-		testKey := crtest.KeyWithVariants{
-			TestID:   testIDOption.TestID,
-			Variants: testIDOption.RequestedVariants,
-		}
-		if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
-			return testdetails.Report{}, []error{err}
-		}
 
 		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, testIDOption.BaseOverrideRelease)
 		if err != nil {
@@ -467,7 +478,9 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 		logrus.WithError(err).Error("Failure from middleware analysis")
 	}
 
-	c.assessComponentStatus(&testStats, log)
+	if _, err := c.middlewares.Analyze(testKey, &testStats); err != nil {
+		logrus.WithError(err).Error("Failure from middleware Analyze")
+	}
 	report.TestComparison = testStats
 	result.Analyses = []testdetails.Analysis{report}
 

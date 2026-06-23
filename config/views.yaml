@@ -9,6 +9,13 @@ component_readiness:
     release: "5.0"
     relative_start: now-7d
     relative_end: now
+  spot_check_job_samples:
+    spotcheck-30d:
+      relative_start: now-30d
+      relative_end: now
+      include_variants:
+        JobTier:
+          - spotcheck-30d
   variant_options:
     column_group_by:
       Network: { }

@@ -3,7 +3,6 @@ package componentreadiness
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"maps"
 	"os"
 	"reflect"
@@ -12,11 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/apache/thrift/lib/go/thrift"
-	fischer "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/alltestspassrate"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/fisherexact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/linkinjector"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/newtestpassrate"
 	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/spotcheckjobs"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -37,7 +38,6 @@ import (
 )
 
 const (
-	explanationNoRegression         = "No significant regressions found"
 	ComponentReportCacheKeyPrefix   = "ComponentReport~"
 	TestDetailsReportCacheKeyPrefix = "TestDetailsReport~"
 )
@@ -276,6 +276,14 @@ func (c *ComponentReportGenerator) getCache() cache.Cache {
 
 func (c *ComponentReportGenerator) initializeMiddleware() {
 	c.middlewares = middleware.List{}
+
+	// Initialize all our middleware applicable to this request.
+
+	// middlewares that inject synthetic tests must run first so results are in place for other middleware.
+	if len(c.ReqOptions.SpotCheckJobSamples) > 0 {
+		c.middlewares = append(c.middlewares, spotcheckjobs.NewSpotCheckJobsMiddleware(c.dataProvider, c.ReqOptions))
+	}
+
 	// Initialize all our middleware applicable to this request.
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && c.ReqOptions.SampleRelease.PullRequestOptions == nil {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.dataProvider, c.ReqOptions, c.releaseConfigs))
@@ -286,6 +294,11 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 		log.Warnf("no db connection provided, skipping regressiontracker middleware")
 	}
 	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions, c.releaseConfigs))
+
+	// Analysis middleware ordered by priority — first responder wins.
+	c.middlewares = append(c.middlewares, newtestpassrate.NewNewTestPassRateMiddleware(c.ReqOptions))
+	c.middlewares = append(c.middlewares, alltestspassrate.NewAllTestsPassRateMiddleware(c.ReqOptions))
+	c.middlewares = append(c.middlewares, fisherexact.NewFisherExactMiddleware(c.ReqOptions))
 
 	// Initialize LinkInjector middleware
 	linkInjector := linkinjector.NewLinkInjectorMiddleware(c.ReqOptions, c.baseURL)
@@ -644,7 +657,9 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 				return crtype.ComponentReport{}, err
 			}
 
-			c.assessComponentStatus(&cellReport, log.NewEntry(log.New()))
+			if _, err := c.middlewares.Analyze(testKey, &cellReport); err != nil {
+				return crtype.ComponentReport{}, err
+			}
 			if lastFailure := sampleStatus.LastFailure; !lastFailure.IsZero() {
 				cellReport.LastFailure = &lastFailure // it's a copy, for pointer hygiene
 			}
@@ -745,172 +760,6 @@ func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.C
 
 	regressionRows = append(regressionRows, goodRows...)
 	return regressionRows, nil
-}
-
-func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crtest.Status {
-	if (basisPassPercentage - samplePassPercentage) > 0.15 {
-		return crtest.ExtremeRegression
-	}
-
-	return crtest.SignificantRegression
-}
-
-// TODO: this will eventually become the analyze step on a Middleware, or possibly a separate
-// set of objects relating to analysis, as there's not a lot of overlap between the analyzers
-// (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
-// cross variant compare, rarely run jobs, etc.)
-func (c *ComponentReportGenerator) assessComponentStatus(testStats *testdetails.TestComparison, logger *log.Entry) {
-	// Catch unset required confidence, typically unit tests
-	opts := c.ReqOptions.AdvancedOption
-	if testStats.RequiredConfidence == 0 {
-		testStats.RequiredConfidence = opts.Confidence
-	}
-
-	if (testStats.BaseStats == nil || testStats.BaseStats.Total() == 0) && opts.PassRateRequiredNewTests > 0 {
-		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
-		c.buildPassRateTestStats(testStats, float64(opts.PassRateRequiredNewTests))
-		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
-		// status to be missing basis for the pre-existing Fisher Exact behavior:
-		if testStats.ReportStatus == crtest.NotSignificant && opts.PassRateRequiredAllTests == 0 {
-			testStats.ReportStatus = crtest.MissingBasis
-		}
-		return
-	} else if opts.PassRateRequiredAllTests > 0 {
-		// If requested, switch to pass rate only testing to see what does not meet the criteria:
-		c.buildPassRateTestStats(testStats, float64(opts.PassRateRequiredAllTests))
-		return
-	}
-
-	// Otherwise we fall back to default behavior of Fishers Exact test:
-	c.buildFisherExactTestStats(testStats, logger)
-}
-
-func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdetails.TestComparison, logger *log.Entry) {
-
-	fisherExact := 0.0
-	testStats.Comparison = crtest.FisherExact
-
-	status := crtest.MissingBasis
-	opts := c.ReqOptions.AdvancedOption
-	if testStats.SampleStats.Total() == 0 {
-		if opts.IgnoreMissing {
-			status = crtest.NotSignificant
-		} else {
-			status = crtest.MissingSample
-		}
-		testStats.ReportStatus = status
-		testStats.FisherExact = thrift.Float64Ptr(0.0)
-		testStats.Explanations = append(testStats.Explanations, explanationNoRegression)
-	} else if testStats.BaseStats != nil && testStats.BaseStats.Total() != 0 {
-		samplePass := testStats.SampleStats.Passes(opts.FlakeAsFailure)
-		basePass := testStats.BaseStats.Passes(opts.FlakeAsFailure)
-		basisPassPercentage := float64(basePass) / float64(testStats.BaseStats.Total())
-		effectivePityFactor := float64(opts.PityFactor) + testStats.PityAdjustment
-		effectiveMinimumFailure := opts.MinimumFailure
-
-		// default starting status now that we know we have basis and sample
-		status = crtest.NotSignificant
-
-		// now that we know sampleTotal is non zero
-		samplePassPercentage := float64(samplePass) / float64(testStats.SampleStats.Total())
-
-		// are we below the MinimumFailure threshold?
-		if effectiveMinimumFailure != 0 &&
-			(testStats.SampleStats.Total()-samplePass) < effectiveMinimumFailure {
-			if status <= crtest.SignificantTriagedRegression {
-				testStats.Explanations = append(testStats.Explanations,
-					fmt.Sprintf("%s regression detected.", crtest.StringForStatus(status)))
-			}
-			testStats.ReportStatus = status
-			testStats.FisherExact = thrift.Float64Ptr(0.0)
-			return
-		}
-		significant := false
-		improved := samplePassPercentage >= basisPassPercentage
-
-		if improved {
-			// flip base and sample when improved
-			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.BaseStats.Total()-basePass, basePass, testStats.SampleStats.Total()-samplePass, samplePass)
-		} else if basisPassPercentage-samplePassPercentage > effectivePityFactor/100 {
-			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.SampleStats.Total()-samplePass, samplePass, testStats.BaseStats.Total()-basePass, basePass)
-		}
-		logger.Debugf("computed Fisher info: signifcant: %v, fisherExact: %v", significant, fisherExact)
-		if significant {
-			if improved {
-				status = crtest.SignificantImprovement
-			} else {
-				status = getRegressionStatus(basisPassPercentage, samplePassPercentage)
-			}
-		}
-	}
-	logger.Debugf("computed status: %d", int(status))
-	testStats.ReportStatus = status
-	testStats.FisherExact = thrift.Float64Ptr(fisherExact)
-
-	baseRelease := "no basis"
-	if testStats.BaseStats != nil {
-		baseRelease = testStats.BaseStats.Release
-	}
-	// If we have a regression, include explanations:
-	if testStats.ReportStatus <= crtest.SignificantTriagedRegression {
-		logger.Debugf("regression detected against: %s", baseRelease)
-
-		if testStats.ReportStatus <= crtest.SignificantRegression {
-			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("%s regression detected.", crtest.StringForStatus(testStats.ReportStatus)))
-			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact))
-			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("Test pass rate dropped from %.2f%% to %.2f%%.",
-					testStats.BaseStats.SuccessRate*float64(100),
-					testStats.SampleStats.SuccessRate*float64(100)))
-		} else {
-			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("%s regression detected.", crtest.StringForStatus(testStats.ReportStatus)))
-		}
-	} else {
-		logger.Debugf("NO regression detected against: %s", baseRelease)
-	}
-}
-
-func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *testdetails.TestComparison, requiredSuccessRate float64) {
-
-	effectiveSuccessReq := requiredSuccessRate + testStats.RequiredPassRateAdjustment
-
-	// Assume 2x our allowed failure rate = an extreme regression.
-	// i.e. if we require 90%, extreme is anything below 80%
-	//      if we require 95%, extreme is anything below 90%
-	// if an adjustment is applied, still use the configured success rate to define extreme regression.
-	severeRegressionSuccessRate := effectiveSuccessReq - (100 - requiredSuccessRate)
-
-	// Require 6 runs in the sample (typically 1 week for daily jobs) for us to consider a pass rate requirement for a new test:
-	sufficientRuns := testStats.SampleStats.Total() >= 6
-
-	opts := c.ReqOptions.AdvancedOption
-	successRate := testStats.SampleStats.PassRate(opts.FlakeAsFailure)
-	if sufficientRuns && successRate*100 < effectiveSuccessReq && testStats.SampleStats.FailureCount >= opts.MinimumFailure {
-		rStatus := crtest.SignificantRegression
-		if successRate*100 < severeRegressionSuccessRate {
-			rStatus = crtest.ExtremeRegression
-		}
-		testStats.ReportStatus = rStatus
-		testStats.Explanations = append(testStats.Explanations,
-			fmt.Sprintf("Test has a %.2f%% pass rate, but %.2f%% is required.", successRate*100, effectiveSuccessReq))
-		testStats.Comparison = crtest.PassRate
-		testStats.SampleStats.SuccessRate = successRate
-		return
-	}
-
-	testStats.ReportStatus = crtest.NotSignificant
-	testStats.Explanations = append(testStats.Explanations, explanationNoRegression)
-}
-
-func (c *ComponentReportGenerator) fischerExactTest(confidenceRequired, sampleFailure, sampleSuccess, baseFailure, baseSuccess int) (bool, float64) {
-	_, _, r, _ := fischer.FisherExactTest(sampleFailure,
-		sampleSuccess,
-		baseFailure,
-		baseSuccess)
-	return r < 1-float64(confidenceRequired)/100, r
 }
 
 func (c *ComponentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx context.Context, field string,

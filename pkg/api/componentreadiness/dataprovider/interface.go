@@ -66,12 +66,34 @@ type JobQuerier interface {
 	LookupJobVariants(ctx context.Context, jobName string) (map[string]string, error)
 }
 
+// SpotCheckQuerier fetches job-level pass/fail data for spot-check analysis.
+type SpotCheckQuerier interface {
+	// QuerySpotCheckJobRuns returns aggregated pass/fail per spot-check group,
+	// grouped by SpotCheckComponent, SpotCheckCapability, and the DB group-by variants.
+	// includeVariants specifies variant filters (ANDed) from the spot-check sample config.
+	QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
+		allJobVariants crtest.JobVariants,
+		includeVariants map[string][]string,
+		start, end time.Time) ([]SpotCheckGroup, error)
+
+	// QuerySpotCheckJobRunDetails returns individual job runs for a specific
+	// spot-check group, used for test details drill-down.
+	// includeVariants specifies variant filters (ANDed) from the spot-check sample config.
+	QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
+		allJobVariants crtest.JobVariants,
+		includeVariants map[string][]string,
+		variants map[string]string,
+		component, capability string,
+		start, end time.Time) ([]JobRunDetail, error)
+}
+
 // DataProvider combines all query capabilities needed by Component Readiness.
 type DataProvider interface {
 	TestStatusQuerier
 	TestDetailsQuerier
 	MetadataQuerier
 	JobQuerier
+	SpotCheckQuerier
 
 	// Cache returns the cache implementation for storing/retrieving computed results.
 	Cache() cache.Cache
@@ -84,4 +106,25 @@ type JobRunStats struct {
 	TotalRuns      int     `json:"total_runs"`
 	SuccessfulRuns int     `json:"successful_runs"`
 	PassRate       float64 `json:"pass_rate"`
+}
+
+// SpotCheckGroup contains aggregated pass/fail for a set of spot-check jobs
+// sharing the same component, capability, and variant column values.
+type SpotCheckGroup struct {
+	Component      string            `json:"component"`
+	Capability     string            `json:"capability"`
+	Variants       map[string]string `json:"variants"`
+	TotalRuns      int               `json:"total_runs"`
+	SuccessfulRuns int               `json:"successful_runs"`
+	JobNames       []string          `json:"job_names"`
+	LastFailure    time.Time         `json:"last_failure"`
+}
+
+// JobRunDetail contains data for a single job run, used in test details drill-down.
+type JobRunDetail struct {
+	JobName   string    `json:"job_name"`
+	RunID     string    `json:"run_id"`
+	URL       string    `json:"url"`
+	StartTime time.Time `json:"start_time"`
+	Success   bool      `json:"success"`
 }

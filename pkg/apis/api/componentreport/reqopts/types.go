@@ -19,6 +19,9 @@ type RequestOptions struct {
 	CacheOption    cache.RequestOptions
 	TestFilters
 	TestIDOptions []TestIdentification
+	// SpotCheckJobSamples defines resolved sample windows for spot-check job analysis.
+	// Each entry specifies a tier name, time window, and variant filters to select jobs.
+	SpotCheckJobSamples []SpotCheckJobSampleOpts `json:"spot_check_job_samples,omitempty" yaml:"spot_check_job_samples,omitempty"`
 	// ViewName is the name of the view used for this request, if any.
 	// When generating test details URLs, if a view is present, we include just the view parameter
 	// plus test-specific overrides, rather than expanding all view parameters into the URL.
@@ -116,4 +119,11 @@ type Advanced struct {
 	// caused by fundamental infrastructure issues (e.g., install failures, upgrade failures).
 	// When multiple key tests fail in the same job, only the highest priority (earliest in list) test is included.
 	KeyTestNames []string `json:"key_test_names,omitempty" yaml:"key_test_names,omitempty"`
+}
+
+// SpotCheckJobSampleOpts is a resolved spot-check sample entry with absolute times.
+type SpotCheckJobSampleOpts struct {
+	Name            string                          `json:"name"`
+	Release         `json:",inline" yaml:",inline"` //nolint:revive
+	IncludeVariants map[string][]string             `json:"include_variants,omitempty" yaml:"include_variants,omitempty"`
 }

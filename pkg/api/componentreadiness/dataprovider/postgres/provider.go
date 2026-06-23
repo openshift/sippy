@@ -796,3 +796,16 @@ func (p *PostgresProvider) LookupJobVariants(ctx context.Context, jobName string
 	}
 	return parseVariants(row.Variants), nil
 }
+
+// --- SpotCheckQuerier ---
+// Postgres does not support spot-check queries; these are BigQuery-only.
+
+func (p *PostgresProvider) QuerySpotCheckJobRuns(_ context.Context, _ reqopts.RequestOptions,
+	_ crtest.JobVariants, _ map[string][]string, _, _ time.Time) ([]dataprovider.SpotCheckGroup, error) {
+	return nil, nil
+}
+
+func (p *PostgresProvider) QuerySpotCheckJobRunDetails(_ context.Context, _ reqopts.RequestOptions,
+	_ crtest.JobVariants, _ map[string][]string, _ map[string]string, _, _ string, _, _ time.Time) ([]dataprovider.JobRunDetail, error) {
+	return nil, nil
+}
