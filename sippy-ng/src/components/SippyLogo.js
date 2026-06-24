@@ -1,5 +1,6 @@
 import './SippyLogo.css'
 import { makeStyles } from '@mui/styles'
+import fifaLogo from '../sippy-fifa.svg'
 import logo from '../sippy.svg'
 import Popover from '@mui/material/Popover'
 import React from 'react'
@@ -14,9 +15,17 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+export function isFifaWorldCup() {
+  const now = new Date()
+  const start = new Date(2026, 5, 11)
+  const end = new Date(2026, 6, 20)
+  return now >= start && now < end
+}
+
 export default function SippyLogo() {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = React.useState(null)
+  const isFifa = isFifaWorldCup()
 
   const handlePopoverOpen = (event) => {
     setAnchorEl(event.currentTarget)
@@ -38,7 +47,7 @@ export default function SippyLogo() {
       >
         <img
           className="Sippy-logo"
-          src={logo}
+          src={isFifa ? fifaLogo : logo}
           alt="CIPI (Continuous Integration Private Investigator) aka Sippy."
         />
       </Typography>
@@ -63,9 +72,19 @@ export default function SippyLogo() {
         disableScrollLock
       >
         <Typography>
-          Hi, I&apos;m Sippy! The Continuous Integration
-          <br />
-          Private Investigator (CIPI).
+          {isFifa ? (
+            <>
+              GOOOAL! I&apos;m Sippy, celebrating
+              <br />
+              the 2026 FIFA World Cup! &#9917;
+            </>
+          ) : (
+            <>
+              Hi, I&apos;m Sippy! The Continuous Integration
+              <br />
+              Private Investigator (CIPI).
+            </>
+          )}
         </Typography>
       </Popover>
     </div>
