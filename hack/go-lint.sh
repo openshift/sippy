@@ -25,6 +25,6 @@ else
   $DOCKER run --rm \
     --volume "${PWD}:/go/src/github.com/openshift/sippy${VOLUME_OPTION}" \
     --workdir /go/src/github.com/openshift/sippy \
-    docker.io/golangci/golangci-lint:v2.10.1 \
+    docker.io/golangci/golangci-lint:v2.12.2 \
     golangci-lint --timeout 10m "${@}"
 fi

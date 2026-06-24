@@ -51,7 +51,7 @@ func (da *DaemonServer) Serve() {
 
 	for _, process := range da.processes {
 		ctx := context.Background()
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel is stored in pendingContexts and called on shutdown
 
 		pendingContexts = append(pendingContexts, cancel)
 		wg.Add(1)
