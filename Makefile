@@ -3,7 +3,7 @@ export PATH := ${HOME}/go/bin:/go/bin:${PATH}
 DOCKER := $(or $(DOCKER),podman)
 NO_DEP_CHECK_TARGETS := devcontainer-up devcontainer-claude
 ifeq ($(filter $(NO_DEP_CHECK_TARGETS),$(MAKECMDGOALS)),)
-DEPS = npm go python3
+DEPS = npm go
 CHECK := $(foreach dep,$(DEPS),\
         $(if $(shell which $(dep)),"$(dep) found",$(error "Missing $(dep) in PATH")))
 endif
@@ -42,6 +42,7 @@ else
 	gotestsum --junitfile $(ARTIFACT_DIR)/junit.xml ./pkg/...
 endif
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
+	@which python3 > /dev/null 2>&1 || { echo "ERROR: python3 not found in PATH"; exit 1; }
 	cd mcp && \
 		if [ ! -x .venv/bin/python ]; then \
 			python3 -m venv .venv && .venv/bin/pip install --upgrade pip -q; \
