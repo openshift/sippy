@@ -2,6 +2,8 @@ package regressiontracker
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,10 +11,13 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func TestRegressionTracker_PostAnalysis(t *testing.T) {
@@ -882,7 +887,26 @@ func TestFindOpenRegression_SubsetMatching(t *testing.T) {
 	}
 }
 
+func openTestDB(t *testing.T) *db.DB {
+	t.Helper()
+	dsn := os.Getenv("SIPPY_SEED_DATABASE_DSN")
+	if dsn == "" {
+		dsn = "postgresql://postgres@localhost:5432/postgres?sslmode=disable"
+	}
+	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Skipf("Skipping: cannot connect to test database: %v", err)
+	}
+	tx := gormDB.Begin()
+	t.Cleanup(func() {
+		tx.Rollback()
+	})
+	return &db.DB{DB: tx}
+}
+
 func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
+	dbc := openTestDB(t)
+
 	sampleRelease := "4.18"
 	keyTestName := "install should succeed: overall"
 	regularTestName := "some regular test"
@@ -905,8 +929,8 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			testName:     keyTestName,
 			keyTestNames: []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
 			jobRuns: []models.RegressionJobRun{
-				{StartTime: daysAgo4, TestFailed: true},
-				{StartTime: daysAgo2, TestFailed: true},
+				{ProwJobRunID: "run-before", ProwJobName: "job1", StartTime: daysAgo4, TestFailed: true},
+				{ProwJobRunID: "run-after-1", ProwJobName: "job1", StartTime: daysAgo2, TestFailed: true},
 			},
 			expectStatus:              crtest.FixedRegression,
 			expectedExplanationsCount: 1,
@@ -916,9 +940,9 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			testName:     keyTestName,
 			keyTestNames: []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
 			jobRuns: []models.RegressionJobRun{
-				{StartTime: daysAgo4, TestFailed: true},
-				{StartTime: daysAgo2, TestFailed: true},
-				{StartTime: daysAgo2.Add(time.Hour), TestFailed: true},
+				{ProwJobRunID: "run-before", ProwJobName: "job1", StartTime: daysAgo4, TestFailed: true},
+				{ProwJobRunID: "run-after-1", ProwJobName: "job1", StartTime: daysAgo2, TestFailed: true},
+				{ProwJobRunID: "run-after-2", ProwJobName: "job1", StartTime: daysAgo2.Add(time.Hour), TestFailed: true},
 			},
 			expectStatus:              crtest.FailedFixedRegression,
 			expectedExplanationsCount: 1,
@@ -928,9 +952,9 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			testName:     keyTestName,
 			keyTestNames: []string{keyTestName},
 			jobRuns: []models.RegressionJobRun{
-				{StartTime: daysAgo2, TestFailed: true},
-				{StartTime: daysAgo2.Add(time.Hour), TestFailed: true},
-				{StartTime: daysAgo2.Add(2 * time.Hour), TestFailed: true},
+				{ProwJobRunID: "run-after-1", ProwJobName: "job1", StartTime: daysAgo2, TestFailed: true},
+				{ProwJobRunID: "run-after-2", ProwJobName: "job1", StartTime: daysAgo2.Add(time.Hour), TestFailed: true},
+				{ProwJobRunID: "run-after-3", ProwJobName: "job1", StartTime: daysAgo2.Add(2 * time.Hour), TestFailed: true},
 			},
 			expectStatus:              crtest.FailedFixedRegression,
 			expectedExplanationsCount: 1,
@@ -940,8 +964,8 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			testName:     keyTestName,
 			keyTestNames: []string{keyTestName},
 			jobRuns: []models.RegressionJobRun{
-				{StartTime: daysAgo2, TestFailed: true},
-				{StartTime: daysAgo2.Add(time.Hour), TestFailed: false},
+				{ProwJobRunID: "run-after-1", ProwJobName: "job1", StartTime: daysAgo2, TestFailed: true},
+				{ProwJobRunID: "run-after-2", ProwJobName: "job1", StartTime: daysAgo2.Add(time.Hour), TestFailed: false},
 			},
 			expectStatus:              crtest.FixedRegression,
 			expectedExplanationsCount: 1,
@@ -972,7 +996,7 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testKey := crtest.Identification{
 				RowIdentification: crtest.RowIdentification{
@@ -988,7 +1012,38 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			}
 			variantsStrSlice := utils.VariantsMapToStringSlice(testKey.Variants)
 
+			regression := &models.TestRegression{
+				Release:  sampleRelease,
+				TestID:   testKey.TestID,
+				TestName: tt.testName,
+				Variants: variantsStrSlice,
+				Opened:   daysAgo5,
+				Closed:   sql.NullTime{Valid: false},
+			}
+			res := dbc.DB.Create(regression)
+			require.NoError(t, res.Error)
+
+			for j, jr := range tt.jobRuns {
+				jr.RegressionID = regression.ID
+				jr.ProwJobRunID = fmt.Sprintf("threshold-test-%d-%d", i, j)
+				res = dbc.DB.Create(&jr)
+				require.NoError(t, res.Error)
+			}
+
+			regression.Triages = []models.Triage{
+				{
+					ID:          1,
+					CreatedAt:   daysAgo4,
+					UpdatedAt:   daysAgo4,
+					URL:         "https://example.com/bug",
+					Description: "fixed it",
+					Type:        "product",
+					Resolved:    sql.NullTime{Time: daysAgo3, Valid: true},
+				},
+			}
+
 			mw := RegressionTracker{
+				dbc: dbc,
 				reqOptions: reqopts.RequestOptions{
 					SampleRelease: reqopts.Release{Name: sampleRelease},
 					AdvancedOption: reqopts.Advanced{
@@ -996,28 +1051,7 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 						KeyTestNames: tt.keyTestNames,
 					},
 				},
-				openRegressions: []*models.TestRegression{
-					{
-						Release:  sampleRelease,
-						TestID:   testKey.TestID,
-						TestName: tt.testName,
-						Variants: variantsStrSlice,
-						Opened:   daysAgo5,
-						Closed:   sql.NullTime{Valid: false},
-						Triages: []models.Triage{
-							{
-								ID:          1,
-								CreatedAt:   daysAgo4,
-								UpdatedAt:   daysAgo4,
-								URL:         "https://example.com/bug",
-								Description: "fixed it",
-								Type:        "product",
-								Resolved:    sql.NullTime{Time: daysAgo3, Valid: true},
-							},
-						},
-						JobRuns: tt.jobRuns,
-					},
-				},
+				openRegressions:      []*models.TestRegression{regression},
 				hasLoadedRegressions: true,
 				log:                  logrus.New(),
 			}
@@ -1035,4 +1069,38 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			assert.Equal(t, tt.expectedExplanationsCount, len(testStats.Explanations), testStats.Explanations)
 		})
 	}
+}
+
+func TestCountFailuresAfterResolution(t *testing.T) {
+	dbc := openTestDB(t)
+
+	now := time.Now().UTC()
+	resolution := now.Add(-3 * 24 * time.Hour)
+
+	regression := &models.TestRegression{
+		Release:  "4.18",
+		TestID:   "count-test",
+		TestName: "count failures test",
+		Variants: []string{"foo:bar"},
+		Opened:   now.Add(-5 * 24 * time.Hour),
+	}
+	res := dbc.DB.Create(regression)
+	require.NoError(t, res.Error)
+
+	jobRuns := []models.RegressionJobRun{
+		{RegressionID: regression.ID, ProwJobRunID: "count-before-1", ProwJobName: "job1", StartTime: now.Add(-4 * 24 * time.Hour), TestFailed: true},
+		{RegressionID: regression.ID, ProwJobRunID: "count-after-1", ProwJobName: "job1", StartTime: now.Add(-2 * 24 * time.Hour), TestFailed: true},
+		{RegressionID: regression.ID, ProwJobRunID: "count-after-2", ProwJobName: "job1", StartTime: now.Add(-1 * 24 * time.Hour), TestFailed: true},
+		{RegressionID: regression.ID, ProwJobRunID: "count-after-pass", ProwJobName: "job1", StartTime: now.Add(-1 * 24 * time.Hour), TestFailed: false},
+	}
+	for i := range jobRuns {
+		res = dbc.DB.Create(&jobRuns[i])
+		require.NoError(t, res.Error)
+	}
+
+	rt := &RegressionTracker{dbc: dbc, log: logrus.New()}
+
+	count, err := rt.countFailuresAfterResolution(regression, resolution)
+	require.NoError(t, err)
+	assert.Equal(t, 2, count, "should count only failed runs after the resolution time")
 }

@@ -147,6 +147,10 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 			}
 
 			switch {
+			// Key tests (e.g. "install should succeed") are high-signal but noisy; a
+			// single post-fix failure is common and does not necessarily mean the fix
+			// failed. Require a minimum number of failures before escalating to
+			// FailedFixedRegression ("pants on fire").
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure) &&
 				sippyutil.StrSliceContains(r.reqOptions.AdvancedOption.KeyTestNames, testKey.TestName):
 				failuresAfterFix, err := r.countFailuresAfterResolution(or, lastResolution)
@@ -164,6 +168,7 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 						"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
 						lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
 				}
+			// claimed fixed, but failures have occurred since the resolution date
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure):
 				testStats.ReportStatus = crtest.FailedFixedRegression
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
@@ -250,22 +255,12 @@ func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariant
 // the regression_job_runs table which accumulates all runs observed
 // during the regression's lifetime.
 func (r *RegressionTracker) countFailuresAfterResolution(regression *models.TestRegression, after time.Time) (int, error) {
-	if r.dbc != nil {
-		var count int64
-		res := r.dbc.DB.Model(&models.RegressionJobRun{}).
-			Where("regression_id = ? AND start_time > ? AND test_failed = ?", regression.ID, after, true).
-			Count(&count)
-		if res.Error != nil {
-			return 0, fmt.Errorf("error counting post-resolution failures for regression %d: %w", regression.ID, res.Error)
-		}
-		return int(count), nil
+	var count int64
+	res := r.dbc.DB.Model(&models.RegressionJobRun{}).
+		Where("regression_id = ? AND start_time > ? AND test_failed", regression.ID, after).
+		Count(&count)
+	if res.Error != nil {
+		return 0, fmt.Errorf("error counting post-resolution failures for regression %d: %w", regression.ID, res.Error)
 	}
-
-	count := 0
-	for _, jr := range regression.JobRuns {
-		if jr.TestFailed && jr.StartTime.After(after) {
-			count++
-		}
-	}
-	return count, nil
+	return int(count), nil
 }
