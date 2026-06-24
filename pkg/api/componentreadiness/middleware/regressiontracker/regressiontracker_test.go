@@ -881,3 +881,196 @@ func TestFindOpenRegression_SubsetMatching(t *testing.T) {
 		})
 	}
 }
+
+func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
+	sampleRelease := "4.18"
+	keyTestName := "install should succeed: overall"
+	regularTestName := "some regular test"
+
+	daysAgo5 := time.Now().UTC().Add(-5 * 24 * time.Hour)
+	daysAgo4 := time.Now().UTC().Add(-4 * 24 * time.Hour)
+	daysAgo3 := time.Now().UTC().Add(-3 * 24 * time.Hour)
+	daysAgo2 := time.Now().UTC().Add(-2 * 24 * time.Hour)
+
+	tests := []struct {
+		name                      string
+		testName                  string
+		keyTestNames              []string
+		sampleFailureCount        int
+		expectStatus              crtest.Status
+		expectedExplanationsCount int
+	}{
+		{
+			name:                      "key test with 1 failure after resolution is not pants on fire",
+			testName:                  keyTestName,
+			keyTestNames:              []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
+			sampleFailureCount:        1,
+			expectStatus:              crtest.FixedRegression,
+			expectedExplanationsCount: 1,
+		},
+		{
+			name:                      "key test with 2 failures after resolution is pants on fire",
+			testName:                  keyTestName,
+			keyTestNames:              []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
+			sampleFailureCount:        2,
+			expectStatus:              crtest.FailedFixedRegression,
+			expectedExplanationsCount: 1,
+		},
+		{
+			name:                      "key test with 3 failures after resolution is pants on fire",
+			testName:                  keyTestName,
+			keyTestNames:              []string{keyTestName},
+			sampleFailureCount:        3,
+			expectStatus:              crtest.FailedFixedRegression,
+			expectedExplanationsCount: 1,
+		},
+		{
+			name:                      "regular test with 1 failure after resolution is pants on fire",
+			testName:                  regularTestName,
+			keyTestNames:              []string{keyTestName},
+			sampleFailureCount:        1,
+			expectStatus:              crtest.FailedFixedRegression,
+			expectedExplanationsCount: 1,
+		},
+		{
+			name:                      "regular test with no key test names configured and 1 failure is pants on fire",
+			testName:                  regularTestName,
+			keyTestNames:              nil,
+			sampleFailureCount:        1,
+			expectStatus:              crtest.FailedFixedRegression,
+			expectedExplanationsCount: 1,
+		},
+		{
+			name:                      "test not in key test list with 1 failure is pants on fire",
+			testName:                  regularTestName,
+			keyTestNames:              []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
+			sampleFailureCount:        1,
+			expectStatus:              crtest.FailedFixedRegression,
+			expectedExplanationsCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testKey := crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "foo",
+					Capability: "bar",
+					TestName:   tt.testName,
+					TestSuite:  "foo",
+					TestID:     "testid1",
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{"foo": "bar"},
+				},
+			}
+			variantsStrSlice := utils.VariantsMapToStringSlice(testKey.Variants)
+
+			mw := RegressionTracker{
+				reqOptions: reqopts.RequestOptions{
+					SampleRelease: reqopts.Release{Name: sampleRelease},
+					AdvancedOption: reqopts.Advanced{
+						Confidence:   95,
+						KeyTestNames: tt.keyTestNames,
+					},
+				},
+				openRegressions: []*models.TestRegression{
+					{
+						Release:  sampleRelease,
+						TestID:   testKey.TestID,
+						TestName: tt.testName,
+						Variants: variantsStrSlice,
+						Opened:   daysAgo5,
+						Closed:   sql.NullTime{Valid: false},
+						Triages: []models.Triage{
+							{
+								ID:          1,
+								CreatedAt:   daysAgo4,
+								UpdatedAt:   daysAgo4,
+								URL:         "https://example.com/bug",
+								Description: "fixed it",
+								Type:        "product",
+								Resolved:    sql.NullTime{Time: daysAgo3, Valid: true},
+							},
+						},
+					},
+				},
+				hasLoadedRegressions: true,
+				log:                  logrus.New(),
+			}
+
+			testStats := testdetails.TestComparison{
+				ReportStatus: crtest.ExtremeRegression,
+				Explanations: []string{},
+				LastFailure:  &daysAgo2,
+				Regression:   &models.TestRegression{},
+				SampleStats: testdetails.ReleaseStats{
+					Stats: crtest.Stats{
+						FailureCount: tt.sampleFailureCount,
+					},
+				},
+			}
+
+			err := mw.PostAnalysis(testKey, &testStats)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectStatus, testStats.ReportStatus)
+			assert.Equal(t, tt.expectedExplanationsCount, len(testStats.Explanations), testStats.Explanations)
+		})
+	}
+}
+
+func TestIsKeyTest(t *testing.T) {
+	keyTestNames := []string{
+		"install should succeed: overall",
+		"[sig-cluster-lifecycle] Cluster completes upgrade",
+		"[Jira:\"Test Framework\"] there should not be mass test failures",
+	}
+
+	tests := []struct {
+		name     string
+		testName string
+		expect   bool
+	}{
+		{
+			name:     "matches first key test",
+			testName: "install should succeed: overall",
+			expect:   true,
+		},
+		{
+			name:     "matches second key test",
+			testName: "[sig-cluster-lifecycle] Cluster completes upgrade",
+			expect:   true,
+		},
+		{
+			name:     "matches third key test",
+			testName: "[Jira:\"Test Framework\"] there should not be mass test failures",
+			expect:   true,
+		},
+		{
+			name:     "does not match any key test",
+			testName: "some other test",
+			expect:   false,
+		},
+		{
+			name:     "partial match is not a match",
+			testName: "install should succeed",
+			expect:   false,
+		},
+		{
+			name:     "empty test name",
+			testName: "",
+			expect:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expect, isKeyTest(tt.testName, keyTestNames))
+		})
+	}
+
+	t.Run("empty key test list", func(t *testing.T) {
+		assert.False(t, isKeyTest("install should succeed: overall", nil))
+		assert.False(t, isKeyTest("install should succeed: overall", []string{}))
+	})
+}

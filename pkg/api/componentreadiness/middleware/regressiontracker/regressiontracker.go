@@ -27,6 +27,11 @@ const (
 	// to adjust this to a smaller value so that, if a rate improvement is smaller than the openRegressionPityAdjustment,
 	// we still consider it regressed.
 	openRegressionPityAdjustment = -2
+	// keyTestMinFailuresForFailedFix is the minimum number of sample failures required
+	// before marking a key test as FailedFixedRegression ("pants on fire"). Key tests
+	// like "install should succeed" are highly sensitive and a single failure can be
+	// noise; requiring more failures reduces false positives.
+	keyTestMinFailuresForFailedFix = 2
 )
 
 var _ middleware.Middleware = &RegressionTracker{}
@@ -144,6 +149,14 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure):
 				// claimed fixed but does not appear to be
 				// aka liar liar pants on fire
+				if isKeyTest(testKey.TestName, r.reqOptions.AdvancedOption.KeyTestNames) &&
+					testStats.SampleStats.FailureCount < keyTestMinFailuresForFailedFix {
+					testStats.ReportStatus = crtest.FixedRegression
+					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+						"Regression is triaged and believed fixed as of %s. Failures observed (%d) are below the key test threshold (%d) for a failed fix.",
+						lastResolution.Format(time.RFC3339), testStats.SampleStats.FailureCount, keyTestMinFailuresForFailedFix))
+					break
+				}
 				testStats.ReportStatus = crtest.FailedFixedRegression
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
 					"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
@@ -222,4 +235,13 @@ func FindOpenRegression(sampleRelease, testID string,
 
 func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {
 	return nil
+}
+
+func isKeyTest(testName string, keyTestNames []string) bool {
+	for _, kt := range keyTestNames {
+		if testName == kt {
+			return true
+		}
+	}
+	return false
 }
