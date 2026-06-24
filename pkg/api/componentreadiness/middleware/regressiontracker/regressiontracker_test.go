@@ -891,7 +891,7 @@ func openTestDB(t *testing.T) *db.DB {
 	t.Helper()
 	dsn := os.Getenv("SIPPY_SEED_DATABASE_DSN")
 	if dsn == "" {
-		dsn = "postgresql://postgres@localhost:5432/postgres?sslmode=disable"
+		dsn = "postgresql://postgres:password@localhost:5432/postgres?sslmode=disable" //nolint:gosec // G101: dev default DSN, not a real credential
 	}
 	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {

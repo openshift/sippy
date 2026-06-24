@@ -255,8 +255,10 @@ func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariant
 // the regression_job_runs table which accumulates all runs observed
 // during the regression's lifetime.
 func (r *RegressionTracker) countFailuresAfterResolution(regression *models.TestRegression, after time.Time) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	var count int64
-	res := r.dbc.DB.Model(&models.RegressionJobRun{}).
+	res := r.dbc.DB.WithContext(ctx).Model(&models.RegressionJobRun{}).
 		Where("regression_id = ? AND start_time > ? AND test_failed", regression.ID, after).
 		Count(&count)
 	if res.Error != nil {
