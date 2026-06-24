@@ -1356,17 +1356,12 @@ func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 
 // jsonJobRunPayload returns the payload release tag that was used for a given job run.
 func (s *Server) jsonJobRunPayload(w http.ResponseWriter, req *http.Request) {
-	if s.bigQueryClient == nil {
-		failureResponse(w, http.StatusBadRequest, "job run payload API is only available when google-service-account-credential-file is configured")
-		return
-	}
-
 	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
 	if jobRunIDStr == "" {
 		return
 	}
 
-	results, err := api.PayloadForJobRun(req.Context(), s.bigQueryClient, jobRunIDStr)
+	results, err := api.PayloadForJobRun(s.db, jobRunIDStr)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -2318,7 +2313,7 @@ func (s *Server) Serve() {
 		{
 			EndpointPath: "/api/job/run/payload",
 			Description:  "Returns the payload a job run was using",
-			Capabilities: []string{ComponentReadinessCapability},
+			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobRunPayload,
 			CacheTime:    4 * time.Hour,
 		},
