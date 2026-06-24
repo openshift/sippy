@@ -81,6 +81,7 @@ type ProwLoader struct {
 	gcsClient                    *storage.Client
 	promPusher                   *push.Pusher
 	loadSince                    *time.Time
+	labelsCache                  map[string]pq.StringArray
 }
 
 func New(
@@ -267,6 +268,13 @@ func (pl *ProwLoader) Load() {
 		log.Infof("Partition cleanup complete: detached %d, dropped %d", detached, dropped)
 	}
 
+	// Pre-fetch labels for all jobs in bulk instead of one BQ query per job.
+	labelsCache, err := pl.prefetchLabels(prowJobs)
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error pre-fetching labels from BigQuery"))
+	}
+	pl.labelsCache = labelsCache
+
 	queue := make(chan *prow.ProwJob)
 	errsCh := make(chan error, len(prowJobs))
 	total := len(prowJobs)
@@ -304,7 +312,7 @@ func (pl *ProwLoader) Load() {
 
 	// load the test analysis by job data into tables partitioned by day, letting bigquery do the
 	// heavy lifting for us.
-	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
+	err = pl.loadDailyTestAnalysisByJob(pl.ctx)
 	if err != nil {
 		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
 	}
@@ -890,12 +898,26 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		return nil
 	}
 
+	// Keep the ProwJob definition up to date (variants, release, etc.).
+	pl.prowJobCacheLock.Lock()
+	dbProwJob, err := pl.createOrUpdateProwJob(ctx, pj, release, pjLog)
+	pl.prowJobCacheLock.Unlock()
+	if err != nil {
+		return err
+	}
+
+	// Check the run cache after updating the job definition but before
+	// the expensive GCS listing, to skip I/O for already-processed runs.
+	pl.prowJobRunCacheLock.RLock()
+	_, ok := pl.prowJobRunCache[uint(id)]
+	pl.prowJobRunCacheLock.RUnlock()
+	if ok {
+		pjLog.Debugf("skipping, job run was already processed")
+		return nil
+	}
+
 	pjLog.Infof("starting processing")
 
-	// find all files here then pass to getClusterData
-	// and prowJobRunTestsFromGCS
-	// add more regexes if we require more
-	// results from scanning for file names
 	path, err := GetGCSPathForProwJobURL(pjLog, pj.Status.URL)
 	if err != nil {
 		pjLog.WithError(err).WithField("prowJobURL", pj.Status.URL).Error("error getting GCS path for prow job URL")
@@ -911,23 +933,6 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 	var junitMatches []string
 	if len(allMatches) > 0 {
 		junitMatches = allMatches[0]
-	}
-
-	// Lock the whole prow job block to avoid trying to create the pj multiple times concurrently\
-	// (resulting in a DB error)
-	pl.prowJobCacheLock.Lock()
-	dbProwJob, err := pl.createOrUpdateProwJob(ctx, pj, release, pjLog)
-	pl.prowJobCacheLock.Unlock()
-	if err != nil {
-		return err
-	}
-
-	pl.prowJobRunCacheLock.RLock()
-	_, ok := pl.prowJobRunCache[uint(id)]
-	pl.prowJobRunCacheLock.RUnlock()
-	if ok {
-		pjLog.Infof("processing complete; job run was already processed")
-		return nil
 	}
 
 	pjLog.Info("processing GCS bucket")
@@ -991,11 +996,7 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 
 	pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
 
-	labelResult, err := GatherLabelsFromBQ(ctx, pl.bigQueryClient, []string{pj.Status.BuildID}, pj.Status.StartTime)
-	if err != nil {
-		return err
-	}
-	labels := labelResult[pj.Status.BuildID] // result could be empty but nil labels is fine
+	labels := pl.labelsCache[pj.Status.BuildID] // result could be empty; nil labels is fine
 
 	var annotations []models.ProwJobRunAnnotation
 	for k, v := range pj.Annotations {
@@ -1165,6 +1166,26 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []mo
 	}
 
 	return pulls
+}
+
+func (pl *ProwLoader) prefetchLabels(prowJobs []prow.ProwJob) (map[string]pq.StringArray, error) {
+	buildIDs := make([]string, 0, len(prowJobs))
+	var earliest time.Time
+	for i := range prowJobs {
+		buildIDs = append(buildIDs, prowJobs[i].Status.BuildID)
+		if earliest.IsZero() || prowJobs[i].Status.StartTime.Before(earliest) {
+			earliest = prowJobs[i].Status.StartTime
+		}
+	}
+
+	log.WithField("count", len(buildIDs)).Info("pre-fetching labels from BigQuery in bulk")
+	start := time.Now()
+	labels, err := GatherLabelsFromBQ(pl.ctx, pl.bigQueryClient, buildIDs, earliest)
+	if err != nil {
+		return nil, fmt.Errorf("pre-fetching %d labels from BigQuery: %w", len(buildIDs), err)
+	}
+	log.WithField("count", len(labels)).WithField("duration", time.Since(start)).Info("pre-fetched labels from BigQuery")
+	return labels, nil
 }
 
 const LabelsDatasetEnv = "JOB_LABELS_DATASET"
