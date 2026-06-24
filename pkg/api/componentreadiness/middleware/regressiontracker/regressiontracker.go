@@ -147,17 +147,14 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 			}
 
 			switch {
+			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure) &&
+				sippyutil.StrSliceContains(r.reqOptions.AdvancedOption.KeyTestNames, testKey.TestName) &&
+				testStats.SampleStats.FailureCount < keyTestMinFailuresForFailedFix:
+				testStats.ReportStatus = crtest.FixedRegression
+				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+					"Regression is triaged and believed fixed as of %s. Failures observed (%d) are below the key test threshold (%d) for a failed fix.",
+					lastResolution.Format(time.RFC3339), testStats.SampleStats.FailureCount, keyTestMinFailuresForFailedFix))
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure):
-				// claimed fixed but does not appear to be
-				// aka liar liar pants on fire
-				if isKeyTest(testKey.TestName, r.reqOptions.AdvancedOption.KeyTestNames) &&
-					testStats.SampleStats.FailureCount < keyTestMinFailuresForFailedFix {
-					testStats.ReportStatus = crtest.FixedRegression
-					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
-						"Regression is triaged and believed fixed as of %s. Failures observed (%d) are below the key test threshold (%d) for a failed fix.",
-						lastResolution.Format(time.RFC3339), testStats.SampleStats.FailureCount, keyTestMinFailuresForFailedFix))
-					break
-				}
 				testStats.ReportStatus = crtest.FailedFixedRegression
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
 					"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
@@ -236,8 +233,4 @@ func FindOpenRegression(sampleRelease, testID string,
 
 func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {
 	return nil
-}
-
-func isKeyTest(testName string, keyTestNames []string) bool {
-	return sippyutil.StrSliceContains(keyTestNames, testName)
 }
