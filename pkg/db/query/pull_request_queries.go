@@ -37,7 +37,9 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 	if err != nil {
 		return results, err
 	}
-	q.Scan(&results)
+	if err := q.Scan(&results).Error; err != nil {
+		return nil, err
+	}
 	return results, nil
 }
 
