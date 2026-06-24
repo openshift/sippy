@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
+	sippyutil "github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -238,10 +239,5 @@ func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariant
 }
 
 func isKeyTest(testName string, keyTestNames []string) bool {
-	for _, kt := range keyTestNames {
-		if testName == kt {
-			return true
-		}
-	}
-	return false
+	return sippyutil.StrSliceContains(keyTestNames, testName)
 }
