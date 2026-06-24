@@ -22,7 +22,7 @@ The following test is failing more than expected:
 See the [sippy test details|${document.location.href}] for additional context.
   `
 
-  const summary = `Component Readiness: [${props.component}] [${props.capability}] test regressed`
+  const summary = `[${props.component}] [${props.capability}] test regressed`
 
   const handleClick = () => {
     let message = props.context || text
