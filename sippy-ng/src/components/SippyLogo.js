@@ -1,6 +1,6 @@
 import './SippyLogo.css'
+import { getSeasonalLogo, isWorldCup } from './seasonalLogo'
 import { makeStyles } from '@mui/styles'
-import logo from '../sippy.svg'
 import Popover from '@mui/material/Popover'
 import React from 'react'
 import Typography from '@mui/material/Typography'
@@ -16,6 +16,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function SippyLogo() {
   const classes = useStyles()
+  const logo = getSeasonalLogo()
   const [anchorEl, setAnchorEl] = React.useState(null)
 
   const handlePopoverOpen = (event) => {
@@ -63,9 +64,21 @@ export default function SippyLogo() {
         disableScrollLock
       >
         <Typography>
-          Hi, I&apos;m Sippy! The Continuous Integration
-          <br />
-          Private Investigator (CIPI).
+          {isWorldCup() ? (
+            <>
+              GOOOAL! I&apos;m Sippy, your CI
+              <br />
+              Private Investigator, cheering
+              <br />
+              on the 2026 FIFA World Cup!
+            </>
+          ) : (
+            <>
+              Hi, I&apos;m Sippy! The Continuous Integration
+              <br />
+              Private Investigator (CIPI).
+            </>
+          )}
         </Typography>
       </Popover>
     </div>

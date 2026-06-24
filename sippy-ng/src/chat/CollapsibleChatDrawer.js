@@ -1,10 +1,10 @@
 import { ExpandLess as ExpandLessIcon } from '@mui/icons-material'
+import { getSeasonalLogo } from '../components/seasonalLogo'
 import { makeStyles } from '@mui/styles'
 import { Paper, Typography } from '@mui/material'
 import ChatInterface from './ChatInterface'
 import PropTypes from 'prop-types'
 import React from 'react'
-import sippyLogo from '../sippy.svg'
 
 const useStyles = makeStyles((theme) => ({
   collapsedTab: {
@@ -47,6 +47,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function CollapsibleChatDrawer({ open, onOpen, onClose }) {
   const classes = useStyles()
+  const sippyLogo = getSeasonalLogo()
 
   const handleOpen = (e) => {
     e.preventDefault()
