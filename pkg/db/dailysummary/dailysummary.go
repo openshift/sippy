@@ -17,7 +17,7 @@ const (
 	parallelWorkers     = 4
 )
 
-var valueColumns = []string{"successes", "failures", "flakes", "runs"}
+var valueColumns = []string{"variant_combination_id", "successes", "failures", "flakes", "runs"}
 
 var (
 	insertSQL        = buildInsertSQL()
@@ -28,20 +28,22 @@ func buildInsertSQL() string {
 	return fmt.Sprintf(`
 		INSERT INTO test_daily_summaries (test_id, prow_job_id, suite_id, release, summary_date, %s)
 		SELECT
-			test_id,
-			prow_job_id,
-			COALESCE(suite_id, 0),
-			prow_job_run_release,
-			date(prow_job_run_timestamp),
-			COUNT(*) FILTER (WHERE status = 1),
-			COUNT(*) FILTER (WHERE status = 12),
-			COUNT(*) FILTER (WHERE status = 13),
+			pjrt.test_id,
+			pjrt.prow_job_id,
+			COALESCE(pjrt.suite_id, 0),
+			pjrt.prow_job_run_release,
+			date(pjrt.prow_job_run_timestamp),
+			pj.variant_combination_id,
+			COUNT(*) FILTER (WHERE pjrt.status = 1),
+			COUNT(*) FILTER (WHERE pjrt.status = 12),
+			COUNT(*) FILTER (WHERE pjrt.status = 13),
 			COUNT(*)
-		FROM prow_job_run_tests
-		WHERE prow_job_run_timestamp >= ?::date
-		  AND prow_job_run_timestamp < (?::date + INTERVAL '1 day')
-		  AND prow_job_run_release = ?
-		GROUP BY test_id, prow_job_id, COALESCE(suite_id, 0), prow_job_run_release, date(prow_job_run_timestamp)`,
+		FROM prow_job_run_tests pjrt
+		JOIN prow_jobs pj ON pjrt.prow_job_id = pj.id
+		WHERE pjrt.prow_job_run_timestamp >= ?::date
+		  AND pjrt.prow_job_run_timestamp < (?::date + INTERVAL '1 day')
+		  AND pjrt.prow_job_run_release = ?
+		GROUP BY pjrt.test_id, pjrt.prow_job_id, COALESCE(pjrt.suite_id, 0), pjrt.prow_job_run_release, date(pjrt.prow_job_run_timestamp), pj.variant_combination_id`,
 		strings.Join(valueColumns, ", "))
 }
 
