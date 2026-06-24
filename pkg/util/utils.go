@@ -176,6 +176,7 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 }
 
 func AdjustReleaseTime(relTime time.Time, isStart bool, daysAdjustment string, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) time.Time {
+	relTime = relTime.UTC()
 	// adjust by number of days:
 	adjustDays, _ := strconv.ParseInt(daysAdjustment, 10, 64)
 	adjustDur := time.Duration(adjustDays) * 24 * time.Hour
