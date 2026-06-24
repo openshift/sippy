@@ -148,12 +148,22 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 
 			switch {
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure) &&
-				sippyutil.StrSliceContains(r.reqOptions.AdvancedOption.KeyTestNames, testKey.TestName) &&
-				testStats.SampleStats.FailureCount < keyTestMinFailuresForFailedFix:
-				testStats.ReportStatus = crtest.FixedRegression
-				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
-					"Regression is triaged and believed fixed as of %s. Failures observed (%d) are below the key test threshold (%d) for a failed fix.",
-					lastResolution.Format(time.RFC3339), testStats.SampleStats.FailureCount, keyTestMinFailuresForFailedFix))
+				sippyutil.StrSliceContains(r.reqOptions.AdvancedOption.KeyTestNames, testKey.TestName):
+				failuresAfterFix, err := r.countFailuresAfterResolution(or, lastResolution)
+				if err != nil {
+					return err
+				}
+				if failuresAfterFix < keyTestMinFailuresForFailedFix {
+					testStats.ReportStatus = crtest.FixedRegression
+					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+						"Regression is triaged and believed fixed as of %s. Failures since resolution (%d) are below the key test threshold (%d) for a failed fix.",
+						lastResolution.Format(time.RFC3339), failuresAfterFix, keyTestMinFailuresForFailedFix))
+				} else {
+					testStats.ReportStatus = crtest.FailedFixedRegression
+					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+						"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
+						lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
+				}
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure):
 				testStats.ReportStatus = crtest.FailedFixedRegression
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
@@ -233,4 +243,29 @@ func FindOpenRegression(sampleRelease, testID string,
 
 func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {
 	return nil
+}
+
+// countFailuresAfterResolution counts the number of failed job runs for
+// the given regression that started after the specified time. This uses
+// the regression_job_runs table which accumulates all runs observed
+// during the regression's lifetime.
+func (r *RegressionTracker) countFailuresAfterResolution(regression *models.TestRegression, after time.Time) (int, error) {
+	if r.dbc != nil {
+		var count int64
+		res := r.dbc.DB.Model(&models.RegressionJobRun{}).
+			Where("regression_id = ? AND start_time > ? AND test_failed = ?", regression.ID, after, true).
+			Count(&count)
+		if res.Error != nil {
+			return 0, fmt.Errorf("error counting post-resolution failures for regression %d: %w", regression.ID, res.Error)
+		}
+		return int(count), nil
+	}
+
+	count := 0
+	for _, jr := range regression.JobRuns {
+		if jr.TestFailed && jr.StartTime.After(after) {
+			count++
+		}
+	}
+	return count, nil
 }

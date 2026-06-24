@@ -896,39 +896,61 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 		name                      string
 		testName                  string
 		keyTestNames              []string
-		sampleFailureCount        int
+		jobRuns                   []models.RegressionJobRun
 		expectStatus              crtest.Status
 		expectedExplanationsCount int
 	}{
 		{
-			name:                      "key test with 1 failure after resolution is not pants on fire",
-			testName:                  keyTestName,
-			keyTestNames:              []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
-			sampleFailureCount:        1,
+			name:         "key test with 1 failure after resolution is not pants on fire",
+			testName:     keyTestName,
+			keyTestNames: []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
+			jobRuns: []models.RegressionJobRun{
+				{StartTime: daysAgo4, TestFailed: true},
+				{StartTime: daysAgo2, TestFailed: true},
+			},
 			expectStatus:              crtest.FixedRegression,
 			expectedExplanationsCount: 1,
 		},
 		{
-			name:                      "key test with 2 failures after resolution is pants on fire",
-			testName:                  keyTestName,
-			keyTestNames:              []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
-			sampleFailureCount:        2,
+			name:         "key test with 2 failures after resolution is pants on fire",
+			testName:     keyTestName,
+			keyTestNames: []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
+			jobRuns: []models.RegressionJobRun{
+				{StartTime: daysAgo4, TestFailed: true},
+				{StartTime: daysAgo2, TestFailed: true},
+				{StartTime: daysAgo2.Add(time.Hour), TestFailed: true},
+			},
 			expectStatus:              crtest.FailedFixedRegression,
 			expectedExplanationsCount: 1,
 		},
 		{
-			name:                      "key test with 3 failures after resolution is pants on fire",
-			testName:                  keyTestName,
-			keyTestNames:              []string{keyTestName},
-			sampleFailureCount:        3,
+			name:         "key test with 3 failures after resolution is pants on fire",
+			testName:     keyTestName,
+			keyTestNames: []string{keyTestName},
+			jobRuns: []models.RegressionJobRun{
+				{StartTime: daysAgo2, TestFailed: true},
+				{StartTime: daysAgo2.Add(time.Hour), TestFailed: true},
+				{StartTime: daysAgo2.Add(2 * time.Hour), TestFailed: true},
+			},
 			expectStatus:              crtest.FailedFixedRegression,
+			expectedExplanationsCount: 1,
+		},
+		{
+			name:         "key test ignores non-failed runs after resolution",
+			testName:     keyTestName,
+			keyTestNames: []string{keyTestName},
+			jobRuns: []models.RegressionJobRun{
+				{StartTime: daysAgo2, TestFailed: true},
+				{StartTime: daysAgo2.Add(time.Hour), TestFailed: false},
+			},
+			expectStatus:              crtest.FixedRegression,
 			expectedExplanationsCount: 1,
 		},
 		{
 			name:                      "regular test with 1 failure after resolution is pants on fire",
 			testName:                  regularTestName,
 			keyTestNames:              []string{keyTestName},
-			sampleFailureCount:        1,
+			jobRuns:                   nil,
 			expectStatus:              crtest.FailedFixedRegression,
 			expectedExplanationsCount: 1,
 		},
@@ -936,7 +958,7 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			name:                      "regular test with no key test names configured and 1 failure is pants on fire",
 			testName:                  regularTestName,
 			keyTestNames:              nil,
-			sampleFailureCount:        1,
+			jobRuns:                   nil,
 			expectStatus:              crtest.FailedFixedRegression,
 			expectedExplanationsCount: 1,
 		},
@@ -944,7 +966,7 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			name:                      "test not in key test list with 1 failure is pants on fire",
 			testName:                  regularTestName,
 			keyTestNames:              []string{keyTestName, "[sig-cluster-lifecycle] Cluster completes upgrade"},
-			sampleFailureCount:        1,
+			jobRuns:                   nil,
 			expectStatus:              crtest.FailedFixedRegression,
 			expectedExplanationsCount: 1,
 		},
@@ -993,6 +1015,7 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 								Resolved:    sql.NullTime{Time: daysAgo3, Valid: true},
 							},
 						},
+						JobRuns: tt.jobRuns,
 					},
 				},
 				hasLoadedRegressions: true,
@@ -1004,11 +1027,6 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 				Explanations: []string{},
 				LastFailure:  &daysAgo2,
 				Regression:   &models.TestRegression{},
-				SampleStats: testdetails.ReleaseStats{
-					Stats: crtest.Stats{
-						FailureCount: tt.sampleFailureCount,
-					},
-				},
 			}
 
 			err := mw.PostAnalysis(testKey, &testStats)
