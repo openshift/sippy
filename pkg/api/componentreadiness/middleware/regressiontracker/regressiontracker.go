@@ -155,7 +155,12 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 				sippyutil.StrSliceContains(r.reqOptions.AdvancedOption.KeyTestNames, testKey.TestName):
 				failuresAfterFix, err := query.CountRegressionFailuresAfter(r.dbc, or.ID, lastResolution)
 				if err != nil {
-					return err
+					r.log.WithError(err).WithField("regression_id", or.ID).Warn("failed to count post-resolution failures for key test, falling back to FailedFixedRegression")
+					testStats.ReportStatus = crtest.FailedFixedRegression
+					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+						"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
+						lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
+					return nil
 				}
 				if failuresAfterFix < keyTestMinFailuresForFailedFix {
 					testStats.ReportStatus = crtest.FixedRegression
