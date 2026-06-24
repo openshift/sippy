@@ -486,17 +486,16 @@ func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 // --- TestDetailsQuerier ---
 
 type testDetailRow struct {
-	TestID          string         `gorm:"column:test_id"`
-	TestName        string         `gorm:"column:test_name"`
-	ProwJobName     string         `gorm:"column:prowjob_name"`
-	ProwJobRunID    string         `gorm:"column:prowjob_run_id"`
-	ProwJobURL      string         `gorm:"column:prowjob_url"`
-	ProwJobStart    time.Time      `gorm:"column:prowjob_start"`
-	ProwJobID       uint           `gorm:"column:prow_job_id"`
-	Status          int            `gorm:"column:status"`
-	JiraComponent   string         `gorm:"column:jira_component"`
-	JiraComponentID *uint          `gorm:"column:jira_component_id"`
-	Capabilities    pq.StringArray `gorm:"column:capabilities;type:text[]"`
+	TestID          string    `gorm:"column:test_id"`
+	TestName        string    `gorm:"column:test_name"`
+	ProwJobName     string    `gorm:"column:prowjob_name"`
+	ProwJobRunID    string    `gorm:"column:prowjob_run_id"`
+	ProwJobURL      string    `gorm:"column:prowjob_url"`
+	ProwJobStart    time.Time `gorm:"column:prowjob_start"`
+	ProwJobID       uint      `gorm:"column:prow_job_id"`
+	Status          int       `gorm:"column:status"`
+	JiraComponent   string    `gorm:"column:jira_component"`
+	JiraComponentID *uint     `gorm:"column:jira_component_id"`
 }
 
 const testDetailQuery = `
@@ -510,8 +509,7 @@ SELECT
     pj.id AS prow_job_id,
     pjrt.status,
     COALESCE(tow.jira_component, '') AS jira_component,
-    tow.jira_component_id,
-    tow.capabilities
+    tow.jira_component_id
 FROM prow_job_run_tests pjrt
 JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
 JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
