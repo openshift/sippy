@@ -98,7 +98,7 @@ See the [sippy test details|${url}] for additional context.
 
     const defaultSummary =
       component && capability
-        ? `Component Readiness: [${component}] [${capability}] test regressed`
+        ? `[${component}] [${capability}] test regressed`
         : ''
 
     // Use AI-generated description if available, otherwise use context or default

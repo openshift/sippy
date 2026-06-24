@@ -336,7 +336,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crview.View, compon
 		description += "\n * Please use this card as a placeholder for all the regressed tests for your component. A separate issue should be created for each regressed test and linked to this issue. Please only close this issue when all known regressed tests are believed fixed.\n"
 		description += "\n * Please do not remove 'Release Blocker' label. The bot will automatically add it back if any regressed tests continue showing for the component.\n"
 
-		summary := fmt.Sprintf("Component Readiness: %s test regressed", component.Component)
+		summary := fmt.Sprintf("%s test regressed", component.Component)
 
 		fileBugRequest := util.FileBugRequest{Description: description, Summary: summary, Components: []string{component.Component}, AffectsVersions: []string{view.SampleRelease.Name}, Labels: []string{jiratype.LabelJiraAutomator}, Project: component.Project}
 		issue, err := util.PopulateJiraIssue(j.jiraClient, fileBugRequest, "")
