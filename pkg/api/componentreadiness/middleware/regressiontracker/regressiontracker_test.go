@@ -901,8 +901,19 @@ func openTestDB(t *testing.T) *db.DB {
 	if err != nil {
 		t.Skipf("Skipping: cannot connect to Postgres: %v", err)
 	}
+	sqlDB, err := gormDB.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, sqlDB.Close())
+	})
 	tx := gormDB.Begin()
-	t.Cleanup(func() { tx.Rollback() })
+	require.NoError(t, tx.Error)
+	t.Cleanup(func() {
+		if tx.Error != nil {
+			return
+		}
+		require.NoError(t, tx.Rollback().Error)
+	})
 	return &db.DB{DB: tx}
 }
 
@@ -951,26 +962,31 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 		name               string
 		failedRunsAfterFix int
 		expectStatus       crtest.Status
+		expectExplanation  string
 	}{
 		{
 			name:               "key test with zero post-resolution failures reports FixedRegression",
 			failedRunsAfterFix: 0,
 			expectStatus:       crtest.FixedRegression,
+			expectExplanation:  "below the key test threshold",
 		},
 		{
 			name:               "key test with one post-resolution failure reports FixedRegression",
 			failedRunsAfterFix: 1,
 			expectStatus:       crtest.FixedRegression,
+			expectExplanation:  "below the key test threshold",
 		},
 		{
 			name:               "key test with failures at threshold reports FailedFixedRegression",
 			failedRunsAfterFix: keyTestMinFailuresForFailedFix,
 			expectStatus:       crtest.FailedFixedRegression,
+			expectExplanation:  "failures have been observed",
 		},
 		{
 			name:               "key test with failures above threshold reports FailedFixedRegression",
 			failedRunsAfterFix: keyTestMinFailuresForFailedFix + 3,
 			expectStatus:       crtest.FailedFixedRegression,
+			expectExplanation:  "failures have been observed",
 		},
 	}
 
@@ -1028,6 +1044,7 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectStatus, testStats.ReportStatus)
 			assert.Len(t, testStats.Explanations, 1)
+			assert.Contains(t, testStats.Explanations[0], tt.expectExplanation)
 		})
 	}
 }
