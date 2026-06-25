@@ -2,17 +2,23 @@ package regressiontracker
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func TestRegressionTracker_PostAnalysis(t *testing.T) {
@@ -878,6 +884,150 @@ func TestFindOpenRegression_SubsetMatching(t *testing.T) {
 			assert.Equal(t, sampleRelease, got.Release)
 			assert.Equal(t, baseRelease, got.BaseRelease)
 			assert.Equal(t, testID, got.TestID)
+		})
+	}
+}
+
+// openTestDB opens a Postgres connection for functional tests. It returns a
+// *db.DB backed by a transaction so all changes roll back automatically. The
+// test is skipped when Postgres is unreachable.
+func openTestDB(t *testing.T) *db.DB {
+	t.Helper()
+	dsn := os.Getenv("SIPPY_SEED_DATABASE_DSN")
+	if dsn == "" {
+		dsn = "postgresql://postgres:password@localhost:5432/postgres?sslmode=disable" //nolint:gosec // G101: dev-only default for local test database
+	}
+	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Skipf("Skipping: cannot connect to Postgres: %v", err)
+	}
+	tx := gormDB.Begin()
+	t.Cleanup(func() { tx.Rollback() })
+	return &db.DB{DB: tx}
+}
+
+// TestRegressionTracker_PostAnalysis_KeyTestThreshold verifies the key test
+// threshold logic that requires counting post-resolution failures from the
+// database. Key tests need >= keyTestMinFailuresForFailedFix failures after
+// resolution to escalate to FailedFixedRegression; otherwise they stay at
+// FixedRegression.
+func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
+	dbc := openTestDB(t)
+
+	sampleRelease := "4.18"
+	baseRelease := "4.19"
+	keyTestName := "install should succeed"
+	testID := "install-should-succeed"
+
+	daysAgo5 := time.Now().UTC().Add(-5 * 24 * time.Hour)
+	daysAgo3 := time.Now().UTC().Add(-3 * 24 * time.Hour)
+	daysAgo2 := time.Now().UTC().Add(-2 * 24 * time.Hour)
+
+	testKey := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
+			Component:  "comp",
+			Capability: "cap",
+			TestName:   keyTestName,
+			TestSuite:  "suite",
+			TestID:     testID,
+		},
+		ColumnIdentification: crtest.ColumnIdentification{
+			Variants: map[string]string{"arch": "amd64"},
+		},
+	}
+	variantsStrSlice := utils.VariantsMapToStringSlice(testKey.Variants)
+
+	resolvedTriage := models.Triage{
+		URL:         "https://example.com/bug-123",
+		Description: "fixed",
+		Type:        "product",
+		Resolved: sql.NullTime{
+			Time:  daysAgo3,
+			Valid: true,
+		},
+	}
+
+	tests := []struct {
+		name               string
+		failedRunsAfterFix int
+		expectStatus       crtest.Status
+	}{
+		{
+			name:               "key test with zero post-resolution failures reports FixedRegression",
+			failedRunsAfterFix: 0,
+			expectStatus:       crtest.FixedRegression,
+		},
+		{
+			name:               "key test with one post-resolution failure reports FixedRegression",
+			failedRunsAfterFix: 1,
+			expectStatus:       crtest.FixedRegression,
+		},
+		{
+			name:               "key test with failures at threshold reports FailedFixedRegression",
+			failedRunsAfterFix: keyTestMinFailuresForFailedFix,
+			expectStatus:       crtest.FailedFixedRegression,
+		},
+		{
+			name:               "key test with failures above threshold reports FailedFixedRegression",
+			failedRunsAfterFix: keyTestMinFailuresForFailedFix + 3,
+			expectStatus:       crtest.FailedFixedRegression,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			regression := models.TestRegression{
+				Release:  sampleRelease,
+				TestID:   testID,
+				TestName: keyTestName,
+				Variants: pq.StringArray(variantsStrSlice),
+				Opened:   daysAgo5,
+			}
+			require.NoError(t, dbc.DB.Create(&regression).Error)
+			t.Cleanup(func() {
+				dbc.DB.Where("regression_id = ?", regression.ID).Delete(&models.RegressionJobRun{})
+				dbc.DB.Delete(&regression)
+			})
+
+			for i := 0; i < tt.failedRunsAfterFix; i++ {
+				run := models.RegressionJobRun{
+					RegressionID: regression.ID,
+					ProwJobRunID: fmt.Sprintf("run-%d-%d", regression.ID, i),
+					ProwJobName:  "e2e-test",
+					StartTime:    daysAgo2,
+					TestFailed:   true,
+				}
+				require.NoError(t, dbc.DB.Create(&run).Error)
+			}
+
+			regression.Triages = []models.Triage{resolvedTriage}
+
+			mw := RegressionTracker{
+				reqOptions: reqopts.RequestOptions{
+					BaseRelease:   reqopts.Release{Name: baseRelease},
+					SampleRelease: reqopts.Release{Name: sampleRelease},
+					AdvancedOption: reqopts.Advanced{
+						Confidence:   95,
+						KeyTestNames: []string{keyTestName},
+					},
+				},
+				openRegressions:      []*models.TestRegression{&regression},
+				hasLoadedRegressions: true,
+				dbc:                  dbc,
+				log:                  logrus.New(),
+			}
+
+			testStats := &testdetails.TestComparison{
+				ReportStatus: crtest.ExtremeRegression,
+				Explanations: []string{},
+				LastFailure:  &daysAgo2,
+				Regression:   &regression,
+			}
+
+			err := mw.PostAnalysis(testKey, testStats)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectStatus, testStats.ReportStatus)
+			assert.Len(t, testStats.Explanations, 1)
 		})
 	}
 }
