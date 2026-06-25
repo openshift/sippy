@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
+	sippyutil "github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,15 +28,28 @@ const (
 	// to adjust this to a smaller value so that, if a rate improvement is smaller than the openRegressionPityAdjustment,
 	// we still consider it regressed.
 	openRegressionPityAdjustment = -2
+	// keyTestMinFailuresForFailedFix is the minimum number of sample failures
+	// required before marking a key test as FailedFixedRegression ("pants on
+	// fire"). Key tests like "install should succeed" are highly sensitive and
+	// a single failure can be noise.
+	keyTestMinFailuresForFailedFix = 2
 )
 
 var _ middleware.Middleware = &RegressionTracker{}
+
+// failureCounterFunc counts post-resolution failures for a regression.
+// It is a field on RegressionTracker so tests can inject a stub without
+// needing a real database.
+type failureCounterFunc func(regressionID uint, after time.Time) (int, error)
 
 func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions reqopts.RequestOptions) *RegressionTracker {
 	return &RegressionTracker{
 		log:        log.WithField("middleware", "RegressionTracker"),
 		reqOptions: reqOptions,
 		dbc:        dbc,
+		failureCounter: func(regressionID uint, after time.Time) (int, error) {
+			return query.CountRegressionFailuresAfter(dbc, regressionID, after)
+		},
 	}
 }
 
@@ -46,6 +60,7 @@ type RegressionTracker struct {
 	log             log.FieldLogger
 	reqOptions      reqopts.RequestOptions
 	dbc             *db.DB
+	failureCounter  failureCounterFunc
 	openRegressions []*models.TestRegression
 	// hasLoadedRegressions will be true once we've loaded regression data
 	hasLoadedRegressions bool
@@ -141,9 +156,29 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 			}
 
 			switch {
+			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure) &&
+				sippyutil.StrSliceContains(r.reqOptions.AdvancedOption.KeyTestNames, testKey.TestName):
+				failuresAfterFix, err := r.failureCounter(or.ID, lastResolution)
+				if err != nil {
+					r.log.WithError(err).WithField("regression_id", or.ID).Warn("failed to count post-resolution failures for key test, falling back to FailedFixedRegression")
+					testStats.ReportStatus = crtest.FailedFixedRegression
+					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+						"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
+						lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
+					return nil
+				}
+				if failuresAfterFix < keyTestMinFailuresForFailedFix {
+					testStats.ReportStatus = crtest.FixedRegression
+					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+						"Regression is triaged and believed fixed as of %s. Failures since resolution (%d) are below the key test threshold (%d) for a failed fix.",
+						lastResolution.Format(time.RFC3339), failuresAfterFix, keyTestMinFailuresForFailedFix))
+				} else {
+					testStats.ReportStatus = crtest.FailedFixedRegression
+					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+						"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
+						lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
+				}
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure):
-				// claimed fixed but does not appear to be
-				// aka liar liar pants on fire
 				testStats.ReportStatus = crtest.FailedFixedRegression
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
 					"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",

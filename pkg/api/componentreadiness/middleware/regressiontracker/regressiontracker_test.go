@@ -2,6 +2,7 @@ package regressiontracker
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -159,7 +160,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			},
 		},
 		{
-			name: "triage resolved but has failed since",
+			name: "triage resolved but has failed since (non-key test)",
 			testStats: testdetails.TestComparison{
 				ReportStatus: crtest.ExtremeRegression,
 				Explanations: []string{},
@@ -878,6 +879,147 @@ func TestFindOpenRegression_SubsetMatching(t *testing.T) {
 			assert.Equal(t, sampleRelease, got.Release)
 			assert.Equal(t, baseRelease, got.BaseRelease)
 			assert.Equal(t, testID, got.TestID)
+		})
+	}
+}
+
+func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
+	baseRelease := "4.19"
+	sampleRelease := "4.18"
+	keyTestName := "install should succeed"
+	keyTestID := "install-should-succeed"
+	regularTestName := "regular test"
+	regularTestID := "regular-test"
+
+	daysAgo5 := time.Now().UTC().Add(-5 * 24 * time.Hour)
+	daysAgo3 := time.Now().UTC().Add(-3 * 24 * time.Hour)
+	daysAgo2 := time.Now().UTC().Add(-2 * 24 * time.Hour)
+
+	resolvedTriage := models.Triage{
+		ID:          42,
+		URL:         "https://example.com/bug-123",
+		Description: "fixed",
+		Type:        "product",
+		Resolved: sql.NullTime{
+			Time:  daysAgo3,
+			Valid: true,
+		},
+	}
+
+	tests := []struct {
+		name              string
+		testName          string
+		testID            string
+		failureCount      int
+		failureCountErr   error
+		expectStatus      crtest.Status
+		expectExplanation string
+	}{
+		{
+			name:              "key test with zero post-resolution failures reports FixedRegression",
+			testName:          keyTestName,
+			testID:            keyTestID,
+			failureCount:      0,
+			expectStatus:      crtest.FixedRegression,
+			expectExplanation: "below the key test threshold",
+		},
+		{
+			name:              "key test with one post-resolution failure reports FixedRegression",
+			testName:          keyTestName,
+			testID:            keyTestID,
+			failureCount:      1,
+			expectStatus:      crtest.FixedRegression,
+			expectExplanation: "below the key test threshold",
+		},
+		{
+			name:              "key test at threshold reports FailedFixedRegression",
+			testName:          keyTestName,
+			testID:            keyTestID,
+			failureCount:      keyTestMinFailuresForFailedFix,
+			expectStatus:      crtest.FailedFixedRegression,
+			expectExplanation: "failures have been observed",
+		},
+		{
+			name:              "key test above threshold reports FailedFixedRegression",
+			testName:          keyTestName,
+			testID:            keyTestID,
+			failureCount:      keyTestMinFailuresForFailedFix + 3,
+			expectStatus:      crtest.FailedFixedRegression,
+			expectExplanation: "failures have been observed",
+		},
+		{
+			name:              "non-key test with one failure still reports FailedFixedRegression",
+			testName:          regularTestName,
+			testID:            regularTestID,
+			failureCount:      0,
+			expectStatus:      crtest.FailedFixedRegression,
+			expectExplanation: "failures have been observed",
+		},
+		{
+			name:              "key test with counter error falls back to FailedFixedRegression",
+			testName:          keyTestName,
+			testID:            keyTestID,
+			failureCountErr:   fmt.Errorf("database error"),
+			expectStatus:      crtest.FailedFixedRegression,
+			expectExplanation: "failures have been observed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testKey := crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "comp",
+					Capability: "cap",
+					TestName:   tt.testName,
+					TestSuite:  "suite",
+					TestID:     tt.testID,
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{"arch": "amd64"},
+				},
+			}
+			variantsStrSlice := utils.VariantsMapToStringSlice(testKey.Variants)
+
+			openRegression := &models.TestRegression{
+				ID:       1,
+				Release:  sampleRelease,
+				TestID:   tt.testID,
+				TestName: tt.testName,
+				Variants: variantsStrSlice,
+				Opened:   daysAgo5,
+				Triages:  []models.Triage{resolvedTriage},
+			}
+
+			mw := RegressionTracker{
+				reqOptions: reqopts.RequestOptions{
+					BaseRelease:   reqopts.Release{Name: baseRelease},
+					SampleRelease: reqopts.Release{Name: sampleRelease},
+					AdvancedOption: reqopts.Advanced{
+						Confidence:   95,
+						KeyTestNames: []string{keyTestName},
+					},
+				},
+				openRegressions:      []*models.TestRegression{openRegression},
+				hasLoadedRegressions: true,
+				failureCounter: func(_ uint, _ time.Time) (int, error) {
+					return tt.failureCount, tt.failureCountErr
+				},
+				log: logrus.New(),
+			}
+
+			testStats := &testdetails.TestComparison{
+				ReportStatus: crtest.ExtremeRegression,
+				Explanations: []string{},
+				LastFailure:  &daysAgo2,
+				Regression:   openRegression,
+			}
+
+			err := mw.PostAnalysis(testKey, testStats)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectStatus, testStats.ReportStatus)
+			assert.Len(t, testStats.Explanations, 1)
+			assert.Contains(t, testStats.Explanations[0], tt.expectExplanation)
 		})
 	}
 }
