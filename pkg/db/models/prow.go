@@ -157,18 +157,6 @@ type Suite struct {
 	Name string `gorm:"uniqueIndex"`
 }
 
-type TestAnalysisByJobByDate struct {
-	Date     time.Time `gorm:"index:test_release_date,unique"`
-	TestID   uint      `gorm:"index:test_release_date,unique"`
-	Release  string    `gorm:"index:test_release_date,unique"`
-	JobName  string    `gorm:"index:test_release_date,unique"`
-	TestName string
-	Runs     int
-	Passes   int
-	Flakes   int
-	Failures int
-}
-
 // TestDailySummary stores pre-aggregated daily test results used to
 // accelerate matview refreshes. Table managed by migration 000002.
 type TestDailySummary struct {

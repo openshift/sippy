@@ -63,9 +63,11 @@ const (
         select current_successes, current_runs,
                current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage
         from (
-            select sum(runs) as current_runs, sum(passes) as current_successes
-            from test_analysis_by_job_by_dates
-            where date >= ? AND test_name = ? AND job_name IN ? AND release = ?
+            select sum(tds.runs) as current_runs, sum(tds.successes) as current_successes
+            from test_daily_summaries tds
+            join tests t on t.id = tds.test_id
+            join prow_jobs pj on pj.id = tds.prow_job_id
+            where tds.summary_date >= ? AND t.name = ? AND pj.name IN ? AND tds.release = ?
         ) t`
 )
 

@@ -81,7 +81,6 @@ const (
 	BugLoaderTestBugMappings            QueryValue = "bug-loader-test-bug-mappings"
 	BugLoaderTriageBugMappings          QueryValue = "bug-loader-triage-bug-mappings"
 	ProwLoaderProwJobs                  QueryValue = "prow-loader-prow-jobs"
-	ProwLoaderTestAnalysis              QueryValue = "prow-loader-test-analysis"
 	ProwLoaderJobLabels                 QueryValue = "prow-loader-job-labels"
 	VariantRegistryDeleteJobBatch       QueryValue = "variant-registry-delete-job-batch"
 	VariantRegistryDeleteVariant        QueryValue = "variant-registry-delete-variant"

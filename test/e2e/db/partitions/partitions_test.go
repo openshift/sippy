@@ -39,7 +39,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			FROM pg_inherits
 			JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
 			JOIN pg_class child ON pg_inherits.inhrelid = child.oid
-			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 		`).Scan(&partitionCount).Error
 		require.NoError(t, err)
 		assert.Greater(t, partitionCount, int64(0), "should have created partitions")
@@ -96,7 +96,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			FROM pg_inherits
 			JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
 			JOIN pg_class child ON pg_inherits.inhrelid = child.oid
-			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 		`).Scan(&attachedPartitions).Error
 		require.NoError(t, err)
 
@@ -198,7 +198,7 @@ func TestPartitionLifecycle(t *testing.T) {
 					0 AS level
 				FROM pg_class c
 				JOIN pg_namespace n ON n.oid = c.relnamespace
-				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 				  AND n.nspname = 'public'
 
 				UNION ALL
@@ -261,7 +261,7 @@ func TestPartitionLifecycle(t *testing.T) {
 					0 AS level
 				FROM pg_class c
 				JOIN pg_namespace n ON n.oid = c.relnamespace
-				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 				  AND n.nspname = 'public'
 
 				UNION ALL
@@ -336,7 +336,7 @@ func TestPartitionLifecycle(t *testing.T) {
 				SELECT c.oid, c.relname AS table_name
 				FROM pg_class c
 				JOIN pg_namespace n ON n.oid = c.relnamespace
-				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 				  AND n.nspname = 'public'
 				UNION ALL
 				SELECT child.oid, child.relname
@@ -369,7 +369,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			SELECT COUNT(*)
 			FROM pg_inherits
 			JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
-			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 		`).Scan(&partitionCountBefore).Error
 		require.NoError(t, err)
 
@@ -384,7 +384,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			SELECT COUNT(*)
 			FROM pg_inherits
 			JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
-			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 		`).Scan(&partitionCountAfter).Error
 		require.NoError(t, err)
 

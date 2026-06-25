@@ -22,13 +22,12 @@ import (
 type SchemaHashType string
 
 const (
-	hashTypeMatView                          SchemaHashType = "matview"
-	hashTypeView                             SchemaHashType = "view"
-	hashTypeMatViewIndex                     SchemaHashType = "matview_index"
-	hashTypeFunction                         SchemaHashType = "function"
-	partitionedTableProwJobRunTests                         = "prow_job_run_tests"
-	partitionedTableProwJobRunTestsOutputs                  = "prow_job_run_test_outputs"
-	partitionedTableTestAnalysisByJobByDates                = "test_analysis_by_job_by_dates"
+	hashTypeMatView                        SchemaHashType = "matview"
+	hashTypeView                           SchemaHashType = "view"
+	hashTypeMatViewIndex                   SchemaHashType = "matview_index"
+	hashTypeFunction                       SchemaHashType = "function"
+	partitionedTableProwJobRunTests                       = "prow_job_run_tests"
+	partitionedTableProwJobRunTestsOutputs                = "prow_job_run_test_outputs"
 )
 
 type DB struct {
@@ -84,8 +83,8 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 		return nil, err
 	}
 	// Prevent PostgreSQL from generating generic plans for prepared statements.
-	// With 10k+ partitions on tables like test_analysis_by_job_by_dates, generic
-	// plan generation alone can take 17+ minutes as the planner enumerates all
+	// With 10k+ partitions on tables like prow_job_run_tests, generic plan
+	// generation alone can take 17+ minutes as the planner enumerates all
 	// partitions. Custom plans use actual parameter values for partition pruning.
 	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
@@ -215,7 +214,6 @@ func (d *DB) PartitionedTables() []string {
 	return []string{
 		partitionedTableProwJobRunTests,
 		partitionedTableProwJobRunTestsOutputs,
-		partitionedTableTestAnalysisByJobByDates,
 	}
 }
 
@@ -241,8 +239,6 @@ func (d *DB) EnsurePartitions(releases []string, startDate, endDate time.Time, d
 			dateColumn = "prow_job_run_timestamp"
 		case partitionedTableProwJobRunTestsOutputs:
 			dateColumn = "prow_job_run_test_timestamp"
-		case partitionedTableTestAnalysisByJobByDates:
-			dateColumn = "date"
 		default:
 			log.Warnf("unknown partitioned table: %s", tableName)
 			continue
