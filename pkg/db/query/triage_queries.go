@@ -1,6 +1,10 @@
 package query
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
@@ -27,6 +31,21 @@ func ListOpenRegressions(dbc *db.DB, release string) ([]*models.TestRegression, 
 		log.WithError(res.Error).Error("error listing all regressions")
 	}
 	return openRegressions, res.Error
+}
+
+// CountRegressionFailuresAfter counts failed job runs for a regression that
+// started after the specified time.
+func CountRegressionFailuresAfter(dbc *db.DB, regressionID uint, after time.Time) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var count int64
+	res := dbc.DB.WithContext(ctx).Model(&models.RegressionJobRun{}).
+		Where("regression_id = ? AND start_time > ? AND test_failed", regressionID, after).
+		Count(&count)
+	if res.Error != nil {
+		return 0, fmt.Errorf("error counting post-resolution failures for regression %d: %w", regressionID, res.Error)
+	}
+	return int(count), nil
 }
 
 func ListRegressions(dbc *db.DB, release string) ([]models.TestRegression, error) {
