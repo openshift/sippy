@@ -47,7 +47,7 @@ func (s *VariantSnapshot) Identify() (JobVariants, error) {
 			}
 			variants := variantSyncer.CalculateVariantsForJob(s.log, job, nil)
 			newVariants[job] = variants
-			if err := validateSpotCheckVariants(job, variants); err != nil {
+			if err := validateComponentCapabilityVariants(job, variants); err != nil {
 				errs = append(errs, err.Error())
 			}
 		}
