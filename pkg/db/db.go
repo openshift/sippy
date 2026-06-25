@@ -141,6 +141,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ReleasePullRequest{},
 		&models.ReleaseRepository{},
 		&models.ReleaseJobRun{},
+		&models.VariantCombination{},
 		&models.ProwJob{},
 		&models.ProwJobRun{},
 		&models.ProwJobRunAnnotation{},
@@ -166,6 +167,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ChatConversation{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
+		&models.TestDailySummary{},
 	}
 
 	// Currently we need RunMigrations to run prior
@@ -184,6 +186,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	if err := ensureTriageSymptomCascade(d.DB); err != nil {
+		return err
+	}
+
+	if err := ensureVariantCombinationTrigger(d.DB); err != nil {
 		return err
 	}
 
@@ -534,6 +540,49 @@ func ensureTriageSymptomCascade(db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+// ensureVariantCombinationTrigger sets up the variant_combination_id
+// infrastructure that depends on tables created by AutoMigrate:
+//   - Attaches the trigger (function created by migration 000003)
+//   - Backfills variant_combination_id on existing prow_jobs rows
+//   - Adds variant_combination_id to test_daily_summaries and truncates
+//     so the next refresh populates it
+func ensureVariantCombinationTrigger(db *gorm.DB) error {
+	return db.Exec(`
+		DO $$
+		BEGIN
+			-- Attach trigger if not already present
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_trigger WHERE tgname = 'trg_prow_jobs_variant_combination'
+			) THEN
+				CREATE TRIGGER trg_prow_jobs_variant_combination
+					BEFORE INSERT OR UPDATE OF variants ON prow_jobs
+					FOR EACH ROW
+					EXECUTE FUNCTION set_variant_combination_id();
+			END IF;
+
+			-- Backfill existing prow_jobs rows that have NULL variant_combination_id
+			INSERT INTO variant_combinations (variants)
+			SELECT DISTINCT variants FROM prow_jobs
+			WHERE variants IS NOT NULL AND variant_combination_id IS NULL
+			ON CONFLICT (variants) DO NOTHING;
+
+			UPDATE prow_jobs
+			SET variant_combination_id = vc.id
+			FROM variant_combinations vc
+			WHERE prow_jobs.variants = vc.variants
+			  AND prow_jobs.variants IS NOT NULL
+			  AND prow_jobs.variant_combination_id IS NULL;
+
+			-- Truncate test_daily_summaries if any rows lack variant_combination_id
+			-- so the next refresh repopulates with it set.
+			IF EXISTS (
+				SELECT 1 FROM test_daily_summaries WHERE variant_combination_id IS NULL LIMIT 1
+			) THEN
+				TRUNCATE test_daily_summaries;
+			END IF;
+		END $$`).Error
 }
 
 func ParseGormLogLevel(logLevel string) (gormlogger.LogLevel, error) {

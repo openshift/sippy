@@ -11,15 +11,26 @@ import (
 
 type ProwKind string
 
+// VariantCombination assigns an integer ID to each unique variants array,
+// enabling efficient GROUP BY in matviews. Populated via a trigger on prow_jobs.
+type VariantCombination struct {
+	ID       uint           `gorm:"primaryKey"`
+	Variants pq.StringArray `gorm:"type:text[];uniqueIndex:idx_variant_combinations_variants;not null"`
+}
+
 // ProwJob represents a prow job and stores data about its variants, associated bugs, etc.
 type ProwJob struct {
 	gorm.Model
 
-	Kind        ProwKind
-	Name        string         `gorm:"unique"`
-	Release     string         `gorm:"index"`
-	Variants    pq.StringArray `gorm:"type:text[];index:idx_prow_jobs_variants,type:gin"`
-	TestGridURL string
+	Kind     ProwKind
+	Name     string         `gorm:"unique"`
+	Release  string         `gorm:"index"`
+	Variants pq.StringArray `gorm:"type:text[];index:idx_prow_jobs_variants,type:gin"`
+	// VariantCombinationID references variant_combinations.id, maintained by a
+	// BEFORE INSERT/UPDATE trigger. NULL only when Variants is NULL.
+	VariantCombinationID *uint `gorm:"column:variant_combination_id"`
+	VariantCombination   *VariantCombination
+	TestGridURL          string
 	// Bugs maps to all the bugs we scanned and found this prowjob name mentioned in the description or any comment.
 	Bugs    []Bug        `gorm:"many2many:bug_jobs;"`
 	JobRuns []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
@@ -161,15 +172,16 @@ type TestAnalysisByJobByDate struct {
 // TestDailySummary stores pre-aggregated daily test results used to
 // accelerate matview refreshes. Table managed by migration 000002.
 type TestDailySummary struct {
-	TestID      uint      `gorm:"column:test_id;not null"`
-	ProwJobID   uint      `gorm:"column:prow_job_id;not null"`
-	SuiteID     uint      `gorm:"column:suite_id;not null;default:0"`
-	Release     string    `gorm:"column:release;not null"`
-	SummaryDate time.Time `gorm:"column:summary_date;type:date;not null"`
-	Successes   int       `gorm:"column:successes;not null;default:0"`
-	Failures    int       `gorm:"column:failures;not null;default:0"`
-	Flakes      int       `gorm:"column:flakes;not null;default:0"`
-	Runs        int       `gorm:"column:runs;not null;default:0"`
+	TestID               uint      `gorm:"column:test_id;not null"`
+	ProwJobID            uint      `gorm:"column:prow_job_id;not null"`
+	SuiteID              uint      `gorm:"column:suite_id;not null;default:0"`
+	Release              string    `gorm:"column:release;not null"`
+	SummaryDate          time.Time `gorm:"column:summary_date;type:date;not null"`
+	VariantCombinationID *uint     `gorm:"column:variant_combination_id"`
+	Successes            int       `gorm:"column:successes;not null;default:0"`
+	Failures             int       `gorm:"column:failures;not null;default:0"`
+	Flakes               int       `gorm:"column:flakes;not null;default:0"`
+	Runs                 int       `gorm:"column:runs;not null;default:0"`
 }
 
 // Bug represents a Jira bug.

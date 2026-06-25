@@ -17,7 +17,7 @@ var PostgresMatViews = []PostgresView{
 	{
 		Name:         "prow_test_report_7d_matview",
 		Definition:   testReportMatView,
-		IndexColumns: []string{"release", "name", "id", "variants", "suite_name"},
+		IndexColumns: []string{"release", "name", "id", "variant_combination_id", "suite_name"},
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "|||TIMENOW||| - INTERVAL '14 DAY'",
 			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '7 DAY'",
@@ -27,7 +27,7 @@ var PostgresMatViews = []PostgresView{
 	{
 		Name:         "prow_test_report_2d_matview",
 		Definition:   testReportMatView,
-		IndexColumns: []string{"release", "name", "id", "variants", "suite_name"},
+		IndexColumns: []string{"release", "name", "id", "variant_combination_id", "suite_name"},
 		RefreshPhase: 1, // avoid CPU overload from refreshing concurrently with the 7d matview
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "|||TIMENOW||| - INTERVAL '9 DAY'",
@@ -315,7 +315,7 @@ FROM (
     ),
     pre_agg AS (
       SELECT
-        prow_job_id,
+        variant_combination_id,
         test_id,
         suite_id,
         release AS prow_job_run_release,
@@ -332,7 +332,7 @@ FROM (
       WHERE
         summary_date >= |||START||| AND summary_date <= |||END|||
       GROUP BY
-        prow_job_id, test_id, suite_id, release
+        variant_combination_id, test_id, suite_id, release
     )
     SELECT
         tests.id,
@@ -340,16 +340,17 @@ FROM (
         suites.name AS suite_name,
         jira_components.name AS jira_component,
         jira_components.id AS jira_component_id,
-        SUM(pre_agg.previous_successes)::bigint AS previous_successes,
-        SUM(pre_agg.previous_flakes)::bigint AS previous_flakes,
-        SUM(pre_agg.previous_failures)::bigint AS previous_failures,
-        SUM(pre_agg.previous_runs)::bigint AS previous_runs,
-        SUM(pre_agg.current_successes)::bigint AS current_successes,
-        SUM(pre_agg.current_flakes)::bigint AS current_flakes,
-        SUM(pre_agg.current_failures)::bigint AS current_failures,
-        SUM(pre_agg.current_runs)::bigint AS current_runs,
+        pre_agg.previous_successes::bigint AS previous_successes,
+        pre_agg.previous_flakes::bigint AS previous_flakes,
+        pre_agg.previous_failures::bigint AS previous_failures,
+        pre_agg.previous_runs::bigint AS previous_runs,
+        pre_agg.current_successes::bigint AS current_successes,
+        pre_agg.current_flakes::bigint AS current_flakes,
+        pre_agg.current_failures::bigint AS current_failures,
+        pre_agg.current_runs::bigint AS current_runs,
         open_bugs.open_bugs AS open_bugs,
-        prow_jobs.variants,
+        vc.variants,
+        pre_agg.variant_combination_id,
         pre_agg.prow_job_run_release AS release
     FROM
         pre_agg
@@ -358,9 +359,7 @@ FROM (
         LEFT JOIN suites ON suites.id = pre_agg.suite_id
         LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND pre_agg.suite_id = test_ownerships.suite_id)
         LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
-        JOIN prow_jobs ON pre_agg.prow_job_id = prow_jobs.id
-    GROUP BY
-        tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, pre_agg.prow_job_run_release
+        LEFT JOIN variant_combinations vc ON pre_agg.variant_combination_id = vc.id
 ) AS base
 WINDOW w AS (PARTITION BY base.id, base.suite_name, base.release)
 `
