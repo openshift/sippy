@@ -813,7 +813,7 @@ func GetTestCapabilitiesFromDB(ctx context.Context, dbc *db.DB) ([]string, error
 }
 
 // GetTestLifecyclesFromDB returns a sorted list of distinct test lifecycle values
-// derived from the JobTier variant on prow_jobs.
+// derived from the JobTier variant in variant_combinations.
 func GetTestLifecyclesFromDB(ctx context.Context, dbc *db.DB) ([]string, error) {
 	if dbc == nil || dbc.DB == nil {
 		return []string{}, nil
