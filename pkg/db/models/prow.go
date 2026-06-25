@@ -178,10 +178,10 @@ type TestDailySummary struct {
 	Release              string    `gorm:"column:release;not null"`
 	SummaryDate          time.Time `gorm:"column:summary_date;type:date;not null"`
 	VariantCombinationID *uint     `gorm:"column:variant_combination_id"`
-	Successes            int       `gorm:"column:successes;not null;default:0"`
-	Failures             int       `gorm:"column:failures;not null;default:0"`
-	Flakes               int       `gorm:"column:flakes;not null;default:0"`
-	Runs                 int       `gorm:"column:runs;not null;default:0"`
+	Successes            int32     `gorm:"column:successes;not null;default:0"`
+	Failures             int32     `gorm:"column:failures;not null;default:0"`
+	Flakes               int32     `gorm:"column:flakes;not null;default:0"`
+	Runs                 int32     `gorm:"column:runs;not null;default:0"`
 }
 
 // Bug represents a Jira bug.
