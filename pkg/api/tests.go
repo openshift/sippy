@@ -796,64 +796,44 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 	return result, errs
 }
 
-// GetTestCapabilitiesFromDB returns a sorted list of capabilities from the BQ component_mapping_latest table
-func GetTestCapabilitiesFromDB(ctx context.Context, bqClient *bq.Client) ([]string, error) {
-	if bqClient == nil || bqClient.BQ == nil {
+// GetTestCapabilitiesFromDB returns a sorted list of distinct capabilities from the test_ownerships table.
+func GetTestCapabilitiesFromDB(ctx context.Context, dbc *db.DB) ([]string, error) {
+	if dbc == nil || dbc.DB == nil {
 		return []string{}, nil
 	}
-
-	qFmt := "SELECT ARRAY_AGG(DISTINCT capability ORDER BY capability) AS capabilities FROM `%s.component_mapping_latest`, UNNEST(capabilities) AS capability"
-	q := bqClient.Query(ctx, bqlabel.TestCapabilities, fmt.Sprintf(qFmt, bqClient.Dataset))
-
-	log.Infof("Fetching test capabilities with:\n%s\n", q.Q)
-
-	it, err := q.Read(ctx)
+	var capabilities []string
+	err := dbc.DB.WithContext(ctx).
+		Raw(`SELECT DISTINCT unnest(capabilities) AS capability FROM test_ownerships WHERE capabilities IS NOT NULL ORDER BY capability`).
+		Pluck("capability", &capabilities).Error
 	if err != nil {
-		log.WithError(err).Error("error querying test capabilities from bigquery")
-		return []string{}, err
+		log.WithError(err).Error("error querying test capabilities from database")
+		return []string{}, errors.Wrap(err, "error querying test capabilities from database")
 	}
-
-	var row struct {
-		Capabilities []string `bigquery:"capabilities"`
-	}
-	err = it.Next(&row)
-	if err != nil {
-		log.WithError(err).Error("error retrieving test capabilities from bigquery")
-		return []string{}, errors.Wrap(err, "error retrieving test capabilities from bigquery")
-	}
-
-	return row.Capabilities, nil
+	return capabilities, nil
 }
 
-// GetTestLifecyclesFromDB returns a sorted list of lifecycles from the BQ junit table
-func GetTestLifecyclesFromDB(ctx context.Context, bqClient *bq.Client) ([]string, error) {
-	if bqClient == nil || bqClient.BQ == nil {
+// GetTestLifecyclesFromDB returns a sorted list of distinct test lifecycle values
+// derived from the JobTier variant in variant_combinations.
+func GetTestLifecyclesFromDB(ctx context.Context, dbc *db.DB) ([]string, error) {
+	if dbc == nil || dbc.DB == nil {
 		return []string{}, nil
 	}
-
-	// Query recent data (last 7 days) to satisfy partition filter requirement on modified_time
-	qFmt := `SELECT ARRAY_AGG(DISTINCT lifecycle ORDER BY lifecycle) AS lifecycles
-		FROM %s.junit
-		WHERE modified_time >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 7 DAY)
-		AND lifecycle IS NOT NULL AND lifecycle != ''`
-	q := bqClient.Query(ctx, bqlabel.TestLifecycles, fmt.Sprintf(qFmt, bqClient.Dataset))
-
-	log.Infof("Fetching test lifecycles with:\n%s\n", q.Q)
-
-	it, err := q.Read(ctx)
+	var pairs []string
+	err := dbc.DB.WithContext(ctx).
+		Raw(`SELECT DISTINCT unnest(variants) AS pair FROM variant_combinations`).
+		Pluck("pair", &pairs).Error
 	if err != nil {
-		log.WithError(err).Error("error querying test lifecycles from bigquery")
-		return []string{}, err
+		log.WithError(err).Error("error querying test lifecycles from database")
+		return []string{}, errors.Wrap(err, "error querying test lifecycles from database")
 	}
 
-	var row struct {
-		Lifecycles []string `bigquery:"lifecycles"`
+	var lifecycles []string
+	for _, pair := range pairs {
+		key, val, ok := strings.Cut(pair, ":")
+		if ok && key == "JobTier" && val != "" {
+			lifecycles = append(lifecycles, val)
+		}
 	}
-	err = it.Next(&row)
-	if err != nil {
-		log.WithError(err).Error("error retrieving test lifecycles from bigquery")
-		return []string{}, errors.Wrap(err, "error retrieving test lifecycles from bigquery")
-	}
-
-	return row.Lifecycles, nil
+	gosort.Strings(lifecycles)
+	return lifecycles, nil
 }
