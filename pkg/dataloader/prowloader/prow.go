@@ -269,11 +269,11 @@ func (pl *ProwLoader) Load() {
 	}
 
 	// Pre-fetch labels for all jobs in bulk instead of one BQ query per job.
-	labelsCache, err := pl.prefetchLabels(prowJobs)
-	if err != nil {
+	if lc, err := pl.prefetchLabels(prowJobs); err == nil {
+		pl.labelsCache = lc
+	} else {
 		pl.errors = append(pl.errors, errors.Wrap(err, "error pre-fetching labels from BigQuery"))
 	}
-	pl.labelsCache = labelsCache
 
 	queue := make(chan *prow.ProwJob)
 	errsCh := make(chan error, len(prowJobs))
@@ -312,7 +312,7 @@ func (pl *ProwLoader) Load() {
 
 	// load the test analysis by job data into tables partitioned by day, letting bigquery do the
 	// heavy lifting for us.
-	err = pl.loadDailyTestAnalysisByJob(pl.ctx)
+	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
 	if err != nil {
 		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
 	}
