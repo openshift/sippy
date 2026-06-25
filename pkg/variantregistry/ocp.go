@@ -751,38 +751,48 @@ func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[st
 	}
 }
 
+// componentCapabilityEntry defines a job's component/capability ownership and its
+// optional job tier override. Both setComponentAndCapability and setJobTier
+// reference this shared table so additions stay in sync.
+type componentCapabilityEntry struct {
+	substrings []string
+	component  string
+	capability string
+	jobTier    string // if non-empty, setJobTier uses this instead of the default tier logic
+}
+
+// componentCapabilityPatterns is the single source of truth for job component/capability
+// ownership. Be sure to use real Component names from OCPBUGS.
+var componentCapabilityPatterns = []componentCapabilityEntry{
+	{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning", "spotcheck-30d"},
+	{[]string{"-etcd-scaling"}, "Etcd", "Scaling", "spotcheck-30d"},
+}
+
 // setComponentAndCapability identifies the component and capability owner for a job.
-// These variants indicate a job has an owning component and capability (i.e. feature). This is used for tailored
-// jobs that need to be kept working to validate component features. Can be used in component readiness as a spot check job, or in
-// sippy jobs filtering.
-//
-// Be sure to use real Component names from OCPBUGS.
+// These variants indicate a job has an owning component and capability (i.e. feature).
+// This is used for tailored jobs that need to be kept working to validate component
+// features. Can be used in component readiness as a spot check job, or in sippy jobs
+// filtering.
 func setComponentAndCapability(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
-	patterns := []struct {
-		substrings []string
-		component  string
-		capability string
-	}{
-		{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning"},
-		{[]string{"-etcd-scaling"}, "Etcd", "Scaling"},
-	}
-
-	for _, p := range patterns {
-		allMatch := true
-		for _, sub := range p.substrings {
-			if !strings.Contains(jobNameLower, sub) {
-				allMatch = false
-				break
-			}
-		}
-		if allMatch {
+	for _, p := range componentCapabilityPatterns {
+		if allSubstringsMatch(jobNameLower, p.substrings) {
 			variants[VariantComponent] = p.component
 			variants[VariantCapability] = p.capability
 			return
 		}
 	}
+}
+
+// allSubstringsMatch returns true if jobNameLower contains every substring.
+func allSubstringsMatch(jobNameLower string, substrings []string) bool {
+	for _, sub := range substrings {
+		if !strings.Contains(jobNameLower, sub) {
+			return false
+		}
+	}
+	return true
 }
 
 // setJobTier sets the jobTier for a job, with values like this:
@@ -800,14 +810,18 @@ func setComponentAndCapability(_ logrus.FieldLogger, variants map[string]string,
 func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
+	// Check componentCapabilityPatterns first for tier overrides (e.g. spotcheck).
+	for _, p := range componentCapabilityPatterns {
+		if p.jobTier != "" && allSubstringsMatch(jobNameLower, p.substrings) {
+			variants[VariantJobTier] = p.jobTier
+			return
+		}
+	}
+
 	jobTierPatterns := []struct {
 		substrings []string
 		jobTier    string
 	}{
-		// Spot-check jobs: evaluated by job pass/fail, not junit
-		{[]string{"-cpu-partitioning"}, "spotcheck-30d"},
-		{[]string{"-etcd-scaling"}, "spotcheck-30d"},
-
 		// QE jobs allowlisted for Component Readiness
 		{[]string{"-automated-release"}, "standard"},
 
