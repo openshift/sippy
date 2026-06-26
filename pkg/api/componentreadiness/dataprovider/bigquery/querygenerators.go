@@ -268,6 +268,14 @@ func buildKeyTestFilterClause(tableAlias string) string {
 func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, releaseFilter string, keyTestNames []string) (string, []bigquery.QueryParameter) {
 	var commonParams []bigquery.QueryParameter
 
+	// The release column clustering optimization only works for ci_analysis_us where the
+	// column is populated by ci-to-bigquery. ci_analysis_qe has a NULL release column,
+	// we're not entirely sure why, but the instance is deprecated and will be deleted soon,
+	// so we do not want to overly invest in fixing it.
+	if strings.HasSuffix(dataset, "ci_analysis_qe") {
+		releaseFilter = ""
+	}
+
 	// Create the deduped_testcases CTE - this is the source of truth for all subsequent CTEs
 	dedupedCTE := fmt.Sprintf(`deduped_testcases_with_rownum AS (
 			SELECT
