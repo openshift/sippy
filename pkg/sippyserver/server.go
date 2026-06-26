@@ -1077,7 +1077,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	baseURL := api.GetBaseURL(req)
+	baseURL := api.GetBaseFrontendURL(req)
 	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.crDataProvider, s.db, reqOptions, allReleases, baseURL)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))

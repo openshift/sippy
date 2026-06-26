@@ -1,8 +1,10 @@
 //import HelloWorld from './HelloWorld'
 import {
+  convertApiUrlToUiUrl,
   dateEndFormat,
   dateFormat,
   formatLongDate,
+  generateTestDetailsReportLink,
   getTestDetailsLink,
 } from './CompReadyUtils'
 
@@ -80,5 +82,80 @@ describe('getTestDetailsLink', () => {
     }
     expect(getTestDetailsLink(links, '4.22-main')).toBe('/api/plain')
     expect(getTestDetailsLink(links)).toBe('/api/plain')
+  })
+})
+
+describe('convertApiUrlToUiUrl', () => {
+  test('rewrites /api/component_readiness/ to /sippy-ng/component_readiness/', () => {
+    expect(
+      convertApiUrlToUiUrl(
+        'http://localhost:8080/api/component_readiness/test_details?testId=foo'
+      )
+    ).toBe('/sippy-ng/component_readiness/test_details?testId=foo')
+  })
+
+  test('rewrites generic /api/ prefix to /sippy-ng/', () => {
+    expect(
+      convertApiUrlToUiUrl('https://sippy.dptools.openshift.org/api/other/path')
+    ).toBe('/sippy-ng/other/path')
+  })
+
+  test('returns non-/api/ URLs unchanged', () => {
+    expect(
+      convertApiUrlToUiUrl('/sippy-ng/component_readiness/test_details?x=1')
+    ).toBe('/sippy-ng/component_readiness/test_details?x=1')
+  })
+
+  test('handles relative /api/ paths without a host', () => {
+    expect(
+      convertApiUrlToUiUrl('/api/component_readiness/test_details?a=b')
+    ).toBe('/sippy-ng/component_readiness/test_details?a=b')
+  })
+})
+
+describe('generateTestDetailsReportLink', () => {
+  const filterVals = '?baseRelease=4.18&baseStartTime=2024-01-01'
+  const expandEnvironment = (env) => `&environment=${env}`
+
+  test('returns server link converted to UI URL when HATEOAS link is present', () => {
+    const regressedTest = {
+      test_id: 'test-123',
+      test_name: 'my test',
+      component: 'Networking',
+      capability: 'cap1',
+      variants: { Architecture: 'amd64' },
+      base_stats: { release: '4.18' },
+      links: {
+        test_details:
+          'http://localhost:8080/api/component_readiness/test_details?testId=test-123&component=Networking',
+      },
+    }
+    const result = generateTestDetailsReportLink(
+      regressedTest,
+      filterVals,
+      expandEnvironment
+    )
+    expect(result).toBe(
+      '/sippy-ng/component_readiness/test_details?testId=test-123&component=Networking'
+    )
+  })
+
+  test('falls back to generated URL when no HATEOAS link exists', () => {
+    const regressedTest = {
+      test_id: 'test-123',
+      test_name: 'my test',
+      component: 'Networking',
+      capability: 'cap1',
+      variants: { Architecture: 'amd64' },
+      base_stats: { release: '4.18' },
+      links: {},
+    }
+    const result = generateTestDetailsReportLink(
+      regressedTest,
+      filterVals,
+      expandEnvironment
+    )
+    expect(result).toContain('/sippy-ng/component_readiness/test_details')
+    expect(result).toContain('testId=test-123')
   })
 })

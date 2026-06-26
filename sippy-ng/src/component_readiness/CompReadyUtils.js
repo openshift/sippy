@@ -796,113 +796,23 @@ export function generateTestReport(
   return sortQueryParams(retUrl)
 }
 
-// Helper function to compare query parameters between two URLs
-export function compareUrlQueryParams(newURL, oldURL) {
-  // Extract query parameters from both URLs
-  const [, queryString1] = newURL.split('?')
-  const [, queryString2] = oldURL.split('?')
-
-  if (!queryString1 || !queryString2) {
-    console.log('One or both URLs do not have query parameters')
-    return
-  }
-
-  // Parse query parameters
-  const params1 = new URLSearchParams(queryString1)
-  const params2 = new URLSearchParams(queryString2)
-
-  // Convert to objects for easier comparison
-  const paramsObjNew = {}
-  const paramsObjOld = {}
-
-  for (const [key, value] of params1.entries()) {
-    paramsObjNew[key] = value
-  }
-
-  for (const [key, value] of params2.entries()) {
-    paramsObjOld[key] = value
-  }
-
-  // Find differences
-  const differences = {
-    onlyInNew: {},
-    onlyInOld: {},
-    differentValues: {},
-  }
-
-  // Check for params in url1 but not in url2 or with different values
-  for (const key in paramsObjNew) {
-    if (!(key in paramsObjOld)) {
-      differences.onlyInNew[key] = paramsObjNew[key]
-    } else if (paramsObjNew[key] !== paramsObjOld[key]) {
-      differences.differentValues[key] = {
-        newURL: paramsObjNew[key],
-        oldURL: paramsObjOld[key],
-      }
-    }
-  }
-
-  // Check for params in old but not in new
-  for (const key in paramsObjOld) {
-    if (!(key in paramsObjNew)) {
-      differences.onlyInOld[key] = paramsObjOld[key]
-    }
-  }
-
-  // Log differences
-  if (Object.keys(differences.onlyInNew).length > 0) {
-    console.log(
-      'Parameters only in new URL from server:',
-      differences.onlyInNew
-    )
-  }
-
-  if (Object.keys(differences.onlyInOld).length > 0) {
-    console.log(
-      'Parameters only in old URL from frontend:',
-      differences.onlyInOld
-    )
-  }
-
-  if (Object.keys(differences.differentValues).length > 0) {
-    console.log(
-      'Parameters with different values:',
-      differences.differentValues
-    )
-  }
-
-  if (
-    Object.keys(differences.onlyInNew).length === 0 &&
-    Object.keys(differences.onlyInOld).length === 0 &&
-    Object.keys(differences.differentValues).length === 0
-  ) {
-    console.log('Both URLs have identical query parameters')
-  }
-
-  return differences
-}
-
-// Convert API URL to UI URL
-// API URL format: http://localhost:8080/api/component_readiness/test_details?...
-// UI URL format:  http://localhost:3000/sippy-ng/component_readiness/test_details?...
+// Convert API URL to a relative UI URL by stripping any scheme+host and
+// swapping the /api/ prefix for /sippy-ng/.  Producing a relative path
+// avoids the bug where the backend embeds localhost (or another internal
+// host) as the origin in HATEOAS links.
 export function convertApiUrlToUiUrl(apiUrl) {
-  console.log('convertApiUrlToUiUrl input:', apiUrl)
-  let result
-  // Handle the most specific case first
-  if (apiUrl.includes('/api/component_readiness/')) {
-    result = apiUrl.replace(
+  const apiIndex = apiUrl.indexOf('/api/')
+  if (apiIndex === -1) {
+    return apiUrl
+  }
+  const pathAndQuery = apiUrl.substring(apiIndex)
+  if (pathAndQuery.startsWith('/api/component_readiness/')) {
+    return pathAndQuery.replace(
       '/api/component_readiness/',
       '/sippy-ng/component_readiness/'
     )
-  } else if (apiUrl.startsWith('/api/')) {
-    // Handle general /api/ prefix (for relative URLs)
-    result = apiUrl.replace('/api/', '/sippy-ng/')
-  } else {
-    // Fallback: return as-is
-    result = apiUrl
   }
-  console.log('convertApiUrlToUiUrl output:', result)
-  return result
+  return pathAndQuery.replace('/api/', '/sippy-ng/')
 }
 
 // Extracts the test_details link from HATEOAS links. Prefers the plain
@@ -949,27 +859,10 @@ export function generateTestDetailsReportLink(
     `&capability=${regressedTest.capability}` +
     `&testName=${safeTestName}`
 
-  const sortedGeneratedUrl = sortQueryParams(generatedUrl)
   const testDetailsUrl = getTestDetailsLink(regressedTest.links, viewName)
   if (testDetailsUrl) {
-    // Compare the query parameters between the two URLs
-    console.log(
-      'Comparing query parameters between provided URL and generated URL:'
-    )
-    compareUrlQueryParams(testDetailsUrl, sortedGeneratedUrl)
-
-    // We are assuming the API query params are identical to the UI query params, but we have to adjust the host port and prefix from
-    // http://localhost:8080/api/ to http://localhost:3000/sippy-ng/
-    // This hack allows us to keep the param generation logic in one place. (server side)
-    console.log('testDetailsUrl', testDetailsUrl)
-    const modifiedUrl = convertApiUrlToUiUrl(testDetailsUrl)
-    console.log('modifiedUrl', modifiedUrl)
-    return modifiedUrl
+    return convertApiUrlToUiUrl(testDetailsUrl)
   }
-  console.log(
-    'WARNING: report had no test details url, using old generated url: ' +
-      generatedUrl
-  )
 
   return generatedUrl
 }
