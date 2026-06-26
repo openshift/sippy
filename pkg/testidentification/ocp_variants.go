@@ -36,7 +36,8 @@ var importantVariants = []string{
 	"SecurityMode",
 	"Installer",
 	"JobTier",
-	"Procedure",
+	"Component",
+	"Capability",
 	"OS",
 }
 
