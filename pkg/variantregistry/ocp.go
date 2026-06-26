@@ -811,10 +811,13 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 	jobNameLower := strings.ToLower(jobName)
 
 	// Check componentCapabilityPatterns first for tier overrides (e.g. spotcheck).
-	for _, p := range componentCapabilityPatterns {
-		if p.jobTier != "" && allSubstringsMatch(jobNameLower, p.substrings) {
-			variants[VariantJobTier] = p.jobTier
-			return
+	// setComponentAndCapability already ran, so use its results directly.
+	if variants[VariantComponent] != "" {
+		for _, p := range componentCapabilityPatterns {
+			if p.jobTier != "" && p.component == variants[VariantComponent] && p.capability == variants[VariantCapability] {
+				variants[VariantJobTier] = p.jobTier
+				return
+			}
 		}
 	}
 
