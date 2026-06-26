@@ -542,17 +542,19 @@ func ensureTriageSymptomCascade(db *gorm.DB) error {
 	return nil
 }
 
-// ensureVariantCombinationTrigger sets up the variant_combination_id
-// infrastructure that depends on tables created by AutoMigrate:
-//   - Attaches the trigger (function created by migration 000003)
-//   - Backfills variant_combination_id on existing prow_jobs rows
-//   - Adds variant_combination_id to test_daily_summaries and truncates
-//     so the next refresh populates it
+// ensureVariantCombinationTrigger attaches the variant_combination_id
+// trigger to prow_jobs if it does not already exist. The trigger
+// function is created by migration 000003; the table is created by
+// AutoMigrate, so this must run after both.
+//
+// When the trigger is first attached, existing rows are backfilled
+// and test_daily_summaries is truncated so the next refresh
+// populates it with variant_combination_id set. In steady state
+// (trigger already exists) this is a single catalog lookup.
 func ensureVariantCombinationTrigger(db *gorm.DB) error {
 	return db.Exec(`
 		DO $$
 		BEGIN
-			-- Attach trigger if not already present
 			IF NOT EXISTS (
 				SELECT 1 FROM pg_trigger WHERE tgname = 'trg_prow_jobs_variant_combination'
 			) THEN
@@ -560,26 +562,21 @@ func ensureVariantCombinationTrigger(db *gorm.DB) error {
 					BEFORE INSERT OR UPDATE OF variants ON prow_jobs
 					FOR EACH ROW
 					EXECUTE FUNCTION set_variant_combination_id();
-			END IF;
 
-			-- Backfill existing prow_jobs rows that have NULL variant_combination_id
-			INSERT INTO variant_combinations (variants)
-			SELECT DISTINCT variants FROM prow_jobs
-			WHERE variants IS NOT NULL AND variant_combination_id IS NULL
-			ON CONFLICT (variants) DO NOTHING;
+				-- Backfill only needed when trigger is first attached (fresh DB
+				-- or recovery); the trigger handles all subsequent rows.
+				INSERT INTO variant_combinations (variants)
+				SELECT DISTINCT variants FROM prow_jobs
+				WHERE variants IS NOT NULL AND variant_combination_id IS NULL
+				ON CONFLICT (variants) DO NOTHING;
 
-			UPDATE prow_jobs
-			SET variant_combination_id = vc.id
-			FROM variant_combinations vc
-			WHERE prow_jobs.variants = vc.variants
-			  AND prow_jobs.variants IS NOT NULL
-			  AND prow_jobs.variant_combination_id IS NULL;
+				UPDATE prow_jobs
+				SET variant_combination_id = vc.id
+				FROM variant_combinations vc
+				WHERE prow_jobs.variants = vc.variants
+				  AND prow_jobs.variants IS NOT NULL
+				  AND prow_jobs.variant_combination_id IS NULL;
 
-			-- Truncate test_daily_summaries if any rows lack variant_combination_id
-			-- so the next refresh repopulates with it set.
-			IF EXISTS (
-				SELECT 1 FROM test_daily_summaries WHERE variant_combination_id IS NULL LIMIT 1
-			) THEN
 				TRUNCATE test_daily_summaries;
 			END IF;
 		END $$`).Error
