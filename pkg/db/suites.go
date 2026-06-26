@@ -31,6 +31,7 @@ var testSuites = []string{
 	"stage/parallel",
 	"prod/parallel",
 	"aro-hcp-tests",
+	"github.com/stolostron/capi-tests/test",
 
 	// ROSA
 	"OSD e2e suite",
