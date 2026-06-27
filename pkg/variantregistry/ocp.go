@@ -766,6 +766,7 @@ type componentCapabilityEntry struct {
 var componentCapabilityPatterns = []componentCapabilityEntry{
 	{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning", "spotcheck-30d"},
 	{[]string{"-etcd-scaling"}, "Etcd", "Scaling", "spotcheck-30d"},
+	{[]string{"-aws-ovn-installer-dualstack"}, "Installer", "AWSDualStackInstall", "candidate"},
 }
 
 // setComponentAndCapability identifies the component and capability owner for a job.
