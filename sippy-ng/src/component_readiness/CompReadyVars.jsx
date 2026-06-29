@@ -189,15 +189,19 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [includeVariantsCheckedItems, setIncludeVariantsCheckedItems] =
     useState({})
   const replaceIncludeVariantsCheckedItems = (variant, checkedItems) => {
-    includeVariantsCheckedItems[variant] = checkedItems
-    setIncludeVariantsCheckedItems(includeVariantsCheckedItems)
+    setIncludeVariantsCheckedItems({
+      ...includeVariantsCheckedItems,
+      [variant]: checkedItems,
+    })
   }
   // The list of individual variants (e.g. "Architecture:arm64") that are checked for cross-variant comparison
   const [compareVariantsCheckedItems, setCompareVariantsCheckedItems] =
     useState([])
   const replaceCompareVariantsCheckedItems = (variant, checkedItems) => {
-    compareVariantsCheckedItems[variant] = checkedItems
-    setCompareVariantsCheckedItems(compareVariantsCheckedItems)
+    setCompareVariantsCheckedItems({
+      ...compareVariantsCheckedItems,
+      [variant]: checkedItems,
+    })
   }
   // The list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
   const [variantCrossCompare, setVariantCrossCompare] = useState([])
@@ -427,6 +431,13 @@ export const CompReadyVarsProvider = ({ children }) => {
       setVariantCrossCompare(view.variant_options.variant_cross_compare)
     if (Object.hasOwn(view.variant_options, 'compare_variants'))
       setCompareVariantsCheckedItems(view.variant_options.compare_variants)
+    if (view.test_filters) {
+      if (view.test_filters.lifecycles)
+        setTestLifecycles(view.test_filters.lifecycles)
+      if (view.test_filters.capabilities)
+        setTestCapabilities(view.test_filters.capabilities)
+    }
+
     if (Object.hasOwn(view.advanced_options, 'confidence'))
       setConfidence(view.advanced_options.confidence)
     if (Object.hasOwn(view.advanced_options, 'pity_factor'))
