@@ -6,7 +6,7 @@ import {
   parseVersion,
   pathForTestSubstringByVariant,
   safeEncodeURIComponent,
-  SafeJSONParam,
+  useStableJSONQueryParam,
 } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -116,9 +116,9 @@ export default function FeatureGates(props) {
     return filterItems
   }, [props.release, props.releases])
 
-  const [filterModel = defaultFilterModel, setFilterModel] = useQueryParam(
+  const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    SafeJSONParam
+    defaultFilterModel
   )
 
   const bookmarks = [

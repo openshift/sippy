@@ -9,7 +9,7 @@ import {
   pathForExactJobRuns,
   relativeTime,
   safeEncodeURIComponent,
-  SafeJSONParam,
+  useStableJSONQueryParam,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
@@ -424,9 +424,9 @@ function JobTable(props) {
     StringParam
   )
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    SafeJSONParam
+    props.filterModel
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(

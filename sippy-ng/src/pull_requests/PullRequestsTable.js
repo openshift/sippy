@@ -19,7 +19,7 @@ import {
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
-  SafeJSONParam,
+  useStableJSONQueryParam,
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
@@ -72,9 +72,9 @@ export default function PullRequestsTable(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    SafeJSONParam
+    props.filterModel
   )
 
   const [view = props.view, setView] = useQueryParam('view', StringParam)

@@ -23,7 +23,7 @@ import {
   pathForExactJob,
   relativeTime,
   safeEncodeURIComponent,
-  SafeJSONParam,
+  useStableJSONQueryParam,
 } from '../helpers'
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
@@ -50,9 +50,9 @@ export default function JobRunsTable(props) {
   const [jaqOpen, setJaqOpen] = React.useState(false)
   const [jaqJobRunIds, setJaqJobRunIds] = React.useState(null)
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    SafeJSONParam
+    props.filterModel
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(

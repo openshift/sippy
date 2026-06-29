@@ -1,3 +1,6 @@
+import { useQueryParam } from 'use-query-params'
+import { useRef } from 'react'
+
 // Compute relative times -- Intl.RelativeTimeFormat is new-ish,
 // and not supported in all browsers, and it's not in node yet.
 
@@ -26,6 +29,22 @@ export const SafeStringParam = {
       // return undefined
     }
   },
+}
+
+// Wraps useQueryParam with SafeJSONParam, stabilizing the object reference
+// so it only changes when the serialized value actually changes.
+export function useStableJSONQueryParam(key, defaultValue) {
+  const [rawValue, setValue] = useQueryParam(key, SafeJSONParam)
+  const value = rawValue === undefined ? defaultValue : rawValue
+
+  const serialized = JSON.stringify(value)
+  const ref = useRef({ serialized, value })
+
+  if (ref.current.serialized !== serialized) {
+    ref.current = { serialized, value }
+  }
+
+  return [ref.current.value, setValue]
 }
 
 // safeEncodeURIComponent wraps the library function, and additionally encodes

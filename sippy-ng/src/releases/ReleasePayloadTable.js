@@ -12,7 +12,7 @@ import {
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
-  SafeJSONParam,
+  useStableJSONQueryParam,
 } from '../helpers'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
@@ -287,9 +287,9 @@ function ReleasePayloadTable(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    SafeJSONParam
+    props.filterModel
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(
