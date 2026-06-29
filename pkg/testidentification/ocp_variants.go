@@ -107,7 +107,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 		}
 		for _, v := range row.Variants {
 			jobVariants[row.JobName] = append(jobVariants[row.JobName], fmt.Sprintf("%s:%s", v.VariantName, v.VariantValue))
-			if _, ok := variantKeyValues[v.VariantValue]; ok {
+			if _, ok := variantKeyValues[v.VariantName]; ok {
 				variantKeyValues[v.VariantName].Insert(v.VariantValue)
 			} else {
 				variantKeyValues[v.VariantName] = sets.NewString(v.VariantValue)
