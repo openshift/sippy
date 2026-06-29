@@ -27,9 +27,9 @@ import {
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
   safeEncodeURIComponent,
-  SafeJSONParam,
   SafeStringParam,
   searchCI,
+  useStableJSONQueryParam,
   withSort,
 } from '../helpers'
 import { Link } from 'react-router-dom'
@@ -60,16 +60,13 @@ export function TestAnalysis(props) {
   const { setPageContextForChat, unsetPageContextForChat } =
     usePageContextForChat()
 
-  const [
-    filterModel = {
-      items: [
-        filterFor('name', 'equals', testName),
-        not(filterFor('variants', 'has entry', 'aggregated')),
-        not(filterFor('variants', 'has entry', 'never-stable')),
-      ],
-    },
-    setFilterModel,
-  ] = useQueryParam('filters', SafeJSONParam)
+  const [filterModel, setFilterModel] = useStableJSONQueryParam('filters', {
+    items: [
+      filterFor('name', 'equals', testName),
+      not(filterFor('variants', 'has entry', 'aggregated')),
+      not(filterFor('variants', 'has entry', 'never-stable')),
+    ],
+  })
 
   const setFilterModelSafe = (m) => {
     setFilterModel(m)

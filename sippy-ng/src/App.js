@@ -506,7 +506,7 @@ function App(props) {
     if (!isLoaded) {
       fetchData()
     }
-  })
+  }, [isLoaded])
 
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
