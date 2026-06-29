@@ -370,7 +370,7 @@ export default function PullRequestsTable(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, sort, sortField, view])
+  }, [filterModel, sort, sortField, view, props.release])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

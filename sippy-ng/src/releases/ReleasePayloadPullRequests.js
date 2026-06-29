@@ -158,7 +158,7 @@ function ReleasePayloadPullRequests(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel])
+  }, [filterModel, sort, sortField])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

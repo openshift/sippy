@@ -160,7 +160,7 @@ export function JobAnalysis(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, period])
+  }, [filterModel, period, props.release])
 
   // Update page context for chat
   useEffect(() => {

@@ -197,7 +197,7 @@ function PayloadStreamTestFailures(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, sort, sortField])
+  }, [filterModel, sort, sortField, release, arch, stream])
 
   if (fetchError !== '') {
     return <Alert severity="error">Failed to load data, {fetchError}</Alert>

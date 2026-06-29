@@ -172,7 +172,7 @@ function PayloadTestFailures(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, sort, sortField])
+  }, [filterModel, sort, sortField, payload])
 
   if (fetchError !== '') {
     return <Alert severity="error">Failed to load data, {fetchError}</Alert>

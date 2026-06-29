@@ -548,7 +548,7 @@ function JobTable(props) {
 
   useEffect(() => {
     fetchData()
-  }, [period, filterModel, sort, sortField])
+  }, [period, filterModel, sort, sortField, props.release])
 
   const pageTitle = () => {
     if (props.title) {
