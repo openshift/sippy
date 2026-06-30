@@ -197,6 +197,16 @@ var syntheticJobs = []syntheticJobDef{
 			"Capability": "AWSDualStackInstall",
 		},
 	},
+	// Azure job: Platform:azure is NOT in the default seed view, so results
+	// from this job should be filtered out when the default view is active.
+	{
+		nameTemplate: "periodic-ci-openshift-release-master-ci-%s-e2e-azure-ovn-amd64",
+		variants: map[string]string{
+			"Platform": "azure", "Architecture": "amd64", "Network": "ovn",
+			"Topology": "ha", "Installer": "ipi", "FeatureSet": "default",
+			"Suite": "parallel", "Upgrade": "none", "LayeredProduct": "none",
+		},
+	},
 }
 
 // Job template constants for referencing specific jobs in test specs.
@@ -204,6 +214,7 @@ const awsAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn
 const awsArm64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-arm64"
 const gcpAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-gcp-ovn-amd64"
 const awsAmd64CapabilityAWSDualStackInstall = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-awsdualstackinstall"
+const azureAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-azure-ovn-amd64"
 
 // allJobTemplates returns name templates from syntheticJobs for use in test specs
 // that should run on every job (e.g. install tests).
@@ -249,13 +260,15 @@ var syntheticTests = []syntheticTestSpec{
 	},
 
 	// --- ExtremeRegression: extreme on aws/amd64, significant on others ---
+	// Also runs on azure (not in default view) to test variant filtering.
 	{
 		testID: "test-extreme-regression", testName: "[sig-etcd] etcd leader changes are not excessive",
 		component: "comp-ExtremeRegression", capabilities: []string{"cap1"},
 		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 140, 0}},
-			awsArm64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 170, 0}},
-			gcpAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 170, 0}},
+			awsAmd64Parallel:   {"4.21": {200, 190, 0}, "4.22": {200, 140, 0}},
+			awsArm64Parallel:   {"4.21": {200, 190, 0}, "4.22": {200, 170, 0}},
+			gcpAmd64Parallel:   {"4.21": {200, 190, 0}, "4.22": {200, 170, 0}},
+			azureAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 140, 0}},
 		},
 	},
 
@@ -383,6 +396,16 @@ var syntheticTests = []syntheticTestSpec{
 			awsAmd64CapabilityAWSDualStackInstall: {"4.22": {50, 47, 0}},
 		},
 	},
+
+	// --- Tests on azure (Platform:azure not in the default view, used to test variant filtering) ---
+	{
+		testID: "test-azure-networking", testName: "[sig-network] Azure load balancer should distribute traffic",
+		component: "comp-AzureNetworking", capabilities: []string{"networking"},
+		jobCounts: map[string]map[string]testCount{
+			azureAmd64Parallel: {"4.21": {100, 95, 0}, "4.22": {100, 80, 0}},
+		},
+	},
+
 	// --- Install / health indicator tests: run on every job, every release ---
 	{
 		testID: "test-install-overall", testName: "install should succeed: overall",

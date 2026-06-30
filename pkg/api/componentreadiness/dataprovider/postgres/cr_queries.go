@@ -75,27 +75,33 @@ type drilldownFilters struct {
 	outerArgs   []any
 }
 
-// buildDrilldownFilters returns SQL filter fragments for TestID and Capability
-// from reqOptions.TestIDOptions[0], matching the BQ provider's behavior in
-// BuildComponentReportQuery. The tableAlias is the alias of the table that
-// has test_id in the inner aggregation query ("e" for prefix-sum, "raw" for GA).
+// buildDrilldownFilters returns SQL filter fragments for TestID, Capability,
+// and top-level capability filtering from reqOptions. For drilldown (single
+// TestIDOption), it filters on test_id and per-test capability. For top-level
+// views, it applies the Capabilities array-overlap filter matching the BQ
+// provider's behavior.
 func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
-	if len(reqOptions.TestIDOptions) != 1 {
-		return drilldownFilters{}
-	}
-	tid := reqOptions.TestIDOptions[0]
 	var f drilldownFilters
 
-	if tid.TestID != "" {
-		f.innerClause = " AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE unique_id = ?)"
-		f.innerArgs = []any{tid.TestID}
-		f.outerClause += " AND tow.unique_id = ?"
-		f.outerArgs = append(f.outerArgs, tid.TestID)
+	if len(reqOptions.TestIDOptions) == 1 {
+		tid := reqOptions.TestIDOptions[0]
+
+		if tid.TestID != "" {
+			f.innerClause = " AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE unique_id = ?)"
+			f.innerArgs = []any{tid.TestID}
+			f.outerClause += " AND tow.unique_id = ?"
+			f.outerArgs = append(f.outerArgs, tid.TestID)
+		}
+
+		if tid.Capability != "" {
+			f.outerClause += " AND ? = ANY(tow.capabilities)"
+			f.outerArgs = append(f.outerArgs, tid.Capability)
+		}
 	}
 
-	if tid.Capability != "" {
-		f.outerClause += " AND ? = ANY(tow.capabilities)"
-		f.outerArgs = append(f.outerArgs, tid.Capability)
+	if len(reqOptions.Capabilities) > 0 {
+		f.outerClause += " AND tow.capabilities && ?"
+		f.outerArgs = append(f.outerArgs, pq.Array(reqOptions.Capabilities))
 	}
 
 	return f
