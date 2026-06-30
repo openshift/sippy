@@ -10,6 +10,7 @@ RUN dnf install -y \
     gzip \
     wget \
     vim-minimal \
+    xxd \
     findutils \
     procps-ng \
     sudo \
