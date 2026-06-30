@@ -320,17 +320,19 @@ function ReleasePayloadTable(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const currentFilters = filterModel
-    currentFilters.items = currentFilters.items.filter(
+    const newItems = filterModel.items.filter(
       (f) => f.columnField !== 'release_tag'
     )
-    currentFilters.items.push({
+    newItems.push({
       id: 99,
       columnField: 'release_tag',
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilterModelWithConversion(currentFilters)
+    setFilterModelWithConversion({
+      ...filterModel,
+      items: newItems,
+    })
   }
 
   const addFilters = (filter) => {

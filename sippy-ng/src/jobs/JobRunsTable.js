@@ -468,17 +468,17 @@ export default function JobRunsTable(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const currentFilters = filterModel
-    currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'job'
-    )
-    currentFilters.items.push({
+    const newItems = filterModel.items.filter((f) => f.columnField !== 'job')
+    newItems.push({
       id: 99,
       columnField: 'job',
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilterModel(currentFilters)
+    setFilterModel({
+      ...filterModel,
+      items: newItems,
+    })
   }
 
   useEffect(() => {
