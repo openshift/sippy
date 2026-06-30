@@ -75,7 +75,7 @@ $_$;
 `
 
 const jobResultFunction = `
-CREATE FUNCTION public.job_results(release text, start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_failures bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamp without time zone, updated_at timestamp without time zone, deleted_at timestamp without time zone, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamp, current_average_duration_seconds double precision, previous_average_duration_seconds double precision)
+CREATE FUNCTION public.job_results(release text, start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_failures bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamp without time zone, updated_at timestamp without time zone, deleted_at timestamp without time zone, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamp, current_average_duration_minutes int, previous_average_duration_minutes int)
     LANGUAGE sql
     AS $_$
 WITH repo_org_jobs AS (
@@ -117,8 +117,8 @@ results AS (
                 coalesce(count(case when timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_runs,
                 coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_infra_fails,
        			COUNT(DISTINCT bug_jobs.bug_id) AS open_bugs,
-                coalesce(AVG(case when timestamp BETWEEN $3 AND $4 then prow_job_runs.duration end) / 1000000000.0, 0) as current_average_duration_seconds,
-                coalesce(AVG(case when timestamp BETWEEN $2 AND $3 then prow_job_runs.duration end) / 1000000000.0, 0) as previous_average_duration_seconds
+                ROUND(coalesce(AVG(case when timestamp BETWEEN $3 AND $4 then prow_job_runs.duration end) / 60000000000.0, 0))::int as current_average_duration_minutes,
+                ROUND(coalesce(AVG(case when timestamp BETWEEN $2 AND $3 then prow_job_runs.duration end) / 60000000000.0, 0))::int as previous_average_duration_minutes
         FROM prow_job_runs
         JOIN prow_jobs
                 ON prow_jobs.id = prow_job_runs.prow_job_id
@@ -164,8 +164,8 @@ SELECT pj_name,
        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement,
        open_bugs,
        last_pass.last_pass,
-       current_average_duration_seconds,
-       previous_average_duration_seconds
+       current_average_duration_minutes,
+       previous_average_duration_minutes
 FROM results
          JOIN prow_jobs ON prow_jobs.name = results.pj_name
          LEFT JOIN repo_org_jobs ON prow_jobs.id = repo_org_jobs.id
