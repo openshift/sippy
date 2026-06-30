@@ -241,6 +241,9 @@ type Job struct {
 	PreviousInfraFails              int     `json:"previous_infra_fails,omitempty"`
 	NetImprovement                  float64 `json:"net_improvement"`
 
+	CurrentAverageDurationMinutes  int `json:"current_average_duration_minutes"`
+	PreviousAverageDurationMinutes int `json:"previous_average_duration_minutes"`
+
 	TestGridURL string `json:"test_grid_url"`
 	OpenBugs    int    `json:"open_bugs"`
 }
@@ -313,6 +316,10 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(job.OpenBugs), nil
 	case "average_runs_to_merge":
 		return job.AverageRetestsToMerge, nil
+	case "current_average_duration_minutes":
+		return float64(job.CurrentAverageDurationMinutes), nil
+	case "previous_average_duration_minutes":
+		return float64(job.PreviousAverageDurationMinutes), nil
 	case "last_pass":
 		return float64(job.LastPass.Unix()), nil
 	default:
