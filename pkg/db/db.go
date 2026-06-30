@@ -89,6 +89,7 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 	// partitions. Custom plans use actual parameter values for partition pruning.
 	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
+	pgxConfig.RuntimeParams["timezone"] = "UTC"
 	if cfg.enablePartitionwise {
 		pgxConfig.RuntimeParams["enable_partitionwise_aggregate"] = "on"
 		pgxConfig.RuntimeParams["enable_partitionwise_join"] = "on"

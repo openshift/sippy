@@ -294,95 +294,95 @@ A summary of runs for job(s). Results contains of the following values for each 
       "name": "periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6",
       "results": [
         {
-          "timestamp": 1628207039000,
+          "timestamp": "2021-08-06T03:43:59Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423429598720299008"
         },
         {
-          "timestamp": 1628045973000,
+          "timestamp": "2021-08-04T03:59:33Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1422754032564310016"
         },
         {
-          "timestamp": 1628198644000,
+          "timestamp": "2021-08-05T21:24:04Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423394362347229184"
         },
         {
-          "timestamp": 1628485392000,
+          "timestamp": "2021-08-09T05:03:12Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424597097709047808"
         },
         {
-          "timestamp": 1628343908000,
+          "timestamp": "2021-08-07T14:25:08Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424003666343366656"
         },
         {
-          "timestamp": 1628325313000,
+          "timestamp": "2021-08-07T09:15:13Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423925674229370880"
         },
         {
-          "timestamp": 1628289649000,
+          "timestamp": "2021-08-06T23:20:49Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423776089259380736"
         },
         {
-          "timestamp": 1628277370000,
+          "timestamp": "2021-08-06T19:56:10Z",
           "result": "S",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423724523844276224"
         },
         {
-          "timestamp": 1628358891000,
+          "timestamp": "2021-08-07T18:34:51Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424066513538650112"
         },
         {
-          "timestamp": 1628190532000,
+          "timestamp": "2021-08-05T19:08:52Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423360364472438784"
         },
         {
-          "timestamp": 1628274962000,
+          "timestamp": "2021-08-06T19:16:02Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423714481237659648"
         },
         {
-          "timestamp": 1627391095000,
+          "timestamp": "2021-07-27T13:24:55Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420007279679246336"
         },
         {
-          "timestamp": 1627473363000,
+          "timestamp": "2021-07-28T12:16:03Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420352338517823488"
         },
         {
-          "timestamp": 1627617630000,
+          "timestamp": "2021-07-30T04:20:30Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420957438630170624"
         },
         {
-          "timestamp": 1627515377000,
+          "timestamp": "2021-07-29T00:56:17Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420528516700573696"
         },
         {
-          "timestamp": 1627396851000,
+          "timestamp": "2021-07-27T15:00:51Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420031423921786880"
         },
         {
-          "timestamp": 1627363991000,
+          "timestamp": "2021-07-27T05:53:11Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1419893597473345536"
         }
       ]
     }
   ],
-  "start": 1627317573000,
-  "end": 1628508950000
+  "start": "2021-07-26",
+  "end": "2021-08-09"
 }
 ```
 

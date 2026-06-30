@@ -1098,11 +1098,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
-	jobFilter, _, err := splitJobAndJobRunFilters(fil)
-	if err != nil {
-		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
-		return
-	}
+	jobFilter, _ := splitJobAndJobRunFilters(fil)
 
 	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 	limit := getLimitParam(req)
@@ -1632,11 +1628,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
-	jobFilter, jobRunsFilter, err := splitJobAndJobRunFilters(fil)
-	if err != nil {
-		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
-		return
-	}
+	jobFilter, jobRunsFilter := splitJobAndJobRunFilters(fil)
 
 	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 	limit := getLimitParam(req)

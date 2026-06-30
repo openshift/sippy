@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"time"
-
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
@@ -73,8 +71,8 @@ type FailureGroup struct {
 type Release struct { // this is the Release that gets cached
 	Release              string
 	Status               string
-	GADate               *time.Time
-	DevelopmentStartDate *time.Time
+	GADate               *civil.Date
+	DevelopmentStartDate *civil.Date
 	PreviousRelease      string
 	Capabilities         map[ReleaseCapability]bool
 	Product              string

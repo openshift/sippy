@@ -199,8 +199,8 @@ export function pathForVariantsWithTestFailure(release, variant, test) {
 }
 
 function last7DaysFilter() {
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-  return filterFor('timestamp', '>', `${sevenDaysAgo}`)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  return filterFor('timestamp', '>', sevenDaysAgo.toISOString())
 }
 
 export function pathForJobRunsWithTestFailure(release, test, filter) {

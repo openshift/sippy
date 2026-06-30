@@ -3,6 +3,8 @@
 package v1
 
 import (
+	"time"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
 
@@ -114,10 +116,9 @@ type JobRunResult struct {
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool `json:"infrastructureFailure"`
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
-	KnownFailure bool `json:"knownFailure"`
-	Succeeded    bool `json:"succeeded"`
-	// Timestamp is milliseconds since epoch when this job was run.
-	Timestamp     int              `json:"timestamp"`
+	KnownFailure  bool             `json:"knownFailure"`
+	Succeeded     bool             `json:"succeeded"`
+	Timestamp     time.Time        `json:"timestamp"`
 	OverallResult JobOverallResult `json:"result"`
 }
 
@@ -147,7 +148,7 @@ type RawJobResult struct {
 // It is used to build up a complete set of successes and failure, but until all the testgrid results have been checked, it will be incomplete
 type RawTestResult struct {
 	Name       string
-	Timestamps []int
+	Timestamps []time.Time
 	Successes  int
 	Failures   int
 	Flakes     int
@@ -190,8 +191,7 @@ type RawJobRunResult struct {
 	// Overall result
 	OverallResult JobOverallResult
 
-	// Timestamp
-	Timestamp int
+	Timestamp time.Time
 }
 
 type OperatorState struct {

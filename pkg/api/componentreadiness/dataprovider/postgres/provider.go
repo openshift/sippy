@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -165,7 +166,7 @@ func (p *PostgresProvider) QueryReleases(ctx context.Context) ([]v1.Release, err
 		v1.SippyClassicCap:       true,
 	}
 
-	now := time.Now().UTC()
+	today := civil.DateOf(time.Now().UTC())
 	var releases []v1.Release
 	for _, name := range releaseNames {
 		rel := v1.Release{
@@ -176,7 +177,7 @@ func (p *PostgresProvider) QueryReleases(ctx context.Context) ([]v1.Release, err
 		if meta, ok := releaseMetadata[name]; ok {
 			rel.PreviousRelease = meta.previousRelease
 			if meta.gaOffsetDays != 0 {
-				ga := now.AddDate(0, 0, meta.gaOffsetDays)
+				ga := today.AddDays(meta.gaOffsetDays)
 				rel.GADate = &ga
 			}
 			if meta.product != "" {

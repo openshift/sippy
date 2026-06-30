@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -15,8 +16,8 @@ import (
 
 func TestGenerateTestDetailsURL(t *testing.T) {
 	// Define releases with GA dates for all tests
-	ga419 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	ga420 := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	ga419 := civil.Date{Year: 2025, Month: 1, Day: 1}
+	ga420 := civil.Date{Year: 2025, Month: 6, Day: 1}
 	releases := []v1.Release{
 		{
 			Release: "4.19",

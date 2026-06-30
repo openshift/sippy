@@ -112,7 +112,7 @@ func getSortParams(req *http.Request) (string, apitype.Sort) {
 	return sortField, sort
 }
 
-func splitJobAndJobRunFilters(fil *filter.Filter) (*filter.Filter, *filter.Filter, error) {
+func splitJobAndJobRunFilters(fil *filter.Filter) (*filter.Filter, *filter.Filter) {
 	// This function is used by APIs that are largely interested in filtering on the jobs,
 	// but there is a case for filtering by the timestamp or build cluster on a job run.
 	// Break apart the filter we're given for the respective queries:
@@ -125,12 +125,6 @@ func splitJobAndJobRunFilters(fil *filter.Filter) (*filter.Filter, *filter.Filte
 	for _, f := range fil.Items {
 		switch f.Field {
 		case "timestamp":
-			ms, err := strconv.ParseInt(f.Value, 0, 64)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
 			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
 		case "cluster":
 			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
@@ -138,5 +132,5 @@ func splitJobAndJobRunFilters(fil *filter.Filter) (*filter.Filter, *filter.Filte
 			jobFilter.Items = append(jobFilter.Items, f)
 		}
 	}
-	return jobFilter, jobRunsFilter, nil
+	return jobFilter, jobRunsFilter
 }
