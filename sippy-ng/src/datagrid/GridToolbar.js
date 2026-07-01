@@ -56,8 +56,8 @@ export default function GridToolbar(props) {
     )
     if (searchFilter && searchFilter.value) {
       setSearch(searchFilter.value)
+      initializedFromFilter.current = true
     }
-    initializedFromFilter.current = true
   }, [props.searchField, props.filterModel])
 
   return (
@@ -112,7 +112,6 @@ export default function GridToolbar(props) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && props.doSearch(search)}
-            onBlur={() => props.doSearch(search)}
             placeholder="Search…"
             InputProps={{
               endAdornment: (
