@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
@@ -1191,14 +1192,39 @@ func (pl *ProwLoader) prefetchLabels(prowJobs []prow.ProwJob) (map[string]pq.Str
 const LabelsDatasetEnv = "JOB_LABELS_DATASET"
 const LabelsTableName = "job_labels"
 
-// GatherLabelsFromBQ queries BigQuery for labels for multiple job runs in a single query.
+// BigQuery HTTP request body limit is ~10MB; 50k build IDs stays well under that.
+const labelsBatchSize = 50000
+
+// GatherLabelsFromBQ queries BigQuery for labels for multiple job runs.
+// Large ID lists are automatically batched to avoid exceeding BigQuery's request size limit.
 // The startTime is used to constrain the scan to recent date partitions.
-// Returns a map of buildID → labels.
+// Returns a map of buildID → labels. If a batch fails, the returned map contains
+// labels from previously completed batches and the error is also returned.
 func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, buildIDs []string, startTime time.Time) (map[string]pq.StringArray, error) {
 	if bqClient == nil || len(buildIDs) == 0 {
 		return nil, nil
 	}
 
+	result := make(map[string]pq.StringArray, len(buildIDs))
+	totalBatches := (len(buildIDs) + labelsBatchSize - 1) / labelsBatchSize
+
+	for i := 0; i < len(buildIDs); i += labelsBatchSize {
+		batch := buildIDs[i:min(i+labelsBatchSize, len(buildIDs))]
+		batchNum := i/labelsBatchSize + 1
+
+		log.WithField("batch", batchNum).WithField("totalBatches", totalBatches).WithField("batchSize", len(batch)).Info("querying BigQuery labels batch")
+
+		batchResult, err := gatherLabelsBatch(ctx, bqClient, batch, startTime)
+		if err != nil {
+			return result, err
+		}
+		maps.Copy(result, batchResult)
+	}
+
+	return result, nil
+}
+
+func gatherLabelsBatch(ctx context.Context, bqClient *bqcachedclient.Client, buildIDs []string, startTime time.Time) (map[string]pq.StringArray, error) {
 	dataset := os.Getenv(LabelsDatasetEnv)
 	if dataset == "" {
 		dataset = bqClient.Dataset
