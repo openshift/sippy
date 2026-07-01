@@ -11,6 +11,7 @@ import (
 
 	"github.com/lib/pq"
 
+	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
@@ -132,60 +133,8 @@ func (p *PostgresProvider) QueryJobVariants(ctx context.Context) (crtest.JobVari
 	return variants, nil
 }
 
-// releaseMetadata holds hardcoded release info for known releases.
-// This avoids needing a releases table — we derive release names from prow_jobs
-// and fill in metadata from this map.
-var releaseMetadata = map[string]struct {
-	previousRelease string
-	gaOffsetDays    int    // 0 = no GA date (in development)
-	product         string // empty = defaults to "OCP"
-}{
-	"4.17": {previousRelease: "4.16", gaOffsetDays: -540},
-	"4.18": {previousRelease: "4.17", gaOffsetDays: -395},
-	"4.19": {previousRelease: "4.18", gaOffsetDays: -289},
-	"4.20": {previousRelease: "4.19", gaOffsetDays: -163},
-	"4.21": {previousRelease: "4.20", gaOffsetDays: -58},
-	"4.22": {previousRelease: "4.21"},
-	"5.0":  {previousRelease: "4.22"},
-}
-
 func (p *PostgresProvider) QueryReleases(ctx context.Context) ([]v1.Release, error) {
-	var releaseNames []string
-	err := p.dbc.DB.WithContext(ctx).Raw(`SELECT DISTINCT release FROM prow_jobs WHERE deleted_at IS NULL ORDER BY release DESC`).
-		Pluck("release", &releaseNames).Error
-	if err != nil {
-		return nil, fmt.Errorf("querying releases: %w", err)
-	}
-
-	caps := map[v1.ReleaseCapability]bool{
-		v1.ComponentReadinessCap: true,
-		v1.FeatureGatesCap:       true,
-		v1.MetricsCap:            true,
-		v1.PayloadTagsCap:        true,
-		v1.SippyClassicCap:       true,
-	}
-
-	now := time.Now().UTC()
-	var releases []v1.Release
-	for _, name := range releaseNames {
-		rel := v1.Release{
-			Release:      name,
-			Capabilities: caps,
-			Product:      "OCP",
-		}
-		if meta, ok := releaseMetadata[name]; ok {
-			rel.PreviousRelease = meta.previousRelease
-			if meta.gaOffsetDays != 0 {
-				ga := now.AddDate(0, 0, meta.gaOffsetDays)
-				rel.GADate = &ga
-			}
-			if meta.product != "" {
-				rel.Product = meta.product
-			}
-		}
-		releases = append(releases, rel)
-	}
-	return releases, nil
+	return api.GetReleasesFromDB(ctx, p.dbc)
 }
 
 func (p *PostgresProvider) QueryReleaseDates(ctx context.Context, _ reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error) {

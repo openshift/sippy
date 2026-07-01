@@ -411,6 +411,11 @@ func seedSyntheticData(dbc *db.DB) error {
 		return nil
 	}
 
+	if err := seedReleaseDefinitions(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed release definitions")
+	}
+	log.Info("Seeded release definitions")
+
 	if err := createTestSuite(dbc, "synthetic"); err != nil {
 		return errors.WithMessage(err, "failed to create test suite")
 	}
@@ -444,6 +449,53 @@ func seedSyntheticData(dbc *db.DB) error {
 
 	log.Infof("Seeded synthetic data: %d ProwJobRuns, %d test results across %d releases",
 		totalRuns, totalResults, len(syntheticReleases))
+	return nil
+}
+
+func seedReleaseDefinitions(dbc *db.DB) error {
+	now := time.Now().UTC()
+	allCaps := pq.StringArray{models.CapComponentReadiness, models.CapFeatureGates, models.CapMetrics, models.CapPayloadTags, models.CapSippyClassic}
+
+	type relMeta struct {
+		previous string
+		gaDays   int // negative = days before now; 0 = no GA (in development)
+	}
+	meta := map[string]relMeta{
+		"4.19": {previous: "4.18", gaDays: -289},
+		"4.20": {previous: "4.19", gaDays: -163},
+		"4.21": {previous: "4.20", gaDays: -58},
+		"4.22": {previous: "4.21"},
+	}
+
+	for _, release := range syntheticReleases {
+		m := meta[release]
+		parts := strings.Split(release, ".")
+		major, minor := 0, 0
+		if len(parts) >= 2 {
+			_, _ = fmt.Sscanf(parts[0], "%d", &major)
+			_, _ = fmt.Sscanf(parts[1], "%d", &minor)
+		}
+
+		develStart := now.AddDate(0, 0, m.gaDays-180)
+		def := models.ReleaseDefinition{
+			Release:              release,
+			Major:                major,
+			Minor:                minor,
+			PreviousRelease:      m.previous,
+			DevelopmentStartDate: &develStart,
+			Product:              "OCP",
+			Status:               "Full Support",
+			Capabilities:         allCaps,
+		}
+		if m.gaDays != 0 {
+			ga := now.AddDate(0, 0, m.gaDays)
+			def.GADate = &ga
+		}
+
+		if err := dbc.DB.Where("release = ?", release).FirstOrCreate(&def).Error; err != nil {
+			return fmt.Errorf("failed to create release definition %s: %w", release, err)
+		}
+	}
 	return nil
 }
 
