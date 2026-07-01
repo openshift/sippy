@@ -19,6 +19,7 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
@@ -571,17 +572,27 @@ ORDER BY
 		}
 		st := time.Now()
 		dLog.Infof("inserting %d rows", len(insertRows))
-		err = pl.dbc.DB.Transaction(func(tx *gorm.DB) error {
-			err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 2000).Error
-			if err != nil {
-				log.WithError(err).Error("error inserting rows")
-			}
-			return err
-		})
+		n, err := pl.dbc.CopyFrom(ctx, "test_analysis_by_job_by_dates",
+			[]string{"date", "test_id", "release", "job_name", "test_name", "runs", "passes", "flakes", "failures"},
+			pgx.CopyFromSlice(len(insertRows), func(i int) ([]any, error) {
+				r := &insertRows[i]
+				return []any{
+					r.Date,
+					r.TestID,
+					r.Release,
+					r.JobName,
+					r.TestName,
+					r.Runs,
+					r.Passes,
+					r.Flakes,
+					r.Failures,
+				}, nil
+			}),
+		)
 		if err != nil {
-			return err
+			return fmt.Errorf("COPY test_analysis_by_job_by_dates: %w", err)
 		}
-		dLog.Infof("insert complete after %s", time.Since(st))
+		dLog.Infof("inserted %d rows in %s", n, time.Since(st))
 	}
 	return nil
 }
