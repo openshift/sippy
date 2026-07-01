@@ -445,6 +445,7 @@ function ReleasePayloadTable(props) {
           columns: columns,
           clearSearch: () => requestSearch(''),
           doSearch: requestSearch,
+          searchField: 'release_tag',
           addFilters: addFilters,
           filterModel: filterModel,
           setFilterModel: setFilterModelWithConversion,

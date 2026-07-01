@@ -655,6 +655,7 @@ export default function JobRunsTable(props) {
           columns: columns,
           clearSearch: () => requestSearch(''),
           doSearch: requestSearch,
+          searchField: 'job',
           filterModel: filterModel,
           setFilterModel: setFilterModel,
           addFilters: (m) => addFilters(m),

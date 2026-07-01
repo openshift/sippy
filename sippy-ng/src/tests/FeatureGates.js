@@ -403,6 +403,7 @@ export default function FeatureGates(props) {
               columns: columns,
               clearSearch: () => requestSearch(''),
               doSearch: requestSearch,
+              searchField: 'feature_gate',
               addFilters: (m) => addFilters(m),
               filterModel: filterModel,
               setFilterModel: setFilterModel,

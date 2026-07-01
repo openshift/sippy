@@ -257,6 +257,7 @@ function PayloadStreamTestFailures(props) {
               columns: columns,
               clearSearch: () => requestSearch(''),
               doSearch: requestSearch,
+              searchField: 'name',
               addFilters: addFilters,
               filterModel: filterModel,
               setFilterModel: setFilterModel,

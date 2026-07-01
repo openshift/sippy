@@ -1003,6 +1003,12 @@ function TestTable(props) {
   ])
 
   const requestSearch = (searchValue) => {
+    const existingFilter = filterModel.items.find(
+      (f) => f.columnField === 'name' && f.operatorValue === 'contains'
+    )
+    if (existingFilter && existingFilter.value === searchValue) {
+      return
+    }
     setSearching(true)
     const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
     newItems.push({
@@ -1123,6 +1129,7 @@ function TestTable(props) {
             columns: gridView.filterColumns,
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
+            searchField: 'name',
             period: period,
             selectPeriod: setPeriod,
             addFilters: addFilters,

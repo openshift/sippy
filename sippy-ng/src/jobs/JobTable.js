@@ -708,6 +708,7 @@ function JobTable(props) {
             columns: gridView.filterColumns,
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
+            searchField: 'name',
             period: period,
             selectPeriod: setPeriod,
             addFilters: (m) => addFilters(m),

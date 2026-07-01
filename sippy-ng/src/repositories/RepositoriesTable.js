@@ -328,6 +328,7 @@ function RepositoriesTable(props) {
         componentsProps={{
           toolbar: {
             doSearch: requestSearch,
+            searchField: 'repo',
             clearSearch: () => requestSearch(''),
             views: gridView.views,
             view: view,

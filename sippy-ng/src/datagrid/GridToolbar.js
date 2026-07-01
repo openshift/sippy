@@ -8,7 +8,7 @@ import GridToolbarPeriodSelector from '../datagrid/GridToolbarPeriodSelector'
 import GridToolbarViewSelector from './GridToolbarViewSelector'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useEffect, useRef } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import TextField from '@mui/material/TextField'
 
@@ -39,6 +39,26 @@ export default function GridToolbar(props) {
   const classes = useStyles(theme)
 
   const [search, setSearch] = React.useState('')
+  const initializedFromFilter = useRef(false)
+
+  useEffect(() => {
+    if (
+      initializedFromFilter.current ||
+      !props.searchField ||
+      !props.filterModel ||
+      !props.filterModel.items
+    ) {
+      return
+    }
+    const searchFilter = props.filterModel.items.find(
+      (f) =>
+        f.columnField === props.searchField && f.operatorValue === 'contains'
+    )
+    if (searchFilter && searchFilter.value) {
+      setSearch(searchFilter.value)
+    }
+    initializedFromFilter.current = true
+  }, [props.searchField, props.filterModel])
 
   return (
     <div className={classes.root}>
@@ -145,4 +165,5 @@ GridToolbar.propTypes = {
   downloadDataFunc: PropTypes.func,
   downloadFilePrefix: PropTypes.string,
   autocompleteData: PropTypes.array,
+  searchField: PropTypes.string,
 }
