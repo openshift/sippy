@@ -17,8 +17,8 @@ all: test build
 
 build: builddir clean npm frontend sippy sippy-daemon
 
-.PHONY: verify apm verify-apm
-verify: lint verify-apm
+.PHONY: verify apm verify-apm verify-migrations
+verify: lint verify-apm verify-migrations
 
 builddir:
 	mkdir -p sippy-ng/build
@@ -74,6 +74,9 @@ clean:
 apm:
 	uvx --from apm-cli@0.13.0 apm install
 	uvx --from apm-cli@0.13.0 apm compile
+
+verify-migrations:
+	./hack/verify-migrations.sh
 
 verify-apm: apm
 	@if ! git diff --quiet HEAD -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md; then \
