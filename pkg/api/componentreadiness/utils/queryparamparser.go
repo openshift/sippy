@@ -15,6 +15,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/param"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // nolint:gocyclo
@@ -204,7 +205,7 @@ func ParseComponentReportRequest(
 	}
 	opts.TestIDOptions[0].RequestedVariants = map[string]string{}
 	// Only the dbGroupBy variants can be specifically requested
-	for _, variant := range opts.VariantOption.DBGroupBy.List() {
+	for _, variant := range sets.List(opts.VariantOption.DBGroupBy) {
 		if value := req.URL.Query().Get(variant); value != "" {
 			opts.TestIDOptions[0].RequestedVariants[variant] = value
 		}

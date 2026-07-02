@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -113,7 +114,7 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	if _, err := url.ParseRequestURI(in.JiraBug); err != nil {
 		return fmt.Errorf("jiraBug must be a valid URL")
 	}
-	for _, v := range resolvedissues.TriageMatchVariants.List() {
+	for _, v := range sets.List(resolvedissues.TriageMatchVariants) {
 		if _, ok := in.Variant.Variants[v]; !ok {
 			return fmt.Errorf("%s must be specified", v)
 		}

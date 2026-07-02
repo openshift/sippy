@@ -16,8 +16,8 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	apiCache "github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 )
@@ -334,7 +334,7 @@ type fallbackTestQueryReleasesGeneratorCacheKey struct {
 	BaseStart   time.Time
 	BaseEnd     time.Time
 	// VariantDBGroupBy is the only field within VariantOption that is used here
-	VariantDBGroupBy sets.String
+	VariantDBGroupBy sets.Set[string]
 	// CRTimeRoundingFactor is used by GetReleaseDatesFromBigQuery
 	CRTimeRoundingFactor time.Duration
 	CRTimeRoundingOffset time.Duration

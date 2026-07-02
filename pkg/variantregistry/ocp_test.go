@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/flags/configflags"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 func TestVariantSyncer(t *testing.T) {
@@ -2567,8 +2567,8 @@ func testView(name string, includeVariants map[string][]string) crview.View {
 	return crview.View{
 		Name: name,
 		VariantOptions: reqopts.Variants{
-			ColumnGroupBy:   sets.String{},
-			DBGroupBy:       sets.String{},
+			ColumnGroupBy:   sets.New[string](),
+			DBGroupBy:       sets.New[string](),
 			IncludeVariants: includeVariants,
 		},
 	}

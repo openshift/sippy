@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/openshift/sippy/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
@@ -53,7 +53,7 @@ var (
 	OperatorConditionsTestCaseName = regexp.MustCompile(`Operator results.*operator install (?P<operator>.*)`)
 )
 
-var customJobInstallNames = sets.NewString(
+var customJobInstallNames = sets.New(
 	"aws-ipi-ipi-install-install-stableinitial",
 	"azure-upi-upi-install-azure",
 	"e2e-44-stable-to-45-ci-ipi-install-install-stableinitial",

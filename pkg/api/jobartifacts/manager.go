@@ -182,7 +182,7 @@ func (m *Manager) jobRunWorker(managerCtx context.Context) {
 func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQuery, jobRunID int64, gcsFiles []*storage.ObjectAttrs) (artifacts []JobRunArtifact, isComplete bool) {
 	// set up the request/response workflow
 	artifactResponseChan := make(chan artifactResponse) // for responses from the workers
-	remaining := sets.NewString()                       // keep track of responses still missing
+	remaining := sets.New[string]()                     // keep track of responses still missing
 	for _, file := range gcsFiles {
 		remaining.Insert(file.Name)
 	}

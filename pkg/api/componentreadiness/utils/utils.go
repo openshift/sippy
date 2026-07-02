@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
@@ -186,10 +187,10 @@ func addAdvancedOptionsParams(params url.Values, advancedOptions reqopts.Advance
 // addVariantOptionsParams adds variant options to URL parameters
 func addVariantOptionsParams(params url.Values, variantOptions reqopts.Variants) {
 	if variantOptions.ColumnGroupBy != nil {
-		params.Add("columnGroupBy", strings.Join(variantOptions.ColumnGroupBy.List(), ","))
+		params.Add("columnGroupBy", strings.Join(sets.List(variantOptions.ColumnGroupBy), ","))
 	}
 	if variantOptions.DBGroupBy != nil {
-		params.Add("dbGroupBy", strings.Join(variantOptions.DBGroupBy.List(), ","))
+		params.Add("dbGroupBy", strings.Join(sets.List(variantOptions.DBGroupBy), ","))
 	}
 
 	// Add include variants

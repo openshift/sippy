@@ -15,11 +15,11 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 func fakeComponentAndCapabilityGetter(test crtest.KeyWithVariants, stats crstatus.TestStatus) (string, []string) {
@@ -53,8 +53,8 @@ var (
 		PityFactor:     5,
 		MinimumFailure: 3,
 	}
-	defaultColumnGroupByVariants    = sets.NewString(strings.Split(DefaultColumnGroupBy, ",")...)
-	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
+	defaultColumnGroupByVariants    = sets.New(strings.Split(DefaultColumnGroupBy, ",")...)
+	defaultDBGroupByVariants        = sets.New(strings.Split(DefaultDBGroupBy, ",")...)
 	defaultComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
 			VariantOption: reqopts.Variants{
@@ -79,7 +79,7 @@ var (
 			AdvancedOption: flakeFailAdvancedOption,
 		},
 	}
-	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
+	installerColumnGroupByVariants           = sets.New("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
 			VariantOption: reqopts.Variants{

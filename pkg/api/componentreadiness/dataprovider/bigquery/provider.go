@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	apiPkg "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -22,7 +23,6 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/util/param"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 var _ dataprovider.DataProvider = &BigQueryProvider{}
@@ -134,7 +134,7 @@ func (p *BigQueryProvider) QueryJobVariants(ctx context.Context) (crtest.JobVari
 		return variants, []error{err}
 	}
 
-	floatVariants := sets.NewString("FromRelease", "FromReleaseMajor", "FromReleaseMinor", "Release", "ReleaseMajor", "ReleaseMinor")
+	floatVariants := sets.New("FromRelease", "FromReleaseMajor", "FromReleaseMinor", "Release", "ReleaseMajor", "ReleaseMinor")
 	for {
 		row := crstatus.JobVariant{}
 		err := it.Next(&row)

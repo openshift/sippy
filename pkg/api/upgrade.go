@@ -5,24 +5,20 @@ import (
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testidentification"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // PrintUpgradeJSONReportFromDB reports on the success/fail of operator upgrades.
 func PrintUpgradeJSONReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release string) {
 
-	exactTestNames := sets.NewString(
-		testidentification.UpgradeTestName,
-	)
-	testPrefixes := sets.NewString(
-		testidentification.OperatorUpgradePrefix, // "old" upgrade test
-	)
+	exactTestNames := sets.New(testidentification.UpgradeTestName)
+	testPrefixes := sets.New(testidentification.OperatorUpgradePrefix) // "old" upgrade test
 	// Some of these are substring matches due to suites being included in the test name but not in sippy code.
-	testSubStrings := sets.NewString(
+	testSubStrings := sets.New(
 		testidentification.OperatorsUpgradedTest,
 		testidentification.APIsRemainAvailTest,
 		testidentification.MachineConfigsUpgradedTest,
@@ -41,7 +37,7 @@ func PrintUpgradeJSONReportFromDB(w http.ResponseWriter, req *http.Request, dbc 
 	summary := map[string]interface{}{
 		"title":        "Upgrade Rates by Operator",
 		"description":  "Upgrade Rates by Operator by Variant",
-		"column_names": variantColumns.List(),
+		"column_names": sets.List(variantColumns),
 		"tests":        tests,
 	}
 

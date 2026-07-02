@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -33,7 +34,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 const (
@@ -610,7 +610,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 	allColumns := map[crtest.ColumnID]struct{}{}
 
 	// merge basis and sample map keys and evaluate each key once
-	keySet := sets.NewString(slices.Collect(maps.Keys(basisStatusMap))...)
+	keySet := sets.New(slices.Collect(maps.Keys(basisStatusMap))...)
 	keySet.Insert(slices.Collect(maps.Keys(sampleStatusMap))...)
 	for testKeyStr := range keySet {
 		cellReport := testdetails.TestComparison{Explanations: []string{}} // The actual stats we return over the API

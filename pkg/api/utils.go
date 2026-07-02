@@ -9,11 +9,11 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type releaseGenerator struct {
@@ -48,8 +48,8 @@ func GetReleases(ctx context.Context, bqc *bqclient.Client, forceRefresh bool) (
 }
 
 // VariantsStringToSet converts comma separated variant string into a set; also validates that the variants are known
-func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString string) (sets.String, error) {
-	variantSet := sets.String{}
+func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString string) (sets.Set[string], error) {
+	variantSet := sets.New[string]()
 	if variantsString == "" {
 		return variantSet, nil
 	}

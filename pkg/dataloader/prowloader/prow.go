@@ -31,6 +31,7 @@ import (
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -49,7 +50,6 @@ import (
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // gcsPathStrip is used to strip out everything but the path, i.e. match "/view/gs/origin-ci-test/"
@@ -746,8 +746,8 @@ func jobsJSONToProwJobs(jobJSON []byte) ([]prow.ProwJob, error) {
 func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	if releaseConfig, ok := pl.config.Releases[release]; ok {
 		dashboard := "redhat-openshift-ocp-release-" + release
-		blockingJobs := sets.NewString(releaseConfig.BlockingJobs...)
-		informingJobs := sets.NewString(releaseConfig.InformingJobs...)
+		blockingJobs := sets.New(releaseConfig.BlockingJobs...)
+		informingJobs := sets.New(releaseConfig.InformingJobs...)
 		jobType := ""
 		if blockingJobs.Has(jobName) {
 			jobType = "blocking"
