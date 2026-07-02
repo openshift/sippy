@@ -140,6 +140,11 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			refs != nil &&
 			!strings.HasPrefix(bqjr.JobName, "aggregator-") {
 
+			// Normalize releaseJobName: the BQ query generator splits on comma
+			// to strip suffixes, so we must do the same here.
+			releaseJobName = strings.SplitN(releaseJobName, ",", 2)[0]
+			filteredAnnotations["releaseJobName"] = releaseJobName
+
 			prNumber := bqjr.PRNumber.StringVal
 			org := bqjr.PROrg.StringVal
 			repo := bqjr.PRRepo.StringVal

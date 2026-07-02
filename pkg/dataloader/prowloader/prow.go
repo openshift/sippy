@@ -1027,7 +1027,10 @@ func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJo
 			dbProwJob.Release = release
 			saveDB = true
 		}
-		if len(dbProwJob.TestGridURL) == 0 {
+		if isPayloadPresubmit && dbProwJob.TestGridURL != "" {
+			dbProwJob.TestGridURL = ""
+			saveDB = true
+		} else if !isPayloadPresubmit && len(dbProwJob.TestGridURL) == 0 {
 			dbProwJob.TestGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
 			if len(dbProwJob.TestGridURL) > 0 {
 				saveDB = true
