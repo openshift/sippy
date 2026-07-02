@@ -104,7 +104,7 @@ func GetComponentReport(
 	report, errs = api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		generator.getCache(), generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(ctx), ComponentReportCacheKeyPrefix, nil),
+		api.NewCacheSpec(generator.GetCacheKey(), ComponentReportCacheKeyPrefix, nil),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 	if len(errs) > 0 {
@@ -193,7 +193,7 @@ type GeneratorCacheKey struct {
 // we cache. This provides a safer option than using the generator previously which carries some public fields
 // which would be serialized and thus cause unnecessary cache misses.
 // Here we should normalize to output the same cache key regardless of how fields were initialized. (nil vs empty, etc)
-func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCacheKey {
+func (c *ComponentReportGenerator) GetCacheKey() GeneratorCacheKey {
 	cacheKey := GeneratorCacheKey{
 		BaseRelease:    c.ReqOptions.BaseRelease,
 		SampleRelease:  c.ReqOptions.SampleRelease,

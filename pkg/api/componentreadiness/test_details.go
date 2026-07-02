@@ -36,7 +36,7 @@ func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc
 		ctx,
 		generator.getCache(),
 		generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(ctx), TestDetailsReportCacheKeyPrefix, nil),
+		api.NewCacheSpec(generator.GetCacheKey(), TestDetailsReportCacheKeyPrefix, nil),
 		generator.GenerateTestDetailsReport,
 		testdetails.Report{})
 	if len(errs) > 0 {

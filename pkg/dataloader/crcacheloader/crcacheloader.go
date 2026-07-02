@@ -184,7 +184,7 @@ func (l *ComponentReadinessCacheLoader) primeCacheForView(ctx context.Context, v
 	// Now we cache each test details report:
 	for _, report := range tdReports {
 		// manipulate cache key per test options
-		genCacheKey := generator.GetCacheKey(ctx)
+		genCacheKey := generator.GetCacheKey()
 		newTIDOpts := reqopts.TestIdentification{
 			TestID:            report.TestID,
 			RequestedVariants: report.Variants,
@@ -219,7 +219,7 @@ func (l *ComponentReadinessCacheLoader) generateReport(ctx context.Context, gene
 	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		l.bqClient.Cache, generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(ctx), componentreadiness.ComponentReportCacheKeyPrefix, nil),
+		api.NewCacheSpec(generator.GetCacheKey(), componentreadiness.ComponentReportCacheKeyPrefix, nil),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 	if len(errs) > 0 {
