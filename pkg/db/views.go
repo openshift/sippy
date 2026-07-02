@@ -443,6 +443,7 @@ SELECT date_trunc('|||BY|||'::text, pjrt.prow_job_run_timestamp) AS period,
 FROM prow_job_run_tests pjrt
    JOIN tests tests ON pjrt.test_id = tests.id
 WHERE pjrt.status = 12
+  AND pjrt.prow_job_run_timestamp > (|||TIMENOW||| - '15 days'::interval)
 GROUP BY tests.name, (date_trunc('|||BY|||'::text, pjrt.prow_job_run_timestamp)), pjrt.prow_job_id
 `
 
