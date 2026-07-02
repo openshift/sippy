@@ -92,7 +92,6 @@ const (
 	TestOutputs                         QueryValue = "test-outputs"
 	TestResults                         QueryValue = "test-results"
 	TestResultsOverall                  QueryValue = "test-results-overall"
-	JobRunPayload                       QueryValue = "job-run-payload"
 	JobRunLabels                        QueryValue = "job-run-labels"
 	JobRunLabelsReEvaluate              QueryValue = "job-run-labels-reevaluate"
 	JobRunLabelsReEvaluateDelete        QueryValue = "job-run-labels-reevaluate-delete"
