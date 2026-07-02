@@ -211,17 +211,19 @@ export default function FeatureGates(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const currentFilters = filterModel
-    currentFilters.items = currentFilters.items.filter(
+    const newItems = filterModel.items.filter(
       (f) => f.columnField !== 'feature_gate'
     )
-    currentFilters.items.push({
+    newItems.push({
       id: 99,
       columnField: 'feature_gate',
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilterModel(currentFilters)
+    setFilterModel({
+      ...filterModel,
+      items: newItems,
+    })
   }
 
   const addFilters = (filter) => {
@@ -401,6 +403,7 @@ export default function FeatureGates(props) {
               columns: columns,
               clearSearch: () => requestSearch(''),
               doSearch: requestSearch,
+              searchField: 'feature_gate',
               addFilters: (m) => addFilters(m),
               filterModel: filterModel,
               setFilterModel: setFilterModel,

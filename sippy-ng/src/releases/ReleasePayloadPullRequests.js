@@ -77,17 +77,19 @@ function ReleasePayloadPullRequests(props) {
   )
 
   const requestSearch = (searchValue) => {
-    const currentFilters = filterModel
-    currentFilters.items = currentFilters.items.filter(
+    const newItems = filterModel.items.filter(
       (f) => f.columnField !== 'release_tag'
     )
-    currentFilters.items.push({
+    newItems.push({
       id: 99,
       columnField: 'release_tag',
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilterModel(currentFilters)
+    setFilterModel({
+      ...filterModel,
+      items: newItems,
+    })
   }
 
   const addFilters = (filter) => {
@@ -195,6 +197,7 @@ function ReleasePayloadPullRequests(props) {
           columns: columns,
           clearSearch: () => requestSearch(''),
           doSearch: requestSearch,
+          searchField: 'release_tag',
           addFilters: addFilters,
           filterModel: filterModel,
           setFilterModel: setFilterModel,

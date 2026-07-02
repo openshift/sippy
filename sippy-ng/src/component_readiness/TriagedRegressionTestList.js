@@ -352,6 +352,7 @@ export default function TriagedRegressionTestList(props) {
               setFilterModel: setFilterModel,
               clearSearch: () => requestSearch(''),
               doSearch: requestSearch,
+              searchField: 'test_name',
               autocompleteData: triagedRegressions,
               downloadDataFunc: () => {
                 return filteredRegressions
