@@ -117,7 +117,7 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 		q = q.Where("release = ?", release)
 	}
 
-	q = q.Where("timestamp < ?", reportEnd.UnixMilli())
+	q = q.Where("timestamp < ?", reportEnd)
 
 	// Get the row count before pagination
 	var rowCount int64

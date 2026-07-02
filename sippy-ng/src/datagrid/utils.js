@@ -86,7 +86,7 @@ export function filterItemRenderValue(item) {
   let value = item.value
   let tooltip = null
   if (item.columnField === 'timestamp' && item.value !== '') {
-    let date = new Date(parseInt(item.value))
+    let date = new Date(item.value)
     value = format(utcToZonedTime(date, 'UTC'), "yyyy-MM-dd HH:mm 'UTC'", {
       timeZone: 'Etc/UTC',
     })

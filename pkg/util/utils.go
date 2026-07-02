@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/civil"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
 
@@ -107,6 +108,11 @@ func DatePtr(year int, month time.Month, day, hour, minute, sec, nsec int, loc *
 	return &d
 }
 
+func CivilDatePtr(year int, month time.Month, day int) *civil.Date {
+	d := civil.Date{Year: year, Month: month, Day: day}
+	return &d
+}
+
 // releaseRelativeRE is a custom format we allow for times relative to now, or a releases ga date
 // (i.e. now-7d, ga-30d, ga, etc
 var releaseRelativeRE = regexp.MustCompile(`^(now|ga|end)(?:-([0-9]+)([d]))?$`)
@@ -132,7 +138,7 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 	gaDateMap := map[string]time.Time{}
 	for _, r := range allReleases {
 		if r.GADate != nil {
-			gaDateMap[r.Release] = *r.GADate
+			gaDateMap[r.Release] = r.GADate.In(time.UTC)
 		}
 	}
 

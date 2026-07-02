@@ -2,7 +2,6 @@ package api
 
 import (
 	"testing"
-	"time"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
@@ -17,9 +16,9 @@ import (
 
 func TestTransformRelease(t *testing.T) {
 
-	devStart420, _ := time.Parse(time.RFC3339, "2025-04-18T00:00:00.00Z")
-	devStart419, _ := time.Parse(time.RFC3339, "2024-11-25T00:00:00.00Z")
-	gaDate419, _ := time.Parse(time.RFC3339, "2025-05-09T00:00:00.00Z")
+	devStart420 := civil.Date{Year: 2025, Month: 4, Day: 18}
+	devStart419 := civil.Date{Year: 2024, Month: 11, Day: 25}
+	gaDate419 := civil.Date{Year: 2025, Month: 5, Day: 9}
 
 	tests := []struct {
 		name            string

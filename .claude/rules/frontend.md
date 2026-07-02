@@ -14,3 +14,10 @@ npx prettier --write .
 * Keep UI elements consistent with Material-UI standards.
 
 The frontend uses `npm`. If you must install or update any dependencies, always use the `--ignore-scripts` flag.
+
+* **Timestamps and dates from the API**:
+  - Timestamps arrive as RFC 3339 strings (e.g., `"2024-06-27T15:30:00Z"`), not epoch millisecond integers. Use `new Date(value)` or `Temporal.Instant.from(value)` to parse them.
+  - Dates arrive as `YYYY-MM-DD` strings (e.g., `"2024-06-27"`). Use `Temporal.PlainDate.from(value)` for date arithmetic.
+  - For MUI DataGrid timestamp columns, use `type: 'date'` with a `valueGetter` that returns a `Date` object. Do not return epoch milliseconds from `valueGetter`.
+  - For filter values sent to the API, use ISO 8601 strings (e.g., `new Date(...).toISOString()`), not epoch millisecond integers.
+  - For day-level bucketing or date arithmetic, prefer `Temporal.PlainDate` over `Date` with manual millisecond math.
