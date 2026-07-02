@@ -97,6 +97,15 @@ func matchesIncludeVariants(variants map[string]string, includeVariants map[stri
 	return true
 }
 
+func hasCapabilityIntersection(testCaps []string, requestedCaps map[string]bool) bool {
+	for _, c := range testCaps {
+		if requestedCaps[c] {
+			return true
+		}
+	}
+	return false
+}
+
 // --- MetadataQuerier ---
 
 func (p *PostgresProvider) QueryJobVariants(ctx context.Context) (crtest.JobVariants, []error) {
@@ -340,7 +349,7 @@ GROUP BY tow.unique_id, t.name, s.name, tow.component, tow.capabilities, d.prow_
 
 func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, start, end time.Time,
 	_ crtest.JobVariants, includeVariants map[string][]string,
-	dbGroupBy map[string]bool) (map[string]crstatus.TestStatus, []error) {
+	dbGroupBy map[string]bool, capabilities []string) (map[string]crstatus.TestStatus, []error) {
 
 	var rows []testStatusRow
 	if err := p.dbc.DB.WithContext(ctx).Raw(testStatusQuery, release, start, end, release, release, start, end).Scan(&rows).Error; err != nil {
@@ -361,6 +370,11 @@ func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, 
 		return nil, []error{err}
 	}
 
+	capSet := make(map[string]bool, len(capabilities))
+	for _, c := range capabilities {
+		capSet[c] = true
+	}
+
 	result := map[string]crstatus.TestStatus{}
 	for _, row := range rows {
 		variants, ok := jobVariantMap[row.ProwJobID]
@@ -369,6 +383,10 @@ func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, 
 		}
 
 		if !matchesIncludeVariants(variants, includeVariants) {
+			continue
+		}
+
+		if len(capSet) > 0 && !hasCapabilityIntersection(row.Capabilities, capSet) {
 			continue
 		}
 
@@ -456,6 +474,7 @@ func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions r
 		allJobVariants,
 		includeVariants,
 		dbGroupBy,
+		reqOptions.Capabilities,
 	)
 }
 
@@ -480,6 +499,7 @@ func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 		allJobVariants,
 		includeVariants,
 		dbGroupBy,
+		reqOptions.Capabilities,
 	)
 }
 
