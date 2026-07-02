@@ -50,12 +50,15 @@ export default function GridToolbar(props) {
     ) {
       return
     }
-    const searchFilter = props.filterModel.items.find(
-      (f) =>
-        f.columnField === props.searchField && f.operatorValue === 'contains'
+    const filtersForField = props.filterModel.items.filter(
+      (f) => f.columnField === props.searchField
     )
-    if (searchFilter && searchFilter.value) {
-      setSearch(searchFilter.value)
+    if (filtersForField.length !== 1) {
+      return
+    }
+    const filter = filtersForField[0]
+    if (filter.operatorValue === 'contains' && filter.value) {
+      setSearch(filter.value)
       initializedFromFilter.current = true
     }
   }, [props.searchField, props.filterModel])
