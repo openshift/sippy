@@ -323,8 +323,8 @@ func GenerateTestDetailsURL(
 	}
 
 	// Add test filter parameters
-	for _, cap := range testFilters.Capabilities {
-		params.Add("testCapabilities", cap)
+	for _, testCap := range testFilters.Capabilities {
+		params.Add("testCapabilities", testCap)
 	}
 	for _, lifecycle := range testFilters.Lifecycles {
 		params.Add("testLifecycles", lifecycle)
