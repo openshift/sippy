@@ -113,7 +113,10 @@ func TestReportsByVariant(
 	// Query and group by variant:
 	var testReports []api.Test
 	q := `
-WITH results AS (
+WITH excluded_vc AS (
+    SELECT id FROM variant_combinations WHERE @excluded && variants
+),
+results AS (
     SELECT name,
            release,
            sum(current_runs)       AS current_runs,
@@ -127,7 +130,7 @@ WITH results AS (
            unnest(variants)        AS variant
     FROM prow_test_report_7d_matview
 	WHERE release = @release AND name ~* @testsubstrings
-          AND NOT(variants is not null and @excluded && variants)
+          AND variant_combination_id NOT IN (SELECT id FROM excluded_vc)
     GROUP BY name, release, variant
 )
 SELECT *,
@@ -169,7 +172,10 @@ func TestReportExcludeVariants(dbc *db.DB, release, testName string, excludeVari
 
 	// Query and group by variant:
 	var testReport api.Test
-	q := `WITH results AS (
+	q := `WITH excluded_vc AS (
+    SELECT id FROM variant_combinations WHERE @excluded && variants
+),
+results AS (
     SELECT name,
            release,
            sum(current_runs)       AS current_runs,
@@ -182,7 +188,7 @@ func TestReportExcludeVariants(dbc *db.DB, release, testName string, excludeVari
            sum(previous_flakes)    AS previous_flakes
     FROM prow_test_report_7d_matview
     WHERE release = @release AND name = @testname
-          AND NOT(variants is not null and @excluded && variants)
+          AND variant_combination_id NOT IN (SELECT id FROM excluded_vc)
     GROUP BY name, release
 ) SELECT *, %s FROM results;`
 
@@ -243,7 +249,7 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
 			(current_pass_percentage - passing_average) AS delta_from_passing_average,
 			(current_flake_percentage - flake_average) AS delta_from_flake_average`).
 		Where(`release = ?`, release).
-		Where(fmt.Sprintf("NOT ('never-stable'=any(%s.variants))", table))
+		Where("variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE 'never-stable' = any(variants))")
 }
 
 func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVariants []string, quantity int) ([]api.TestOutput, error) {
@@ -262,11 +268,11 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 		Where("prow_job_run_test_outputs.prow_job_run_test_release = ?", release)
 
 	for _, variant := range includedVariants {
-		q = q.Where("? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	for _, variant := range excludedVariants {
-		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	res := q.
@@ -295,11 +301,11 @@ func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedV
 		Where("prow_job_run_tests.prow_job_run_release = ?", release)
 
 	for _, variant := range includedVariants {
-		q = q.Where("? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	for _, variant := range excludedVariants {
-		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	res := q.
