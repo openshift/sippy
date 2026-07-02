@@ -829,8 +829,8 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// QE jobs allowlisted for Component Readiness
 		{[]string{"-automated-release"}, "standard"},
 
-		// OVN-Kubernetes BGP Virtualization jobs allowed for Component Readiness
-		{[]string{"-ovn-bgp-virt"}, "standard"},
+		// OVN-Kubernetes BGP jobs allowed for Component Readiness
+		{[]string{"-bgp-"}, "standard"},
 
 		// Add two-node-fencing for component readiness
 		{[]string{"-two-node-fencing-recovery"}, "standard"},
@@ -842,9 +842,6 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"-recovery"}, "excluded"},
 		{[]string{"alibaba"}, "excluded"},
 		{[]string{"-osde2e-"}, "excluded"},
-
-		// OVN-Kubernetes BGP jobs; candidate tier to collect data while stabilizing
-		{[]string{"-bgp-"}, "candidate"},
 
 		// Experimental new jobs using nested vsphere lvl 2 environment,
 		// not ready to make release blocking yet.
