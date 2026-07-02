@@ -40,11 +40,12 @@ func testStatusString(status int) string {
 }
 
 // GetPRTestResults fetches test results for a specific pull request from PostgreSQL.
-func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, startDate, endDate time.Time, includeSuccesses []string) ([]PRTestResult, error) {
+func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, sha string, startDate, endDate time.Time, includeSuccesses []string) ([]PRTestResult, error) {
 	log.WithFields(log.Fields{
 		"org":               org,
 		"repo":              repo,
 		"pr_number":         prNumber,
+		"sha":               sha,
 		"start_date":        startDate.Format("2006-01-02"),
 		"end_date":          endDate.Format("2006-01-02"),
 		"include_successes": includeSuccesses,
@@ -72,6 +73,10 @@ func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, startDate, end
 		Joins("LEFT JOIN prow_job_run_test_outputs pjrto ON pjrto.prow_job_run_test_id = pjrt.id AND pjrto.prow_job_run_test_timestamp = pjrt.prow_job_run_timestamp AND pjrto.prow_job_run_test_release = pjrt.prow_job_run_release").
 		Where("pp.org = ? AND pp.repo = ? AND pp.number = ?", org, repo, prNumber).
 		Where("pjr.timestamp >= ? AND pjr.timestamp < ?", startDate, endDate)
+
+	if sha != "" {
+		query = query.Where("pp.sha = ?", sha)
+	}
 
 	// By default only return failures (no flakes, no successes).
 	// include_successes adds flakes and successes for matching test names.
@@ -157,40 +162,35 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, dbc *db.DB
 		return
 	}
 
-	startDateStr := param.SafeRead(req, "start_date")
-	if startDateStr == "" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
-			"code":    http.StatusBadRequest,
-			"message": "required parameter 'start_date' is missing (format: YYYY-MM-DD)",
-		})
-		return
-	}
+	now := time.Now().UTC()
+	startDate := now.AddDate(0, 0, -14)
+	endDate := now.AddDate(0, 0, 1)
 
-	startDate, err := time.Parse("2006-01-02", startDateStr)
-	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Sprintf("invalid start_date format (expected YYYY-MM-DD): %v", err),
-		})
-		return
+	startDateStr := param.SafeRead(req, "start_date")
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]any{
+				"code":    http.StatusBadRequest,
+				"message": fmt.Sprintf("invalid start_date format (expected YYYY-MM-DD): %v", err),
+			})
+			return
+		}
+		startDate = parsed
 	}
 
 	endDateStr := param.SafeRead(req, "end_date")
-	if endDateStr == "" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
-			"code":    http.StatusBadRequest,
-			"message": "required parameter 'end_date' is missing (format: YYYY-MM-DD)",
-		})
-		return
-	}
-
-	endDate, err := time.Parse("2006-01-02", endDateStr)
-	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Sprintf("invalid end_date format (expected YYYY-MM-DD): %v", err),
-		})
-		return
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]any{
+				"code":    http.StatusBadRequest,
+				"message": fmt.Sprintf("invalid end_date format (expected YYYY-MM-DD): %v", err),
+			})
+			return
+		}
+		// Make end_date inclusive
+		endDate = parsed.AddDate(0, 0, 1)
 	}
 
 	if endDate.Before(startDate) {
@@ -201,12 +201,10 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, dbc *db.DB
 		return
 	}
 
-	// Make end_date inclusive
-	endDate = endDate.AddDate(0, 0, 1)
-
+	sha := param.SafeRead(req, "sha")
 	includeSuccesses := req.URL.Query()["include_successes"]
 
-	results, err := GetPRTestResults(dbc, org, repo, prNumber, startDate, endDate, includeSuccesses)
+	results, err := GetPRTestResults(dbc, org, repo, prNumber, sha, startDate, endDate, includeSuccesses)
 	if err != nil {
 		log.WithError(err).Error("error fetching PR test results")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]any{
