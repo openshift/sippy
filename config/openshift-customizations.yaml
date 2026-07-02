@@ -100,8 +100,8 @@ releases:
   rrp-integration:
     synthetic: true
     jobs:
-      periodic-ci-openshift-online-rosa-regional-platform-main-nightly-ephemeral: true
-      periodic-ci-openshift-online-rosa-regional-platform-main-nightly-integration: true
+      periodic-ci-openshift-online-rosa-hyperfleet-main-nightly-ephemeral: true
+      periodic-ci-openshift-online-rosa-hyperfleet-main-nightly-integration: true
   automation:
     synthetic: true
     jobs:
