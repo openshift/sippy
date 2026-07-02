@@ -604,6 +604,20 @@ func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) erro
 		"buildID": pj.Status.BuildID,
 	})
 
+	// /payload sub-jobs carry a releaseJobName annotation and PR refs. They've
+	// already been transformed (name stabilized, type set to presubmit) during
+	// the BigQuery fetch. Route them straight to the Presubmits pseudorelease.
+	if _, ok := pj.Annotations["releaseJobName"]; ok && pj.Spec.Refs != nil {
+		if pl.releaseSet["Presubmits"] {
+			if err := pl.prowJobToJobRun(ctx, pj, "Presubmits"); err != nil {
+				err = errors.Wrapf(err, "error converting /payload sub-job to job run: %s", pj.Spec.Job)
+				pjLog.WithError(err).Warning("prow import error")
+				return err
+			}
+		}
+		return nil
+	}
+
 	// Synthetic release claims take priority over all other matching.
 	if release, ok := pl.syntheticReleaseJobOverrides.Lookup(pj.Spec.Job); ok {
 
@@ -958,15 +972,43 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 }
 
 func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJob, release string, pjLog *log.Entry) (*models.ProwJob, error) {
+	// For /payload sub-jobs, use the releaseJobName annotation for variant
+	// identification (the stable name won't match variant patterns, but the
+	// canonical periodic job name will). Then override the release variant
+	// to "Presubmits" since the canonical name would produce e.g. "5.0".
+	variantJobName := pj.Spec.Job
+	isPayloadPresubmit := false
+	if rjn, ok := pj.Annotations["releaseJobName"]; ok && pj.Spec.Refs != nil {
+		variantJobName = rjn
+		isPayloadPresubmit = true
+	}
+
+	identifyVariants := func() pq.StringArray {
+		variants := pl.variantManager.IdentifyVariants(variantJobName)
+		if isPayloadPresubmit {
+			for i, v := range variants {
+				if _, isRelease := pl.config.Releases[v]; isRelease {
+					variants[i] = "Presubmits"
+					break
+				}
+			}
+		}
+		return variants
+	}
+
 	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
 	if !foundProwJob {
 		pjLog.Info("creating new ProwJob")
+		testGridURL := ""
+		if !isPayloadPresubmit {
+			testGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
+		}
 		dbProwJob = &models.ProwJob{
 			Name:        pj.Spec.Job,
 			Kind:        models.ProwKind(pj.Spec.Type),
 			Release:     release,
-			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job),
-			TestGridURL: pl.generateTestGridURL(release, pj.Spec.Job).String(),
+			Variants:    identifyVariants(),
+			TestGridURL: testGridURL,
 		}
 		err := pl.dbc.DB.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
 		if err != nil {
@@ -975,7 +1017,7 @@ func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJo
 		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
 		saveDB := false
-		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job)
+		newVariants := identifyVariants()
 		if !reflect.DeepEqual(newVariants, []string(dbProwJob.Variants)) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
 			dbProwJob.Kind = models.ProwKind(pj.Spec.Type)
 			dbProwJob.Variants = newVariants
@@ -985,7 +1027,10 @@ func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJo
 			dbProwJob.Release = release
 			saveDB = true
 		}
-		if len(dbProwJob.TestGridURL) == 0 {
+		if isPayloadPresubmit && dbProwJob.TestGridURL != "" {
+			dbProwJob.TestGridURL = ""
+			saveDB = true
+		} else if !isPayloadPresubmit && len(dbProwJob.TestGridURL) == 0 {
 			dbProwJob.TestGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
 			if len(dbProwJob.TestGridURL) > 0 {
 				saveDB = true
