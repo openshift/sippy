@@ -880,8 +880,10 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// GCP multi-operator periodic jobs are not yet stable enough for component readiness
 		{[]string{"e2e-gcp-multi-operator-periodic"}, "candidate"},
 
-		// Disruptive longrunning jobs promoted to candidate while stabilizing
-		{[]string{"-disruptive-longrunning"}, "candidate"},
+		// Disruptive longrunning jobs: non-techpreview promoted to standard,
+		// techpreview to candidate while stabilizing
+		{[]string{"-disruptive-longrunning-techpreview"}, "candidate"},
+		{[]string{"-disruptive-longrunning"}, "standard"},
 
 		// Hidden jobs
 		{[]string{"-cilium"}, "hidden"},
