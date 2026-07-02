@@ -315,24 +315,25 @@ FROM (
     ),
     pre_agg AS (
       SELECT
-        variant_combination_id,
-        test_id,
-        suite_id,
-        release AS prow_job_run_release,
-        COALESCE(SUM(successes) FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_successes,
-        COALESCE(SUM(flakes)    FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_flakes,
-        COALESCE(SUM(failures)  FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_failures,
-        COALESCE(SUM(runs)      FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_runs,
-        COALESCE(SUM(successes) FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_successes,
-        COALESCE(SUM(flakes)    FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_flakes,
-        COALESCE(SUM(failures)  FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_failures,
-        COALESCE(SUM(runs)      FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_runs
+        pj.variant_combination_id,
+        tds.test_id,
+        tds.suite_id,
+        tds.release AS prow_job_run_release,
+        COALESCE(SUM(tds.successes) FILTER (WHERE tds.summary_date >= |||START||| AND tds.summary_date < |||BOUNDARY|||), 0) AS previous_successes,
+        COALESCE(SUM(tds.flakes)    FILTER (WHERE tds.summary_date >= |||START||| AND tds.summary_date < |||BOUNDARY|||), 0) AS previous_flakes,
+        COALESCE(SUM(tds.failures)  FILTER (WHERE tds.summary_date >= |||START||| AND tds.summary_date < |||BOUNDARY|||), 0) AS previous_failures,
+        COALESCE(SUM(tds.runs)      FILTER (WHERE tds.summary_date >= |||START||| AND tds.summary_date < |||BOUNDARY|||), 0) AS previous_runs,
+        COALESCE(SUM(tds.successes) FILTER (WHERE tds.summary_date >= |||BOUNDARY||| AND tds.summary_date <= |||END|||), 0) AS current_successes,
+        COALESCE(SUM(tds.flakes)    FILTER (WHERE tds.summary_date >= |||BOUNDARY||| AND tds.summary_date <= |||END|||), 0) AS current_flakes,
+        COALESCE(SUM(tds.failures)  FILTER (WHERE tds.summary_date >= |||BOUNDARY||| AND tds.summary_date <= |||END|||), 0) AS current_failures,
+        COALESCE(SUM(tds.runs)      FILTER (WHERE tds.summary_date >= |||BOUNDARY||| AND tds.summary_date <= |||END|||), 0) AS current_runs
       FROM
-        test_daily_summaries
+        test_daily_summaries tds
+        JOIN prow_jobs pj ON tds.prow_job_id = pj.id
       WHERE
-        summary_date >= |||START||| AND summary_date <= |||END|||
+        tds.summary_date >= |||START||| AND tds.summary_date <= |||END|||
       GROUP BY
-        variant_combination_id, test_id, suite_id, release
+        pj.variant_combination_id, tds.test_id, tds.suite_id, tds.release
     )
     SELECT
         tests.id,

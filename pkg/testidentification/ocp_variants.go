@@ -24,6 +24,11 @@ import (
 var openshiftJobsNeverStableRaw string
 var openshiftJobsNeverStable = strings.Split(openshiftJobsNeverStableRaw, "\n")
 
+// importantVariants controls which BigQuery variant keys are stored in
+// prow_jobs.variants in PostgreSQL. Release-family keys (Release,
+// ReleaseMinor, ReleaseMajor, FromRelease, FromReleaseMinor,
+// FromReleaseMajor) are excluded because they are redundant with
+// prow_jobs.release and the Upgrade variant.
 var importantVariants = []string{
 	"Platform",
 	"Architecture",
@@ -39,6 +44,14 @@ var importantVariants = []string{
 	"Component",
 	"Capability",
 	"OS",
+	"Procedure",
+	"Aggregation",
+	"NetworkAccess",
+	"Scheduler",
+	"Suite",
+	"ContainerRuntime",
+	"CGroupMode",
+	"LayeredProduct",
 }
 
 const (
@@ -133,9 +146,6 @@ func (v *openshiftVariants) IdentifyVariants(jobName string) []string {
 		allVariants = append(allVariants, NeverStable)
 	}
 
-	// Ensure filtered by important variants; including them all
-	// significantly increases cardinality and slows matview refreshes
-	// to a crawl.
 	return filterVariants(allVariants, importantVariants)
 }
 
