@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/signal"
 	"regexp"
@@ -677,8 +678,35 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
 			return
 		}
+		baseAPIURL := api.GetBaseURL(req)
+		baseFrontendURL := api.GetBaseFrontendURL(req)
+		for i := range gates {
+			injectFeatureGateHATEOASLinks(&gates[i], release, baseAPIURL, baseFrontendURL)
+		}
 		api.RespondWithJSON(http.StatusOK, w, gates)
 	}
+}
+
+func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
+	fg.Links = make(map[string]string, 3)
+
+	annotationFilter := url.QueryEscape(fmt.Sprintf(
+		`{"items":[{"columnField":"name","operatorValue":"contains","value":"FeatureGate:%s]"}]}`,
+		fg.FeatureGate))
+	fg.Links["tests_by_annotation"] = fmt.Sprintf(
+		"%s/api/tests?release=%s&filter=%s",
+		baseAPIURL, release, annotationFilter)
+
+	capabilityFilter := url.QueryEscape(fmt.Sprintf(
+		`{"items":[{"columnField":"name","operatorValue":"contains","value":"openshift-tests should work"},{"columnField":"variants","operatorValue":"contains","value":"Capability:%s"}],"linkOperator":"and"}`,
+		fg.FeatureGate))
+	fg.Links["tests_by_capability"] = fmt.Sprintf(
+		"%s/api/tests?release=%s&filter=%s",
+		baseAPIURL, release, capabilityFilter)
+
+	fg.Links["ui_detail"] = fmt.Sprintf(
+		"%s/feature_gates/%s/%s",
+		baseFrontendURL, release, url.PathEscape(fg.FeatureGate))
 }
 
 func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
