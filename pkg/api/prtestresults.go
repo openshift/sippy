@@ -40,15 +40,14 @@ func testStatusString(status int) string {
 }
 
 // GetPRTestResults fetches test results for a specific pull request from PostgreSQL.
-func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, sha string, startDate, endDate time.Time, includeSuccesses []string) ([]PRTestResult, error) {
+func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly bool, startDate, endDate time.Time, includeSuccesses []string) ([]PRTestResult, error) {
 	log.WithFields(log.Fields{
-		"org":               org,
-		"repo":              repo,
-		"pr_number":         prNumber,
-		"sha":               sha,
-		"start_date":        startDate.Format("2006-01-02"),
-		"end_date":          endDate.Format("2006-01-02"),
-		"include_successes": includeSuccesses,
+		"org":             org,
+		"repo":            repo,
+		"pr_number":       prNumber,
+		"latest_sha_only": latestSHAOnly,
+		"start_date":      startDate.Format("2006-01-02"),
+		"end_date":        endDate.Format("2006-01-02"),
 	}).Info("querying test results for pull request")
 
 	// Start from the PR side and use partition keys (release, timestamp) on
@@ -74,8 +73,8 @@ func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, sha string, st
 		Where("pp.org = ? AND pp.repo = ? AND pp.number = ?", org, repo, prNumber).
 		Where("pjr.timestamp >= ? AND pjr.timestamp < ?", startDate, endDate)
 
-	if sha != "" {
-		query = query.Where("pp.sha = ?", sha)
+	if latestSHAOnly {
+		query = query.Where("pp.sha = (SELECT pp2.sha FROM prow_pull_requests pp2 JOIN prow_job_run_prow_pull_requests jrpr2 ON jrpr2.prow_pull_request_id = pp2.id JOIN prow_job_runs pjr2 ON pjr2.id = jrpr2.prow_job_run_id WHERE pp2.org = ? AND pp2.repo = ? AND pp2.number = ? ORDER BY pjr2.timestamp DESC LIMIT 1)", org, repo, prNumber)
 	}
 
 	// By default only return failures (no flakes, no successes).
@@ -201,10 +200,17 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, dbc *db.DB
 		return
 	}
 
-	sha := param.SafeRead(req, "sha")
+	latestSHAOnly, err := param.ReadBool(req, "latest_sha_only", false)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Sprintf("invalid latest_sha_only: %v", err),
+		})
+		return
+	}
 	includeSuccesses := req.URL.Query()["include_successes"]
 
-	results, err := GetPRTestResults(dbc, org, repo, prNumber, sha, startDate, endDate, includeSuccesses)
+	results, err := GetPRTestResults(dbc, org, repo, prNumber, latestSHAOnly, startDate, endDate, includeSuccesses)
 	if err != nil {
 		log.WithError(err).Error("error fetching PR test results")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]any{

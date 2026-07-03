@@ -52,22 +52,17 @@ func TestPRTestResultsMultiplePRs(t *testing.T) {
 	}
 }
 
-func TestPRTestResultsSHAFilter(t *testing.T) {
-	// SHA "abc123def456" is the SHA for PR 99001 in seed data
+func TestPRTestResultsLatestSHAOnly(t *testing.T) {
 	var results []api.PRTestResult
-	err := util.SippyGet(prTestResultsPath("&sha=abc123def456"), &results)
+	err := util.SippyGet(prTestResultsPath("&latest_sha_only=true"), &results)
 	require.NoError(t, err, "error making http request")
-	require.Greater(t, len(results), 0, "expected results for matching SHA")
+	require.Greater(t, len(results), 0, "expected results for latest SHA")
 
+	// All results should share the same SHA (the one from the most recent job run)
+	sha := results[0].PRSha
 	for _, r := range results {
-		assert.Equal(t, "abc123def456", r.PRSha, "all results should have the filtered SHA")
+		assert.Equal(t, sha, r.PRSha, "all results should have the same SHA when latest_sha_only=true")
 	}
-
-	// Non-existent SHA should return empty
-	var empty []api.PRTestResult
-	err = util.SippyGet(prTestResultsPath("&sha=nonexistent"), &empty)
-	require.NoError(t, err, "error making http request")
-	assert.Empty(t, empty, "expected empty results for non-matching SHA")
 }
 
 func TestPRTestResultsDefaultDateRange(t *testing.T) {
