@@ -294,10 +294,7 @@ export default function FeatureGates(props) {
   ]
 
   const linkForFGTests = (params) => {
-    let fgAnnotation = `FeatureGate:${params.row.feature_gate}]`
-    if (params.row.feature_gate.includes('Install')) {
-      fgAnnotation = 'install should succeed'
-    }
+    const fgAnnotation = `FeatureGate:${params.row.feature_gate}]`
     return pathForTestSubstringByVariant(props.release, fgAnnotation)
   }
 
