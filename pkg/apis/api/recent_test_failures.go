@@ -31,8 +31,10 @@ func (r RecentTestFailure) GetFieldType(param string) ColumnType {
 	switch param {
 	case "test_name", "suite_name", "jira_component":
 		return ColumnTypeString
-	default:
+	case "test_id", "failure_count", "first_failure", "last_failure", "last_pass":
 		return ColumnTypeNumerical
+	default:
+		return ColumnTypeUnknown
 	}
 }
 

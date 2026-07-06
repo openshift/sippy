@@ -321,6 +321,31 @@ type Filterable interface {
 	GetArrayValue(param string) ([]string, error)
 }
 
+// FilterValidationError is returned when a filter or sort field name is not
+// recognized by the target type. Handlers can use errors.As to distinguish
+// input validation errors (HTTP 400) from internal errors (HTTP 500).
+type FilterValidationError struct {
+	Field string
+}
+
+func (e *FilterValidationError) Error() string {
+	return fmt.Sprintf("unknown filter field: %s", e.Field)
+}
+
+// ValidateFields checks that all filter item fields are recognized by the
+// given Filterable. Returns a FilterValidationError for the first unknown field.
+// ValidateSortField checks that a sort field name is recognized by the given
+// Filterable. Returns a FilterValidationError if the field is unknown.
+func ValidateSortField(sortField string, filterable Filterable) error {
+	if filterable == nil || sortField == "" {
+		return nil
+	}
+	if filterable.GetFieldType(sortField) == apitype.ColumnTypeUnknown {
+		return &FilterValidationError{Field: sortField}
+	}
+	return nil
+}
+
 type FilterOptions struct {
 	Filter    *Filter
 	SortField string
@@ -384,7 +409,14 @@ func ApplyFilters(
 	dbClient *gorm.DB,
 	filterable Filterable) (*gorm.DB, error) {
 
-	q := filter.ToSQL(dbClient, filterable)
+	if err := ValidateSortField(sortField, filterable); err != nil {
+		return nil, err
+	}
+
+	q, err := filter.ToSQL(dbClient, filterable)
+	if err != nil {
+		return nil, err
+	}
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
@@ -397,7 +429,14 @@ func ApplyFilters(
 }
 
 func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable Filterable) (*gorm.DB, error) {
-	q := filterOpts.Filter.ToSQL(dbClient, filterable)
+	if err := ValidateSortField(filterOpts.SortField, filterable); err != nil {
+		return nil, err
+	}
+
+	q, err := filterOpts.Filter.ToSQL(dbClient, filterable)
+	if err != nil {
+		return nil, err
+	}
 	if filterOpts.Limit > 0 {
 		q = q.Limit(filterOpts.Limit)
 	}
@@ -440,7 +479,14 @@ filterOuterLoop:
 	return newFilter, oldFilter
 }
 
-func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
+func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) (*gorm.DB, error) {
+	if filterable != nil {
+		for _, f := range filters.Items {
+			if filterable.GetFieldType(f.Field) == apitype.ColumnTypeUnknown {
+				return nil, &FilterValidationError{Field: f.Field}
+			}
+		}
+	}
 
 	orFilters := []string{}
 	orFilterParams := []interface{}{}
@@ -465,7 +511,7 @@ func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	log.Debugf("final query string: %s", queryStr)
 	db = db.Where(queryStr, orFilterParams...)
 
-	return db
+	return db, nil
 }
 
 // BQFilterResult contains the WHERE clause SQL and the BigQuery parameters to use with it.
@@ -478,7 +524,15 @@ type BQFilterResult struct {
 
 // ToBQStr generates a parameterized BigQuery WHERE clause with safe parameter binding
 // to prevent SQL injection. Returns the SQL string and BigQuery parameters ready to use.
-func (filters Filter) ToBQStr(filterable Filterable, paramIndex *int) BQFilterResult {
+func (filters Filter) ToBQStr(filterable Filterable, paramIndex *int) (BQFilterResult, error) {
+	if filterable != nil {
+		for _, f := range filters.Items {
+			if filterable.GetFieldType(f.Field) == apitype.ColumnTypeUnknown {
+				return BQFilterResult{}, &FilterValidationError{Field: f.Field}
+			}
+		}
+	}
+
 	items := []string{}
 	allParams := []bigquery.QueryParameter{}
 
@@ -502,7 +556,7 @@ func (filters Filter) ToBQStr(filterable Filterable, paramIndex *int) BQFilterRe
 	return BQFilterResult{
 		SQL:        queryStr,
 		Parameters: allParams,
-	}
+	}, nil
 }
 
 // Filter applies the selected filters to a filterable item.

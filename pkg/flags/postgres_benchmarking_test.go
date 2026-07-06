@@ -919,14 +919,20 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 					Where("release = ?", benchmarkRelease).
 					Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummer).
 					Group("suite_name, name, jira_component, jira_component_id")
-				rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
+				rawQuery, err := rawFilter.ToSQL(rawQuery, apitype.Test{})
+				if err != nil {
+					return err
+				}
 
 				processedResults := dbc.DB.Table("(?) as results", rawQuery).
 					Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
 					Where("current_runs > 0 or previous_runs > 0")
 
 				finalResults := dbc.DB.Table("(?) as final_results", processedResults)
-				finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
+				finalResults, err = processedFilter.ToSQL(finalResults, apitype.Test{})
+				if err != nil {
+					return err
+				}
 
 				var testReports []apitype.Test
 				res := finalResults.Order("net_improvement asc").Scan(&testReports)
@@ -1077,14 +1083,20 @@ func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
 				Where("release = ?", benchmarkRelease).
 				Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummer).
 				Group("suite_name, name, jira_component, jira_component_id")
-			rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
+			rawQuery, err := rawFilter.ToSQL(rawQuery, apitype.Test{})
+			if err != nil {
+				return err
+			}
 
 			processedResults := dbc.DB.Table("(?) as results", rawQuery).
 				Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
 				Where("current_runs > 0 or previous_runs > 0")
 
 			finalResults := dbc.DB.Table("(?) as final_results", processedResults)
-			finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
+			finalResults, err = processedFilter.ToSQL(finalResults, apitype.Test{})
+			if err != nil {
+				return err
+			}
 
 			var testReports []apitype.Test
 			res := finalResults.Order("net_improvement asc").Scan(&testReports)

@@ -131,8 +131,11 @@ func (wm *WorkloadMetricsRow) GetFieldType(param string) api.ColumnType {
 	switch param {
 	case "workload", "upstreamJob", "release", "networkType", "platform":
 		return api.ColumnTypeString
-	default:
+	case "id", "currentAvgCPU", "previousAvgCPU", "currentAvgMem", "previousAvgMem",
+		"currentMaxCPU", "previousMaxCPU", "currentMaxMem", "previousMaxMem":
 		return api.ColumnTypeNumerical
+	default:
+		return api.ColumnTypeUnknown
 	}
 }
 

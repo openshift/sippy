@@ -2,8 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/openshift/sippy/pkg/filter"
 )
 
 func RespondWithJSON(statusCode int, w http.ResponseWriter, data interface{}) {
@@ -19,4 +22,15 @@ func RespondWithJSON(statusCode int, w http.ResponseWriter, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		fmt.Fprintf(w, `{"message": "could not marshal results: %s"}`, err)
 	}
+}
+
+// RespondWithError writes an error JSON response, returning HTTP 400 for
+// filter validation errors and 500 for everything else.
+func RespondWithError(w http.ResponseWriter, msg string, err error) {
+	code := http.StatusInternalServerError
+	var validationErr *filter.FilterValidationError
+	if errors.As(err, &validationErr) {
+		code = http.StatusBadRequest
+	}
+	RespondWithJSON(code, w, map[string]any{"code": code, "message": msg + err.Error()})
 }

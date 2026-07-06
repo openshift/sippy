@@ -19,6 +19,8 @@ import (
 type ColumnType int
 
 const (
+	ColumnTypeUnknown ColumnType = -1
+
 	ColumnTypeString ColumnType = iota
 	ColumnTypeNumerical
 	ColumnTypeArray
@@ -77,7 +79,7 @@ func (r Repository) GetFieldType(param string) ColumnType {
 	case "worst_premerge_job_failures":
 		return ColumnTypeNumerical
 	default:
-		return ColumnTypeNumerical
+		return ColumnTypeUnknown
 	}
 }
 
@@ -153,7 +155,7 @@ func (pr PullRequest) GetFieldType(param string) ColumnType {
 	case "merged_at":
 		return ColumnTypeTimestamp
 	default:
-		return ColumnTypeNumerical
+		return ColumnTypeUnknown
 	}
 }
 
@@ -270,8 +272,13 @@ func (job Job) GetFieldType(param string) ColumnType {
 	//nolint:goconst
 	case "test_grid_url":
 		return ColumnTypeString
-	default:
+	case "id", "current_pass_percentage", "current_projected_pass_percentage", "current_runs",
+		"previous_pass_percentage", "previous_projected_pass_percentage", "previous_runs",
+		"net_improvement", "open_bugs", "average_runs_to_merge",
+		"current_average_duration_minutes", "previous_average_duration_minutes", "last_pass":
 		return ColumnTypeNumerical
+	default:
+		return ColumnTypeUnknown
 	}
 }
 
@@ -405,8 +412,10 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "pull_request_link":
 		return ColumnTypeString
-	default:
+	case "id", "test_failures":
 		return ColumnTypeNumerical
+	default:
+		return ColumnTypeUnknown
 	}
 }
 
@@ -524,8 +533,20 @@ func (test Test) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "variants":
 		return ColumnTypeArray
-	default:
+	case "id", "current_successes", "current_failures", "current_flakes",
+		"current_pass_percentage", "current_flake_percentage", "current_failure_percentage",
+		"current_working_percentage", "current_runs",
+		"previous_successes", "previous_failures", "previous_flakes",
+		"previous_pass_percentage", "previous_flake_percentage", "previous_failure_percentage",
+		"previous_working_percentage", "previous_runs",
+		"net_failure_improvement", "net_flake_improvement", "net_improvement", "net_working_improvement",
+		"open_bugs",
+		"delta_from_working_average", "working_average", "working_standard_deviation",
+		"delta_from_passing_average", "passing_average", "passing_standard_deviation",
+		"delta_from_flake_average", "flake_average", "flake_standard_deviation":
 		return ColumnTypeNumerical
+	default:
+		return ColumnTypeUnknown
 	}
 }
 
@@ -681,8 +702,20 @@ func (test TestBQ) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "variants":
 		return ColumnTypeArray
-	default:
+	case "id", "current_successes", "current_failures", "current_flakes",
+		"current_pass_percentage", "current_flake_percentage", "current_failure_percentage",
+		"current_working_percentage", "current_runs",
+		"previous_successes", "previous_failures", "previous_flakes",
+		"previous_pass_percentage", "previous_flake_percentage", "previous_failure_percentage",
+		"previous_working_percentage", "previous_runs",
+		"net_failure_improvement", "net_flake_improvement", "net_improvement", "net_working_improvement",
+		"open_bugs",
+		"delta_from_working_average", "working_average", "working_standard_deviation",
+		"delta_from_passing_average", "passing_average", "passing_standard_deviation",
+		"delta_from_flake_average", "flake_average", "flake_standard_deviation":
 		return ColumnTypeNumerical
+	default:
+		return ColumnTypeUnknown
 	}
 }
 
@@ -1050,8 +1083,10 @@ func (fg FeatureGate) GetFieldType(param string) ColumnType {
 		return ColumnTypeArray
 	case "unique_test_count", "first_seen_in_major", "first_seen_in_minor":
 		return ColumnTypeNumerical
-	default:
+	case "feature_gate", "release", "first_seen_in":
 		return ColumnTypeString
+	default:
+		return ColumnTypeUnknown
 	}
 }
 
