@@ -4,68 +4,112 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/bigquery"
-	"cloud.google.com/go/civil"
-
-	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-func TestTransformRelease(t *testing.T) {
-
-	devStart420, _ := time.Parse(time.RFC3339, "2025-04-18T00:00:00.00Z")
-	devStart419, _ := time.Parse(time.RFC3339, "2024-11-25T00:00:00.00Z")
-	gaDate419, _ := time.Parse(time.RFC3339, "2025-05-09T00:00:00.00Z")
+func TestDefinitionToRelease(t *testing.T) {
+	ga := time.Date(2026, 6, 9, 0, 0, 0, 0, time.UTC)
+	devStart := time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
-		name            string
-		releaseRow      sippyv1.ReleaseRow
-		expectedRelease sippyv1.Release
+		name     string
+		def      models.ReleaseDefinition
+		expected sippyv1.Release
 	}{
 		{
-			name:            "release without devel start",
-			releaseRow:      sippyv1.ReleaseRow{Release: "4.20", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}},
-			expectedRelease: sippyv1.Release{Release: "4.20", Status: "Development"},
+			name: "all fields populated",
+			def: models.ReleaseDefinition{
+				Release:              "4.22",
+				PreviousRelease:      "4.21",
+				GADate:               &ga,
+				DevelopmentStartDate: &devStart,
+				Product:              "OCP",
+				Status:               "Full Support",
+				Capabilities:         pq.StringArray{"componentReadiness", "metrics", "payloadTags"},
+			},
+			expected: sippyv1.Release{
+				Release:              "4.22",
+				PreviousRelease:      "4.21",
+				GADate:               &ga,
+				DevelopmentStartDate: &devStart,
+				Product:              "OCP",
+				Status:               "Full Support",
+				Capabilities: map[sippyv1.ReleaseCapability]bool{
+					"componentReadiness": true,
+					"metrics":            true,
+					"payloadTags":        true,
+				},
+			},
 		},
 		{
-			name: "release with devel start",
-			releaseRow: sippyv1.ReleaseRow{Release: "4.20", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}, DevelStartDate: civil.Date{
-				Year:  2025,
-				Month: 4,
-				Day:   18,
-			}},
-			expectedRelease: sippyv1.Release{Release: "4.20", Status: "Development", DevelopmentStartDate: &devStart420},
+			name: "nil GA date (in development)",
+			def: models.ReleaseDefinition{
+				Release:         "5.0",
+				PreviousRelease: "4.22",
+				Product:         "OCP",
+				Status:          "Development",
+				Capabilities:    pq.StringArray{"componentReadiness"},
+			},
+			expected: sippyv1.Release{
+				Release:         "5.0",
+				PreviousRelease: "4.22",
+				Product:         "OCP",
+				Status:          "Development",
+				Capabilities:    map[sippyv1.ReleaseCapability]bool{"componentReadiness": true},
+			},
 		},
 		{
-			name: "release with ga date",
-			releaseRow: sippyv1.ReleaseRow{Release: "4.19", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}, DevelStartDate: civil.Date{
-				Year:  2024,
-				Month: 11,
-				Day:   25,
-			}, GADate: bigquery.NullDate{
-				Date: civil.Date{
-					Year:  2025,
-					Month: 5,
-					Day:   9},
-				Valid: true,
-			}},
-			expectedRelease: sippyv1.Release{Release: "4.19", Status: "Development", DevelopmentStartDate: &devStart419, GADate: &gaDate419},
+			name: "empty capabilities",
+			def: models.ReleaseDefinition{
+				Release:      "automation",
+				Product:      "OCP",
+				Capabilities: pq.StringArray{},
+			},
+			expected: sippyv1.Release{
+				Release:      "automation",
+				Product:      "OCP",
+				Capabilities: map[sippyv1.ReleaseCapability]bool{},
+			},
+		},
+		{
+			name: "nil capabilities",
+			def: models.ReleaseDefinition{
+				Release:      "3.11",
+				Product:      "OCP",
+				Capabilities: nil,
+			},
+			expected: sippyv1.Release{
+				Release:      "3.11",
+				Product:      "OCP",
+				Capabilities: map[sippyv1.ReleaseCapability]bool{},
+			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			release := transformRelease(tc.releaseRow)
-			assert.Equal(t, tc.expectedRelease.Release, release.Release, "unexpected release")
-			assert.Equal(t, tc.expectedRelease.Status, release.Status, "unexpected status")
-			assert.Equal(t, tc.expectedRelease.GADate, release.GADate, "unexpected status")
-			assert.Equal(t, tc.expectedRelease.DevelopmentStartDate, release.DevelopmentStartDate, "unexpected devel start")
+			result := DefinitionToRelease(tc.def)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+func TestGetReleasesFromDB_NilDB(t *testing.T) {
+	_, err := GetReleasesFromDB(t.Context(), nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no database connection")
+}
+
+func TestGetReleaseDatesFromDB_NilDB(t *testing.T) {
+	_, err := GetReleaseDatesFromDB(t.Context(), nil, reqopts.RequestOptions{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no database connection")
 }
 
 func buildFakeReleaseHealthReport(osVersion string) apitype.ReleaseHealthReport {
