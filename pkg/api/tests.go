@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
@@ -348,7 +349,7 @@ func PrintTestsJSONFromDB(
 
 	result, err := spec.buildTestsResultsFromPostgres(req.Context(), dbc, cacheClient)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		RespondWithError(w, "error building test report", err)
 		return
 	}
 
@@ -368,7 +369,7 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 
 	result, err := spec.buildTestsResultsFromBigQuery(req.Context(), bqc)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		RespondWithError(w, "error building test report", err)
 		return
 	}
 
@@ -382,7 +383,7 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 
 func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, error) {
 	if lookbackDays < 1 {
-		return -1, -1, errors.New("Lookback Days must be greater than zero")
+		return -1, -1, errors.New("lookback days must be greater than zero")
 	}
 	// Calculate the truncated time
 	now := time.Now().UTC()
@@ -442,7 +443,7 @@ func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, 
 		testResults{},
 	)
 	if errs != nil {
-		return result, fmt.Errorf("error(s) querying test results: %v", errs)
+		return result, errors.Join(errs...)
 	}
 	return result, nil
 }
@@ -609,7 +610,7 @@ func (spec *TestResultsSpec) buildTestsResultsFromBigQuery(ctx context.Context, 
 		generator,
 		testResultsBQ{})
 	if errs != nil {
-		return result, fmt.Errorf("error(s) querying test results: %v", errs)
+		return result, errors.Join(errs...)
 	}
 	return result, nil
 }
@@ -788,7 +789,7 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 		}
 		if err != nil {
 			log.WithError(err).Error("error parsing test result from bigquery")
-			errs = append(errs, errors.Wrap(err, "error parsing test result from bigquery"))
+			errs = append(errs, pkgerrors.Wrap(err, "error parsing test result from bigquery"))
 			continue
 		}
 		result = append(result, row)
@@ -807,7 +808,7 @@ func GetTestCapabilitiesFromDB(ctx context.Context, dbc *db.DB) ([]string, error
 		Pluck("capability", &capabilities).Error
 	if err != nil {
 		log.WithError(err).Error("error querying test capabilities from database")
-		return []string{}, errors.Wrap(err, "error querying test capabilities from database")
+		return []string{}, pkgerrors.Wrap(err, "error querying test capabilities from database")
 	}
 	return capabilities, nil
 }
@@ -824,7 +825,7 @@ func GetTestLifecyclesFromDB(ctx context.Context, dbc *db.DB) ([]string, error) 
 		Pluck("pair", &pairs).Error
 	if err != nil {
 		log.WithError(err).Error("error querying test lifecycles from database")
-		return []string{}, errors.Wrap(err, "error querying test lifecycles from database")
+		return []string{}, pkgerrors.Wrap(err, "error querying test lifecycles from database")
 	}
 
 	var lifecycles []string
