@@ -372,10 +372,11 @@ var CollapsedVariantExclusions = []string{"never-stable", "aggregated"}
 var testReportCollapsedMatView = buildCollapsedMatViewSQL()
 
 func buildCollapsedMatViewSQL() string {
-	var clauses []string
-	for _, v := range CollapsedVariantExclusions {
-		clauses = append(clauses, fmt.Sprintf("NOT ('%s' = any(variants))", v))
+	quotedExclusions := make([]string, len(CollapsedVariantExclusions))
+	for i, v := range CollapsedVariantExclusions {
+		quotedExclusions[i] = fmt.Sprintf("'%s'", v)
 	}
+	excludedArray := "ARRAY[" + strings.Join(quotedExclusions, ",") + "]"
 	return `
 SELECT suite_name, name, id, jira_component, jira_component_id, release,
     SUM(current_runs)::bigint AS current_runs,
@@ -388,7 +389,9 @@ SELECT suite_name, name, id, jira_component, jira_component_id, release,
     SUM(previous_flakes)::bigint AS previous_flakes,
     (array_agg(open_bugs))[1] AS open_bugs
 FROM |||SOURCE|||
-WHERE ` + strings.Join(clauses, "\n  AND ") + `
+WHERE variant_combination_id NOT IN (
+    SELECT id FROM variant_combinations WHERE ` + excludedArray + ` && variants
+)
 GROUP BY suite_name, name, id, jira_component, jira_component_id, release
 `
 }
