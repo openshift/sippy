@@ -55,10 +55,15 @@ Read ALL new comments together before making any changes. Do not process them on
 2. **Spot contradictions**: When comments conflict (e.g. "remove these tests" + "we need tests"), synthesize the underlying intent. The reviewer likely wants tests but implemented *differently*, not the same tests re-added.
 3. **If comments genuinely conflict**, reply on the PR asking the reviewer to clarify. Do not guess.
 4. **Plan a coherent set of changes** that addresses all feedback as a unified response. Then implement.
-5. For each comment, reply on the PR:
-   ```bash
-   gh api repos/openshift/sippy/pulls/PR_NUMBER/comments/COMMENT_ID/replies -f body='explanation of what you changed'
-   ```
+5. Reply to each comment on the PR. Use the correct endpoint for the comment type:
+   - **Inline review comments** (from `pulls/PR_NUMBER/comments`): reply on the review thread:
+     ```bash
+     gh api repos/openshift/sippy/pulls/PR_NUMBER/comments/COMMENT_ID/replies -f body='explanation'
+     ```
+   - **PR conversation comments** (from `issues/PR_NUMBER/comments`): post a new comment:
+     ```bash
+     gh api repos/openshift/sippy/issues/PR_NUMBER/comments -f body='explanation'
+     ```
 6. If a comment is not actionable, reply explaining why.
 
 ### Follow existing codebase patterns
