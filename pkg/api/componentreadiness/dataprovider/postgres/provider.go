@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
@@ -439,7 +440,7 @@ func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions r
 	allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error) {
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
-	for _, k := range reqOptions.VariantOption.DBGroupBy.List() {
+	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
 		dbGroupBy[k] = true
 	}
 
@@ -465,7 +466,7 @@ func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
-	for _, k := range reqOptions.VariantOption.DBGroupBy.List() {
+	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
 		dbGroupBy[k] = true
 	}
 
@@ -537,7 +538,7 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 	}
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
-	for _, k := range reqOptions.VariantOption.DBGroupBy.List() {
+	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
 		dbGroupBy[k] = true
 	}
 

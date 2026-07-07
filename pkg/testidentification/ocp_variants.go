@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // openshiftJobsNeverStable is a list of jobs that have permafailed
@@ -36,7 +36,8 @@ var importantVariants = []string{
 	"SecurityMode",
 	"Installer",
 	"JobTier",
-	"Procedure",
+	"Component",
+	"Capability",
 	"OS",
 }
 
@@ -55,7 +56,7 @@ GROUP BY
 
 type openshiftVariants struct {
 	jobVariants   map[string][]string
-	variantValues map[string]sets.String
+	variantValues map[string]sets.Set[string]
 }
 
 type variant struct {
@@ -79,7 +80,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	}
 
 	mgr := openshiftVariants{
-		variantValues: make(map[string]sets.String),
+		variantValues: make(map[string]sets.Set[string]),
 		jobVariants:   make(map[string][]string),
 	}
 
@@ -94,7 +95,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	}
 
 	jobVariants := make(map[string][]string)
-	variantKeyValues := make(map[string]sets.String)
+	variantKeyValues := make(map[string]sets.Set[string])
 	for {
 		var row jobVariant
 		err := it.Next(&row)
@@ -106,10 +107,10 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 		}
 		for _, v := range row.Variants {
 			jobVariants[row.JobName] = append(jobVariants[row.JobName], fmt.Sprintf("%s:%s", v.VariantName, v.VariantValue))
-			if _, ok := variantKeyValues[v.VariantValue]; ok {
+			if _, ok := variantKeyValues[v.VariantName]; ok {
 				variantKeyValues[v.VariantName].Insert(v.VariantValue)
 			} else {
-				variantKeyValues[v.VariantName] = sets.NewString(v.VariantValue)
+				variantKeyValues[v.VariantName] = sets.New(v.VariantValue)
 			}
 		}
 	}
@@ -122,7 +123,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	return &mgr, nil
 }
 
-func (v *openshiftVariants) AllPlatforms() sets.String {
+func (v *openshiftVariants) AllPlatforms() sets.Set[string] {
 	return v.variantValues["Platform"]
 }
 

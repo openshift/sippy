@@ -16,9 +16,9 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const artifactURLFmt = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s"
@@ -80,7 +80,7 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 // filter to just the ones needed to fill out the response
 func separateCompletedAndRequeries(cachedArtifacts []JobRunArtifact, fileAttrs []*storage.ObjectAttrs) ([]JobRunArtifact, []*storage.ObjectAttrs) {
 	completedArtifacts := []JobRunArtifact{}
-	completedPaths := sets.NewString()
+	completedPaths := sets.New[string]()
 	for _, artifact := range cachedArtifacts {
 		if !artifact.TimedOut {
 			completedArtifacts = append(completedArtifacts, artifact)

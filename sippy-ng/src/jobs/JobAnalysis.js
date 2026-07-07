@@ -26,6 +26,7 @@ import {
   pathForJobsWithFilter,
   safeEncodeURIComponent,
   SafeJSONParam,
+  useStableJSONQueryParam,
   withSort,
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
@@ -55,7 +56,7 @@ export function JobAnalysis(props) {
   const { setPageContextForChat, unsetPageContextForChat } =
     usePageContextForChat()
 
-  const [filterModel, setFilterModel] = useQueryParam('filters', SafeJSONParam)
+  const [filterModel, setFilterModel] = useStableJSONQueryParam('filters')
   const [period, setPeriod] = useQueryParam('period', StringParam)
   const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
 
@@ -159,7 +160,7 @@ export function JobAnalysis(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, period])
+  }, [filterModel, period, props.release])
 
   // Update page context for chat
   useEffect(() => {

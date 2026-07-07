@@ -1,7 +1,7 @@
 import { DataGrid } from '@mui/x-data-grid'
 import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -60,9 +60,9 @@ function ReleasePayloadPullRequests(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    SafeJSONParam
+    props.filterModel
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(
@@ -158,7 +158,7 @@ function ReleasePayloadPullRequests(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel])
+  }, [filterModel, sort, sortField])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

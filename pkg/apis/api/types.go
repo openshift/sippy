@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	bq "cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
@@ -241,6 +240,9 @@ type Job struct {
 	PreviousInfraFails              int     `json:"previous_infra_fails,omitempty"`
 	NetImprovement                  float64 `json:"net_improvement"`
 
+	CurrentAverageDurationMinutes  int `json:"current_average_duration_minutes"`
+	PreviousAverageDurationMinutes int `json:"previous_average_duration_minutes"`
+
 	TestGridURL string `json:"test_grid_url"`
 	OpenBugs    int    `json:"open_bugs"`
 }
@@ -313,6 +315,10 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(job.OpenBugs), nil
 	case "average_runs_to_merge":
 		return job.AverageRetestsToMerge, nil
+	case "current_average_duration_minutes":
+		return float64(job.CurrentAverageDurationMinutes), nil
+	case "previous_average_duration_minutes":
+		return float64(job.PreviousAverageDurationMinutes), nil
 	case "last_pass":
 		return float64(job.LastPass.Unix()), nil
 	default:
@@ -850,9 +856,9 @@ type FailedPayload struct {
 
 // JobPayload represents the payload release tag information for a job run.
 type JobPayload struct {
-	ProwjobJobName string        `json:"prowjob_job_name" bigquery:"prowjob_job_name"`
-	Payload        bq.NullString `json:"payload" bigquery:"release_verify_tag"`
-	ProwjobBuildID string        `json:"prowjob_build_id" bigquery:"prowjob_build_id"`
+	ProwjobJobName string  `json:"prowjob_job_name"`
+	Payload        *string `json:"payload"`
+	ProwjobBuildID string  `json:"prowjob_build_id"`
 }
 
 // CalendarEvent is an API type representing a FullCalendar.io event type, for use

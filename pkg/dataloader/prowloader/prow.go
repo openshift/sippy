@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
@@ -29,6 +31,7 @@ import (
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -47,7 +50,6 @@ import (
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // gcsPathStrip is used to strip out everything but the path, i.e. match "/view/gs/origin-ci-test/"
@@ -571,17 +573,27 @@ ORDER BY
 		}
 		st := time.Now()
 		dLog.Infof("inserting %d rows", len(insertRows))
-		err = pl.dbc.DB.Transaction(func(tx *gorm.DB) error {
-			err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 2000).Error
-			if err != nil {
-				log.WithError(err).Error("error inserting rows")
-			}
-			return err
-		})
+		n, err := pl.dbc.CopyFrom(ctx, "test_analysis_by_job_by_dates",
+			[]string{"date", "test_id", "release", "job_name", "test_name", "runs", "passes", "flakes", "failures"},
+			pgx.CopyFromSlice(len(insertRows), func(i int) ([]any, error) {
+				r := &insertRows[i]
+				return []any{
+					r.Date,
+					r.TestID,
+					r.Release,
+					r.JobName,
+					r.TestName,
+					r.Runs,
+					r.Passes,
+					r.Flakes,
+					r.Failures,
+				}, nil
+			}),
+		)
 		if err != nil {
-			return err
+			return fmt.Errorf("COPY test_analysis_by_job_by_dates: %w", err)
 		}
-		dLog.Infof("insert complete after %s", time.Since(st))
+		dLog.Infof("inserted %d rows in %s", n, time.Since(st))
 	}
 	return nil
 }
@@ -734,8 +746,8 @@ func jobsJSONToProwJobs(jobJSON []byte) ([]prow.ProwJob, error) {
 func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	if releaseConfig, ok := pl.config.Releases[release]; ok {
 		dashboard := "redhat-openshift-ocp-release-" + release
-		blockingJobs := sets.NewString(releaseConfig.BlockingJobs...)
-		informingJobs := sets.NewString(releaseConfig.InformingJobs...)
+		blockingJobs := sets.New(releaseConfig.BlockingJobs...)
+		informingJobs := sets.New(releaseConfig.InformingJobs...)
 		jobType := ""
 		if blockingJobs.Has(jobName) {
 			jobType = "blocking"
@@ -1191,14 +1203,39 @@ func (pl *ProwLoader) prefetchLabels(prowJobs []prow.ProwJob) (map[string]pq.Str
 const LabelsDatasetEnv = "JOB_LABELS_DATASET"
 const LabelsTableName = "job_labels"
 
-// GatherLabelsFromBQ queries BigQuery for labels for multiple job runs in a single query.
+// BigQuery HTTP request body limit is ~10MB; 50k build IDs stays well under that.
+const labelsBatchSize = 50000
+
+// GatherLabelsFromBQ queries BigQuery for labels for multiple job runs.
+// Large ID lists are automatically batched to avoid exceeding BigQuery's request size limit.
 // The startTime is used to constrain the scan to recent date partitions.
-// Returns a map of buildID → labels.
+// Returns a map of buildID → labels. If a batch fails, the returned map contains
+// labels from previously completed batches and the error is also returned.
 func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, buildIDs []string, startTime time.Time) (map[string]pq.StringArray, error) {
 	if bqClient == nil || len(buildIDs) == 0 {
 		return nil, nil
 	}
 
+	result := make(map[string]pq.StringArray, len(buildIDs))
+	totalBatches := (len(buildIDs) + labelsBatchSize - 1) / labelsBatchSize
+
+	for i := 0; i < len(buildIDs); i += labelsBatchSize {
+		batch := buildIDs[i:min(i+labelsBatchSize, len(buildIDs))]
+		batchNum := i/labelsBatchSize + 1
+
+		log.WithField("batch", batchNum).WithField("totalBatches", totalBatches).WithField("batchSize", len(batch)).Info("querying BigQuery labels batch")
+
+		batchResult, err := gatherLabelsBatch(ctx, bqClient, batch, startTime)
+		if err != nil {
+			return result, err
+		}
+		maps.Copy(result, batchResult)
+	}
+
+	return result, nil
+}
+
+func gatherLabelsBatch(ctx context.Context, bqClient *bqcachedclient.Client, buildIDs []string, startTime time.Time) (map[string]pq.StringArray, error) {
 	dataset := os.Getenv(LabelsDatasetEnv)
 	if dataset == "" {
 		dataset = bqClient.Dataset

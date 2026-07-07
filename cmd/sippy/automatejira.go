@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
@@ -23,7 +24,6 @@ import (
 	"github.com/openshift/sippy/pkg/componentreadiness/jiraautomator"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/flags/configflags"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type AutomateJiraFlags struct {
@@ -37,7 +37,7 @@ type AutomateJiraFlags struct {
 	SippyURL                string
 	IncludeComponentsStr    string
 	// IncludeComponents is a set of string in the format of jiraProject:jiraComponent
-	IncludeComponents   sets.String
+	IncludeComponents   sets.Set[string]
 	ColumnThresholdStrs []string
 	ColumnThresholds    map[jiraautomator.Variant]int
 	JiraAccount         string
@@ -79,7 +79,7 @@ func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
 	if len(f.JiraAccount) == 0 {
 		return fmt.Errorf("--jira-account is required")
 	}
-	f.IncludeComponents = sets.NewString()
+	f.IncludeComponents = sets.New[string]()
 	if len(f.IncludeComponentsStr) > 0 {
 		components := strings.Split(f.IncludeComponentsStr, ",")
 		for _, c := range components {

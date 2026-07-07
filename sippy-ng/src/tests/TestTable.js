@@ -16,7 +16,7 @@ import {
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
   safeEncodeURIComponent,
-  SafeJSONParam,
+  useStableJSONQueryParam,
   withSort,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
@@ -137,9 +137,9 @@ function TestTable(props) {
 
   const [view = props.view, setView] = useQueryParam('view', StringParam)
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    SafeJSONParam
+    props.filterModel
   )
 
   const [sortField = props.sortField, setSortField] = useQueryParam(

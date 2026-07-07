@@ -8,18 +8,18 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type GitHubCommenter struct {
 	githubClient *github.Client
 	dbc          *db.DB
-	includeRepos map[string]sets.String
-	excludeRepos map[string]sets.String
+	includeRepos map[string]sets.Set[string]
+	excludeRepos map[string]sets.Set[string]
 }
 
 const TrtCommentIDKey = `trt_comment_id`
@@ -45,12 +45,12 @@ func NewGitHubCommenter(githubClient *github.Client, dbc *db.DB, excludedRepos, 
 	return ghCommenter, nil
 }
 
-func buildOrgRepos(in []string) (map[string]sets.String, error) {
+func buildOrgRepos(in []string) (map[string]sets.Set[string], error) {
 	if len(in) < 1 {
 		return nil, nil
 	}
 
-	out := make(map[string]sets.String)
+	out := make(map[string]sets.Set[string])
 
 	for _, r := range in {
 		ar := strings.Split(r, `/`)
@@ -71,7 +71,7 @@ func buildOrgRepos(in []string) (map[string]sets.String, error) {
 		orgMap := out[org]
 
 		if orgMap == nil {
-			orgMap = sets.NewString()
+			orgMap = sets.New[string]()
 			out[org] = orgMap
 		}
 

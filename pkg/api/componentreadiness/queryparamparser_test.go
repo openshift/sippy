@@ -16,9 +16,9 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var (
@@ -91,8 +91,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			"Topology":     {"single"},
 		},
 		// also remove Topology from columnGroupBy and dbGroupBy
-		ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-		DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
+		ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+		DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
 	}
 
 	views := []crview.View{
@@ -143,8 +143,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:upi"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"FeatureSet":   {"default"},
@@ -201,8 +201,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:upi"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"FeatureSet":   {"default"},
@@ -243,8 +243,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"view", "4.17-main"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"FeatureSet":   {"default", "techpreview"},
@@ -295,8 +295,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Topology:single"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
 				// URL params completely replace view's includeVariants
 				IncludeVariants: map[string][]string{
 					"Platform": {"gcp"},
@@ -356,8 +356,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"compareVariant", "Topology:single"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Network", "FeatureSet", "Upgrade", "Installer"),
+				ColumnGroupBy: sets.New("Platform", "Network"),
+				DBGroupBy:     sets.New("Platform", "Network", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64", "arm64"},
 					"Topology":     {"ha"},
@@ -406,8 +406,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"view", "4.17-cross"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"Installer":    {"ipi", "upi"},

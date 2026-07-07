@@ -313,7 +313,7 @@ func (l *RegressionCacheLoader) generateAndCacheReport(
 	report, errs := api.GetDataFromCacheOrGenerate(
 		ctx,
 		l.bqClient.Cache, generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(ctx), componentreadiness.ComponentReportCacheKeyPrefix, nil),
+		api.NewCacheSpec(generator.GetCacheKey(), componentreadiness.ComponentReportCacheKeyPrefix, nil),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 	if len(errs) > 0 {
@@ -378,7 +378,7 @@ func (l *RegressionCacheLoader) cacheTestDetailsReports(
 			*strErrors = append(*strErrors, fmt.Sprintf("skipping cache for report with no analyses: testID=%s", report.TestID))
 			continue
 		}
-		genCacheKey := generator.GetCacheKey(ctx)
+		genCacheKey := generator.GetCacheKey()
 		newTIDOpts := reqopts.TestIdentification{
 			TestID:            report.TestID,
 			RequestedVariants: report.Variants,

@@ -766,6 +766,7 @@ type componentCapabilityEntry struct {
 var componentCapabilityPatterns = []componentCapabilityEntry{
 	{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning", "spotcheck-30d"},
 	{[]string{"-etcd-scaling"}, "Etcd", "Scaling", "spotcheck-30d"},
+	{[]string{"-aws-ovn-installer-dualstack"}, "Installer", "AWSDualStackInstall", "candidate"},
 }
 
 // setComponentAndCapability identifies the component and capability owner for a job.
@@ -1137,6 +1138,9 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-osd-ccs-gcp", "osd-gcp"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
+		// iso-no-registry agent baremetal jobs deploy on bare metal
+		// but don't have -metal in their name; match before the generic -metal pattern.
+		{"-iso-no-registry", "metal"},
 		{"-metal", "metal"},
 		{"-nutanix", "nutanix"},
 		{"-openstack", "openstack"},
