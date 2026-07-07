@@ -85,26 +85,9 @@ var testSuitePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^lp-ocp-compat--`),
 }
 
-// GetSuiteID retrieves or creates a suite by name if it matches the import criteria
-// (either in the explicit testSuites list or matches a dynamic pattern).
-// Returns the suite ID on success, nil if the suite should not be imported or on error.
-func GetSuiteID(db *gorm.DB, name string) *uint {
-	if name == "" {
-		return nil
-	}
-
-	// Check if this suite should be imported
-	if !isSuiteImportable(name) {
-		return nil
-	}
-
-	// Get existing or create new suite
-	return getOrCreateSuite(db, name)
-}
-
-// isSuiteImportable checks if a suite name should be imported based on
+// IsSuiteImportable checks if a suite name should be imported based on
 // the explicit testSuites list or dynamic patterns.
-func isSuiteImportable(name string) bool {
+func IsSuiteImportable(name string) bool {
 	// Check explicit list
 	for _, s := range testSuites {
 		if s == name {
