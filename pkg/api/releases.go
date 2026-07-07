@@ -512,6 +512,66 @@ func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
 	return release
 }
 
+// GetReleaseRowsFromBigQuery fetches raw release rows from BigQuery's Releases table.
+func GetReleaseRowsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]sippyv1.ReleaseRow, error) {
+	var rows []sippyv1.ReleaseRow
+
+	queryString := fmt.Sprintf("SELECT * FROM `%s` ORDER BY DevelStartDate DESC", client.ReleasesTable)
+
+	q := client.Query(ctx, bqlabel.ReleaseAllReleases, queryString)
+	it, err := q.Read(ctx)
+	if err != nil {
+		log.WithError(err).Error("error querying releases data from bigquery")
+		return rows, err
+	}
+
+	for {
+		r := sippyv1.ReleaseRow{}
+		err := it.Next(&r)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing release row from bigquery")
+			return rows, err
+		}
+		rows = append(rows, r)
+	}
+	return rows, nil
+}
+
+// GetReleasesFromDB queries release metadata from the release_definitions table
+// and converts to []sippyv1.Release for use by existing callers.
+func GetReleasesFromDB(ctx context.Context, dbc *db.DB) ([]sippyv1.Release, error) {
+	var defs []models.ReleaseDefinition
+	err := dbc.DB.WithContext(ctx).Order("development_start_date DESC").Find(&defs).Error
+	if err != nil {
+		return nil, fmt.Errorf("querying release definitions: %w", err)
+	}
+	releases := make([]sippyv1.Release, 0, len(defs))
+	for _, def := range defs {
+		releases = append(releases, DefinitionToRelease(def))
+	}
+	return releases, nil
+}
+
+// DefinitionToRelease converts a models.ReleaseDefinition to a sippyv1.Release.
+func DefinitionToRelease(def models.ReleaseDefinition) sippyv1.Release {
+	caps := make(map[sippyv1.ReleaseCapability]bool, len(def.Capabilities))
+	for _, cap := range def.Capabilities {
+		caps[sippyv1.ReleaseCapability(cap)] = true
+	}
+	return sippyv1.Release{
+		Release:              def.Release,
+		Status:               def.Status,
+		GADate:               def.GADate,
+		DevelopmentStartDate: def.DevelopmentStartDate,
+		PreviousRelease:      def.PreviousRelease,
+		Capabilities:         caps,
+		Product:              def.Product,
+	}
+}
+
 // BuildReleasesResponse creates the API response structure for releases
 func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) apitype.Releases {
 	gaDateMap := make(map[string]time.Time)
