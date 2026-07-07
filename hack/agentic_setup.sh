@@ -16,4 +16,4 @@ echo "Starting services..."
 "${REPO_ROOT}/.devcontainer/init-services.sh"
 
 echo "Running post-create setup..."
-"${REPO_ROOT}/.devcontainer/post-create.sh"
+SKIP_CLAUDE_INSTALL=true "${REPO_ROOT}/.devcontainer/post-create.sh"
