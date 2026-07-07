@@ -37,6 +37,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
+	releasedefloader "github.com/openshift/sippy/pkg/dataloader/releasedefloader"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/dataloader/testownershiploader"
 	"github.com/openshift/sippy/pkg/db"
@@ -100,7 +101,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.JiraFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
-	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates"}, "Which data sources to use for data loading")
+	fs.StringArrayVar(&f.Loaders, "loader", []string{"release-definitions", "prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
 	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
@@ -152,8 +153,6 @@ func NewLoadCommand() *cobra.Command {
 				cacheClient = nil // error hygiene, since we pass this down to quite a few functions
 			}
 
-			releaseConfigs := []sippyv1.Release{}
-
 			// initializing a bigquery client different from the normal one
 			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "load")
 			bqc, bigqueryErr := bqcachedclient.New(
@@ -164,9 +163,22 @@ func NewLoadCommand() *cobra.Command {
 				if f.CacheFlags.EnablePersistentCaching {
 					bqc = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqc)
 				}
+			}
+
+			// Read release definitions from PG for downstream loader construction.
+			// Falls back to BQ if PG is empty (e.g., first run before the
+			// release-definitions loader has populated the table).
+			releaseConfigs := []sippyv1.Release{}
+			if dbErr == nil {
+				releaseConfigs, err = api.GetReleasesFromDB(context.Background(), dbc)
+				if err != nil {
+					return errors.Wrapf(err, "error querying release definitions from postgres")
+				}
+			}
+			if len(releaseConfigs) == 0 && bigqueryErr == nil {
 				releaseConfigs, err = api.GetReleasesFromBigQuery(context.Background(), bqc)
 				if err != nil {
-					return errors.Wrapf(err, "error querying releases from bq")
+					return errors.Wrapf(err, "error querying releases from bigquery")
 				}
 			}
 
@@ -201,6 +213,17 @@ func NewLoadCommand() *cobra.Command {
 
 			var regressionCacheAdded bool
 			for _, l := range f.Loaders {
+				if l == "release-definitions" {
+					if bigqueryErr != nil {
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents release-definitions loading")
+					}
+					if dbErr != nil {
+						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents release-definitions loading")
+					}
+					rdl := releasedefloader.NewReleaseDefinitionLoader(ctx, dbc, bqc)
+					loaders = append(loaders, rdl)
+				}
+
 				// TODO: remove "component-readiness-cache" and "regression-tracker" once the cronjob
 				// manifests are updated to use "regression-cache".
 				if l == "component-readiness-cache" || l == "regression-tracker" || l == "regression-cache" {
