@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -33,7 +34,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 const (
@@ -104,7 +104,7 @@ func GetComponentReport(
 	report, errs = api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		generator.getCache(), generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(ctx), ComponentReportCacheKeyPrefix, nil),
+		api.NewCacheSpec(generator.GetCacheKey(), ComponentReportCacheKeyPrefix, nil),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 	if len(errs) > 0 {
@@ -193,7 +193,7 @@ type GeneratorCacheKey struct {
 // we cache. This provides a safer option than using the generator previously which carries some public fields
 // which would be serialized and thus cause unnecessary cache misses.
 // Here we should normalize to output the same cache key regardless of how fields were initialized. (nil vs empty, etc)
-func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCacheKey {
+func (c *ComponentReportGenerator) GetCacheKey() GeneratorCacheKey {
 	cacheKey := GeneratorCacheKey{
 		BaseRelease:    c.ReqOptions.BaseRelease,
 		SampleRelease:  c.ReqOptions.SampleRelease,
@@ -610,7 +610,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 	allColumns := map[crtest.ColumnID]struct{}{}
 
 	// merge basis and sample map keys and evaluate each key once
-	keySet := sets.NewString(slices.Collect(maps.Keys(basisStatusMap))...)
+	keySet := sets.New(slices.Collect(maps.Keys(basisStatusMap))...)
 	keySet.Insert(slices.Collect(maps.Keys(sampleStatusMap))...)
 	for testKeyStr := range keySet {
 		cellReport := testdetails.TestComparison{Explanations: []string{}} // The actual stats we return over the API

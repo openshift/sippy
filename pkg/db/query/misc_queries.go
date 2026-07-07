@@ -5,16 +5,16 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testidentification"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // PlatformInfraSuccess takes a list of platforms and a period (default
 // or twoDay), and returns a map containing keys for platform, and infra
 // success percentage for that period.
-func PlatformInfraSuccess(dbc *db.DB, platforms sets.String, period string) (map[string]float64, error) {
+func PlatformInfraSuccess(dbc *db.DB, platforms sets.Set[string], period string) (map[string]float64, error) {
 	now := time.Now()
 	results := make(map[string]float64)
 
@@ -40,7 +40,7 @@ func PlatformInfraSuccess(dbc *db.DB, platforms sets.String, period string) (map
 		Select(`
 			variant,
 			SUM(current_successes) * 100.0 / NULLIF(SUM(current_runs), 0) AS pass_percentage`).
-		Where("variant in ?", platforms.List()).
+		Where("variant in ?", platforms.UnsortedList()).
 		Group("variant").Scan(&sqlResults)
 
 	for _, r := range sqlResults {

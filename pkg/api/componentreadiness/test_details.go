@@ -17,8 +17,8 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -36,7 +36,7 @@ func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc
 		ctx,
 		generator.getCache(),
 		generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(ctx), TestDetailsReportCacheKeyPrefix, nil),
+		api.NewCacheSpec(generator.GetCacheKey(), TestDetailsReportCacheKeyPrefix, nil),
 		generator.GenerateTestDetailsReport,
 		testdetails.Report{})
 	if len(errs) > 0 {
@@ -188,7 +188,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	if testIDOption.TestID == "" {
 		return testdetails.Report{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
-	for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
+	for _, v := range sets.List(c.ReqOptions.VariantOption.DBGroupBy) {
 		if _, ok := testIDOption.RequestedVariants[v]; !ok {
 			return testdetails.Report{}, []error{
 				fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
@@ -487,7 +487,7 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
 
 	// merge the job names from both base and sample status and assess each once
-	jobNames := sets.NewString(slices.Collect(maps.Keys(baseStatus))...)
+	jobNames := sets.New(slices.Collect(maps.Keys(baseStatus))...)
 	jobNames.Insert(slices.Collect(maps.Keys(sampleStatus))...)
 	for job := range jobNames {
 		// tally up base job stats and matching sample job stats (if any); record job names, component, etc in the result

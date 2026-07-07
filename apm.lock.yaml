@@ -104,7 +104,7 @@ local_deployed_file_hashes:
   .claude/commands/sippy-generate-release-views.md: sha256:eb4c9eeeea2ab2a90e8a8839147d8a1a309ea6ce3dafd397c6d2485c93068a9a
   .claude/commands/sippy-update-ga-release-views.md: sha256:4a5589bacc05127e427a2de4d34a8f13e05e297bdf6ebf7473c9e71f47a6b4f4
   .claude/commands/sippy-update-job-variant.md: sha256:f88742dddeec5024931959a8330fdce362ffdd9b8825e808830ac346605cbd16
-  .claude/rules/backend.md: sha256:b1bd6bacccc8bfc8ab2c060496fede3bdcece46b59cf218cd7cddc3617ead4c5
+  .claude/rules/backend.md: sha256:ac3d618bf53dc847f52e0e13f6a3675301722259d9fbf12b4a40a191b880d05a
   .claude/rules/config.md: sha256:96c5e42c039230f1e4e7f9ba56d04e6f76f23deeecdd858634c440d6029a6a83
   .claude/rules/dev-commands.md: sha256:eb32bdc640add2044138807572ea1afb73ee1bba038f5098032a89987a7ddc04
   .claude/rules/frontend.md: sha256:ff22046c5b951769218bbdf36499e67c70896811b8ef161ca6d3729a3423997d
@@ -124,7 +124,7 @@ local_deployed_file_hashes:
   .cursor/commands/sippy-generate-release-views.md: sha256:eb4c9eeeea2ab2a90e8a8839147d8a1a309ea6ce3dafd397c6d2485c93068a9a
   .cursor/commands/sippy-update-ga-release-views.md: sha256:4a5589bacc05127e427a2de4d34a8f13e05e297bdf6ebf7473c9e71f47a6b4f4
   .cursor/commands/sippy-update-job-variant.md: sha256:f88742dddeec5024931959a8330fdce362ffdd9b8825e808830ac346605cbd16
-  .cursor/rules/backend.mdc: sha256:5ff740fc76c25ee64beb7f768399da6ef6510ecca8147e5c2f81fbb110043084
+  .cursor/rules/backend.mdc: sha256:8930c2071ddd02fe3c7597b77bffa726c45ffedd66ec587d86adb23fb6814e38
   .cursor/rules/config.mdc: sha256:d6e2195399bbb26a3fef7e54bd01862ffce39d89dce8aabdb0b89c89028192eb
   .cursor/rules/dev-commands.mdc: sha256:3dc8a3ef5cbb22ebb09b7fe3785f24a32ab2baa4488c5514c9c6210b0af6c4eb
   .cursor/rules/frontend.mdc: sha256:497f39372724f1ae127181fe3dac9ea9a95a51c532b68ccfee6080832cf9c556
