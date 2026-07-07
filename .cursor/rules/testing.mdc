@@ -12,3 +12,10 @@ globs: "**/*_test.go"
   transformation, result aggregation and analysis). Enable testing against real storage systems with
   functional tests that skip unless the user supplies connection credentials via environment
   variables (see `releasesync_functional_test.go` for the pattern).
+* For code that needs to call the database or external services, use **function type fields**
+  on the struct (e.g. `type counterFunc func(id uint) (int, error)`) so tests can inject
+  stubs without a real database connection. The production constructor wires the real
+  implementation; tests supply a closure. See `regressiontracker.go` for an example
+  (`failureCounterFunc`).
+* Prefer **table-driven tests** with descriptive case names. Search the same package for
+  existing test patterns before writing new ones.

@@ -33,18 +33,52 @@ git fetch fork BRANCH_NAME   # or origin if no fork remote
 git checkout -b BRANCH_NAME fork/BRANCH_NAME
 ```
 
-## Step 4: Address each comment
+## Step 4: Understand trajectory before acting
 
-1. Read and understand each review comment.
-2. Explore the relevant code to understand the context.
-3. Make the appropriate code changes.
-4. For each comment, reply on the PR:
+Before making ANY changes, review the PR's history to understand what has already happened:
+
+1. Run `git log --oneline -20` to see commits already on this branch.
+2. Run `git diff main --stat` to see the current scope of the PR.
+3. Read the full PR conversation thread for context on prior decisions:
+   ```bash
+   gh api repos/OWNER/REPO/issues/PR_NUMBER/comments --paginate
+   gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments --paginate
+   ```
+
+**Critical rule:** If the git log shows a pattern where code was added and then removed (or vice versa), do NOT re-add the same code. The reviewer rejected that approach. Find a different implementation strategy.
+
+## Step 5: Address comments holistically
+
+Read ALL new comments together before making any changes. Do not process them one by one.
+
+1. **Identify themes**: Group related comments by the concern they raise.
+2. **Spot contradictions**: When comments conflict (e.g. "remove these tests" + "we need tests"), synthesize the underlying intent. The reviewer likely wants tests but implemented *differently*, not the same tests re-added.
+3. **If comments genuinely conflict**, reply on the PR asking the reviewer to clarify. Do not guess.
+4. **Plan a coherent set of changes** that addresses all feedback as a unified response. Then implement.
+5. For each comment, reply on the PR:
    ```bash
    gh api repos/openshift/sippy/pulls/PR_NUMBER/comments/COMMENT_ID/replies -f body='explanation of what you changed'
    ```
-5. If a comment is not actionable, reply explaining why.
+6. If a comment is not actionable, reply explaining why.
 
-## Step 5: Verify and push
+### Follow existing codebase patterns
+
+Before implementing any change, especially tests:
+- Search the same package for existing patterns: `find . -name "*_test.go" -path "*/RELEVANT_PACKAGE/*"`
+- Look for function-type fields on structs (dependency injection for testability).
+- Check for table-driven test patterns in nearby test files.
+- Do NOT introduce testing or coding patterns not found elsewhere in the codebase.
+- Prefer reusing established patterns over inventing new approaches.
+
+### When to push back
+
+Not every comment requires a code change:
+- **Questions** ("Why did you...?") get explanations, not code changes.
+- **Already addressed**: If a concern was fixed in a previous commit, cite the commit hash.
+- **Contradictions**: If the requested change contradicts another reviewer's earlier feedback, reply explaining the conflict and ask for direction.
+- **Over-engineering**: Avoid adding unnecessary nil checks, extra parameters, fallback paths, or defensive code unless the existing codebase follows that pattern.
+
+## Step 6: Verify and push
 
 1. Run `make test` and `make lint`.
 2. Run e2e tests using the `run_e2e` MCP tool. E2e tests MUST pass before pushing.

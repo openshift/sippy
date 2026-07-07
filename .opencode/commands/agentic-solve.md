@@ -18,9 +18,14 @@ Read and understand the issue thoroughly — summary, description, and all comme
 ## Step 2: Implement the fix
 
 1. Explore the codebase to understand the relevant code.
-2. Implement the fix or feature described in the issue.
-3. Run `make test` to verify your changes work.
-4. Run `make lint` to check for linting issues.
+2. Before writing new code, search the codebase for existing patterns that solve similar
+   problems. Prefer reusing established patterns (dependency injection via function type
+   fields, table-driven tests, existing utility functions) over inventing new approaches.
+3. Implement the fix or feature described in the issue. Prefer the simplest implementation
+   that solves the problem. Avoid unnecessary nil checks, fallback parameters, or defensive
+   code unless the existing codebase follows that pattern.
+4. Run `make test` to verify your changes work.
+5. Run `make lint` to check for linting issues.
 
 ## Step 3: Test locally
 
