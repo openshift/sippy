@@ -172,16 +172,15 @@ type TestAnalysisByJobByDate struct {
 // TestDailySummary stores pre-aggregated daily test results used to
 // accelerate matview refreshes. Table managed by migration 000002.
 type TestDailySummary struct {
-	TestID               uint      `gorm:"column:test_id;not null"`
-	ProwJobID            uint      `gorm:"column:prow_job_id;not null"`
-	SuiteID              uint      `gorm:"column:suite_id;not null;default:0"`
-	Release              string    `gorm:"column:release;not null"`
-	SummaryDate          time.Time `gorm:"column:summary_date;type:date;not null"`
-	VariantCombinationID *uint     `gorm:"column:variant_combination_id"`
-	Successes            int32     `gorm:"column:successes;not null;default:0"`
-	Failures             int32     `gorm:"column:failures;not null;default:0"`
-	Flakes               int32     `gorm:"column:flakes;not null;default:0"`
-	Runs                 int32     `gorm:"column:runs;not null;default:0"`
+	TestID      uint      `gorm:"column:test_id;not null"`
+	ProwJobID   uint      `gorm:"column:prow_job_id;not null"`
+	SuiteID     uint      `gorm:"column:suite_id;not null;default:0"`
+	Release     string    `gorm:"column:release;not null"`
+	SummaryDate time.Time `gorm:"column:summary_date;type:date;not null"`
+	Successes   int32     `gorm:"column:successes;not null;default:0"`
+	Failures    int32     `gorm:"column:failures;not null;default:0"`
+	Flakes      int32     `gorm:"column:flakes;not null;default:0"`
+	Runs        int32     `gorm:"column:runs;not null;default:0"`
 }
 
 // Bug represents a Jira bug.

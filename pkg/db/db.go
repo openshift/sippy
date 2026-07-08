@@ -548,10 +548,9 @@ func ensureTriageSymptomCascade(db *gorm.DB) error {
 // function is created by migration 000003; the table is created by
 // AutoMigrate, so this must run after both.
 //
-// When the trigger is first attached, existing rows are backfilled
-// and test_daily_summaries is truncated so the next refresh
-// populates it with variant_combination_id set. In steady state
-// (trigger already exists) this is a single catalog lookup.
+// When the trigger is first attached, existing rows are backfilled.
+// In steady state (trigger already exists) this is a single catalog
+// lookup.
 func ensureVariantCombinationTrigger(db *gorm.DB) error {
 	return db.Exec(`
 		DO $$
@@ -577,8 +576,6 @@ func ensureVariantCombinationTrigger(db *gorm.DB) error {
 				WHERE prow_jobs.variants = vc.variants
 				  AND prow_jobs.variants IS NOT NULL
 				  AND prow_jobs.variant_combination_id IS NULL;
-
-				TRUNCATE test_daily_summaries;
 			END IF;
 		END $$`).Error
 }
