@@ -43,7 +43,7 @@ func TestIsBadRequestError(t *testing.T) {
 			name: "googleapi 400 with invalidQuery reason",
 			err: &googleapi.Error{
 				Code:   400,
-				Errors: []googleapi.ErrorItem{{Reason: "invalidQuery", Message: "Unrecognized name: bad_col"}},
+				Errors: []googleapi.ErrorItem{{Reason: bqInvalidQuery, Message: "Unrecognized name: bad_col"}},
 			},
 			want: true,
 		},
@@ -72,7 +72,7 @@ func TestIsBadRequestError(t *testing.T) {
 			name: "wrapped googleapi 400 invalidQuery",
 			err: fmt.Errorf("bq failed: %w", &googleapi.Error{
 				Code:   400,
-				Errors: []googleapi.ErrorItem{{Reason: "invalidQuery"}},
+				Errors: []googleapi.ErrorItem{{Reason: bqInvalidQuery}},
 			}),
 			want: true,
 		},

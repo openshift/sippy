@@ -39,6 +39,10 @@ func RespondWithError(w http.ResponseWriter, msg string, err error) {
 
 const pgUndefinedColumn = "42703"
 
+// bqInvalidQuery matches BigQuery's error reason for query-level errors
+// such as unrecognized column names, invalid syntax, and type mismatches.
+const bqInvalidQuery = "invalidQuery"
+
 func IsBadRequestError(err error) bool {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == pgUndefinedColumn {
@@ -46,7 +50,7 @@ func IsBadRequestError(err error) bool {
 	}
 	var apiErr *googleapi.Error
 	if errors.As(err, &apiErr) && apiErr.Code == http.StatusBadRequest &&
-		len(apiErr.Errors) > 0 && apiErr.Errors[0].Reason == "invalidQuery" {
+		len(apiErr.Errors) > 0 && apiErr.Errors[0].Reason == bqInvalidQuery {
 		return true
 	}
 	return false
