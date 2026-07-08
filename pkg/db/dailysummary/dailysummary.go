@@ -17,7 +17,7 @@ const (
 	parallelWorkers     = 4
 )
 
-var valueColumns = []string{"variant_combination_id", "successes", "failures", "flakes", "runs"}
+var valueColumns = []string{"successes", "failures", "flakes", "runs"}
 
 var (
 	insertSQL        = buildInsertSQL()
@@ -33,17 +33,15 @@ func buildInsertSQL() string {
 			COALESCE(pjrt.suite_id, 0),
 			pjrt.prow_job_run_release,
 			date(pjrt.prow_job_run_timestamp),
-			pj.variant_combination_id,
 			COUNT(*) FILTER (WHERE pjrt.status = 1),
 			COUNT(*) FILTER (WHERE pjrt.status = 12),
 			COUNT(*) FILTER (WHERE pjrt.status = 13),
 			COUNT(*)
 		FROM prow_job_run_tests pjrt
-		JOIN prow_jobs pj ON pjrt.prow_job_id = pj.id
 		WHERE pjrt.prow_job_run_timestamp >= ?::date
 		  AND pjrt.prow_job_run_timestamp < (?::date + INTERVAL '1 day')
 		  AND pjrt.prow_job_run_release = ?
-		GROUP BY pjrt.test_id, pjrt.prow_job_id, COALESCE(pjrt.suite_id, 0), pjrt.prow_job_run_release, date(pjrt.prow_job_run_timestamp), pj.variant_combination_id`,
+		GROUP BY pjrt.test_id, pjrt.prow_job_id, COALESCE(pjrt.suite_id, 0), pjrt.prow_job_run_release, date(pjrt.prow_job_run_timestamp)`,
 		strings.Join(valueColumns, ", "))
 }
 
