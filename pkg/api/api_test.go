@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -37,6 +38,11 @@ func TestIsBadRequestError(t *testing.T) {
 		{
 			name: "wrapped pg undefined column",
 			err:  fmt.Errorf("query failed: %w", &pgconn.PgError{Code: "42703"}),
+			want: true,
+		},
+		{
+			name: "joined pg undefined column",
+			err:  errors.Join(fmt.Errorf("first error"), &pgconn.PgError{Code: "42703"}),
 			want: true,
 		},
 		{
