@@ -12,3 +12,13 @@ paths:
   transformation, result aggregation and analysis). Enable testing against real storage systems with
   functional tests that skip unless the user supplies connection credentials via environment
   variables (see `releasesync_functional_test.go` for the pattern).
+* When a struct method needs a **single, narrow query or RPC** that would otherwise force a
+  database connection in tests, extract that call behind a **function type field** on the struct
+  (e.g. `type counterFunc func(id uint) (int, error)`). This is a thin adapter seam, not a
+  general-purpose mock — the function type replaces one specific call, not an entire storage
+  client. The production constructor wires the real implementation; tests supply a closure.
+  See `regressiontracker.go` (`failureCounterFunc`) for the pattern. This does **not** override
+  the rule above: do not mock or stub BigQuery, GCS, Postgres clients, or any broad storage
+  interface.
+* Prefer **table-driven tests** with descriptive case names. Search the same package for
+  existing test patterns before writing new ones.

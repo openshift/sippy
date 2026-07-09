@@ -9,7 +9,7 @@ import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
-from dotenv import dotenv_values, load_dotenv
+from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -82,11 +82,11 @@ def _validate_redis_url(url: str) -> str | None:
 def _data_mode() -> str:
     """Return the active data mode: 'seed' or 'prod-like'.
 
-    Re-reads ``.devcontainer/.env`` on every call so mode changes take effect
-    without restarting the MCP server.
+    Uses ``SIPPY_DATA_MODE`` from the process environment, which
+    ``load_dotenv(override=False)`` at startup populates from
+    ``.devcontainer/.env`` when no existing env var is set.
     """
-    env_vals = dotenv_values(_DEVCONTAINER_ENV) if _DEVCONTAINER_ENV.is_file() else {}
-    mode = env_vals.get("SIPPY_DATA_MODE", "seed").lower()
+    mode = os.environ.get("SIPPY_DATA_MODE", "seed").lower()
     if mode not in ("seed", "prod-like"):
         mode = "seed"
     return mode
