@@ -505,7 +505,8 @@ function TestTable(props) {
                 to={pathForExactTestAnalysisWithFilter(
                   props.release,
                   params.row.name,
-                  filterModel
+                  filterModel,
+                  period
                 )}
               >
                 {params.value}
@@ -741,7 +742,10 @@ function TestTable(props) {
               '/tests/' +
               props.release +
               '/analysis?test=' +
-              safeEncodeURIComponent(params.row.name)
+              safeEncodeURIComponent(params.row.name) +
+              (period && period !== 'default'
+                ? '&period=' + safeEncodeURIComponent(period)
+                : '')
             }
           >
             {params.value}
@@ -792,7 +796,8 @@ function TestTable(props) {
                   pathForJobRunsWithTestFailure(
                     props.release,
                     params.row.name,
-                    jobRunsFilter
+                    jobRunsFilter,
+                    period
                   ),
                   'timestamp',
                   'desc'
@@ -816,7 +821,8 @@ function TestTable(props) {
                   pathForJobRunsWithTestFlake(
                     props.release,
                     params.row.name,
-                    jobRunsFilter
+                    jobRunsFilter,
+                    period
                   ),
                   'timestamp',
                   'desc'
