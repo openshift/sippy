@@ -124,10 +124,14 @@ export function TestAnalysis(props) {
     setPageContextForChat({
       page: 'test-analysis',
       url: window.location.href,
-      instructions: `The user is viewing detailed analysis for a specific test. 
+      instructions: `The user is viewing detailed analysis for a specific test.
         You can use your database query tools to answer additional questions about this test.
         When querying the database, use the test name and apply the same filters shown in the context.
-        The test statistics shown are for the current 7-day period compared to the previous 7-day period.`,
+        The test statistics shown are for the current ${
+          period === 'twoDay' ? '2-day' : '7-day'
+        } period compared to the previous ${
+        period === 'twoDay' ? '2-day' : '7-day'
+      } period.`,
       suggestions: [
         'What are the most common failure modes for this test?',
         {

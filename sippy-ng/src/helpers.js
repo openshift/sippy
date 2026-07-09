@@ -160,8 +160,6 @@ export function pathForExactTestAnalysis(
   excludedVariants,
   period
 ) {
-  console.log(excludedVariants)
-
   let filters = [filterFor('name', 'equals', test)]
   if (Array.isArray(excludedVariants)) {
     excludedVariants.forEach((variant) => {
