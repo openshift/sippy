@@ -390,8 +390,8 @@ SELECT suite_name, name, id, jira_component, jira_component_id, release,
     SUM(previous_flakes)::bigint AS previous_flakes,
     (array_agg(open_bugs))[1] AS open_bugs
 FROM |||SOURCE|||
-WHERE variant_combination_id NOT IN (
-    SELECT id FROM variant_combinations WHERE ` + excludedArray + ` && variants
+WHERE NOT EXISTS (
+    SELECT 1 FROM variant_combinations WHERE ` + excludedArray + ` && variants AND id = variant_combination_id
 )
 GROUP BY suite_name, name, id, jira_component, jira_component_id, release
 `
