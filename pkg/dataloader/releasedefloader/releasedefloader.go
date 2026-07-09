@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
@@ -92,12 +91,10 @@ func ReleaseRowToDefinition(r v1.ReleaseRow) models.ReleaseDefinition {
 		def.Patch = &p
 	}
 	if r.GADate.Valid {
-		ga := r.GADate.Date.In(time.UTC)
-		def.GADate = &ga
+		def.GADate = &r.GADate.Date
 	}
 	if r.DevelStartDate.IsValid() {
-		ds := r.DevelStartDate.In(time.UTC)
-		def.DevelopmentStartDate = &ds
+		def.DevelopmentStartDate = &r.DevelStartDate
 	}
 	return def
 }

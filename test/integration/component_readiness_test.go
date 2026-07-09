@@ -111,7 +111,7 @@ func createGARawData(t *testing.T, dbc *db.DB, release string, windowDays int, t
 	require.NoError(t, dbc.DB.Create(&ga).Error)
 }
 
-func createReleaseDefinition(t *testing.T, dbc *db.DB, release string, gaDate *time.Time) {
+func createReleaseDefinition(t *testing.T, dbc *db.DB, release string, gaDate *civil.Date) {
 	t.Helper()
 	rd := models.ReleaseDefinition{
 		Release: release,
@@ -761,7 +761,7 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		ts, ok := result[key.Encode()]
 		require.True(t, ok, "expected result for test with failures")
 		assert.False(t, ts.LastFailure.IsZero(), "LastFailure should be populated when prefix_max_last_failure is set")
-		assert.True(t, ts.LastFailure.Equal(failTime),
+		assert.Equal(t, failTime, ts.LastFailure,
 			"LastFailure should match prefix_max_last_failure: got %v, want %v", ts.LastFailure, failTime)
 	})
 
@@ -808,7 +808,7 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		ts, ok := result[key.Encode()]
 		require.True(t, ok, "expected collapsed group result")
 		assert.Equal(t, 14, ts.TotalCount, "runs should aggregate: 6 + 8")
-		assert.True(t, ts.LastFailure.Equal(laterFailure),
+		assert.Equal(t, laterFailure, ts.LastFailure,
 			"LastFailure should be MAX across jobs: got %v, want %v", ts.LastFailure, laterFailure)
 	})
 
@@ -853,7 +853,7 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		}
 		ts, ok := result[key.Encode()]
 		require.True(t, ok, "expected collapsed group result")
-		assert.True(t, ts.LastFailure.Equal(failTime),
+		assert.Equal(t, failTime, ts.LastFailure,
 			"LastFailure should be the non-NULL value: got %v, want %v", ts.LastFailure, failTime)
 	})
 
@@ -1146,13 +1146,12 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 	release := "4.15"
 
 	// GA date in the past
-	gaDate := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	gaDate := civil.Date{Year: 2024, Month: 3, Day: 1}
 	createReleaseDefinition(t, dbc, release, &gaDate)
 
-	gaCivil := civil.DateOf(gaDate)
-	gaEnd := utils.GAWindowEnd(gaCivil)
+	gaEnd := utils.GAWindowEnd(gaDate)
 	windowDays := 30
-	gaStart := gaCivil.AddDays(-windowDays)
+	gaStart := gaDate.AddDays(-windowDays)
 
 	vcAWS := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 	jobAWS := createProwJobWithVC(t, dbc, "periodic-ga-aws-ovn", release, vcAWS)
@@ -1258,7 +1257,7 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 		dbc := crTestDB(t)
 		release := "4.20"
 
-		futureGA := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+		futureGA := civil.Date{Year: 2030, Month: 1, Day: 1}
 		createReleaseDefinition(t, dbc, release, &futureGA)
 
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
@@ -1297,7 +1296,7 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 		release := "4.13"
 
 		// Set GADate such that the window is 15 days (not in GAWindows: [1, 30, 90])
-		gaDate := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+		gaDate := civil.Date{Year: 2024, Month: 6, Day: 1}
 		createReleaseDefinition(t, dbc, release, &gaDate)
 
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
@@ -1315,8 +1314,7 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 95, 88, 4)
 
 		provider := postgres.NewPostgresProvider(dbc, nil)
-		gaCivil := civil.DateOf(gaDate)
-		gaEnd := utils.GAWindowEnd(gaCivil)
+		gaEnd := utils.GAWindowEnd(gaDate)
 		opts := defaultReqOptions(release)
 		opts.BaseRelease = reqopts.Release{
 			Name:  release,
@@ -1651,13 +1649,12 @@ func TestQueryBaseJobRunTestStatus_AggregateFallback(t *testing.T) {
 		dbc := crTestDB(t)
 		release := "4.15"
 
-		gaDate := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+		gaDate := civil.Date{Year: 2024, Month: 3, Day: 1}
 		createReleaseDefinition(t, dbc, release, &gaDate)
 
-		gaCivil := civil.DateOf(gaDate)
-		gaEnd := utils.GAWindowEnd(gaCivil)
+		gaEnd := utils.GAWindowEnd(gaDate)
 		windowDays := 30
-		gaStart := gaCivil.AddDays(-windowDays)
+		gaStart := gaDate.AddDays(-windowDays)
 
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-ga-agg-aws", release, vc)
@@ -2314,9 +2311,9 @@ func TestLookupJobVariants(t *testing.T) {
 func TestQueryReleases(t *testing.T) {
 	dbc := crTestDB(t)
 
-	earlier := time.Date(2023, 6, 1, 0, 0, 0, 0, time.UTC)
-	later := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	gaDate := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	earlier := civil.Date{Year: 2023, Month: 6, Day: 1}
+	later := civil.Date{Year: 2024, Month: 6, Day: 1}
+	gaDate := civil.Date{Year: 2024, Month: 3, Day: 1}
 
 	rd1 := models.ReleaseDefinition{
 		Release:              "4.15",
@@ -2351,15 +2348,15 @@ func TestQueryReleases(t *testing.T) {
 	assert.Equal(t, "4.15", releases[1].Release)
 	assert.Equal(t, "GA", releases[1].Status)
 	require.NotNil(t, releases[1].GADate)
-	assert.True(t, releases[1].GADate.Equal(gaDate))
+	assert.Equal(t, gaDate, *releases[1].GADate)
 }
 
 func TestQueryReleaseDates(t *testing.T) {
 	dbc := crTestDB(t)
 
-	gaDate := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	devStart := time.Date(2023, 6, 1, 0, 0, 0, 0, time.UTC)
-	devStartNoGA := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	gaDate := civil.Date{Year: 2024, Month: 3, Day: 1}
+	devStart := civil.Date{Year: 2023, Month: 6, Day: 1}
+	devStartNoGA := civil.Date{Year: 2024, Month: 6, Day: 1}
 
 	rdWithGA := models.ReleaseDefinition{
 		Release:              "4.15",
@@ -2394,7 +2391,7 @@ func TestQueryReleaseDates(t *testing.T) {
 	require.NotNil(t, withGA, "release 4.15 should be in results")
 	require.NotNil(t, withGA.Start, "release with GADate should have Start")
 	require.NotNil(t, withGA.End, "release with GADate should have End")
-	assert.True(t, withGA.End.Equal(gaDate), "End should be the GA date")
+	assert.Equal(t, gaDate.In(time.UTC), *withGA.End, "End should be the GA date")
 
 	require.NotNil(t, withoutGA, "release 4.16 should be in results")
 	assert.Nil(t, withoutGA.Start, "release without GADate should have nil Start")
@@ -2405,13 +2402,12 @@ func TestGAPathAggregatesMultipleJobs(t *testing.T) {
 	dbc := crTestDB(t)
 	release := "4.15"
 
-	gaDate := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	gaDate := civil.Date{Year: 2024, Month: 3, Day: 1}
 	createReleaseDefinition(t, dbc, release, &gaDate)
 
-	gaCivil := civil.DateOf(gaDate)
-	gaEnd := utils.GAWindowEnd(gaCivil)
+	gaEnd := utils.GAWindowEnd(gaDate)
 	windowDays := 30
-	gaStart := gaCivil.AddDays(-windowDays)
+	gaStart := gaDate.AddDays(-windowDays)
 
 	vc1 := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 	vc2 := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:sdn"})
@@ -3314,7 +3310,7 @@ func TestTestDetailsReport_LastFailureTracking(t *testing.T) {
 
 		require.Len(t, report.Analyses, 1)
 		require.NotNil(t, report.Analyses[0].LastFailure, "LastFailure should be set when sample has failures")
-		assert.True(t, report.Analyses[0].LastFailure.Equal(failTS),
+		assert.Equal(t, failTS, *report.Analyses[0].LastFailure,
 			"LastFailure should equal the failing run's timestamp: got %v, want %v",
 			*report.Analyses[0].LastFailure, failTS)
 	})

@@ -281,8 +281,8 @@ func TestDailyTotalsBackfill_TracksFirstAndLastFailureTimestamps(t *testing.T) {
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).First(&dt).Error)
 	require.NotNil(t, dt.FirstFailureTimestamp)
 	require.NotNil(t, dt.LastFailureTimestamp)
-	assert.True(t, dt.FirstFailureTimestamp.Equal(early))
-	assert.True(t, dt.LastFailureTimestamp.Equal(late))
+	assert.Equal(t, early, *dt.FirstFailureTimestamp)
+	assert.Equal(t, late, *dt.LastFailureTimestamp)
 }
 
 func TestDailyTotalsBackfill_TracksFirstAndLastSuccessTimestamps(t *testing.T) {
@@ -305,8 +305,8 @@ func TestDailyTotalsBackfill_TracksFirstAndLastSuccessTimestamps(t *testing.T) {
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).First(&dt).Error)
 	require.NotNil(t, dt.FirstSuccessTimestamp)
 	require.NotNil(t, dt.LastSuccessTimestamp)
-	assert.True(t, dt.FirstSuccessTimestamp.Equal(early))
-	assert.True(t, dt.LastSuccessTimestamp.Equal(late))
+	assert.Equal(t, early, *dt.FirstSuccessTimestamp)
+	assert.Equal(t, late, *dt.LastSuccessTimestamp)
 }
 
 func TestDailyTotalsBackfill_RerunAfterRawDataRemovedDropsStaleRow(t *testing.T) {
@@ -433,7 +433,7 @@ func TestCumulativeSummariesBackfill_CarriesForwardWhenNoNewDataToday(t *testing
 	assert.Equal(t, int64(1), cs.PrefixSumFailures)
 	assert.Equal(t, int64(6), cs.PrefixSumRuns)
 	require.NotNil(t, cs.PrefixMaxLastFailure, "last-failure timestamp should carry forward along with the counts")
-	assert.True(t, cs.PrefixMaxLastFailure.Equal(lastFailure))
+	assert.Equal(t, lastFailure, *cs.PrefixMaxLastFailure)
 }
 
 func TestCumulativeSummariesBackfill_NewTestAppearsAlongsideExistingAccumulation(t *testing.T) {
@@ -536,7 +536,7 @@ func TestCumulativeSummariesBackfill_TracksLatestFailureTimestamp(t *testing.T) 
 	var cs models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("date = ? AND test_id = ?", today, test.ID).First(&cs).Error)
 	require.NotNil(t, cs.PrefixMaxLastFailure)
-	assert.True(t, cs.PrefixMaxLastFailure.Equal(laterFailure))
+	assert.Equal(t, laterFailure, *cs.PrefixMaxLastFailure)
 }
 
 func TestCumulativeSummariesBackfill_TracksLatestSuccessTimestamp(t *testing.T) {
@@ -558,7 +558,7 @@ func TestCumulativeSummariesBackfill_TracksLatestSuccessTimestamp(t *testing.T) 
 	var cs models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("date = ? AND test_id = ?", today, test.ID).First(&cs).Error)
 	require.NotNil(t, cs.PrefixMaxLastSuccess)
-	assert.True(t, cs.PrefixMaxLastSuccess.Equal(laterSuccess))
+	assert.Equal(t, laterSuccess, *cs.PrefixMaxLastSuccess)
 }
 
 func TestCumulativeSummariesBackfill_SuiteChangeStartsAnIndependentChain(t *testing.T) {

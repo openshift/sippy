@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -238,8 +239,8 @@ type jobDetail struct {
 
 type jobDetailAPIResult struct {
 	Jobs  []jobDetail `json:"jobs"`
-	Start int         `json:"start"`
-	End   int         `json:"end"`
+	Start civil.Date  `json:"start"`
+	End   civil.Date  `json:"end"`
 }
 
 func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
@@ -252,29 +253,31 @@ func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
 	return ret
 }
 
-// JobDetailsReport runs the job details query without HTTP response handling.
-func JobDetailsReport(dbc *db.DB, release, jobSearchStr string, reportEnd time.Time) ([]*models.ProwJobRun, error) {
-	since := reportEnd.Add(-14 * 24 * time.Hour)
+// JobDetailsReport runs the job details query for the half-open date range [start, end).
+func JobDetailsReport(dbc *db.DB, release, jobSearchStr string, start, end civil.Date) ([]*models.ProwJobRun, error) {
 	prowJobRuns := make([]*models.ProwJobRun, 0)
 	res := dbc.DB.Joins("ProwJob").
 		Where("name LIKE ?", "%"+jobSearchStr+"%").
-		Where("timestamp > ?", since).
+		Where("timestamp >= ? AND timestamp < ?", start, end).
 		Where("release = ?", release).
-		Preload("Tests", "status = ? AND prow_job_run_release = ? AND prow_job_run_timestamp > ?", 12, release, since).
+		Preload("Tests", "status = ? AND prow_job_run_release = ? AND prow_job_run_timestamp >= ? AND prow_job_run_timestamp < ?", 12, release, start, end).
 		Preload("Tests.Test").
 		Find(&prowJobRuns)
 	if res.Error != nil {
 		return nil, res.Error
 	}
-	log.WithFields(log.Fields{"prowJobRuns": len(prowJobRuns), "since": since}).Info("loaded ProwJobRuns from db")
+	log.WithFields(log.Fields{"prowJobRuns": len(prowJobRuns), "start": start, "end": end}).Info("loaded ProwJobRuns from db")
 	return prowJobRuns, nil
 }
 
+const jobDetailsLookbackDays = 14
+
 // PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
 func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string, reportEnd time.Time) error {
-	var start, end int
+	end := civil.DateOf(reportEnd.UTC())
+	start := end.AddDays(-jobDetailsLookbackDays)
 
-	prowJobRuns, err := JobDetailsReport(dbc, release, jobSearchStr, reportEnd)
+	prowJobRuns, err := JobDetailsReport(dbc, release, jobSearchStr, start, end.AddDays(1))
 	if err != nil {
 		log.Errorf("error querying %s ProwJobRuns from db: %v", jobSearchStr, err)
 		return err
@@ -303,7 +306,7 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 			InfrastructureFailure: pjr.InfrastructureFailure,
 			KnownFailure:          pjr.KnownFailure,
 			Succeeded:             pjr.Succeeded,
-			Timestamp:             int(pjr.Timestamp.Unix() * 1000),
+			Timestamp:             pjr.Timestamp,
 			OverallResult:         pjr.OverallResult,
 		}
 		jobDetails[jobName].Results = append(jobDetails[jobName].Results, newRun)

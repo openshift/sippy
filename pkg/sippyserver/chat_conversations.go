@@ -29,7 +29,7 @@ type CreateChatConversationRequest struct {
 // ChatConversationResponse is the response for a chat conversation with HATEOAS links
 type ChatConversationResponse struct {
 	ID        uuid.UUID         `json:"id"`
-	CreatedAt string            `json:"created_at"`
+	CreatedAt time.Time         `json:"created_at"`
 	User      string            `json:"user"`
 	Links     map[string]string `json:"links"`
 }
@@ -114,7 +114,7 @@ func (s *Server) jsonCreateChatConversation(w http.ResponseWriter, req *http.Req
 	baseURL := api.GetBaseURL(req)
 	response := ChatConversationResponse{
 		ID:        conversation.ID,
-		CreatedAt: conversation.CreatedAt.Format(time.RFC3339),
+		CreatedAt: conversation.CreatedAt,
 		User:      conversation.User,
 		Links: map[string]string{
 			"self": fmt.Sprintf("%s/api/chat/conversations/%s", baseURL, conversation.ID.String()),

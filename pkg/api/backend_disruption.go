@@ -32,8 +32,8 @@ func GetBackendDisruptionByRun(ctx context.Context, bigQueryClient *bq.Client, j
     DisruptionSeconds,
     JobName,
     JobRunName,
-    CAST(JobRunStartTime AS STRING) AS JobRunStartTime,
-    CAST(JobRunEndTime AS STRING) AS JobRunEndTime,
+    JobRunStartTime,
+    JobRunEndTime,
     Cluster,
     ReleaseTag,
     MasterNodesUpdated,
@@ -76,16 +76,16 @@ ORDER BY JobRunName, DisruptionSeconds DESC`
 	}
 
 	type bqRow struct {
-		BackendName        string              `bigquery:"BackendName"`
-		DisruptionSeconds  int                 `bigquery:"DisruptionSeconds"`
-		JobName            bigquery.NullString `bigquery:"JobName"`
-		JobRunName         string              `bigquery:"JobRunName"`
-		JobRunStartTime    bigquery.NullString `bigquery:"JobRunStartTime"`
-		JobRunEndTime      bigquery.NullString `bigquery:"JobRunEndTime"`
-		Cluster            bigquery.NullString `bigquery:"Cluster"`
-		ReleaseTag         bigquery.NullString `bigquery:"ReleaseTag"`
-		MasterNodesUpdated bigquery.NullString `bigquery:"MasterNodesUpdated"`
-		JobRunStatus       bigquery.NullString `bigquery:"JobRunStatus"`
+		BackendName        string                 `bigquery:"BackendName"`
+		DisruptionSeconds  int                    `bigquery:"DisruptionSeconds"`
+		JobName            bigquery.NullString    `bigquery:"JobName"`
+		JobRunName         string                 `bigquery:"JobRunName"`
+		JobRunStartTime    bigquery.NullTimestamp `bigquery:"JobRunStartTime"`
+		JobRunEndTime      bigquery.NullTimestamp `bigquery:"JobRunEndTime"`
+		Cluster            bigquery.NullString    `bigquery:"Cluster"`
+		ReleaseTag         bigquery.NullString    `bigquery:"ReleaseTag"`
+		MasterNodesUpdated bigquery.NullString    `bigquery:"MasterNodesUpdated"`
+		JobRunStatus       bigquery.NullString    `bigquery:"JobRunStatus"`
 	}
 
 	var rows []apitype.BackendDisruptionRunRow
@@ -108,10 +108,12 @@ ORDER BY JobRunName, DisruptionSeconds DESC`
 			apiRow.JobName = row.JobName.StringVal
 		}
 		if row.JobRunStartTime.Valid {
-			apiRow.JobRunStartTime = row.JobRunStartTime.StringVal
+			t := row.JobRunStartTime.Timestamp
+			apiRow.JobRunStartTime = &t
 		}
 		if row.JobRunEndTime.Valid {
-			apiRow.JobRunEndTime = row.JobRunEndTime.StringVal
+			t := row.JobRunEndTime.Timestamp
+			apiRow.JobRunEndTime = &t
 		}
 		if row.Cluster.Valid {
 			apiRow.Cluster = row.Cluster.StringVal
