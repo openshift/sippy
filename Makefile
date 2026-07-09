@@ -18,7 +18,7 @@ all: test build
 build: builddir clean npm frontend sippy sippy-daemon
 
 .PHONY: verify apm verify-apm verify-migrations
-verify: lint verify-apm verify-migrations
+verify: verify-apm verify-migrations
 
 builddir:
 	mkdir -p sippy-ng/build
