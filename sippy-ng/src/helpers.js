@@ -216,8 +216,8 @@ export function pathForVariantsWithTestFailure(release, variant, test) {
 
 function timestampFilterForPeriod(period) {
   const days = period === 'twoDay' ? 2 : 7
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-  return filterFor('timestamp', '>', `${cutoff}`)
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  return filterFor('timestamp', '>', cutoff.toISOString())
 }
 
 export function pathForJobRunsWithTestFailure(release, test, filter, period) {

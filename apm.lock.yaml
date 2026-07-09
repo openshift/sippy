@@ -94,10 +94,10 @@ local_deployed_file_hashes:
   .claude/commands/sippy-generate-release-views.md: sha256:eb4c9eeeea2ab2a90e8a8839147d8a1a309ea6ce3dafd397c6d2485c93068a9a
   .claude/commands/sippy-update-ga-release-views.md: sha256:4a5589bacc05127e427a2de4d34a8f13e05e297bdf6ebf7473c9e71f47a6b4f4
   .claude/commands/sippy-update-job-variant.md: sha256:f88742dddeec5024931959a8330fdce362ffdd9b8825e808830ac346605cbd16
-  .claude/rules/backend.md: sha256:ac3d618bf53dc847f52e0e13f6a3675301722259d9fbf12b4a40a191b880d05a
+  .claude/rules/backend.md: sha256:5a5dc512c2429362c7db75f52e9407a5a1576864b59361c4df5d4d8601d17de8
   .claude/rules/config.md: sha256:96c5e42c039230f1e4e7f9ba56d04e6f76f23deeecdd858634c440d6029a6a83
   .claude/rules/dev-commands.md: sha256:eb32bdc640add2044138807572ea1afb73ee1bba038f5098032a89987a7ddc04
-  .claude/rules/frontend.md: sha256:ff22046c5b951769218bbdf36499e67c70896811b8ef161ca6d3729a3423997d
+  .claude/rules/frontend.md: sha256:cdfc2cdc3981c43d91dcf9583d0fff2d3f0b4f355ded4237aa264211fe42600c
   .claude/rules/general.md: sha256:997f68e86cb43485ec5f108be3417f9bbb43ae1faffd660d598f18260f5df3ce
   .claude/rules/mcp.md: sha256:ddfe965e7cf8cddbba1374c6ae582a20ac0af17c958bf10e1a4edff6ff2ad0b8
   .claude/rules/testing.md: sha256:a28be642547f1093d2f39d3a29e114dc11b480a1e130b3dfd4a19cd8ffe348de
@@ -112,10 +112,10 @@ local_deployed_file_hashes:
   .cursor/commands/sippy-generate-release-views.md: sha256:eb4c9eeeea2ab2a90e8a8839147d8a1a309ea6ce3dafd397c6d2485c93068a9a
   .cursor/commands/sippy-update-ga-release-views.md: sha256:4a5589bacc05127e427a2de4d34a8f13e05e297bdf6ebf7473c9e71f47a6b4f4
   .cursor/commands/sippy-update-job-variant.md: sha256:f88742dddeec5024931959a8330fdce362ffdd9b8825e808830ac346605cbd16
-  .cursor/rules/backend.mdc: sha256:8930c2071ddd02fe3c7597b77bffa726c45ffedd66ec587d86adb23fb6814e38
+  .cursor/rules/backend.mdc: sha256:5355475617074d8212962b19c94649c9609f3565d2e844caa6f4730c619c0dea
   .cursor/rules/config.mdc: sha256:d6e2195399bbb26a3fef7e54bd01862ffce39d89dce8aabdb0b89c89028192eb
   .cursor/rules/dev-commands.mdc: sha256:3dc8a3ef5cbb22ebb09b7fe3785f24a32ab2baa4488c5514c9c6210b0af6c4eb
-  .cursor/rules/frontend.mdc: sha256:497f39372724f1ae127181fe3dac9ea9a95a51c532b68ccfee6080832cf9c556
+  .cursor/rules/frontend.mdc: sha256:6cbbb94363b782dc6763344a72f5a996fe25a4bd5db08862e578b611ed083612
   .cursor/rules/general.mdc: sha256:5bc6e1e12d53d85656248c9dc1239c74bcc0df29d5987f3b08e3d79e3df413b7
   .cursor/rules/mcp.mdc: sha256:c02472afd46e4c89f71d4487dcd5da98b0c1bcbcf7f9cbc4d7ed4e7d3a206ec1
   .cursor/rules/testing.mdc: sha256:5192be9724566f57a7423dbb65780b54d99b79d3f11e99d2225257e705f99a96

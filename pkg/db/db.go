@@ -93,6 +93,7 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
 	pgxConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60s"
 	pgxConfig.RuntimeParams["random_page_cost"] = "1.1"
+	pgxConfig.RuntimeParams["timezone"] = "UTC"
 	if cfg.enablePartitionwise {
 		pgxConfig.RuntimeParams["enable_partitionwise_aggregate"] = "on"
 		pgxConfig.RuntimeParams["enable_partitionwise_join"] = "on"

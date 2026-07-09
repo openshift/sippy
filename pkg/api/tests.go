@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -209,7 +210,7 @@ LIMIT 500`
 	return outputs, nil
 }
 
-func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[string]float64, error) {
+func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[civil.Date]float64, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {
 		for _, f := range filters.Items {

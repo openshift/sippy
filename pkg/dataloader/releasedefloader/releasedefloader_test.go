@@ -2,7 +2,6 @@ package releasedefloader
 
 import (
 	"testing"
-	"time"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
@@ -115,14 +114,12 @@ func TestReleaseRowToDefinition(t *testing.T) {
 
 			if tc.expectedHasGA {
 				assert.NotNil(t, def.GADate)
-				assert.Equal(t, time.UTC, def.GADate.Location())
 			} else {
 				assert.Nil(t, def.GADate)
 			}
 
 			if tc.expectedHasDevel {
 				assert.NotNil(t, def.DevelopmentStartDate)
-				assert.Equal(t, time.UTC, def.DevelopmentStartDate.Location())
 			} else {
 				assert.Nil(t, def.DevelopmentStartDate)
 			}

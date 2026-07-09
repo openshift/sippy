@@ -261,14 +261,17 @@ export default function PullRequestsTable(props) {
       type: 'date',
       field: 'merged_at',
       headerName: 'Merged at',
+      valueGetter: (params) => {
+        return params.value ? new Date(params.value) : null
+      },
       renderCell: (params) => {
         if (!params.value) {
           return '—'
         }
 
         return (
-          <Tooltip title={relativeTime(new Date(params.value), startDate)}>
-            <p>{new Date(params.value).toLocaleString()}</p>
+          <Tooltip title={relativeTime(params.value, startDate)}>
+            <p>{params.value.toLocaleString()}</p>
           </Tooltip>
         )
       },

@@ -17,9 +17,9 @@ type ReleaseDefinition struct {
 	Minor                int            `json:"minor" gorm:"column:minor"`
 	Patch                *int           `json:"patch,omitempty" gorm:"column:patch"`
 	PreviousRelease      string         `json:"previous_release" gorm:"column:previous_release"`
-	GADate               *time.Time     `json:"ga_date,omitempty" gorm:"column:ga_date;type:date"`
+	GADate               *civil.Date    `json:"ga_date,omitempty" gorm:"column:ga_date;type:date"`
 	LoadedGADate         *civil.Date    `json:"loaded_ga_date,omitempty" gorm:"column:ga_data_loaded_date;type:date"`
-	DevelopmentStartDate *time.Time     `json:"development_start_date" gorm:"column:development_start_date;type:date"`
+	DevelopmentStartDate *civil.Date    `json:"development_start_date" gorm:"column:development_start_date;type:date"`
 	Product              string         `json:"product" gorm:"column:product"`
 	Status               string         `json:"status" gorm:"column:status"`
 	Capabilities         pq.StringArray `json:"capabilities" gorm:"type:text[];column:capabilities"`

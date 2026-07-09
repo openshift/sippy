@@ -491,13 +491,6 @@ function App(props) {
         ])
       })
       .then(([releases, sippyCapabilities, reportDate]) => {
-        // Remove the Z from the ga_dates so that when Date objects are created,
-        // the date is not converted to a local time zone.
-        for (const key in releases.ga_dates) {
-          if (releases.ga_dates[key]) {
-            releases.ga_dates[key] = releases.ga_dates[key].replace('Z', '')
-          }
-        }
         setReleases(releases)
         setSippyCapabilities(sippyCapabilities)
         setReportDate(reportDate['pinnedDateTime'])

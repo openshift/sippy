@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
@@ -354,7 +355,7 @@ type JobRun struct {
 	InfrastructureFailure bool                `json:"infrastructure_failure"`
 	KnownFailure          bool                `json:"known_failure"`
 	Succeeded             bool                `json:"succeeded"`
-	Timestamp             int                 `json:"timestamp"`
+	Timestamp             time.Time           `json:"timestamp"`
 	OverallResult         v1.JobOverallResult `json:"overall_result"`
 	PullRequestOrg        string              `json:"pull_request_org"`
 	PullRequestRepo       string              `json:"pull_request_repo"`
@@ -393,7 +394,7 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 	case "test_grid_url":
 		return ColumnTypeString
 	case "timestamp":
-		return ColumnTypeNumerical
+		return ColumnTypeTimestamp
 	case "pull_request_org":
 		return ColumnTypeString
 	case "pull_request_repo":
@@ -441,7 +442,7 @@ func (run JobRun) GetNumericalValue(param string) (float64, error) {
 	case "test_failures":
 		return float64(run.TestFailures), nil
 	case "timestamp":
-		return float64(run.Timestamp), nil
+		return float64(run.Timestamp.UnixMilli()), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
 	}
@@ -864,13 +865,13 @@ type JobPayload struct {
 // CalendarEvent is an API type representing a FullCalendar.io event type, for use
 // with calendering.
 type CalendarEvent struct {
-	Title   string `json:"title"`
-	Start   string `json:"start"`
-	End     string `json:"end"`
-	AllDay  bool   `json:"allDay"`
-	Display string `json:"display,omitempty"`
-	Phase   string `json:"phase"`
-	JIRA    string `json:"jira"`
+	Title   string    `json:"title"`
+	Start   time.Time `json:"start"`
+	End     time.Time `json:"end"`
+	AllDay  bool      `json:"allDay"`
+	Display string    `json:"display,omitempty"`
+	Phase   string    `json:"phase"`
+	JIRA    string    `json:"jira"`
 }
 
 type BuildClusterHealthAnalysis struct {
@@ -906,8 +907,8 @@ type TestOutputBigQuery struct {
 }
 
 type ReleaseDates struct {
-	GA               *time.Time `json:"ga,omitempty"`
-	DevelopmentStart *time.Time `json:"development_start,omitempty"`
+	GA               *civil.Date `json:"ga,omitempty"`
+	DevelopmentStart *civil.Date `json:"development_start,omitempty"`
 }
 type Release struct { // this is the Release that goes out to the UI
 	Name string `json:"name"`
@@ -918,7 +919,7 @@ type Release struct { // this is the Release that goes out to the UI
 }
 type Releases struct {
 	Releases          []string                `json:"releases"`
-	DeprecatedGADates map[string]time.Time    `json:"ga_dates"`
+	DeprecatedGADates map[string]civil.Date   `json:"ga_dates"`
 	Dates             map[string]ReleaseDates `json:"dates"`
 	LastUpdated       time.Time               `json:"last_updated"`
 	ReleaseAttrs      map[string]Release      `json:"release_attrs"`

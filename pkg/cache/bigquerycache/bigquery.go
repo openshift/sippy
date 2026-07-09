@@ -179,11 +179,11 @@ func (c Cache) findCacheEntry(ctx context.Context, key string) (CacheRecord, err
 	query.Parameters = []bigquery.QueryParameter{
 		{ // limit partitions to those that could contain un-expired entries
 			Name:  "expByNowTime",
-			Value: time.Now().Add(-1 * c.maxExpiration).Format(time.RFC3339),
+			Value: time.Now().Add(-1 * c.maxExpiration),
 		},
 		{ // entry itself is not already expired
 			Name:  "expTime",
-			Value: time.Now().Format(time.RFC3339),
+			Value: time.Now(),
 		},
 		{
 			Name:  "keyParam",
@@ -216,11 +216,11 @@ func (c Cache) getFullCacheRecords(ctx context.Context, key string, metadataReco
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "tsLower",
-			Value: metadataRecord.Modified.Add(-5 * time.Second).Format(time.RFC3339),
+			Value: metadataRecord.Modified.Add(-5 * time.Second),
 		},
 		{
 			Name:  "tsUpper",
-			Value: metadataRecord.Modified.Add(5 * time.Second).Format(time.RFC3339),
+			Value: metadataRecord.Modified.Add(5 * time.Second),
 		},
 		{
 			Name:  "keyParam",

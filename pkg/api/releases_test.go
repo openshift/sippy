@@ -2,8 +2,8 @@ package api
 
 import (
 	"testing"
-	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 
@@ -14,8 +14,8 @@ import (
 )
 
 func TestDefinitionToRelease(t *testing.T) {
-	ga := time.Date(2026, 6, 9, 0, 0, 0, 0, time.UTC)
-	devStart := time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC)
+	ga := civil.Date{Year: 2026, Month: 6, Day: 9}
+	devStart := civil.Date{Year: 2025, Month: 12, Day: 1}
 
 	tests := []struct {
 		name     string
