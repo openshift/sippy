@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
@@ -106,6 +107,10 @@ func (r Repository) GetNumericalValue(param string) (float64, error) {
 	}
 }
 
+func (r Repository) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
+}
+
 func (r Repository) GetArrayValue(param string) ([]string, error) {
 	return nil, fmt.Errorf("unknown array value field %s", param)
 }
@@ -183,10 +188,20 @@ func (pr PullRequest) GetNumericalValue(param string) (float64, error) {
 		return float64(pr.ID), nil
 	case "number":
 		return float64(pr.Number), nil
-	case "merged_at":
-		return float64(pr.MergedAt.Unix()), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (pr PullRequest) GetTimestampValue(param string) (time.Time, error) {
+	switch param {
+	case "merged_at":
+		if pr.MergedAt != nil {
+			return *pr.MergedAt, nil
+		}
+		return time.Time{}, nil
+	default:
+		return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
 	}
 }
 
@@ -269,6 +284,8 @@ func (job Job) GetFieldType(param string) ColumnType {
 	//nolint:goconst
 	case "test_grid_url":
 		return ColumnTypeString
+	case "last_pass":
+		return ColumnTypeTimestamp
 	default:
 		return ColumnTypeNumerical
 	}
@@ -319,10 +336,20 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(job.CurrentAverageDurationMinutes), nil
 	case "previous_average_duration_minutes":
 		return float64(job.PreviousAverageDurationMinutes), nil
-	case "last_pass":
-		return float64(job.LastPass.Unix()), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (job Job) GetTimestampValue(param string) (time.Time, error) {
+	switch param {
+	case "last_pass":
+		if job.LastPass == nil {
+			return time.Time{}, nil
+		}
+		return *job.LastPass, nil
+	default:
+		return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
 	}
 }
 
@@ -354,7 +381,7 @@ type JobRun struct {
 	InfrastructureFailure bool                `json:"infrastructure_failure"`
 	KnownFailure          bool                `json:"known_failure"`
 	Succeeded             bool                `json:"succeeded"`
-	Timestamp             int                 `json:"timestamp"`
+	Timestamp             time.Time           `json:"timestamp"`
 	OverallResult         v1.JobOverallResult `json:"overall_result"`
 	PullRequestOrg        string              `json:"pull_request_org"`
 	PullRequestRepo       string              `json:"pull_request_repo"`
@@ -393,7 +420,7 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 	case "test_grid_url":
 		return ColumnTypeString
 	case "timestamp":
-		return ColumnTypeNumerical
+		return ColumnTypeTimestamp
 	case "pull_request_org":
 		return ColumnTypeString
 	case "pull_request_repo":
@@ -440,10 +467,17 @@ func (run JobRun) GetNumericalValue(param string) (float64, error) {
 		return float64(run.ID), nil
 	case "test_failures":
 		return float64(run.TestFailures), nil
-	case "timestamp":
-		return float64(run.Timestamp), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (run JobRun) GetTimestampValue(param string) (time.Time, error) {
+	switch param {
+	case "timestamp":
+		return run.Timestamp, nil
+	default:
+		return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
 	}
 }
 
@@ -609,6 +643,10 @@ func (test Test) GetNumericalValue(param string) (float64, error) {
 	}
 }
 
+func (test Test) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
+}
+
 func (test Test) GetArrayValue(param string) ([]string, error) {
 	switch param {
 	case "tags":
@@ -768,6 +806,10 @@ func (test TestBQ) GetNumericalValue(param string) (float64, error) {
 	}
 }
 
+func (test TestBQ) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
+}
+
 func (test TestBQ) GetArrayValue(param string) ([]string, error) {
 	switch param {
 	case "tags":
@@ -868,13 +910,13 @@ type JobPayload struct {
 // CalendarEvent is an API type representing a FullCalendar.io event type, for use
 // with calendering.
 type CalendarEvent struct {
-	Title   string `json:"title"`
-	Start   string `json:"start"`
-	End     string `json:"end"`
-	AllDay  bool   `json:"allDay"`
-	Display string `json:"display,omitempty"`
-	Phase   string `json:"phase"`
-	JIRA    string `json:"jira"`
+	Title   string     `json:"title"`
+	Start   time.Time  `json:"start"`
+	End     *time.Time `json:"end,omitempty"`
+	AllDay  bool       `json:"allDay"`
+	Display string     `json:"display,omitempty"`
+	Phase   string     `json:"phase"`
+	JIRA    string     `json:"jira"`
 }
 
 type BuildClusterHealthAnalysis struct {
@@ -910,8 +952,8 @@ type TestOutputBigQuery struct {
 }
 
 type ReleaseDates struct {
-	GA               *time.Time `json:"ga,omitempty"`
-	DevelopmentStart *time.Time `json:"development_start,omitempty"`
+	GA               *civil.Date `json:"ga,omitempty"`
+	DevelopmentStart *civil.Date `json:"development_start,omitempty"`
 }
 type Release struct { // this is the Release that goes out to the UI
 	Name string `json:"name"`
@@ -922,7 +964,7 @@ type Release struct { // this is the Release that goes out to the UI
 }
 type Releases struct {
 	Releases          []string                `json:"releases"`
-	DeprecatedGADates map[string]time.Time    `json:"ga_dates"`
+	DeprecatedGADates map[string]civil.Date   `json:"ga_dates"`
 	Dates             map[string]ReleaseDates `json:"dates"`
 	LastUpdated       time.Time               `json:"last_updated"`
 	ReleaseAttrs      map[string]Release      `json:"release_attrs"`
@@ -1031,16 +1073,16 @@ type DisruptionReportRow struct {
 }
 
 type BackendDisruptionRunRow struct {
-	BackendName        string `json:"backend_name"`
-	DisruptionSeconds  int    `json:"disruption_seconds"`
-	JobName            string `json:"job_name"`
-	JobRunName         string `json:"job_run_name"`
-	JobRunStartTime    string `json:"job_run_start_time"`
-	JobRunEndTime      string `json:"job_run_end_time"`
-	Cluster            string `json:"cluster"`
-	ReleaseTag         string `json:"release_tag"`
-	MasterNodesUpdated string `json:"master_nodes_updated"`
-	JobRunStatus       string `json:"job_run_status"`
+	BackendName        string     `json:"backend_name"`
+	DisruptionSeconds  int        `json:"disruption_seconds"`
+	JobName            string     `json:"job_name"`
+	JobRunName         string     `json:"job_run_name"`
+	JobRunStartTime    *time.Time `json:"job_run_start_time"`
+	JobRunEndTime      *time.Time `json:"job_run_end_time"`
+	Cluster            string     `json:"cluster"`
+	ReleaseTag         string     `json:"release_tag"`
+	MasterNodesUpdated string     `json:"master_nodes_updated"`
+	JobRunStatus       string     `json:"job_run_status"`
 }
 
 type BackendDisruptionRunsResult struct {
@@ -1143,6 +1185,10 @@ func (fg FeatureGate) GetNumericalValue(param string) (float64, error) {
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
 	}
+}
+
+func (fg FeatureGate) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
 }
 
 func (fg FeatureGate) GetArrayValue(param string) ([]string, error) {

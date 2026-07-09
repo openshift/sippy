@@ -3,11 +3,14 @@ package api
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 )
 
 func TestBackendDisruptionRunsResultSerialization(t *testing.T) {
+	startTime := time.Date(2026, 8, 1, 14, 23, 0, 0, time.UTC)
+	endTime := time.Date(2026, 8, 1, 16, 45, 0, 0, time.UTC)
 	result := apitype.BackendDisruptionRunsResult{
 		Rows: []apitype.BackendDisruptionRunRow{
 			{
@@ -15,8 +18,8 @@ func TestBackendDisruptionRunsResultSerialization(t *testing.T) {
 				DisruptionSeconds:  12,
 				JobName:            "periodic-ci-openshift-release-master-ci-5.0-e2e-gcp-ovn-upgrade",
 				JobRunName:         "2084247445587365888",
-				JobRunStartTime:    "2026-08-01 14:23:00 UTC",
-				JobRunEndTime:      "2026-08-01 16:45:00 UTC",
+				JobRunStartTime:    &startTime,
+				JobRunEndTime:      &endTime,
 				Cluster:            "build01",
 				ReleaseTag:         "5.0.0-0.ci-2026-08-01-142300",
 				MasterNodesUpdated: "Y",
@@ -27,8 +30,8 @@ func TestBackendDisruptionRunsResultSerialization(t *testing.T) {
 				DisruptionSeconds: 0,
 				JobName:           "periodic-ci-openshift-release-master-ci-5.0-e2e-gcp-ovn-upgrade",
 				JobRunName:        "2084247445587365888",
-				JobRunStartTime:   "2026-08-01 14:23:00 UTC",
-				JobRunEndTime:     "2026-08-01 16:45:00 UTC",
+				JobRunStartTime:   &startTime,
+				JobRunEndTime:     &endTime,
 				Cluster:           "build01",
 				ReleaseTag:        "5.0.0-0.ci-2026-08-01-142300",
 			},
@@ -64,6 +67,12 @@ func TestBackendDisruptionRunsResultSerialization(t *testing.T) {
 	}
 	if row.JobRunStatus != "failure" {
 		t.Errorf("JobRunStatus = %q, want %q", row.JobRunStatus, "failure")
+	}
+	if row.JobRunStartTime == nil || !row.JobRunStartTime.Equal(startTime) {
+		t.Errorf("JobRunStartTime = %v, want %v", row.JobRunStartTime, startTime)
+	}
+	if row.JobRunEndTime == nil || !row.JobRunEndTime.Equal(endTime) {
+		t.Errorf("JobRunEndTime = %v, want %v", row.JobRunEndTime, endTime)
 	}
 
 	emptyRow := decoded.Rows[1]
