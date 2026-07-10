@@ -71,9 +71,10 @@ clean:
 	rm -rf sippy-ng/build
 	rm -rf sippy-ng/node_modules
 
+_uvx_flags = $(if $(filter true,$(CI)),--no-cache)
 apm:
-	uvx --from apm-cli@0.13.0 apm install
-	uvx --from apm-cli@0.13.0 apm compile
+	uvx $(_uvx_flags) --from apm-cli@0.13.0 apm install
+	uvx $(_uvx_flags) --from apm-cli@0.13.0 apm compile
 
 verify-migrations:
 	./hack/verify-migrations.sh
