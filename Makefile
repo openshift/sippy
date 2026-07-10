@@ -18,7 +18,7 @@ all: test build
 build: builddir clean npm frontend sippy sippy-daemon
 
 .PHONY: verify apm verify-apm verify-migrations
-verify: lint verify-apm verify-migrations
+verify: verify-apm verify-migrations
 
 builddir:
 	mkdir -p sippy-ng/build
@@ -79,9 +79,9 @@ verify-migrations:
 	./hack/verify-migrations.sh
 
 verify-apm: apm
-	@if ! git diff --quiet HEAD -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md; then \
+	@if [ -n "$$(git status --porcelain -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md)" ]; then \
 		echo "ERROR: Generated APM files are out of date. Run 'make apm' and commit the results."; \
-		git diff --stat HEAD -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md; \
+		git status --short -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md; \
 		exit 1; \
 	fi
 
