@@ -170,6 +170,7 @@ export function TestAnalysis(props) {
     test,
     testName,
     filterModel,
+    period,
     props.release,
     setPageContextForChat,
     unsetPageContextForChat,
