@@ -52,24 +52,24 @@ func (p *MixedProvider) QueryUniqueVariantValues(ctx context.Context, field stri
 	return p.bq.QueryUniqueVariantValues(ctx, field, nested)
 }
 
-func (p *MixedProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error) {
-	return p.bq.QueryBaseTestStatus(ctx, reqOptions, allJobVariants)
+func (p *MixedProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error) {
+	return p.bq.QueryBaseTestStatus(ctx, reqOptions)
 }
 
-func (p *MixedProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, allJobVariants crtest.JobVariants, includeVariants map[string][]string, start, end time.Time) (map[string]crstatus.TestStatus, []error) {
-	return p.bq.QuerySampleTestStatus(ctx, reqOptions, allJobVariants, includeVariants, start, end)
+func (p *MixedProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, includeVariants map[string][]string, start, end time.Time) (map[string]crstatus.TestStatus, []error) {
+	return p.bq.QuerySampleTestStatus(ctx, reqOptions, includeVariants, start, end)
 }
 
-func (p *MixedProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, allJobVariants crtest.JobVariants) (map[string][]crstatus.TestJobRunRows, []error) {
-	return p.bq.QueryBaseJobRunTestStatus(ctx, reqOptions, allJobVariants)
+func (p *MixedProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestJobRunRows, []error) {
+	return p.bq.QueryBaseJobRunTestStatus(ctx, reqOptions)
 }
 
-func (p *MixedProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, allJobVariants crtest.JobVariants, includeVariants map[string][]string, start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
-	return p.bq.QuerySampleJobRunTestStatus(ctx, reqOptions, allJobVariants, includeVariants, start, end)
+func (p *MixedProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, includeVariants map[string][]string, start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
+	return p.bq.QuerySampleJobRunTestStatus(ctx, reqOptions, includeVariants, start, end)
 }
 
-func (p *MixedProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions, allJobVariants crtest.JobVariants, release string, start, end time.Time) (map[string]dataprovider.JobRunStats, error) {
-	return p.bq.QueryJobRuns(ctx, reqOptions, allJobVariants, release, start, end)
+func (p *MixedProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions, release string, start, end time.Time) (map[string]dataprovider.JobRunStats, error) {
+	return p.bq.QueryJobRuns(ctx, reqOptions, release, start, end)
 }
 
 func (p *MixedProvider) QueryJobVariantValues(ctx context.Context, jobNames, variantKeys []string) (map[string]map[string]string, error) {

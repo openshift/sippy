@@ -111,26 +111,29 @@ func NewServeCommand() *cobra.Command {
 			var bigQueryClient *bigquery.Client
 			var gcsClient *storage.Client
 			var crDataProvider dataprovider.DataProvider
-			if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
-				opCtx := bqlabel.OperationalContext{
-					App:     bqlabel.AppSippy,
-					Command: "serve",
-					// outside prod, defaults to CLI as env and USER env var as operator
-					Environment: bqlabel.EnvCli,
-					Operator:    os.Getenv("USER"),
-				}
-				env := bqlabel.EnvValue(os.Getenv("SIPPY_WEB_ENV")) // set in prod
-				if slices.Contains([]bqlabel.EnvValue{bqlabel.EnvWeb, bqlabel.EnvWebAuth, bqlabel.EnvWebQE}, env) {
-					opCtx.Environment = env
-					opCtx.Operator = string(env)
-				}
-				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
-				if err != nil {
-					return errors.WithMessage(err, "couldn't get bigquery client")
-				}
+			switch f.DataProvider {
+			case "default", "bigquery":
+				if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
+					opCtx := bqlabel.OperationalContext{
+						App:     bqlabel.AppSippy,
+						Command: "serve",
+						// outside prod, defaults to CLI as env and USER env var as operator
+						Environment: bqlabel.EnvCli,
+						Operator:    os.Getenv("USER"),
+					}
+					env := bqlabel.EnvValue(os.Getenv("SIPPY_WEB_ENV")) // set in prod
+					if slices.Contains([]bqlabel.EnvValue{bqlabel.EnvWeb, bqlabel.EnvWebAuth, bqlabel.EnvWebQE}, env) {
+						opCtx.Environment = env
+						opCtx.Operator = string(env)
+					}
+					bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+					if err != nil {
+						return errors.WithMessage(err, "couldn't get bigquery client")
+					}
 
-				if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
-					bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
+					if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
+						bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
+					}
 				}
 			}
 
@@ -274,9 +277,12 @@ func newDataProvider(name string, bigQueryClient *bigquery.Client, dbc *db.DB, c
 		if bigQueryClient != nil {
 			return bqprovider.NewBigQueryProvider(bigQueryClient), nil
 		}
-		return nil, nil
+		return nil, fmt.Errorf("bigquery data provider requires google-service-account-credential-file to be configured")
 
 	case "postgres":
+		if dbc == nil {
+			return nil, fmt.Errorf("postgres data provider requires a database connection")
+		}
 		log.Info("Using Postgres data provider for component readiness")
 		return pgprovider.NewPostgresProvider(dbc, cacheClient), nil
 
