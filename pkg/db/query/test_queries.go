@@ -113,10 +113,7 @@ func TestReportsByVariant(
 	// Query and group by variant:
 	var testReports []api.Test
 	q := `
-WITH excluded_vc AS (
-    SELECT id FROM variant_combinations WHERE @excluded && variants
-),
-results AS (
+WITH results AS (
     SELECT name,
            release,
            sum(current_runs)       AS current_runs,
@@ -130,7 +127,7 @@ results AS (
            unnest(variants)        AS variant
     FROM prow_test_report_7d_matview
 	WHERE release = @release AND name ~* @testsubstrings
-          AND variant_combination_id NOT IN (SELECT id FROM excluded_vc)
+          AND NOT EXISTS (SELECT 1 FROM variant_combinations WHERE @excluded && variants AND id = variant_combination_id)
     GROUP BY name, release, variant
 )
 SELECT *,
@@ -172,10 +169,7 @@ func TestReportExcludeVariants(dbc *db.DB, release, testName string, excludeVari
 
 	// Query and group by variant:
 	var testReport api.Test
-	q := `WITH excluded_vc AS (
-    SELECT id FROM variant_combinations WHERE @excluded && variants
-),
-results AS (
+	q := `WITH results AS (
     SELECT name,
            release,
            sum(current_runs)       AS current_runs,
@@ -188,7 +182,7 @@ results AS (
            sum(previous_flakes)    AS previous_flakes
     FROM prow_test_report_7d_matview
     WHERE release = @release AND name = @testname
-          AND variant_combination_id NOT IN (SELECT id FROM excluded_vc)
+          AND NOT EXISTS (SELECT 1 FROM variant_combinations WHERE @excluded && variants AND id = variant_combination_id)
     GROUP BY name, release
 ) SELECT *, %s FROM results;`
 
@@ -249,7 +243,7 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
 			(current_pass_percentage - passing_average) AS delta_from_passing_average,
 			(current_flake_percentage - flake_average) AS delta_from_flake_average`).
 		Where(`release = ?`, release).
-		Where("variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE 'never-stable' = any(variants))")
+		Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE 'never-stable' = any(variants) AND id = variant_combination_id)")
 }
 
 func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVariants []string, quantity int) ([]api.TestOutput, error) {
@@ -272,7 +266,7 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 	}
 
 	for _, variant := range excludedVariants {
-		q = q.Where("prow_jobs.variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
+		q = q.Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? = any(variants) AND id = prow_jobs.variant_combination_id)", variant)
 	}
 
 	res := q.
@@ -305,7 +299,7 @@ func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedV
 	}
 
 	for _, variant := range excludedVariants {
-		q = q.Where("prow_jobs.variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
+		q = q.Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? = any(variants) AND id = prow_jobs.variant_combination_id)", variant)
 	}
 
 	res := q.

@@ -56,7 +56,7 @@ func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, t
 	}
 
 	for _, bv := range blockedVariants {
-		jq = jq.Where("prow_jobs.variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", bv)
+		jq = jq.Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? = any(variants) AND id = prow_jobs.variant_combination_id)", bv)
 	}
 
 	for _, av := range allowedVariants {
@@ -122,7 +122,7 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 	}
 
 	for _, bv := range blockedVariants {
-		jq = jq.Where("prow_jobs.variant_combination_id NOT IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", bv)
+		jq = jq.Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? = any(variants) AND id = prow_jobs.variant_combination_id)", bv)
 	}
 
 	for _, av := range allowedVariants {
