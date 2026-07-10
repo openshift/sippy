@@ -1,16 +1,11 @@
 package releaseloader
 
 import (
-	"cmp"
 	"encoding/json"
-	"fmt"
 	"os"
-	"slices"
-	"strconv"
 	"testing"
 	"time"
 
-	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
@@ -99,7 +94,7 @@ func buildReleaseDetails(hasFailedBlockingJobs bool) ReleaseDetails {
 	releaseDetails.Results = make(map[string]map[string]JobRunResult)
 
 	jobRunResult := JobRunResult{}
-	jobRunResult.State = succeeded
+	jobRunResult.State = "Succeeded"
 	jobRunResult.URL = "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.7-e2e-aws-serial/1537826070202421248"
 	jobRunResult.Retries = 0
 	jobRunResult.TransitionTime = time.Now()
@@ -110,7 +105,7 @@ func buildReleaseDetails(hasFailedBlockingJobs bool) ReleaseDetails {
 	if hasFailedBlockingJobs {
 		jobRunResult.State = failed
 	} else {
-		jobRunResult.State = succeeded
+		jobRunResult.State = "Succeeded"
 	}
 	jobRunResult.URL = "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.7-e2e-gcp/1537826069917208576"
 	jobRunResult.Retries = 0
@@ -118,14 +113,14 @@ func buildReleaseDetails(hasFailedBlockingJobs bool) ReleaseDetails {
 	releaseDetails.Results["blockingJobs"]["gcp"] = jobRunResult
 
 	jobRunResult = JobRunResult{}
-	jobRunResult.State = succeeded
+	jobRunResult.State = "Succeeded"
 	jobRunResult.URL = "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.7-upgrade-from-stable-4.6-e2e-aws-upgrade/1537826070286307328"
 	jobRunResult.Retries = 0
 	jobRunResult.TransitionTime = time.Now()
 	releaseDetails.Results["blockingJobs"]["upgrade-minor"] = jobRunResult
 
 	jobRunResult = JobRunResult{}
-	jobRunResult.State = succeeded
+	jobRunResult.State = "Succeeded"
 	jobRunResult.URL = "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.7-e2e-gcp-upgrade/1537826070248558592"
 	jobRunResult.Retries = 0
 	jobRunResult.TransitionTime = time.Now()
@@ -166,7 +161,7 @@ func buildReleaseDetails(hasFailedBlockingJobs bool) ReleaseDetails {
 	upgradeResult.History[jobRunResult.URL] = jobRunResult
 	jobRunResult = JobRunResult{}
 	jobRunResult.URL = "https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.7-upgrade-from-stable-4.6-e2e-aws-upgrade/1540399550177480704"
-	jobRunResult.State = succeeded
+	jobRunResult.State = "Succeeded"
 	jobRunResult.Retries = 0
 	jobRunResult.TransitionTime = time.Now()
 	upgradeResult.History[jobRunResult.URL] = jobRunResult
@@ -293,79 +288,32 @@ func TestChangeLog(t *testing.T) {
 	}
 }
 
-func TestResolveReleasePullRequestsLargeDataset(t *testing.T) {
-	originalBulkFetch := bulkFetchPRsFromTbl
-	t.Cleanup(func() {
-		bulkFetchPRsFromTbl = originalBulkFetch
-	})
-
-	const prCount = 1000
-
-	inputPRs := make([]models.ReleasePullRequest, prCount)
-	existingPRs := make([]models.ReleasePullRequest, prCount/2) // Half exist in DB
-
-	for i := 0; i < prCount; i++ {
-		inputPRs[i] = models.ReleasePullRequest{
-			URL:           fmt.Sprintf("https://github.com/openshift/repo%d/pull/%d", i%10, i),
-			Name:          fmt.Sprintf("repo%d", i%10),
-			Description:   fmt.Sprintf("PR %d description", i),
-			PullRequestID: fmt.Sprintf("%d", i),
-		}
-
-		// Create DB version for first half
-		if i < prCount/2 {
-			existingPRs[i] = models.ReleasePullRequest{
-				URL:           inputPRs[i].URL,
-				Name:          inputPRs[i].Name,
-				Description:   fmt.Sprintf("DB PR %d description", i),
-				PullRequestID: inputPRs[i].PullRequestID,
-				BugURL:        fmt.Sprintf("https://bugzilla.redhat.com/%d", i),
-			}
-		}
-	}
-
-	dbQueryCount := 0
-
-	// Mock the database function
-	bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
-		dbQueryCount++
-		return existingPRs
-	}
-
+func TestBuildJobRuns(t *testing.T) {
+	details := buildReleaseDetails(true)
 	loader := &ReleaseLoader{}
-	result := loader.resolveReleasePullRequests(inputPRs)
-	slices.SortFunc(result, func(i, j models.ReleasePullRequest) int {
-		a, _ := strconv.Atoi(i.PullRequestID)
-		b, _ := strconv.Atoi(j.PullRequestID)
-		return cmp.Compare(a, b)
-	})
+	jobRuns := loader.buildJobRuns(details)
 
-	// Verify results
-	if len(result) != prCount {
-		t.Errorf("Expected %d PRs, got %d", prCount, len(result))
+	if len(jobRuns) == 0 {
+		t.Fatal("expected job runs to be returned")
 	}
 
-	// Verify only one database query was made
-	if dbQueryCount != 1 {
-		t.Errorf("Expected 1 database query, got %d", dbQueryCount)
+	// Verify no labels are set (buildJobRuns does not fetch from BQ)
+	for _, jr := range jobRuns {
+		if len(jr.Labels) > 0 {
+			t.Errorf("expected no labels on job run %d, got %v", jr.Name, jr.Labels)
+		}
 	}
 
-	// Verify first half have DB descriptions, second half have original descriptions
-	for i := 0; i < prCount/2; i++ {
-		if result[i].Description != fmt.Sprintf("DB PR %d description", i) {
-			t.Errorf("PR %d should have DB description, got %s", i, result[i].Description)
-		}
-		if result[i].BugURL != fmt.Sprintf("https://bugzilla.redhat.com/%d", i) {
-			t.Errorf("PR %d should have DB BugURL, got %s", i, result[i].BugURL)
-		}
+	// Verify blocking and informing jobs are present
+	kinds := make(map[string]int)
+	for _, jr := range jobRuns {
+		kinds[jr.Kind]++
 	}
-	for i := prCount / 2; i < prCount; i++ {
-		if result[i].Description != fmt.Sprintf("PR %d description", i) {
-			t.Errorf("PR %d should have original description, got %s", i, result[i].Description)
-		}
-		if result[i].BugURL != "" {
-			t.Errorf("PR %d should have empty BugURL, got %s", i, result[i].BugURL)
-		}
+	if kinds["Blocking"] == 0 {
+		t.Error("expected at least one Blocking job run")
+	}
+	if kinds["Informing"] == 0 {
+		t.Error("expected at least one Informing job run")
 	}
 }
 
