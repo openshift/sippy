@@ -140,6 +140,16 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 			if len(col.RegressedTests) > 0 {
 				report.Rows[ri].Columns[ci].Status = worstStatus
 			}
+
+			for ati := range col.AllTests {
+				testKey := crtest.Identification{
+					RowIdentification:    col.AllTests[ati].RowIdentification,
+					ColumnIdentification: col.AllTests[ati].ColumnIdentification,
+				}
+				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].AllTests[ati].TestComparison); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -493,6 +503,7 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 type cellStatus struct {
 	status         crtest.Status
 	regressedTests []crtype.ReportTestSummary
+	allTests       []crtype.ReportTestSummary
 }
 
 func getNewCellStatus(testID crtest.Identification, testStats testdetails.TestComparison, existingCellStatus *cellStatus) cellStatus {
@@ -506,14 +517,18 @@ func getNewCellStatus(testID crtest.Identification, testStats testdetails.TestCo
 			newCellStatus.status = existingCellStatus.status
 		}
 		newCellStatus.regressedTests = existingCellStatus.regressedTests
+		newCellStatus.allTests = existingCellStatus.allTests
 	} else {
 		newCellStatus.status = testStats.ReportStatus
 	}
+
+	rt := crtype.ReportTestSummary{
+		Identification: testID,
+		TestComparison: testStats,
+	}
+	newCellStatus.allTests = append(newCellStatus.allTests, rt)
+
 	if testStats.ReportStatus < crtest.MissingSample {
-		rt := crtype.ReportTestSummary{
-			Identification: testID,
-			TestComparison: testStats,
-		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
 	}
 	return newCellStatus
@@ -714,6 +729,10 @@ func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.C
 				reportColumn.RegressedTests = status.regressedTests
 				sort.Slice(reportColumn.RegressedTests, func(i, j int) bool {
 					return reportColumn.RegressedTests[i].ReportStatus < reportColumn.RegressedTests[j].ReportStatus
+				})
+				reportColumn.AllTests = status.allTests
+				sort.Slice(reportColumn.AllTests, func(i, j int) bool {
+					return reportColumn.AllTests[i].ReportStatus < reportColumn.AllTests[j].ReportStatus
 				})
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)

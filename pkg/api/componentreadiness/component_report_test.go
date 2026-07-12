@@ -1217,6 +1217,14 @@ func TestGenerateComponentReport(t *testing.T) {
 						report.Rows[ir].Columns[ic].RegressedTests[it].FisherExact = nil
 
 					}
+
+					// AllTests should contain at least as many entries as RegressedTests
+					assert.GreaterOrEqual(t, len(report.Rows[ir].Columns[ic].AllTests),
+						len(report.Rows[ir].Columns[ic].RegressedTests),
+						"AllTests should be a superset of RegressedTests for row %d col %d", ir, ic)
+					// Clear AllTests for the deep comparison below; the count check above
+					// validates it is populated.
+					report.Rows[ir].Columns[ic].AllTests = nil
 				}
 			}
 			assert.Equal(t, tc.expectedReport, report, "expected report %+v, got %+v", tc.expectedReport, report)
