@@ -636,7 +636,6 @@ export default function ComponentReadiness(props) {
                           }
                           clearSearches={clearSearches}
                           data={data}
-                          filterVals={getUpdatedUrlParts(varsContext)}
                           setTriageActionTaken={setTriageActionTaken}
                         />
                         {(() => {

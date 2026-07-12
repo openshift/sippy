@@ -1,6 +1,5 @@
 import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
 import { Chip, Tooltip, Typography } from '@mui/material'
-import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, useQueryParam } from 'use-query-params'
@@ -9,11 +8,9 @@ import { symptomColor } from './CompReadyUtils'
 import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext } from 'react'
+import React, { Fragment } from 'react'
 
 export default function TriagedRegressionTestList(props) {
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
-
   const [activeRow, setActiveRow] = useQueryParam(
     'regressedModalTestRow',
     NumberParam,
@@ -252,12 +249,7 @@ export default function TriagedRegressionTestList(props) {
               return {
                 status: rt.status,
                 explanations: rt.explanations,
-                url: generateTestDetailsReportLink(
-                  rt,
-                  props.filterVals,
-                  expandEnvironment,
-                  viewName
-                ),
+                url: generateTestDetailsReportLink(rt, viewName),
               }
             },
             renderCell: (params) => {
@@ -369,7 +361,6 @@ TriagedRegressionTestList.propTypes = {
   eventEmitter: PropTypes.object,
   regressions: PropTypes.array,
   allRegressedTests: PropTypes.object,
-  filterVals: PropTypes.string,
   showOnLoad: PropTypes.bool,
   symptomFilter: PropTypes.string,
   symptomSummaries: PropTypes.array,

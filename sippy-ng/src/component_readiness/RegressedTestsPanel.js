@@ -1,5 +1,4 @@
 import { applyFilterModel } from '../datagrid/filterUtils'
-import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
 import { formColumnName, generateTestDetailsReportLink } from './CompReadyUtils'
@@ -13,7 +12,7 @@ import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext } from 'react'
+import React, { Fragment } from 'react'
 import UpsertTriageModal from './UpsertTriageModal'
 
 export default function RegressedTestsPanel(props) {
@@ -32,8 +31,7 @@ export default function RegressedTestsPanel(props) {
     SafeJSONParam,
     { updateType: 'replaceIn' }
   )
-  const { expandEnvironment, views, view } = useContext(CompReadyVarsContext)
-  const { filterVals, regressedTests, setTriageActionTaken } = props
+  const { regressedTests, setTriageActionTaken } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
@@ -296,11 +294,7 @@ export default function RegressedTestsPanel(props) {
           className="status"
         >
           <a
-            href={generateTestDetailsReportLink(
-              params.row,
-              filterVals,
-              expandEnvironment
-            )}
+            href={generateTestDetailsReportLink(params.row)}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -423,5 +417,4 @@ export default function RegressedTestsPanel(props) {
 RegressedTestsPanel.propTypes = {
   regressedTests: PropTypes.array,
   setTriageActionTaken: PropTypes.func,
-  filterVals: PropTypes.string.isRequired,
 }

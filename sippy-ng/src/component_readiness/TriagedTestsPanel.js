@@ -20,7 +20,6 @@ export default function TriagedTestsPanel(props) {
         <TriagedRegressionTestList
           eventEmitter={eventEmitter}
           allRegressedTests={props.allRegressedTests}
-          filterVals={props.filterVals}
         />
       </Grid>
     </Fragment>
@@ -31,5 +30,4 @@ TriagedTestsPanel.propTypes = {
   triageEntries: PropTypes.array.isRequired,
   triageEntriesPerPage: PropTypes.number,
   allRegressedTests: PropTypes.object,
-  filterVals: PropTypes.string,
 }

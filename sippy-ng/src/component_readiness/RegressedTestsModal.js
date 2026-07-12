@@ -49,7 +49,6 @@ export default function RegressedTestsModal({
   unresolvedTests,
   triageEntries,
   setTriageActionTaken,
-  filterVals,
   isOpen,
   close,
 }) {
@@ -110,14 +109,12 @@ export default function RegressedTestsModal({
             <RegressedTestsPanel
               regressedTests={unresolvedTests}
               setTriageActionTaken={setTriageActionTaken}
-              filterVals={filterVals}
             />
           </RegressedTestsTabPanel>
           <RegressedTestsTabPanel activeIndex={activeTab} index={1}>
             <RegressedTestsPanel
               regressedTests={regressedTests}
               setTriageActionTaken={setTriageActionTaken}
-              filterVals={filterVals}
             />
           </RegressedTestsTabPanel>
           {triageEntriesExist && (
@@ -125,7 +122,6 @@ export default function RegressedTestsModal({
               <TriagedTestsPanel
                 triageEntries={triageEntries}
                 allRegressedTests={allRegressedTests}
-                filterVals={filterVals}
               />
             </RegressedTestsTabPanel>
           )}
@@ -133,7 +129,6 @@ export default function RegressedTestsModal({
             <RegressedTestsPanel
               regressedTests={allRegressedTests?.[view] || []}
               setTriageActionTaken={setTriageActionTaken}
-              filterVals={filterVals}
             />
           </RegressedTestsTabPanel>
           <Button
@@ -156,7 +151,6 @@ RegressedTestsModal.propTypes = {
   unresolvedTests: PropTypes.array,
   triageEntries: PropTypes.array,
   setTriageActionTaken: PropTypes.func,
-  filterVals: PropTypes.string.isRequired,
   isOpen: PropTypes.bool,
   close: PropTypes.func,
 }

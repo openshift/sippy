@@ -114,11 +114,8 @@ describe('convertApiUrlToUiUrl', () => {
 })
 
 describe('generateTestDetailsReportLink', () => {
-  const filterVals = '?baseRelease=4.18&baseStartTime=2024-01-01'
-  const expandEnvironment = (env) => `&environment=${env}`
-
   test('returns server link converted to UI URL when HATEOAS link is present', () => {
-    const regressedTest = {
+    const test = {
       test_id: 'test-123',
       test_name: 'my test',
       component: 'Networking',
@@ -130,18 +127,14 @@ describe('generateTestDetailsReportLink', () => {
           'http://localhost:8080/api/component_readiness/test_details?testId=test-123&component=Networking',
       },
     }
-    const result = generateTestDetailsReportLink(
-      regressedTest,
-      filterVals,
-      expandEnvironment
-    )
+    const result = generateTestDetailsReportLink(test)
     expect(result).toBe(
       '/sippy-ng/component_readiness/test_details?testId=test-123&component=Networking'
     )
   })
 
-  test('falls back to generated URL when no HATEOAS link exists', () => {
-    const regressedTest = {
+  test('returns null when no HATEOAS link exists', () => {
+    const test = {
       test_id: 'test-123',
       test_name: 'my test',
       component: 'Networking',
@@ -150,12 +143,21 @@ describe('generateTestDetailsReportLink', () => {
       base_stats: { release: '4.18' },
       links: {},
     }
-    const result = generateTestDetailsReportLink(
-      regressedTest,
-      filterVals,
-      expandEnvironment
+    const result = generateTestDetailsReportLink(test)
+    expect(result).toBeNull()
+  })
+
+  test('uses viewName to find view-specific link', () => {
+    const test = {
+      test_id: 'test-456',
+      links: {
+        'test_details:4.18-main':
+          'http://localhost:8080/api/component_readiness/test_details?testId=test-456&view=4.18-main',
+      },
+    }
+    const result = generateTestDetailsReportLink(test, '4.18-main')
+    expect(result).toBe(
+      '/sippy-ng/component_readiness/test_details?testId=test-456&view=4.18-main'
     )
-    expect(result).toContain('/sippy-ng/component_readiness/test_details')
-    expect(result).toContain('testId=test-123')
   })
 })
