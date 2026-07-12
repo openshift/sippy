@@ -378,7 +378,6 @@ export default function Triage({ id }) {
       <TriagedRegressionTestList
         allRegressedTests={triage.regressed_tests}
         regressions={triage.regressions}
-        filterVals={`?view=${view}`}
         symptomFilter={symptomFilter}
         symptomSummaries={triage.symptom_summaries}
       />

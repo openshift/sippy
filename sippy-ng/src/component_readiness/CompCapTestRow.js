@@ -12,22 +12,14 @@ import TableRow from '@mui/material/TableRow'
 export default function CompCapTestRow(props) {
   const classes = useContext(ComponentReadinessStyleContext)
 
-  // regressedTestCols is the full test data structure
-  // columnNames is the calculated array of columns
-  // filterVals: the parts of the url containing input values
-  const { regressedTestCols, columnNames, filterVals } = props
+  const { testCols, columnNames } = props
 
   // Put the testName on the left side with no link.
   const testNameColumn = (
-    <TableCell
-      className={classes.componentName}
-      key={regressedTestCols.test_name}
-    >
-      <Tooltip title={regressedTestCols.test_id}>
+    <TableCell className={classes.componentName} key={testCols.test_name}>
+      <Tooltip title={testCols.test_id}>
         <Typography className={classes.crCellName}>
-          {[regressedTestCols.test_suite, regressedTestCols.test_name]
-            .filter(Boolean)
-            .join('.')}
+          {[testCols.test_suite, testCols.test_name].filter(Boolean).join('.')}
         </Typography>
       </Tooltip>
     </TableCell>
@@ -37,13 +29,13 @@ export default function CompCapTestRow(props) {
     <Fragment>
       <TableRow>
         {testNameColumn}
-        {regressedTestCols.columns.map((columnVal, idx) => (
+        {testCols.columns.map((columnVal, idx) => (
           <CompReadyTestCell
             key={'testName-' + idx}
             status={columnVal.status}
-            environment={columnNames[idx]}
-            filterVals={filterVals}
-            regressedTest={columnVal.regressed_tests?.[0] || null}
+            test={
+              columnVal.all_tests?.[0] || columnVal.regressed_tests?.[0] || null
+            }
           />
         ))}
       </TableRow>
@@ -52,7 +44,6 @@ export default function CompCapTestRow(props) {
 }
 
 CompCapTestRow.propTypes = {
-  regressedTestCols: PropTypes.object.isRequired,
+  testCols: PropTypes.object.isRequired,
   columnNames: PropTypes.array.isRequired,
-  filterVals: PropTypes.string.isRequired,
 }

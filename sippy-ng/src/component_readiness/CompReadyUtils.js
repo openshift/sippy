@@ -1,7 +1,6 @@
 import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import { alpha, InputBase, Typography } from '@mui/material'
 import { formatInTimeZone } from 'date-fns-tz'
-import { safeEncodeURIComponent } from '../helpers'
 import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import blue from './blue.svg'
@@ -758,44 +757,6 @@ export const convertVariantItemsToParam = (groupedVariants) => {
   return param
 }
 
-// Construct a URL with all existing filters plus testId, environment, and testName.
-// This is the url used when you click inside a TableCell on page4 on the right.
-// We pass these arguments to the component that generates the test details report.
-export function generateTestReport(
-  testId,
-  environmentVal,
-  filterVals,
-  componentName,
-  capabilityName,
-  testName,
-  regressedTests
-) {
-  let testBasisRelease = ''
-  console.log(regressedTests)
-  if (
-    typeof regressedTests != 'undefined' &&
-    regressedTests.length > 0 &&
-    typeof regressedTests[0].base_stats != 'undefined'
-  ) {
-    testBasisRelease = regressedTests[0].base_stats.release
-  }
-  const safeComponentName = safeEncodeURIComponent(componentName)
-  const safeTestId = safeEncodeURIComponent(testId)
-  const safeTestName = safeEncodeURIComponent(testName)
-  const safeTestBasisRelease = safeEncodeURIComponent(testBasisRelease)
-  const retUrl =
-    '/component_readiness/test_details' +
-    filterVals +
-    `&testBasisRelease=${safeTestBasisRelease}` +
-    `&testId=${safeTestId}` +
-    environmentVal +
-    `&component=${safeComponentName}` +
-    `&capability=${capabilityName}` +
-    `&testName=${safeTestName}`
-
-  return sortQueryParams(retUrl)
-}
-
 // Convert API URL to a relative UI URL by stripping any scheme+host and
 // swapping the /api/ prefix for /sippy-ng/.  Producing a relative path
 // avoids the bug where the backend embeds localhost (or another internal
@@ -829,42 +790,12 @@ export function getTestDetailsLink(links, viewName) {
   return key ? links[key] : null
 }
 
-// Construct a URL with all existing filters utilizing the necessary info from the regressed test.
-// We pass these arguments to the component that generates the test details report.
-export function generateTestDetailsReportLink(
-  regressedTest,
-  filterVals,
-  expandEnvironment,
-  viewName
-) {
-  // Generate the URL we would have created for comparison
-  const environmentVal = formColumnName({ variants: regressedTest.variants })
-  const safeComponentName = safeEncodeURIComponent(regressedTest.component)
-  const safeTestId = safeEncodeURIComponent(regressedTest.test_id)
-  const safeTestName = safeEncodeURIComponent(regressedTest.test_name)
-  const safeTestBasisRelease = safeEncodeURIComponent(
-    regressedTest.base_stats?.release
-  )
-
-  // The old code generated these URLs here, but now we expect the server to always include them.
-  // I'm keeping backward compatability plus adding a compare function, so we can check the console to see
-  // differences.
-  const generatedUrl =
-    '/sippy-ng/component_readiness/test_details' +
-    filterVals +
-    `&testBasisRelease=${safeTestBasisRelease}` +
-    `&testId=${safeTestId}` +
-    expandEnvironment(environmentVal) +
-    `&component=${safeComponentName}` +
-    `&capability=${regressedTest.capability}` +
-    `&testName=${safeTestName}`
-
-  const testDetailsUrl = getTestDetailsLink(regressedTest.links, viewName)
+export function generateTestDetailsReportLink(test, viewName) {
+  const testDetailsUrl = getTestDetailsLink(test.links, viewName)
   if (testDetailsUrl) {
     return convertApiUrlToUiUrl(testDetailsUrl)
   }
-
-  return generatedUrl
+  return null
 }
 
 const SYMPTOM_COLORS = [

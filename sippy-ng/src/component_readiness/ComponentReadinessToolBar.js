@@ -55,7 +55,6 @@ export default function ComponentReadinessToolBar(props) {
     clearSearches,
     data,
     setTriageActionTaken,
-    filterVals,
   } = props
 
   const [regressedTests, setRegressedTests] = React.useState([])
@@ -127,11 +126,7 @@ export default function ComponentReadinessToolBar(props) {
       regression_id: test.regression?.id,
       regressed_since: test.regression?.opened,
       last_failure: test.last_failure,
-      details_link: generateTestDetailsReportLink(
-        test,
-        filterVals,
-        varsContext.expandEnvironment
-      ),
+      details_link: generateTestDetailsReportLink(test),
     })
 
     setPageContextForChat({
@@ -184,8 +179,6 @@ export default function ComponentReadinessToolBar(props) {
     varsContext.sampleRelease,
     varsContext.baseRelease,
     varsContext.view,
-    filterVals,
-    varsContext.expandEnvironment,
     setPageContextForChat,
     unsetPageContextForChat,
   ])
@@ -424,7 +417,6 @@ export default function ComponentReadinessToolBar(props) {
         unresolvedTests={unresolvedTests}
         triageEntries={triageEntries}
         setTriageActionTaken={setTriageActionTaken}
-        filterVals={filterVals}
         isOpen={regressedTestDialog}
         close={closeRegressedTestsDialog}
       />
@@ -442,5 +434,4 @@ ComponentReadinessToolBar.propTypes = {
   clearSearches: PropTypes.func,
   data: PropTypes.object,
   setTriageActionTaken: PropTypes.func,
-  filterVals: PropTypes.string.isRequired,
 }
