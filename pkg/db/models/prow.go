@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 
@@ -182,6 +183,69 @@ type TestDailySummary struct {
 	Flakes      int32     `gorm:"column:flakes;not null;default:0"`
 	Runs        int32     `gorm:"column:runs;not null;default:0"`
 }
+
+// TestDailyTotal is the partitioned replacement for TestDailySummary.
+// Same schema, but partitioned by LIST(release) then RANGE(date).
+// Table is partitioned (LIST by release, RANGE by date) -
+// schema managed by migration 000006, not AutoMigrate.
+type TestDailyTotal struct {
+	TestID    uint      `gorm:"column:test_id;not null"`
+	ProwJobID uint      `gorm:"column:prow_job_id;not null"`
+	SuiteID   uint      `gorm:"column:suite_id;not null;default:0"`
+	Release   string    `gorm:"column:release;not null"`
+	Date      time.Time `gorm:"column:date;type:date;not null"`
+	Successes int32     `gorm:"column:successes;not null;default:0"`
+	Failures  int32     `gorm:"column:failures;not null;default:0"`
+	Flakes    int32     `gorm:"column:flakes;not null;default:0"`
+	Runs      int32     `gorm:"column:runs;not null;default:0"`
+}
+
+// TestCumulativeSummary stores running totals of test_daily_summaries values,
+// ordered by date. Any date range [start, end] can be computed as
+// cumulative(end) - cumulative(start-1). Keyed by immutable fields only
+// (no variant_combination_id) so variant changes do not invalidate the data.
+// Entities are carried forward on days with no data so the chain is unbroken.
+// Table is partitioned (LIST by release, RANGE by date) -
+// schema managed by migration 000006, not AutoMigrate.
+type TestCumulativeSummary struct {
+	Date               civil.Date `gorm:"column:date;type:date;not null;primaryKey;priority:1"`
+	Release            string     `gorm:"column:release;not null;primaryKey;priority:2"`
+	TestID             uint       `gorm:"column:test_id;not null;primaryKey;priority:3"`
+	ProwJobID          uint       `gorm:"column:prow_job_id;not null;primaryKey;priority:4;index:idx_test_cumulative_summaries_prow_job_id"`
+	SuiteID            uint       `gorm:"column:suite_id;not null;default:0;primaryKey;priority:5"`
+	PrefixSumSuccesses int64      `gorm:"column:prefix_sum_successes;not null;default:0"`
+	PrefixSumFailures  int64      `gorm:"column:prefix_sum_failures;not null;default:0"`
+	PrefixSumFlakes    int64      `gorm:"column:prefix_sum_flakes;not null;default:0"`
+	PrefixSumRuns      int64      `gorm:"column:prefix_sum_runs;not null;default:0"`
+}
+
+// VariantCumulativeSummary stores running totals of test_cumulative_summaries
+// grouped by variant_combination_id. Updated daily by grouping one day's
+// test_cumulative_summaries. Variant changes detected via VCIDMapping trigger
+// a scoped rebuild for affected entities.
+// Table is partitioned (LIST by release, RANGE by date) -
+// schema managed by migration 000006, not AutoMigrate.
+type VariantCumulativeSummary struct {
+	Date                 civil.Date `gorm:"column:date;type:date;not null;primaryKey;priority:1"`
+	Release              string     `gorm:"column:release;not null;primaryKey;priority:2"`
+	TestID               uint       `gorm:"column:test_id;not null;primaryKey;priority:3"`
+	SuiteID              uint       `gorm:"column:suite_id;not null;default:0;primaryKey;priority:4"`
+	VariantCombinationID uint       `gorm:"column:variant_combination_id;not null;primaryKey;priority:5"`
+	PrefixSumSuccesses   int64      `gorm:"column:prefix_sum_successes;not null;default:0"`
+	PrefixSumFailures    int64      `gorm:"column:prefix_sum_failures;not null;default:0"`
+	PrefixSumFlakes      int64      `gorm:"column:prefix_sum_flakes;not null;default:0"`
+	PrefixSumRuns        int64      `gorm:"column:prefix_sum_runs;not null;default:0"`
+}
+
+// VCIDMapping tracks the prow_job_id to variant_combination_id mapping
+// so the variant cumulative summary refresh can detect when variants change and
+// do a scoped rebuild of only the affected rows.
+type VCIDMapping struct {
+	ProwJobID            uint  `gorm:"column:prow_job_id;primaryKey"`
+	VariantCombinationID *uint `gorm:"column:variant_combination_id"`
+}
+
+func (VCIDMapping) TableName() string { return "vcid_mappings" }
 
 // Bug represents a Jira bug.
 type Bug struct {

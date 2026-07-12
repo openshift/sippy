@@ -45,6 +45,7 @@ import (
 
 	"github.com/andygrunwald/go-jira"
 
+	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/jobrunevents"
@@ -54,6 +55,7 @@ import (
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/cumulativesummary"
 	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -149,6 +151,12 @@ var dailySummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Name:    "sippy_daily_summary_refresh_millis",
 	Help:    "Milliseconds to refresh the daily summary table",
 	Buckets: []float64{1000, 5000, 10000, 30000, 60000, 300000, 600000, 1200000},
+})
+
+var cumulativeSummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
+	Name:    "sippy_cumulative_summary_refresh_millis",
+	Help:    "Milliseconds to refresh the cumulative summary tables",
+	Buckets: []float64{100, 500, 1000, 5000, 10000, 30000, 60000, 300000, 600000},
 })
 
 var matViewUniqueNumberOfTests = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -387,16 +395,65 @@ func recordMatviewRefreshTime(cacheClient cache.Cache, matView string, tmpLog *l
 	}
 }
 
-func RefreshData(dbc *db.DB, cacheClient cache.Cache, refreshMatviewsOnlyIfEmpty bool, dailySummaryOpts dailysummary.Options) {
+// RefreshOptions controls the incremental refresh behavior.
+type RefreshOptions struct {
+	RefreshOnlyIfEmpty bool
+}
+
+// RefreshData runs the normal incremental refresh of all summary tables
+// and materialized views. Used by the load command and the serve loop.
+func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
+
 	summaryStart := time.Now()
-	if err := dailysummary.Refresh(dbc, dailySummaryOpts); err != nil {
-		log.WithError(err).Error("failed to refresh daily summaries")
-	} else {
-		dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
+	if _, err := dailysummary.Refresh(dbc); err != nil {
+		return fmt.Errorf("failed to refresh daily summaries: %w", err)
 	}
-	refreshMaterializedViews(dbc, cacheClient, refreshMatviewsOnlyIfEmpty)
+	dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
+
+	totalsStart := time.Now()
+	earliestTotalsChanged, err := dailysummary.RefreshTotals(dbc)
+	if err != nil {
+		return fmt.Errorf("failed to refresh daily totals: %w", err)
+	}
+	log.WithField("elapsed", time.Since(totalsStart)).Info("daily totals refresh complete")
+
+	cumulativeStart := time.Now()
+	earliestCumulativeChanged, err := cumulativesummary.Refresh(dbc, earliestTotalsChanged)
+	if err != nil {
+		return fmt.Errorf("failed to refresh cumulative summaries: %w", err)
+	}
+	if err := cumulativesummary.RefreshVariantCumulativeSummaries(dbc, earliestCumulativeChanged); err != nil {
+		return fmt.Errorf("failed to refresh variant cumulative summaries: %w", err)
+	}
+	cumulativeSummaryRefreshMetric.Observe(float64(time.Since(cumulativeStart).Milliseconds()))
+
+	refreshMaterializedViews(dbc, cacheClient, opts.RefreshOnlyIfEmpty)
 	log.Info("Refresh complete")
+	return nil
+}
+
+// BackfillData refreshes a specific table for a given date range,
+// bypassing the normal incremental logic. Used for backfilling.
+func BackfillData(dbc *db.DB, table string, startDate, endDate civil.Date) error {
+	log.WithFields(log.Fields{
+		"table": table,
+		"start": startDate,
+		"end":   endDate,
+	}).Info("Backfilling table")
+
+	switch table {
+	case "daily-summaries":
+		return dailysummary.Backfill(dbc, startDate, endDate)
+	case "daily-totals":
+		return dailysummary.BackfillTotals(dbc, startDate, endDate)
+	case "cumulative-summaries":
+		return cumulativesummary.Backfill(dbc, startDate, endDate)
+	case "variant-cumulative-summaries":
+		return cumulativesummary.BackfillVariant(dbc, startDate, endDate)
+	default:
+		return fmt.Errorf("unknown table: %s", table)
+	}
 }
 
 func (s *Server) hasCapabilities(capabilities []string) bool {

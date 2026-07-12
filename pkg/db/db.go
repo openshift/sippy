@@ -22,13 +22,16 @@ import (
 type SchemaHashType string
 
 const (
-	hashTypeMatView                          SchemaHashType = "matview"
-	hashTypeView                             SchemaHashType = "view"
-	hashTypeMatViewIndex                     SchemaHashType = "matview_index"
-	hashTypeFunction                         SchemaHashType = "function"
-	partitionedTableProwJobRunTests                         = "prow_job_run_tests"
-	partitionedTableProwJobRunTestsOutputs                  = "prow_job_run_test_outputs"
-	partitionedTableTestAnalysisByJobByDates                = "test_analysis_by_job_by_dates"
+	hashTypeMatView                            SchemaHashType = "matview"
+	hashTypeView                               SchemaHashType = "view"
+	hashTypeMatViewIndex                       SchemaHashType = "matview_index"
+	hashTypeFunction                           SchemaHashType = "function"
+	partitionedTableProwJobRunTests                           = "prow_job_run_tests"
+	partitionedTableProwJobRunTestsOutputs                    = "prow_job_run_test_outputs"
+	partitionedTableTestAnalysisByJobByDates                  = "test_analysis_by_job_by_dates"
+	partitionedTableTestDailyTotals                           = "test_daily_totals"
+	partitionedTableTestCumulativeSummaries                   = "test_cumulative_summaries"
+	partitionedTableVariantCumulativeSummaries                = "variant_cumulative_summaries"
 )
 
 type DB struct {
@@ -89,6 +92,8 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 	// partitions. Custom plans use actual parameter values for partition pruning.
 	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
+	pgxConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60s"
+	pgxConfig.RuntimeParams["random_page_cost"] = "1.1"
 	if cfg.enablePartitionwise {
 		pgxConfig.RuntimeParams["enable_partitionwise_aggregate"] = "on"
 		pgxConfig.RuntimeParams["enable_partitionwise_join"] = "on"
@@ -169,6 +174,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
 		&models.TestDailySummary{},
+		&models.VCIDMapping{},
 	}
 
 	// Currently we need RunMigrations to run prior
@@ -216,6 +222,9 @@ func (d *DB) PartitionedTables() []string {
 		partitionedTableProwJobRunTests,
 		partitionedTableProwJobRunTestsOutputs,
 		partitionedTableTestAnalysisByJobByDates,
+		partitionedTableTestDailyTotals,
+		partitionedTableTestCumulativeSummaries,
+		partitionedTableVariantCumulativeSummaries,
 	}
 }
 
@@ -241,7 +250,7 @@ func (d *DB) EnsurePartitions(releases []string, startDate, endDate time.Time, d
 			dateColumn = "prow_job_run_timestamp"
 		case partitionedTableProwJobRunTestsOutputs:
 			dateColumn = "prow_job_run_test_timestamp"
-		case partitionedTableTestAnalysisByJobByDates:
+		case partitionedTableTestAnalysisByJobByDates, partitionedTableTestDailyTotals, partitionedTableTestCumulativeSummaries, partitionedTableVariantCumulativeSummaries:
 			dateColumn = "date"
 		default:
 			log.Warnf("unknown partitioned table: %s", tableName)
