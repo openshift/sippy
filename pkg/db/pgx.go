@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -44,7 +45,7 @@ func CopyToTempTable[T any](
 	}
 
 	drop := func() {
-		if _, err := conn.Exec(context.Background(), "DROP TABLE IF EXISTS "+tempTable); err != nil {
+		if _, err := conn.Exec(context.Background(), "DROP TABLE IF EXISTS "+tempTable); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
 			log.WithError(err).WithField("table", tempTable).Error("failed to drop temp table")
 		}
 	}
@@ -56,7 +57,11 @@ func CopyToTempTable[T any](
 		colNames[i] = c.Name
 	}
 
-	createSQL := fmt.Sprintf("CREATE TEMP TABLE %s (%s)", tempTable, strings.Join(colDefs, ", "))
+	onCommit := ""
+	if _, isTx := conn.(pgx.Tx); isTx {
+		onCommit = " ON COMMIT DROP"
+	}
+	createSQL := fmt.Sprintf("CREATE TEMP TABLE %s (%s)%s", tempTable, strings.Join(colDefs, ", "), onCommit)
 	if _, err := conn.Exec(ctx, createSQL); err != nil {
 		return func() {}, fmt.Errorf("creating %s: %w", tempTable, err)
 	}
