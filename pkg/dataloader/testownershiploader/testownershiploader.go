@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	v1 "github.com/openshift-eng/ci-test-mapping/pkg/api/types/v1"
 	"github.com/openshift-eng/ci-test-mapping/pkg/bigquery"
@@ -39,19 +38,6 @@ func New(ctx context.Context, dbc *db.DB, googleServiceAccountCredentialFile, go
 
 func (tol *TestOwnershipLoader) Name() string {
 	return "test ownership"
-}
-
-var tmpTestOwnershipColumns = []string{
-	"api_version",
-	"unique_id",
-	"name",
-	"suite",
-	"product",
-	"priority",
-	"staff_approved_obsolete",
-	"component",
-	"capabilities",
-	"jira_component",
 }
 
 func (tol *TestOwnershipLoader) Load() {
@@ -88,53 +74,26 @@ func (tol *TestOwnershipLoader) loadMappings(mappings []v1.TestOwnership) error 
 		}
 	}()
 
-	if _, err := conn.Exec(tol.ctx, `CREATE TEMP TABLE tmp_test_ownerships (
-		api_version             text NOT NULL DEFAULT '',
-		unique_id               text NOT NULL DEFAULT '',
-		name                    text NOT NULL DEFAULT '',
-		suite                   text NOT NULL DEFAULT '',
-		product                 text NOT NULL DEFAULT '',
-		priority                integer NOT NULL DEFAULT 0,
-		staff_approved_obsolete boolean NOT NULL DEFAULT false,
-		component               text NOT NULL DEFAULT '',
-		capabilities            text[],
-		jira_component          text NOT NULL DEFAULT ''
-	)`); err != nil {
-		return fmt.Errorf("creating temp table: %w", err)
-	}
-	defer func() {
-		if _, err := conn.Exec(tol.ctx, "DROP TABLE IF EXISTS tmp_test_ownerships"); err != nil {
-			log.WithError(err).Error("failed to drop temp table tmp_test_ownerships")
-		}
-	}()
-
 	st := time.Now()
-	copied, err := conn.CopyFrom(tol.ctx,
-		pgx.Identifier{"tmp_test_ownerships"},
-		tmpTestOwnershipColumns,
-		pgx.CopyFromSlice(len(mappings), func(i int) ([]any, error) {
-			m := &mappings[i]
-			return []any{
-				m.APIVersion,
-				m.ID,
-				m.Name,
-				m.Suite,
-				m.Product,
-				m.Priority,
-				m.StaffApprovedObsolete,
-				m.Component,
-				m.Capabilities,
-				m.JIRAComponent,
-			}, nil
-		}),
+	cleanup, err := db.CopyToTempTable(tol.ctx, conn, "tmp_test_ownerships", mappings,
+		[]db.TempColumn[v1.TestOwnership]{
+			{Name: "api_version", Type: "text NOT NULL DEFAULT ''", Value: func(m *v1.TestOwnership) any { return m.APIVersion }},
+			{Name: "unique_id", Type: "text NOT NULL DEFAULT ''", Value: func(m *v1.TestOwnership) any { return m.ID }},
+			{Name: "name", Type: "text NOT NULL DEFAULT ''", Value: func(m *v1.TestOwnership) any { return m.Name }},
+			{Name: "suite", Type: "text NOT NULL DEFAULT ''", Value: func(m *v1.TestOwnership) any { return m.Suite }},
+			{Name: "product", Type: "text NOT NULL DEFAULT ''", Value: func(m *v1.TestOwnership) any { return m.Product }},
+			{Name: "priority", Type: "integer NOT NULL DEFAULT 0", Value: func(m *v1.TestOwnership) any { return m.Priority }},
+			{Name: "staff_approved_obsolete", Type: "boolean NOT NULL DEFAULT false", Value: func(m *v1.TestOwnership) any { return m.StaffApprovedObsolete }},
+			{Name: "component", Type: "text NOT NULL DEFAULT ''", Value: func(m *v1.TestOwnership) any { return m.Component }},
+			{Name: "capabilities", Type: "text[]", Value: func(m *v1.TestOwnership) any { return m.Capabilities }},
+			{Name: "jira_component", Type: "text NOT NULL DEFAULT ''", Value: func(m *v1.TestOwnership) any { return m.JIRAComponent }},
+		},
 	)
+	defer cleanup()
 	if err != nil {
-		return fmt.Errorf("COPY tmp_test_ownerships: %w", err)
+		return err
 	}
-	log.WithFields(log.Fields{
-		"rows":    copied,
-		"elapsed": time.Since(st),
-	}).Info("COPY into temp table complete")
+	log.WithField("elapsed", time.Since(st)).Info("COPY into temp table complete")
 
 	st = time.Now()
 	upsertTag, err := conn.Exec(tol.ctx, `
@@ -199,10 +158,12 @@ func (tol *TestOwnershipLoader) loadMappings(mappings []v1.TestOwnership) error 
 	}
 
 	var nullComponents []string
-	tol.dbc.DB.Raw(`
+	if err := tol.dbc.DB.Raw(`
 		SELECT DISTINCT jira_component FROM test_ownerships
 		WHERE jira_component_id IS NULL AND jira_component != ''
-	`).Scan(&nullComponents)
+	`).Scan(&nullComponents).Error; err != nil {
+		log.WithError(err).Warn("failed to query unresolved jira components")
+	}
 	if len(nullComponents) > 0 {
 		log.WithField("components", nullComponents).Warn("test ownership rows have unresolved jira_component_id")
 	}
