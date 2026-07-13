@@ -1218,12 +1218,16 @@ func TestGenerateComponentReport(t *testing.T) {
 
 					}
 
-					// AllTests should contain at least as many entries as RegressedTests
-					assert.GreaterOrEqual(t, len(report.Rows[ir].Columns[ic].AllTests),
-						len(report.Rows[ir].Columns[ic].RegressedTests),
-						"AllTests should be a superset of RegressedTests for row %d col %d", ir, ic)
-					// Clear AllTests for the deep comparison below; the count check above
-					// validates it is populated.
+					if tc.generator.includeAllTests() {
+						// Level 4 (testId set): AllTests should be a superset of RegressedTests
+						assert.GreaterOrEqual(t, len(report.Rows[ir].Columns[ic].AllTests),
+							len(report.Rows[ir].Columns[ic].RegressedTests),
+							"AllTests should be a superset of RegressedTests for row %d col %d", ir, ic)
+					} else {
+						// Levels 1-3: AllTests is not populated to avoid response bloat
+						assert.Empty(t, report.Rows[ir].Columns[ic].AllTests,
+							"AllTests should be empty at non-test-level for row %d col %d", ir, ic)
+					}
 					report.Rows[ir].Columns[ic].AllTests = nil
 				}
 			}
