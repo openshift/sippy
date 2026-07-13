@@ -154,9 +154,12 @@ export function pathForExactJobAnalysis(release, job) {
   return `/jobs/${release}/analysis?${single(filterFor('name', 'equals', job))}`
 }
 
-export function pathForExactTestAnalysis(release, test, excludedVariants) {
-  console.log(excludedVariants)
-
+export function pathForExactTestAnalysis(
+  release,
+  test,
+  excludedVariants,
+  period
+) {
   let filters = [filterFor('name', 'equals', test)]
   if (Array.isArray(excludedVariants)) {
     excludedVariants.forEach((variant) => {
@@ -164,12 +167,21 @@ export function pathForExactTestAnalysis(release, test, excludedVariants) {
     })
   }
 
-  return `/tests/${release}/analysis?test=${safeEncodeURIComponent(
+  let path = `/tests/${release}/analysis?test=${safeEncodeURIComponent(
     test
   )}&${multiple(...filters)}`
+  if (period && period !== 'default') {
+    path += `&period=${safeEncodeURIComponent(period)}`
+  }
+  return path
 }
 
-export function pathForExactTestAnalysisWithFilter(release, test, filter) {
+export function pathForExactTestAnalysisWithFilter(
+  release,
+  test,
+  filter,
+  period
+) {
   let filters = [filterFor('name', 'equals', test)]
   if (filter && filter.items) {
     filter.items.forEach((item) => {
@@ -178,9 +190,13 @@ export function pathForExactTestAnalysisWithFilter(release, test, filter) {
       }
     })
   }
-  return `/tests/${release}/analysis?test=${safeEncodeURIComponent(
+  let path = `/tests/${release}/analysis?test=${safeEncodeURIComponent(
     test
   )}&${multiple(...filters)}`
+  if (period && period !== 'default') {
+    path += `&period=${safeEncodeURIComponent(period)}`
+  }
+  return path
 }
 
 export function pathForExactTest(release, test) {
@@ -198,15 +214,16 @@ export function pathForVariantsWithTestFailure(release, variant, test) {
   )}`
 }
 
-function last7DaysFilter() {
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-  return filterFor('timestamp', '>', `${sevenDaysAgo}`)
+function timestampFilterForPeriod(period) {
+  const days = period === 'twoDay' ? 2 : 7
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+  return filterFor('timestamp', '>', `${cutoff}`)
 }
 
-export function pathForJobRunsWithTestFailure(release, test, filter) {
+export function pathForJobRunsWithTestFailure(release, test, filter, period) {
   let filters = []
   filters.push(filterFor('failed_test_names', 'has entry', test))
-  filters.push(last7DaysFilter())
+  filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -218,10 +235,10 @@ export function pathForJobRunsWithTestFailure(release, test, filter) {
   return `/jobs/${release}/runs?${multiple(...filters)}`
 }
 
-export function pathForJobRunsWithTest(release, test, filter) {
+export function pathForJobRunsWithTest(release, test, filter, period) {
   let filters = []
   filters.push(filterFor('ran_test_names', 'has entry', test))
-  filters.push(last7DaysFilter())
+  filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -233,10 +250,10 @@ export function pathForJobRunsWithTest(release, test, filter) {
   return `/jobs/${release}/runs?${multiple(...filters)}`
 }
 
-export function pathForJobRunsWithTestFlake(release, test, filter) {
+export function pathForJobRunsWithTestFlake(release, test, filter, period) {
   let filters = []
   filters.push(filterFor('flaked_test_names', 'has entry', test))
-  filters.push(last7DaysFilter())
+  filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {

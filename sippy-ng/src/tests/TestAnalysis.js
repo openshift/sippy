@@ -33,12 +33,12 @@ import {
   withSort,
 } from '../helpers'
 import { Link } from 'react-router-dom'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
 import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
 import { TestStackedChart } from './TestStackedChart'
 import { usePageContextForChat } from '../chat/store/useChatStore'
-import { useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
@@ -57,6 +57,7 @@ export function TestAnalysis(props) {
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
   const [testName = props.test] = useQueryParam('test', SafeStringParam)
+  const [period = 'default'] = useQueryParam('period', StringParam)
   const { setPageContextForChat, unsetPageContextForChat } =
     usePageContextForChat()
 
@@ -81,10 +82,14 @@ export function TestAnalysis(props) {
     }
 
     const filter = safeEncodeURIComponent(JSON.stringify(filterModel))
+    const periodParam =
+      period && period !== 'default'
+        ? `&period=${safeEncodeURIComponent(period)}`
+        : ''
 
     Promise.all([
       fetch(
-        `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
+        `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}${periodParam}`
       ),
     ])
       .then(([test]) => {
@@ -110,7 +115,7 @@ export function TestAnalysis(props) {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [period])
 
   // Update page context for chat
   useEffect(() => {
@@ -119,10 +124,14 @@ export function TestAnalysis(props) {
     setPageContextForChat({
       page: 'test-analysis',
       url: window.location.href,
-      instructions: `The user is viewing detailed analysis for a specific test. 
+      instructions: `The user is viewing detailed analysis for a specific test.
         You can use your database query tools to answer additional questions about this test.
         When querying the database, use the test name and apply the same filters shown in the context.
-        The test statistics shown are for the current 7-day period compared to the previous 7-day period.`,
+        The test statistics shown are for the current ${
+          period === 'twoDay' ? '2-day' : '7-day'
+        } period compared to the previous ${
+        period === 'twoDay' ? '2-day' : '7-day'
+      } period.`,
       suggestions: [
         'What are the most common failure modes for this test?',
         {
@@ -161,6 +170,7 @@ export function TestAnalysis(props) {
     test,
     testName,
     filterModel,
+    period,
     props.release,
     setPageContextForChat,
     unsetPageContextForChat,
@@ -202,7 +212,7 @@ export function TestAnalysis(props) {
             <SummaryCard
               key="test-summary"
               threshold={TEST_THRESHOLDS}
-              name="7 Day Overall"
+              name={period === 'twoDay' ? '2 Day Overall' : '7 Day Overall'}
               success={test.current_successes}
               flakes={test.current_flakes}
               caption={
@@ -286,13 +296,18 @@ export function TestAnalysis(props) {
                 <Button
                   component={Link}
                   to={withSort(
-                    pathForJobRunsWithTest(props.release, testName, {
-                      items: [
-                        ...filterModel.items.filter(
-                          (f) => f.columnField === 'variants'
-                        ),
-                      ],
-                    }),
+                    pathForJobRunsWithTest(
+                      props.release,
+                      testName,
+                      {
+                        items: [
+                          ...filterModel.items.filter(
+                            (f) => f.columnField === 'variants'
+                          ),
+                        ],
+                      },
+                      period
+                    ),
                     'timestamp',
                     'desc'
                   )}
@@ -306,13 +321,18 @@ export function TestAnalysis(props) {
                 <Button
                   component={Link}
                   to={withSort(
-                    pathForJobRunsWithTestFailure(props.release, testName, {
-                      items: [
-                        ...filterModel.items.filter(
-                          (f) => f.columnField === 'variants'
-                        ),
-                      ],
-                    }),
+                    pathForJobRunsWithTestFailure(
+                      props.release,
+                      testName,
+                      {
+                        items: [
+                          ...filterModel.items.filter(
+                            (f) => f.columnField === 'variants'
+                          ),
+                        ],
+                      },
+                      period
+                    ),
                     'timestamp',
                     'desc'
                   )}
@@ -326,13 +346,18 @@ export function TestAnalysis(props) {
                 <Button
                   component={Link}
                   to={withSort(
-                    pathForJobRunsWithTestFlake(props.release, testName, {
-                      items: [
-                        ...filterModel.items.filter(
-                          (f) => f.columnField === 'variants'
-                        ),
-                      ],
-                    }),
+                    pathForJobRunsWithTestFlake(
+                      props.release,
+                      testName,
+                      {
+                        items: [
+                          ...filterModel.items.filter(
+                            (f) => f.columnField === 'variants'
+                          ),
+                        ],
+                      },
+                      period
+                    ),
                     'timestamp',
                     'desc'
                   )}
@@ -412,6 +437,7 @@ export function TestAnalysis(props) {
                 sortField="delta_from_passing_average"
                 sort="asc"
                 filterModel={filterModel}
+                period={period}
               />
             </Card>
           </Grid>
