@@ -21,9 +21,16 @@ function TestResultsSection({ title, apiUrl, release }) {
   const [rows, setRows] = React.useState([])
   const [isLoaded, setLoaded] = React.useState(false)
   const [fetchError, setFetchError] = React.useState('')
+  const [sortModel, setSortModel] = React.useState([
+    { field: 'current_pass_percentage', sort: 'asc' },
+  ])
 
   useEffect(() => {
-    if (!apiUrl) return
+    if (!apiUrl) {
+      setRows([])
+      setLoaded(true)
+      return
+    }
     setLoaded(false)
     setFetchError('')
 
@@ -107,7 +114,8 @@ function TestResultsSection({ title, apiUrl, release }) {
         autoHeight={true}
         rowsPerPageOptions={[10, 25, 50]}
         pageSize={25}
-        sortModel={[{ field: 'current_pass_percentage', sort: 'asc' }]}
+        sortModel={sortModel}
+        onSortModelChange={setSortModel}
         disableSelectionOnClick
       />
     </Box>
@@ -204,12 +212,9 @@ export default function FeatureGateDetail(props) {
       <SimpleBreadcrumbs
         release={release}
         currentPage={featureGate}
-        crumbs={[
-          {
-            text: 'Feature Gates',
-            link: `/feature_gates/${release}`,
-          },
-        ]}
+        previousPage={
+          <Link to={`/feature_gates/${release}`}>Feature Gates</Link>
+        }
       />
       <Container size="xl">
         <Typography align="center" variant="h4" sx={{ mb: 2 }}>
