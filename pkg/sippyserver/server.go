@@ -22,7 +22,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
@@ -452,6 +451,15 @@ func failureResponse(w http.ResponseWriter, code int, message string) {
 	})
 }
 
+func failureResponseWithError(w http.ResponseWriter, message string, err error) {
+	code := http.StatusInternalServerError
+	if api.IsBadRequestError(err) {
+		code = http.StatusBadRequest
+	}
+	log.WithError(err).Error(message)
+	failureResponse(w, code, message)
+}
+
 // some standard error types
 const APIConfigError = "APIConfigError"
 const ParameterMissing = "ParameterMissing"
@@ -484,13 +492,13 @@ func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request)
 func (s *Server) jsonIncidentEvent(w http.ResponseWriter, req *http.Request) {
 	start, err := getISO8601Date("start", req)
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, "couldn't parse start param: "+err.Error())
+		failureResponse(w, http.StatusBadRequest, "couldn't parse start param: "+err.Error())
 		return
 	}
 
 	end, err := getISO8601Date("end", req)
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, "couldn't parse end param: "+err.Error())
+		failureResponse(w, http.StatusBadRequest, "couldn't parse end param: "+err.Error())
 		return
 	}
 
@@ -508,25 +516,25 @@ func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) 
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "release_time", apitype.SortDescending)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 
 		start, err := getISO8601Date("start", req)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't parse start param: "+err.Error())
+			failureResponse(w, http.StatusBadRequest, "couldn't parse start param: "+err.Error())
 			return
 		}
 
 		end, err := getISO8601Date("end", req)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't parse end param: "+err.Error())
+			failureResponse(w, http.StatusBadRequest, "couldn't parse end param: "+err.Error())
 			return
 		}
 
 		results, err := api.GetPayloadEvents(s.db, release, filterOpts, start, end)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't get payload events: "+err.Error())
+			failureResponseWithError(w, "couldn't get payload events", err)
 			return
 		}
 
@@ -546,14 +554,13 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
 		log.WithError(err).Error("error")
-		failureResponse(w, http.StatusInternalServerError, "Error building job run report: "+err.Error())
+		failureResponse(w, http.StatusBadRequest, "Error building job run report: "+err.Error())
 		return
 	}
 
 	payloadJobRuns, err := api.ListPayloadJobRuns(s.db, filterOpts, param.SafeRead(req, "release"))
 	if err != nil {
-		log.WithError(err).Error("error listing payload job runs")
-		failureResponse(w, http.StatusBadRequest, "error listing payload job runs: "+err.Error())
+		failureResponseWithError(w, "error listing payload job runs", err)
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, payloadJobRuns)
@@ -579,7 +586,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, err.Error())
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -591,8 +598,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 
 	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts, s.GetReportEnd())
 	if err != nil {
-		log.WithError(err).Error("error")
-		failureResponse(w, http.StatusInternalServerError, "Error analyzing payload: "+err.Error())
+		failureResponseWithError(w, "error analyzing payload", err)
 		return
 	}
 
@@ -669,12 +675,12 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "unique_test_count", apitype.SortAscending)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release, filterOpts)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			failureResponseWithError(w, "couldn't query feature gates", err)
 			return
 		}
 		api.RespondWithJSON(http.StatusOK, w, gates)
@@ -690,12 +696,12 @@ func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN
 	if release != "" {
 		filters, err := filter.ExtractFilters(req)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 		results, err := dbFN(s.db, filters, release, testName, s.GetReportEnd())
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, err.Error())
+			failureResponseWithError(w, "error querying test analysis", err)
 			return
 		}
 		api.RespondWithJSON(200, w, results)
@@ -746,14 +752,13 @@ func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Reques
 
 	filters, err := filter.ExtractFilters(req)
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, "error processing filter options")
+		failureResponse(w, http.StatusBadRequest, "error processing filter options")
 		return
 	}
 
 	outputs, err := api.GetTestDurationsFromDB(s.db, release, testName, filters)
 	if err != nil {
-		log.WithError(err).Error("error querying test outputs from db")
-		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from db")
+		failureResponseWithError(w, "error querying test durations from db", err)
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -772,14 +777,13 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 
 	filters, err := filter.ExtractFilters(req)
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, "error processing filter options")
+		failureResponse(w, http.StatusBadRequest, "error processing filter options")
 		return
 	}
 
 	outputs, err := api.GetTestOutputsFromDB(s.db, release, testName, filters, 10)
 	if err != nil {
-		log.WithError(err).Error("error querying test outputs from db")
-		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from db")
+		failureResponseWithError(w, "error querying test outputs from db", err)
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -839,7 +843,7 @@ func (s *Server) jsonGetRecentTestFailures(w http.ResponseWriter, req *http.Requ
 
 	result, err := api.GetRecentTestFailures(s.db, release, period, previousPeriod, includeOutputs, filterOpts, pagination, s.GetReportEnd())
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, err.Error())
+		failureResponseWithError(w, "error querying recent test failures", err)
 		return
 	}
 
@@ -1110,8 +1114,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 
 	jobIDs, err := query.ListFilteredJobIDs(s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
 	if err != nil {
-		log.WithError(err).Error("error querying jobs")
-		failureResponse(w, http.StatusInternalServerError, "error querying jobs")
+		failureResponseWithError(w, "error querying jobs", err)
 		return
 	}
 
@@ -1286,14 +1289,13 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "premerge_job_failures", apitype.SortDescending)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 
 		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts, s.GetReportEnd())
 		if err != nil {
-			log.WithError(err).Error("error")
-			failureResponse(w, http.StatusInternalServerError, "Error fetching repositories: "+err.Error())
+			failureResponseWithError(w, "error fetching repositories", err)
 			return
 		}
 
@@ -1306,14 +1308,13 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "merged_at", apitype.SortDescending)
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 
 		results, err := api.GetPullRequestsReportFromDB(s.db, release, filterOpts)
 		if err != nil {
-			log.WithError(err).Error("error")
-			failureResponse(w, http.StatusInternalServerError, "Error fetching pull requests: "+err.Error())
+			failureResponseWithError(w, "error fetching pull requests", err)
 			return
 		}
 
@@ -1641,8 +1642,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, jobFilter, jobRunsFilter,
 		start, boundary, end, limit, sortField, sort, period, s.GetReportEnd())
 	if err != nil {
-		log.WithError(err).Error("error in PrintJobAnalysisJSONFromDB")
-		failureResponse(w, http.StatusInternalServerError, err.Error())
+		failureResponseWithError(w, "error in job analysis", err)
 		return
 	}
 

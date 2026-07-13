@@ -177,13 +177,13 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, currentPassPercentage, apitype.SortDescending)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{"code": http.StatusBadRequest, "message": "Error building job report: " + err.Error()})
 		return
 	}
 
 	jobsResult, err := JobReportsFromDB(dbc, release, req.URL.Query().Get("period"), filterOpts, start, boundary, end, reportEnd)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		RespondWithError(w, "error building job report", err)
 		return
 	}
 
