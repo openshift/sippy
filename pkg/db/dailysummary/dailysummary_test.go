@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type fakeStore struct {
-	maxSummary    *time.Time
+	maxSummary    *civil.Date
 	maxSummaryErr error
-	truncated     bool
-	truncateErr   error
 	releases      []string
 	releasesErr   error
 	aggregateErr  error
@@ -24,18 +24,13 @@ type fakeStore struct {
 }
 
 type aggregateCall struct {
-	start, end            time.Time
+	start, end            civil.Date
 	release               string
 	skipConflictDetection bool
 }
 
-func (f *fakeStore) MaxSummaryDate() (*time.Time, error) {
+func (f *fakeStore) MaxSummaryDate() (*civil.Date, error) {
 	return f.maxSummary, f.maxSummaryErr
-}
-
-func (f *fakeStore) Truncate() error {
-	f.truncated = true
-	return f.truncateErr
 }
 
 func (f *fakeStore) Releases() ([]string, error) {
@@ -45,7 +40,7 @@ func (f *fakeStore) Releases() ([]string, error) {
 	return []string{"4.22", "5.0"}, f.releasesErr
 }
 
-func (f *fakeStore) AggregateRangeForRelease(start, end time.Time, release string, skipConflictDetection bool) error {
+func (f *fakeStore) AggregateRangeForRelease(start, end civil.Date, release string, skipConflictDetection bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, aggregateCall{start: start, end: end, release: release, skipConflictDetection: skipConflictDetection})
@@ -83,106 +78,81 @@ func (f *fakeStore) noneSkippedConflictDetection() bool {
 }
 
 func TestRefresh_Incremental(t *testing.T) {
-	maxDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	today := civil.DateOf(time.Now().UTC())
+	maxDate := today.AddDays(-3)
 	store := &fakeStore{maxSummary: &maxDate}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.NoError(t, err)
-	assert.Len(t, store.getCalls(), 2)
+	// 4 days (maxDate through today) × 2 releases
+	assert.Len(t, store.getCalls(), 4*2)
 	assert.True(t, store.noneSkippedConflictDetection())
-	assert.False(t, store.truncated)
 }
 
-func TestRefresh_IncrementalCapsAtYesterday(t *testing.T) {
-	future := time.Now().AddDate(0, 0, 1)
+func TestRefresh_FutureMaxDateStartsAtYesterday(t *testing.T) {
+	future := civil.Date{Year: 2099, Month: 1, Day: 1}
 	store := &fakeStore{maxSummary: &future}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.NoError(t, err)
 	calls := store.getCalls()
 	require.NotEmpty(t, calls)
-	assert.True(t, calls[0].start.Before(future))
+	today := civil.DateOf(time.Now().UTC())
+	yesterday := today.AddDays(-1)
+	assert.Equal(t, yesterday, calls[0].start)
+	assert.Equal(t, today, calls[len(calls)-1].end)
 }
 
 func TestRefresh_EmptyTableUsesDefaultLookbackAndSkipsConflictDetection(t *testing.T) {
 	store := &fakeStore{}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.NoError(t, err)
 	calls := store.getCalls()
 	require.NotEmpty(t, calls)
-	daysBefore := time.Since(calls[0].start).Hours() / 24
+	today := civil.DateOf(time.Now().UTC())
+	daysBefore := today.DaysSince(calls[0].start)
 	assert.InDelta(t, defaultLookbackDays, daysBefore, 1)
 	assert.True(t, store.allSkippedConflictDetection())
 }
 
-func TestRefresh_RebuildUsesInsert(t *testing.T) {
-	store := &fakeStore{}
-
-	err := refreshSummaries(store, Options{Rebuild: true})
-
-	require.NoError(t, err)
-	assert.True(t, store.truncated)
-	assert.Len(t, store.getCalls(), 2)
-	assert.True(t, store.allSkippedConflictDetection())
-}
-
 func TestRefresh_IncrementalUsesUpsert(t *testing.T) {
-	maxDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	today := civil.DateOf(time.Now().UTC())
+	maxDate := today.AddDays(-2)
 	store := &fakeStore{maxSummary: &maxDate}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.NoError(t, err)
-	assert.Len(t, store.getCalls(), 2)
+	// 3 days × 2 releases
+	assert.Len(t, store.getCalls(), 3*2)
 	assert.True(t, store.noneSkippedConflictDetection())
 }
 
-func TestRefresh_DateOverrides(t *testing.T) {
-	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	end := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	maxDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
-	store := &fakeStore{maxSummary: &maxDate}
+func TestBackfill_UsesExplicitDateRange(t *testing.T) {
+	start := civil.Date{Year: 2026, Month: 7, Day: 1}
+	end := civil.Date{Year: 2026, Month: 7, Day: 3}
+	store := &fakeStore{}
 
-	err := refreshSummaries(store, Options{StartOverride: &start, EndOverride: &end})
-
-	require.NoError(t, err)
-	calls := store.getCalls()
-	require.Len(t, calls, 2)
-	assert.Equal(t, start, calls[0].start)
-	assert.Equal(t, end, calls[0].end)
-}
-
-func TestRefresh_StartOverrideOnly(t *testing.T) {
-	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	maxDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
-	store := &fakeStore{maxSummary: &maxDate}
-
-	err := refreshSummaries(store, Options{StartOverride: &start})
+	err := backfillSummaries(store, start, end)
 
 	require.NoError(t, err)
 	calls := store.getCalls()
-	require.Len(t, calls, 2)
+	// 3 days × 2 releases = 6 calls, each single-day
+	require.Len(t, calls, 6)
 	assert.Equal(t, start, calls[0].start)
-}
-
-func TestRefresh_TruncateError(t *testing.T) {
-	store := &fakeStore{truncateErr: fmt.Errorf("permission denied")}
-
-	err := refreshSummaries(store, Options{Rebuild: true})
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "truncating table")
-	assert.Empty(t, store.getCalls())
+	assert.Equal(t, start, calls[0].end)
+	assert.Equal(t, end, calls[len(calls)-1].start)
+	assert.Equal(t, end, calls[len(calls)-1].end)
 }
 
 func TestRefresh_MaxSummaryDateError(t *testing.T) {
 	store := &fakeStore{maxSummaryErr: fmt.Errorf("connection refused")}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "max summary date")
@@ -192,7 +162,7 @@ func TestRefresh_MaxSummaryDateError(t *testing.T) {
 func TestRefresh_ReleasesError(t *testing.T) {
 	store := &fakeStore{releasesErr: fmt.Errorf("connection refused")}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "querying releases")
@@ -200,10 +170,10 @@ func TestRefresh_ReleasesError(t *testing.T) {
 }
 
 func TestRefresh_AggregateError(t *testing.T) {
-	maxDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	maxDate := civil.Date{Year: 2026, Month: 6, Day: 17}
 	store := &fakeStore{maxSummary: &maxDate, aggregateErr: fmt.Errorf("disk full")}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "aggregating release")
@@ -212,27 +182,30 @@ func TestRefresh_AggregateError(t *testing.T) {
 func TestRefresh_NoReleases(t *testing.T) {
 	store := &fakeStore{releases: []string{}}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.NoError(t, err)
 	assert.Empty(t, store.getCalls())
 }
 
-func TestRefresh_ParallelProcessesAllReleases(t *testing.T) {
+func TestRefresh_ProcessesAllReleasesPerDay(t *testing.T) {
 	releases := []string{"4.18", "4.19", "4.20", "4.21", "4.22", "5.0"}
-	maxDate := time.Date(2026, 6, 17, 0, 0, 0, 0, time.UTC)
+	today := civil.DateOf(time.Now().UTC())
+	maxDate := today.AddDays(-3)
 	store := &fakeStore{maxSummary: &maxDate, releases: releases}
 
-	err := refreshSummaries(store, Options{})
+	_, err := refreshSummaries(store)
 
 	require.NoError(t, err)
 	calls := store.getCalls()
-	assert.Len(t, calls, len(releases))
-	seen := make(map[string]bool)
+	// 4 days (maxDate through today) × 6 releases = 24 calls
+	assert.Len(t, calls, 4*len(releases))
+	seen := sets.New[string]()
 	for _, call := range calls {
-		seen[call.release] = true
+		seen.Insert(call.release)
+		assert.Equal(t, call.start, call.end, "each call should be a single day")
 	}
 	for _, rel := range releases {
-		assert.True(t, seen[rel], "release %s not processed", rel)
+		assert.True(t, seen.Has(rel), "release %s not processed", rel)
 	}
 }
