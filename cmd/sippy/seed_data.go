@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -23,7 +24,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/flags"
@@ -439,8 +439,17 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 
 	log.Info("Refreshing materialized views...")
-	seedStart := time.Now().Add(-190 * 24 * time.Hour)
-	sippyserver.RefreshData(dbc, nil, false, dailysummary.Options{StartOverride: &seedStart})
+	seedToday := civil.DateOf(time.Now().UTC())
+	seedStart := seedToday.AddDays(-190)
+	seedEnd := seedToday
+	for _, table := range []string{"daily-summaries", "daily-totals", "cumulative-summaries"} {
+		if err := sippyserver.BackfillData(dbc, table, seedStart, seedEnd); err != nil {
+			return fmt.Errorf("failed to backfill %s: %w", table, err)
+		}
+	}
+	if err := sippyserver.RefreshData(dbc, nil, sippyserver.RefreshOptions{}); err != nil {
+		return fmt.Errorf("failed to refresh data: %w", err)
+	}
 
 	log.Info("Syncing regressions...")
 	if err := syncRegressions(dbc); err != nil {
