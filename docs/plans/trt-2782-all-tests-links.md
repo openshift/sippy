@@ -92,12 +92,18 @@ if testStats.ReportStatus > crtest.FixedRegression {
 }
 ```
 
+### 7. Restrict `AllTests` to Level 4 only
+
+To avoid response bloat (~1GB at top level), `AllTests` is only populated when `testId` is present in the request (Level 4, the test variant page). This is the only level where the frontend renders `test_details` links from `all_tests`. At Levels 1-3, `AllTests` is omitted from the response.
+
+The `includeAllTests()` helper on `ComponentReportGenerator` controls this, gating accumulation in `getNewCellStatus`, assignment in `buildReport`, and PostAnalysis middleware processing.
+
 ## Verification
 
 1. `go vet ./pkg/...` and `make lint`
 2. `go test ./pkg/api/componentreadiness/...` and `go test ./pkg/apis/...`
-3. Start sippy serve, hit the `/api/component_readiness` endpoint with test-level parameters, confirm:
-   - `all_tests` field is present on each cell
-   - Every entry in `all_tests` has a `links.test_details` URL regardless of status
+3. Start sippy serve, hit the `/api/component_readiness` endpoint and confirm:
+   - Level 1 (`?view=...`): no `all_tests` field in response
+   - Level 4 (`?view=...&component=X&capability=Y&testId=Z`): `all_tests` present with `test_details` links
    - `regressed_tests` continues to contain only regressed tests (backward compat)
    - Cell-level `status` is unchanged (still computed from regressed tests only)

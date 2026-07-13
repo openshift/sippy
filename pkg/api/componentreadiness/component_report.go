@@ -141,13 +141,15 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 				report.Rows[ri].Columns[ci].Status = worstStatus
 			}
 
-			for ati := range col.AllTests {
-				testKey := crtest.Identification{
-					RowIdentification:    col.AllTests[ati].RowIdentification,
-					ColumnIdentification: col.AllTests[ati].ColumnIdentification,
-				}
-				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].AllTests[ati].TestComparison); err != nil {
-					return err
+			if c.includeAllTests() {
+				for ati := range col.AllTests {
+					testKey := crtest.Identification{
+						RowIdentification:    col.AllTests[ati].RowIdentification,
+						ColumnIdentification: col.AllTests[ati].ColumnIdentification,
+					}
+					if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].AllTests[ati].TestComparison); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -291,6 +293,12 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	// Initialize LinkInjector middleware
 	linkInjector := linkinjector.NewLinkInjectorMiddleware(c.ReqOptions, c.baseURL)
 	c.middlewares = append(c.middlewares, linkInjector)
+}
+
+// includeAllTests returns true when the request is for a specific test (Level 4),
+// which is the only level where the frontend renders test_details links from AllTests.
+func (c *ComponentReportGenerator) includeAllTests() bool {
+	return len(c.ReqOptions.TestIDOptions) > 0 && c.ReqOptions.TestIDOptions[0].TestID != ""
 }
 
 // GenerateReport is the main entry point for generation of a component readiness report.
@@ -506,7 +514,7 @@ type cellStatus struct {
 	allTests       []crtype.ReportTestSummary
 }
 
-func getNewCellStatus(testID crtest.Identification, testStats testdetails.TestComparison, existingCellStatus *cellStatus) cellStatus {
+func getNewCellStatus(testID crtest.Identification, testStats testdetails.TestComparison, existingCellStatus *cellStatus, includeAllTests bool) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (testStats.ReportStatus < crtest.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
@@ -517,7 +525,9 @@ func getNewCellStatus(testID crtest.Identification, testStats testdetails.TestCo
 			newCellStatus.status = existingCellStatus.status
 		}
 		newCellStatus.regressedTests = existingCellStatus.regressedTests
-		newCellStatus.allTests = existingCellStatus.allTests
+		if includeAllTests {
+			newCellStatus.allTests = existingCellStatus.allTests
+		}
 	} else {
 		newCellStatus.status = testStats.ReportStatus
 	}
@@ -526,7 +536,9 @@ func getNewCellStatus(testID crtest.Identification, testStats testdetails.TestCo
 		Identification: testID,
 		TestComparison: testStats,
 	}
-	newCellStatus.allTests = append(newCellStatus.allTests, rt)
+	if includeAllTests {
+		newCellStatus.allTests = append(newCellStatus.allTests, rt)
+	}
 
 	if testStats.ReportStatus < crtest.MissingSample {
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
@@ -539,6 +551,7 @@ func updateCellStatus(
 	columnIdentifications []crtest.ColumnID,
 	testID crtest.Identification,
 	testStats testdetails.TestComparison,
+	includeAllTests bool,
 	// use the inputs above to update the maps below (golang passes maps by reference)
 	status map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus,
 	allRows map[crtest.RowIdentification]struct{},
@@ -563,16 +576,16 @@ func updateCellStatus(
 		if !ok {
 			row = map[crtest.ColumnID]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, testStats, nil)
+				row[columnIdentification] = getNewCellStatus(testID, testStats, nil, includeAllTests)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, testStats, nil)
+					row[columnIdentification] = getNewCellStatus(testID, testStats, nil, includeAllTests)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, testStats, &existing)
+					row[columnIdentification] = getNewCellStatus(testID, testStats, &existing, includeAllTests)
 				}
 			}
 		}
@@ -657,12 +670,12 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 			return crtype.ComponentReport{}, err
 		}
 		updateCellStatus(
-			rowIdentifications, columnIdentifications, testKey, cellReport, // inputs
+			rowIdentifications, columnIdentifications, testKey, cellReport, c.includeAllTests(), // inputs
 			aggregatedStatus, allRows, allColumns, // these three are maps to be updated
 		)
 	}
 
-	rows, err := buildReport(sortRowIdentifications(allRows), sortColumnIdentifications(allColumns), aggregatedStatus)
+	rows, err := buildReport(sortRowIdentifications(allRows), sortColumnIdentifications(allColumns), aggregatedStatus, c.includeAllTests())
 	if err != nil {
 		return crtype.ComponentReport{}, err
 	}
@@ -701,7 +714,7 @@ func sortColumnIdentifications(allColumns map[crtest.ColumnID]struct{}) []crtest
 	return sortedColumns
 }
 
-func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.ColumnID, aggregatedStatus map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus) ([]crtype.ReportRow, error) {
+func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.ColumnID, aggregatedStatus map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus, includeAllTests bool) ([]crtype.ReportRow, error) {
 	// Now build the report
 	var regressionRows, goodRows []crtype.ReportRow
 	for _, rowID := range sortedRows {
@@ -730,10 +743,12 @@ func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.C
 				sort.Slice(reportColumn.RegressedTests, func(i, j int) bool {
 					return reportColumn.RegressedTests[i].ReportStatus < reportColumn.RegressedTests[j].ReportStatus
 				})
-				reportColumn.AllTests = status.allTests
-				sort.Slice(reportColumn.AllTests, func(i, j int) bool {
-					return reportColumn.AllTests[i].ReportStatus < reportColumn.AllTests[j].ReportStatus
-				})
+				if includeAllTests {
+					reportColumn.AllTests = status.allTests
+					sort.Slice(reportColumn.AllTests, func(i, j int) bool {
+						return reportColumn.AllTests[i].ReportStatus < reportColumn.AllTests[j].ReportStatus
+					})
+				}
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)
 			if reportColumn.Status <= crtest.SignificantTriagedRegression {
