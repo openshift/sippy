@@ -67,12 +67,7 @@ func GetComponentTestVariants(ctx context.Context, provider dataprovider.DataPro
 
 func GetJobVariants(ctx context.Context, provider dataprovider.DataProvider) (crtest.JobVariants,
 	[]error) {
-	generator := ComponentReportGenerator{
-		dataProvider: provider,
-	}
-
-	return api.GetDataFromCacheOrGenerate[crtest.JobVariants](ctx, provider.Cache(), cache.RequestOptions{},
-		api.NewCacheSpec(generator, "TestAllVariants~", nil), generator.GenerateJobVariants, crtest.JobVariants{})
+	return provider.QueryJobVariants(ctx)
 }
 
 func GetComponentReport(
@@ -266,10 +261,6 @@ func (c *ComponentReportGenerator) GenerateCacheVariants(ctx context.Context) (C
 	}, errs
 }
 
-func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crtest.JobVariants, []error) {
-	return c.dataProvider.QueryJobVariants(ctx)
-}
-
 func (c *ComponentReportGenerator) getCache() cache.Cache {
 	return c.dataProvider.Cache()
 }
@@ -328,11 +319,6 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.ReportTestStatus, []error) {
 	before := time.Now()
 	fLog := log.WithField("func", "getTestStatus")
-	allJobVariants, errs := GetJobVariants(ctx, c.dataProvider)
-	if len(errs) > 0 {
-		fLog.Errorf("failed to get job variants")
-		return crstatus.ReportTestStatus{}, errs
-	}
 
 	var baseStatus, sampleStatus map[string]crstatus.TestStatus
 	baseStatusCh := make(chan map[string]crstatus.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
@@ -346,11 +332,11 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
 	// generate inputs to the channels
-	c.middlewares.Query(ctx, wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
-	goInterruptible(ctx, wg, func() { baseStatus, baseErrs = c.dataProvider.QueryBaseTestStatus(ctx, c.ReqOptions, allJobVariants) })
+	c.middlewares.Query(ctx, wg, baseStatusCh, sampleStatusCh, errCh)
+	goInterruptible(ctx, wg, func() { baseStatus, baseErrs = c.dataProvider.QueryBaseTestStatus(ctx, c.ReqOptions) })
 	goInterruptible(ctx, wg, func() {
 		fLog.Infof("running sample query with includeVariants: %+v", c.ReqOptions.VariantOption.IncludeVariants)
-		status, errs := c.dataProvider.QuerySampleTestStatus(ctx, c.ReqOptions, allJobVariants, c.ReqOptions.VariantOption.IncludeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
+		status, errs := c.dataProvider.QuerySampleTestStatus(ctx, c.ReqOptions, c.ReqOptions.VariantOption.IncludeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
 		fLog.Infof("received %d test statuses and %d errors from sample query", len(status), len(errs))
 		sampleStatusCh <- status
 		for _, err := range errs {
@@ -397,6 +383,7 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 	<-statusErrsDoneCh
 	fLog.Infof("total test statuses: %d", len(sampleStatus))
 
+	var errs []error
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
 		errs = append(errs, baseErrs...)
 		errs = append(errs, sampleErrs...)
