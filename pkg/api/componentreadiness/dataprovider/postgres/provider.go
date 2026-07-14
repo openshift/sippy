@@ -340,7 +340,7 @@ GROUP BY tow.unique_id, t.name, s.name, tow.component, tow.capabilities, d.prow_
 `
 
 func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, start, end time.Time,
-	_ crtest.JobVariants, includeVariants map[string][]string,
+	includeVariants map[string][]string,
 	dbGroupBy map[string]bool) (map[string]crstatus.TestStatus, []error) {
 
 	var rows []testStatusRow
@@ -436,8 +436,7 @@ func (p *PostgresProvider) fetchJobVariantsByIDs(ids []uint) (map[uint]map[strin
 	return result, nil
 }
 
-func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error) {
+func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error) {
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
 	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
@@ -454,14 +453,12 @@ func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions r
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start,
 		reqOptions.BaseRelease.End,
-		allJobVariants,
 		includeVariants,
 		dbGroupBy,
 	)
 }
 
 func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
 
@@ -478,7 +475,6 @@ func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
-		allJobVariants,
 		includeVariants,
 		dbGroupBy,
 	)
@@ -529,7 +525,7 @@ ORDER BY pjr.timestamp
 `
 
 func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
-	reqOptions reqopts.RequestOptions, _ crtest.JobVariants,
+	reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	var rows []testDetailRow
@@ -639,19 +635,17 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 	return result, nil
 }
 
-func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants) (map[string][]crstatus.TestJobRunRows, []error) {
+func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	return p.queryTestDetails(
 		ctx,
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End,
-		reqOptions, allJobVariants, reqOptions.VariantOption.IncludeVariants,
+		reqOptions, reqOptions.VariantOption.IncludeVariants,
 	)
 }
 
 func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
@@ -659,14 +653,13 @@ func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqO
 		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
-		reqOptions, allJobVariants, includeVariants,
+		reqOptions, includeVariants,
 	)
 }
 
 // --- JobQuerier ---
 
 func (p *PostgresProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time) (map[string]dataprovider.JobRunStats, error) {
 
 	type jobRunRow struct {

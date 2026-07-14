@@ -32,11 +32,11 @@ type LinkInjector struct {
 	baseURL    string
 }
 
-func (l *LinkInjector) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
+func (l *LinkInjector) Query(_ context.Context, _ *sync.WaitGroup, _, _ chan map[string]crstatus.TestStatus, _ chan error) {
 	// unused
 }
 
-func (l *LinkInjector) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
+func (l *LinkInjector) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 	// unused
 }
 

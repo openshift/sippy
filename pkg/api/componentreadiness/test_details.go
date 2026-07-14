@@ -335,7 +335,6 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 
 func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	ctx context.Context,
-	allJobVariants crtest.JobVariants,
 	baseRelease string,
 	baseStart time.Time,
 	baseEnd time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
@@ -344,32 +343,26 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	reqOpts.BaseRelease.Name = baseRelease
 	reqOpts.BaseRelease.Start = baseStart
 	reqOpts.BaseRelease.End = baseEnd
-	return c.dataProvider.QueryBaseJobRunTestStatus(ctx, reqOpts, allJobVariants)
+	return c.dataProvider.QueryBaseJobRunTestStatus(ctx, reqOpts)
 }
 
 func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 	ctx context.Context,
-	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	return c.dataProvider.QuerySampleJobRunTestStatus(ctx, c.ReqOptions, allJobVariants, includeVariants, start, end)
+	return c.dataProvider.QuerySampleJobRunTestStatus(ctx, c.ReqOptions, includeVariants, start, end)
 }
 
 func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
 	fLog := logrus.WithField("func", "getJobRunTestStatus")
-	allJobVariants, errs := GetJobVariants(ctx, c.dataProvider)
-	if len(errs) > 0 {
-		logrus.Errorf("failed to get job variants")
-		return crstatus.TestJobRunStatuses{}, errs
-	}
 	var baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
 	errCh := make(chan error)
 
-	c.middlewares.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
+	c.middlewares.QueryTestDetails(ctx, &wg, errCh)
 
 	wg.Add(1)
 	go func() {
@@ -379,7 +372,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 			logrus.Infof("Context canceled while fetching base job run test status")
 			return
 		default:
-			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseRelease.Name, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
+			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, c.ReqOptions.BaseRelease.Name, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
 		}
 	}()
 
@@ -392,7 +385,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 			return
 		default:
 			fLog.Infof("running sample status query with includeVariants: %+v", c.ReqOptions.VariantOption.IncludeVariants)
-			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.VariantOption.IncludeVariants,
+			status, errs := c.getSampleJobRunTestStatus(ctx, c.ReqOptions.VariantOption.IncludeVariants,
 				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
 			fLog.Infof("received %d test statuses and %d errors from sample query", len(status), len(errs))
 			sampleStatus = status
@@ -411,6 +404,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 	}
 
 	fLog.Infof("total test statuses: %d", len(sampleStatus))
+	var errs []error
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 || len(middlewareErrs) != 0 {
 		errs = append(errs, baseErrs...)
 		errs = append(errs, sampleErrs...)
