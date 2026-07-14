@@ -1930,7 +1930,7 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	regressions, err := componentreadiness.ListRegressions(s.db, view.SampleRelease.Name, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
+	regressions, err := componentreadiness.ListRegressions(s.db, view.SampleRelease.Name, "", s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1980,6 +1980,7 @@ func (s *Server) jsonGetRegressions(w http.ResponseWriter, req *http.Request) {
 	// Read query parameters for listing
 	view := param.SafeRead(req, "view")
 	release := param.SafeRead(req, "release")
+	testName := param.SafeRead(req, "test_name")
 
 	// Error if both view and release are specified
 	if view != "" && release != "" {
@@ -2003,7 +2004,7 @@ func (s *Server) jsonGetRegressions(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	regressions, err := componentreadiness.ListRegressions(s.db, release, views, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
+	regressions, err := componentreadiness.ListRegressions(s.db, release, testName, views, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -2788,7 +2789,7 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/component_readiness/regressions",
-			Description:  "List component readiness test regressions. Supports view OR release query parameters (not both).",
+			Description:  "List component readiness test regressions. Supports view OR release query parameters (not both). Optional test_name parameter filters by exact test name.",
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonGetRegressions,
 		},

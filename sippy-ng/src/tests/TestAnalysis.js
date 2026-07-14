@@ -50,6 +50,7 @@ import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import SummaryCard from '../components/SummaryCard'
 import TestPassRateCharts from './TestPassRateCharts'
+import TestRegressionsTable from './TestRegressionsTable'
 import TestTable from './TestTable'
 
 export function TestAnalysis(props) {
@@ -406,6 +407,17 @@ export function TestAnalysis(props) {
                   testName={testName}
                 />
               </Box>
+              <Typography variant="h6" sx={{ marginTop: 3 }}>
+                Active Regressions
+                <Tooltip title="Active regressions detected by Component Readiness for this test. Honors variant filters applied above.">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <TestRegressionsTable
+                release={props.release}
+                testName={testName}
+                filterModel={filterModel}
+              />
             </Card>
           </Grid>
 

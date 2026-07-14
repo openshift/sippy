@@ -305,12 +305,12 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 	return nil
 }
 
-// ListRegressions lists all regressions for the provided view OR release.
+// ListRegressions lists all regressions for the provided view OR release, optionally filtered by test name.
 // When view is set, it is resolved to that view's sample release and filtering is by release.
-func ListRegressions(dbc *db.DB, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
+func ListRegressions(dbc *db.DB, release, testName string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	var err error
-	regressions, err = query.ListRegressions(dbc, release)
+	regressions, err = query.ListRegressions(dbc, release, testName)
 	if err != nil {
 		return nil, err
 	}
