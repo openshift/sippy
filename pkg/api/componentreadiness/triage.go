@@ -305,17 +305,31 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 	return nil
 }
 
-// ListRegressions lists all regressions for the provided view OR release, optionally filtered by test name.
+// ListRegressions lists all regressions for the provided view OR release.
 // When view is set, it is resolved to that view's sample release and filtering is by release.
-func ListRegressions(dbc *db.DB, release, testName string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
+func ListRegressions(dbc *db.DB, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	var err error
-	regressions, err = query.ListRegressions(dbc, release, testName)
+	regressions, err = query.ListRegressions(dbc, release)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add HATEOAS links to each regression
+	for i := range regressions {
+		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, crTimeRoundingOffset, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
+	}
+
+	return regressions, err
+}
+
+// GetRegressionsForTest returns regressions matching a specific test name, optionally filtered by release.
+func GetRegressionsForTest(dbc *db.DB, release, testName string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
+	regressions, err := query.GetRegressionsForTest(dbc, release, testName)
+	if err != nil {
+		return nil, err
+	}
+
 	for i := range regressions {
 		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, crTimeRoundingOffset, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
 	}

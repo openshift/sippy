@@ -48,7 +48,7 @@ func CountRegressionFailuresAfter(dbc *db.DB, regressionID uint, after time.Time
 	return int(count), nil
 }
 
-func ListRegressions(dbc *db.DB, release, testName string) ([]models.TestRegression, error) {
+func ListRegressions(dbc *db.DB, release string) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	query := dbc.DB.Model(&models.TestRegression{}).Preload("Triages").Preload("JobRuns").Preload("Views")
 
@@ -56,13 +56,26 @@ func ListRegressions(dbc *db.DB, release, testName string) ([]models.TestRegress
 		query = query.Where("test_regressions.release = ?", release)
 	}
 
-	if testName != "" {
-		query = query.Where("test_regressions.test_name = ?", testName)
-	}
-
 	res := query.Find(&regressions)
 	if res.Error != nil {
 		log.WithError(res.Error).Error("error listing regressions")
+	}
+	return regressions, res.Error
+}
+
+func GetRegressionsForTest(dbc *db.DB, release, testName string) ([]models.TestRegression, error) {
+	var regressions []models.TestRegression
+	query := dbc.DB.Model(&models.TestRegression{}).Preload("Triages").Preload("JobRuns").Preload("Views")
+
+	if release != "" {
+		query = query.Where("test_regressions.release = ?", release)
+	}
+
+	query = query.Where("test_regressions.test_name = ?", testName)
+
+	res := query.Find(&regressions)
+	if res.Error != nil {
+		log.WithError(res.Error).Error("error getting regressions for test")
 	}
 	return regressions, res.Error
 }

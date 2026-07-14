@@ -1,5 +1,5 @@
+import { Link } from 'react-router-dom'
 import {
-  Chip,
   Paper,
   Table,
   TableBody,
@@ -10,7 +10,6 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { Link } from 'react-router-dom'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
@@ -32,7 +31,7 @@ export default function TestRegressionsTable({
       process.env.REACT_APP_API_URL
     }/api/component_readiness/regressions?release=${safeEncodeURIComponent(
       release
-    )}&test_name=${safeEncodeURIComponent(testName)}`
+    )}&test=${safeEncodeURIComponent(testName)}`
 
     fetch(url)
       .then((res) => {
@@ -98,7 +97,6 @@ export default function TestRegressionsTable({
             <TableCell>Variants</TableCell>
             <TableCell>Regressed Since</TableCell>
             <TableCell>Last Failure</TableCell>
-            <TableCell>Triage</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -111,8 +109,6 @@ export default function TestRegressionsTable({
               .filter((val) => !['default', 'none', 'unknown'].includes(val))
 
             const tooltipLines = (regression.variants || []).sort().join('\n')
-
-            const triaged = regression.triages && regression.triages.length > 0
 
             return (
               <TableRow key={regression.id}>
@@ -146,27 +142,6 @@ export default function TestRegressionsTable({
                         new Date()
                       )
                     : ''}
-                </TableCell>
-                <TableCell>
-                  {triaged ? (
-                    regression.triages.map((t) => (
-                      <Chip
-                        key={t.id}
-                        label={
-                          t.url ? t.url.split('/').pop() : `Triage #${t.id}`
-                        }
-                        component={Link}
-                        to={`/sippy-ng/component_readiness/triages/${t.id}`}
-                        clickable
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                        sx={{ marginRight: 0.5 }}
-                      />
-                    ))
-                  ) : (
-                    <Chip label="Untriaged" size="small" color="warning" />
-                  )}
                 </TableCell>
               </TableRow>
             )
