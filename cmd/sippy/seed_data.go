@@ -125,7 +125,7 @@ type testCount struct {
 	flake   int
 }
 
-var syntheticReleases = []string{"4.22", "4.21", "4.20", "4.19", "Presubmits"}
+var syntheticReleases = []string{"4.22", "4.21", "4.20", "4.19", models.ReleasePresubmits}
 
 var syntheticJobs = []syntheticJobDef{
 	{
@@ -473,28 +473,39 @@ func seedReleaseDefinitions(dbc *db.DB) error {
 	}
 
 	for _, release := range syntheticReleases {
-		m := meta[release]
-		parts := strings.Split(release, ".")
-		major, minor := 0, 0
-		if len(parts) >= 2 {
-			_, _ = fmt.Sscanf(parts[0], "%d", &major)
-			_, _ = fmt.Sscanf(parts[1], "%d", &minor)
-		}
+		var def models.ReleaseDefinition
 
-		develStart := now.AddDate(0, 0, m.gaDays-180)
-		def := models.ReleaseDefinition{
-			Release:              release,
-			Major:                major,
-			Minor:                minor,
-			PreviousRelease:      m.previous,
-			DevelopmentStartDate: &develStart,
-			Product:              "OCP",
-			Status:               "Full Support",
-			Capabilities:         allCaps,
-		}
-		if m.gaDays != 0 {
-			ga := now.AddDate(0, 0, m.gaDays)
-			def.GADate = &ga
+		if release == models.ReleasePresubmits {
+			def = models.ReleaseDefinition{
+				Release:      release,
+				Product:      "OCP",
+				Status:       "Development",
+				Capabilities: pq.StringArray{models.CapPullRequests, models.CapSippyClassic},
+			}
+		} else {
+			m := meta[release]
+			parts := strings.Split(release, ".")
+			major, minor := 0, 0
+			if len(parts) >= 2 {
+				_, _ = fmt.Sscanf(parts[0], "%d", &major)
+				_, _ = fmt.Sscanf(parts[1], "%d", &minor)
+			}
+
+			develStart := now.AddDate(0, 0, m.gaDays-180)
+			def = models.ReleaseDefinition{
+				Release:              release,
+				Major:                major,
+				Minor:                minor,
+				PreviousRelease:      m.previous,
+				DevelopmentStartDate: &develStart,
+				Product:              "OCP",
+				Status:               "Full Support",
+				Capabilities:         allCaps,
+			}
+			if m.gaDays != 0 {
+				ga := now.AddDate(0, 0, m.gaDays)
+				def.GADate = &ga
+			}
 		}
 
 		if err := dbc.DB.Where("release = ?", release).FirstOrCreate(&def).Error; err != nil {
@@ -854,7 +865,7 @@ func seedPresubmitData(dbc *db.DB) error {
 		{
 			Kind:    models.ProwKind("presubmit"),
 			Name:    "openshift-origin-ci-5.0-e2e-aws-ovn-upgrade",
-			Release: "Presubmits",
+			Release: models.ReleasePresubmits,
 			Variants: pq.StringArray{
 				"Architecture:amd64", "FeatureSet:default", "Installer:ipi",
 				"LayeredProduct:none", "Network:ovn", "Platform:aws",
@@ -864,7 +875,7 @@ func seedPresubmitData(dbc *db.DB) error {
 		{
 			Kind:    models.ProwKind("presubmit"),
 			Name:    "openshift-origin-ci-5.0-e2e-gcp-ovn-amd64",
-			Release: "Presubmits",
+			Release: models.ReleasePresubmits,
 			Variants: pq.StringArray{
 				"Architecture:amd64", "FeatureSet:default", "Installer:ipi",
 				"LayeredProduct:none", "Network:ovn", "Platform:gcp",
@@ -921,7 +932,7 @@ func seedPresubmitData(dbc *db.DB) error {
 			timestamp := now.Add(-time.Duration(3-i) * 20 * time.Hour)
 			run := models.ProwJobRun{
 				ProwJobID:      pj.ID,
-				ProwJobRelease: "Presubmits",
+				ProwJobRelease: models.ReleasePresubmits,
 				Cluster:        "build01",
 				Timestamp:      timestamp,
 				Duration:       2 * time.Hour,
@@ -940,7 +951,7 @@ func seedPresubmitData(dbc *db.DB) error {
 		jrpr := models.ProwJobRunProwPullRequest{
 			ProwJobRunID:        ri.run.ID,
 			ProwPullRequestID:   prs[ri.prIdx].ID,
-			ProwJobRunRelease:   "Presubmits",
+			ProwJobRunRelease:   models.ReleasePresubmits,
 			ProwJobRunTimestamp: ri.run.Timestamp,
 		}
 		if err := dbc.DB.Create(&jrpr).Error; err != nil {
@@ -957,7 +968,7 @@ func seedPresubmitData(dbc *db.DB) error {
 		failResult := models.ProwJobRunTest{
 			ProwJobRunID:        ri.run.ID,
 			ProwJobID:           ri.run.ProwJobID,
-			ProwJobRunRelease:   "Presubmits",
+			ProwJobRunRelease:   models.ReleasePresubmits,
 			ProwJobRunTimestamp: ri.run.Timestamp,
 			TestID:              installTestID,
 			SuiteID:             &suite.ID,
@@ -975,7 +986,7 @@ func seedPresubmitData(dbc *db.DB) error {
 				ProwJobRunTestID:        failResult.ID,
 				Output:                  "Expected install to succeed but got timeout after 30m",
 				ProwJobRunTestTimestamp: ri.run.Timestamp,
-				ProwJobRunTestRelease:   "Presubmits",
+				ProwJobRunTestRelease:   models.ReleasePresubmits,
 			}
 			if err := dbc.DB.Create(&output).Error; err != nil {
 				return fmt.Errorf("failed to create ProwJobRunTestOutput: %w", err)
@@ -986,7 +997,7 @@ func seedPresubmitData(dbc *db.DB) error {
 		successResult := models.ProwJobRunTest{
 			ProwJobRunID:        ri.run.ID,
 			ProwJobID:           ri.run.ProwJobID,
-			ProwJobRunRelease:   "Presubmits",
+			ProwJobRunRelease:   models.ReleasePresubmits,
 			ProwJobRunTimestamp: ri.run.Timestamp,
 			TestID:              networkTestID,
 			SuiteID:             &suite.ID,
@@ -1002,7 +1013,7 @@ func seedPresubmitData(dbc *db.DB) error {
 		flakeResult := models.ProwJobRunTest{
 			ProwJobRunID:        ri.run.ID,
 			ProwJobID:           ri.run.ProwJobID,
-			ProwJobRunRelease:   "Presubmits",
+			ProwJobRunRelease:   models.ReleasePresubmits,
 			ProwJobRunTimestamp: ri.run.Timestamp,
 			TestID:              installTestID,
 			SuiteID:             &suite.ID,

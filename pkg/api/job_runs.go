@@ -371,7 +371,7 @@ func JobRunRiskAnalysis(
 	// master, so it should be safe to assume the latest compareRelease in the db.
 	compareRelease := jobRun.ProwJob.Release
 	neverStableJob := false
-	if compareRelease == "Presubmits" {
+	if compareRelease == models.ReleasePresubmits {
 		// Get latest release from the DB:
 		ar, err := GetReleases(ctx, bqc, false)
 		if err != nil {

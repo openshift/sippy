@@ -608,8 +608,8 @@ func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) erro
 	// already been transformed (name stabilized, type set to presubmit) during
 	// the BigQuery fetch. Route them straight to the Presubmits pseudorelease.
 	if _, ok := pj.Annotations["releaseJobName"]; ok && pj.Spec.Refs != nil {
-		if pl.releaseSet["Presubmits"] {
-			if err := pl.prowJobToJobRun(ctx, pj, "Presubmits"); err != nil {
+		if pl.releaseSet[models.ReleasePresubmits] {
+			if err := pl.prowJobToJobRun(ctx, pj, models.ReleasePresubmits); err != nil {
 				err = errors.Wrapf(err, "error converting /payload sub-job to job run: %s", pj.Spec.Job)
 				pjLog.WithError(err).Warning("prow import error")
 				return err
@@ -975,7 +975,7 @@ func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJo
 	// For /payload sub-jobs, use the releaseJobName annotation for variant
 	// identification (the stable name won't match variant patterns, but the
 	// canonical periodic job name will). Then override the release variant
-	// to "Presubmits" since the canonical name would produce e.g. "5.0".
+	// to the Presubmits pseudo-release since the canonical name would produce e.g. "5.0".
 	variantJobName := pj.Spec.Job
 	isPayloadPresubmit := false
 	if rjn, ok := pj.Annotations["releaseJobName"]; ok && pj.Spec.Refs != nil {
@@ -988,7 +988,7 @@ func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJo
 		if isPayloadPresubmit {
 			for i, v := range variants {
 				if _, isRelease := pl.config.Releases[v]; isRelease {
-					variants[i] = "Presubmits"
+					variants[i] = models.ReleasePresubmits
 					break
 				}
 			}
