@@ -261,11 +261,14 @@ const JobsWrapper = () => {
 
 const FeatureGateDetailWrapper = () => {
   let { release, feature_gate } = useParams()
+  const navigate = useNavigate()
+
   if (release === 'latest') {
     release = findFirstNonGARelease(React.useContext(ReleasesContext))
+    navigate(`/feature_gates/${release}/${feature_gate}`, { replace: true })
   }
 
-  return RedirectLatestReleaseWrapper(
+  return (
     <FeatureGateDetail
       key={'fg-detail-' + release + '-' + feature_gate}
       release={release}
