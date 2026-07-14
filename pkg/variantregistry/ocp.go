@@ -215,14 +215,10 @@ ORDER BY j.prowjob_job_name;
 						}
 						bkt := v.gcsClient.Bucket(jlr.GCSBucket.StringVal)
 						gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-						allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
+						clusterMatches, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobClusterData)
 						if err != nil {
 							jLog.WithError(err).Error("error finding cluster data file, proceeding without")
-							allMatches = [][]string{}
-						}
-						var clusterMatches []string
-						if len(allMatches) > 0 {
-							clusterMatches = allMatches[0]
+							clusterMatches = nil
 						}
 						for _, cm := range clusterMatches {
 							// log with the file prefix for easy click/copy to browser:
