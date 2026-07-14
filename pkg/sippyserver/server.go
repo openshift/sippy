@@ -760,7 +760,7 @@ func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL,
 	fg.Links["tests_by_capability"] = buildFilteredTestsURL(baseAPIURL, release, capabilityFilter)
 
 	fg.Links["ui_detail"] = fmt.Sprintf(
-		"%s/feature_gates/%s/%s",
+		"%s/sippy-ng/feature_gates/%s/%s",
 		baseFrontendURL, release, url.PathEscape(fg.FeatureGate))
 }
 
