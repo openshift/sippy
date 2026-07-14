@@ -176,6 +176,15 @@ var syntheticJobs = []syntheticJobDef{
 			"Suite": "unknown", "Upgrade": "micro", "LayeredProduct": "none",
 		},
 	},
+	{
+		nameTemplate: "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-networksegmentation",
+		variants: map[string]string{
+			"Platform": "aws", "Architecture": "amd64", "Network": "ovn",
+			"Topology": "ha", "Installer": "ipi", "FeatureSet": "default",
+			"Suite": "parallel", "Upgrade": "none", "LayeredProduct": "none",
+			"Capability": "NetworkSegmentation",
+		},
+	},
 }
 
 // Job template constants for referencing specific jobs in test specs.
@@ -331,6 +340,29 @@ var syntheticTests = []syntheticTestSpec{
 		},
 	},
 
+	// --- Feature gate annotated tests ---
+	{
+		testID: "test-fg-network-segmentation", testName: "[sig-network] [FeatureGate:NetworkSegmentation] pods should communicate across segments",
+		component: "Networking / ovn-kubernetes", capabilities: []string{"networking"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {100, 95, 0}, "4.22": {100, 93, 0}},
+			gcpAmd64Parallel: {"4.21": {100, 97, 0}, "4.22": {100, 95, 0}},
+		},
+	},
+	{
+		testID: "test-fg-network-segmentation-2", testName: "[sig-network] [FeatureGate:NetworkSegmentation] network policy should enforce segmentation",
+		component: "Networking / ovn-kubernetes", capabilities: []string{"networking"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {100, 94, 0}, "4.22": {100, 92, 0}},
+		},
+	},
+	{
+		testID: "test-fg-aws-dual-stack-install", testName: "[sig-installer] [FeatureGate:AWSDualStackInstall] dual stack install should succeed",
+		component: "Installer / openshift-installer", capabilities: []string{"AWSDualStackInstall"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.22": {50, 48, 0}},
+		},
+	},
 	// --- Install / health indicator tests: run on every job, every release ---
 	{
 		testID: "test-install-overall", testName: "install should succeed: overall",
@@ -408,6 +440,10 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 	if count > 0 {
 		log.Infof("Database already contains %d ProwJobs, skipping seed. Drop and recreate the database to re-seed (e.g. docker compose down -v).", count)
+		// Feature gates use FirstOrCreate and are safe to re-run on an existing DB.
+		if err := seedFeatureGates(dbc); err != nil {
+			return errors.WithMessage(err, "failed to seed feature gates")
+		}
 		return nil
 	}
 
@@ -436,6 +472,10 @@ func seedSyntheticData(dbc *db.DB) error {
 
 	if err := createLabelsAndSymptoms(dbc); err != nil {
 		return errors.WithMessage(err, "failed to create labels and symptoms")
+	}
+
+	if err := seedFeatureGates(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed feature gates")
 	}
 
 	log.Info("Refreshing materialized views...")
@@ -967,5 +1007,24 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 		}
 	}
 
+	return nil
+}
+
+func seedFeatureGates(dbc *db.DB) error {
+	featureGates := []models.FeatureGate{
+		{Release: "4.22", Topology: "SelfManagedHA", FeatureSet: "TechPreviewNoUpgrade", FeatureGate: "NetworkSegmentation", Status: "enabled"},
+		{Release: "4.22", Topology: "SelfManagedHA", FeatureSet: "TechPreviewNoUpgrade", FeatureGate: "AWSDualStackInstall", Status: "enabled"},
+	}
+
+	for _, fg := range featureGates {
+		var existing models.FeatureGate
+		if err := dbc.DB.Where(
+			"release = ? AND topology = ? AND feature_set = ? AND feature_gate = ?",
+			fg.Release, fg.Topology, fg.FeatureSet, fg.FeatureGate,
+		).FirstOrCreate(&existing, fg).Error; err != nil {
+			return fmt.Errorf("failed to create feature gate %s/%s: %w", fg.Release, fg.FeatureGate, err)
+		}
+	}
+	log.Infof("Created %d feature gate records", len(featureGates))
 	return nil
 }

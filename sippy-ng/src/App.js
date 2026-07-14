@@ -15,7 +15,6 @@ import {
   findFirstNonGARelease,
   getReportStartDate,
   getUrlWithoutParams,
-  pathForTestSubstringByVariant,
   relativeTime,
 } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
@@ -46,6 +45,7 @@ import CollapsibleChatDrawer from './chat/CollapsibleChatDrawer'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
 import EventsChart from './prow_job_runs/EventsChart'
+import FeatureGateDetail from './tests/FeatureGateDetail'
 import FeatureGates from './tests/FeatureGates'
 import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
@@ -259,16 +259,20 @@ const JobsWrapper = () => {
   )
 }
 
-const FeatureGateRedirectWrapper = () => {
+const FeatureGateDetailWrapper = () => {
   let { release, feature_gate } = useParams()
+  const navigate = useNavigate()
+
   if (release === 'latest') {
     release = findFirstNonGARelease(React.useContext(ReleasesContext))
+    navigate(`/feature_gates/${release}/${feature_gate}`, { replace: true })
   }
 
   return (
-    <Navigate
-      to={pathForTestSubstringByVariant(release, 'FeatureGate:' + feature_gate)}
-      replace
+    <FeatureGateDetail
+      key={'fg-detail-' + release + '-' + feature_gate}
+      release={release}
+      featureGate={feature_gate}
     />
   )
 }
@@ -713,7 +717,7 @@ function App(props) {
 
                             <Route
                               path="/feature_gates/:release/:feature_gate"
-                              element={<FeatureGateRedirectWrapper />}
+                              element={<FeatureGateDetailWrapper />}
                             />
 
                             <Route

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/signal"
 	"regexp"
@@ -734,8 +735,44 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 			failureResponseWithError(w, "couldn't query feature gates", err)
 			return
 		}
+		baseAPIURL := api.GetBaseURL(req)
+		baseFrontendURL := api.GetBaseFrontendURL(req)
+		for i := range gates {
+			injectFeatureGateHATEOASLinks(&gates[i], release, baseAPIURL, baseFrontendURL)
+		}
 		api.RespondWithJSON(http.StatusOK, w, gates)
 	}
+}
+
+func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
+	fg.Links = make(map[string]string, 3)
+
+	// Trailing "]" anchors the match so a shorter gate name can't prefix-match a longer one.
+	annotationFilter := filter.Filter{
+		Items: []filter.FilterItem{
+			{Field: "name", Operator: filter.OperatorContains, Value: fmt.Sprintf("FeatureGate:%s]", fg.FeatureGate)},
+		},
+	}
+	fg.Links["tests_by_annotation"] = buildFilteredTestsURL(baseAPIURL, release, annotationFilter)
+
+	capabilityFilter := filter.Filter{
+		Items: []filter.FilterItem{
+			{Field: "name", Operator: filter.OperatorContains, Value: "openshift-tests should work"},
+			{Field: "variants", Operator: filter.OperatorContains, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
+		},
+		LinkOperator: filter.LinkOperatorAnd,
+	}
+	fg.Links["tests_by_capability"] = buildFilteredTestsURL(baseAPIURL, release, capabilityFilter)
+
+	fg.Links["ui_detail"] = fmt.Sprintf(
+		"%s/feature_gates/%s/%s",
+		baseFrontendURL, release, url.PathEscape(fg.FeatureGate))
+}
+
+func buildFilteredTestsURL(baseAPIURL, release string, f filter.Filter) string {
+	filterJSON, _ := json.Marshal(f)
+	return fmt.Sprintf("%s/api/tests?release=%s&filter=%s",
+		baseAPIURL, url.QueryEscape(release), url.QueryEscape(string(filterJSON)))
 }
 
 func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
