@@ -106,9 +106,6 @@
     "react-scripts": "^5.0.1",
     "setup-polly-jest": "^0.10.0"
   },
-  "overrides": {
-    "sourcemap-codec": "npm:@jridgewell/sourcemap-codec@^1.5.0"
-  },
   "homepage": "/sippy-ng/",
   "jest": {
     "snapshotSerializers": [
