@@ -760,6 +760,42 @@ func Test_RegressionAPI(t *testing.T) {
 		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?view=%s-main&release=%s", util.Release, util.Release), &regressions)
 		require.Error(t, err, "Expected error when both view and release are provided")
 	})
+	t.Run("filter regressions by test name", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a regression with a unique test name using the detailed helper
+		uniqueTestName := "TestUniqueFilterByName"
+		uniqueRegression := createTestRegressionWithDetails(t, tracker, view, "filter-test-id", "comp-filter", "cap-filter", uniqueTestName, crtest.ExtremeRegression)
+		defer dbc.DB.Delete(uniqueRegression.Regression)
+
+		// Verify filtering by the unique test name returns only that regression
+		var filtered []models.TestRegression
+		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?release=%s&test=%s", release, uniqueTestName), &filtered)
+		require.NoError(t, err)
+		require.Len(t, filtered, 1, "expected exactly one regression matching the test name")
+		assert.Equal(t, uniqueRegression.Regression.ID, filtered[0].ID)
+		assert.Equal(t, uniqueTestName, filtered[0].TestName)
+
+		// Verify filtering by a non-existent test name returns empty
+		var empty []models.TestRegression
+		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?release=%s&test=%s", release, "NonExistentTestName"), &empty)
+		require.NoError(t, err)
+		assert.Empty(t, empty, "expected no regressions for a non-existent test name")
+	})
+	t.Run("filter regressions by test name without release", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		uniqueTestName := "TestFilterNoRelease"
+		uniqueRegression := createTestRegressionWithDetails(t, tracker, view, "filter-norel-id", "comp-norel", "cap-norel", uniqueTestName, crtest.SignificantRegression)
+		defer dbc.DB.Delete(uniqueRegression.Regression)
+
+		// Filtering by test name alone (no release) should also work
+		var filtered []models.TestRegression
+		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?test=%s", uniqueTestName), &filtered)
+		require.NoError(t, err)
+		require.Len(t, filtered, 1, "expected exactly one regression matching the test name")
+		assert.Equal(t, uniqueRegression.Regression.ID, filtered[0].ID)
+	})
 }
 
 // Test_RegressionPotentialMatchingTriages tests the /api/component_readiness/regressions/{id}/matches endpoint
