@@ -194,6 +194,9 @@ for VIEW in $(echo "$VIEWS" | grep -o '"name":"[^"]*"' | cut -d'"' -f4); do
 done
 echo "Cache priming complete"
 
+# Export GCS credential so BigQuery-dependent e2e tests (e.g. TestRegressionCacheLoader) can run.
+export GCS_SA_JSON_PATH="${GCS_CRED}"
+
 # only 1 in parallel, some tests will clash if run at the same time
 gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1 -coverprofile=${ARTIFACT_DIR}/e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
 TEST_EXIT=$?
