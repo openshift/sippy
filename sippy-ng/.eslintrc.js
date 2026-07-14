@@ -22,13 +22,7 @@ module.exports = {
     sourceType: 'module',
   },
   parser: '@babel/eslint-parser',
-  plugins: [
-    'react',
-    'babel',
-    'prettier',
-    'sort-imports-es6-autofix',
-    'unused-imports',
-  ],
+  plugins: ['react', 'prettier', 'sort-imports-es6-autofix', 'unused-imports'],
   rules: {
     'react/display-name': 'off',
     'react/jsx-uses-react': 'warn',
