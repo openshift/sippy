@@ -512,7 +512,12 @@ func seedProwJobs(dbc *db.DB) error {
 	for _, release := range syntheticReleases {
 		for _, job := range syntheticJobs {
 			name := fmt.Sprintf(job.nameTemplate, release)
-			variants := variantMapToArray(job.variants)
+			allVariants := make(map[string]string, len(job.variants)+1)
+			for k, v := range job.variants {
+				allVariants[k] = v
+			}
+			allVariants["Release"] = release
+			variants := variantMapToArray(allVariants)
 			prowJob := models.ProwJob{
 				Kind:     models.ProwKind("periodic"),
 				Name:     name,
