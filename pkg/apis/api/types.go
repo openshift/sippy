@@ -1031,15 +1031,14 @@ type SippyViews struct {
 }
 
 type FeatureGate struct {
-	ID               int               `json:"id"`
-	FeatureGate      string            `json:"feature_gate"`
-	Release          string            `json:"release"`
-	UniqueTestCount  int64             `json:"unique_test_count"`
-	FirstSeenIn      string            `json:"first_seen_in"`
-	FirstSeenInMajor int64             `json:"first_seen_in_major"`
-	FirstSeenInMinor int64             `json:"first_seen_in_minor"`
-	Enabled          pq.StringArray    `json:"enabled" gorm:"type:text[]"`
-	Links            map[string]string `json:"links,omitempty" gorm:"-"`
+	ID               int            `json:"id"`
+	FeatureGate      string         `json:"feature_gate"`
+	Release          string         `json:"release"`
+	UniqueTestCount  int64          `json:"unique_test_count"`
+	FirstSeenIn      string         `json:"first_seen_in"`
+	FirstSeenInMajor int64          `json:"first_seen_in_major"`
+	FirstSeenInMinor int64          `json:"first_seen_in_minor"`
+	Enabled          pq.StringArray `json:"enabled" gorm:"type:text[]"`
 }
 
 func (fg FeatureGate) GetFieldType(param string) ColumnType {

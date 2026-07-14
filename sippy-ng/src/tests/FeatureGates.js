@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   parseVersion,
+  pathForTestSubstringByVariant,
   safeEncodeURIComponent,
   useStableJSONQueryParam,
 } from '../helpers'
@@ -258,7 +259,7 @@ export default function FeatureGates(props) {
       type: 'number',
       flex: 2,
       renderCell: (params) => {
-        return <Link to={linkForFeatureGateDetail(params)}>{params.value}</Link>
+        return <Link to={linkForFGTests(params)}>{params.value}</Link>
       },
     },
     {
@@ -292,18 +293,12 @@ export default function FeatureGates(props) {
     },
   ]
 
-  const linkForFeatureGateDetail = (params) => {
-    if (params.row.links && params.row.links.ui_detail) {
-      try {
-        const url = new URL(params.row.links.ui_detail)
-        return url.pathname
-      } catch (e) {
-        // fall through
-      }
+  const linkForFGTests = (params) => {
+    let fgAnnotation = `FeatureGate:${params.row.feature_gate}]`
+    if (params.row.feature_gate.includes('Install')) {
+      fgAnnotation = 'install should succeed'
     }
-    return `/feature_gates/${props.release}/${encodeURIComponent(
-      params.row.feature_gate
-    )}`
+    return pathForTestSubstringByVariant(props.release, fgAnnotation)
   }
 
   const fetchData = () => {
@@ -348,7 +343,7 @@ export default function FeatureGates(props) {
 
   const onRowClick = (params) => {
     console.log('clicked')
-    navigate(linkForFeatureGateDetail(params))
+    navigate(linkForFGTests(params))
   }
 
   useEffect(() => {
