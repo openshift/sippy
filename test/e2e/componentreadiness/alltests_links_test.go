@@ -110,13 +110,17 @@ func TestAllTestsLinksPresent(t *testing.T) {
 	component := l1Row.Component
 	require.NotEmpty(t, component, "level 1 row has empty component")
 
-	// Level 2: get a capability
+	// Level 2: get a capability, preferring one with mixed statuses
 	var l2Report componentreport.ComponentReport
 	err = util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s&component=%s",
 		url.QueryEscape(viewName), url.QueryEscape(component)), &l2Report)
 	require.NoError(t, err, "error fetching level 2 report")
 	require.Greater(t, len(l2Report.Rows), 0, "level 2 report has no rows for component=%s", component)
-	capability := l2Report.Rows[0].Capability
+	l2Row := findRowWithMixedStatuses(l2Report.Rows)
+	if l2Row == nil {
+		l2Row = &l2Report.Rows[0]
+	}
+	capability := l2Row.Capability
 	require.NotEmpty(t, capability, "level 2 row has empty capability")
 
 	// Level 3: find a test with mixed variant statuses
