@@ -618,6 +618,7 @@ func initTestAnalysisStruct(
 }
 
 func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, sampleStatusMap map[string]crstatus.TestStatus) (crtype.ComponentReport, error) {
+	includeAllTests := c.includeAllTests()
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
@@ -670,12 +671,12 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 			return crtype.ComponentReport{}, err
 		}
 		updateCellStatus(
-			rowIdentifications, columnIdentifications, testKey, cellReport, c.includeAllTests(), // inputs
+			rowIdentifications, columnIdentifications, testKey, cellReport, includeAllTests, // inputs
 			aggregatedStatus, allRows, allColumns, // these three are maps to be updated
 		)
 	}
 
-	rows, err := buildReport(sortRowIdentifications(allRows), sortColumnIdentifications(allColumns), aggregatedStatus, c.includeAllTests())
+	rows, err := buildReport(sortRowIdentifications(allRows), sortColumnIdentifications(allColumns), aggregatedStatus, includeAllTests)
 	if err != nil {
 		return crtype.ComponentReport{}, err
 	}
