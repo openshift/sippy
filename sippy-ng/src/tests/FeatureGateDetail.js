@@ -9,126 +9,13 @@ import {
   Tabs,
   Typography,
 } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
-import { filterFor, multiple, safeEncodeURIComponent } from '../helpers'
 import { Link } from 'react-router-dom'
+import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
-
-function TestResultsSection({ title, apiUrl, release, extraFilters = [] }) {
-  const [rows, setRows] = React.useState([])
-  const [isLoaded, setLoaded] = React.useState(false)
-  const [fetchError, setFetchError] = React.useState('')
-  const [sortModel, setSortModel] = React.useState([
-    { field: 'current_pass_percentage', sort: 'asc' },
-  ])
-
-  useEffect(() => {
-    if (!apiUrl) {
-      setRows([])
-      setLoaded(true)
-      return
-    }
-    setLoaded(false)
-    setFetchError('')
-
-    fetch(apiUrl)
-      .then((response) => {
-        if (response.status !== 200) {
-          throw new Error('server returned ' + response.status)
-        }
-        return response.json()
-      })
-      .then((json) => {
-        setRows(json || [])
-        setLoaded(true)
-      })
-      .catch((error) => {
-        setFetchError('Could not retrieve ' + title + ': ' + error)
-        setLoaded(true)
-      })
-  }, [apiUrl, title])
-
-  const columns = [
-    {
-      field: 'name',
-      headerName: 'Test Name',
-      flex: 4,
-      renderCell: (params) => {
-        const path =
-          `/tests/${release}/details?` +
-          multiple(filterFor('name', 'equals', params.value), ...extraFilters)
-        return <Link to={path}>{params.value}</Link>
-      },
-    },
-    {
-      field: 'current_successes',
-      headerName: 'Current Successes',
-      type: 'number',
-      flex: 1,
-    },
-    {
-      field: 'current_failures',
-      headerName: 'Current Failures',
-      type: 'number',
-      flex: 1,
-    },
-    {
-      field: 'current_flakes',
-      headerName: 'Current Flakes',
-      type: 'number',
-      flex: 1,
-    },
-    {
-      field: 'current_pass_percentage',
-      headerName: 'Current Pass %',
-      type: 'number',
-      flex: 1,
-      renderCell: (params) =>
-        params.value != null ? params.value.toFixed(2) + '%' : '',
-    },
-    {
-      field: 'current_runs',
-      headerName: 'Current Runs',
-      type: 'number',
-      flex: 1,
-    },
-  ]
-
-  if (fetchError) {
-    return <Alert severity="error">{fetchError}</Alert>
-  }
-
-  return (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        {title} ({isLoaded ? rows.length : '...'} tests)
-      </Typography>
-      <DataGrid
-        loading={!isLoaded}
-        rows={rows}
-        columns={columns}
-        getRowId={(row) => row.name}
-        getRowHeight={() => 'auto'}
-        autoHeight={true}
-        rowsPerPageOptions={[10, 25, 50]}
-        pageSize={25}
-        sortModel={sortModel}
-        onSortModelChange={setSortModel}
-        disableSelectionOnClick
-      />
-    </Box>
-  )
-}
-
-TestResultsSection.propTypes = {
-  title: PropTypes.string.isRequired,
-  apiUrl: PropTypes.string,
-  release: PropTypes.string.isRequired,
-  extraFilters: PropTypes.array,
-}
+import TestTable from './TestTable'
 
 export default function FeatureGateDetail(props) {
   const { release, featureGate } = props
@@ -179,6 +66,40 @@ export default function FeatureGateDetail(props) {
         setLoaded(true)
       })
   }, [release, featureGate])
+
+  const annotationFilter = {
+    items: [
+      {
+        columnField: 'name',
+        operatorValue: 'contains',
+        value: `FeatureGate:${featureGate}]`,
+      },
+    ],
+  }
+
+  // Installer gates currently run a broad conformance suite where full passes
+  // aren't required, so "install should succeed" is the meaningful signal.
+  // Switch to "openshift-tests should work" once installer jobs run a minimal
+  // conformance suite.
+  const capabilityTestName = featureGate.includes('Install')
+    ? 'install should succeed'
+    : 'openshift-tests should work'
+
+  const capabilityFilter = {
+    items: [
+      {
+        columnField: 'name',
+        operatorValue: 'contains',
+        value: capabilityTestName,
+      },
+      {
+        columnField: 'variants',
+        operatorValue: 'has entry containing',
+        value: `Capability:${featureGate}`,
+      },
+    ],
+    linkOperator: 'and',
+  }
 
   if (fetchError) {
     return (
@@ -255,26 +176,21 @@ export default function FeatureGateDetail(props) {
           </Tabs>
         </Box>
 
-        {activeTab === 0 && gate.links && (
-          <TestResultsSection
-            title="Tests tagged with FeatureGate annotation"
-            apiUrl={gate.links.tests_by_annotation}
+        {activeTab === 0 && (
+          <TestTable
+            key={'fg-annotation-' + featureGate}
             release={release}
+            collapse={false}
+            filterModel={annotationFilter}
           />
         )}
 
-        {activeTab === 1 && gate.links && (
-          <TestResultsSection
-            title="Tests matching capability variant"
-            apiUrl={gate.links.tests_by_capability}
+        {activeTab === 1 && (
+          <TestTable
+            key={'fg-capability-' + featureGate}
             release={release}
-            extraFilters={[
-              filterFor(
-                'variants',
-                'has entry containing',
-                `Capability:${featureGate}`
-              ),
-            ]}
+            collapse={false}
+            filterModel={capabilityFilter}
           />
         )}
       </Container>
