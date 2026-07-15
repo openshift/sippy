@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -338,6 +339,22 @@ func GenerateTestDetailsURL(
 
 	u.RawQuery = params.Encode()
 	return u.String(), nil
+}
+
+// GAWindows lists the distinct lookback periods (in days) for which GA base
+// data is fetched from BigQuery and stored in prow_ga_raw_test_data.
+var GAWindows = []int{1, 30, 90}
+
+// GAWindowStart returns the first day of a GA base window with the given
+// lookback period.
+func GAWindowStart(gaDate civil.Date, windowDays int) civil.Date {
+	return gaDate.AddDays(-windowDays)
+}
+
+// GAWindowEnd returns the exclusive end of the GA base window (the day after
+// the GA date).
+func GAWindowEnd(gaDate civil.Date) civil.Date {
+	return gaDate.AddDays(1)
 }
 
 // EnqueueAsync is a helper function to asynchronously enqueue something (like errors) on a channel from a synchronous context.

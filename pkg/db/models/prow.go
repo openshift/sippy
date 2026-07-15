@@ -219,6 +219,23 @@ type TestCumulativeSummary struct {
 	PrefixSumRuns      int64      `gorm:"column:prefix_sum_runs;not null;default:0"`
 }
 
+// ProwGARawTestDatum stores raw BigQuery test results for GA release windows.
+// Fetched once per GA date and persisted so that the aggregation into
+// prow_ga_test_statuses_matview can be re-run cheaply when dimension tables change.
+// Each (release, window_days) pair holds results aggregated over a different lookback
+// period (e.g. 1, 30, or 90 days before GA).
+type ProwGARawTestDatum struct {
+	Release    string `gorm:"not null;index:idx_prow_ga_raw_release_window"`
+	WindowDays int    `gorm:"not null;default:30;index:idx_prow_ga_raw_release_window"`
+	TestID     uint   `gorm:"not null"`
+	ProwJobID  uint   `gorm:"not null"`
+	SuiteID    uint   `gorm:"not null;default:0"`
+	Passes     int64  `gorm:"not null;default:0"`
+	Failures   int64  `gorm:"not null;default:0"`
+	Flakes     int64  `gorm:"not null;default:0"`
+	Runs       int64  `gorm:"not null;default:0"`
+}
+
 // Bug represents a Jira bug.
 type Bug struct {
 	ID              uint           `json:"id" gorm:"primaryKey"`

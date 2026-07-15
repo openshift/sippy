@@ -83,6 +83,12 @@ var PostgresMatViews = []PostgresView{
 		IndexColumns:   []string{"release", "architecture", "stream", "prow_job_run_id", "test_id", "suite_id"},
 		ReplaceStrings: map[string]string{},
 	},
+	{
+		Name:         "prow_ga_test_statuses_matview",
+		Definition:   gaTestStatusMatView,
+		IndexColumns: []string{"release", "window_days", "test_id", "suite_id", "variant_combination_id"},
+		RefreshPhase: 1,
+	},
 }
 
 // PostgresViews are regular, non-materialized views:
@@ -485,4 +491,19 @@ WHERE
     AND pjr.id = pjrt.prow_job_run_id
     AND pj.id = pjr.prow_job_id
 ORDER BY pjrt.id DESC
+`
+
+const gaTestStatusMatView = `
+SELECT
+    raw.test_id,
+    raw.suite_id,
+    pj.variant_combination_id,
+    raw.release,
+    raw.window_days,
+    SUM(raw.runs)::int AS total_count,
+    SUM(raw.passes + raw.flakes)::int AS success_count,
+    SUM(raw.flakes)::int AS flake_count
+FROM prow_ga_raw_test_data raw
+JOIN prow_jobs pj ON pj.id = raw.prow_job_id AND pj.deleted_at IS NULL AND pj.variant_combination_id IS NOT NULL
+GROUP BY raw.test_id, raw.suite_id, pj.variant_combination_id, raw.release, raw.window_days
 `
