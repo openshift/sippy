@@ -31,248 +31,32 @@ component.
 
 Create `sippy-ng/src/jobs/ReEvaluateSymptoms.js`:
 
-```jsx
-import React, { useState } from 'react'
-import {
-  Alert,
-  Button,
-  LinearProgress,
-  Snackbar,
-  Stack,
-  Tooltip,
-  Typography,
-} from '@mui/material'
-import RefreshIcon from '@mui/icons-material/Refresh'
-
-const CONCURRENCY = 10
-const MAX_RETRIES = 1
-
-// Send a single-ID re-evaluate request. Returns the per-run result object.
-async function reEvaluateOne(buildID) {
-  const response = await fetch(
-    process.env.REACT_APP_API_URL + '/api/jobs/runs/reevaluate',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prow_job_build_ids: [buildID] }),
-    }
-  )
-
-  if (!response.ok) {
-    // The backend returns JSON errors: {"code": N, "message": "..."}
-    let errorMsg = `HTTP ${response.status}`
-    try {
-      const errBody = await response.json()
-      if (errBody.message) errorMsg = errBody.message
-    } catch {
-      // fall back to status text if response isn't JSON
-    }
-
-    if (response.status === 503) {
-      throw new Error(errorMsg)
-    }
-    return {
-      prow_job_build_id: buildID,
-      status: 'eval_error',
-      error: errorMsg,
-    }
-  }
-
-  const data = await response.json()
-  return data.results?.[0] ?? { prow_job_build_id: buildID, status: 'eval_error' }
-}
-
-// Run a pool of workers over a list of IDs, calling onProgress after each.
-async function runPool(ids, onProgress) {
-  const results = []
-  let index = 0
-
-  async function worker() {
-    while (index < ids.length) {
-      const i = index++
-      const result = await reEvaluateOne(ids[i])
-      results.push(result)
-      onProgress([...results])
-    }
-  }
-
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, ids.length) }, () => worker())
-  )
-  return results
-}
-
-export default function ReEvaluateButton({
-  prowJobBuildIDs,
-  onComplete,
-  disabled = false,
-}) {
-  const [running, setRunning] = useState(false)
-  const [progress, setProgress] = useState(null) // { total, results: [...] }
-  const [snackbar, setSnackbar] = useState(null) // { severity, message }
-
-  const handleReEvaluate = async () => {
-    if (!prowJobBuildIDs?.length) return
-    setRunning(true)
-    setSnackbar(null)
-
-    const total = prowJobBuildIDs.length
-    setProgress({ total, results: [] })
-
-    try {
-      // Initial pass
-      let results = await runPool(prowJobBuildIDs, (partial) =>
-        setProgress({ total, results: partial })
-      )
-
-      // Retry retryable errors (eval_error, rewrite_error) up to MAX_RETRIES times
-      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        const retryable = results.filter(
-          (r) => r.status === 'eval_error' || r.status === 'rewrite_error'
-        )
-        if (retryable.length === 0) break
-
-        const kept = results.filter(
-          (r) => r.status !== 'eval_error' && r.status !== 'rewrite_error'
-        )
-        const retryIDs = retryable.map((r) => r.prow_job_build_id)
-        const retryResults = await runPool(retryIDs, (partial) =>
-          setProgress({ total, results: [...kept, ...partial] })
-        )
-        results = [...kept, ...retryResults]
-        setProgress({ total, results })
-      }
-
-      // Summarize
-      const successCount = results.filter((r) => r.status === 'success').length
-      const rewriteErrors = results.filter(
-        (r) => r.status === 'rewrite_error'
-      )
-      const evalErrors = results.filter((r) => r.status === 'eval_error')
-      const missingErrors = results.filter((r) => r.status === 'missing_error')
-
-      if (rewriteErrors.length > 0) {
-        setSnackbar({
-          severity: 'error',
-          message: `${rewriteErrors.length} job run(s) failed during rewrite and may be in an inconsistent state.`,
-        })
-      } else if (successCount === 0 && missingErrors.length === results.length) {
-        setSnackbar({
-          severity: 'error',
-          message: 'None of the selected job run(s) were found in Sippy',
-        })
-      } else if (evalErrors.length > 0 && successCount === 0) {
-        setSnackbar({
-          severity: 'error',
-          message: `Re-evaluation failed for all ${evalErrors.length} job run(s)`,
-        })
-      } else if (evalErrors.length > 0 || missingErrors.length > 0) {
-        const parts = [`Re-evaluated ${successCount} job run(s)`]
-        if (evalErrors.length > 0)
-          parts.push(`${evalErrors.length} failed`)
-        if (missingErrors.length > 0)
-          parts.push(`${missingErrors.length} not found`)
-        parts.push('Refresh the page to see updated labels.')
-        setSnackbar({ severity: 'warning', message: parts.join(', ') })
-      } else {
-        setSnackbar({
-          severity: 'success',
-          message: `Successfully re-evaluated ${successCount} job run(s). Refresh the page to see updated labels.`,
-        })
-      }
-
-      if (onComplete && successCount > 0) onComplete()
-    } catch (err) {
-      // 503 or other fatal error from reEvaluateOne
-      setSnackbar({
-        severity: 'error',
-        message: `Re-evaluation failed: ${err.message}`,
-      })
-    } finally {
-      setRunning(false)
-    }
-  }
-
-  const isDisabled = disabled || running || !prowJobBuildIDs?.length
-
-  // Progress summary while running
-  const progressBar =
-    running && progress ? (
-      <Stack spacing={0.5} sx={{ minWidth: 200 }}>
-        <LinearProgress
-          variant="determinate"
-          value={(progress.results.length / progress.total) * 100}
-        />
-        <Typography variant="caption" color="text.secondary">
-          {progress.results.length}/{progress.total} completed
-          {progress.results.filter((r) => r.status === 'success').length > 0 &&
-            ` (${progress.results.filter((r) => r.status === 'success').length} succeeded)`}
-          {progress.results.filter((r) => r.status !== 'success').length > 0 &&
-            `, ${progress.results.filter((r) => r.status !== 'success').length} failed`}
-        </Typography>
-      </Stack>
-    ) : null
-
-  return (
-    <>
-      <Tooltip
-        title={
-          !prowJobBuildIDs?.length
-            ? 'Select job runs to re-evaluate'
-            : `Re-evaluate symptoms for ${prowJobBuildIDs.length} job run(s)`
-        }
-      >
-        <span>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<RefreshIcon />}
-            onClick={handleReEvaluate}
-            disabled={isDisabled}
-          >
-            Re-evaluate Symptoms
-          </Button>
-        </span>
-      </Tooltip>
-
-      {progressBar}
-
-      <Snackbar
-        open={!!snackbar}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          severity={snackbar?.severity}
-          onClose={() => setSnackbar(null)}
-          variant="filled"
-        >
-          {snackbar?.message}
-        </Alert>
-      </Snackbar>
-    </>
-  )
-}
-```
+See the actual implementation in `sippy-ng/src/jobs/ReEvaluateSymptoms.js`.
 
 ### Design decisions
 
 - **One request per job run**: Each build ID is sent as a single-element request
   to the backend. This gives per-run progress feedback and isolates failures.
-- **Worker pool (10 concurrent)**: Up to 10 requests run in parallel using a
-  simple async queue pattern. Fast completions immediately start the next item,
-  so throughput is limited by the slowest individual run, not block boundaries.
+- **Worker pool (10 concurrent)**: Up to 10 requests run in parallel using
+  `p-limit`. Fast completions immediately start the next item, so throughput
+  is limited by the slowest individual run, not block boundaries.
 - **Automatic retries**: After the initial pass, `eval_error` and `rewrite_error`
   results are retried once. `eval_error` means nothing was written so retry is
   safe. `rewrite_error` means data may be inconsistent so retry is necessary.
   `missing_error` (build ID not found) is not retried.
 - **Progress indicator**: A `LinearProgress` bar with text summary appears inline
   next to the button while running, showing completed/total and success/fail counts.
-- **503 is fatal**: If the backend returns 503 (no BQ/GCS), `reEvaluateOne` throws
-  and the entire operation stops immediately (no point retrying other IDs).
-- **Error handling**: After all runs complete (including retries), a Snackbar shows
-  the final summary with status-aware messaging.
+- **All request failures are per-build results**: `reEvaluateOne` wraps everything
+  in a try/catch so that 503s, network failures, and JSON parse errors all return
+  `eval_error` results rather than throwing. This keeps every ID flowing through
+  the pool, retry, and progress reporting path. No single failure can abort the
+  entire batch.
+- **Error details in snackbar**: When there are failures, the snackbar includes a
+  deduplicated bulleted list of error messages from the API responses, with counts
+  when the same message repeats (e.g. "(3x) HTTP 503").
+- **Snackbar auto-hide**: Only success snackbars auto-hide after 6 seconds. Error
+  and warning snackbars stay open until the user dismisses them, giving time to
+  read error details.
 - **No batch size cap**: Since each request sends a single ID, the backend's 50-item
   limit is irrelevant. The concurrency limit (10) provides natural throttling.
 
@@ -302,7 +86,9 @@ those checked+visible rows are targeted.
 ### 2.2: Add the button to the action bar
 
 In the bottom `<Stack>` (around line 1778), add `ReEvaluateButton` alongside the
-existing `JAQOpenJobRunsButton` and `JAQCopyIdsButton`:
+existing `JAQOpenJobRunsButton` and `JAQCopyIdsButton`. The button is conditionally
+rendered based on the `write_endpoints` server capability (same pattern as
+`JAQSaveAsSymptomSection`):
 
 ```jsx
 import ReEvaluateButton from '../jobs/ReEvaluateSymptoms'
@@ -311,9 +97,12 @@ import ReEvaluateButton from '../jobs/ReEvaluateSymptoms'
 <Stack direction="row" spacing={2}>
   <JAQOpenJobRunsButton />
   <JAQCopyIdsButton />
-  <ReEvaluateButton
-    prowJobBuildIDs={idsToReEvaluate}
-  />
+  {capabilitiesContext.includes('write_endpoints') && (
+    <ReEvaluateButton
+      prowJobBuildIDs={idsToReEvaluate}
+      forceRefreshURL={forceRefreshURL}
+    />
+  )}
   <Tooltip title="Return to details report">
     <Button size="large" variant="contained" onClick={handleToggleJAQOpen}>
       <Close />
@@ -329,94 +118,51 @@ The tooltip should reflect the current targeting:
 - No checkbox selection: "Re-evaluate symptoms for N visible job run(s)"
 - With checkbox selection: "Re-evaluate symptoms for N selected job run(s)"
 
-### 2.4: `onComplete` callback - refresh parent data
+### 2.4: Cache invalidation via `forceRefreshURL`
 
-JAQ doesn't display symptom labels on job run rows (labels/symptoms are shown in
-the parent CR test details view). The parent data comes from `CompReadyTestPanel`'s
-`props.data`, which is fetched by a grandparent component. Threading a refetch
-callback through multiple component layers would be complex.
+The test_details report is cached (up to 8 hours or until the next rounding
+boundary). Re-evaluating symptoms writes new labels to BigQuery but does not
+invalidate the cache.
 
-Instead, on successful re-evaluation, include a note in the success Snackbar
-telling the user to refresh the page to see updated labels:
+To solve this without complex callback plumbing, the JAQ dialog accepts an
+optional `forceRefreshURL` prop. When provided, the success/warning snackbar
+shows a clickable "Reload with fresh data" link that navigates to the current
+page URL with `forceRefresh=true` appended, which tells the backend to bypass
+the cache.
+
+`CompReadyTestPanel` (the test_details parent) computes and passes this URL:
 
 ```jsx
-message: `Successfully re-evaluated ${successCount} job run(s). Refresh the page to see updated labels.`
+forceRefreshURL={(() => {
+  const url = new URL(window.location.href)
+  url.searchParams.set('forceRefresh', 'true')
+  return url.toString()
+})()}
 ```
 
-For partial success (warning snackbar), append the same note. This is honest about
-the limitation and avoids complex callback plumbing for the initial implementation.
-
-If a proper parent refresh is added later, the `onComplete` prop on
-`ReEvaluateButton` is already wired for it.
+Other JAQ callers do not pass `forceRefreshURL`, so they get the default
+"Refresh the page to see updated labels" text instead.
 
 ## Step 3: Testing
 
 ### 3.1: Component tests
 
-Using React Testing Library (or whatever test framework the project uses):
+See `sippy-ng/src/jobs/ReEvaluateSymptoms.test.js` for the full implementation.
+Key test cases:
 
-```jsx
-// ReEvaluateSymptoms.test.js
-
-describe('ReEvaluateButton', () => {
-  it('renders in default state', () => {
-    // Button text visible, not loading, not disabled
-  })
-
-  it('is disabled when prowJobBuildIDs is empty', () => {
-    // Button should be disabled with appropriate tooltip
-  })
-
-  it('is disabled when disabled prop is true', () => {
-    // External disable override works
-  })
-
-  it('shows progress bar during execution', () => {
-    // Mock fetch, click button, verify LinearProgress appears with counts
-  })
-
-  it('shows success snackbar when all runs succeed', () => {
-    // Mock fetch with success response for each ID
-  })
-
-  it('shows error snackbar on rewrite_error (inconsistent state)', () => {
-    // Mock fetch with rewrite_error result, verify urgent error message
-  })
-
-  it('shows error snackbar when all runs are missing_error', () => {
-    // Mock fetch with all missing_error, verify "not found" message
-  })
-
-  it('retries eval_error and rewrite_error once', () => {
-    // Mock fetch to return eval_error first, then success on retry
-    // Verify fetch is called twice for the same ID
-  })
-
-  it('does not retry missing_error', () => {
-    // Mock fetch with missing_error, verify no retry attempt
-  })
-
-  it('shows warning snackbar on partial success', () => {
-    // Mock fetch with mixed success + eval_error/missing_error, verify warning
-  })
-
-  it('calls onComplete when at least one succeeds', () => {
-    // Mock fetch, verify callback is invoked
-  })
-
-  it('does not call onComplete on total failure', () => {
-    // Mock fetch with all errors, verify callback NOT invoked
-  })
-
-  it('sends one request per build ID', () => {
-    // Pass 3 IDs, verify 3 separate fetch calls each with a single-element array
-  })
-
-  it('stops all workers on 503', () => {
-    // Mock fetch to return 503, verify no further requests are made
-  })
-})
-```
+- Renders in default state (button text visible, not disabled)
+- Disabled when `prowJobBuildIDs` is empty or `disabled` prop is true
+- Shows progress bar during execution (uses a deferred fetch response to assert
+  the `progressbar` role and "1/2 completed" text while a request is in flight)
+- Shows success snackbar when all runs succeed
+- Shows error snackbar on `rewrite_error` (inconsistent state)
+- Shows error snackbar when all runs are `missing_error`
+- Retries `eval_error` and `rewrite_error` once (verifies fetch called twice)
+- Does not retry `missing_error` (verifies fetch called once)
+- Shows warning snackbar on partial success (mixed success + errors)
+- Sends one request per build ID (verifies single-element body per call)
+- Treats 503 as `eval_error` and retries (verifies 6 fetch calls for 3 IDs,
+  error details shown in snackbar)
 
 ### 3.2: Integration / smoke tests
 
@@ -455,10 +201,14 @@ In the "UI Display" section, add a bullet for re-evaluation:
    others. Up to 10 requests run concurrently for throughput.
 
 3. **Button state clarity**: The button has three visible states:
-   - Ready - blue/primary, tooltip shows count of runs to re-evaluate
+   - Ready - blue/primary (`size="large"` to match other action bar buttons),
+     tooltip shows count of runs to re-evaluate
    - Running - disabled, with a `LinearProgress` bar and text summary
      ("5/20 completed, 4 succeeded, 1 failed") shown inline
-   - Done - Snackbar shows final success/warning/error summary
+   - Done - Snackbar shows final success/warning/error summary. Error and
+     warning snackbars include a deduplicated bulleted list of API error
+     messages and stay open until dismissed. Success snackbars auto-hide
+     after 6 seconds.
 
 4. **JAQ as single integration point**: Rather than adding the button to each
    parent page (test details, job runs table, payload table), it lives in JAQ's
@@ -466,14 +216,17 @@ In the "UI Display" section, add a bullet for re-evaluation:
    (`selectedJobRunIds`), and is reachable from all relevant pages. This avoids
    duplicating selection wiring and keeps symptom actions in one place. The button
    follows the same visible-rows-intersection pattern as `JAQCopyIdsButton` and
-   `JAQOpenJobRunsButton` for consistent behavior with table filters.
+   `JAQOpenJobRunsButton` for consistent behavior with table filters. The button
+   is only rendered when the server reports the `write_endpoints` capability
+   (same gate used by `JAQSaveAsSymptomSection`).
 
-5. **Refresh via page reload**: JAQ doesn't display symptom labels on job run
-   rows (labels are shown in the parent CR test details view). The parent data
-   originates from a grandparent component, so threading a refetch callback
-   would require changes across multiple layers. Instead, the success Snackbar
-   tells the user to refresh the page. The `onComplete` prop on
-   `ReEvaluateButton` is available for a proper refresh callback later.
+5. **Cache invalidation via forceRefresh link**: The test_details report is cached
+   in Redis (up to 8 hours). Re-evaluating symptoms writes new labels to BigQuery
+   but does not invalidate the cache. Rather than adding complex callback plumbing,
+   `CompReadyTestPanel` passes a `forceRefreshURL` prop (current page URL with
+   `forceRefresh=true` appended). On success, the snackbar shows a clickable
+   "Reload with fresh data" link. Other JAQ callers that don't pass the prop get
+   a plain "Refresh the page" message.
 
 6. **No confirmation dialog**: For the initial implementation, clicking the button
    immediately starts re-evaluation. A confirmation dialog could be added later if
