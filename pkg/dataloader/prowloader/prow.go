@@ -655,7 +655,7 @@ func (pl *ProwLoader) preprocessProwJobs(ctx context.Context, prowJobs []prow.Pr
 			continue
 		}
 
-		id, err := strconv.ParseUint(pj.Status.BuildID, 0, 64)
+		id, err := strconv.ParseUint(pj.Status.BuildID, 10, 63)
 		if err != nil {
 			continue
 		}
@@ -736,19 +736,19 @@ func (pl *ProwLoader) findNewJobRunIDs(ctx context.Context, candidateIDs []uint)
 		}
 	}()
 
-	if cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_candidate_ids", candidateIDs,
+	cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_candidate_ids", candidateIDs,
 		[]db.TempColumn[uint]{
 			{Name: "id", Type: "bigint NOT NULL", Value: func(id *uint) any { return *id }},
 		},
-	); err != nil {
+	)
+	if err != nil {
 		return nil, err
-	} else {
-		defer cleanup()
 	}
+	defer cleanup()
 
 	rows, err := conn.Query(ctx, `
 		SELECT t.id FROM tmp_candidate_ids t
-		LEFT JOIN prow_job_runs r ON r.id = t.id AND r.deleted_at IS NULL
+		LEFT JOIN prow_job_runs r ON r.id = t.id
 		WHERE r.id IS NULL
 	`)
 	if err != nil {
@@ -1007,7 +1007,7 @@ func (pl *ProwLoader) fetchJobRunResult(ctx context.Context, pj *prow.ProwJob) (
 		"start":   pj.Status.StartTime,
 	})
 
-	id, err := strconv.ParseUint(pj.Status.BuildID, 0, 64)
+	id, err := strconv.ParseUint(pj.Status.BuildID, 10, 63)
 	if err != nil {
 		pjLog.Warningf("skipping, couldn't parse build ID: %+v", err)
 		return nil, nil
@@ -1275,38 +1275,39 @@ func (pl *ProwLoader) writeJobRunBatch(ctx context.Context, batch []jobRunResult
 		tests = append(tests, batch[i].Tests...)
 	}
 
-	if cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_prow_job_runs", runs, runCols); err != nil {
+	cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_prow_job_runs", runs, runCols)
+	if err != nil {
 		return err
-	} else {
+	}
+	defer cleanup()
+
+	if len(anns) > 0 {
+		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_annotations", anns, annCols)
+		if err != nil {
+			return err
+		}
 		defer cleanup()
 	}
-	if len(anns) > 0 {
-		if cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_annotations", anns, annCols); err != nil {
-			return err
-		} else {
-			defer cleanup()
-		}
-	}
 	if len(prs) > 0 {
-		if cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_pull_requests", prs, prCols); err != nil {
+		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_pull_requests", prs, prCols)
+		if err != nil {
 			return err
-		} else {
-			defer cleanup()
 		}
+		defer cleanup()
 	}
 	if len(prAssocs) > 0 {
-		if cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_pr_assocs", prAssocs, prAssocCols); err != nil {
+		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_pr_assocs", prAssocs, prAssocCols)
+		if err != nil {
 			return err
-		} else {
-			defer cleanup()
 		}
+		defer cleanup()
 	}
 	if len(tests) > 0 {
-		if cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_job_run_tests", tests, testCols); err != nil {
+		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_job_run_tests", tests, testCols)
+		if err != nil {
 			return err
-		} else {
-			defer cleanup()
 		}
+		defer cleanup()
 	}
 
 	tx, err := conn.Begin(ctx)
@@ -1596,6 +1597,11 @@ func gatherLabelsBatch(ctx context.Context, bqClient *bqcachedclient.Client, bui
 	return result, nil
 }
 
+type testCaseKey struct {
+	SuiteName string
+	TestName  string
+}
+
 // testCaseEntry holds raw test case data with string names before ID resolution.
 type testCaseEntry struct {
 	TestName  string
@@ -1615,7 +1621,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		return nil, 0, "", err
 	}
 
-	testCases := make(map[string]*testCaseEntry)
+	testCases := make(map[testCaseKey]*testCaseEntry)
 	for _, suite := range suites.Suites {
 		if !db.IsSuiteImportable(suite.Name) {
 			log.Infof("skipping suite %q as it's not listed for import", suite.Name)
@@ -1624,10 +1630,9 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		extractTestCases(suite, testCases)
 	}
 
-	// ConvertProwJobRunToSyntheticTests still expects the old map type.
 	oldTestCases := make(map[string]*models.ProwJobRunTest, len(testCases))
-	for k, tc := range testCases {
-		oldTestCases[k] = &models.ProwJobRunTest{
+	for _, tc := range testCases {
+		oldTestCases[tc.TestName] = &models.ProwJobRunTest{
 			Status: tc.Status,
 		}
 	}
@@ -1641,8 +1646,8 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 
 	failures := 0
 	results := make([]prowJobRunTestRow, 0, len(testCases))
-	for k, tc := range testCases {
-		if testidentification.IsIgnoredTest(k) {
+	for _, tc := range testCases {
+		if testidentification.IsIgnoredTest(tc.TestName) {
 			continue
 		}
 		results = append(results, prowJobRunTestRow{
@@ -1664,7 +1669,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	return results, failures, jobResult, nil
 }
 
-func extractTestCases(suite *junit.TestSuite, testCases map[string]*testCaseEntry) {
+func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*testCaseEntry) {
 	for _, tc := range suite.TestCases {
 		if testidentification.IsIgnoredTest(tc.Name) {
 			continue
@@ -1680,10 +1685,10 @@ func extractTestCases(suite *junit.TestSuite, testCases map[string]*testCaseEntr
 			output = &tc.FailureOutput.Output
 		}
 
-		testCacheKey := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+		key := testCaseKey{SuiteName: suite.Name, TestName: tc.Name}
 
-		if existing, ok := testCases[testCacheKey]; !ok {
-			testCases[testCacheKey] = &testCaseEntry{
+		if existing, ok := testCases[key]; !ok {
+			testCases[key] = &testCaseEntry{
 				TestName:  tc.Name,
 				SuiteName: suite.Name,
 				Status:    int(status),
