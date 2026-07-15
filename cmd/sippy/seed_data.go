@@ -185,12 +185,22 @@ var syntheticJobs = []syntheticJobDef{
 			"Capability": "NetworkSegmentation",
 		},
 	},
+	{
+		nameTemplate: "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-awsdualstackinstall",
+		variants: map[string]string{
+			"Platform": "aws", "Architecture": "amd64", "Network": "ovn",
+			"Topology": "ha", "Installer": "ipi", "FeatureSet": "default",
+			"Suite": "parallel", "Upgrade": "none", "LayeredProduct": "none",
+			"Capability": "AWSDualStackInstall",
+		},
+	},
 }
 
 // Job template constants for referencing specific jobs in test specs.
 const awsAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64"
 const awsArm64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-arm64"
 const gcpAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-gcp-ovn-amd64"
+const awsAmd64CapabilityAWSDualStackInstall = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-awsdualstackinstall"
 
 // allJobTemplates returns name templates from syntheticJobs for use in test specs
 // that should run on every job (e.g. install tests).
@@ -361,6 +371,13 @@ var syntheticTests = []syntheticTestSpec{
 		component: "Installer / openshift-installer", capabilities: []string{"AWSDualStackInstall"},
 		jobCounts: map[string]map[string]testCount{
 			awsAmd64Parallel: {"4.22": {50, 48, 0}},
+		},
+	},
+	{
+		testID: "test-cap-aws-dual-stack-install", testName: "install should succeed: infrastructure",
+		component: "Installer / openshift-installer", capabilities: []string{"install"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64CapabilityAWSDualStackInstall: {"4.22": {50, 47, 0}},
 		},
 	},
 	// --- Install / health indicator tests: run on every job, every release ---

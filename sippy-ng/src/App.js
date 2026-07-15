@@ -260,12 +260,23 @@ const JobsWrapper = () => {
 }
 
 const FeatureGateDetailWrapper = () => {
-  let { release, feature_gate } = useParams()
+  const { release, feature_gate } = useParams()
   const navigate = useNavigate()
+  const releases = React.useContext(ReleasesContext)
+
+  const effectiveRelease =
+    release === 'latest' ? findFirstNonGARelease(releases) : release
+
+  React.useEffect(() => {
+    if (release === 'latest' && effectiveRelease) {
+      navigate(`/feature_gates/${effectiveRelease}/${feature_gate}`, {
+        replace: true,
+      })
+    }
+  }, [release, effectiveRelease, feature_gate, navigate])
 
   if (release === 'latest') {
-    release = findFirstNonGARelease(React.useContext(ReleasesContext))
-    navigate(`/feature_gates/${release}/${feature_gate}`, { replace: true })
+    return null
   }
 
   return (

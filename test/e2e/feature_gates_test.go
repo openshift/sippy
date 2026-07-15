@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/openshift/sippy/pkg/apis/api"
@@ -54,8 +55,14 @@ func TestFeatureGatesHATEOASLinks(t *testing.T) {
 			testsCapability, ok := fg.Links["tests_by_capability"]
 			assert.True(t, ok, "missing tests_by_capability link")
 			assert.Contains(t, testsCapability, "/api/tests?release="+util.Release)
-			assert.Contains(t, testsCapability, "openshift-tests+should+work")
 			assert.Contains(t, testsCapability, "Capability%3A"+fg.FeatureGate)
+			if strings.Contains(fg.FeatureGate, "Install") {
+				assert.Contains(t, testsCapability, "install+should+succeed",
+					"Install gates should use install test for capability link")
+			} else {
+				assert.Contains(t, testsCapability, "openshift-tests+should+work",
+					"non-Install gates should use openshift-tests for capability link")
+			}
 
 			uiDetail, ok := fg.Links["ui_detail"]
 			assert.True(t, ok, "missing ui_detail link")
@@ -111,6 +118,32 @@ func TestFeatureGatesCapabilityLinkFollowable(t *testing.T) {
 	assert.Greater(t, len(tests), 0, "expected tests when following tests_by_capability link for NetworkSegmentation")
 	for _, test := range tests {
 		assert.Contains(t, test.Name, "openshift-tests should work", "test name should contain openshift-tests should work")
+	}
+}
+
+func TestFeatureGatesInstallCapabilityLinkFollowable(t *testing.T) {
+	var gates []api.FeatureGate
+	err := util.SippyGet("/api/feature_gates?release="+util.Release, &gates)
+	require.NoError(t, err)
+
+	gatesByName := make(map[string]api.FeatureGate)
+	for _, g := range gates {
+		gatesByName[g.FeatureGate] = g
+	}
+
+	fg, ok := gatesByName["AWSDualStackInstall"]
+	require.True(t, ok, "AWSDualStackInstall not found")
+
+	link := fg.Links["tests_by_capability"]
+	require.NotEmpty(t, link)
+
+	var tests []api.Test
+	err = util.SippyGetAbsolute(link, &tests)
+	require.NoError(t, err, "failed to follow tests_by_capability link")
+	assert.Greater(t, len(tests), 0, "expected tests when following tests_by_capability link for AWSDualStackInstall")
+	for _, test := range tests {
+		assert.Contains(t, test.Name, "install should succeed",
+			"install gate capability tests should contain install tests")
 	}
 }
 
