@@ -69,6 +69,15 @@ export default function FeatureGateDetail(props) {
       })
   }, [release, featureGate])
 
+  const tabAutoSelected = React.useRef(false)
+
+  const handleAnnotationDataLoaded = React.useCallback((count) => {
+    if (!tabAutoSelected.current && count <= 1) {
+      setActiveTab(1)
+      tabAutoSelected.current = true
+    }
+  }, [])
+
   const annotationFilter = {
     items: [
       {
@@ -188,23 +197,24 @@ export default function FeatureGateDetail(props) {
           </Tabs>
         </Box>
 
-        {activeTab === 0 && (
+        <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
           <TestTable
             key={'fg-annotation-' + featureGate}
             release={release}
             collapse={false}
             filterModel={annotationFilter}
+            onDataLoaded={handleAnnotationDataLoaded}
           />
-        )}
+        </Box>
 
-        {activeTab === 1 && (
+        <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
           <TestTable
             key={'fg-capability-' + featureGate}
             release={release}
             collapse={false}
             filterModel={capabilityFilter}
           />
-        )}
+        </Box>
       </Container>
     </Fragment>
   )

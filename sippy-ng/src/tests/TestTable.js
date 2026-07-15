@@ -962,13 +962,13 @@ function TestTable(props) {
         return response.json()
       })
       .then((json) => {
-        if (json != null) {
-          setRows(json)
-        } else {
-          setRows([])
-        }
+        const data = json != null ? json : []
+        setRows(data)
         setLoaded(true)
         setSearching(false)
+        if (props.onDataLoaded) {
+          props.onDataLoaded(data.length)
+        }
       })
       .catch((error) => {
         setFetchError(
@@ -991,10 +991,12 @@ function TestTable(props) {
       setSearching(true)
       fetchData()
     } else {
-      // Mark as loaded so we don't show loading spinner, and clear any stale data
       setRows([])
       setLoaded(true)
       setSearching(false)
+      if (props.onDataLoaded) {
+        props.onDataLoaded(0)
+      }
     }
 
     prevLocation.current = location
@@ -1178,6 +1180,7 @@ TestTable.propTypes = {
   sortField: PropTypes.string,
   rowsPerPageOptions: PropTypes.array,
   view: PropTypes.string,
+  onDataLoaded: PropTypes.func,
 }
 
 export default withStyles(generateClasses(TEST_THRESHOLDS))(TestTable)
