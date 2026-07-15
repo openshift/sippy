@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -45,10 +44,15 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 
 	gcsJobRun := gcs.NewGCSJobRun(gcsClient.Bucket(gcsBucket), gcsPath)
 	intervals := &apitype.EventIntervalList{}
-	intervalFiles, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetIntervalFile()})
+	intervalFiles, err := gcsJobRun.FindAllMatches(context.TODO(), gcs.GlobIntervalsJSON)
 	if err != nil {
 		return intervals, err
 	}
+	timelineFiles, err := gcsJobRun.FindAllMatches(context.TODO(), gcs.GlobTimelinesJSON)
+	if err != nil {
+		return intervals, err
+	}
+	intervalFiles = append(intervalFiles, timelineFiles...)
 
 	// We will often match multiple files here, one for upgrade phase, one for conformance
 	// testing phase. For now, we return them all, and each interval has a filename it
@@ -57,7 +61,7 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 		logger.Info("no interval files found")
 		return intervals, nil
 	}
-	logger.WithField("interval_files", intervalFiles[0]).Info("found interval files")
+	logger.WithField("interval_files", intervalFiles).Info("found interval files")
 
 	// Now that we have the list of all matching interval files, if the user specified one, return only
 	// intervals from that file. If they didn't, make a best guess on the default to load, our minimal
@@ -66,7 +70,7 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 	intervalFilesAvailable := []string{}
 
 	// Find the full path to the filename specified:
-	for _, fp := range intervalFiles[0] {
+	for _, fp := range intervalFiles {
 		// Get the base filename we'll add to each incoming interval:
 		tokens := strings.Split(fp, "/")
 		baseFile := tokens[len(tokens)-1]
