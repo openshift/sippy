@@ -10,14 +10,14 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
+import { filterFor, multiple, safeEncodeURIComponent } from '../helpers'
 import { Link } from 'react-router-dom'
-import { pathForTestByVariant, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-function TestResultsSection({ title, apiUrl, release }) {
+function TestResultsSection({ title, apiUrl, release, extraFilters = [] }) {
   const [rows, setRows] = React.useState([])
   const [isLoaded, setLoaded] = React.useState(false)
   const [fetchError, setFetchError] = React.useState('')
@@ -56,11 +56,12 @@ function TestResultsSection({ title, apiUrl, release }) {
       field: 'name',
       headerName: 'Test Name',
       flex: 4,
-      renderCell: (params) => (
-        <Link to={pathForTestByVariant(release, params.value)}>
-          {params.value}
-        </Link>
-      ),
+      renderCell: (params) => {
+        const path =
+          `/tests/${release}/details?` +
+          multiple(filterFor('name', 'equals', params.value), ...extraFilters)
+        return <Link to={path}>{params.value}</Link>
+      },
     },
     {
       field: 'current_successes',
@@ -126,6 +127,7 @@ TestResultsSection.propTypes = {
   title: PropTypes.string.isRequired,
   apiUrl: PropTypes.string,
   release: PropTypes.string.isRequired,
+  extraFilters: PropTypes.array,
 }
 
 export default function FeatureGateDetail(props) {
@@ -266,6 +268,13 @@ export default function FeatureGateDetail(props) {
             title="Tests matching capability variant"
             apiUrl={gate.links.tests_by_capability}
             release={release}
+            extraFilters={[
+              filterFor(
+                'variants',
+                'has entry containing',
+                `Capability:${featureGate}`
+              ),
+            ]}
           />
         )}
       </Container>
