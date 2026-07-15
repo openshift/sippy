@@ -374,7 +374,7 @@ var syntheticTests = []syntheticTestSpec{
 		},
 	},
 	{
-		testID: "test-cap-aws-dual-stack-install", testName: "install should succeed: overall",
+		testID: "test-cap-aws-dual-stack-install", testName: "install should succeed: infrastructure",
 		component: "Installer / openshift-installer", capabilities: []string{"install"},
 		jobCounts: map[string]map[string]testCount{
 			awsAmd64CapabilityAWSDualStackInstall: {"4.22": {50, 47, 0}},

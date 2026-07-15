@@ -143,7 +143,7 @@ func TestFeatureGatesInstallCapabilityLinkFollowable(t *testing.T) {
 	assert.Greater(t, len(tests), 0, "expected tests when following tests_by_capability link for AWSDualStackInstall")
 	for _, test := range tests {
 		assert.Contains(t, test.Name, "install should succeed",
-			"install gate capability tests should match install tests")
+			"install gate capability tests should contain install tests")
 	}
 }
 

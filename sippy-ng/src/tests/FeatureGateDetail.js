@@ -71,6 +71,7 @@ export default function FeatureGateDetail(props) {
 
   const tabAutoSelected = React.useRef(false)
 
+  // <= 1 because the API always returns an implicit "Overall" row
   const handleAnnotationDataLoaded = React.useCallback((count) => {
     if (!tabAutoSelected.current && count <= 1) {
       setActiveTab(1)
