@@ -43,7 +43,22 @@ const pgUndefinedColumn = "42703"
 // such as unrecognized column names, invalid syntax, and type mismatches.
 const bqInvalidQuery = "invalidQuery"
 
+// ValidationError represents a request validation failure (missing or invalid
+// parameters). IsBadRequestError recognizes it so handlers can rely on the
+// shared bad-request classification instead of hard-coding HTTP 400.
+type ValidationError struct {
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
 func IsBadRequestError(err error) bool {
+	var validationErr *ValidationError
+	if errors.As(err, &validationErr) {
+		return true
+	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == pgUndefinedColumn {
 		return true

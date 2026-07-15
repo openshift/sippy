@@ -82,6 +82,16 @@ func TestIsBadRequestError(t *testing.T) {
 			}),
 			want: true,
 		},
+		{
+			name: "validation error",
+			err:  &ValidationError{Message: "test_id is required"},
+			want: true,
+		},
+		{
+			name: "wrapped validation error",
+			err:  fmt.Errorf("request failed: %w", &ValidationError{Message: "missing param"}),
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {

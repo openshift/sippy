@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -124,12 +123,12 @@ func parseRequiredReleases(req *http.Request, view *crview.View, opts *reqopts.R
 	if baseRelease := param.SafeRead(req, "baseRelease"); baseRelease != "" {
 		opts.BaseRelease.Name = baseRelease
 	} else if view == nil {
-		return fmt.Errorf("missing baseRelease")
+		return &api.ValidationError{Message: "missing baseRelease"}
 	}
 	if sampleRelease := param.SafeRead(req, "sampleRelease"); sampleRelease != "" {
 		opts.SampleRelease.Name = sampleRelease
 	} else if view == nil {
-		return fmt.Errorf("missing sampleRelease")
+		return &api.ValidationError{Message: "missing sampleRelease"}
 	}
 	return nil
 }
@@ -243,7 +242,7 @@ func getRequestedView(req *http.Request, views []crview.View) (*crview.View, err
 			return &view, nil
 		}
 	}
-	return nil, fmt.Errorf("unknown view: %s", viewRequested)
+	return nil, &api.ValidationError{Message: fmt.Sprintf("unknown view: %s", viewRequested)}
 }
 
 // Translate relative start/end times to actual time.Time:
@@ -258,11 +257,11 @@ func GetViewReleaseOptions(
 	opts := reqopts.Release{Name: viewRelease.Name}
 	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
+		return opts, &api.ValidationError{Message: fmt.Sprintf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)}
 	}
 	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
+		return opts, &api.ValidationError{Message: fmt.Sprintf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)}
 	}
 	return opts, nil
 }
@@ -340,10 +339,10 @@ func ParseIntArg(req *http.Request, name string, defaultVal int, validator func(
 	}
 	val, err := strconv.Atoi(valueStr)
 	if err != nil {
-		return val, errors.New(name + " is not an integer")
+		return val, &api.ValidationError{Message: name + " is not an integer"}
 	}
 	if !validator(val) {
-		return val, errors.New("confidence is not in the correct range")
+		return val, &api.ValidationError{Message: name + " is not in the correct range"}
 	}
 	return val, nil
 }
@@ -355,7 +354,7 @@ func ParseBoolArg(req *http.Request, name string, defaultVal bool) (bool, error)
 	}
 	val, err := strconv.ParseBool(valueStr)
 	if err != nil {
-		return val, errors.New(name + " is not a boolean")
+		return val, &api.ValidationError{Message: name + " is not a boolean"}
 	}
 	return val, nil
 }
@@ -428,13 +427,13 @@ func parseDateRange(allReleases []v1.Release, req *http.Request,
 	timeStr := req.URL.Query().Get(startName)
 	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, true, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return releaseOpts, errors.New(startName + " in wrong format")
+		return releaseOpts, &api.ValidationError{Message: startName + " in wrong format"}
 	}
 
 	timeStr = req.URL.Query().Get(endName)
 	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, false, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return releaseOpts, errors.New(endName + " in wrong format")
+		return releaseOpts, &api.ValidationError{Message: endName + " in wrong format"}
 	}
 	return releaseOpts, nil
 }
