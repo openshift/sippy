@@ -7,11 +7,13 @@ import {
   Container,
   Tab,
   Tabs,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
@@ -154,6 +156,16 @@ export default function FeatureGateDetail(props) {
             </Typography>
             <Typography variant="body1" sx={{ mb: 1 }}>
               <strong>Total Test Count:</strong> {gate.unique_test_count}
+              <Tooltip title="Unique test names. The tables below may show more rows due to per-variant breakdowns.">
+                <HelpOutlineIcon
+                  fontSize="small"
+                  sx={{
+                    ml: 0.5,
+                    verticalAlign: 'middle',
+                    color: 'text.secondary',
+                  }}
+                />
+              </Tooltip>
             </Typography>
             <Typography variant="body1" component="div">
               <strong>Enabled:</strong>{' '}
