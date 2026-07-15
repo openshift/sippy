@@ -750,9 +750,16 @@ func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL,
 	}
 	fg.Links["tests_by_annotation"] = buildFilteredTestsURL(baseAPIURL, release, annotationFilter)
 
+	// Installer gates currently run a broad conformance suite where full passes aren't
+	// required, so "install should succeed" is the meaningful signal. Switch to
+	// "openshift-tests should work" once installer jobs run a minimal conformance suite.
+	capabilityTestName := "openshift-tests should work"
+	if strings.Contains(fg.FeatureGate, "Install") {
+		capabilityTestName = "install should succeed"
+	}
 	capabilityFilter := filter.Filter{
 		Items: []filter.FilterItem{
-			{Field: "name", Operator: filter.OperatorContains, Value: "openshift-tests should work"},
+			{Field: "name", Operator: filter.OperatorContains, Value: capabilityTestName},
 			{Field: "variants", Operator: filter.OperatorContains, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
 		},
 		LinkOperator: filter.LinkOperatorAnd,

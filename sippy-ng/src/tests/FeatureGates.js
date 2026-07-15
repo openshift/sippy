@@ -296,7 +296,9 @@ export default function FeatureGates(props) {
     if (params.row.links && params.row.links.ui_detail) {
       try {
         const url = new URL(params.row.links.ui_detail)
-        return url.pathname
+        const basename = '/sippy-ng'
+        const path = url.pathname
+        return path.startsWith(basename) ? path.slice(basename.length) : path
       } catch (e) {
         // fall through
       }
