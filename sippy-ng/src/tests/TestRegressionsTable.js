@@ -68,13 +68,14 @@ export default function TestRegressionsTable({
     if (variantFilters.length === 0) return filtered
 
     return filtered.filter((regression) => {
-      const variantValues = (regression.variants || []).map(
-        (v) => parseVariantName(v).name
-      )
+      const variants = regression.variants || []
 
       return variantFilters.every((filter) => {
-        const hasMatch = variantValues.some(
-          (v) => v.toLowerCase() === filter.value.toLowerCase()
+        const filterVal = filter.value.toLowerCase()
+        const hasMatch = variants.some(
+          (v) =>
+            v.toLowerCase() === filterVal ||
+            parseVariantName(v).name.toLowerCase() === filterVal
         )
         if (filter.not) {
           return !hasMatch
