@@ -82,18 +82,11 @@ export default function JobRunsTable(props) {
 
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
-  function extractProwRunId(url) {
-    if (!url) return null
-    const parts = url.replace(/\/+$/, '').split('/')
-    return parts[parts.length - 1]
-  }
-
   function buildJaqProps(rows) {
     const jobRunIds = new Set()
     const lookup = new Map()
     for (const row of rows) {
-      // Extract the run ID from the prow URL to avoid JS number precision loss
-      const runId = extractProwRunId(row.url)
+      const runId = row.prow_id
       if (!runId) continue
       jobRunIds.add(runId)
       lookup.set(runId, {

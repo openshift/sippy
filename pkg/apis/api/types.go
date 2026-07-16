@@ -342,7 +342,7 @@ type JobRun struct {
 	Variants              pq.StringArray      `json:"variants" gorm:"type:text[]"`
 	Tags                  pq.StringArray      `json:"tags" gorm:"type:text[]"`
 	TestGridURL           string              `json:"test_grid_url"`
-	ProwID                uint                `json:"prow_id"`
+	ProwID                string              `json:"prow_id"`
 	Job                   string              `json:"job"`
 	Cluster               string              `json:"cluster"`
 	URL                   string              `json:"url"`

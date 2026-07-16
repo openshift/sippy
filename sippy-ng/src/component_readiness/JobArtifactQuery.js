@@ -52,6 +52,7 @@ import LaunderedLink, { openLaunderedLink } from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import ReactMarkdown from 'react-markdown'
+import ReEvaluateButton from '../jobs/ReEvaluateSymptoms'
 import remarkGfm from 'remark-gfm'
 
 const emptyContentMatch = {
@@ -134,7 +135,14 @@ const prefilledOptions = new Map([
 ])
 
 export default function JobArtifactQuery(props) {
-  const { searchJobRunIds, jobRunsLookup, handleToggleJAQOpen } = props
+  const {
+    searchJobRunIds,
+    jobRunsLookup,
+    handleToggleJAQOpen,
+    forceRefreshURL,
+  } = props
+
+  const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
 
   /*********************************************************************************
    shared state for artifact query components
@@ -1775,9 +1783,19 @@ export default function JobArtifactQuery(props) {
         )}
       </Stack>
       <JAQResultTable />
-      <Stack direction="row" spacing={2}>
+      <Stack direction="row" spacing={2} alignItems="center">
         <JAQOpenJobRunsButton />
         <JAQCopyIdsButton />
+        {capabilitiesContext.includes('write_endpoints') && (
+          <ReEvaluateButton
+            prowJobBuildIDs={(() => {
+              let visible = new Set(filteredRows.map((row) => row.job_run_id))
+              let selected = selectedJobRunIds.intersection(visible)
+              return (selected.size > 0 ? selected : visible).keys().toArray()
+            })()}
+            forceRefreshURL={forceRefreshURL}
+          />
+        )}
         <Tooltip title="Return to details report">
           <Button
             size="large"
@@ -1797,4 +1815,5 @@ JobArtifactQuery.propTypes = {
   searchJobRunIds: PropTypes.object.isRequired,
   jobRunsLookup: PropTypes.instanceOf(Map).isRequired,
   handleToggleJAQOpen: PropTypes.func.isRequired,
+  forceRefreshURL: PropTypes.string,
 }
