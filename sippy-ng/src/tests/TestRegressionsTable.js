@@ -10,7 +10,11 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { relativeTime, safeEncodeURIComponent } from '../helpers'
+import {
+  parseVariantName,
+  relativeTime,
+  safeEncodeURIComponent,
+} from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect, useMemo } from 'react'
@@ -26,6 +30,9 @@ export default function TestRegressionsTable({
 
   useEffect(() => {
     if (!testName || !release) return
+
+    setLoaded(false)
+    setFetchError('')
 
     const url = `${
       process.env.REACT_APP_API_URL
@@ -61,10 +68,9 @@ export default function TestRegressionsTable({
     if (variantFilters.length === 0) return filtered
 
     return filtered.filter((regression) => {
-      const variantValues = (regression.variants || []).map((v) => {
-        const parts = v.split(':')
-        return parts.length > 1 ? parts.slice(1).join(':') : v
-      })
+      const variantValues = (regression.variants || []).map(
+        (v) => parseVariantName(v).name
+      )
 
       return variantFilters.every((filter) => {
         const hasMatch = variantValues.some(
@@ -102,10 +108,7 @@ export default function TestRegressionsTable({
         <TableBody>
           {filteredRegressions.map((regression) => {
             const variantValues = (regression.variants || [])
-              .map((v) => {
-                const parts = v.split(':')
-                return parts.length > 1 ? parts.slice(1).join(':') : v
-              })
+              .map((v) => parseVariantName(v).name)
               .filter((val) => !['default', 'none', 'unknown'].includes(val))
 
             const tooltipLines = (regression.variants || []).sort().join('\n')
