@@ -261,7 +261,7 @@ func GetViewReleaseOptions(
 	}
 	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return opts, &api.ValidationError{Message: fmt.Sprintf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)}
+		return opts, &api.ValidationError{Message: fmt.Sprintf("%s end time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)}
 	}
 	return opts, nil
 }
