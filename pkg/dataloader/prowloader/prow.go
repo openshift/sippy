@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -72,8 +71,6 @@ type ProwLoader struct {
 	releaseRegexps               map[string][]*regexp.Regexp
 	config                       *v1config.SippyConfig
 	ghCommenter                  *commenter.GitHubCommenter
-	jobsImportedCount            atomic.Int32
-	jobsProcessedCount           atomic.Int32
 	gcsClient                    *storage.Client
 	promPusher                   *push.Pusher
 	loadSince                    *time.Time
@@ -259,6 +256,8 @@ func (pl *ProwLoader) Load() {
 		pl.errors = append(pl.errors, errors.Wrap(err, "error pre-fetching labels from BigQuery"))
 	}
 
+	prowLoaderQueriedMetricGauge.Set(float64(len(prowJobs)))
+
 	// Match jobs to releases and bulk-upsert ProwJob definitions before
 	// the concurrent processing loop. The prowJobCache is read-only after
 	// this point.
@@ -274,7 +273,6 @@ func (pl *ProwLoader) Load() {
 	queue := make(chan *prow.ProwJob)
 	results := make(chan *jobRunResult, len(entries))
 	fetchErrsCh := make(chan error, len(entries))
-	total := len(entries)
 
 	go func() {
 		defer close(queue)
@@ -306,8 +304,6 @@ func (pl *ProwLoader) Load() {
 				if result != nil {
 					results <- result
 				}
-				pl.jobsImportedCount.Add(1)
-				log.Infof("%d of %d job runs processed", pl.jobsImportedCount.Load(), total)
 			}
 		}(fetchCtx)
 	}
@@ -339,9 +335,7 @@ func (pl *ProwLoader) Load() {
 	log.Infof("finished importing new job runs in %+v", time.Since(start))
 
 	if pl.promPusher != nil {
-		prowLoaderQueriedMetricGauge.Set(float64(pl.jobsImportedCount.Load()))
 		pl.promPusher.Collector(prowLoaderQueriedMetricGauge)
-		prowLoaderProcessedMetricGauge.Set(float64(pl.jobsProcessedCount.Load()))
 		pl.promPusher.Collector(prowLoaderProcessedMetricGauge)
 	}
 }
@@ -1037,7 +1031,6 @@ func (pl *ProwLoader) fetchJobRunResult(ctx context.Context, pj *prow.ProwJob) (
 		return nil, err
 	}
 
-	pl.jobsProcessedCount.Add(1)
 	return result, nil
 }
 
@@ -1240,6 +1233,7 @@ func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-c
 	if total > 0 {
 		log.WithField("runs", total).Info("all job run batches committed")
 	}
+	prowLoaderProcessedMetricGauge.Set(float64(total))
 	return nil
 }
 
