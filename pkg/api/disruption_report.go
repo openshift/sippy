@@ -23,15 +23,6 @@ func GetDisruptionVsPrevGAReportFromBigQuery(ctx context.Context, client *bigque
 	return GetDataFromCacheOrGenerate[apitype.DisruptionReport](ctx, client.Cache, cache.RequestOptions{}, NewCacheSpec(generator, "", nil), generator.GenerateReport, apitype.DisruptionReport{})
 }
 
-func GetDisruptionVsTwoWeeksAgoReportFromBigQuery(ctx context.Context, client *bigquery.Client) (apitype.DisruptionReport, []error) {
-	generator := disruptionReportGenerator{
-		client:   client,
-		ViewName: "BackendDisruptionPercentilesDeltaCurrentVs14DaysAgoV2",
-	}
-
-	return GetDataFromCacheOrGenerate[apitype.DisruptionReport](ctx, client.Cache, cache.RequestOptions{}, NewCacheSpec(generator, "", nil), generator.GenerateReport, apitype.DisruptionReport{})
-}
-
 type disruptionReportGenerator struct {
 	client   *bigquery.Client
 	ViewName string
