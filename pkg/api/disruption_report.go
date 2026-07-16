@@ -16,8 +16,9 @@ import (
 
 func GetDisruptionVsPrevGAReportFromBigQuery(ctx context.Context, client *bigquery.Client) (apitype.DisruptionReport, []error) {
 	generator := disruptionReportGenerator{
-		client:   client,
-		ViewName: "BackendDisruptionPercentilesDeltaCurrentVsPrevGAV2",
+		client: client,
+		// ViewName: "BackendDisruptionPercentilesDeltaCurrentVsPrevGAV2",
+		ViewName: "BackendDisruptionPercentilesDeltaCurrentVsPrevGAV5", // for 5.0 per TRT-2789
 	}
 
 	return GetDataFromCacheOrGenerate[apitype.DisruptionReport](ctx, client.Cache, cache.RequestOptions{}, NewCacheSpec(generator, "", nil), generator.GenerateReport, apitype.DisruptionReport{})
