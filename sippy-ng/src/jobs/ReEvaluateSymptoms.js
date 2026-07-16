@@ -8,6 +8,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import pLimit from 'p-limit'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import RefreshIcon from '@mui/icons-material/Refresh'
@@ -64,21 +65,16 @@ async function reEvaluateOne(buildID) {
 }
 
 async function runPool(ids, onProgress) {
+  const limit = pLimit(CONCURRENCY)
   const results = []
-  let index = 0
-
-  async function worker() {
-    while (index < ids.length) {
-      const i = index++
-      const result = await reEvaluateOne(ids[i])
+  const tasks = ids.map((id) =>
+    limit(async () => {
+      const result = await reEvaluateOne(id)
       results.push(result)
       onProgress([...results])
-    }
-  }
-
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, ids.length) }, () => worker())
+    })
   )
+  await Promise.all(tasks)
   return results
 }
 
