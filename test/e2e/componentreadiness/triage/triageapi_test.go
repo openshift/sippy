@@ -760,6 +760,63 @@ func Test_RegressionAPI(t *testing.T) {
 		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?view=%s-main&release=%s", util.Release, util.Release), &regressions)
 		require.Error(t, err, "Expected error when both view and release are provided")
 	})
+	t.Run("filter regressions by test name", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a regression with a unique test name
+		uniqueTestName := "TestUniqueFilterByName"
+		uniqueRegression := createTestRegressionWithDetails(t, tracker, view, "filter-test-id", "comp-filter", "cap-filter", uniqueTestName, crtest.ExtremeRegression)
+		defer dbc.DB.Delete(uniqueRegression.Regression)
+
+		// Create additional regressions with different test names to verify they are excluded
+		otherRegression1 := createTestRegressionWithDetails(t, tracker, view, "filter-other-id-1", "comp-other-1", "cap-other-1", "TestOtherName1", crtest.SignificantRegression)
+		defer dbc.DB.Delete(otherRegression1.Regression)
+		otherRegression2 := createTestRegressionWithDetails(t, tracker, view, "filter-other-id-2", "comp-other-2", "cap-other-2", "TestOtherName2", crtest.ExtremeRegression)
+		defer dbc.DB.Delete(otherRegression2.Regression)
+
+		// Verify filtering by the unique test name returns only that regression
+		var filtered []models.TestRegression
+		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?release=%s&test=%s", release, uniqueTestName), &filtered)
+		require.NoError(t, err)
+		require.Len(t, filtered, 1, "expected exactly one regression matching the test name")
+		assert.Equal(t, uniqueRegression.Regression.ID, filtered[0].ID)
+		assert.Equal(t, uniqueTestName, filtered[0].TestName)
+
+		// Verify non-matching regressions are not included
+		for _, r := range filtered {
+			assert.NotEqual(t, otherRegression1.Regression.ID, r.ID, "otherRegression1 should not be in filtered results")
+			assert.NotEqual(t, otherRegression2.Regression.ID, r.ID, "otherRegression2 should not be in filtered results")
+		}
+
+		// Verify filtering by a non-existent test name returns empty
+		var empty []models.TestRegression
+		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?release=%s&test=%s", release, "NonExistentTestName"), &empty)
+		require.NoError(t, err)
+		assert.Empty(t, empty, "expected no regressions for a non-existent test name")
+	})
+	t.Run("filter regressions by test name without release", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		uniqueTestName := "TestFilterNoRelease"
+		uniqueRegression := createTestRegressionWithDetails(t, tracker, view, "filter-norel-id", "comp-norel", "cap-norel", uniqueTestName, crtest.SignificantRegression)
+		defer dbc.DB.Delete(uniqueRegression.Regression)
+
+		// Create another regression with a different test name to verify it is excluded
+		otherRegression := createTestRegressionWithDetails(t, tracker, view, "filter-norel-other-id", "comp-norel-other", "cap-norel-other", "TestDifferentNoRelease", crtest.ExtremeRegression)
+		defer dbc.DB.Delete(otherRegression.Regression)
+
+		// Filtering by test name alone (no release) should also work
+		var filtered []models.TestRegression
+		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?test=%s", uniqueTestName), &filtered)
+		require.NoError(t, err)
+		require.Len(t, filtered, 1, "expected exactly one regression matching the test name")
+		assert.Equal(t, uniqueRegression.Regression.ID, filtered[0].ID)
+
+		// Verify the other regression is not included
+		for _, r := range filtered {
+			assert.NotEqual(t, otherRegression.Regression.ID, r.ID, "otherRegression should not be in filtered results")
+		}
+	})
 }
 
 // Test_RegressionPotentialMatchingTriages tests the /api/component_readiness/regressions/{id}/matches endpoint
