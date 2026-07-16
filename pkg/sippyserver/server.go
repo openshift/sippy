@@ -1098,7 +1098,9 @@ func (s *Server) getRegressedTestsForRegressions(req *http.Request, regressions 
 // getComponentReportFromRequest creates a component report based on the HTTP request parameters
 func (s *Server) getComponentReportFromRequest(req *http.Request) (componentreport.ComponentReport, error) {
 	if s.crDataProvider == nil {
-		return componentreport.ComponentReport{}, fmt.Errorf("component report API is only available when a data provider is configured")
+		return componentreport.ComponentReport{}, &api.ValidationError{
+			Message: "component report API is only available when a data provider is configured",
+		}
 	}
 
 	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
@@ -1140,7 +1142,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	outputs, err := s.getComponentReportFromRequest(req)
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error generating component report", err)
 		return
 	}
 
@@ -1149,36 +1151,34 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 
 func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.crDataProvider == nil {
-		err := fmt.Errorf("component report API is only available when a data provider is configured")
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error querying component test details",
+			&api.ValidationError{Message: "component report API is only available when a data provider is configured"})
 		return
 	}
 	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
 	if len(errs) > 0 {
-		err := fmt.Errorf("failed to get job variants")
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error querying component test details", fmt.Errorf("failed to get job variants"))
 		return
 	}
 	allReleases, err := s.getReleases(req.Context())
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error querying component test details", err)
 		return
 	}
 
 	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
 
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error querying component test details", err)
 		return
 	}
 	baseURL := api.GetBaseFrontendURL(req)
 	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.crDataProvider, s.db, reqOptions, allReleases, baseURL)
 	if len(errs) > 0 {
-		log.Warningf("%d errors were encountered while querying component test details:", len(errs))
-		for _, err := range errs {
-			log.Error(err.Error())
+		for _, e := range errs[1:] {
+			log.WithError(e).Error("additional error querying component test details")
 		}
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying component test details: %v", errs))
+		failureResponseWithError(w, "error querying component test details", errs[0])
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
