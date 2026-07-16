@@ -1471,7 +1471,7 @@ func (pl *ProwLoader) fetchPullRequestData(refs *prow.Refs, pjPath string) []pul
 		}
 
 		if pr.Link == "" {
-			log.Debugf("skipping pull request with empty link for sha: %s", pr.SHA)
+			log.WithField("sha", pr.SHA).Debug("skipping pull request with empty link")
 			continue
 		}
 
