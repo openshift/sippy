@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"os"
 	"sort"
@@ -16,6 +17,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
+	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	componentreadiness "github.com/openshift/sippy/pkg/api/componentreadiness"
 	pgprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
@@ -504,6 +507,12 @@ func seedSyntheticData(dbc *db.DB) error {
 			return fmt.Errorf("failed to backfill %s: %w", table, err)
 		}
 	}
+
+	if err := seedGARawTestData(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed GA raw test data")
+	}
+	log.Info("Seeded GA raw test data")
+
 	if err := sippyserver.RefreshData(dbc, nil, sippyserver.RefreshOptions{}); err != nil {
 		return fmt.Errorf("failed to refresh data: %w", err)
 	}
@@ -1043,5 +1052,116 @@ func seedFeatureGates(dbc *db.DB) error {
 		}
 	}
 	log.Infof("Created %d feature gate records", len(featureGates))
+	return nil
+}
+
+// seedGARawTestData populates prow_ga_raw_test_data for GA releases using
+// the same synthetic test/job definitions. This gives the
+// prow_ga_test_statuses_matview data to aggregate when refreshed.
+func seedGARawTestData(dbc *db.DB) error {
+	var gaReleases []models.ReleaseDefinition
+	if err := dbc.DB.Where("ga_date IS NOT NULL AND ga_date < CURRENT_DATE").Find(&gaReleases).Error; err != nil {
+		return fmt.Errorf("querying GA releases: %w", err)
+	}
+
+	if len(gaReleases) == 0 {
+		log.Info("No GA releases found, skipping GA raw test data seeding")
+		return nil
+	}
+
+	testIDCache := make(map[string]uint)
+	jobIDCache := make(map[string]uint)
+	var suiteID uint
+
+	var suite models.Suite
+	if err := dbc.DB.Where("name = ?", "synthetic").First(&suite).Error; err != nil {
+		if !stderrors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("looking up suite 'synthetic': %w", err)
+		}
+		log.Warn("Suite 'synthetic' not found, GA raw test data will use suite_id=0")
+	} else {
+		suiteID = suite.ID
+	}
+
+	var rows []models.ProwGARawTestDatum
+	for _, rel := range gaReleases {
+		for _, windowDays := range utils.GAWindows {
+			for _, spec := range syntheticTests {
+				testID, ok := testIDCache[spec.testName]
+				if !ok {
+					var test models.Test
+					if err := dbc.DB.Where("name = ?", spec.testName).First(&test).Error; err != nil {
+						if !stderrors.Is(err, gorm.ErrRecordNotFound) {
+							return fmt.Errorf("looking up test %q: %w", spec.testName, err)
+						}
+						continue
+					}
+					testID = test.ID
+					testIDCache[spec.testName] = testID
+				}
+
+				for jobTemplate, releaseCounts := range spec.jobCounts {
+					counts, ok := releaseCounts[rel.Release]
+					if !ok {
+						continue
+					}
+					jobName := fmt.Sprintf(jobTemplate, rel.Release)
+					prowJobID, ok := jobIDCache[jobName]
+					if !ok {
+						var job models.ProwJob
+						if err := dbc.DB.Where("name = ?", jobName).First(&job).Error; err != nil {
+							if !stderrors.Is(err, gorm.ErrRecordNotFound) {
+								return fmt.Errorf("looking up prow job %q: %w", jobName, err)
+							}
+							continue
+						}
+						prowJobID = job.ID
+						jobIDCache[jobName] = prowJobID
+					}
+
+					scale := int64(windowDays)
+					rows = append(rows, models.ProwGARawTestDatum{
+						Release:    rel.Release,
+						WindowDays: windowDays,
+						TestID:     testID,
+						ProwJobID:  prowJobID,
+						SuiteID:    suiteID,
+						Passes:     int64(counts.success) * scale,
+						Failures:   int64(counts.total-counts.success-counts.flake) * scale,
+						Flakes:     int64(counts.flake) * scale,
+						Runs:       int64(counts.total) * scale,
+					})
+				}
+			}
+		}
+	}
+
+	if len(rows) > 0 {
+		if err := dbc.DB.CreateInBatches(rows, 500).Error; err != nil {
+			return fmt.Errorf("inserting GA raw test data: %w", err)
+		}
+	}
+
+	releasesWithRows := sets.New[string]()
+	for _, row := range rows {
+		releasesWithRows.Insert(row.Release)
+	}
+
+	for _, rel := range gaReleases {
+		if !releasesWithRows.Has(rel.Release) {
+			log.WithField("release", rel.Release).Warn("No GA seed data generated, skipping ga_data_loaded_date")
+			continue
+		}
+		gaDate := civil.DateOf(rel.GADate.UTC())
+		if err := dbc.DB.Model(&models.ReleaseDefinition{}).
+			Where("release = ?", rel.Release).
+			Update("ga_data_loaded_date", gaDate).Error; err != nil {
+			return fmt.Errorf("updating ga_data_loaded_date for %s: %w", rel.Release, err)
+		}
+	}
+
+	log.WithField("rows", len(rows)).
+		WithField("releases", len(gaReleases)).
+		Info("Seeded GA raw test data")
 	return nil
 }

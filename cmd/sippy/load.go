@@ -32,6 +32,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader"
 	"github.com/openshift/sippy/pkg/dataloader/bugloader"
+	"github.com/openshift/sippy/pkg/dataloader/gateststatus"
 	"github.com/openshift/sippy/pkg/dataloader/jiraloader"
 	"github.com/openshift/sippy/pkg/dataloader/loaderwithmetrics"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
@@ -66,6 +67,7 @@ type LoadFlags struct {
 	LogLevel                string
 	ProwLoadSince           string
 	SkipMatviewRefresh      bool
+	ForceGARefresh          bool
 }
 
 // want a single total load and refresh time
@@ -107,6 +109,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.LogLevel, "log-level", "info", "Log level")
 	fs.StringVar(&f.ProwLoadSince, "prow-load-since", "", "Override how far back to load prow jobs (e.g. 2024-01-15T00:00:00Z or 72h for 72 hours ago)")
 	fs.BoolVar(&f.SkipMatviewRefresh, "skip-matview-refresh", false, "Skip refreshing materialized views after loading")
+	fs.BoolVar(&f.ForceGARefresh, "force-ga-refresh", false, "Force re-population of GA test status data from BigQuery")
 }
 
 // nolint:gocyclo
@@ -355,6 +358,17 @@ func NewLoadCommand() *cobra.Command {
 					refreshMatviews = true
 					fgLoader := featuregateloader.New(dbc, releaseConfigs)
 					loaders = append(loaders, fgLoader)
+				}
+
+				if l == "ga-test-status" {
+					refreshMatviews = true
+					if bigqueryErr != nil {
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents ga-test-status loading")
+					}
+					if dbErr != nil {
+						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents ga-test-status loading")
+					}
+					loaders = append(loaders, gateststatus.New(ctx, dbc, bqc, f.ForceGARefresh, f.Releases))
 				}
 
 			}
