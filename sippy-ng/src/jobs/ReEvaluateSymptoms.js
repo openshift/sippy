@@ -100,7 +100,7 @@ function errorDetails(failures) {
   )
 }
 
-function forceRefreshMessage(successCount, forceRefreshURL) {
+function forceRefreshMessage(forceRefreshURL) {
   if (!forceRefreshURL) {
     return `Refresh the page to see updated labels.`
   }
@@ -232,8 +232,7 @@ export default function ReEvaluateButton({
           severity: 'warning',
           message: (
             <>
-              {parts.join(', ')}.{' '}
-              {forceRefreshMessage(successCount, forceRefreshURL)}
+              {parts.join(', ')}. {forceRefreshMessage(forceRefreshURL)}
               {errorDetails(allErrors)}
             </>
           ),
@@ -244,7 +243,7 @@ export default function ReEvaluateButton({
           message: (
             <>
               Successfully re-evaluated {successCount} job run(s).{' '}
-              {forceRefreshMessage(successCount, forceRefreshURL)}
+              {forceRefreshMessage(forceRefreshURL)}
             </>
           ),
         })
