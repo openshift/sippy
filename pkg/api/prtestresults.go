@@ -64,7 +64,7 @@ func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly 
 			COALESCE(s.name, '') AS test_suite,
 			pjrt.status,
 			COALESCE(pjrto.output, '') AS output`).
-		Joins("JOIN prow_job_run_prow_pull_requests jrpr ON jrpr.prow_pull_request_id = pp.id").
+		Joins("JOIN prow_job_run_prow_pull_requests jrpr ON jrpr.prow_pull_request_id = pp.id AND jrpr.prow_job_run_release = ? AND jrpr.prow_job_run_timestamp >= ? AND jrpr.prow_job_run_timestamp < ?", models.ReleasePresubmits, startDate, endDate).
 		Joins("JOIN prow_job_runs pjr ON pjr.id = jrpr.prow_job_run_id").
 		Joins("JOIN prow_jobs pj ON pj.id = pjr.prow_job_id AND pj.release = ?", models.ReleasePresubmits).
 		Joins("JOIN prow_job_run_tests pjrt ON pjrt.prow_job_run_id = pjr.id AND pjrt.prow_job_run_release = ? AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?", models.ReleasePresubmits, startDate, endDate).
@@ -72,6 +72,7 @@ func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly 
 		Joins("LEFT JOIN suites s ON s.id = pjrt.suite_id").
 		Joins("LEFT JOIN prow_job_run_test_outputs pjrto ON pjrto.prow_job_run_test_id = pjrt.id AND pjrto.prow_job_run_test_timestamp = pjrt.prow_job_run_timestamp AND pjrto.prow_job_run_test_release = pjrt.prow_job_run_release").
 		Where("pp.org = ? AND pp.repo = ? AND pp.number = ?", org, repo, prNumber).
+		Where("pp.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL").
 		Where("pjr.timestamp >= ? AND pjr.timestamp < ?", startDate, endDate)
 
 	if latestSHAOnly {
