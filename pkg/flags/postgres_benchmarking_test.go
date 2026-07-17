@@ -731,54 +731,6 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 			},
 		},
 		{
-			name: "MatviewFailedTestsByDay",
-			fn: func(dbc *db.DB) error {
-				var prowJob models.ProwJob
-				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
-					return err
-				}
-				type testResult struct {
-					Period   time.Time
-					TestName string
-					Count    int
-				}
-				var results []testResult
-				res := dbc.DB.Table("prow_job_failed_tests_by_day_matview").
-					Select("period, test_name, count").
-					Where("prow_job_id = ?", prowJob.ID).
-					Scan(&results)
-				if res.Error != nil {
-					return res.Error
-				}
-				log.Printf("MatviewFailedTestsByDay: %d results for job %s", len(results), benchmarkJobName)
-				return nil
-			},
-		},
-		{
-			name: "MatviewFailedTestsByHour",
-			fn: func(dbc *db.DB) error {
-				var prowJob models.ProwJob
-				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
-					return err
-				}
-				type testResult struct {
-					Period   time.Time
-					TestName string
-					Count    int
-				}
-				var results []testResult
-				res := dbc.DB.Table("prow_job_failed_tests_by_hour_matview").
-					Select("period, test_name, count").
-					Where("prow_job_id = ?", prowJob.ID).
-					Scan(&results)
-				if res.Error != nil {
-					return res.Error
-				}
-				log.Printf("MatviewFailedTestsByHour: %d results for job %s", len(results), benchmarkJobName)
-				return nil
-			},
-		},
-		{
 			name: "MatviewPayloadTestFailures",
 			fn: func(dbc *db.DB) error {
 				type payloadFailure struct {
