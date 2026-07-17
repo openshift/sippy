@@ -1047,7 +1047,7 @@ func seedPresubmitData(dbc *db.DB) error {
 			ProwJobRunTimestamp: ri.run.Timestamp,
 			TestID:              installTestID,
 			SuiteID:             &suite.ID,
-			Status:              12,
+			Status:              int(v1.TestStatusFailure),
 			Duration:            5.0,
 			CreatedAt:           ri.run.Timestamp,
 		}
@@ -1076,7 +1076,7 @@ func seedPresubmitData(dbc *db.DB) error {
 			ProwJobRunTimestamp: ri.run.Timestamp,
 			TestID:              networkTestID,
 			SuiteID:             &suite.ID,
-			Status:              1,
+			Status:              int(v1.TestStatusSuccess),
 			Duration:            3.0,
 			CreatedAt:           ri.run.Timestamp,
 		}
@@ -1092,7 +1092,7 @@ func seedPresubmitData(dbc *db.DB) error {
 			ProwJobRunTimestamp: ri.run.Timestamp,
 			TestID:              installTestID,
 			SuiteID:             &suite.ID,
-			Status:              13,
+			Status:              int(v1.TestStatusFlake),
 			Duration:            4.0,
 			CreatedAt:           ri.run.Timestamp,
 		}
