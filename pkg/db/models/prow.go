@@ -269,7 +269,7 @@ type ProwPullRequest struct {
 	// Repo is something like test-infra
 	Repo string `json:"repo" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 
-	Number int `json:"number" gorm:"index:idx_prow_pull_requests_org_repo_number"`
+	Number int    `json:"number" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 	Author string `json:"author"`
 	Title  string `json:"title,omitempty"`
 
