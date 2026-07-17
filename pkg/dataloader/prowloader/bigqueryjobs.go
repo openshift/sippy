@@ -65,6 +65,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		"FROM `ci_analysis_us.jobs` "+
 		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
 	       AND prowjob_url IS NOT NULL
+	       AND prowjob_state NOT IN ('pending', 'triggered')
 	       ORDER BY prowjob_start_ts`)
 	query.Parameters = []bigquery.QueryParameter{
 		{

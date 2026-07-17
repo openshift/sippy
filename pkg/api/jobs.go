@@ -294,7 +294,7 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 		}
 
 		newRun := v1sippyprocessing.JobRunResult{
-			ProwID:                pjr.ID,
+			ProwID:                strconv.FormatUint(uint64(pjr.ID), 10),
 			Job:                   jobName,
 			URL:                   pjr.URL,
 			TestFailures:          pjr.TestFailures,

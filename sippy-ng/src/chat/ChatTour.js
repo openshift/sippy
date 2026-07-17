@@ -1,3 +1,4 @@
+import { ACTIONS, EVENTS, Joyride, STATUS } from 'react-joyride'
 import { CONNECTION_STATES } from './store/webSocketSlice'
 import {
   useConnectionState,
@@ -5,7 +6,6 @@ import {
   useSettings,
 } from './store/useChatStore'
 import { useTheme } from '@mui/material/styles'
-import Joyride, { ACTIONS, EVENTS, STATUS } from 'react-joyride'
 import PropTypes from 'prop-types'
 import React, { useEffect, useState } from 'react'
 
@@ -69,7 +69,7 @@ export default function ChatTour({ mode = 'fullPage' }) {
       target: sessionDropdownSelector,
       content:
         'Click here to view and switch between your chat sessions. Up to the last 50 conversations will be stored locally in your browser.',
-      disableBeacon: true,
+      skipBeacon: true,
       placement: 'bottom',
     },
     {
@@ -122,30 +122,31 @@ export default function ChatTour({ mode = 'fullPage' }) {
       steps={steps}
       run={runTour}
       continuous
-      showProgress
-      showSkipButton
-      hideCloseButton
-      callback={handleJoyrideCallback}
-      disableScrolling={mode === 'drawer'}
+      onEvent={handleJoyrideCallback}
       scrollToFirstStep={mode === 'fullPage'}
+      options={{
+        arrowColor: theme.palette.background.paper,
+        backgroundColor: theme.palette.background.paper,
+        primaryColor: theme.palette.primary.main,
+        textColor: theme.palette.text.primary,
+        zIndex: 1250,
+        showProgress: true,
+        buttons: ['back', 'skip', 'primary'],
+        skipScroll: mode === 'drawer',
+        blockTargetInteraction: false,
+        spotlightPadding: mode === 'drawer' ? 5 : 10,
+      }}
       styles={{
-        options: {
-          arrowColor: theme.palette.background.paper,
-          backgroundColor: theme.palette.background.paper,
-          primaryColor: theme.palette.primary.main,
-          textColor: theme.palette.text.primary,
-          width: 360,
-          zIndex: 1250,
-        },
         tooltip: {
           borderRadius: theme.shape.borderRadius * 2,
           fontSize: 14,
           padding: '16px',
+          width: 360,
         },
         tooltipContent: {
           textAlign: 'left',
         },
-        buttonNext: {
+        buttonPrimary: {
           backgroundColor: theme.palette.primary.main,
           borderRadius: theme.shape.borderRadius,
           fontSize: 14,
@@ -167,9 +168,6 @@ export default function ChatTour({ mode = 'fullPage' }) {
           border: `1px solid ${theme.palette.divider}`,
           backgroundColor: 'transparent',
         },
-        spotlight: {
-          borderRadius: theme.shape.borderRadius,
-        },
       }}
       locale={{
         back: 'Back',
@@ -178,12 +176,9 @@ export default function ChatTour({ mode = 'fullPage' }) {
         next: 'Next',
         skip: 'Skip tour',
       }}
-      floaterProps={{
-        disableAnimation: true,
-        ...(mode === 'drawer' && { disableFlip: true }),
+      floatingOptions={{
+        ...(mode === 'drawer' && { flipOptions: false }),
       }}
-      spotlightClicks
-      spotlightPadding={mode === 'drawer' ? 5 : 10}
     />
   )
 }

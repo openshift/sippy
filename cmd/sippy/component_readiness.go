@@ -17,7 +17,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	resources "github.com/openshift/sippy"
-	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -38,8 +37,9 @@ type ComponentReadinessFlags struct {
 	APIFlags                *flags.APIFlags
 	JiraFlags               *flags.JiraFlags
 
-	Config   string
-	LogLevel string
+	Config       string
+	DataProvider string
+	LogLevel     string
 }
 
 func NewComponentReadinessCommand() *cobra.Command {
@@ -88,6 +88,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.APIFlags.BindFlags(flagSet)
 	f.JiraFlags.BindFlags(flagSet)
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
+	flagSet.StringVar(&f.DataProvider, "data-provider", "default", "Data provider: default, bigquery, or postgres")
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
@@ -187,7 +188,10 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 	}
 
-	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient)
+	crDataProvider, err := newDataProvider(f.DataProvider, bigQueryClient, dbc, cacheClient)
+	if err != nil {
+		return err
+	}
 
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,

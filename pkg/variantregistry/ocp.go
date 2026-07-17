@@ -216,14 +216,10 @@ ORDER BY j.prowjob_job_name;
 						}
 						bkt := v.gcsClient.Bucket(jlr.GCSBucket.StringVal)
 						gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-						allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
+						clusterMatches, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobClusterData)
 						if err != nil {
 							jLog.WithError(err).Error("error finding cluster data file, proceeding without")
-							allMatches = [][]string{}
-						}
-						var clusterMatches []string
-						if len(allMatches) > 0 {
-							clusterMatches = allMatches[0]
+							clusterMatches = nil
 						}
 						for _, cm := range clusterMatches {
 							// log with the file prefix for easy click/copy to browser:
@@ -768,6 +764,7 @@ var componentCapabilityPatterns = []componentCapabilityEntry{
 	{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning", "spotcheck-30d"},
 	{[]string{"-etcd-scaling"}, "Etcd", "Scaling", "spotcheck-30d"},
 	{[]string{"-aws-ovn-installer-dualstack"}, "Installer", "AWSDualStackInstall", "candidate"},
+	{[]string{"-iso-no-registry"}, "Installer / Agent based installation", "NoRegistryClusterInstall", "candidate"},
 }
 
 // setComponentAndCapability identifies the component and capability owner for a job.

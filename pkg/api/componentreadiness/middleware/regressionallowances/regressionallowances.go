@@ -40,7 +40,7 @@ type RegressionAllowances struct {
 	regressionGetterFunc func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
 }
 
-func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crtest.JobVariants,
+func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup,
 	_, _ chan map[string]crstatus.TestStatus, _ chan error) {
 	// unused
 }
@@ -148,7 +148,7 @@ func (r *RegressionAllowances) adjustAnalysisParameters(testStats *testdetails.T
 	}
 }
 
-func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
+func (r *RegressionAllowances) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 }
 
 func (r *RegressionAllowances) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {

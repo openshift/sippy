@@ -342,7 +342,7 @@ type JobRun struct {
 	Variants              pq.StringArray      `json:"variants" gorm:"type:text[]"`
 	Tags                  pq.StringArray      `json:"tags" gorm:"type:text[]"`
 	TestGridURL           string              `json:"test_grid_url"`
-	ProwID                uint                `json:"prow_id"`
+	ProwID                string              `json:"prow_id"`
 	Job                   string              `json:"job"`
 	Cluster               string              `json:"cluster"`
 	URL                   string              `json:"url"`
@@ -1031,14 +1031,15 @@ type SippyViews struct {
 }
 
 type FeatureGate struct {
-	ID               int            `json:"id"`
-	FeatureGate      string         `json:"feature_gate"`
-	Release          string         `json:"release"`
-	UniqueTestCount  int64          `json:"unique_test_count"`
-	FirstSeenIn      string         `json:"first_seen_in"`
-	FirstSeenInMajor int64          `json:"first_seen_in_major"`
-	FirstSeenInMinor int64          `json:"first_seen_in_minor"`
-	Enabled          pq.StringArray `json:"enabled" gorm:"type:text[]"`
+	ID               int               `json:"id"`
+	FeatureGate      string            `json:"feature_gate"`
+	Release          string            `json:"release"`
+	UniqueTestCount  int64             `json:"unique_test_count"`
+	FirstSeenIn      string            `json:"first_seen_in"`
+	FirstSeenInMajor int64             `json:"first_seen_in_major"`
+	FirstSeenInMinor int64             `json:"first_seen_in_minor"`
+	Enabled          pq.StringArray    `json:"enabled" gorm:"type:text[]"`
+	Links            map[string]string `json:"links,omitempty" gorm:"-"`
 }
 
 func (fg FeatureGate) GetFieldType(param string) ColumnType {

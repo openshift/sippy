@@ -1,51 +1,14 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
-	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	"github.com/openshift/sippy/pkg/apis/cache"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	bqclient "github.com/openshift/sippy/pkg/bigquery"
 )
-
-type releaseGenerator struct {
-	client *bqclient.Client
-}
-
-func (r *releaseGenerator) ListReleases(ctx context.Context) ([]v1.Release, []error) {
-	releases, err := GetReleasesFromBigQuery(ctx, r.client)
-	if err != nil {
-		log.WithError(err).Error("error getting releases from bigquery")
-		return releases, []error{err}
-	}
-	return releases, nil
-}
-
-// GetReleases gets all the releases defined in the BQ Releases table.
-func GetReleases(ctx context.Context, bqc *bqclient.Client, forceRefresh bool) ([]v1.Release, error) {
-	releaseGen := releaseGenerator{bqc}
-
-	var err error
-	rels, errs := GetDataFromCacheOrGenerate[[]v1.Release](
-		ctx,
-		bqc.Cache,
-		cache.RequestOptions{ForceRefresh: forceRefresh},
-		NewCacheSpec(v1.Release{}, "Releases~", nil), // no cache options needed here, global list
-		releaseGen.ListReleases,
-		[]v1.Release{})
-	if len(errs) > 0 {
-		err = errs[0]
-	}
-	return rels, err
-}
 
 // VariantsStringToSet converts comma separated variant string into a set; also validates that the variants are known
 func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString string) (sets.Set[string], error) {

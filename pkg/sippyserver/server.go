@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/signal"
 	"regexp"
@@ -44,6 +45,7 @@ import (
 
 	"github.com/andygrunwald/go-jira"
 
+	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/jobrunevents"
@@ -53,6 +55,7 @@ import (
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/cumulativesummary"
 	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -150,6 +153,12 @@ var dailySummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Buckets: []float64{1000, 5000, 10000, 30000, 60000, 300000, 600000, 1200000},
 })
 
+var cumulativeSummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
+	Name:    "sippy_cumulative_summary_refresh_millis",
+	Help:    "Milliseconds to refresh the cumulative summary tables",
+	Buckets: []float64{100, 500, 1000, 5000, 10000, 30000, 60000, 300000, 600000},
+})
+
 var matViewUniqueNumberOfTests = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "sippy_matviews_unique_number_of_tests",
 	Help: "Total number of tests based on lookback days",
@@ -188,13 +197,8 @@ type Server struct {
 	rateLimiters         map[string]*rateLimiter
 }
 
-// getReleases returns release data, preferring the BigQuery client with caching
-// when available, falling back to the data provider for mock mode.
-func (s *Server) getReleases(ctx context.Context, forceRefresh ...bool) ([]sippyv1.Release, error) {
-	if s.bigQueryClient != nil {
-		refresh := len(forceRefresh) > 0 && forceRefresh[0]
-		return api.GetReleases(ctx, s.bigQueryClient, refresh)
-	}
+// getReleases returns release data via the configured data provider.
+func (s *Server) getReleases(ctx context.Context) ([]sippyv1.Release, error) {
 	if s.crDataProvider != nil {
 		return s.crDataProvider.QueryReleases(ctx)
 	}
@@ -386,16 +390,59 @@ func recordMatviewRefreshTime(cacheClient cache.Cache, matView string, tmpLog *l
 	}
 }
 
-func RefreshData(dbc *db.DB, cacheClient cache.Cache, refreshMatviewsOnlyIfEmpty bool, dailySummaryOpts dailysummary.Options) {
+// RefreshOptions controls the incremental refresh behavior.
+type RefreshOptions struct {
+	RefreshOnlyIfEmpty bool
+}
+
+// RefreshData runs the normal incremental refresh of all summary tables
+// and materialized views. Used by the load command and the serve loop.
+func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
+
 	summaryStart := time.Now()
-	if err := dailysummary.Refresh(dbc, dailySummaryOpts); err != nil {
-		log.WithError(err).Error("failed to refresh daily summaries")
-	} else {
-		dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
+	if _, err := dailysummary.Refresh(dbc); err != nil {
+		return fmt.Errorf("failed to refresh daily summaries: %w", err)
 	}
-	refreshMaterializedViews(dbc, cacheClient, refreshMatviewsOnlyIfEmpty)
+	dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
+
+	totalsStart := time.Now()
+	earliestTotalsChanged, err := dailysummary.RefreshTotals(dbc)
+	if err != nil {
+		return fmt.Errorf("failed to refresh daily totals: %w", err)
+	}
+	log.WithField("elapsed", time.Since(totalsStart)).Info("daily totals refresh complete")
+
+	cumulativeStart := time.Now()
+	if _, err := cumulativesummary.Refresh(dbc, earliestTotalsChanged); err != nil {
+		return fmt.Errorf("failed to refresh cumulative summaries: %w", err)
+	}
+	cumulativeSummaryRefreshMetric.Observe(float64(time.Since(cumulativeStart).Milliseconds()))
+
+	refreshMaterializedViews(dbc, cacheClient, opts.RefreshOnlyIfEmpty)
 	log.Info("Refresh complete")
+	return nil
+}
+
+// BackfillData refreshes a specific table for a given date range,
+// bypassing the normal incremental logic. Used for backfilling.
+func BackfillData(dbc *db.DB, table string, startDate, endDate civil.Date) error {
+	log.WithFields(log.Fields{
+		"table": table,
+		"start": startDate,
+		"end":   endDate,
+	}).Info("Backfilling table")
+
+	switch table {
+	case "daily-summaries":
+		return dailysummary.Backfill(dbc, startDate, endDate)
+	case "daily-totals":
+		return dailysummary.BackfillTotals(dbc, startDate, endDate)
+	case "cumulative-summaries":
+		return cumulativesummary.Backfill(dbc, startDate, endDate)
+	default:
+		return fmt.Errorf("unknown table: %s", table)
+	}
 }
 
 func (s *Server) hasCapabilities(capabilities []string) bool {
@@ -678,13 +725,56 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
-		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release, filterOpts)
+		gates, err := query.GetFeatureGatesFromDB(s.db, release, filterOpts)
 		if err != nil {
 			failureResponseWithError(w, "couldn't query feature gates", err)
 			return
 		}
+		baseAPIURL := api.GetBaseURL(req)
+		baseFrontendURL := api.GetBaseFrontendURL(req)
+		for i := range gates {
+			injectFeatureGateHATEOASLinks(&gates[i], release, baseAPIURL, baseFrontendURL)
+		}
 		api.RespondWithJSON(http.StatusOK, w, gates)
 	}
+}
+
+func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
+	fg.Links = make(map[string]string, 3)
+
+	// Trailing "]" anchors the match so a shorter gate name can't prefix-match a longer one.
+	annotationFilter := filter.Filter{
+		Items: []filter.FilterItem{
+			{Field: "name", Operator: filter.OperatorContains, Value: fmt.Sprintf("FeatureGate:%s]", fg.FeatureGate)},
+		},
+	}
+	fg.Links["tests_by_annotation"] = buildFilteredTestsURL(baseAPIURL, release, annotationFilter)
+
+	// Installer gates currently run a broad conformance suite where full passes aren't
+	// required, so "install should succeed" is the meaningful signal. Switch to
+	// "openshift-tests should work" once installer jobs run a minimal conformance suite.
+	capabilityTestName := "openshift-tests should work"
+	if strings.Contains(fg.FeatureGate, "Install") {
+		capabilityTestName = "install should succeed"
+	}
+	capabilityFilter := filter.Filter{
+		Items: []filter.FilterItem{
+			{Field: "name", Operator: filter.OperatorContains, Value: capabilityTestName},
+			{Field: "variants", Operator: filter.OperatorContains, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
+		},
+		LinkOperator: filter.LinkOperatorAnd,
+	}
+	fg.Links["tests_by_capability"] = buildFilteredTestsURL(baseAPIURL, release, capabilityFilter)
+
+	fg.Links["ui_detail"] = fmt.Sprintf(
+		"%s/sippy-ng/feature_gates/%s/%s",
+		baseFrontendURL, release, url.PathEscape(fg.FeatureGate))
+}
+
+func buildFilteredTestsURL(baseAPIURL, release string, f filter.Filter) string {
+	filterJSON, _ := json.Marshal(f)
+	return fmt.Sprintf("%s/api/tests?release=%s&filter=%s",
+		baseAPIURL, url.QueryEscape(release), url.QueryEscape(string(filterJSON)))
 }
 
 func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
@@ -911,8 +1001,8 @@ func (s *Server) jsonTestRunsAndOutputsFromBigQuery(w http.ResponseWriter, req *
 
 	outputs, err := api.GetTestRunsAndOutputsFromBigQuery(req.Context(), s.bigQueryClient, testID, prowJobRunIDList, prowJobNames, includeSuccess, startDate, endDate)
 	if err != nil {
-		log.WithError(err).Error("error querying test runs from bigquery")
-		failureResponse(w, http.StatusInternalServerError, "error querying test runs from bigquery")
+		log.WithError(err).Error("error querying test runs")
+		failureResponse(w, http.StatusInternalServerError, "error querying test runs")
 		return
 	}
 
@@ -926,11 +1016,11 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 	}
 	outputs, errs := componentreadiness.GetComponentTestVariants(req.Context(), s.crDataProvider)
 	if len(errs) > 0 {
-		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
+		log.Warningf("%d errors were encountered while querying test variants:", len(errs))
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying test variants from big query: %v", errs))
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying test variants: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -943,11 +1033,11 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 	}
 	outputs, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
 	if len(errs) > 0 {
-		log.Warningf("%d errors were encountered while querying job variants from big query:", len(errs))
+		log.Warningf("%d errors were encountered while querying job variants:", len(errs))
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying job variants from big query: %v", errs))
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying job variants: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -1008,7 +1098,9 @@ func (s *Server) getRegressedTestsForRegressions(req *http.Request, regressions 
 // getComponentReportFromRequest creates a component report based on the HTTP request parameters
 func (s *Server) getComponentReportFromRequest(req *http.Request) (componentreport.ComponentReport, error) {
 	if s.crDataProvider == nil {
-		return componentreport.ComponentReport{}, fmt.Errorf("component report API is only available when a data provider is configured")
+		return componentreport.ComponentReport{}, &api.ValidationError{
+			Message: "component report API is only available when a data provider is configured",
+		}
 	}
 
 	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
@@ -1038,7 +1130,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		baseURL,
 	)
 	if len(errs) > 0 {
-		return componentreport.ComponentReport{}, fmt.Errorf("error querying component from big query: %v", errs)
+		return componentreport.ComponentReport{}, fmt.Errorf("error querying component: %v", errs)
 	}
 
 	// Add any warnings from parsing to the report
@@ -1050,7 +1142,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	outputs, err := s.getComponentReportFromRequest(req)
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error generating component report", err)
 		return
 	}
 
@@ -1059,36 +1151,34 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 
 func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.crDataProvider == nil {
-		err := fmt.Errorf("component report API is only available when a data provider is configured")
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error querying component test details",
+			&api.ValidationError{Message: "component report API is only available when a data provider is configured"})
 		return
 	}
 	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
 	if len(errs) > 0 {
-		err := fmt.Errorf("failed to get job variants")
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error querying component test details", fmt.Errorf("failed to get job variants"))
 		return
 	}
 	allReleases, err := s.getReleases(req.Context())
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error querying component test details", err)
 		return
 	}
 
 	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
 
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponseWithError(w, "error querying component test details", err)
 		return
 	}
 	baseURL := api.GetBaseFrontendURL(req)
 	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.crDataProvider, s.db, reqOptions, allReleases, baseURL)
 	if len(errs) > 0 {
-		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
-		for _, err := range errs {
-			log.Error(err.Error())
+		for _, e := range errs[1:] {
+			log.WithError(e).Error("additional error querying component test details")
 		}
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying component test details from big query: %v", errs))
+		failureResponseWithError(w, "error querying component test details", errs[0])
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -1156,15 +1246,14 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Request) {
-	forceRefresh := req.URL.Query().Get("forceRefresh") != ""
-	releases, err := s.getReleases(req.Context(), forceRefresh)
+	releases, err := s.getReleases(req.Context())
 	if err != nil {
 		log.WithError(err).Error("error querying releases")
 		failureResponse(w, http.StatusInternalServerError, "error querying releases")
 		return
 	}
 
-	// Get last updated time from database if available
+	// Get last updated time if available
 	var lastUpdated time.Time
 	if s.db != nil {
 		type LastUpdatedQuery struct {
@@ -1888,6 +1977,7 @@ func (s *Server) jsonGetRegressions(w http.ResponseWriter, req *http.Request) {
 	// Read query parameters for listing
 	view := param.SafeRead(req, "view")
 	release := param.SafeRead(req, "release")
+	testName := param.SafeRead(req, "test")
 
 	// Error if both view and release are specified
 	if view != "" && release != "" {
@@ -1911,7 +2001,12 @@ func (s *Server) jsonGetRegressions(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	regressions, err := componentreadiness.ListRegressions(s.db, release, views, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
+	var regressions []models.TestRegression
+	if testName != "" {
+		regressions, err = componentreadiness.GetRegressionsForTest(s.db, release, testName, views, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
+	} else {
+		regressions, err = componentreadiness.ListRegressions(s.db, release, views, allReleases, s.crTimeRoundingFactor, s.crTimeRoundingOffset, req)
+	}
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -2315,7 +2410,7 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/autocomplete/{field}",
-			Description:  "Autocompletes queries from database",
+			Description:  "Autocompletes queries",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonAutocompleteFromDB,
 		},
@@ -2694,7 +2789,7 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/component_readiness/regressions",
-			Description:  "List component readiness test regressions. Supports view OR release query parameters (not both).",
+			Description:  "List component readiness test regressions. Supports view OR release query parameters (not both). Optional test parameter filters by exact test name.",
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonGetRegressions,
 		},

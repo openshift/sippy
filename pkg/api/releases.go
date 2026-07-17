@@ -16,6 +16,8 @@ import (
 	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -24,6 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
@@ -540,9 +543,33 @@ func GetReleaseRowsFromBigQuery(ctx context.Context, client *bqcachedclient.Clie
 	return rows, nil
 }
 
-// GetReleasesFromDB queries release metadata from the release_definitions table
-// and converts to []sippyv1.Release for use by existing callers.
+// GetReleaseDatesFromDB derives CR time ranges from release_definitions GA dates.
+func GetReleaseDatesFromDB(ctx context.Context, dbc *db.DB, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, error) {
+	if dbc == nil || dbc.DB == nil {
+		return nil, fmt.Errorf("no database connection available for release dates")
+	}
+	releases, err := GetReleasesFromDB(ctx, dbc)
+	if err != nil {
+		return nil, err
+	}
+	var timeRanges []crtest.ReleaseTimeRange
+	for _, release := range releases {
+		tr := crtest.ReleaseTimeRange{Release: release.Release}
+		if release.GADate != nil {
+			prior := util.AdjustReleaseTime(*release.GADate, true, "30", reqOptions.CacheOption.CRTimeRoundingFactor, reqOptions.CacheOption.CRTimeRoundingOffset)
+			tr.Start = &prior
+			tr.End = release.GADate
+		}
+		timeRanges = append(timeRanges, tr)
+	}
+	return timeRanges, nil
+}
+
+// GetReleasesFromDB queries release metadata from the release_definitions table.
 func GetReleasesFromDB(ctx context.Context, dbc *db.DB) ([]sippyv1.Release, error) {
+	if dbc == nil || dbc.DB == nil {
+		return nil, fmt.Errorf("no database connection available for releases")
+	}
 	var defs []models.ReleaseDefinition
 	err := dbc.DB.WithContext(ctx).Order("development_start_date DESC").Find(&defs).Error
 	if err != nil {

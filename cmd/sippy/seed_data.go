@@ -3,18 +3,22 @@ package main
 import (
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
+	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	componentreadiness "github.com/openshift/sippy/pkg/api/componentreadiness"
 	pgprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
@@ -23,7 +27,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/flags"
@@ -176,12 +179,31 @@ var syntheticJobs = []syntheticJobDef{
 			"Suite": "unknown", "Upgrade": "micro", "LayeredProduct": "none",
 		},
 	},
+	{
+		nameTemplate: "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-networksegmentation",
+		variants: map[string]string{
+			"Platform": "aws", "Architecture": "amd64", "Network": "ovn",
+			"Topology": "ha", "Installer": "ipi", "FeatureSet": "default",
+			"Suite": "parallel", "Upgrade": "none", "LayeredProduct": "none",
+			"Capability": "NetworkSegmentation",
+		},
+	},
+	{
+		nameTemplate: "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-awsdualstackinstall",
+		variants: map[string]string{
+			"Platform": "aws", "Architecture": "amd64", "Network": "ovn",
+			"Topology": "ha", "Installer": "ipi", "FeatureSet": "default",
+			"Suite": "parallel", "Upgrade": "none", "LayeredProduct": "none",
+			"Capability": "AWSDualStackInstall",
+		},
+	},
 }
 
 // Job template constants for referencing specific jobs in test specs.
 const awsAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64"
 const awsArm64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-arm64"
 const gcpAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-gcp-ovn-amd64"
+const awsAmd64CapabilityAWSDualStackInstall = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-awsdualstackinstall"
 
 // allJobTemplates returns name templates from syntheticJobs for use in test specs
 // that should run on every job (e.g. install tests).
@@ -331,6 +353,36 @@ var syntheticTests = []syntheticTestSpec{
 		},
 	},
 
+	// --- Feature gate annotated tests ---
+	{
+		testID: "test-fg-network-segmentation", testName: "[sig-network] [FeatureGate:NetworkSegmentation] pods should communicate across segments",
+		component: "Networking / ovn-kubernetes", capabilities: []string{"networking"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {100, 95, 0}, "4.22": {100, 93, 0}},
+			gcpAmd64Parallel: {"4.21": {100, 97, 0}, "4.22": {100, 95, 0}},
+		},
+	},
+	{
+		testID: "test-fg-network-segmentation-2", testName: "[sig-network] [FeatureGate:NetworkSegmentation] network policy should enforce segmentation",
+		component: "Networking / ovn-kubernetes", capabilities: []string{"networking"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {100, 94, 0}, "4.22": {100, 92, 0}},
+		},
+	},
+	{
+		testID: "test-fg-aws-dual-stack-install", testName: "[sig-installer] [FeatureGate:AWSDualStackInstall] dual stack install should succeed",
+		component: "Installer / openshift-installer", capabilities: []string{"AWSDualStackInstall"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.22": {50, 48, 0}},
+		},
+	},
+	{
+		testID: "test-cap-aws-dual-stack-install", testName: "install should succeed: infrastructure",
+		component: "Installer / openshift-installer", capabilities: []string{"install"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64CapabilityAWSDualStackInstall: {"4.22": {50, 47, 0}},
+		},
+	},
 	// --- Install / health indicator tests: run on every job, every release ---
 	{
 		testID: "test-install-overall", testName: "install should succeed: overall",
@@ -408,6 +460,10 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 	if count > 0 {
 		log.Infof("Database already contains %d ProwJobs, skipping seed. Drop and recreate the database to re-seed (e.g. docker compose down -v).", count)
+		// Feature gates use FirstOrCreate and are safe to re-run on an existing DB.
+		if err := seedFeatureGates(dbc); err != nil {
+			return errors.WithMessage(err, "failed to seed feature gates")
+		}
 		return nil
 	}
 
@@ -443,9 +499,28 @@ func seedSyntheticData(dbc *db.DB) error {
 		return errors.WithMessage(err, "failed to create labels and symptoms")
 	}
 
+	if err := seedFeatureGates(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed feature gates")
+	}
+
 	log.Info("Refreshing materialized views...")
-	seedStart := time.Now().Add(-190 * 24 * time.Hour)
-	sippyserver.RefreshData(dbc, nil, false, dailysummary.Options{StartOverride: &seedStart})
+	seedToday := civil.DateOf(time.Now().UTC())
+	seedStart := seedToday.AddDays(-190)
+	seedEnd := seedToday
+	for _, table := range []string{"daily-summaries", "daily-totals", "cumulative-summaries"} {
+		if err := sippyserver.BackfillData(dbc, table, seedStart, seedEnd); err != nil {
+			return fmt.Errorf("failed to backfill %s: %w", table, err)
+		}
+	}
+
+	if err := seedGARawTestData(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed GA raw test data")
+	}
+	log.Info("Seeded GA raw test data")
+
+	if err := sippyserver.RefreshData(dbc, nil, sippyserver.RefreshOptions{}); err != nil {
+		return fmt.Errorf("failed to refresh data: %w", err)
+	}
 
 	log.Info("Syncing regressions...")
 	if err := syncRegressions(dbc); err != nil {
@@ -1166,5 +1241,135 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 		}
 	}
 
+	return nil
+}
+
+func seedFeatureGates(dbc *db.DB) error {
+	featureGates := []models.FeatureGate{
+		{Release: "4.22", Topology: "SelfManagedHA", FeatureSet: "TechPreviewNoUpgrade", FeatureGate: "NetworkSegmentation", Status: "enabled"},
+		{Release: "4.22", Topology: "SelfManagedHA", FeatureSet: "TechPreviewNoUpgrade", FeatureGate: "AWSDualStackInstall", Status: "enabled"},
+	}
+
+	for _, fg := range featureGates {
+		var existing models.FeatureGate
+		if err := dbc.DB.Where(
+			"release = ? AND topology = ? AND feature_set = ? AND feature_gate = ?",
+			fg.Release, fg.Topology, fg.FeatureSet, fg.FeatureGate,
+		).FirstOrCreate(&existing, fg).Error; err != nil {
+			return fmt.Errorf("failed to create feature gate %s/%s: %w", fg.Release, fg.FeatureGate, err)
+		}
+	}
+	log.Infof("Created %d feature gate records", len(featureGates))
+	return nil
+}
+
+// seedGARawTestData populates prow_ga_raw_test_data for GA releases using
+// the same synthetic test/job definitions. This gives the
+// prow_ga_test_statuses_matview data to aggregate when refreshed.
+func seedGARawTestData(dbc *db.DB) error {
+	var gaReleases []models.ReleaseDefinition
+	if err := dbc.DB.Where("ga_date IS NOT NULL AND ga_date < CURRENT_DATE").Find(&gaReleases).Error; err != nil {
+		return fmt.Errorf("querying GA releases: %w", err)
+	}
+
+	if len(gaReleases) == 0 {
+		log.Info("No GA releases found, skipping GA raw test data seeding")
+		return nil
+	}
+
+	testIDCache := make(map[string]uint)
+	jobIDCache := make(map[string]uint)
+	var suiteID uint
+
+	var suite models.Suite
+	if err := dbc.DB.Where("name = ?", "synthetic").First(&suite).Error; err != nil {
+		if !stderrors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("looking up suite 'synthetic': %w", err)
+		}
+		log.Warn("Suite 'synthetic' not found, GA raw test data will use suite_id=0")
+	} else {
+		suiteID = suite.ID
+	}
+
+	var rows []models.ProwGARawTestDatum
+	for _, rel := range gaReleases {
+		for _, windowDays := range utils.GAWindows {
+			for _, spec := range syntheticTests {
+				testID, ok := testIDCache[spec.testName]
+				if !ok {
+					var test models.Test
+					if err := dbc.DB.Where("name = ?", spec.testName).First(&test).Error; err != nil {
+						if !stderrors.Is(err, gorm.ErrRecordNotFound) {
+							return fmt.Errorf("looking up test %q: %w", spec.testName, err)
+						}
+						continue
+					}
+					testID = test.ID
+					testIDCache[spec.testName] = testID
+				}
+
+				for jobTemplate, releaseCounts := range spec.jobCounts {
+					counts, ok := releaseCounts[rel.Release]
+					if !ok {
+						continue
+					}
+					jobName := fmt.Sprintf(jobTemplate, rel.Release)
+					prowJobID, ok := jobIDCache[jobName]
+					if !ok {
+						var job models.ProwJob
+						if err := dbc.DB.Where("name = ?", jobName).First(&job).Error; err != nil {
+							if !stderrors.Is(err, gorm.ErrRecordNotFound) {
+								return fmt.Errorf("looking up prow job %q: %w", jobName, err)
+							}
+							continue
+						}
+						prowJobID = job.ID
+						jobIDCache[jobName] = prowJobID
+					}
+
+					scale := int64(windowDays)
+					rows = append(rows, models.ProwGARawTestDatum{
+						Release:    rel.Release,
+						WindowDays: windowDays,
+						TestID:     testID,
+						ProwJobID:  prowJobID,
+						SuiteID:    suiteID,
+						Passes:     int64(counts.success) * scale,
+						Failures:   int64(counts.total-counts.success-counts.flake) * scale,
+						Flakes:     int64(counts.flake) * scale,
+						Runs:       int64(counts.total) * scale,
+					})
+				}
+			}
+		}
+	}
+
+	if len(rows) > 0 {
+		if err := dbc.DB.CreateInBatches(rows, 500).Error; err != nil {
+			return fmt.Errorf("inserting GA raw test data: %w", err)
+		}
+	}
+
+	releasesWithRows := sets.New[string]()
+	for _, row := range rows {
+		releasesWithRows.Insert(row.Release)
+	}
+
+	for _, rel := range gaReleases {
+		if !releasesWithRows.Has(rel.Release) {
+			log.WithField("release", rel.Release).Warn("No GA seed data generated, skipping ga_data_loaded_date")
+			continue
+		}
+		gaDate := civil.DateOf(rel.GADate.UTC())
+		if err := dbc.DB.Model(&models.ReleaseDefinition{}).
+			Where("release = ?", rel.Release).
+			Update("ga_data_loaded_date", gaDate).Error; err != nil {
+			return fmt.Errorf("updating ga_data_loaded_date for %s: %w", rel.Release, err)
+		}
+	}
+
+	log.WithField("rows", len(rows)).
+		WithField("releases", len(gaReleases)).
+		Info("Seeded GA raw test data")
 	return nil
 }

@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 
@@ -181,6 +182,58 @@ type TestDailySummary struct {
 	Failures    int32     `gorm:"column:failures;not null;default:0"`
 	Flakes      int32     `gorm:"column:flakes;not null;default:0"`
 	Runs        int32     `gorm:"column:runs;not null;default:0"`
+}
+
+// TestDailyTotal is the partitioned replacement for TestDailySummary.
+// Same schema, but partitioned by LIST(release) then RANGE(date).
+// Table is partitioned (LIST by release, RANGE by date) -
+// schema managed by migration 000006, not AutoMigrate.
+type TestDailyTotal struct {
+	TestID    uint       `gorm:"column:test_id;not null"`
+	ProwJobID uint       `gorm:"column:prow_job_id;not null"`
+	SuiteID   uint       `gorm:"column:suite_id;not null;default:0"`
+	Release   string     `gorm:"column:release;not null"`
+	Date      civil.Date `gorm:"column:date;type:date;not null"`
+	Successes int32      `gorm:"column:successes;not null;default:0"`
+	Failures  int32      `gorm:"column:failures;not null;default:0"`
+	Flakes    int32      `gorm:"column:flakes;not null;default:0"`
+	Runs      int32      `gorm:"column:runs;not null;default:0"`
+}
+
+// TestCumulativeSummary stores running totals of test_daily_summaries values,
+// ordered by date. Any date range [start, end] can be computed as
+// cumulative(end) - cumulative(start-1). Keyed by immutable fields only
+// (no variant_combination_id) so variant changes do not invalidate the data.
+// Entities are carried forward on days with no data so the chain is unbroken.
+// Table is partitioned (LIST by release, RANGE by date) -
+// schema managed by migration 000006, not AutoMigrate.
+type TestCumulativeSummary struct {
+	Date               civil.Date `gorm:"column:date;type:date;not null;primaryKey;priority:1"`
+	Release            string     `gorm:"column:release;not null;primaryKey;priority:2"`
+	TestID             uint       `gorm:"column:test_id;not null;primaryKey;priority:3"`
+	ProwJobID          uint       `gorm:"column:prow_job_id;not null;primaryKey;priority:4;index:idx_test_cumulative_summaries_prow_job_id"`
+	SuiteID            uint       `gorm:"column:suite_id;not null;default:0;primaryKey;priority:5"`
+	PrefixSumSuccesses int64      `gorm:"column:prefix_sum_successes;not null;default:0"`
+	PrefixSumFailures  int64      `gorm:"column:prefix_sum_failures;not null;default:0"`
+	PrefixSumFlakes    int64      `gorm:"column:prefix_sum_flakes;not null;default:0"`
+	PrefixSumRuns      int64      `gorm:"column:prefix_sum_runs;not null;default:0"`
+}
+
+// ProwGARawTestDatum stores raw BigQuery test results for GA release windows.
+// Fetched once per GA date and persisted so that the aggregation into
+// prow_ga_test_statuses_matview can be re-run cheaply when dimension tables change.
+// Each (release, window_days) pair holds results aggregated over a different lookback
+// period (e.g. 1, 30, or 90 days before GA).
+type ProwGARawTestDatum struct {
+	Release    string `gorm:"not null;index:idx_prow_ga_raw_release_window"`
+	WindowDays int    `gorm:"not null;default:30;index:idx_prow_ga_raw_release_window"`
+	TestID     uint   `gorm:"not null"`
+	ProwJobID  uint   `gorm:"not null"`
+	SuiteID    uint   `gorm:"not null;default:0"`
+	Passes     int64  `gorm:"not null;default:0"`
+	Failures   int64  `gorm:"not null;default:0"`
+	Flakes     int64  `gorm:"not null;default:0"`
+	Runs       int64  `gorm:"not null;default:0"`
 }
 
 // Bug represents a Jira bug.
