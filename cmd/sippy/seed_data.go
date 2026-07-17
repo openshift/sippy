@@ -1068,7 +1068,7 @@ func seedPresubmitData(dbc *db.DB) error {
 			}
 		}
 
-		// Success result for install test (same test, different run aspect)
+		// Success result for network test
 		successResult := models.ProwJobRunTest{
 			ProwJobRunID:        ri.run.ID,
 			ProwJobID:           ri.run.ProwJobID,
