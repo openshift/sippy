@@ -85,13 +85,14 @@ func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly 
 	}
 
 	// By default only return failures (no flakes, no successes).
-	// include_successes adds flakes and successes for matching test names.
+	// include_successes adds successes for matching test names (flakes
+	// are excluded to match the previous BigQuery implementation).
 	if len(includeSuccesses) == 0 {
 		query = query.Where("pjrt.status = ?", int(sippyprocessingv1.TestStatusFailure))
 	} else {
 		conditions := dbc.DB.Where("pjrt.status = ?", int(sippyprocessingv1.TestStatusFailure))
 		for _, pattern := range includeSuccesses {
-			conditions = conditions.Or("t.name LIKE ?", "%"+pattern+"%")
+			conditions = conditions.Or("pjrt.status = ? AND t.name LIKE ?", int(sippyprocessingv1.TestStatusSuccess), "%"+pattern+"%")
 		}
 		query = query.Where(conditions)
 	}

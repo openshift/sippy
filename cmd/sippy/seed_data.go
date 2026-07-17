@@ -1084,7 +1084,23 @@ func seedPresubmitData(dbc *db.DB) error {
 			return fmt.Errorf("failed to create success ProwJobRunTest: %w", err)
 		}
 
-		// Flake result for network test on a different test
+		// Success result for install test (used by include_successes=install e2e test)
+		installSuccessResult := models.ProwJobRunTest{
+			ProwJobRunID:        ri.run.ID,
+			ProwJobID:           ri.run.ProwJobID,
+			ProwJobRunRelease:   models.ReleasePresubmits,
+			ProwJobRunTimestamp: ri.run.Timestamp,
+			TestID:              installTestID,
+			SuiteID:             &suite.ID,
+			Status:              int(v1.TestStatusSuccess),
+			Duration:            2.0,
+			CreatedAt:           ri.run.Timestamp,
+		}
+		if err := dbc.DB.Create(&installSuccessResult).Error; err != nil {
+			return fmt.Errorf("failed to create install success ProwJobRunTest: %w", err)
+		}
+
+		// Flake result for install test
 		flakeResult := models.ProwJobRunTest{
 			ProwJobRunID:        ri.run.ID,
 			ProwJobID:           ri.run.ProwJobID,

@@ -37,8 +37,9 @@ func TestPRTestResultsIncludeSuccesses(t *testing.T) {
 
 	assert.Greater(t, statuses["failure"], 0, "should still have failures")
 	// include_successes=install should match "install should succeed: overall" and return
-	// success and flake statuses for it alongside the failures
-	assert.Greater(t, statuses["success"]+statuses["flake"], 0, "should have successes or flakes for matching tests")
+	// successes for it alongside the failures (flakes are excluded)
+	assert.Greater(t, statuses["success"], 0, "should have successes for matching tests")
+	assert.Equal(t, 0, statuses["flake"], "flakes should be excluded from include_successes results")
 }
 
 func TestPRTestResultsMultiplePRs(t *testing.T) {
