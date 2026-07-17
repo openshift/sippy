@@ -61,6 +61,9 @@ func doRefreshWithToday(store summaryStore, earliestChanged, today civil.Date) (
 }
 
 func refreshDateRange(store summaryStore, startDate, endDate civil.Date) (civil.Date, error) {
+	if startDate.After(endDate) {
+		return startDate, nil
+	}
 	loadStart := time.Now()
 	days := endDate.DaysSince(startDate) + 1
 

@@ -725,7 +725,7 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
-		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release, filterOpts)
+		gates, err := query.GetFeatureGatesFromDB(s.db, release, filterOpts)
 		if err != nil {
 			failureResponseWithError(w, "couldn't query feature gates", err)
 			return

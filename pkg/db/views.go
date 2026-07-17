@@ -15,27 +15,6 @@ const timestampFormat = "2006-01-02 15:04:05"
 // TODO: for historical sippy we need to specify the pinnedDate and not use NOW
 var PostgresMatViews = []PostgresView{
 	{
-		Name:         "prow_test_report_7d_matview",
-		Definition:   testReportMatView,
-		IndexColumns: []string{"release", "name", "id", "variant_combination_id", "suite_name"},
-		ReplaceStrings: map[string]string{
-			"|||START|||":    "|||TIMENOW||| - INTERVAL '14 DAY'",
-			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '7 DAY'",
-			"|||END|||":      "|||TIMENOW|||",
-		},
-	},
-	{
-		Name:         "prow_test_report_2d_matview",
-		Definition:   testReportMatView,
-		IndexColumns: []string{"release", "name", "id", "variant_combination_id", "suite_name"},
-		RefreshPhase: 1, // avoid CPU overload from refreshing concurrently with the 7d matview
-		ReplaceStrings: map[string]string{
-			"|||START|||":    "|||TIMENOW||| - INTERVAL '9 DAY'",
-			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '2 DAY'",
-			"|||END|||":      "|||TIMENOW|||",
-		},
-	},
-	{
 		Name:              "prow_job_runs_report_matview",
 		Definition:        jobRunsReportMatView,
 		IndexColumns:      []string{"id"},
@@ -55,24 +34,6 @@ var PostgresMatViews = []PostgresView{
 		IndexColumns: []string{"period", "prow_job_id", "test_name"},
 		ReplaceStrings: map[string]string{
 			"|||BY|||": "hour",
-		},
-	},
-	{
-		Name:         "prow_test_report_7d_collapsed_matview",
-		Definition:   testReportCollapsedMatView,
-		IndexColumns: []string{"release", "id", "suite_name", "jira_component", "jira_component_id"},
-		RefreshPhase: 2, // reads from prow_test_report_7d_matview, which refreshes in phase 0
-		ReplaceStrings: map[string]string{
-			"|||SOURCE|||": "prow_test_report_7d_matview",
-		},
-	},
-	{
-		Name:         "prow_test_report_2d_collapsed_matview",
-		Definition:   testReportCollapsedMatView,
-		IndexColumns: []string{"release", "id", "suite_name", "jira_component", "jira_component_id"},
-		RefreshPhase: 2, // reads from prow_test_report_2d_matview, which refreshes in phase 1
-		ReplaceStrings: map[string]string{
-			"|||SOURCE|||": "prow_test_report_2d_matview",
 		},
 	},
 	{
@@ -289,120 +250,6 @@ FROM prow_job_runs
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
 `
-const testReportMatView = `
-SELECT base.*,
-    COALESCE(base.current_successes * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_pass_percentage,
-    COALESCE(base.current_failures * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_failure_percentage,
-    COALESCE(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_flake_percentage,
-    COALESCE((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_working_percentage,
-    COALESCE(base.previous_successes * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_pass_percentage,
-    COALESCE(base.previous_failures * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_failure_percentage,
-    COALESCE(base.previous_flakes * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_flake_percentage,
-    COALESCE((base.previous_successes + base.previous_flakes) * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_working_percentage,
-    AVG((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS working_average,
-    STDDEV((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS working_standard_deviation,
-    AVG(base.current_successes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS passing_average,
-    STDDEV(base.current_successes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS passing_standard_deviation,
-    AVG(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS flake_average,
-    STDDEV(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS flake_standard_deviation
-FROM (
-    WITH open_bugs AS (
-      SELECT
-        test_id,
-        COUNT(DISTINCT bugs.id) AS open_bugs
-      FROM
-        bug_tests
-        INNER JOIN tests ON tests.id = bug_tests.test_id
-        INNER JOIN bugs ON bug_tests.bug_id = bugs.id
-      WHERE
-        LOWER(bugs.status) <> 'closed'
-      GROUP BY
-        test_id
-    ),
-    pre_agg AS (
-      SELECT
-        pj.variant_combination_id,
-        tds.test_id,
-        tds.suite_id,
-        tds.release AS prow_job_run_release,
-        COALESCE(SUM(tds.successes) FILTER (WHERE tds.summary_date >= |||START||| AND tds.summary_date < |||BOUNDARY|||), 0) AS previous_successes,
-        COALESCE(SUM(tds.flakes)    FILTER (WHERE tds.summary_date >= |||START||| AND tds.summary_date < |||BOUNDARY|||), 0) AS previous_flakes,
-        COALESCE(SUM(tds.failures)  FILTER (WHERE tds.summary_date >= |||START||| AND tds.summary_date < |||BOUNDARY|||), 0) AS previous_failures,
-        COALESCE(SUM(tds.runs)      FILTER (WHERE tds.summary_date >= |||START||| AND tds.summary_date < |||BOUNDARY|||), 0) AS previous_runs,
-        COALESCE(SUM(tds.successes) FILTER (WHERE tds.summary_date >= |||BOUNDARY||| AND tds.summary_date <= |||END|||), 0) AS current_successes,
-        COALESCE(SUM(tds.flakes)    FILTER (WHERE tds.summary_date >= |||BOUNDARY||| AND tds.summary_date <= |||END|||), 0) AS current_flakes,
-        COALESCE(SUM(tds.failures)  FILTER (WHERE tds.summary_date >= |||BOUNDARY||| AND tds.summary_date <= |||END|||), 0) AS current_failures,
-        COALESCE(SUM(tds.runs)      FILTER (WHERE tds.summary_date >= |||BOUNDARY||| AND tds.summary_date <= |||END|||), 0) AS current_runs
-      FROM
-        test_daily_summaries tds
-        JOIN prow_jobs pj ON tds.prow_job_id = pj.id
-      WHERE
-        tds.summary_date >= |||START||| AND tds.summary_date <= |||END|||
-      GROUP BY
-        pj.variant_combination_id, tds.test_id, tds.suite_id, tds.release
-    )
-    SELECT
-        tests.id,
-        tests.name,
-        suites.name AS suite_name,
-        jira_components.name AS jira_component,
-        jira_components.id AS jira_component_id,
-        pre_agg.previous_successes::bigint AS previous_successes,
-        pre_agg.previous_flakes::bigint AS previous_flakes,
-        pre_agg.previous_failures::bigint AS previous_failures,
-        pre_agg.previous_runs::bigint AS previous_runs,
-        pre_agg.current_successes::bigint AS current_successes,
-        pre_agg.current_flakes::bigint AS current_flakes,
-        pre_agg.current_failures::bigint AS current_failures,
-        pre_agg.current_runs::bigint AS current_runs,
-        open_bugs.open_bugs AS open_bugs,
-        vc.variants,
-        pre_agg.variant_combination_id,
-        pre_agg.prow_job_run_release AS release
-    FROM
-        pre_agg
-        JOIN tests ON tests.id = pre_agg.test_id
-        LEFT JOIN open_bugs ON pre_agg.test_id = open_bugs.test_id
-        LEFT JOIN suites ON suites.id = pre_agg.suite_id
-        LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND pre_agg.suite_id = test_ownerships.suite_id)
-        LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
-        LEFT JOIN variant_combinations vc ON pre_agg.variant_combination_id = vc.id
-) AS base
-WINDOW w AS (PARTITION BY base.id, base.suite_name, base.release)
-`
-
-// CollapsedVariantExclusions lists the variant values that are pre-excluded in
-// the collapsed matview. The API checks incoming variant filters against this
-// list to decide whether the collapsed matview can be used.
-var CollapsedVariantExclusions = []string{"never-stable", "aggregated"}
-
-var testReportCollapsedMatView = buildCollapsedMatViewSQL()
-
-func buildCollapsedMatViewSQL() string {
-	quotedExclusions := make([]string, len(CollapsedVariantExclusions))
-	for i, v := range CollapsedVariantExclusions {
-		quotedExclusions[i] = fmt.Sprintf("'%s'", v)
-	}
-	excludedArray := "ARRAY[" + strings.Join(quotedExclusions, ",") + "]"
-	return `
-SELECT suite_name, name, id, jira_component, jira_component_id, release,
-    SUM(current_runs)::bigint AS current_runs,
-    SUM(current_successes)::bigint AS current_successes,
-    SUM(current_failures)::bigint AS current_failures,
-    SUM(current_flakes)::bigint AS current_flakes,
-    SUM(previous_runs)::bigint AS previous_runs,
-    SUM(previous_successes)::bigint AS previous_successes,
-    SUM(previous_failures)::bigint AS previous_failures,
-    SUM(previous_flakes)::bigint AS previous_flakes,
-    (array_agg(open_bugs))[1] AS open_bugs
-FROM |||SOURCE|||
-WHERE NOT EXISTS (
-    SELECT 1 FROM variant_combinations WHERE ` + excludedArray + ` && variants AND id = variant_combination_id
-)
-GROUP BY suite_name, name, id, jira_component, jira_component_id, release
-`
-}
-
 const testAnalysisByVariantView = `
 SELECT
 	byjob.test_id AS test_id,
