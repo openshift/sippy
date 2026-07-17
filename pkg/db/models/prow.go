@@ -265,11 +265,11 @@ type ProwPullRequest struct {
 	Model
 
 	// Org is something like kubernetes or k8s.io
-	Org string `json:"org"`
+	Org string `json:"org" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 	// Repo is something like test-infra
-	Repo string `json:"repo"`
+	Repo string `json:"repo" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 
-	Number int    `json:"number"`
+	Number int `json:"number" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 	Author string `json:"author"`
 	Title  string `json:"title,omitempty"`
 
