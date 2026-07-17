@@ -41,7 +41,12 @@ func testStatusString(status int) string {
 }
 
 // GetPRTestResults fetches test results for a specific pull request from PostgreSQL.
-func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly bool, startDate, endDate time.Time, includeSuccesses []string) ([]PRTestResult, error) {
+const defaultPRTestResultsLimit = 10000
+
+func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly bool, startDate, endDate time.Time, includeSuccesses []string, limit int) ([]PRTestResult, error) {
+	if limit <= 0 || limit > defaultPRTestResultsLimit {
+		limit = defaultPRTestResultsLimit
+	}
 	log.WithFields(log.Fields{
 		"org":             org,
 		"repo":            repo,
@@ -91,7 +96,7 @@ func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly 
 		query = query.Where(conditions)
 	}
 
-	query = query.Order("pjr.timestamp DESC, t.name ASC")
+	query = query.Order("pjr.timestamp DESC, t.name ASC").Limit(limit)
 
 	type rawRow struct {
 		ProwJobRunID uint      `gorm:"column:prow_job_run_id"`
@@ -212,7 +217,14 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, dbc *db.DB
 	}
 	includeSuccesses := req.URL.Query()["include_successes"]
 
-	results, err := GetPRTestResults(dbc, org, repo, prNumber, latestSHAOnly, startDate, endDate, includeSuccesses)
+	limit := defaultPRTestResultsLimit
+	if limitStr := param.SafeRead(req, "limit"); limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil {
+			limit = parsed
+		}
+	}
+
+	results, err := GetPRTestResults(dbc, org, repo, prNumber, latestSHAOnly, startDate, endDate, includeSuccesses, limit)
 	if err != nil {
 		log.WithError(err).Error("error fetching PR test results")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]any{
