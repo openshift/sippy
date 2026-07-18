@@ -49,22 +49,19 @@ type Client struct {
 	ctx                 context.Context
 	cache               map[prlocator]*PREntry
 	cacheLock           sync.RWMutex
-	closedCache         map[string]map[string]map[int]*gh.PullRequest
-	closedCacheLock     sync.RWMutex
 	prFetch             func(org, repo string, number int) (*gh.PullRequest, error)
 	prCommentsFetch     func(org, repo string, number int) ([]*gh.IssueComment, error)
 	prCommentCreate     func(org, repo string, number int, comment string) (*gh.IssueComment, error)
 	prCommentDelete     func(org, repo string, updateID int64) error
 	gitHubCoreRateFetch func() (*gh.Rate, error)
-	gitHubListClosedPRs func(org, repo string) (map[int]*gh.PullRequest, error)
+	gitHubListClosedPRs func(org, repo string) ([]*gh.PullRequest, error)
 	commentMetaRegEx    *regexp.Regexp
 }
 
 func New(ctx context.Context, org GitHubOrg) *Client {
 	client := &Client{
-		ctx:         ctx,
-		cache:       make(map[prlocator]*PREntry),
-		closedCache: make(map[string]map[string]map[int]*gh.PullRequest),
+		ctx:   ctx,
+		cache: make(map[prlocator]*PREntry),
 	}
 	ghc := gh.NewClient(newGHAuthClient(client.ctx, org))
 
@@ -101,37 +98,37 @@ func New(ctx context.Context, org GitHubOrg) *Client {
 		return rateLimits.Core, nil
 	}
 
-	client.gitHubListClosedPRs = func(org, repo string) (map[int]*gh.PullRequest, error) {
+	client.gitHubListClosedPRs = func(org, repo string) ([]*gh.PullRequest, error) {
 		since := time.Now().Add(-time.Hour * 48)
-		response := make(map[int]*gh.PullRequest)
-		// larger page size fewer requests counting against our api rate
-		pageSize := 50
-		currentPage := 0
+		var response []*gh.PullRequest
+		opts := &gh.PullRequestListOptions{
+			State:       "closed",
+			Sort:        "updated",
+			Direction:   "desc",
+			ListOptions: gh.ListOptions{PerPage: 50},
+		}
 
 		for {
-
-			prs, _, err := ghc.PullRequests.List(ctx, org, repo, &gh.PullRequestListOptions{State: "closed", Sort: "updated", Direction: "desc", ListOptions: gh.ListOptions{Page: currentPage, PerPage: pageSize}})
-
+			prs, resp, err := ghc.PullRequests.List(ctx, org, repo, opts)
 			if err != nil {
 				return response, err
 			}
 
-			currentPage += len(prs)
-			lastPage := len(prs) < pageSize
-
+			pastWindow := false
 			for _, pr := range prs {
 				if pr != nil && pr.Number != nil {
-					response[*pr.Number] = pr
+					response = append(response, pr)
 
 					if pr.UpdatedAt != nil && pr.UpdatedAt.Before(since) {
-						lastPage = true
+						pastWindow = true
 					}
 				}
 			}
 
-			if lastPage {
+			if pastWindow || resp.NextPage == 0 {
 				return response, nil
 			}
+			opts.Page = resp.NextPage
 		}
 	}
 
@@ -194,30 +191,10 @@ func newAppTokenSource() oauth2.TokenSource {
 	return appTokenSource
 }
 
-func (c *Client) IsPrRecentlyMerged(org, repo string, number int) (*time.Time, *string, error) {
-	c.closedCacheLock.Lock()
-	defer c.closedCacheLock.Unlock()
-	if c.closedCache[org] == nil {
-		c.closedCache[org] = make(map[string]map[int]*gh.PullRequest)
-	}
-
-	var err error
-	if c.closedCache[org][repo] == nil {
-		c.closedCache[org][repo], err = c.gitHubListClosedPRs(org, repo)
-
-		// we expect that gitHubListClosedPRs will return a map, possibly partially filled
-		// so log the error for now and then we will return it once we check to see if we have data for this request or not
-		if err != nil {
-			log.WithError(err).Errorf("Error fetching closed PRs for %s/%s", org, repo)
-		}
-	}
-
-	pr := c.closedCache[org][repo][number]
-	if pr != nil && pr.Number != nil && *pr.Number == number {
-		return pr.MergedAt, pr.MergeCommitSHA, err
-	}
-	// we didn't find it
-	return nil, nil, err
+// ListRecentlyClosedPRs returns all PRs for the given repo that were closed
+// within the last 48 hours. The caller filters to merged-only via MergedAt.
+func (c *Client) ListRecentlyClosedPRs(org, repo string) ([]*gh.PullRequest, error) {
+	return c.gitHubListClosedPRs(org, repo)
 }
 
 func (c *Client) IsWithinRateLimitThreshold() bool {
