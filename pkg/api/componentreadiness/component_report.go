@@ -187,13 +187,14 @@ type ComponentReportGenerator struct {
 }
 
 type GeneratorCacheKey struct {
-	ReportModified *time.Time
-	BaseRelease    reqopts.Release
-	SampleRelease  reqopts.Release
-	VariantOption  reqopts.Variants
-	AdvancedOption reqopts.Advanced
-	TestFilters    reqopts.TestFilters
-	TestIDOptions  []reqopts.TestIdentification
+	ReportModified  *time.Time
+	BaseRelease     reqopts.Release
+	SampleRelease   reqopts.Release
+	VariantOption   reqopts.Variants
+	AdvancedOption  reqopts.Advanced
+	TestFilters     reqopts.TestFilters
+	TestIDOptions   []reqopts.TestIdentification
+	IncludeAllTests bool `json:"include_all_tests,omitempty"`
 }
 
 // GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -202,12 +203,13 @@ type GeneratorCacheKey struct {
 // Here we should normalize to output the same cache key regardless of how fields were initialized. (nil vs empty, etc)
 func (c *ComponentReportGenerator) GetCacheKey() GeneratorCacheKey {
 	cacheKey := GeneratorCacheKey{
-		BaseRelease:    c.ReqOptions.BaseRelease,
-		SampleRelease:  c.ReqOptions.SampleRelease,
-		VariantOption:  c.ReqOptions.VariantOption,
-		AdvancedOption: c.ReqOptions.AdvancedOption,
-		TestFilters:    c.ReqOptions.TestFilters,
-		TestIDOptions:  c.ReqOptions.TestIDOptions,
+		BaseRelease:     c.ReqOptions.BaseRelease,
+		SampleRelease:   c.ReqOptions.SampleRelease,
+		VariantOption:   c.ReqOptions.VariantOption,
+		AdvancedOption:  c.ReqOptions.AdvancedOption,
+		TestFilters:     c.ReqOptions.TestFilters,
+		TestIDOptions:   c.ReqOptions.TestIDOptions,
+		IncludeAllTests: c.ReqOptions.IncludeAllTests,
 	}
 
 	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
@@ -295,10 +297,8 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	c.middlewares = append(c.middlewares, linkInjector)
 }
 
-// includeAllTests returns true when the request is for a specific test (Level 4),
-// which is the only level where the frontend renders test_details links from AllTests.
 func (c *ComponentReportGenerator) includeAllTests() bool {
-	return len(c.ReqOptions.TestIDOptions) > 0 && c.ReqOptions.TestIDOptions[0].TestID != ""
+	return c.ReqOptions.IncludeAllTests
 }
 
 // GenerateReport is the main entry point for generation of a component readiness report.

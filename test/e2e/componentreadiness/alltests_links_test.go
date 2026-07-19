@@ -139,7 +139,7 @@ func TestAllTestsLinksPresent(t *testing.T) {
 
 	// Level 4: fetch the test variant report where AllTests should be populated
 	var report componentreport.ComponentReport
-	err = util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s&component=%s&capability=%s&testId=%s",
+	err = util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s&component=%s&capability=%s&testId=%s&includeAllTests=true",
 		url.QueryEscape(viewName), url.QueryEscape(component), url.QueryEscape(capability), url.QueryEscape(testID)), &report)
 	require.NoError(t, err, "error fetching level 4 report")
 	require.Greater(t, len(report.Rows), 0, "level 4 report has no rows")

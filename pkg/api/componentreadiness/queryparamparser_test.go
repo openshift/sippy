@@ -113,13 +113,14 @@ func TestParseComponentReportRequest(t *testing.T) {
 		queryParams [][]string
 
 		// expected outputs
-		baseRelease    reqopts.Release
-		sampleRelease  reqopts.Release
-		testIDOption   reqopts.TestIdentification
-		variantOption  reqopts.Variants
-		advancedOption reqopts.Advanced
-		cacheOption    cache.RequestOptions
-		errMessage     string
+		baseRelease     reqopts.Release
+		sampleRelease   reqopts.Release
+		testIDOption    reqopts.TestIdentification
+		variantOption   reqopts.Variants
+		advancedOption  reqopts.Advanced
+		cacheOption     cache.RequestOptions
+		includeAllTests bool
+		errMessage      string
 	}{
 		{
 			name: "normal query params",
@@ -132,6 +133,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"dbGroupBy", "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Installer"},
 				{"ignoreDisruption", "true"},
 				{"ignoreMissing", "false"},
+				{"includeAllTests", "true"},
 				{"minFail", "3"},
 				{"pity", "5"},
 				{"sampleEndTime", "2024-04-11T23:59:59Z"},
@@ -142,6 +144,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:ipi"},
 				{"includeVariant", "Installer:upi"},
 			},
+			includeAllTests: true,
 			variantOption: reqopts.Variants{
 				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
 				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
@@ -473,6 +476,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				assert.Equal(t, tc.variantOption, options.VariantOption)
 				assert.Equal(t, tc.advancedOption, options.AdvancedOption)
 				assert.Equal(t, tc.cacheOption, options.CacheOption)
+				assert.Equal(t, tc.includeAllTests, options.IncludeAllTests)
 				if tc.errMessage != "" {
 					assert.Error(t, err)
 					assert.True(t, strings.Contains(err.Error(), tc.errMessage))

@@ -85,6 +85,11 @@ func ParseComponentReportRequest(
 
 	opts.TestIDOptions = parseTestIDOptions(req, releases, opts.BaseRelease, opts.AdvancedOption, opts.VariantOption)
 
+	opts.IncludeAllTests, err = ParseBoolArg(req, "includeAllTests", false)
+	if err != nil {
+		return
+	}
+
 	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
 	if err != nil {

@@ -92,11 +92,15 @@ if testStats.ReportStatus > crtest.FixedRegression {
 }
 ```
 
-### 7. Restrict `AllTests` to Level 4 only
+### 7. Restrict `AllTests` via explicit `includeAllTests` query parameter
 
-To avoid response bloat (~1GB at top level), `AllTests` is only populated when `testId` is present in the request (Level 4, the test variant page). This is the only level where the frontend renders `test_details` links from `all_tests`. At Levels 1-3, `AllTests` is omitted from the response.
+To avoid response bloat (~1GB at top level), `AllTests` is only populated when the caller passes `includeAllTests=true` as a query parameter. The frontend sends this parameter only at Level 4 (the test variant page, `CompReadyEnvCapabilityTest.js`), which is the only level that renders `test_details` links from `all_tests`. At all other levels, `AllTests` is omitted from the response.
 
-The `includeAllTests()` helper on `ComponentReportGenerator` controls this, gating accumulation in `getNewCellStatus`, assignment in `buildReport`, and PostAnalysis middleware processing.
+The `includeAllTests` parameter is:
+- Parsed in `ParseComponentReportRequest` via `ParseBoolArg` (default: `false`)
+- Stored in `RequestOptions.IncludeAllTests`
+- Included in `GeneratorCacheKey` so requests with and without it produce distinct cache entries
+- Checked by `ComponentReportGenerator.includeAllTests()`, which gates accumulation in `getNewCellStatus`, assignment in `buildReport`, and PostAnalysis middleware processing
 
 ## Verification
 
@@ -104,6 +108,7 @@ The `includeAllTests()` helper on `ComponentReportGenerator` controls this, gati
 2. `go test ./pkg/api/componentreadiness/...` and `go test ./pkg/apis/...`
 3. Start sippy serve, hit the `/api/component_readiness` endpoint and confirm:
    - Level 1 (`?view=...`): no `all_tests` field in response
-   - Level 4 (`?view=...&component=X&capability=Y&testId=Z`): `all_tests` present with `test_details` links
+   - Level 4 without param (`?view=...&component=X&capability=Y&testId=Z`): no `all_tests` field
+   - Level 4 with param (`?view=...&component=X&capability=Y&testId=Z&includeAllTests=true`): `all_tests` present with `test_details` links
    - `regressed_tests` continues to contain only regressed tests (backward compat)
    - Cell-level `status` is unchanged (still computed from regressed tests only)

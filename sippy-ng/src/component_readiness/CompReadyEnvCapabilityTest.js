@@ -116,6 +116,7 @@ export default function CompReadyEnvCapabilityTest(props) {
     `&component=${safeComponent}` +
     `&capability=${safeCapability}` +
     `&testId=${safeTestId}` +
+    `&includeAllTests=true` +
     (environment ? expandEnvironment(environment) : '')
 
   useEffect(() => {

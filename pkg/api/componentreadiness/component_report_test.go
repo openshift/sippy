@@ -127,6 +127,7 @@ var (
 					TestID:     "2",
 				},
 			},
+			IncludeAllTests: true,
 			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
