@@ -2,7 +2,7 @@
 
 ## Context
 
-Phase 1 (complete) added an `all_tests` field to every cell in the component_readiness API response. Every entry in `all_tests` has a `test_details` HATEOAS link regardless of status. Phase 2 uses these links in the frontend so all grid cells are navigable, then removes the now-unnecessary fallback link generation and `filterVals` prop threading.
+Phase 1 (complete) added an `all_tests` field to every cell in the component_readiness API response when the explicit `includeAllTests=true` request parameter is supplied. Every entry in `all_tests` has a `test_details` HATEOAS link regardless of status. Phase 2 uses these links in the frontend so all grid cells are navigable, then removes the now-unnecessary fallback link generation and `filterVals` prop threading.
 
 Currently, only Level 4 cells (`CompReadyTestCell`) gate clickability on regression status. Levels 1-3 are already fully clickable. The problem: `CompCapTestRow` passes `columnVal.regressed_tests?.[0] || null` to `CompReadyTestCell`, so non-regressed cells render as unclickable icons.
 

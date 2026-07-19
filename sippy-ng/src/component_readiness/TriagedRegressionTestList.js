@@ -264,12 +264,23 @@ export default function TriagedRegressionTestList(props) {
                   }}
                   className="status"
                 >
-                  <a href={item.url} target="_blank" rel="noopener noreferrer">
+                  {item.url ? (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <CompSeverityIcon
+                        status={item.status}
+                        explanations={item.explanations}
+                      />
+                    </a>
+                  ) : (
                     <CompSeverityIcon
                       status={item.status}
                       explanations={item.explanations}
                     />
-                  </a>
+                  )}
                 </div>
               )
             },

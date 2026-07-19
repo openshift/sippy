@@ -368,12 +368,23 @@ export default function TriagePotentialMatches({
       },
       renderCell: (params) => (
         <div className={classes.statusCell}>
-          <a href={params.value.url} target="_blank" rel="noopener noreferrer">
+          {params.value.url ? (
+            <a
+              href={params.value.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <CompSeverityIcon
+                status={params.value.status}
+                explanations={params.value.explanations}
+              />
+            </a>
+          ) : (
             <CompSeverityIcon
               status={params.value.status}
               explanations={params.value.explanations}
             />
-          </a>
+          )}
         </div>
       ),
     },

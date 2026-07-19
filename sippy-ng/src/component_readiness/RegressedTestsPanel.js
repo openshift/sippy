@@ -293,20 +293,26 @@ export default function RegressedTestsPanel(props) {
           }}
           className="status"
         >
-          <a
-            href={generateTestDetailsReportLink(params.row)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <CompSeverityIcon
-              status={
-                params.row.effective_status
-                  ? params.row.effective_status
-                  : params.row.status
-              }
-              explanations={params.row.explanations}
-            />
-          </a>
+          {(() => {
+            const url = generateTestDetailsReportLink(params.row)
+            const icon = (
+              <CompSeverityIcon
+                status={
+                  params.row.effective_status
+                    ? params.row.effective_status
+                    : params.row.status
+                }
+                explanations={params.row.explanations}
+              />
+            )
+            return url ? (
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                {icon}
+              </a>
+            ) : (
+              icon
+            )
+          })()}
         </div>
       ),
       flex: 6,

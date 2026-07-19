@@ -175,7 +175,7 @@ func (c *E2ECacheManipulator) GetReport() (componentreport.ComponentReport, stri
 			log.Warnf("Failed to unmarshal ComponentReport key JSON '%s' from key '%s': %v", jsonPart, key, err)
 			continue
 		}
-		if gk.SampleRelease.Name == Release && len(gk.TestIDOptions) == 0 {
+		if gk.SampleRelease.Name == Release && len(gk.TestIDOptions) == 0 && !gk.IncludeAllTests {
 			cacheKey = key
 			break
 		}
