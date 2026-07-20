@@ -64,7 +64,7 @@ func (l *GATestStatusLoader) Load() {
 
 	loaded := 0
 	for _, rel := range allReleases {
-		gaDate := civil.DateOf(rel.GADate.UTC())
+		gaDate := *rel.GADate
 		if !l.force && rel.LoadedGADate != nil && *rel.LoadedGADate == gaDate {
 			log.WithField("release", rel.Release).Debug("ga-test-status: already loaded, skipping")
 			continue

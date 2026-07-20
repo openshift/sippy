@@ -367,7 +367,7 @@ type tempBQTestAnalysisByJobForDate struct {
 // pick up at that date the next time.
 //
 // At present in prod, each day takes about 20 minutes
-func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time, loadSince *time.Time) []string {
+func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time, loadSince *time.Time) []civil.Date {
 	to := now.UTC().Add(-32 * time.Hour)
 
 	// If this is a new db, do an initial larger import:
@@ -375,48 +375,28 @@ func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time, loadSince 
 		return DaysBetween(resolveFrom(loadSince, to), to)
 	}
 
-	ldsStr := lastDailySummary.UTC().Format("2006-01-02")
-	if ldsStr == to.Format("2006-01-02") {
-		return []string{}
+	if civil.DateOf(lastDailySummary.UTC()) == civil.DateOf(to) {
+		return nil
 	}
 	from := lastDailySummary.UTC().Add(24 * time.Hour)
 	return DaysBetween(from, to)
 }
 
-// DaysBetween returns a slice of strings representing each day in YYYY-MM-DD format between two dates
-func DaysBetween(start, end time.Time) []string {
-	var days []string
+// DaysBetween returns a slice of civil.Date values representing each day between two timestamps (inclusive).
+func DaysBetween(start, end time.Time) []civil.Date {
+	startDate := civil.DateOf(start.UTC())
+	endDate := civil.DateOf(end.UTC())
 
-	// Normalize times to midnight to count full days
-	start = start.Truncate(24 * time.Hour)
-	end = end.Truncate(24 * time.Hour)
-
-	// Ensure start is before or equal to end
-	if end.Before(start) {
-		start, end = end, start
+	if endDate.Before(startDate) {
+		startDate, endDate = endDate, startDate
 	}
 
-	// Iterate from start to end date
-	for d := start; !d.After(end); d = d.Add(24 * time.Hour) {
-		days = append(days, d.Format("2006-01-02"))
+	var days []civil.Date
+	for d := startDate; !d.After(endDate); d = d.AddDays(1) {
+		days = append(days, d)
 	}
 
 	return days
-}
-
-// NextDay takes a date string in YYYY-MM-DD format and returns the date string for the following day.
-func NextDay(dateStr string) (string, error) {
-	// Parse the input date string
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return "", fmt.Errorf("invalid date format: %v", err)
-	}
-
-	// Add one day to the parsed date
-	nextDay := date.Add(24 * time.Hour)
-
-	// Format the next day back to YYYY-MM-DD
-	return nextDay.Format("2006-01-02"), nil
 }
 
 // loadDailyTestAnalysisByJob loads test analysis data into partitioned tables in postgres, one per

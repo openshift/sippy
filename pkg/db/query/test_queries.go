@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -440,13 +441,13 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 	return results, res.Error
 }
 
-func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedVariants []string) (map[string]float64, error) {
+func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedVariants []string) (map[civil.Date]float64, error) {
 	type testDuration struct {
 		Period          time.Time `json:"period"`
 		AverageDuration float64   `json:"average_duration"`
 	}
 	rows := make([]testDuration, 0)
-	results := make(map[string]float64)
+	results := make(map[civil.Date]float64)
 
 	testQuery := dbc.DB.Table("tests").Where("name = ?", test).Select("id")
 	q := dbc.DB.Table("prow_job_run_tests").
@@ -473,7 +474,7 @@ func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedV
 		Scan(&rows)
 
 	for _, row := range rows {
-		results[row.Period.Format("2006-01-02")] = row.AverageDuration
+		results[civil.DateOf(row.Period)] = row.AverageDuration
 	}
 
 	return results, res.Error

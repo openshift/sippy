@@ -3,6 +3,7 @@ package api
 import (
 	"time"
 
+	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/db"
@@ -10,15 +11,15 @@ import (
 )
 
 type CountByDate struct {
-	Date            string  `json:"date"`
-	Group           string  `json:"group"`
-	PassPercentage  float64 `json:"pass_percentage"`
-	FlakePercentage float64 `json:"flake_percentage"`
-	FailPercentage  float64 `json:"fail_percentage"`
-	Runs            int     `json:"runs"`
-	Passes          int     `json:"passes"`
-	Flakes          int     `json:"flakes"`
-	Failures        int     `json:"failures"`
+	Date            civil.Date `json:"date"`
+	Group           string     `json:"group"`
+	PassPercentage  float64    `json:"pass_percentage"`
+	FlakePercentage float64    `json:"flake_percentage"`
+	FailPercentage  float64    `json:"fail_percentage"`
+	Runs            int        `json:"runs"`
+	Passes          int        `json:"passes"`
+	Flakes          int        `json:"flakes"`
+	Failures        int        `json:"failures"`
 }
 
 func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
@@ -26,7 +27,7 @@ func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, t
 	jq := dbc.DB.Table("test_analysis_by_job_by_dates").
 		Select(`test_id,
 			test_name,
-			to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
+			date,
 			'overall' as group,
 			SUM(runs) as runs,
 			SUM(passes) as passes,
@@ -38,7 +39,8 @@ func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, t
 		Joins("JOIN prow_jobs on prow_jobs.name = job_name").
 		Where("test_analysis_by_job_by_dates.release = ?", release).
 		Where("test_name = ?", testName).
-		Where("date >= ?", time.Now().Add(-24*14*time.Hour)).
+		Where("date >= ?", reportEnd.Add(-24*14*time.Hour)).
+		Where("date <= ?", reportEnd).
 		Order("date ASC").
 		Group("date, test_id, test_name, test_analysis_by_job_by_dates.release")
 
@@ -89,7 +91,7 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 	jq := dbc.DB.Table("test_analysis_by_job_by_dates").
 		Select(`test_id,
 			test_name,
-			to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
+			date,
 			prow_jobs.release,
 			job_name as group,
 			runs,
@@ -158,7 +160,7 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 		Where("release = ?", release).
 		Where("test_name = ?", testName).
 		Where("date <= ?", reportEnd).
-		Select(`to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
+		Select(`date,
 			variant as group,
 			runs,
 			passes,

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -611,7 +612,7 @@ func TestCompareTriageObjects(t *testing.T) {
 }
 
 func TestInjectRegressionHATEOASLinks(t *testing.T) {
-	ga421 := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	ga421 := civil.Date{Year: 2025, Month: 6, Day: 1}
 	releases := []v1.Release{
 		{Release: "4.20", GADate: &ga421},
 		{Release: "4.21", GADate: &ga421},

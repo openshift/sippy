@@ -528,7 +528,7 @@ func seedSyntheticData(dbc *db.DB) error {
 }
 
 func seedReleaseDefinitions(dbc *db.DB) error {
-	now := time.Now().UTC()
+	today := civil.DateOf(time.Now().UTC())
 	allCaps := pq.StringArray{models.CapComponentReadiness, models.CapFeatureGates, models.CapMetrics, models.CapPayloadTags, models.CapSippyClassic}
 
 	type relMeta struct {
@@ -551,7 +551,7 @@ func seedReleaseDefinitions(dbc *db.DB) error {
 			_, _ = fmt.Sscanf(parts[1], "%d", &minor)
 		}
 
-		develStart := now.AddDate(0, 0, m.gaDays-180)
+		develStart := today.AddDays(m.gaDays - 180)
 		def := models.ReleaseDefinition{
 			Release:              release,
 			Major:                major,
@@ -563,7 +563,7 @@ func seedReleaseDefinitions(dbc *db.DB) error {
 			Capabilities:         allCaps,
 		}
 		if m.gaDays != 0 {
-			ga := now.AddDate(0, 0, m.gaDays)
+			ga := today.AddDays(m.gaDays)
 			def.GADate = &ga
 		}
 

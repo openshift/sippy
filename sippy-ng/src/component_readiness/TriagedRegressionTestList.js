@@ -214,15 +214,16 @@ export default function TriagedRegressionTestList(props) {
       headerName: 'Last Failure',
       flex: 12,
       filterable: false,
+      type: 'date',
       valueGetter: (params) => {
         if (!params.row.last_failure.Valid) {
           return null
         }
-        return new Date(params.row.last_failure.Time).getTime()
+        return new Date(params.row.last_failure.Time)
       },
       renderCell: (params) => {
         if (!params.value) return ''
-        const lastFailureDate = new Date(params.value)
+        const lastFailureDate = params.value
         return (
           <div className="last-failure">
             {relativeTime(lastFailureDate, new Date())}

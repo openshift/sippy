@@ -33,7 +33,7 @@ func syncPostgresFunctions(db *gorm.DB) error {
 }
 
 const testResultFunction = `
-CREATE FUNCTION public.test_results(start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(id bigint, name text, previous_successes bigint, previous_flakes bigint, previous_failures bigint, previous_runs bigint, current_successes bigint, current_flakes bigint, current_failures bigint, current_runs bigint, current_pass_percentage double precision, current_failure_percentage double precision, previous_pass_percentage double precision, previous_failure_percentage double precision, net_improvement double precision, release text)
+CREATE FUNCTION public.test_results(start timestamptz, boundary timestamptz, endstamp timestamptz) RETURNS TABLE(id bigint, name text, previous_successes bigint, previous_flakes bigint, previous_failures bigint, previous_runs bigint, current_successes bigint, current_flakes bigint, current_failures bigint, current_runs bigint, current_pass_percentage double precision, current_failure_percentage double precision, previous_pass_percentage double precision, previous_failure_percentage double precision, net_improvement double precision, release text)
     LANGUAGE sql
     AS $_$
 WITH results AS (
@@ -75,7 +75,7 @@ $_$;
 `
 
 const jobResultFunction = `
-CREATE FUNCTION public.job_results(release text, start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_failures bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamp without time zone, updated_at timestamp without time zone, deleted_at timestamp without time zone, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamp, current_average_duration_minutes int, previous_average_duration_minutes int)
+CREATE FUNCTION public.job_results(release text, start timestamptz, boundary timestamptz, endstamp timestamptz) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_failures bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamptz, updated_at timestamptz, deleted_at timestamptz, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamptz, current_average_duration_minutes int, previous_average_duration_minutes int)
     LANGUAGE sql
     AS $_$
 WITH repo_org_jobs AS (
@@ -96,7 +96,7 @@ merged_prs AS
          INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
          INNER JOIN prow_pull_requests on prow_pull_requests.id = prow_job_run_prow_pull_requests.prow_pull_request_id
          INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
-	WHERE prow_pull_requests.merged_at BETWEEN $2::timestamp AND $4::timestamp
+	WHERE prow_pull_requests.merged_at BETWEEN $2::timestamptz AND $4::timestamp
 	AND prow_job_runs.timestamp BETWEEN $2 AND $4
 	AND prow_job_runs.prow_job_release = $1
 	AND prow_job_run_prow_pull_requests.prow_job_run_release = $1

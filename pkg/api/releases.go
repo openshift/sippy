@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -500,12 +501,10 @@ func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
 		Product:         r.Product.StringVal,
 	}
 	if r.GADate.Valid {
-		gaDate := r.GADate.Date.In(time.UTC)
-		release.GADate = &gaDate
+		release.GADate = &r.GADate.Date
 	}
 	if r.DevelStartDate.IsValid() {
-		develStartDate := r.DevelStartDate.In(time.UTC)
-		release.DevelopmentStartDate = &develStartDate
+		release.DevelopmentStartDate = &r.DevelStartDate
 	}
 	if r.Capabilities != nil {
 		for _, capability := range r.Capabilities {
@@ -556,9 +555,10 @@ func GetReleaseDatesFromDB(ctx context.Context, dbc *db.DB, reqOptions reqopts.R
 	for _, release := range releases {
 		tr := crtest.ReleaseTimeRange{Release: release.Release}
 		if release.GADate != nil {
-			prior := util.AdjustReleaseTime(*release.GADate, true, "30", reqOptions.CacheOption.CRTimeRoundingFactor, reqOptions.CacheOption.CRTimeRoundingOffset)
+			gaTime := release.GADate.In(time.UTC)
+			prior := util.AdjustReleaseTime(gaTime, true, "30", reqOptions.CacheOption.CRTimeRoundingFactor, reqOptions.CacheOption.CRTimeRoundingOffset)
 			tr.Start = &prior
-			tr.End = release.GADate
+			tr.End = &gaTime
 		}
 		timeRanges = append(timeRanges, tr)
 	}
@@ -601,7 +601,7 @@ func DefinitionToRelease(def models.ReleaseDefinition) sippyv1.Release {
 
 // BuildReleasesResponse creates the API response structure for releases
 func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) apitype.Releases {
-	gaDateMap := make(map[string]time.Time)
+	gaDateMap := make(map[string]civil.Date)
 	dateMap := make(map[string]apitype.ReleaseDates)
 	response := apitype.Releases{
 		DeprecatedGADates: gaDateMap,

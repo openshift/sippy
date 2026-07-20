@@ -191,8 +191,8 @@ function ReleasePayloadTable(props) {
       headerName: 'Time',
       flex: 2,
       type: 'date',
-      valueFormatter: (params) => {
-        return new Date(params.value)
+      valueGetter: (params) => {
+        return params.value ? new Date(params.value) : null
       },
       renderCell: (params) => {
         if (!params.value) {
@@ -303,21 +303,6 @@ function ReleasePayloadTable(props) {
     NumberParam
   )
 
-  // Lower layer components we use (e.g GridToolbarFilterItem) use timestamp instead of ISO format.
-  // We customize the time format for our purpose here. This will be translated to SQL query from API end.
-  const setFilterModelWithConversion = (newFilters) => {
-    if (newFilters !== null && newFilters.items.length > 0) {
-      for (const i in newFilters.items) {
-        if (newFilters.items[i].columnField === 'release_time') {
-          newFilters.items[i].value = new Date(
-            parseInt(newFilters.items[i].value)
-          ).toISOString()
-          break
-        }
-      }
-    }
-    setFilterModel(newFilters)
-  }
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -330,7 +315,7 @@ function ReleasePayloadTable(props) {
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilterModelWithConversion(currentFilters)
+    setFilterModel(currentFilters)
   }
 
   const addFilters = (filter) => {
@@ -341,7 +326,7 @@ function ReleasePayloadTable(props) {
         currentFilters.push(item)
       }
     })
-    setFilterModelWithConversion({
+    setFilterModel({
       items: currentFilters,
       linkOperator: filterModel.linkOperator || 'and',
     })
@@ -445,7 +430,7 @@ function ReleasePayloadTable(props) {
           doSearch: requestSearch,
           addFilters: addFilters,
           filterModel: filterModel,
-          setFilterModel: setFilterModelWithConversion,
+          setFilterModel: setFilterModel,
         },
       }}
     />

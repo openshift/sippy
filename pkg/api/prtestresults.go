@@ -272,14 +272,7 @@ func deserializePRTestResult(row []bigquery.Value, schema bigquery.Schema) (PRTe
 			}
 		case "prowjob_start":
 			if row[i] != nil {
-				// BigQuery returns civil.DateTime for DATETIME columns
-				civilDT := row[i].(civil.DateTime)
-				layout := "2006-01-02T15:04:05"
-				parsedTime, err := time.Parse(layout, civilDT.String())
-				if err != nil {
-					return PRTestResult{}, errors.Wrap(err, "failed to parse prowjob_start")
-				}
-				result.ProwJobStart = parsedTime
+				result.ProwJobStart = row[i].(civil.DateTime).In(time.UTC)
 			}
 		case "test_name":
 			if row[i] != nil {

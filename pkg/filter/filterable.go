@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	apiparam "github.com/openshift/sippy/pkg/util/param"
@@ -53,6 +54,25 @@ const (
 type Filter struct {
 	Items        []FilterItem `json:"items"`
 	LinkOperator LinkOperator `json:"linkOperator"`
+}
+
+// jobRunFields are filter fields that belong to job runs, not jobs.
+var jobRunFields = sets.New[string]("timestamp", "cluster")
+
+// StripJobRunFilters returns a copy of the filter with job-run-specific
+// fields (timestamp, cluster) removed. Use this when applying filters
+// to a jobs query that doesn't have those columns.
+func StripJobRunFilters(fil *Filter) *Filter {
+	if fil == nil {
+		return nil
+	}
+	result := &Filter{LinkOperator: fil.LinkOperator}
+	for _, item := range fil.Items {
+		if !jobRunFields.Has(item.Field) {
+			result.Items = append(result.Items, item)
+		}
+	}
+	return result
 }
 
 // FilterItem is an individual filter consisting of a field, operator,
@@ -105,9 +125,6 @@ func (f FilterItem) isEmptyFilter(field string, filterable Filterable, forBQ boo
 
 func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter string, orParams interface{}) { //nolint
 	field := fmt.Sprintf("%q", f.Field)
-	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
-		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
-	}
 
 	switch f.Operator {
 	case OperatorHasEntry:
@@ -162,9 +179,6 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 
 func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
 	field := fmt.Sprintf("%q", f.Field)
-	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
-		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
-	}
 
 	switch f.Operator {
 	case OperatorHasEntry:
@@ -226,9 +240,6 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 
 func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, params []bigquery.QueryParameter) { //nolint
 	field := strings.ReplaceAll(fmt.Sprintf("%q", f.Field), "\"", "")
-	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
-		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
-	}
 
 	// Helper to create a parameter
 	paramName := fmt.Sprintf("filterParam%d", paramIndex+1)
@@ -660,7 +671,7 @@ func filterArray(filter FilterItem, item Filterable) (bool, error) {
 func Compare(a, b Filterable, sortField string) bool {
 	kind := a.GetFieldType(sortField)
 
-	if kind == apitype.ColumnTypeNumerical {
+	if kind == apitype.ColumnTypeNumerical || kind == apitype.ColumnTypeTimestamp {
 		val1, err := a.GetNumericalValue(sortField)
 		if err != nil {
 			log.Error(err)

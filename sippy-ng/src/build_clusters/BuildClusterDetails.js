@@ -24,9 +24,7 @@ export default function BuildClusterDetails(props) {
                   filterFor(
                     'timestamp',
                     '>',
-                    `${new Date(
-                      startDate - 14 * 24 * 60 * 60 * 1000
-                    ).getTime()}`
+                    new Date(startDate - 14 * 24 * 60 * 60 * 1000).toISOString()
                   ),
                 ],
               }}

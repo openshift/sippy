@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -181,6 +182,8 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		return
 	}
 
+	filterOpts.Filter = filter.StripJobRunFilters(filterOpts.Filter)
+
 	jobsResult, err := JobReportsFromDB(dbc, release, req.URL.Query().Get("period"), filterOpts, start, boundary, end, reportEnd)
 	if err != nil {
 		RespondWithError(w, "error building job report", err)
@@ -238,8 +241,8 @@ type jobDetail struct {
 
 type jobDetailAPIResult struct {
 	Jobs  []jobDetail `json:"jobs"`
-	Start int         `json:"start"`
-	End   int         `json:"end"`
+	Start civil.Date  `json:"start"`
+	End   civil.Date  `json:"end"`
 }
 
 func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
@@ -272,7 +275,8 @@ func JobDetailsReport(dbc *db.DB, release, jobSearchStr string, reportEnd time.T
 
 // PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
 func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string, reportEnd time.Time) error {
-	var start, end int
+	end := civil.DateOf(reportEnd.UTC())
+	start := end.AddDays(-14)
 
 	prowJobRuns, err := JobDetailsReport(dbc, release, jobSearchStr, reportEnd)
 	if err != nil {
@@ -303,7 +307,7 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 			InfrastructureFailure: pjr.InfrastructureFailure,
 			KnownFailure:          pjr.KnownFailure,
 			Succeeded:             pjr.Succeeded,
-			Timestamp:             int(pjr.Timestamp.Unix() * 1000),
+			Timestamp:             pjr.Timestamp,
 			OverallResult:         pjr.OverallResult,
 		}
 		jobDetails[jobName].Results = append(jobDetails[jobName].Results, newRun)

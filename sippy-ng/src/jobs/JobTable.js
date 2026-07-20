@@ -88,11 +88,11 @@ export const getColumns = (config, openBugzillaDialog) => {
       filterable: true,
       flex: 1.25,
       type: 'date',
-      valueFormatter: (params) => {
-        return new Date(params.value)
+      valueGetter: (params) => {
+        return params.value ? new Date(params.value) : null
       },
       renderCell: (params) => {
-        if (params.value === undefined || params.value === '') {
+        if (!params.value) {
           return (
             <Tooltip title="Job has never passed, or pass predates Sippy's history (typically about 90 days)">
               <Fragment>-</Fragment>

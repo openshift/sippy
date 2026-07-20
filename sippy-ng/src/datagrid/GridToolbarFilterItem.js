@@ -12,6 +12,7 @@ import {
 } from '@mui/material'
 import { Close } from '@mui/icons-material'
 import { DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers'
+import { isValid } from 'date-fns'
 import { makeStyles } from '@mui/styles'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import GridToolbarClientAutocomplete from './GridToolbarClientAutocomplete'
@@ -102,14 +103,15 @@ export default function GridToolbarFilterItem(props) {
                 value={
                   props.filterModel.value === ''
                     ? null
-                    : new Date(parseInt(props.filterModel.value))
+                    : new Date(props.filterModel.value)
                 }
                 onChange={(e) => {
-                  if (e && e.getTime()) {
+                  if (e && isValid(e)) {
                     props.setFilterModel({
                       columnField: props.filterModel.columnField,
+                      not: props.filterModel.not,
                       operatorValue: props.filterModel.operatorValue,
-                      value: e.getTime().toString(),
+                      value: e.toISOString(),
                     })
                   }
                 }}

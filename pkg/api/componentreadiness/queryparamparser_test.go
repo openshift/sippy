@@ -32,8 +32,8 @@ var (
 func TestParseComponentReportRequest(t *testing.T) {
 
 	releases := []v1.Release{
-		{Release: "4.16", Status: "", GADate: util.DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
-		{Release: "4.15", Status: "", GADate: util.DatePtr(2024, 2, 28, 0, 0, 0, 0, time.UTC)},
+		{Release: "4.16", Status: "", GADate: util.CivilDatePtr(2024, time.June, 27)},
+		{Release: "4.15", Status: "", GADate: util.CivilDatePtr(2024, time.February, 28)},
 	}
 
 	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
@@ -495,8 +495,8 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 	roundingOffset := 4 * time.Hour
 
 	releases := []v1.Release{
-		{Release: "4.16", Status: "", GADate: util.DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
-		{Release: "4.17", Status: "", GADate: util.DatePtr(2024, 12, 10, 0, 0, 0, 0, time.UTC)},
+		{Release: "4.16", Status: "", GADate: util.CivilDatePtr(2024, time.June, 27)},
+		{Release: "4.17", Status: "", GADate: util.CivilDatePtr(2024, time.December, 10)},
 	}
 
 	allJobVariants := crtest.JobVariants{Variants: map[string][]string{

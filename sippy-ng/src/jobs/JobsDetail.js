@@ -15,8 +15,6 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const msPerDay = 86400 * 1000
-
 /**
  * JobsDetail is the landing page for the JobDetailTable.
  */
@@ -56,10 +54,8 @@ export default function JobsDetail(props) {
         })
         .then((response) => {
           setData(response)
-          setStartDate(
-            new Date(Math.floor(response.start / msPerDay) * msPerDay)
-          )
-          setEndDate(new Date(Math.floor(response.end / msPerDay) * msPerDay))
+          setStartDate(Temporal.PlainDate.from(response.start))
+          setEndDate(Temporal.PlainDate.from(response.end))
           setLoaded(true)
         })
         .catch((error) => {
@@ -103,53 +99,40 @@ export default function JobsDetail(props) {
     return filterSearch
   }
 
-  const timestampBegin = new Date(startDate).getTime()
-  const timestampEnd = new Date(endDate).getTime()
+  const numDays = startDate.until(endDate, { largestUnit: 'days' }).days + 1
 
-  let ts = timestampEnd
   const columns = []
-  while (ts >= timestampBegin) {
-    const d = new Date(ts)
-    const value = d.getUTCMonth() + 1 + '/' + d.getUTCDate()
-    columns.push(value)
-    ts -= msPerDay
+  let d = endDate
+  while (Temporal.PlainDate.compare(d, startDate) >= 0) {
+    columns.push(d.month + '/' + d.day)
+    d = d.subtract({ days: 1 })
   }
 
   const rows = []
   for (const job of data.jobs) {
-    const row = {
+    const buckets = Array.from({ length: numDays }, () => [])
+
+    for (let i = 0; i < job.results.length; i++) {
+      const resultDate = Temporal.Instant.from(job.results[i].timestamp)
+        .toZonedDateTimeISO('UTC')
+        .toPlainDate()
+      const dayIndex = resultDate.until(endDate, { largestUnit: 'days' }).days
+      if (dayIndex < 0 || dayIndex >= numDays) continue
+
+      buckets[dayIndex].push({
+        name: job.name,
+        id: i,
+        failedTestNames: job.results[i].failedTestNames,
+        text: job.results[i].result,
+        prowLink: job.results[i].url,
+        className: 'result result-' + job.results[i].result,
+      })
+    }
+
+    rows.push({
       name: job.name,
-      results: [],
-    }
-
-    for (
-      let today = timestampBegin, tomorrow = timestampBegin + msPerDay;
-      today <= timestampEnd;
-      today += msPerDay, tomorrow += msPerDay
-    ) {
-      const day = []
-
-      for (let i = 0; i < job.results.length; i++) {
-        if (
-          job.results[i].timestamp >= today &&
-          job.results[i].timestamp < tomorrow
-        ) {
-          const result = {}
-          result.name = job.name
-          result.id = i
-          result.failedTestNames = job.results[i].failedTestNames
-          result.text = job.results[i].result
-          result.prowLink = job.results[i].url
-          result.className = 'result result-' + result.text
-          day.push(result)
-          i++
-        }
-      }
-
-      row.results.unshift(day)
-    }
-
-    rows.push(row)
+      results: buckets,
+    })
   }
 
   return (

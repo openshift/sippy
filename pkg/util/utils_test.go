@@ -11,7 +11,7 @@ import (
 
 func TestParseCRReleaseTime(t *testing.T) {
 	releases := []v1.Release{
-		{Release: "4.16", Status: "", GADate: DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
+		{Release: "4.16", Status: "", GADate: CivilDatePtr(2024, time.June, 27)},
 	}
 
 	nowMinus7d := time.Now().Add(-7 * 24 * time.Hour).UTC()
