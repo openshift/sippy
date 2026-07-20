@@ -13,6 +13,7 @@ import {
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
+import FeatureGatePromotionTab from './FeatureGatePromotionTab'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -71,13 +72,17 @@ export default function FeatureGateDetail(props) {
 
   const tabAutoSelected = React.useRef(false)
 
-  // <= 1 because the API always returns an implicit "Overall" row
-  const handleAnnotationDataLoaded = React.useCallback((count) => {
-    if (!tabAutoSelected.current && count <= 1) {
-      setActiveTab(1)
-      tabAutoSelected.current = true
-    }
-  }, [])
+  // When the annotation tab loads with 0 or 1 results (only the implicit
+  // "Overall" row), auto-switch to the capability tab instead.
+  const handleAnnotationDataLoaded = React.useCallback(
+    (count) => {
+      if (!tabAutoSelected.current && activeTab === 1 && count <= 1) {
+        setActiveTab(2)
+        tabAutoSelected.current = true
+      }
+    },
+    [activeTab]
+  )
 
   const annotationFilter = {
     items: [
@@ -193,12 +198,24 @@ export default function FeatureGateDetail(props) {
             onChange={(e, v) => setActiveTab(v)}
             aria-label="feature gate test sections"
           >
+            <Tab label="Promotion Readiness" />
             <Tab label="Tests by Annotation" />
             <Tab label="Tests by Capability" />
           </Tabs>
         </Box>
 
         <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
+          <FeatureGatePromotionTab
+            key={'fg-promotion-' + featureGate}
+            release={release}
+            featureGate={featureGate}
+            onCellClick={(variant, testName) => {
+              setActiveTab(1)
+            }}
+          />
+        </Box>
+
+        <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
           <TestTable
             key={'fg-annotation-' + featureGate}
             release={release}
@@ -208,7 +225,7 @@ export default function FeatureGateDetail(props) {
           />
         </Box>
 
-        <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
+        <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
           <TestTable
             key={'fg-capability-' + featureGate}
             release={release}

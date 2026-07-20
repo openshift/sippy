@@ -48,6 +48,7 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/api/featuregatepromotion"
 	"github.com/openshift/sippy/pkg/api/jobrunevents"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -769,6 +770,34 @@ func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL,
 	fg.Links["ui_detail"] = fmt.Sprintf(
 		"%s/sippy-ng/feature_gates/%s/%s",
 		baseFrontendURL, release, url.PathEscape(fg.FeatureGate))
+}
+
+func (s *Server) jsonFeatureGatePromotion(w http.ResponseWriter, req *http.Request) {
+	release := s.getParamOrFail(w, req, "release")
+	if release == "" {
+		return
+	}
+	featureGate := s.getParamOrFail(w, req, "feature_gate")
+	if featureGate == "" {
+		return
+	}
+
+	status, err := featuregatepromotion.GetPromotionStatus(s.db, release, featureGate)
+	if err != nil {
+		failureResponseWithError(w, "couldn't compute feature gate promotion status", err)
+		return
+	}
+
+	baseAPIURL := api.GetBaseURL(req)
+	status.Links = map[string]string{
+		"feature_gate": fmt.Sprintf("%s/api/feature_gates?release=%s&filter=%s",
+			baseAPIURL,
+			url.QueryEscape(release),
+			url.QueryEscape(fmt.Sprintf(`{"items":[{"columnField":"feature_gate","operatorValue":"equals","value":"%s"}]}`, featureGate)),
+		),
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, status)
 }
 
 func buildFilteredTestsURL(baseAPIURL, release string, f filter.Filter) string {
@@ -2885,6 +2914,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    4 * time.Hour,
 			HandlerFunc:  s.jsonFeatureGates,
+		},
+		{
+			EndpointPath: "/api/feature_gates/promotion",
+			Description:  "Reports promotion readiness for a feature gate across required variant combinations",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    4 * time.Hour,
+			HandlerFunc:  s.jsonFeatureGatePromotion,
 		},
 		{
 			EndpointPath: "/api/chat",

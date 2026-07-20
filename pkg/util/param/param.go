@@ -47,6 +47,7 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"org":              nameRegexp,
 	"repo":             nameRegexp,
 	"pr_number":        uintRegexp,
+	"feature_gate":     nameRegexp,
 	"file":             nameRegexp,
 	"repo_info":        nameRegexp,
 	"pull_number":      uintRegexp,
