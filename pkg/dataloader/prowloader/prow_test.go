@@ -1,10 +1,17 @@
 package prowloader
 
 import (
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/sets"
+
+	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/apis/prow"
+	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/releaseoverride"
 )
 
 func TestDateTimeNameComparisons(t *testing.T) {
@@ -175,6 +182,133 @@ func TestGetTestAnalysisByJobFromToDates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dates := getTestAnalysisByJobFromToDates(tt.lastSummary, tt.now, nil)
 			assert.Equal(t, tt.expectedDates, dates)
+		})
+	}
+}
+
+func TestIsPayloadPresubmit(t *testing.T) {
+	tests := []struct {
+		name     string
+		pj       *prow.ProwJob
+		expected bool
+	}{
+		{
+			name: "has annotation and refs",
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{"releaseJobName": "periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn"},
+				Spec:        prow.ProwJobSpec{Refs: &prow.Refs{Org: "openshift", Repo: "origin"}},
+			},
+			expected: true,
+		},
+		{
+			name: "has annotation but nil refs",
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{"releaseJobName": "some-job"},
+				Spec:        prow.ProwJobSpec{},
+			},
+			expected: false,
+		},
+		{
+			name: "no annotation but has refs",
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{},
+				Spec:        prow.ProwJobSpec{Refs: &prow.Refs{Org: "openshift", Repo: "origin"}},
+			},
+			expected: false,
+		},
+		{
+			name: "no annotation and nil refs",
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{},
+				Spec:        prow.ProwJobSpec{},
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, isPayloadPresubmit(tt.pj))
+		})
+	}
+}
+
+func TestMatchRelease(t *testing.T) {
+	tests := []struct {
+		name     string
+		pl       *ProwLoader
+		pj       *prow.ProwJob
+		expected string
+	}{
+		{
+			name: "payload presubmit with Presubmits in release set",
+			pl: &ProwLoader{
+				releaseSet:                   sets.New[string](models.ReleasePresubmits),
+				releases:                     []string{models.ReleasePresubmits},
+				config:                       &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{}},
+				releaseRegexps:               map[string][]*regexp.Regexp{},
+				syntheticReleaseJobOverrides: releaseoverride.New(),
+			},
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{"releaseJobName": "periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn"},
+				Spec:        prow.ProwJobSpec{Refs: &prow.Refs{Org: "openshift", Repo: "origin"}},
+			},
+			expected: models.ReleasePresubmits,
+		},
+		{
+			name: "payload presubmit without Presubmits in release set",
+			pl: &ProwLoader{
+				releaseSet:                   sets.New[string]("4.18"),
+				releases:                     []string{"4.18"},
+				config:                       &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{}},
+				releaseRegexps:               map[string][]*regexp.Regexp{},
+				syntheticReleaseJobOverrides: releaseoverride.New(),
+			},
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{"releaseJobName": "some-job"},
+				Spec:        prow.ProwJobSpec{Refs: &prow.Refs{Org: "openshift", Repo: "origin"}},
+			},
+			expected: "",
+		},
+		{
+			name: "regular job matching configured release by regex",
+			pl: &ProwLoader{
+				releaseSet: sets.New[string]("4.18"),
+				releases:   []string{"4.18"},
+				config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+					"4.18": {},
+				}},
+				releaseRegexps:               map[string][]*regexp.Regexp{"4.18": {regexp.MustCompile(`-4\.18-`)}},
+				syntheticReleaseJobOverrides: releaseoverride.New(),
+			},
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{},
+				Spec:        prow.ProwJobSpec{Job: "periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn"},
+			},
+			expected: "4.18",
+		},
+		{
+			name: "regular job matching no release",
+			pl: &ProwLoader{
+				releaseSet: sets.New[string]("4.18"),
+				releases:   []string{"4.18"},
+				config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+					"4.18": {},
+				}},
+				releaseRegexps:               map[string][]*regexp.Regexp{"4.18": {regexp.MustCompile(`-4\.18-`)}},
+				syntheticReleaseJobOverrides: releaseoverride.New(),
+			},
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{},
+				Spec:        prow.ProwJobSpec{Job: "periodic-ci-openshift-release-master-nightly-4.17-e2e-gcp"},
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.pl.matchRelease(tt.pj))
 		})
 	}
 }

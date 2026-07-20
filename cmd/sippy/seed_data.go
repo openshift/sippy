@@ -967,6 +967,8 @@ func seedPresubmitData(dbc *db.DB) error {
 	}
 
 	// Create ProwPullRequests
+	// PR 99001 has two SHAs to exercise the latest_sha_only filter: an older
+	// SHA linked to the earliest run, and a newer SHA linked to the rest.
 	prs := []models.ProwPullRequest{
 		{
 			Org:    "openshift",
@@ -987,12 +989,24 @@ func seedPresubmitData(dbc *db.DB) error {
 			Link:   "https://github.com/openshift/origin/pull/99002",
 		},
 	}
+	oldSHAPR := models.ProwPullRequest{
+		Org:    "openshift",
+		Repo:   "origin",
+		Number: 99001,
+		Author: "test-author-1",
+		Title:  "Test PR 99001",
+		SHA:    "old111old222",
+		Link:   "https://github.com/openshift/origin/pull/99001?old=1",
+	}
 
 	for i, pr := range prs {
 		if err := dbc.DB.Create(&pr).Error; err != nil {
 			return fmt.Errorf("failed to create ProwPullRequest %d: %w", pr.Number, err)
 		}
 		prs[i] = pr
+	}
+	if err := dbc.DB.Create(&oldSHAPR).Error; err != nil {
+		return fmt.Errorf("failed to create old-SHA ProwPullRequest: %w", err)
 	}
 
 	// Create runs: 3 runs per job, PR 99001 gets job[0] runs, PR 99002 gets job[1] runs
@@ -1021,11 +1035,17 @@ func seedPresubmitData(dbc *db.DB) error {
 		}
 	}
 
-	// Link runs to PRs via join table
-	for _, ri := range runs {
+	// Link runs to PRs via join table.
+	// The first run of job[0] (oldest for PR 99001) links to oldSHAPR so that
+	// the latest_sha_only filter has something to exclude.
+	for runIdx, ri := range runs {
+		prID := prs[ri.prIdx].ID
+		if ri.prIdx == 0 && runIdx == 0 {
+			prID = oldSHAPR.ID
+		}
 		jrpr := models.ProwJobRunProwPullRequest{
 			ProwJobRunID:        ri.run.ID,
-			ProwPullRequestID:   prs[ri.prIdx].ID,
+			ProwPullRequestID:   prID,
 			ProwJobRunRelease:   models.ReleasePresubmits,
 			ProwJobRunTimestamp: ri.run.Timestamp,
 		}

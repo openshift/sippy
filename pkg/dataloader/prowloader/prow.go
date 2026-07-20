@@ -11,6 +11,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -693,9 +694,12 @@ func (pl *ProwLoader) preprocessProwJobs(ctx context.Context, prowJobs []prow.Pr
 		variants := pl.variantManager.IdentifyVariants(variantJobName)
 		if isPayload {
 			for vi, v := range variants {
-				if _, isRel := pl.config.Releases[v]; isRel {
-					variants[vi] = models.ReleasePresubmits
-					break
+				parts := strings.SplitN(v, ":", 2)
+				if len(parts) == 2 {
+					if _, isRel := pl.config.Releases[parts[1]]; isRel {
+						variants[vi] = parts[0] + ":" + models.ReleasePresubmits
+						break
+					}
 				}
 			}
 		}
