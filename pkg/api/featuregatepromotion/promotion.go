@@ -52,6 +52,11 @@ var (
 )
 
 // GetPromotionStatus computes the promotion readiness for a feature gate.
+// It combines two sources of test data:
+//   - Annotation tests: tests whose names contain [FeatureGate:NAME]
+//   - Capability tests: tests whose job variants include Capability:NAME,
+//     filtered to "install should succeed" (Install gates) or
+//     "openshift-tests should work" (all others)
 func GetPromotionStatus(dbc *db.DB, release, featureGate string) (*PromotionStatus, error) {
 	topologies, err := getGateTopologies(dbc, release, featureGate)
 	if err != nil {
@@ -60,17 +65,17 @@ func GetPromotionStatus(dbc *db.DB, release, featureGate string) (*PromotionStat
 
 	variantsToCheck := determineVariantsToCheck(featureGate, topologies)
 
-	isInstallGate := strings.Contains(featureGate, "Install")
-
-	var rows []testQueryRow
-	if isInstallGate {
-		rows, err = queryJobBasedResults(dbc, release, featureGate)
-	} else {
-		rows, err = queryTestBasedResults(dbc, release, featureGate)
-	}
+	annotationRows, err := queryTestBasedResults(dbc, release, featureGate)
 	if err != nil {
-		return nil, fmt.Errorf("querying test results: %w", err)
+		return nil, fmt.Errorf("querying annotation test results: %w", err)
 	}
+
+	capabilityRows, err := queryCapabilityBasedResults(dbc, release, featureGate)
+	if err != nil {
+		return nil, fmt.Errorf("querying capability test results: %w", err)
+	}
+
+	rows := append(annotationRows, capabilityRows...)
 
 	result := buildPromotionStatus(featureGate, release, variantsToCheck, rows)
 	return result, nil
@@ -271,8 +276,10 @@ func queryTestBasedResults(dbc *db.DB, release, featureGate string) ([]testQuery
 	return rows, nil
 }
 
-// queryJobBasedResults queries job pass rates for Install-type feature gates.
-func queryJobBasedResults(dbc *db.DB, release, featureGate string) ([]testQueryRow, error) {
+// queryCapabilityBasedResults queries test results for jobs tagged with the
+// Capability:NAME variant. Install gates look for "install should succeed"
+// tests; all others look for "openshift-tests should work".
+func queryCapabilityBasedResults(dbc *db.DB, release, featureGate string) ([]testQueryRow, error) {
 	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
 	sample := dateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
 	base := dateRange{Start: tomorrow.AddDays(-15), End: sample.Start}
@@ -281,62 +288,62 @@ func queryJobBasedResults(dbc *db.DB, release, featureGate string) ([]testQueryR
 		return nil, err
 	}
 
+	end := sample.End.AddDays(-1)
+	boundary := sample.Start.AddDays(-1)
+	start := base.Start.AddDays(-1)
+
 	capabilityVariant := fmt.Sprintf("Capability:%s", featureGate)
 
-	// For Install gates, query job-level pass rates using prow_job_runs.
-	// We look at jobs tagged with the Capability variant and compute
-	// pass rates per variant combo over the current and previous windows.
+	testPattern := "%openshift-tests should work%"
+	if strings.Contains(featureGate, "Install") {
+		testPattern = "%install should succeed%"
+	}
+
 	query := `
-		WITH job_runs AS (
-			SELECT
-				pj.name AS job_name,
-				(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Platform:%' LIMIT 1) AS platform,
-				(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Architecture:%' LIMIT 1) AS architecture,
-				(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Topology:%' LIMIT 1) AS topology,
-				(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'NetworkStack:%' LIMIT 1) AS network_stack,
-				(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'OS:%' LIMIT 1) AS os,
-				pjr.overall_result,
-				pjr.created_at
-			FROM prow_job_runs pjr
-			JOIN prow_jobs pj ON pjr.prow_job_id = pj.id
-			JOIN variant_combinations vc ON pj.variant_combination_id = vc.id
-			WHERE pj.release = ?
-				AND EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = ?)
-				AND NOT EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = 'never-stable')
-				AND NOT EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = 'aggregated')
-				AND pjr.created_at >= ?
-		)
 		SELECT
-			job_name AS test_name,
-			platform,
-			architecture,
-			topology,
-			network_stack,
-			os,
-			'' AS job_tier,
-			SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END)::int AS current_runs,
-			SUM(CASE WHEN created_at >= ? AND overall_result = 'S' THEN 1 ELSE 0 END)::int AS current_successes,
-			0 AS current_failures,
-			0 AS current_flakes,
-			SUM(CASE WHEN created_at < ? THEN 1 ELSE 0 END)::int AS previous_runs,
-			SUM(CASE WHEN created_at < ? AND overall_result = 'S' THEN 1 ELSE 0 END)::int AS previous_successes,
-			0 AS previous_failures,
-			0 AS previous_flakes
-		FROM job_runs
-		GROUP BY job_name, platform, architecture, topology, network_stack, os
+			t.name AS test_name,
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Platform:%' LIMIT 1) AS platform,
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Architecture:%' LIMIT 1) AS architecture,
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Topology:%' LIMIT 1) AS topology,
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'NetworkStack:%' LIMIT 1) AS network_stack,
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'OS:%' LIMIT 1) AS os,
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'JobTier:%' LIMIT 1) AS job_tier,
+			SUM(COALESCE(e.prefix_sum_successes - COALESCE(m.prefix_sum_successes, 0), 0))::int AS current_successes,
+			SUM(COALESCE(e.prefix_sum_failures  - COALESCE(m.prefix_sum_failures,  0), 0))::int AS current_failures,
+			SUM(COALESCE(e.prefix_sum_flakes    - COALESCE(m.prefix_sum_flakes,    0), 0))::int AS current_flakes,
+			SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::int AS current_runs,
+			SUM(COALESCE(m.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))::int AS previous_successes,
+			SUM(COALESCE(m.prefix_sum_failures  - COALESCE(s.prefix_sum_failures,  0), 0))::int AS previous_failures,
+			SUM(COALESCE(m.prefix_sum_flakes    - COALESCE(s.prefix_sum_flakes,    0), 0))::int AS previous_flakes,
+			SUM(COALESCE(m.prefix_sum_runs      - COALESCE(s.prefix_sum_runs,      0), 0))::int AS previous_runs
+		FROM test_cumulative_summaries e
+		JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
+		JOIN variant_combinations vc ON pj.variant_combination_id = vc.id
+		JOIN tests t ON t.id = e.test_id
+		LEFT JOIN test_cumulative_summaries m
+			ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id
+			AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
+		LEFT JOIN test_cumulative_summaries s
+			ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id
+			AND s.suite_id = e.suite_id AND s.release = e.release AND s.date = ?
+		WHERE e.date = ? AND e.release = ?
+			AND t.name LIKE ?
+			AND EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = ?)
+			AND NOT EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = 'never-stable')
+			AND NOT EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = 'aggregated')
+		GROUP BY t.name,
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Platform:%' LIMIT 1),
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Architecture:%' LIMIT 1),
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Topology:%' LIMIT 1),
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'NetworkStack:%' LIMIT 1),
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'OS:%' LIMIT 1),
+			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'JobTier:%' LIMIT 1)
 	`
 
-	baseStart := base.Start
-	sampleStart := sample.Start
-
 	var rows []testQueryRow
-	tx := dbc.DB.Raw(query,
-		release, capabilityVariant, baseStart,
-		sampleStart, sampleStart,
-		sampleStart, sampleStart,
-	).Scan(&rows)
+	tx := dbc.DB.Raw(query, boundary, start, end, release, testPattern, capabilityVariant).Scan(&rows)
 	if tx.Error != nil {
-		return nil, fmt.Errorf("querying job results: %w", tx.Error)
+		return nil, fmt.Errorf("querying capability test results: %w", tx.Error)
 	}
 
 	for i := range rows {
@@ -345,13 +352,14 @@ func queryJobBasedResults(dbc *db.DB, release, featureGate string) ([]testQueryR
 		rows[i].Topology = stripPrefix(rows[i].Topology, "Topology:")
 		rows[i].NetworkStack = stripPrefix(rows[i].NetworkStack, "NetworkStack:")
 		rows[i].OS = stripPrefix(rows[i].OS, "OS:")
+		rows[i].JobTier = stripPrefix(rows[i].JobTier, "JobTier:")
 	}
 
 	log.WithFields(log.Fields{
 		"release":      release,
 		"feature_gate": featureGate,
 		"row_count":    len(rows),
-	}).Debug("job-based promotion readiness query complete")
+	}).Debug("capability-based promotion readiness query complete")
 
 	return rows, nil
 }
