@@ -288,7 +288,7 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
 
 	// === filtered CTE: per-variant test report with percentages ===
 	buf.WriteString(`WITH filtered AS MATERIALIZED (
-  SELECT tests.id, tests.name, pre.suite_id, suites.name AS suite_name,
+  SELECT pre.test_id, tests.name, pre.suite_id, suites.name AS suite_name,
     jira_components.name AS jira_component, jira_components.id AS jira_component_id,
     pre.current_successes, pre.current_failures, pre.current_flakes, pre.current_runs,
     pre.previous_successes, pre.previous_failures, pre.previous_flakes, pre.previous_runs,
@@ -382,7 +382,7 @@ stats AS (
     JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
     LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
     WHERE e.date = ? AND e.release = ?
-      AND e.test_id IN (SELECT DISTINCT id FROM %s)
+      AND e.test_id IN (SELECT DISTINCT test_id FROM %s)
       AND NOT EXISTS (SELECT 1 FROM variant_combinations WHERE 'never-stable' = any(variants) AND id = pj.variant_combination_id)
     GROUP BY e.test_id, e.suite_id, pj.variant_combination_id
   ) c
@@ -403,7 +403,7 @@ SELECT f.*,
   COALESCE(s.flake_standard_deviation, 0) AS flake_standard_deviation,
   f.current_flake_percentage - COALESCE(s.flake_average, 0) AS delta_from_flake_average
 FROM %s
-LEFT JOIN stats s ON f.id = s.test_id AND f.suite_id = s.suite_id`, resultSource)
+LEFT JOIN stats s ON f.test_id = s.test_id AND f.suite_id = s.suite_id`, resultSource)
 
 	return dbc.DB.Raw(buf.String(), args...), remainingFilter, nil
 }

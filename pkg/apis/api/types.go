@@ -464,10 +464,9 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 	}
 }
 
-// Test contains the full accounting of a test's history, with a synthetic ID. The format
+// Test contains the full accounting of a test's history. The format
 // of this struct is suitable for use in a data table.
 type Test struct {
-	ID        int            `json:"id,omitempty"`
 	Name      string         `json:"name"`
 	SuiteName string         `json:"suite_name"`
 	Variant   string         `json:"variant,omitempty"`
@@ -542,8 +541,6 @@ func (test Test) GetStringValue(param string) (string, error) {
 // nolint:gocyclo
 func (test Test) GetNumericalValue(param string) (float64, error) {
 	switch param {
-	case "id":
-		return float64(test.ID), nil
 	case "current_successes":
 		return float64(test.CurrentSuccesses), nil
 	case "current_failures":
@@ -620,10 +617,9 @@ func (test Test) GetArrayValue(param string) ([]string, error) {
 	}
 }
 
-// TestBQ contains the full accounting of a test's history, with a synthetic ID. The format
+// TestBQ contains the full accounting of a test's history. The format
 // of this struct is suitable for use in a data table.
 type TestBQ struct {
-	ID        int            `json:"id,omitempty" bigquery:"id"`
 	TestID    string         `json:"test_id" bigquery:"test_id"`
 	Name      string         `json:"name" bigquery:"name"`
 	SuiteName string         `json:"suite_name" bigquery:"suite_name"`
@@ -699,8 +695,6 @@ func (test TestBQ) GetStringValue(param string) (string, error) {
 // nolint:gocyclo
 func (test TestBQ) GetNumericalValue(param string) (float64, error) {
 	switch param {
-	case "id":
-		return float64(test.ID), nil
 	case "current_successes":
 		return float64(test.CurrentSuccesses), nil
 	case "current_failures":
