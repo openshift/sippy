@@ -20,7 +20,9 @@ import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
 const PASS_COLOR = '#d4edda'
+const PASS_TEXT = '#155724'
 const FAIL_COLOR = '#f8d7da'
+const FAIL_TEXT = '#721c24'
 
 function topologyDisplayName(topology) {
   if (topology === 'external') return 'hypershift'
@@ -348,11 +350,12 @@ function PromotionCell({
         align="center"
         sx={{
           backgroundColor: FAIL_COLOR,
+          color: FAIL_TEXT,
           cursor: onCellClick ? 'pointer' : 'default',
         }}
         onClick={() => onCellClick && onCellClick(variant, testName)}
       >
-        <Typography variant="body2">
+        <Typography variant="body2" color="inherit">
           <strong>FAIL</strong>
           <br />
           0% (0 / 0)
@@ -373,17 +376,14 @@ function PromotionCell({
         align="center"
         sx={{
           backgroundColor: bgColor,
+          color: isFailing ? FAIL_TEXT : PASS_TEXT,
           cursor: onCellClick ? 'pointer' : 'default',
         }}
         onClick={() => onCellClick && onCellClick(variant, testName)}
       >
-        <Typography variant="body2">
-          {isFailing && (
-            <>
-              <strong>FAIL</strong>
-              <br />
-            </>
-          )}
+        <Typography variant="body2" color="inherit">
+          <strong>{isFailing ? 'FAIL' : 'PASS'}</strong>
+          <br />
           {passPercent}% ({testResult.successful_runs} / {testResult.total_runs}
           )
         </Typography>
