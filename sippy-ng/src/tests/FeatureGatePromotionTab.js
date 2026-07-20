@@ -34,8 +34,7 @@ function variantColumnHeader(variant) {
     variant.architecture,
   ]
   if (variant.network_stack) parts.push(variant.network_stack)
-  if (variant.os) parts.push(`OS: ${variant.os}`)
-  if (variant.optional) parts.push('(Optional)')
+  if (variant.os) parts.push(variant.os)
   return parts
 }
 
@@ -269,28 +268,27 @@ export default function FeatureGatePromotionTab(props) {
                   </TableSortLabel>
                 </TableCell>
                 {variants.map((v, i) => (
-                  <TableCell
-                    key={i}
-                    align="center"
-                    sx={{ minWidth: 100, whiteSpace: 'nowrap' }}
-                  >
+                  <TableCell key={i} align="center" sx={{ minWidth: 80 }}>
                     <TableSortLabel
                       active={orderBy === String(i)}
                       direction={orderBy === String(i) ? order : 'asc'}
                       onClick={() => handleSort(String(i))}
                     >
-                      {variantColumnHeader(v).map((part, pi) => (
-                        <span key={pi}>
-                          {pi > 0 && <br />}
-                          {part}
-                        </span>
-                      ))}
+                      <span style={{ whiteSpace: 'normal' }}>
+                        {variantColumnHeader(v).map((part, pi) => (
+                          <span key={pi}>
+                            {pi > 0 && <br />}
+                            {part}
+                          </span>
+                        ))}
+                      </span>
                     </TableSortLabel>
                     {v.optional && (
                       <Chip
                         label="Optional"
                         size="small"
-                        sx={{ ml: 0.5, fontSize: '0.7rem' }}
+                        color="info"
+                        sx={{ mt: 0.5, fontSize: '0.7rem', display: 'block' }}
                       />
                     )}
                   </TableCell>
@@ -305,6 +303,8 @@ export default function FeatureGatePromotionTab(props) {
                       maxWidth: 500,
                       wordBreak: 'break-word',
                       fontSize: '0.85em',
+                      py: 1.5,
+                      pr: 2,
                     }}
                   >
                     {testName}
