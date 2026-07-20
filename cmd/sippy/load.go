@@ -325,9 +325,9 @@ func NewLoadCommand() *cobra.Command {
 						return dbErr
 					}
 					if bigqueryErr != nil {
-						return errors.WithMessage(err, "could not get bigquery client")
+						return errors.WithMessage(bigqueryErr, "could not get bigquery client")
 					}
-					loaders = append(loaders, bugloader.New(dbc, bqc))
+					loaders = append(loaders, bugloader.New(ctx, dbc, bqc))
 				}
 
 				// Load Job Variants into BigQuery
@@ -344,7 +344,7 @@ func NewLoadCommand() *cobra.Command {
 				if l == "sync-variants" {
 					refreshMatviews = true
 					if bigqueryErr != nil {
-						return errors.WithMessage(err, "could not get bigquery client")
+						return errors.WithMessage(bigqueryErr, "could not get bigquery client")
 					}
 					vs, err := variantsyncer.New(dbc, bqc)
 					if err != nil {
