@@ -152,6 +152,22 @@ export default function FeatureGatePromotionTab(props) {
     requiredPassRate: 0.95,
   }
 
+  const actualTestCount = allTestNames.length
+  const requiredVariants = variants.filter((v) => !v.optional)
+  const variantsWithCoverage = requiredVariants.filter(
+    (v) => (v.test_results || []).length > 0
+  ).length
+  let minRuns = Infinity
+  let minPassRate = Infinity
+  for (const v of requiredVariants) {
+    for (const tr of v.test_results || []) {
+      if (tr.total_runs < minRuns) minRuns = tr.total_runs
+      if (tr.pass_percent < minPassRate) minPassRate = tr.pass_percent
+    }
+  }
+  if (!isFinite(minRuns)) minRuns = 0
+  if (!isFinite(minPassRate)) minPassRate = 0
+
   const warnings = data.warnings || []
   const errors = data.errors || []
 
@@ -168,16 +184,20 @@ export default function FeatureGatePromotionTab(props) {
           <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
             <li>
               At least {thresholds.requiredTests} tests are expected for a
-              feature
+              feature (found {actualTestCount})
             </li>
-            <li>Tests must be run on every TechPreview platform</li>
+            <li>
+              Tests must be run on every TechPreview platform (
+              {variantsWithCoverage} of {requiredVariants.length} have coverage)
+            </li>
             <li>
               All tests must run at least {thresholds.requiredRuns} times on
-              every platform
+              every platform (minimum {minRuns})
             </li>
             <li>
               All tests must pass at least{' '}
               {Math.round(thresholds.requiredPassRate * 100)}% of the time
+              (minimum {Math.round(minPassRate * 100)}%)
             </li>
           </ul>
         </Alert>
