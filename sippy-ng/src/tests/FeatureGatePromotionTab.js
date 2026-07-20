@@ -182,23 +182,32 @@ export default function FeatureGatePromotionTab(props) {
           <strong>INSUFFICIENT</strong> CI testing for &quot;{featureGate}
           &quot;.
           <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
-            <li>
-              At least {thresholds.requiredTests} tests are expected for a
-              feature (found {actualTestCount})
-            </li>
-            <li>
-              Tests must be run on every TechPreview platform (
-              {variantsWithCoverage} of {requiredVariants.length} have coverage)
-            </li>
-            <li>
-              All tests must run at least {thresholds.requiredRuns} times on
-              every platform (minimum {minRuns})
-            </li>
-            <li>
-              All tests must pass at least{' '}
-              {Math.round(thresholds.requiredPassRate * 100)}% of the time
-              (minimum {Math.round(minPassRate * 100)}%)
-            </li>
+            {actualTestCount < thresholds.requiredTests && (
+              <li>
+                At least {thresholds.requiredTests} tests are expected for a
+                feature (found {actualTestCount})
+              </li>
+            )}
+            {variantsWithCoverage < requiredVariants.length && (
+              <li>
+                Tests must be run on every TechPreview platform (
+                {variantsWithCoverage} of {requiredVariants.length} have
+                coverage)
+              </li>
+            )}
+            {minRuns < thresholds.requiredRuns && (
+              <li>
+                All tests must run at least {thresholds.requiredRuns} times on
+                every platform (minimum {minRuns})
+              </li>
+            )}
+            {minPassRate < thresholds.requiredPassRate && (
+              <li>
+                All tests must pass at least{' '}
+                {Math.round(thresholds.requiredPassRate * 100)}% of the time
+                (minimum {Math.round(minPassRate * 100)}%)
+              </li>
+            )}
           </ul>
         </Alert>
       )}
