@@ -99,7 +99,7 @@ export default function TriagePotentialMatches({
   const [filterOverlappingJobRuns, setFilterOverlappingJobRuns] =
     React.useState(true)
   const [filterAlreadyTriaged, setFilterAlreadyTriaged] = React.useState(false)
-  const { expandEnvironment, view } = useContext(CompReadyVarsContext)
+  const { view } = useContext(CompReadyVarsContext)
 
   const [autoOpenMatches, setAutoOpenMatches] = useQueryParam(
     'openMatches',
@@ -355,13 +355,8 @@ export default function TriagePotentialMatches({
       valueGetter: (params) => {
         const regressedTest = params.row.regressed_test
         const viewToUse = selectedView || view
-        const filterVals = `?view=${viewToUse}`
-        //TODO(sgoeddel): we should be able to get this link off of the regression,
-        // and stop needing to get the regressedTest off the report at all
         const testDetailsUrl = generateTestDetailsReportLink(
           regressedTest,
-          filterVals,
-          expandEnvironment,
           viewToUse
         )
 
@@ -373,12 +368,23 @@ export default function TriagePotentialMatches({
       },
       renderCell: (params) => (
         <div className={classes.statusCell}>
-          <a href={params.value.url} target="_blank" rel="noopener noreferrer">
+          {params.value.url ? (
+            <a
+              href={params.value.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <CompSeverityIcon
+                status={params.value.status}
+                explanations={params.value.explanations}
+              />
+            </a>
+          ) : (
             <CompSeverityIcon
               status={params.value.status}
               explanations={params.value.explanations}
             />
-          </a>
+          )}
         </div>
       ),
     },

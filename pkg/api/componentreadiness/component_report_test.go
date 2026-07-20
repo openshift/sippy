@@ -127,6 +127,7 @@ var (
 					TestID:     "2",
 				},
 			},
+			IncludeAllTests: true,
 			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
@@ -1217,6 +1218,18 @@ func TestGenerateComponentReport(t *testing.T) {
 						report.Rows[ir].Columns[ic].RegressedTests[it].FisherExact = nil
 
 					}
+
+					if tc.generator.includeAllTests() {
+						// Level 4 (testId set): AllTests should be a superset of RegressedTests
+						assert.GreaterOrEqual(t, len(report.Rows[ir].Columns[ic].AllTests),
+							len(report.Rows[ir].Columns[ic].RegressedTests),
+							"AllTests should be a superset of RegressedTests for row %d col %d", ir, ic)
+					} else {
+						// Levels 1-3: AllTests is not populated to avoid response bloat
+						assert.Empty(t, report.Rows[ir].Columns[ic].AllTests,
+							"AllTests should be empty at non-test-level for row %d col %d", ir, ic)
+					}
+					report.Rows[ir].Columns[ic].AllTests = nil
 				}
 			}
 			assert.Equal(t, tc.expectedReport, report, "expected report %+v, got %+v", tc.expectedReport, report)

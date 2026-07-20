@@ -214,7 +214,6 @@ export default function CompReadyEnvCapabilities(props) {
         handleRedOnlyCheckboxChange={handleRedOnlyCheckboxChange}
         clearSearches={clearSearches}
         data={data}
-        filterVals={filterVals}
         setTriageActionTaken={setTriageActionTaken}
       />
       <br></br>

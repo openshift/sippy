@@ -116,6 +116,7 @@ export default function CompReadyEnvCapabilityTest(props) {
     `&component=${safeComponent}` +
     `&capability=${safeCapability}` +
     `&testId=${safeTestId}` +
+    `&includeAllTests=true` +
     (environment ? expandEnvironment(environment) : '')
 
   useEffect(() => {
@@ -202,7 +203,6 @@ export default function CompReadyEnvCapabilityTest(props) {
       </h2>
       <ComponentReadinessToolBar
         data={data}
-        filterVals={filterVals}
         setTriageActionTaken={setTriageActionTaken}
       />
       <br></br>
@@ -238,9 +238,8 @@ export default function CompReadyEnvCapabilityTest(props) {
                 return (
                   <CompCapTestRow
                     key={componentIndex}
-                    regressedTestCols={data.rows[componentIndex]}
+                    testCols={data.rows[componentIndex]}
                     columnNames={columnNames}
-                    filterVals={filterVals}
                   />
                 )
               })

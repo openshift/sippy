@@ -18,7 +18,8 @@ type RequestOptions struct {
 	AdvancedOption Advanced
 	CacheOption    cache.RequestOptions
 	TestFilters
-	TestIDOptions []TestIdentification
+	TestIDOptions   []TestIdentification
+	IncludeAllTests bool `json:"include_all_tests,omitempty"`
 	// ViewName is the name of the view used for this request, if any.
 	// When generating test details URLs, if a view is present, we include just the view parameter
 	// plus test-specific overrides, rather than expanding all view parameters into the URL.
