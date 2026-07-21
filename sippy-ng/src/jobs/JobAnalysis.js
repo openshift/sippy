@@ -602,6 +602,7 @@ export function JobAnalysis(props) {
                           setFilterModel: setTestFilter,
                           clearSearch: () => requestSearch(''),
                           doSearch: requestSearch,
+                          searchField: 'name',
                         },
                       }}
                     />

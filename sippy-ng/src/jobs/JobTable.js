@@ -533,17 +533,17 @@ function JobTable(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const currentFilters = filterModel
-    currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'name'
-    )
-    currentFilters.items.push({
+    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
+    newItems.push({
       id: 99,
       columnField: 'name',
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilterModel(currentFilters)
+    setFilterModel({
+      ...filterModel,
+      items: newItems,
+    })
   }
 
   useEffect(() => {
@@ -708,6 +708,7 @@ function JobTable(props) {
             columns: gridView.filterColumns,
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
+            searchField: 'name',
             period: period,
             selectPeriod: setPeriod,
             addFilters: (m) => addFilters(m),

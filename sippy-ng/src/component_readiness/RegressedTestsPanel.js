@@ -373,6 +373,7 @@ export default function RegressedTestsPanel(props) {
             setFilterModel: setFilterModel,
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
+            searchField: 'test_name',
             autocompleteData: regressedTests,
             downloadDataFunc: () => {
               return filteredTests
