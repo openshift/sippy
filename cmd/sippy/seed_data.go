@@ -867,6 +867,11 @@ func syncRegressions(dbc *db.DB) error {
 		if err != nil {
 			return fmt.Errorf("error syncing regressions for view %s: %w", view.Name, err)
 		}
+		for _, reg := range activeRegs {
+			if err := backend.UpsertRegressionView(reg.ID, view.Name); err != nil {
+				return fmt.Errorf("error upserting view %s for regression %d: %w", view.Name, reg.ID, err)
+			}
+		}
 
 		// Close regressions no longer in the report
 		allRegs, err := backend.ListCurrentRegressionsForRelease(view.SampleRelease.Name)
