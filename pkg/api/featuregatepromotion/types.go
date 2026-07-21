@@ -2,27 +2,23 @@ package featuregatepromotion
 
 // PromotionStatus represents the overall promotion readiness of a feature gate.
 type PromotionStatus struct {
-	FeatureGate string            `json:"feature_gate"`
-	Release     string            `json:"release"`
-	Sufficient  bool              `json:"sufficient"`
-	Variants    []VariantResult   `json:"variants"`
-	Warnings    []string          `json:"warnings"`
-	Errors      []string          `json:"errors"`
-	Links       map[string]string `json:"links,omitempty"`
+	FeatureGate      string            `json:"feature_gate"`
+	Release          string            `json:"release"`
+	Sufficient       bool              `json:"sufficient"`
+	ResultsByVariant []VariantResult   `json:"results_by_variant"`
+	Warnings         []string          `json:"warnings"`
+	Errors           []string          `json:"errors"`
+	Links            map[string]string `json:"links,omitempty"`
 }
 
 // VariantResult represents the promotion readiness for a single variant combination.
 type VariantResult struct {
-	Cloud        string       `json:"cloud"`
-	Architecture string       `json:"architecture"`
-	Topology     string       `json:"topology"`
-	NetworkStack string       `json:"network_stack,omitempty"`
-	OS           string       `json:"os,omitempty"`
-	Optional     bool         `json:"optional"`
-	Sufficient   bool         `json:"sufficient"`
-	TestResults  []TestResult `json:"test_results"`
-	Warnings     []string     `json:"warnings,omitempty"`
-	Errors       []string     `json:"errors,omitempty"`
+	Variants    map[string]string `json:"variants"`
+	Optional    bool              `json:"optional"`
+	Sufficient  bool              `json:"sufficient"`
+	TestResults []TestResult      `json:"test_results"`
+	Warnings    []string          `json:"warnings,omitempty"`
+	Errors      []string          `json:"errors,omitempty"`
 }
 
 // TestResult represents the test run statistics for a single test on a single variant.

@@ -16,7 +16,7 @@ func TestFeatureGatePromotionAPI(t *testing.T) {
 
 	assert.Equal(t, "NetworkSegmentation", status.FeatureGate)
 	assert.Equal(t, util.Release, status.Release)
-	assert.NotNil(t, status.Variants, "variants should not be nil")
+	assert.NotNil(t, status.ResultsByVariant, "variants should not be nil")
 }
 
 func TestFeatureGatePromotionHATEOASLinks(t *testing.T) {
@@ -37,10 +37,10 @@ func TestFeatureGatePromotionVariantResults(t *testing.T) {
 	err := util.SippyGet("/api/feature_gates/promotion?release="+util.Release+"&feature_gate=NetworkSegmentation", &status)
 	require.NoError(t, err)
 
-	for _, v := range status.Variants {
-		assert.NotEmpty(t, v.Cloud, "variant should have a cloud")
-		assert.NotEmpty(t, v.Architecture, "variant should have an architecture")
-		assert.NotEmpty(t, v.Topology, "variant should have a topology")
+	for _, v := range status.ResultsByVariant {
+		assert.NotEmpty(t, v.Variants["Platform"], "variant should have a platform")
+		assert.NotEmpty(t, v.Variants["Architecture"], "variant should have an architecture")
+		assert.NotEmpty(t, v.Variants["Topology"], "variant should have a topology")
 	}
 }
 

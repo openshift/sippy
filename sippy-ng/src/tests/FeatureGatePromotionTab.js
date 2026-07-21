@@ -23,8 +23,6 @@ const PASS_COLOR = '#d4edda'
 const PASS_TEXT = '#155724'
 const FAIL_COLOR = '#f8d7da'
 const FAIL_TEXT = '#721c24'
-const WARN_COLOR = '#fff3cd'
-const WARN_TEXT = '#856404'
 
 function topologyDisplayName(topology) {
   if (topology === 'external') return 'hypershift'
@@ -32,13 +30,14 @@ function topologyDisplayName(topology) {
 }
 
 function variantColumnHeader(variant) {
+  const v = variant.variants || {}
   const parts = [
-    topologyDisplayName(variant.topology),
-    variant.cloud,
-    variant.architecture,
+    topologyDisplayName(v['Topology'] || ''),
+    v['Platform'] || '',
+    v['Architecture'] || '',
   ]
-  if (variant.network_stack) parts.push(variant.network_stack)
-  if (variant.os) parts.push(variant.os)
+  if (v['NetworkStack']) parts.push(v['NetworkStack'])
+  if (v['OS']) parts.push(v['OS'])
   return parts
 }
 
@@ -100,7 +99,7 @@ export default function FeatureGatePromotionTab(props) {
     )
   }
 
-  const variants = data.variants || []
+  const variants = data.results_by_variant || []
 
   // Collect all unique test names across all variants
   const testNameSet = new Set()
@@ -464,13 +463,11 @@ function PromotionCell({
 }
 
 function variantKey(v) {
-  return [
-    v.cloud,
-    v.architecture,
-    v.topology,
-    v.network_stack || '',
-    v.os || '',
-  ].join('/')
+  const vars = v.variants || {}
+  return Object.keys(vars)
+    .sort()
+    .map((k) => `${k}:${vars[k]}`)
+    .join('/')
 }
 
 FeatureGatePromotionTab.propTypes = {

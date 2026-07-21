@@ -376,7 +376,7 @@ func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVari
 
 	for _, jv := range variantsToCheck {
 		vr := buildVariantResult(jv, rows)
-		status.Variants = append(status.Variants, vr)
+		status.ResultsByVariant = append(status.ResultsByVariant, vr)
 
 		status.Warnings = append(status.Warnings, vr.Warnings...)
 		if !jv.Optional {
@@ -389,7 +389,7 @@ func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVari
 	sort.Strings(status.Warnings)
 	sort.Strings(status.Errors)
 
-	for _, vr := range status.Variants {
+	for _, vr := range status.ResultsByVariant {
 		if !vr.Sufficient && !vr.Optional {
 			status.Sufficient = false
 			break
@@ -401,14 +401,22 @@ func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVari
 
 // buildVariantResult processes query rows for a single variant combo.
 func buildVariantResult(jv JobVariant, allRows []testQueryRow) VariantResult {
+	variants := map[string]string{
+		"Platform":     jv.Cloud,
+		"Architecture": jv.Architecture,
+		"Topology":     jv.Topology,
+	}
+	if jv.NetworkStack != "" {
+		variants["NetworkStack"] = jv.NetworkStack
+	}
+	if jv.OS != "" {
+		variants["OS"] = jv.OS
+	}
+
 	vr := VariantResult{
-		Cloud:        jv.Cloud,
-		Architecture: jv.Architecture,
-		Topology:     jv.Topology,
-		NetworkStack: jv.NetworkStack,
-		OS:           jv.OS,
-		Optional:     jv.Optional,
-		Sufficient:   true,
+		Variants:   variants,
+		Optional:   jv.Optional,
+		Sufficient: true,
 	}
 
 	allowedTiers := sets.New(JobTiersForVariant(jv)...)
@@ -470,8 +478,8 @@ func buildVariantResult(jv JobVariant, allRows []testQueryRow) VariantResult {
 	if len(vr.TestResults) < RequiredNumberOfTests {
 		vr.Sufficient = false
 		vr.Errors = append(vr.Errors,
-			fmt.Sprintf("only %d tests found, need at least %d for %q on %s",
-				len(vr.TestResults), RequiredNumberOfTests, vr.Cloud, variantLabel(jv)))
+			fmt.Sprintf("only %d tests found, need at least %d on %s",
+				len(vr.TestResults), RequiredNumberOfTests, variantLabel(jv)))
 	}
 
 	for _, tr := range vr.TestResults {
