@@ -147,12 +147,6 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
 })
 
-var dailySummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
-	Name:    "sippy_daily_summary_refresh_millis",
-	Help:    "Milliseconds to refresh the daily summary table",
-	Buckets: []float64{1000, 5000, 10000, 30000, 60000, 300000, 600000, 1200000},
-})
-
 var cumulativeSummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Name:    "sippy_cumulative_summary_refresh_millis",
 	Help:    "Milliseconds to refresh the cumulative summary tables",
@@ -400,14 +394,8 @@ type RefreshOptions struct {
 func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
 
-	summaryStart := time.Now()
-	if _, err := dailysummary.Refresh(dbc); err != nil {
-		return fmt.Errorf("failed to refresh daily summaries: %w", err)
-	}
-	dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
-
 	totalsStart := time.Now()
-	earliestTotalsChanged, err := dailysummary.RefreshTotals(dbc)
+	earliestTotalsChanged, err := dailysummary.Refresh(dbc)
 	if err != nil {
 		return fmt.Errorf("failed to refresh daily totals: %w", err)
 	}
@@ -434,10 +422,8 @@ func BackfillData(dbc *db.DB, table string, startDate, endDate civil.Date) error
 	}).Info("Backfilling table")
 
 	switch table {
-	case "daily-summaries":
-		return dailysummary.Backfill(dbc, startDate, endDate)
 	case "daily-totals":
-		return dailysummary.BackfillTotals(dbc, startDate, endDate)
+		return dailysummary.Backfill(dbc, startDate, endDate)
 	case "cumulative-summaries":
 		return cumulativesummary.Backfill(dbc, startDate, endDate)
 	default:

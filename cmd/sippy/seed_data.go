@@ -502,7 +502,7 @@ func seedSyntheticData(dbc *db.DB) error {
 	seedToday := civil.DateOf(time.Now().UTC())
 	seedStart := seedToday.AddDays(-190)
 	seedEnd := seedToday
-	for _, table := range []string{"daily-summaries", "daily-totals", "cumulative-summaries"} {
+	for _, table := range []string{"daily-totals", "cumulative-summaries"} {
 		if err := sippyserver.BackfillData(dbc, table, seedStart, seedEnd); err != nil {
 			return fmt.Errorf("failed to backfill %s: %w", table, err)
 		}
