@@ -435,14 +435,10 @@ function PromotionCell({
   let bgColor = PASS_COLOR
   let textColor = PASS_TEXT
   let label = 'PASS'
-  if (isWarning) {
-    bgColor = WARN_COLOR
-    textColor = WARN_TEXT
-    label = 'LOW RUNS'
-  } else if (isFailing) {
+  if (isFailing) {
     bgColor = FAIL_COLOR
     textColor = FAIL_TEXT
-    label = 'FAIL'
+    label = isWarning ? 'LOW RUNS' : 'FAIL'
   }
 
   return (
