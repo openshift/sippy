@@ -313,10 +313,7 @@ func (pl *ProwLoader) Load() {
 		close(fetchErrsCh)
 	}()
 
-	if err := pl.accumulateAndWriteJobRuns(pl.ctx, results); err != nil {
-		cancelFetch()
-		pl.errors = append(pl.errors, errors.Wrap(err, "error writing job runs"))
-	}
+	pl.accumulateAndWriteJobRuns(pl.ctx, results)
 
 	for err := range fetchErrsCh {
 		pl.errors = append(pl.errors, err)
@@ -1206,35 +1203,47 @@ var (
 	}
 )
 
-func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-chan *jobRunResult) error {
+func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-chan *jobRunResult) {
 	const flushThreshold = 100
 	var (
-		batch []jobRunResult
-		total int
+		batch  []jobRunResult
+		total  int
+		failed int
 	)
+
+	flush := func(msg string) {
+		if err := pl.writeJobRunBatch(ctx, batch); err != nil {
+			log.WithError(err).WithField("batchSize", len(batch)).Warning(msg)
+			failed += len(batch)
+			pl.errors = append(pl.errors, fmt.Errorf("error writing job run batch: %w", err))
+		} else {
+			total += len(batch)
+		}
+		batch = batch[:0]
+	}
 
 	for result := range results {
 		batch = append(batch, *result)
+		if ctx.Err() != nil {
+			break
+		}
 		if len(batch) >= flushThreshold {
-			if err := pl.writeJobRunBatch(ctx, batch); err != nil {
-				return err
-			}
-			total += len(batch)
-			batch = batch[:0]
+			flush("batch write failed, continuing with remaining batches")
 		}
 	}
 	if len(batch) > 0 {
-		if err := pl.writeJobRunBatch(ctx, batch); err != nil {
-			return err
-		}
-		total += len(batch)
+		flush("final batch write failed")
 	}
 
-	if total > 0 {
-		log.WithField("runs", total).Info("all job run batches committed")
+	if total > 0 || failed > 0 {
+		entry := log.WithField("succeeded", total).WithField("failed", failed)
+		if failed > 0 {
+			entry.Warning("job run batch processing completed with errors")
+		} else {
+			entry.Info("all job run batches committed")
+		}
 	}
 	prowLoaderProcessedMetricGauge.Set(float64(total))
-	return nil
 }
 
 func (pl *ProwLoader) writeJobRunBatch(ctx context.Context, batch []jobRunResult) error {
