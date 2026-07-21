@@ -386,6 +386,9 @@ func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVari
 		}
 	}
 
+	sort.Strings(status.Warnings)
+	sort.Strings(status.Errors)
+
 	for _, vr := range status.Variants {
 		if !vr.Sufficient && !vr.Optional {
 			status.Sufficient = false
