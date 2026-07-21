@@ -23,6 +23,8 @@ const PASS_COLOR = '#d4edda'
 const PASS_TEXT = '#155724'
 const FAIL_COLOR = '#f8d7da'
 const FAIL_TEXT = '#721c24'
+const WARN_COLOR = '#fff3cd'
+const WARN_TEXT = '#856404'
 
 function topologyDisplayName(topology) {
   if (topology === 'external') return 'hypershift'
@@ -352,6 +354,8 @@ export default function FeatureGatePromotionTab(props) {
                         release={release}
                         featureGate={featureGate}
                         onCellClick={onCellClick}
+                        requiredRuns={thresholds.requiredRuns}
+                        requiredPassRate={thresholds.requiredPassRate}
                       />
                     )
                   })}
@@ -365,6 +369,30 @@ export default function FeatureGatePromotionTab(props) {
   )
 }
 
+function cellTooltip(testResult, requiredRuns, requiredPassRate) {
+  if (!testResult) {
+    return 'No test data found for this variant'
+  }
+  const reasons = []
+  if (testResult.total_runs < requiredRuns) {
+    reasons.push(
+      `Only ${testResult.total_runs} runs (need at least ${requiredRuns})`
+    )
+  }
+  if (testResult.total_runs > 0 && testResult.pass_percent < requiredPassRate) {
+    reasons.push(
+      `Pass rate ${Math.round(
+        testResult.pass_percent * 100
+      )}% (need at least ${Math.round(requiredPassRate * 100)}%)`
+    )
+  }
+  const stats = `${testResult.successful_runs} passed, ${testResult.failed_runs} failed, ${testResult.flaked_runs} flaked out of ${testResult.total_runs} runs`
+  if (reasons.length === 0) {
+    return stats
+  }
+  return `${reasons.join('. ')}. ${stats}`
+}
+
 function PromotionCell({
   testResult,
   variant,
@@ -372,46 +400,64 @@ function PromotionCell({
   release,
   featureGate,
   onCellClick,
+  requiredRuns,
+  requiredPassRate,
 }) {
   if (!testResult) {
     return (
-      <TableCell
-        align="center"
-        sx={{
-          backgroundColor: FAIL_COLOR,
-          color: FAIL_TEXT,
-          cursor: onCellClick ? 'pointer' : 'default',
-        }}
-        onClick={() => onCellClick && onCellClick(variant, testName)}
-      >
-        <Typography variant="body2" color="inherit">
-          <strong>FAIL</strong>
-          <br />
-          0% (0 / 0)
-        </Typography>
-      </TableCell>
+      <Tooltip title={cellTooltip(null, requiredRuns, requiredPassRate)}>
+        <TableCell
+          align="center"
+          sx={{
+            backgroundColor: FAIL_COLOR,
+            color: FAIL_TEXT,
+            cursor: onCellClick ? 'pointer' : 'default',
+          }}
+          onClick={() => onCellClick && onCellClick(variant, testName)}
+        >
+          <Typography variant="body2" color="inherit">
+            <strong>FAIL</strong>
+            <br />
+            0% (0 / 0)
+          </Typography>
+        </TableCell>
+      </Tooltip>
     )
   }
 
   const passPercent = Math.round(testResult.pass_percent * 100)
   const isFailing = !testResult.sufficient
-  const bgColor = isFailing ? FAIL_COLOR : PASS_COLOR
+  const lowRuns = testResult.total_runs < requiredRuns
+  const lowPassRate =
+    testResult.total_runs > 0 && testResult.pass_percent < requiredPassRate
+  const isWarning = isFailing && lowRuns && !lowPassRate
+
+  let bgColor = PASS_COLOR
+  let textColor = PASS_TEXT
+  let label = 'PASS'
+  if (isWarning) {
+    bgColor = WARN_COLOR
+    textColor = WARN_TEXT
+    label = 'LOW RUNS'
+  } else if (isFailing) {
+    bgColor = FAIL_COLOR
+    textColor = FAIL_TEXT
+    label = 'FAIL'
+  }
 
   return (
-    <Tooltip
-      title={`${testResult.successful_runs} passed, ${testResult.failed_runs} failed, ${testResult.flaked_runs} flaked out of ${testResult.total_runs} runs`}
-    >
+    <Tooltip title={cellTooltip(testResult, requiredRuns, requiredPassRate)}>
       <TableCell
         align="center"
         sx={{
           backgroundColor: bgColor,
-          color: isFailing ? FAIL_TEXT : PASS_TEXT,
+          color: textColor,
           cursor: onCellClick ? 'pointer' : 'default',
         }}
         onClick={() => onCellClick && onCellClick(variant, testName)}
       >
         <Typography variant="body2" color="inherit">
-          <strong>{isFailing ? 'FAIL' : 'PASS'}</strong>
+          <strong>{label}</strong>
           <br />
           {passPercent}% ({testResult.successful_runs} / {testResult.total_runs}
           )
@@ -444,4 +490,6 @@ PromotionCell.propTypes = {
   release: PropTypes.string.isRequired,
   featureGate: PropTypes.string.isRequired,
   onCellClick: PropTypes.func,
+  requiredRuns: PropTypes.number.isRequired,
+  requiredPassRate: PropTypes.number.isRequired,
 }
