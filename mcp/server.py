@@ -532,16 +532,16 @@ async def sippy_ng_start(
     if existing:
         if not restart:
             pids = ", ".join(str(p) for p in existing)
-            err = await _wait_for_url("http://127.0.0.1:3000/sippy-ng", 120, existing)
+            err = await _wait_for_url("http://127.0.0.1:3000/sippy-ng/", 120, existing)
             if err:
                 return (
                     f"sippy_ng_start already running (pid(s) {pids}) but {err}. "
-                    f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
+                    f"Typical URL: http://127.0.0.1:3000/sippy-ng/ log: {log_path}. "
                     f"Call with restart=True to restart."
                 )
             return (
                 f"sippy_ng_start already running and ready (pid(s) {pids}). "
-                f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
+                f"Typical URL: http://127.0.0.1:3000/sippy-ng/ log: {log_path}. "
                 f"Call with restart=True to restart."
             )
         await _stop_pids(existing)
@@ -556,12 +556,12 @@ async def sippy_ng_start(
         cwd=ng_dir,
         log_path=log_path,
         env=env,
-        ready_url="http://127.0.0.1:3000/sippy-ng",
+        ready_url="http://127.0.0.1:3000/sippy-ng/",
     )
     if isinstance(pid_or_err, str):
         return pid_or_err
     return (
-        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000/sippy-ng "
+        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000/sippy-ng/ "
         f"log: {log_path}"
     )
 
