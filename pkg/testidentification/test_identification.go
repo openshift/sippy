@@ -228,20 +228,26 @@ func IsOverallTest(testName string) bool {
 	return testName == "Overall" || strings.HasSuffix(testName, ".Overall")
 }
 
-// nonSuiteTestPatterns contains substrings that identify infrastructure/step-level
-// tests rather than real test signals. Matched against the map key ("suiteName.testName").
+var nonSuiteSuitePatterns = []string{
+	"prowjob-junit",
+	"step graph",
+}
+
 var nonSuiteTestPatterns = []string{
-	"prowjob-junit.",
-	"step graph.",
 	"Run pipeline step",
 	"Run multi-stage test",
 }
 
-// IsNonSuiteTest returns true if the map key (format: "suiteName.testName") belongs to
-// a suite or test that only contains infrastructure/step-level results rather than real test signals.
-func IsNonSuiteTest(mapKey string) bool {
+// IsNonSuiteTest returns true if the suite or test name indicates infrastructure/step-level
+// results rather than real test signals.
+func IsNonSuiteTest(suiteName, testName string) bool {
+	for _, pattern := range nonSuiteSuitePatterns {
+		if strings.Contains(suiteName, pattern) {
+			return true
+		}
+	}
 	for _, pattern := range nonSuiteTestPatterns {
-		if strings.Contains(mapKey, pattern) {
+		if strings.Contains(testName, pattern) {
 			return true
 		}
 	}
