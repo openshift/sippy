@@ -343,6 +343,8 @@ FailureRow.propTypes = {
   row: PropTypes.object.isRequired,
 }
 
+const pluralDays = (n) => (n === 1 ? 'day' : 'days')
+
 export default function RecentTestFailures(props) {
   const classes = useStyles()
 
@@ -356,8 +358,8 @@ export default function RecentTestFailures(props) {
   const [page, setPage] = React.useState(0)
   const [rowsPerPage, setRowsPerPage] = React.useState(props.limit || 5)
 
-  const period = props.period || '24h'
-  const previousPeriod = props.previousPeriod || '72h'
+  const periodDays = props.periodDays || 1
+  const previousPeriodDays = props.previousPeriodDays || 3
   const includeOutputs =
     props.includeOutputs !== undefined ? props.includeOutputs : true
 
@@ -368,8 +370,8 @@ export default function RecentTestFailures(props) {
       import.meta.env.VITE_API_URL +
       '/api/tests/recent_failures' +
       `?release=${safeEncodeURIComponent(props.release)}` +
-      `&period=${safeEncodeURIComponent(period)}` +
-      `&previousPeriod=${safeEncodeURIComponent(previousPeriod)}` +
+      `&periodDays=${periodDays}` +
+      `&previousPeriodDays=${previousPeriodDays}` +
       `&includeOutputs=${includeOutputs}` +
       `&sortField=${safeEncodeURIComponent(orderBy)}` +
       `&sort=${safeEncodeURIComponent(order)}` +
@@ -400,7 +402,15 @@ export default function RecentTestFailures(props) {
 
   useEffect(() => {
     fetchData()
-  }, [props.release, period, previousPeriod, orderBy, order, page, rowsPerPage])
+  }, [
+    props.release,
+    periodDays,
+    previousPeriodDays,
+    orderBy,
+    order,
+    page,
+    rowsPerPage,
+  ])
 
   const handleSort = (field) => {
     const isAsc = orderBy === field && order === 'asc'
@@ -427,7 +437,11 @@ export default function RecentTestFailures(props) {
           {title}
         </Typography>
         <Tooltip
-          title={`Tests that failed in the last ${period} but did not fail in the ${previousPeriod} before that. This helps surface new regressions.`}
+          title={`Tests that failed in the last ${periodDays} ${pluralDays(
+            periodDays
+          )} but did not fail in the ${previousPeriodDays} ${pluralDays(
+            previousPeriodDays
+          )} before that. This helps surface new regressions.`}
         >
           <InfoIcon className={classes.infoIcon} />
         </Tooltip>
@@ -459,8 +473,9 @@ export default function RecentTestFailures(props) {
             No new test failures detected
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            No tests started failing in the last {period} that were not already
-            failing in the prior {previousPeriod}.
+            No tests started failing in the last {periodDays}{' '}
+            {pluralDays(periodDays)} that were not already failing in the prior{' '}
+            {previousPeriodDays} {pluralDays(previousPeriodDays)}.
           </Typography>
         </Box>
       ) : (
@@ -531,8 +546,8 @@ export default function RecentTestFailures(props) {
 
 RecentTestFailures.propTypes = {
   release: PropTypes.string.isRequired,
-  period: PropTypes.string,
-  previousPeriod: PropTypes.string,
+  periodDays: PropTypes.number,
+  previousPeriodDays: PropTypes.number,
   includeOutputs: PropTypes.bool,
   limit: PropTypes.number,
   sortField: PropTypes.string,

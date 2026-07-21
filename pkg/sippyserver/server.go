@@ -871,32 +871,32 @@ func (s *Server) jsonGetRecentTestFailures(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	periodStr := s.getParamOrFail(w, req, "period")
-	if periodStr == "" {
+	periodDaysStr := s.getParamOrFail(w, req, "periodDays")
+	if periodDaysStr == "" {
 		return
 	}
-	period, err := time.ParseDuration(periodStr)
+	periodDays, err := strconv.Atoi(periodDaysStr)
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid period duration: %s", err.Error()))
+		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid periodDays value: %s", err.Error()))
 		return
 	}
-	if period <= 0 {
-		failureResponse(w, http.StatusBadRequest, "period must be a positive duration")
+	if periodDays <= 0 {
+		failureResponse(w, http.StatusBadRequest, "periodDays must be a positive integer")
 		return
 	}
 
-	var previousPeriod *time.Duration
-	if pp := param.SafeRead(req, "previousPeriod"); pp != "" {
-		d, err := time.ParseDuration(pp)
+	var previousPeriodDays *int
+	if pp := param.SafeRead(req, "previousPeriodDays"); pp != "" {
+		d, err := strconv.Atoi(pp)
 		if err != nil {
-			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid previousPeriod duration: %s", err.Error()))
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid previousPeriodDays value: %s", err.Error()))
 			return
 		}
 		if d <= 0 {
-			failureResponse(w, http.StatusBadRequest, "previousPeriod must be a positive duration")
+			failureResponse(w, http.StatusBadRequest, "previousPeriodDays must be a positive integer")
 			return
 		}
-		previousPeriod = &d
+		previousPeriodDays = &d
 	}
 
 	includeOutputs, err := param.ReadBool(req, "includeOutputs", false)
@@ -917,7 +917,7 @@ func (s *Server) jsonGetRecentTestFailures(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	result, err := api.GetRecentTestFailures(s.db, release, period, previousPeriod, includeOutputs, filterOpts, pagination, s.GetReportEnd())
+	result, err := api.GetRecentTestFailures(s.db, release, periodDays, previousPeriodDays, includeOutputs, filterOpts, pagination, s.GetReportEnd())
 	if err != nil {
 		failureResponseWithError(w, "error querying recent test failures", err)
 		return

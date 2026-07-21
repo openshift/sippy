@@ -357,10 +357,10 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "RecentTestFailures",
 			fn: func(dbc *db.DB) error {
-				period := 7 * 24 * time.Hour
-				previousPeriod := 7 * 24 * time.Hour
+				periodDays := 7
+				previousPeriodDays := 7
 				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
-				result, err := api.GetRecentTestFailures(dbc, benchmarkRelease, period, &previousPeriod, false, &filter.FilterOptions{Filter: &filter.Filter{}}, pagination, asOf)
+				result, err := api.GetRecentTestFailures(dbc, benchmarkRelease, periodDays, &previousPeriodDays, false, &filter.FilterOptions{Filter: &filter.Filter{}}, pagination, asOf)
 				if err == nil {
 					log.Printf("RecentTestFailures: %d rows", result.TotalRows)
 				}

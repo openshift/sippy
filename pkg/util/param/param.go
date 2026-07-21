@@ -74,8 +74,9 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"beforeContext":      uintRegexp,
 	"afterContext":       uintRegexp,
 	// recent test failures params
-	"previousPeriod": wordRegexp,
-	"includeOutputs": boolRegexp,
+	"periodDays":         uintRegexp,
+	"previousPeriodDays": uintRegexp,
+	"includeOutputs":     boolRegexp,
 	// pull request test results params
 	"limit": uintRegexp,
 }

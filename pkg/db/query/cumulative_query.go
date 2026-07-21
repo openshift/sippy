@@ -139,12 +139,12 @@ func TestReportQuery(dbc *db.DB, release string, sample, base DateRange, nameMat
 	return testReportPreAgg(dbc, release, sample, base, nameMatches)
 }
 
-// resolveDateRanges clamps the Start and End of each DateRange to the latest
+// ResolveDateRanges clamps the Start and End of each DateRange to the latest
 // available date (+1, since DateRange uses half-open intervals) for the release
 // in test_cumulative_summaries. This ensures the planner sees literal dates it
 // can use for partition pruning, and handles cases where data hasn't been
 // backfilled up to the requested dates.
-func resolveDateRanges(dbc *db.DB, release string, ranges ...*DateRange) error {
+func ResolveDateRanges(dbc *db.DB, release string, ranges ...*DateRange) error {
 	var maxDate *civil.Date
 	row := dbc.DB.Table("test_cumulative_summaries").
 		Select("MAX(date)").
@@ -267,7 +267,7 @@ func processedFilterConditions(f *filter.Filter) (conditions []string, args []an
 // dates to the three prefix sum lookup dates used by the 3-way self-join
 // (each shifted by -1 day): end (e), boundary (m), and start (s).
 func resolvePrefixSumDates(dbc *db.DB, release string, sample, base *DateRange) (end, boundary, start civil.Date, err error) {
-	if err = resolveDateRanges(dbc, release, sample, base); err != nil {
+	if err = ResolveDateRanges(dbc, release, sample, base); err != nil {
 		return
 	}
 	if sample.Start != base.End {
