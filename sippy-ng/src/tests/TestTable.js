@@ -1084,6 +1084,11 @@ function TestTable(props) {
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
+        getRowId={(row) =>
+          `${row.name}\x1f${row.suite_name || ''}\x1f${(
+            row.variants || []
+          ).join('\x1f')}`
+        }
         getRowHeight={() => (props.collapse ? 100 : 'auto')}
         disableColumnFilter={props.briefTable}
         pageSize={pageSize}

@@ -329,7 +329,7 @@ func testReportPreAgg(dbc *db.DB, release string, sample, base DateRange, nameMa
 
 	return dbc.DB.
 		Table("(?) AS pre", core).
-		Select(`tests.id, tests.name, pre.suite_id, suites.name AS suite_name,
+		Select(`tests.name, pre.suite_id, suites.name AS suite_name,
 			jira_components.name AS jira_component, jira_components.id AS jira_component_id,
 			pre.current_successes, pre.current_failures, pre.current_flakes, pre.current_runs,
 			pre.previous_successes, pre.previous_failures, pre.previous_flakes, pre.previous_runs,
@@ -395,7 +395,7 @@ func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange
 		fmt.Fprintf(&buf, "\n  GROUP BY tcs.test_id, tcs.suite_id, tcs.release\n) AS %s", alias)
 	}
 
-	buf.WriteString(`SELECT t.id, t.name, su.name AS suite_name,
+	buf.WriteString(`SELECT t.name, su.name AS suite_name,
   jc.name AS jira_component, jc.id AS jira_component_id, e.release,
   COALESCE(e.ps_successes - COALESCE(m.ps_successes, 0), 0)::bigint AS current_successes,
   COALESCE(e.ps_failures  - COALESCE(m.ps_failures,  0), 0)::bigint AS current_failures,

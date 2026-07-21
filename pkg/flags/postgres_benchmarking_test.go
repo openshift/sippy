@@ -877,7 +877,7 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 				rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
 
 				processedResults := dbc.DB.Table("(?) as results", rawQuery).
-					Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
+					Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
 					Where("current_runs > 0 or previous_runs > 0")
 
 				finalResults := dbc.DB.Table("(?) as final_results", processedResults)
@@ -973,7 +973,7 @@ func Test_BenchmarkCumulativeQueryTestsReport(t *testing.T) {
 			rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
 
 			processedResults := dbc.DB.Table("(?) as results", rawQuery).
-				Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
+				Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
 				Where("current_runs > 0 or previous_runs > 0")
 
 			finalResults := dbc.DB.Table("(?) as final_results", processedResults)
