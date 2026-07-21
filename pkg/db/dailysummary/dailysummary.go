@@ -65,13 +65,6 @@ type summaryStore interface {
 	AggregateRangeForRelease(start, end civil.Date, release string, skipConflictDetection bool) error
 }
 
-// Refresh aggregates prow_job_run_tests into test_daily_summaries.
-// Returns the earliest date that was refreshed so downstream consumers
-// (cumulative summaries) know which dates may have changed.
-func Refresh(dbc *db.DB) (civil.Date, error) {
-	return refreshSummaries(&pgStore{dbc: dbc, tableName: "test_daily_summaries", dateColumn: "summary_date"})
-}
-
 func refreshSummaries(store summaryStore) (civil.Date, error) {
 	loadStart := time.Now()
 	log.Info("refreshing daily summaries")
@@ -91,19 +84,16 @@ func refreshSummaries(store summaryStore) (civil.Date, error) {
 	return startDate, nil
 }
 
-// Backfill processes an explicit date range without automatic date detection.
-func Backfill(dbc *db.DB, startDate, endDate civil.Date) error {
-	return backfillSummaries(&pgStore{dbc: dbc, tableName: "test_daily_summaries", dateColumn: "summary_date"}, startDate, endDate)
-}
-
-// RefreshTotals aggregates prow_job_run_tests into the partitioned
-// test_daily_totals table. Same logic as Refresh but targets the new table.
-func RefreshTotals(dbc *db.DB) (civil.Date, error) {
+// Refresh aggregates prow_job_run_tests into the partitioned
+// test_daily_totals table. Returns the earliest date that was refreshed
+// so downstream consumers (cumulative summaries) know which dates
+// may have changed.
+func Refresh(dbc *db.DB) (civil.Date, error) {
 	return refreshSummaries(&pgStore{dbc: dbc, tableName: "test_daily_totals", dateColumn: "date"})
 }
 
-// BackfillTotals backfills the partitioned test_daily_totals table.
-func BackfillTotals(dbc *db.DB, startDate, endDate civil.Date) error {
+// Backfill processes an explicit date range without automatic date detection.
+func Backfill(dbc *db.DB, startDate, endDate civil.Date) error {
 	return backfillSummaries(&pgStore{dbc: dbc, tableName: "test_daily_totals", dateColumn: "date"}, startDate, endDate)
 }
 

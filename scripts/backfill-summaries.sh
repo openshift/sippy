@@ -6,7 +6,7 @@
 #   ./scripts/backfill-summaries.sh --table TABLE [OPTIONS]
 #
 # Options:
-#   --table TABLE     Table to backfill (daily-summaries, daily-totals,
+#   --table TABLE     Table to backfill (daily-totals,
 #                     cumulative-summaries) [required]
 #   --days N          Number of days to backfill (default: 91)
 #   --namespace NS    Kubernetes namespace (default: sippy)
@@ -56,15 +56,15 @@ fi
 
 if [[ -z "$TABLE" ]]; then
     echo "Error: --table is required" >&2
-    echo "Valid tables: daily-summaries, daily-totals, cumulative-summaries" >&2
+    echo "Valid tables: daily-totals, cumulative-summaries" >&2
     exit 1
 fi
 
 case "$TABLE" in
-    daily-summaries|daily-totals|cumulative-summaries) ;;
+    daily-totals|cumulative-summaries) ;;
     *)
         echo "Error: invalid table '$TABLE'" >&2
-        echo "Valid tables: daily-summaries, daily-totals, cumulative-summaries" >&2
+        echo "Valid tables: daily-totals, cumulative-summaries" >&2
         exit 1
         ;;
 esac

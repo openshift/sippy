@@ -5,7 +5,7 @@
 -- - Level 2: RANGE sub-partition by date (daily granularity)
 --
 -- Tables:
---   - test_daily_totals (partitioned daily aggregates, replaces test_daily_summaries)
+--   - test_daily_totals (partitioned daily aggregates)
 --   - test_cumulative_summaries (prefix sums from test_daily_totals)
 --
 -- Partition creation (release partitions + daily sub-partitions) is handled

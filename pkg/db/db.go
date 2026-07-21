@@ -173,7 +173,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ChatConversation{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
-		&models.TestDailySummary{},
 	}
 
 	// Currently we need RunMigrations to run prior

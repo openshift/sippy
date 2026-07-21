@@ -29,7 +29,7 @@ func NewBackfillFlags() *BackfillFlags {
 
 func (f *BackfillFlags) BindFlags(fs *pflag.FlagSet) {
 	f.DBFlags.BindFlags(fs)
-	fs.StringVar(&f.Table, "table", "", "Table to backfill (daily-summaries, daily-totals, cumulative-summaries)")
+	fs.StringVar(&f.Table, "table", "", "Table to backfill (daily-totals, cumulative-summaries)")
 	fs.StringVar(&f.StartDate, "start-date", "", "Start date (YYYY-MM-DD)")
 	fs.StringVar(&f.EndDate, "end-date", "", "End date (YYYY-MM-DD)")
 }
@@ -41,7 +41,7 @@ func NewBackfillCommand() *cobra.Command {
 		Use:   "backfill",
 		Short: "Backfill a specific summary table for a date range",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			validTables := sets.New[string]("daily-summaries", "daily-totals", "cumulative-summaries")
+			validTables := sets.New[string]("daily-totals", "cumulative-summaries")
 			if f.Table == "" {
 				return fmt.Errorf("--table is required")
 			}

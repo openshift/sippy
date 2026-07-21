@@ -170,22 +170,7 @@ type TestAnalysisByJobByDate struct {
 	Failures int
 }
 
-// TestDailySummary stores pre-aggregated daily test results used to
-// accelerate matview refreshes. Table managed by migration 000002.
-type TestDailySummary struct {
-	TestID      uint      `gorm:"column:test_id;not null"`
-	ProwJobID   uint      `gorm:"column:prow_job_id;not null"`
-	SuiteID     uint      `gorm:"column:suite_id;not null;default:0"`
-	Release     string    `gorm:"column:release;not null"`
-	SummaryDate time.Time `gorm:"column:summary_date;type:date;not null"`
-	Successes   int32     `gorm:"column:successes;not null;default:0"`
-	Failures    int32     `gorm:"column:failures;not null;default:0"`
-	Flakes      int32     `gorm:"column:flakes;not null;default:0"`
-	Runs        int32     `gorm:"column:runs;not null;default:0"`
-}
-
-// TestDailyTotal is the partitioned replacement for TestDailySummary.
-// Same schema, but partitioned by LIST(release) then RANGE(date).
+// TestDailyTotal stores pre-aggregated daily test results.
 // Table is partitioned (LIST by release, RANGE by date) -
 // schema managed by migration 000006, not AutoMigrate.
 type TestDailyTotal struct {
@@ -200,7 +185,7 @@ type TestDailyTotal struct {
 	Runs      int32      `gorm:"column:runs;not null;default:0"`
 }
 
-// TestCumulativeSummary stores running totals of test_daily_summaries values,
+// TestCumulativeSummary stores running totals of test_daily_totals values,
 // ordered by date. Any date range [start, end] can be computed as
 // cumulative(end) - cumulative(start-1). Keyed by immutable fields only
 // (no variant_combination_id) so variant changes do not invalidate the data.
