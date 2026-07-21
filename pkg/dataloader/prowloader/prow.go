@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -42,6 +43,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/testconversion"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/types"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
@@ -1596,15 +1598,6 @@ type testCaseKey struct {
 	TestName  string
 }
 
-// testCaseEntry holds raw test case data with string names before ID resolution.
-type testCaseEntry struct {
-	TestName  string
-	SuiteName string
-	Status    int
-	Duration  float64
-	Output    *string
-}
-
 func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]prowJobRunTestRow, int, sippyprocessingv1.JobOverallResult, error) {
 	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
 	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
@@ -1615,7 +1608,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		return nil, 0, "", err
 	}
 
-	testCases := make(map[testCaseKey]*testCaseEntry)
+	testCases := make(map[testCaseKey]*types.TestCaseEntry)
 	for _, suite := range suites.Suites {
 		if !db.IsSuiteImportable(suite.Name) {
 			log.Infof("skipping suite %q as it's not listed for import", suite.Name)
@@ -1624,12 +1617,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		extractTestCases(suite, testCases)
 	}
 
-	oldTestCases := make(map[string]*models.ProwJobRunTest, len(testCases))
-	for _, tc := range testCases {
-		oldTestCases[tc.TestName] = &models.ProwJobRunTest{
-			Status: tc.Status,
-		}
-	}
+	oldTestCases := slices.Collect(maps.Values(testCases))
 	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, oldTestCases, pl.syntheticTestManager)
 
 	if !db.IsSuiteImportable(syntheticSuite.Name) {
@@ -1663,7 +1651,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	return results, failures, jobResult, nil
 }
 
-func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*testCaseEntry) {
+func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.TestCaseEntry) {
 	for _, tc := range suite.TestCases {
 		if testidentification.IsIgnoredTest(tc.Name) {
 			continue
@@ -1682,7 +1670,7 @@ func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*testCas
 		key := testCaseKey{SuiteName: suite.Name, TestName: tc.Name}
 
 		if existing, ok := testCases[key]; !ok {
-			testCases[key] = &testCaseEntry{
+			testCases[key] = &types.TestCaseEntry{
 				TestName:  tc.Name,
 				SuiteName: suite.Name,
 				Status:    int(status),
