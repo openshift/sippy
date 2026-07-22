@@ -231,7 +231,7 @@ func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogge
 	// a matview for the failed tests in the last two weeks.
 
 	// Query all test failures for the given payload stream in the last two weeks:
-	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag)
+	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag, payload.Release, payload.ReleaseTime)
 	if err != nil {
 		logger.WithError(err).Error("unable to list test failures for payload")
 		return nil, err

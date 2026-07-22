@@ -306,6 +306,8 @@ WHERE
     AND rjr.kind = 'Blocking'
     AND rjr.State = 'Failed'
     AND pjrt.prow_job_run_id = rjr.prow_job_run_id
+    AND pjrt.prow_job_run_release = rt.release
+    AND pjrt.prow_job_run_timestamp = pjr.timestamp
     AND pjrt.status = 12
     AND t.id = pjrt.test_id
     AND pjr.id = pjrt.prow_job_run_id
