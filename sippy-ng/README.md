@@ -172,7 +172,7 @@ Date.now() to ensure consistent results. You can use Vitest's spy
 functions:
 
 ```javascript
-vi.spyOn(Date, 'now').mockImplementation(() => new Date(1628691480000))
+vi.spyOn(Date, 'now').mockImplementation(() => 1628691480000)
 ```
 
 ## Available Scripts
