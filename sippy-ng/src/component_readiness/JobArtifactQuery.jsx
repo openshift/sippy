@@ -706,7 +706,7 @@ export default function JobArtifactQuery(props) {
 
     function handleOpenLinks(event) {
       artifacts.forEach((file) => {
-        openLaunderedLink(file.artifact_url)
+        window.open(file.artifact_url, '_blank')
       })
     }
 

@@ -11,7 +11,6 @@ import { makeStyles } from '@mui/styles'
 import { ReleasesContext } from '../App'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import Alert from '@mui/material/Alert'
-import DOMPurify from 'dompurify'
 import Grid from '@mui/material/Grid'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
@@ -226,9 +225,7 @@ export default function ReleaseOverview(props) {
       warnings.push(
         <Grid item xs={12} key={'sippy-warning-' + index}>
           <Alert severity="warning">
-            <div
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(warning) }}
-            ></div>
+            <div dangerouslySetInnerHTML={{ __html: warning }}></div>
           </Alert>
         </Grid>
       )
