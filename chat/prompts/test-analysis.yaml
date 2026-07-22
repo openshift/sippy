@@ -22,20 +22,20 @@ prompt: |
     * URL encode the test name parameter
 
   ## 2. 7-Day Performance
-  Use `prow_test_report_7d_matview` materialized view with database tool:
-  - Overall pass rate: sum(current_successes) / sum(current_runs) × 100
-  - Total runs: sum(current_runs), failures: sum(current_failures), flakes: sum(current_flakes)
+  Query `test_cumulative_summaries` with database tool. LEFT JOIN two rows per (test_id, prow_job_id, suite_id) at `date = CURRENT_DATE - 1` (end) and `date = CURRENT_DATE - 8` (start), filtering `release = '{{ release }}'`. Compute 7-day totals by subtracting prefix sums:
+  - Overall pass rate: SUM(end.prefix_sum_successes - COALESCE(start.prefix_sum_successes, 0)) / SUM(end.prefix_sum_runs - COALESCE(start.prefix_sum_runs, 0)) × 100
+  - Total runs, failures, flakes (all as prefix_sum differences with COALESCE)
   - Trend: consistent passing/failing or intermittent
 
   ## 3. Variant Analysis
-  Use `prow_test_report_7d_matview` grouped by variants:
-  - Calculate failure rate per variant combination
+  Query `test_cumulative_summaries` joined to `prow_jobs` (via prow_job_id) and `tests` (via test_id), grouped by `prow_jobs.variants`. LEFT JOIN two rows per key at `date = CURRENT_DATE - 1` (end) and `date = CURRENT_DATE - 8` (start), filtering `release = '{{ release }}'`. Compute 7-day totals by subtracting prefix sums:
+  - Calculate failure rate per variant combination: SUM(end.prefix_sum_failures - COALESCE(start.prefix_sum_failures, 0)) / SUM(end.prefix_sum_runs - COALESCE(start.prefix_sum_runs, 0)) × 100
   - Report: variant combo, pass rate, failure count vs runs
   - Order by worst performing first
   - Note if failures are variant-specific or systemic
 
   ## 4. Failure Modes
-  Query `prow_job_run_test_outputs` table for recent failures:
+  Query `prow_job_run_test_outputs` table for recent failures. Always filter on partition keys: `prow_job_run_test_release = '{{ release }}'` and `prow_job_run_test_timestamp > NOW() - INTERVAL '7 days'`:
   - Examine up to 10 failure outputs
   - **Consistent**: Same error repeating - include exact error message
   - **Diverse**: Multiple issues - categorize and count distinct failure types
