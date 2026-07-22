@@ -26,4 +26,4 @@ Run lint: `make lint`
 
 Run unit tests: `make test`
 
-This runs Go tests via gotestsum and sippy-ng Jest tests.
+This runs Go tests via gotestsum and sippy-ng Vitest tests.

@@ -2,7 +2,7 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
-    jest: true,
+    '@vitest/env': true,
   },
   extends: ['plugin:react/recommended', 'prettier'],
   settings: {
@@ -22,7 +22,13 @@ module.exports = {
     sourceType: 'module',
   },
   parser: '@babel/eslint-parser',
-  plugins: ['react', 'prettier', 'sort-imports-es6-autofix', 'unused-imports'],
+  plugins: [
+    'react',
+    'prettier',
+    'sort-imports-es6-autofix',
+    'unused-imports',
+    '@vitest',
+  ],
   rules: {
     'react/display-name': 'off',
     'react/jsx-uses-react': 'warn',

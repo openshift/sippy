@@ -41,7 +41,7 @@ else
 	@echo "ARTIFACT_DIR is defined. Using $(ARTIFACT_DIR)/junit.xml."
 	gotestsum --junitfile $(ARTIFACT_DIR)/junit.xml ./pkg/...
 endif
-	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
+	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage
 	@which python3 > /dev/null 2>&1 || { echo "ERROR: python3 not found in PATH"; exit 1; }
 	cd mcp && \
 		if [ ! -x .venv/bin/python ]; then \
