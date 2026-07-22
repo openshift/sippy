@@ -1,324 +1,150 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
-	"cloud.google.com/go/bigquery"
-	"cloud.google.com/go/civil"
-	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/iterator"
 
-	bq "github.com/openshift/sippy/pkg/bigquery"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util/param"
 )
 
-// PRTestResult represents a test result from a pull request job
+// PRTestResult represents a test result from a pull request job run
 type PRTestResult struct {
-	ProwJobBuildID string    `json:"prowjob_build_id"`
-	ProwJobName    string    `json:"prowjob_name"`
-	ProwJobURL     string    `json:"prowjob_url"`
-	PRSha          string    `json:"pr_sha"`
-	ProwJobStart   time.Time `json:"prowjob_start"`
-	TestName       string    `json:"test_name"`
-	TestSuite      string    `json:"test_suite"`
-	Success        bool      `json:"success"`
-	Flaked         bool      `json:"flaked"`
-	FailureContent string    `json:"failure_content"`
+	ProwJobRunID uint      `json:"prow_job_run_id"`
+	ProwJobName  string    `json:"prow_job_name"`
+	ProwJobURL   string    `json:"prow_job_url"`
+	PRSha        string    `json:"pr_sha"`
+	ProwJobStart time.Time `json:"prow_job_start"`
+	TestName     string    `json:"test_name"`
+	TestSuite    string    `json:"test_suite"`
+	Status       string    `json:"status"`
+	Output       string    `json:"output,omitempty"`
 }
 
-// GetPRTestResults fetches test failures for a specific pull request from BigQuery
-// This queries both junit_pr and junit tables:
-// - junit_pr: Contains results from normal presubmit jobs
-// - junit: Contains results from /payload jobs (manually invoked jobs)
-// Note: Only returns test failures (success = false), excluding flakes and passes
-// includeSuccesses: Optional list of test name substrings to also include successes for
-func GetPRTestResults(ctx context.Context, bqc *bq.Client, org, repo string, prNumber int, startDate, endDate time.Time, includeSuccesses []string) ([]PRTestResult, error) {
+func testStatusString(status int) string {
+	switch sippyprocessingv1.TestStatus(status) {
+	case sippyprocessingv1.TestStatusSuccess:
+		return "success"
+	case sippyprocessingv1.TestStatusFlake:
+		return "flake"
+	case sippyprocessingv1.TestStatusFailure:
+		return "failure"
+	default:
+		return fmt.Sprintf("unknown(%d)", status)
+	}
+}
+
+// GetPRTestResults fetches test results for a specific pull request from PostgreSQL.
+const defaultPRTestResultsLimit = 10000
+
+func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly bool, startDate, endDate time.Time, includeSuccesses []string, limit int) ([]PRTestResult, error) {
+	if limit <= 0 || limit > defaultPRTestResultsLimit {
+		limit = defaultPRTestResultsLimit
+	}
 	log.WithFields(log.Fields{
-		"org":               org,
-		"repo":              repo,
-		"pr_number":         prNumber,
-		"start_date":        startDate.Format("2006-01-02"),
-		"end_date":          endDate.Format("2006-01-02"),
-		"include_successes": includeSuccesses,
+		"org":             org,
+		"repo":            repo,
+		"pr_number":       prNumber,
+		"latest_sha_only": latestSHAOnly,
+		"start_date":      startDate.Format("2006-01-02"),
+		"end_date":        endDate.Format("2006-01-02"),
 	}).Info("querying test results for pull request")
 
-	// Query junit_pr table (normal presubmit jobs)
-	log.Infof("querying junit_pr table for org=%s, repo=%s, pr_number=%d, start=%s, end=%s",
-		org, repo, prNumber, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-	queryPR := buildPRTestResultsQuery(bqc, org, repo, prNumber, startDate, endDate, "junit_pr", includeSuccesses)
-	bqc.ApplyQueryLabels(ctx, bqlabel.PRTestResults, queryPR)
-	resultsPR, err := executePRTestResultsQuery(ctx, queryPR)
-	if err != nil {
-		log.WithError(err).Error("error querying junit_pr table")
-		return nil, errors.Wrap(err, "failed to execute PR test results query for junit_pr table")
+	// Start from the PR side and use partition keys (release, timestamp) on
+	// prow_job_run_tests to allow PostgreSQL to prune partitions and avoid
+	// locking every partition in the table.
+	query := dbc.DB.Table("prow_pull_requests pp").
+		Select(`pjr.id AS prow_job_run_id,
+			pj.name AS prow_job_name,
+			pjr.url AS prow_job_url,
+			pp.sha AS pr_sha,
+			pjr.timestamp AS prow_job_start,
+			t.name AS test_name,
+			COALESCE(s.name, '') AS test_suite,
+			pjrt.status,
+			COALESCE(pjrto.output, '') AS output`).
+		Joins("JOIN prow_job_run_prow_pull_requests jrpr ON jrpr.prow_pull_request_id = pp.id AND jrpr.prow_job_run_release = ? AND jrpr.prow_job_run_timestamp >= ? AND jrpr.prow_job_run_timestamp < ?", models.ReleasePresubmits, startDate, endDate).
+		Joins("JOIN prow_job_runs pjr ON pjr.id = jrpr.prow_job_run_id").
+		Joins("JOIN prow_jobs pj ON pj.id = pjr.prow_job_id AND pj.release = ?", models.ReleasePresubmits).
+		Joins("JOIN prow_job_run_tests pjrt ON pjrt.prow_job_run_id = pjr.id AND pjrt.prow_job_run_release = ? AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?", models.ReleasePresubmits, startDate, endDate).
+		Joins("JOIN tests t ON t.id = pjrt.test_id").
+		Joins("LEFT JOIN suites s ON s.id = pjrt.suite_id").
+		Joins("LEFT JOIN prow_job_run_test_outputs pjrto ON pjrto.prow_job_run_test_id = pjrt.id AND pjrto.prow_job_run_test_timestamp = pjrt.prow_job_run_timestamp AND pjrto.prow_job_run_test_release = pjrt.prow_job_run_release").
+		Where("pp.org = ? AND pp.repo = ? AND pp.number = ?", org, repo, prNumber).
+		Where("pp.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL").
+		Where("pjr.timestamp >= ? AND pjr.timestamp < ?", startDate, endDate)
+
+	if latestSHAOnly {
+		query = query.Where("pp.sha = (SELECT pp2.sha FROM prow_pull_requests pp2 JOIN prow_job_run_prow_pull_requests jrpr2 ON jrpr2.prow_pull_request_id = pp2.id JOIN prow_job_runs pjr2 ON pjr2.id = jrpr2.prow_job_run_id WHERE pp2.org = ? AND pp2.repo = ? AND pp2.number = ? ORDER BY pjr2.timestamp DESC LIMIT 1)", org, repo, prNumber)
 	}
-	log.Infof("found %d test results from presubmit jobs (junit_pr)", len(resultsPR))
 
-	// Query junit table (/payload jobs)
-	log.Infof("querying junit table for org=%s, repo=%s, pr_number=%d, start=%s, end=%s",
-		org, repo, prNumber, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-	queryPayload := buildPRTestResultsQuery(bqc, org, repo, prNumber, startDate, endDate, "junit", includeSuccesses)
-	bqc.ApplyQueryLabels(ctx, bqlabel.PRTestResults, queryPayload)
-	resultsPayload, err := executePRTestResultsQuery(ctx, queryPayload)
-	if err != nil {
-		log.WithError(err).Error("error querying junit table")
-		return nil, errors.Wrap(err, "failed to execute PR test results query for junit table")
-	}
-	log.Infof("found %d test results from /payload jobs (junit)", len(resultsPayload))
-
-	// Combine results from both tables
-	allResults := append(resultsPR, resultsPayload...)
-	log.Infof("found %d total test results for PR %s/%s#%d", len(allResults), org, repo, prNumber)
-	return allResults, nil
-}
-
-// buildPRTestResultsQuery constructs the BigQuery query to fetch test results for a PR
-// junitTable should be either "junit_pr" (for normal presubmits) or "junit" (for /payload jobs)
-// includeSuccesses: Optional list of test name substrings to also include successes for
-func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, startDate, endDate time.Time, junitTable string, includeSuccesses []string) *bigquery.Query {
-	// Query joins jobs and specified junit table, filtering by org/repo/pr_number
-	// Uses partitioning on prowjob_start and modified_time for efficiency
-	// Note: junit_pr contains normal presubmit jobs, junit contains /payload jobs
-	//
-	// The query de-dupes test results because junit tables model the XML directly,
-	// which means retried tests appear as multiple rows. We prefer:
-	// 1. Flakes (flake_count > 0) - test that failed then passed on retry
-	// 2. Successes (success_val > 0) - test that passed
-	// 3. Failures (else) - test that failed
-
-	// Build the WHERE clause for including successes
-	// By default, only include failures (adjusted_flake_count = 0 AND adjusted_success_val = 0)
-	// If includeSuccesses is specified, also include successes for matching test names
-	whereClause := `
-			AND (
-				(deduped.adjusted_flake_count = 0 AND deduped.adjusted_success_val = 0)`
-
-	if len(includeSuccesses) > 0 {
-		whereClause += `
-				OR (
-					deduped.adjusted_success_val > 0
-					AND (`
-		for i := range includeSuccesses {
-			if i > 0 {
-				whereClause += " OR "
-			}
-			whereClause += fmt.Sprintf("deduped.test_name LIKE @IncludeSuccess%d", i)
+	// By default only return failures (no flakes, no successes).
+	// include_successes adds successes for matching test names (flakes
+	// are excluded to match the previous BigQuery implementation).
+	if len(includeSuccesses) == 0 {
+		query = query.Where("pjrt.status = ?", int(sippyprocessingv1.TestStatusFailure))
+	} else {
+		conditions := dbc.DB.Where("pjrt.status = ?", int(sippyprocessingv1.TestStatusFailure))
+		for _, pattern := range includeSuccesses {
+			conditions = conditions.Or("pjrt.status = ? AND t.name LIKE ?", int(sippyprocessingv1.TestStatusSuccess), "%"+pattern+"%")
 		}
-		whereClause += `
-					)
-				)`
-	}
-	whereClause += `
-			)`
-
-	queryString := fmt.Sprintf(`
-		WITH deduped_testcases AS (
-			SELECT
-				junit.*,
-				ROW_NUMBER() OVER(PARTITION BY prowjob_build_id, file_path, test_name, testsuite ORDER BY
-					CASE
-						WHEN flake_count > 0 THEN 0
-						WHEN success_val > 0 THEN 1
-						ELSE 2
-					END) AS row_num,
-				CASE
-					WHEN flake_count > 0 THEN 0
-					ELSE success_val
-				END AS adjusted_success_val,
-				CASE
-					WHEN flake_count > 0 THEN 1
-					ELSE 0
-				END AS adjusted_flake_count
-			FROM
-				%s.%s AS junit
-			WHERE
-				junit.modified_time >= DATETIME(@StartDate)
-				AND junit.modified_time < DATETIME(@EndDate)
-				AND junit.skipped = false
-		)
-		SELECT
-			jobs.prowjob_build_id,
-			jobs.prowjob_job_name AS prowjob_name,
-			jobs.prowjob_url,
-			jobs.pr_sha,
-			jobs.prowjob_start,
-			deduped.test_name,
-			deduped.testsuite,
-			CASE
-				WHEN deduped.adjusted_flake_count > 0 THEN TRUE
-				ELSE FALSE
-			END AS flaked,
-			CASE
-				WHEN deduped.adjusted_flake_count > 0 THEN TRUE
-				WHEN deduped.adjusted_success_val > 0 THEN TRUE
-				ELSE FALSE
-			END AS success,
-			deduped.failure_content
-		FROM
-			%s.jobs AS jobs
-		INNER JOIN
-			deduped_testcases AS deduped
-		ON
-			jobs.prowjob_build_id = deduped.prowjob_build_id
-			AND deduped.row_num = 1
-		WHERE
-			jobs.org = @Org
-			AND jobs.repo = @Repo
-			AND jobs.pr_number = @PRNumber
-			AND jobs.prowjob_start >= DATETIME(@StartDate)
-			AND jobs.prowjob_start < DATETIME(@EndDate)%s
-		ORDER BY
-			jobs.prowjob_start DESC,
-			deduped.test_name ASC
-	`, bqc.Dataset, junitTable, bqc.Dataset, whereClause)
-
-	query := bqc.BQ.Query(queryString)
-	query.Parameters = []bigquery.QueryParameter{
-		{
-			Name:  "Org",
-			Value: org,
-		},
-		{
-			Name:  "Repo",
-			Value: repo,
-		},
-		{
-			Name:  "PRNumber",
-			Value: strconv.Itoa(prNumber),
-		},
-		{
-			Name:  "StartDate",
-			Value: startDate,
-		},
-		{
-			Name:  "EndDate",
-			Value: endDate,
-		},
+		query = query.Where(conditions)
 	}
 
-	// Add parameters for includeSuccesses LIKE clauses
-	for i, testName := range includeSuccesses {
-		query.Parameters = append(query.Parameters, bigquery.QueryParameter{
-			Name:  fmt.Sprintf("IncludeSuccess%d", i),
-			Value: "%" + testName + "%", // Wrap in % for SQL LIKE partial matching
+	query = query.Order("pjr.timestamp DESC, t.name ASC").Limit(limit)
+
+	type rawRow struct {
+		ProwJobRunID uint      `gorm:"column:prow_job_run_id"`
+		ProwJobName  string    `gorm:"column:prow_job_name"`
+		ProwJobURL   string    `gorm:"column:prow_job_url"`
+		PRSha        string    `gorm:"column:pr_sha"`
+		ProwJobStart time.Time `gorm:"column:prow_job_start"`
+		TestName     string    `gorm:"column:test_name"`
+		TestSuite    string    `gorm:"column:test_suite"`
+		Status       int       `gorm:"column:status"`
+		Output       string    `gorm:"column:output"`
+	}
+
+	var rows []rawRow
+	if err := query.Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("error querying PR test results: %w", err)
+	}
+
+	results := make([]PRTestResult, 0, len(rows))
+	for _, r := range rows {
+		results = append(results, PRTestResult{
+			ProwJobRunID: r.ProwJobRunID,
+			ProwJobName:  r.ProwJobName,
+			ProwJobURL:   r.ProwJobURL,
+			PRSha:        r.PRSha,
+			ProwJobStart: r.ProwJobStart,
+			TestName:     r.TestName,
+			TestSuite:    r.TestSuite,
+			Status:       testStatusString(r.Status),
+			Output:       r.Output,
 		})
 	}
 
-	return query
-}
-
-// executePRTestResultsQuery executes the BigQuery query and returns the results
-func executePRTestResultsQuery(ctx context.Context, query *bigquery.Query) ([]PRTestResult, error) {
-	results := []PRTestResult{}
-
-	it, err := query.Read(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "error reading from bigquery")
-	}
-
-	for {
-		var row []bigquery.Value
-		err := it.Next(&row)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "error iterating bigquery results")
-		}
-
-		result, err := deserializePRTestResult(row, it.Schema)
-		if err != nil {
-			log.WithError(err).Warn("error deserializing row, skipping")
-			continue
-		}
-
-		results = append(results, result)
-	}
-
+	log.Infof("found %d test results for PR %s/%s#%d", len(results), org, repo, prNumber)
 	return results, nil
 }
 
-// deserializePRTestResult converts a BigQuery row into a PRTestResult
-func deserializePRTestResult(row []bigquery.Value, schema bigquery.Schema) (PRTestResult, error) {
-	if len(row) != len(schema) {
-		return PRTestResult{}, fmt.Errorf("row length %d does not match schema length %d", len(row), len(schema))
-	}
-
-	result := PRTestResult{}
-
-	for i, field := range schema {
-		switch field.Name {
-		case "prowjob_build_id":
-			if row[i] != nil {
-				result.ProwJobBuildID = row[i].(string)
-			}
-		case "prowjob_name":
-			if row[i] != nil {
-				result.ProwJobName = row[i].(string)
-			}
-		case "prowjob_url":
-			if row[i] != nil {
-				result.ProwJobURL = row[i].(string)
-			}
-		case "pr_sha":
-			if row[i] != nil {
-				result.PRSha = row[i].(string)
-			}
-		case "prowjob_start":
-			if row[i] != nil {
-				// BigQuery returns civil.DateTime for DATETIME columns
-				civilDT := row[i].(civil.DateTime)
-				layout := "2006-01-02T15:04:05"
-				parsedTime, err := time.Parse(layout, civilDT.String())
-				if err != nil {
-					return PRTestResult{}, errors.Wrap(err, "failed to parse prowjob_start")
-				}
-				result.ProwJobStart = parsedTime
-			}
-		case "test_name":
-			if row[i] != nil {
-				result.TestName = row[i].(string)
-			}
-		case "testsuite":
-			if row[i] != nil {
-				result.TestSuite = row[i].(string)
-			}
-		case "flaked":
-			if row[i] != nil {
-				result.Flaked = row[i].(bool)
-			}
-		case "success":
-			if row[i] != nil {
-				result.Success = row[i].(bool)
-			}
-		case "failure_content":
-			if row[i] != nil {
-				result.FailureContent = row[i].(string)
-			}
-		}
-	}
-
-	return result, nil
-}
-
 // PrintPRTestResultsJSON is the HTTP handler for /api/pull_requests/test_results
-func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Client) {
-	// Parse and validate query parameters
+func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, dbc *db.DB) {
 	org := param.SafeRead(req, "org")
 	if org == "" {
-		// Default to openshift.
 		org = "openshift"
 	}
 
 	repo := param.SafeRead(req, "repo")
 	if repo == "" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
 			"code":    http.StatusBadRequest,
 			"message": "required parameter 'repo' is missing",
 		})
@@ -327,7 +153,7 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Cl
 
 	prNumberStr := param.SafeRead(req, "pr_number")
 	if prNumberStr == "" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
 			"code":    http.StatusBadRequest,
 			"message": "required parameter 'pr_number' is missing",
 		})
@@ -336,80 +162,73 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Cl
 
 	prNumber, err := strconv.Atoi(prNumberStr)
 	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
 			"code":    http.StatusBadRequest,
 			"message": fmt.Sprintf("invalid pr_number: %v", err),
 		})
 		return
 	}
 
-	startDateStr := param.SafeRead(req, "start_date")
-	if startDateStr == "" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "required parameter 'start_date' is missing (format: YYYY-MM-DD)",
-		})
-		return
-	}
+	now := time.Now().UTC()
+	startDate := now.AddDate(0, 0, -14)
+	endDate := now.AddDate(0, 0, 1)
 
-	startDate, err := time.Parse("2006-01-02", startDateStr)
-	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Sprintf("invalid start_date format (expected YYYY-MM-DD): %v", err),
-		})
-		return
+	startDateStr := param.SafeRead(req, "start_date")
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]any{
+				"code":    http.StatusBadRequest,
+				"message": fmt.Sprintf("invalid start_date format (expected YYYY-MM-DD): %v", err),
+			})
+			return
+		}
+		startDate = parsed
 	}
 
 	endDateStr := param.SafeRead(req, "end_date")
-	if endDateStr == "" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "required parameter 'end_date' is missing (format: YYYY-MM-DD)",
-		})
-		return
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			RespondWithJSON(http.StatusBadRequest, w, map[string]any{
+				"code":    http.StatusBadRequest,
+				"message": fmt.Sprintf("invalid end_date format (expected YYYY-MM-DD): %v", err),
+			})
+			return
+		}
+		// Make end_date inclusive
+		endDate = parsed.AddDate(0, 0, 1)
 	}
 
-	endDate, err := time.Parse("2006-01-02", endDateStr)
-	if err != nil {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Sprintf("invalid end_date format (expected YYYY-MM-DD): %v", err),
-		})
-		return
-	}
-
-	// Validate date range
 	if endDate.Before(startDate) {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
 			"code":    http.StatusBadRequest,
 			"message": "end_date must be after start_date",
 		})
 		return
 	}
 
-	// Add one day to end_date to make it inclusive
-	endDate = endDate.AddDate(0, 0, 1)
-
-	// Limit date range to 30 days to prevent expensive queries
-	maxDuration := 30 * 24 * time.Hour
-	duration := endDate.Sub(startDate)
-	if duration > maxDuration {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+	latestSHAOnly, err := param.ReadBool(req, "latest_sha_only", false)
+	if err != nil {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{
 			"code":    http.StatusBadRequest,
-			"message": fmt.Sprintf("date range too large: %d days (maximum is 30 days)", int(duration.Hours()/24)),
+			"message": fmt.Sprintf("invalid latest_sha_only: %v", err),
 		})
 		return
 	}
-
-	// Parse optional include_successes parameter (multi-valued)
 	includeSuccesses := req.URL.Query()["include_successes"]
 
-	// Execute query
-	results, err := GetPRTestResults(req.Context(), bqc, org, repo, prNumber, startDate, endDate, includeSuccesses)
+	limit := defaultPRTestResultsLimit
+	if limitStr := param.SafeRead(req, "limit"); limitStr != "" {
+		if parsed, err := strconv.Atoi(limitStr); err == nil {
+			limit = parsed
+		}
+	}
+
+	results, err := GetPRTestResults(dbc, org, repo, prNumber, latestSHAOnly, startDate, endDate, includeSuccesses, limit)
 	if err != nil {
 		log.WithError(err).Error("error fetching PR test results")
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]any{
 			"code":    http.StatusInternalServerError,
 			"message": fmt.Sprintf("error fetching test results: %v", err),
 		})

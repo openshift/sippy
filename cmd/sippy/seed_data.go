@@ -128,7 +128,7 @@ type testCount struct {
 	flake   int
 }
 
-var syntheticReleases = []string{"4.22", "4.21", "4.20", "4.19"}
+var syntheticReleases = []string{"4.22", "4.21", "4.20", "4.19", models.ReleasePresubmits}
 
 var syntheticJobs = []syntheticJobDef{
 	{
@@ -490,6 +490,11 @@ func seedSyntheticData(dbc *db.DB) error {
 		return err
 	}
 
+	if err := seedPresubmitData(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed presubmit data")
+	}
+	log.Info("Seeded presubmit/PR test data")
+
 	if err := createLabelsAndSymptoms(dbc); err != nil {
 		return errors.WithMessage(err, "failed to create labels and symptoms")
 	}
@@ -543,28 +548,39 @@ func seedReleaseDefinitions(dbc *db.DB) error {
 	}
 
 	for _, release := range syntheticReleases {
-		m := meta[release]
-		parts := strings.Split(release, ".")
-		major, minor := 0, 0
-		if len(parts) >= 2 {
-			_, _ = fmt.Sscanf(parts[0], "%d", &major)
-			_, _ = fmt.Sscanf(parts[1], "%d", &minor)
-		}
+		var def models.ReleaseDefinition
 
-		develStart := now.AddDate(0, 0, m.gaDays-180)
-		def := models.ReleaseDefinition{
-			Release:              release,
-			Major:                major,
-			Minor:                minor,
-			PreviousRelease:      m.previous,
-			DevelopmentStartDate: &develStart,
-			Product:              "OCP",
-			Status:               "Full Support",
-			Capabilities:         allCaps,
-		}
-		if m.gaDays != 0 {
-			ga := now.AddDate(0, 0, m.gaDays)
-			def.GADate = &ga
+		if release == models.ReleasePresubmits {
+			def = models.ReleaseDefinition{
+				Release:      release,
+				Product:      "OCP",
+				Status:       "Development",
+				Capabilities: pq.StringArray{models.CapPullRequests, models.CapSippyClassic},
+			}
+		} else {
+			m := meta[release]
+			parts := strings.Split(release, ".")
+			major, minor := 0, 0
+			if len(parts) >= 2 {
+				_, _ = fmt.Sscanf(parts[0], "%d", &major)
+				_, _ = fmt.Sscanf(parts[1], "%d", &minor)
+			}
+
+			develStart := now.AddDate(0, 0, m.gaDays-180)
+			def = models.ReleaseDefinition{
+				Release:              release,
+				Major:                major,
+				Minor:                minor,
+				PreviousRelease:      m.previous,
+				DevelopmentStartDate: &develStart,
+				Product:              "OCP",
+				Status:               "Full Support",
+				Capabilities:         allCaps,
+			}
+			if m.gaDays != 0 {
+				ga := now.AddDate(0, 0, m.gaDays)
+				def.GADate = &ga
+			}
 		}
 
 		if err := dbc.DB.Where("release = ?", release).FirstOrCreate(&def).Error; err != nil {
@@ -899,6 +915,234 @@ func syncRegressions(dbc *db.DB) error {
 		return fmt.Errorf("error resolving triages: %w", err)
 	}
 
+	return nil
+}
+
+func seedPresubmitData(dbc *db.DB) error {
+	now := time.Now().UTC().Truncate(time.Hour)
+
+	var suite models.Suite
+	if err := dbc.DB.Where("name = ?", "synthetic").First(&suite).Error; err != nil {
+		return fmt.Errorf("failed to find suite: %w", err)
+	}
+
+	// Look up existing test records to reuse
+	testNames := []string{
+		"install should succeed: overall",
+		"[sig-network] Services should serve endpoints on same port and different protocol",
+	}
+	testsByName := map[string]uint{}
+	for _, name := range testNames {
+		var t models.Test
+		if err := dbc.DB.Where("name = ?", name).First(&t).Error; err != nil {
+			return fmt.Errorf("failed to find test %q: %w", name, err)
+		}
+		testsByName[name] = t.ID
+	}
+
+	// Create presubmit ProwJobs
+	presubmitJobs := []models.ProwJob{
+		{
+			Kind:    models.ProwKind("presubmit"),
+			Name:    "openshift-origin-ci-5.0-e2e-aws-ovn-upgrade",
+			Release: models.ReleasePresubmits,
+			Variants: pq.StringArray{
+				"Architecture:amd64", "FeatureSet:default", "Installer:ipi",
+				"LayeredProduct:none", "Network:ovn", "Platform:aws",
+				"Suite:unknown", "Topology:ha", "Upgrade:minor",
+			},
+		},
+		{
+			Kind:    models.ProwKind("presubmit"),
+			Name:    "openshift-origin-ci-5.0-e2e-gcp-ovn-amd64",
+			Release: models.ReleasePresubmits,
+			Variants: pq.StringArray{
+				"Architecture:amd64", "FeatureSet:default", "Installer:ipi",
+				"LayeredProduct:none", "Network:ovn", "Platform:gcp",
+				"Suite:parallel", "Topology:ha", "Upgrade:none",
+			},
+		},
+	}
+
+	for i, pj := range presubmitJobs {
+		if err := dbc.DB.Create(&pj).Error; err != nil {
+			return fmt.Errorf("failed to create presubmit ProwJob %s: %w", pj.Name, err)
+		}
+		presubmitJobs[i] = pj
+	}
+
+	// Create ProwPullRequests
+	// PR 99001 has two SHAs to exercise the latest_sha_only filter: an older
+	// SHA linked to the earliest run, and a newer SHA linked to the rest.
+	prs := []models.ProwPullRequest{
+		{
+			Org:    "openshift",
+			Repo:   "origin",
+			Number: 99001,
+			Author: "test-author-1",
+			Title:  "Test PR 99001",
+			SHA:    "abc123def456",
+			Link:   "https://github.com/openshift/origin/pull/99001",
+		},
+		{
+			Org:    "openshift",
+			Repo:   "origin",
+			Number: 99002,
+			Author: "test-author-2",
+			Title:  "Test PR 99002",
+			SHA:    "789abc012def",
+			Link:   "https://github.com/openshift/origin/pull/99002",
+		},
+	}
+	oldSHAPR := models.ProwPullRequest{
+		Org:    "openshift",
+		Repo:   "origin",
+		Number: 99001,
+		Author: "test-author-1",
+		Title:  "Test PR 99001",
+		SHA:    "old111old222",
+		Link:   "https://github.com/openshift/origin/pull/99001?old=1",
+	}
+
+	for i, pr := range prs {
+		if err := dbc.DB.Create(&pr).Error; err != nil {
+			return fmt.Errorf("failed to create ProwPullRequest %d: %w", pr.Number, err)
+		}
+		prs[i] = pr
+	}
+	if err := dbc.DB.Create(&oldSHAPR).Error; err != nil {
+		return fmt.Errorf("failed to create old-SHA ProwPullRequest: %w", err)
+	}
+
+	// Create runs: 3 runs per job, PR 99001 gets job[0] runs, PR 99002 gets job[1] runs
+	type runInfo struct {
+		run   models.ProwJobRun
+		prIdx int
+	}
+	var runs []runInfo
+
+	for jobIdx, pj := range presubmitJobs {
+		for i := 0; i < 3; i++ {
+			timestamp := now.Add(-time.Duration(3-i) * 20 * time.Hour)
+			run := models.ProwJobRun{
+				ProwJobID:      pj.ID,
+				ProwJobRelease: models.ReleasePresubmits,
+				Cluster:        "build01",
+				Timestamp:      timestamp,
+				Duration:       2 * time.Hour,
+				OverallResult:  v1.JobTestFailure,
+				Failed:         true,
+			}
+			if err := dbc.DB.Create(&run).Error; err != nil {
+				return fmt.Errorf("failed to create ProwJobRun: %w", err)
+			}
+			runs = append(runs, runInfo{run: run, prIdx: jobIdx})
+		}
+	}
+
+	// Link runs to PRs via join table.
+	// The first run of job[0] (oldest for PR 99001) links to oldSHAPR so that
+	// the latest_sha_only filter has something to exclude.
+	for runIdx, ri := range runs {
+		prID := prs[ri.prIdx].ID
+		if ri.prIdx == 0 && runIdx == 0 {
+			prID = oldSHAPR.ID
+		}
+		jrpr := models.ProwJobRunProwPullRequest{
+			ProwJobRunID:        ri.run.ID,
+			ProwPullRequestID:   prID,
+			ProwJobRunRelease:   models.ReleasePresubmits,
+			ProwJobRunTimestamp: ri.run.Timestamp,
+		}
+		if err := dbc.DB.Create(&jrpr).Error; err != nil {
+			return fmt.Errorf("failed to create ProwJobRunProwPullRequest: %w", err)
+		}
+	}
+
+	// Create test results with mixed statuses
+	installTestID := testsByName["install should succeed: overall"]
+	networkTestID := testsByName["[sig-network] Services should serve endpoints on same port and different protocol"]
+
+	for _, ri := range runs {
+		// Failure result for install test
+		failResult := models.ProwJobRunTest{
+			ProwJobRunID:        ri.run.ID,
+			ProwJobID:           ri.run.ProwJobID,
+			ProwJobRunRelease:   models.ReleasePresubmits,
+			ProwJobRunTimestamp: ri.run.Timestamp,
+			TestID:              installTestID,
+			SuiteID:             &suite.ID,
+			Status:              int(v1.TestStatusFailure),
+			Duration:            5.0,
+			CreatedAt:           ri.run.Timestamp,
+		}
+		if err := dbc.DB.Create(&failResult).Error; err != nil {
+			return fmt.Errorf("failed to create failure ProwJobRunTest: %w", err)
+		}
+
+		// Add output for the first failure only
+		if ri.prIdx == 0 && ri.run.Timestamp.Equal(runs[0].run.Timestamp) {
+			output := models.ProwJobRunTestOutput{
+				ProwJobRunTestID:        failResult.ID,
+				Output:                  "Expected install to succeed but got timeout after 30m",
+				ProwJobRunTestTimestamp: ri.run.Timestamp,
+				ProwJobRunTestRelease:   models.ReleasePresubmits,
+			}
+			if err := dbc.DB.Create(&output).Error; err != nil {
+				return fmt.Errorf("failed to create ProwJobRunTestOutput: %w", err)
+			}
+		}
+
+		// Success result for network test
+		successResult := models.ProwJobRunTest{
+			ProwJobRunID:        ri.run.ID,
+			ProwJobID:           ri.run.ProwJobID,
+			ProwJobRunRelease:   models.ReleasePresubmits,
+			ProwJobRunTimestamp: ri.run.Timestamp,
+			TestID:              networkTestID,
+			SuiteID:             &suite.ID,
+			Status:              int(v1.TestStatusSuccess),
+			Duration:            3.0,
+			CreatedAt:           ri.run.Timestamp,
+		}
+		if err := dbc.DB.Create(&successResult).Error; err != nil {
+			return fmt.Errorf("failed to create success ProwJobRunTest: %w", err)
+		}
+
+		// Success result for install test (used by include_successes=install e2e test)
+		installSuccessResult := models.ProwJobRunTest{
+			ProwJobRunID:        ri.run.ID,
+			ProwJobID:           ri.run.ProwJobID,
+			ProwJobRunRelease:   models.ReleasePresubmits,
+			ProwJobRunTimestamp: ri.run.Timestamp,
+			TestID:              installTestID,
+			SuiteID:             &suite.ID,
+			Status:              int(v1.TestStatusSuccess),
+			Duration:            2.0,
+			CreatedAt:           ri.run.Timestamp,
+		}
+		if err := dbc.DB.Create(&installSuccessResult).Error; err != nil {
+			return fmt.Errorf("failed to create install success ProwJobRunTest: %w", err)
+		}
+
+		// Flake result for install test
+		flakeResult := models.ProwJobRunTest{
+			ProwJobRunID:        ri.run.ID,
+			ProwJobID:           ri.run.ProwJobID,
+			ProwJobRunRelease:   models.ReleasePresubmits,
+			ProwJobRunTimestamp: ri.run.Timestamp,
+			TestID:              installTestID,
+			SuiteID:             &suite.ID,
+			Status:              int(v1.TestStatusFlake),
+			Duration:            4.0,
+			CreatedAt:           ri.run.Timestamp,
+		}
+		if err := dbc.DB.Create(&flakeResult).Error; err != nil {
+			return fmt.Errorf("failed to create flake ProwJobRunTest: %w", err)
+		}
+	}
+
+	log.Infof("Created presubmit seed data: %d jobs, %d PRs, %d runs", len(presubmitJobs), len(prs), len(runs))
 	return nil
 }
 

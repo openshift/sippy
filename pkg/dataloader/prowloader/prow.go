@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -598,8 +599,18 @@ ORDER BY
 }
 
 // matchRelease returns the release a prow job belongs to, or "" if it
-// doesn't match any configured release.
-func (pl *ProwLoader) matchRelease(jobName string) string {
+// doesn't match any configured release. For /payload sub-jobs (identified
+// by releaseJobName annotation + PR refs), it returns the Presubmits
+// pseudo-release.
+func (pl *ProwLoader) matchRelease(pj *prow.ProwJob) string {
+	if _, ok := pj.Annotations["releaseJobName"]; ok && pj.Spec.Refs != nil {
+		if pl.releaseSet.Has(models.ReleasePresubmits) {
+			return models.ReleasePresubmits
+		}
+		return ""
+	}
+
+	jobName := pj.Spec.Job
 	if release, ok := pl.syntheticReleaseJobOverrides.Lookup(jobName); ok {
 		if pl.releaseSet.Has(release) {
 			return release
@@ -624,6 +635,12 @@ func (pl *ProwLoader) matchRelease(jobName string) string {
 	return ""
 }
 
+// isPayloadPresubmit returns true if the prow job is a /payload sub-job.
+func isPayloadPresubmit(pj *prow.ProwJob) bool {
+	_, hasAnnotation := pj.Annotations["releaseJobName"]
+	return hasAnnotation && pj.Spec.Refs != nil
+}
+
 // preprocessProwJobs matches each BigQuery prow job to a release, filters out
 // already-processed runs and non-terminal states, bulk-upserts ProwJob
 // definitions, and returns only entries that need GCS fetching.
@@ -646,7 +663,7 @@ func (pl *ProwLoader) preprocessProwJobs(ctx context.Context, prowJobs []prow.Pr
 			continue
 		}
 
-		release := pl.matchRelease(pj.Spec.Job)
+		release := pl.matchRelease(pj)
 		if release == "" {
 			continue
 		}
@@ -664,12 +681,36 @@ func (pl *ProwLoader) preprocessProwJobs(ctx context.Context, prowJobs []prow.Pr
 		}
 		seenJobs.Insert(pj.Spec.Job)
 
+		variantJobName := pj.Spec.Job
+		isPayload := isPayloadPresubmit(pj)
+		if isPayload {
+			variantJobName = pj.Annotations["releaseJobName"]
+		}
+
+		variants := pl.variantManager.IdentifyVariants(variantJobName)
+		if isPayload {
+			for vi, v := range variants {
+				parts := strings.SplitN(v, ":", 2)
+				if len(parts) == 2 {
+					if _, isRel := pl.config.Releases[parts[1]]; isRel {
+						variants[vi] = parts[0] + ":" + models.ReleasePresubmits
+						break
+					}
+				}
+			}
+		}
+
+		testGridURL := ""
+		if !isPayload {
+			testGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
+		}
+
 		jobDefs = append(jobDefs, models.ProwJob{
 			Name:        pj.Spec.Job,
 			Kind:        models.ProwKind(pj.Spec.Type),
 			Release:     release,
-			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job),
-			TestGridURL: pl.generateTestGridURL(release, pj.Spec.Job).String(),
+			Variants:    variants,
+			TestGridURL: testGridURL,
 		})
 	}
 

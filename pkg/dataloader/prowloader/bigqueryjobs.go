@@ -1,6 +1,7 @@
 package prowloader
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -129,11 +130,56 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			filteredAnnotations[key] = value
 		}
 
+		jobName := bqjr.JobName
+		jobType := bqjr.Type
+
+		// Detect /payload sub-jobs: they have a releaseJobName annotation and PR data,
+		// and are run as periodic jobs. Transform them into presubmit-style records so
+		// they appear on presubmit UI pages. Skip aggregator jobs (they just orchestrate
+		// sub-jobs and don't have test results themselves).
+		if releaseJobName, ok := filteredAnnotations["releaseJobName"]; ok &&
+			refs != nil &&
+			!strings.HasPrefix(bqjr.JobName, "aggregator-") {
+
+			// Normalize releaseJobName: the BQ query generator splits on comma
+			// to strip suffixes, so we must do the same here.
+			releaseJobName = strings.SplitN(releaseJobName, ",", 2)[0]
+			filteredAnnotations["releaseJobName"] = releaseJobName
+
+			prNumber := bqjr.PRNumber.StringVal
+			org := bqjr.PROrg.StringVal
+			repo := bqjr.PRRepo.StringVal
+
+			// Strip the PR number from the sub-job name to create a stable name
+			// shared across all PRs running the same canonical job.
+			// e.g. openshift-origin-31301-ci-5.0-... -> openshift-origin-ci-5.0-...
+			prPrefix := fmt.Sprintf("%s-%s-%s-", org, repo, prNumber)
+			stablePrefix := fmt.Sprintf("%s-%s-", org, repo)
+			stableName := strings.Replace(bqjr.JobName, prPrefix, stablePrefix, 1)
+
+			if stableName == bqjr.JobName {
+				// PR number not found in job name pattern, use releaseJobName-based fallback
+				stableName = "payload-pr-" + releaseJobName
+				log.WithField("job", bqjr.JobName).
+					WithField("releaseJobName", releaseJobName).
+					Warningf("could not strip PR number from /payload sub-job name, using fallback")
+			}
+
+			jobName = stableName
+			jobType = "presubmit"
+
+			log.WithField("originalName", bqjr.JobName).
+				WithField("stableName", stableName).
+				WithField("releaseJobName", releaseJobName).
+				WithField("prNumber", prNumber).
+				Debugf("transformed /payload sub-job for presubmit ingestion")
+		}
+
 		prowJobs[bqjr.BuildID] = prow.ProwJob{
 			Spec: prow.ProwJobSpec{
-				Type:    bqjr.Type,
+				Type:    jobType,
 				Cluster: bqjr.Cluster,
-				Job:     bqjr.JobName,
+				Job:     jobName,
 				Refs:    refs,
 				DecorationConfig: prow.DecorationConfig{
 					GCSConfiguration: prow.GCSConfiguration{

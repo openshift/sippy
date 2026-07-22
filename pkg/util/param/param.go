@@ -76,6 +76,8 @@ var paramRegexp = map[string]*regexp.Regexp{
 	// recent test failures params
 	"previousPeriod": wordRegexp,
 	"includeOutputs": boolRegexp,
+	// pull request test results params
+	"limit": uintRegexp,
 }
 
 // SafeRead returns the value of a query parameter only if it matches the given regexp.

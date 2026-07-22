@@ -24,6 +24,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/releaseoverride"
 	"github.com/openshift/sippy/pkg/util"
 )
@@ -696,9 +697,9 @@ func setNetworkStack(_ logrus.FieldLogger, variants map[string]string, jobName s
 }
 
 func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[string]string, jobName string) {
-	// Presubmits on main branch are set as "Presubmits"
+	// Presubmits on main branch use the Presubmits pseudo-release
 	if presubmitRegex.MatchString(jobName) {
-		variants[VariantRelease] = "Presubmits"
+		variants[VariantRelease] = models.ReleasePresubmits
 		return
 	}
 
@@ -955,7 +956,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		variants[VariantJobTier] = "blocking"
 	case util.StrSliceContainsEither(v.config.Releases[release].InformingJobs, jobName, mainJobName):
 		variants[VariantJobTier] = "informing"
-	case release == "Presubmits", v.config.Releases[release].Jobs[jobName], v.config.Releases[release].Jobs[mainJobName]:
+	case release == models.ReleasePresubmits, v.config.Releases[release].Jobs[jobName], v.config.Releases[release].Jobs[mainJobName]:
 		variants[VariantJobTier] = "standard"
 	default:
 		variants[VariantJobTier] = "candidate"

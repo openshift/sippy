@@ -1398,11 +1398,7 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonPullRequestTestResults(w http.ResponseWriter, req *http.Request) {
-	if s.bigQueryClient == nil {
-		failureResponse(w, http.StatusBadRequest, "pull request test results API is only available when google-service-account-credential-file is configured")
-		return
-	}
-	api.PrintPRTestResultsJSON(w, req, s.bigQueryClient)
+	api.PrintPRTestResultsJSON(w, req, s.db)
 }
 
 func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
@@ -2551,13 +2547,11 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonPullRequestsReportFromDB,
 		},
 		{
-			EndpointPath:      "/api/pull_requests/test_results",
-			Description:       "Fetches test failures for a specific pull request from BigQuery (presubmits and /payload jobs). Optional: include_successes param to also return successes for matching test names",
-			Capabilities:      []string{ComponentReadinessCapability},
-			HandlerFunc:       s.jsonPullRequestTestResults,
-			CacheTime:         1 * time.Hour,
-			RateLimitRequests: 20,
-			RateLimitPeriod:   1 * time.Hour,
+			EndpointPath: "/api/pull_requests/test_results",
+			Description:  "Fetches test results for a specific pull request from PostgreSQL (presubmit and /payload jobs)",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonPullRequestTestResults,
+			CacheTime:    1 * time.Minute,
 		},
 		{
 			EndpointPath: "/api/repositories",
