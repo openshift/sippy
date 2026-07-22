@@ -130,7 +130,7 @@ results AS (
         group by prow_jobs.name, prow_jobs.variants
 ),
 last_pass AS (
-	SELECT prow_job_id, max(timestamp) as last_pass from prow_job_runs where overall_result = 'S' group by prow_job_id
+	SELECT prow_job_id, max(timestamp) as last_pass from prow_job_runs where overall_result = 'S' AND prow_job_release = $1 group by prow_job_id
 )
 SELECT pj_name,
        pj_variants,
