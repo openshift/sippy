@@ -166,7 +166,9 @@ function PayloadStreamTestFailures(props) {
 
     Promise.all([
       fetch(
-        `${import.meta.env.VITE_API_URL}/api/releases/test_failures?release=${release}&arch=${arch}&stream=${stream}` +
+        `${
+          import.meta.env.VITE_API_URL
+        }/api/releases/test_failures?release=${release}&arch=${arch}&stream=${stream}` +
           queryString
       ),
     ])

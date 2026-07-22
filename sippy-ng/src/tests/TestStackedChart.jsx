@@ -25,7 +25,9 @@ export function TestStackedChart(props) {
     }
 
     fetch(
-      `${import.meta.env.VITE_API_URL}/api/tests/analysis/overall?${queryParams}`
+      `${
+        import.meta.env.VITE_API_URL
+      }/api/tests/analysis/overall?${queryParams}`
     )
       .then((analysis) => {
         if (analysis.status !== 200) {

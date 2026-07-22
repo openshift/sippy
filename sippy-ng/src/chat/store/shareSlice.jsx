@@ -33,7 +33,9 @@ export const createShareSlice = (set, get) => ({
     set({ loadingShared: true })
 
     fetch(
-      `${import.meta.env.VITE_API_URL}/api/chat/conversations/${conversationId}`,
+      `${
+        import.meta.env.VITE_API_URL
+      }/api/chat/conversations/${conversationId}`,
       { signal: abortController.signal }
     )
       .then((response) => {

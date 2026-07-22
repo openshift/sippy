@@ -90,7 +90,9 @@ export function TestAnalysis(props) {
 
     Promise.all([
       fetch(
-        `${import.meta.env.VITE_API_URL}/api/tests?release=${props.release}&filter=${filter}${periodParam}`
+        `${import.meta.env.VITE_API_URL}/api/tests?release=${
+          props.release
+        }&filter=${filter}${periodParam}`
       ),
     ])
       .then(([test]) => {

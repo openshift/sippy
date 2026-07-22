@@ -145,8 +145,9 @@ function PayloadTestFailures(props) {
 
     Promise.all([
       fetch(
-        `${import.meta.env.VITE_API_URL}/api/payloads/test_failures?payload=${payload}` +
-          queryString
+        `${
+          import.meta.env.VITE_API_URL
+        }/api/payloads/test_failures?payload=${payload}` + queryString
       ),
     ])
       .then(([analysis]) => {

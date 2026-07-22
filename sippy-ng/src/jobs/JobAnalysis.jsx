@@ -91,9 +91,7 @@ export function JobAnalysis(props) {
     }
 
     Promise.all([
-      fetch(
-        `${import.meta.env.VITE_API_URL}/api/jobs/analysis?${queryParams}`
-      ),
+      fetch(`${import.meta.env.VITE_API_URL}/api/jobs/analysis?${queryParams}`),
     ])
       .then(([analysis]) => {
         if (analysis.status !== 200) {

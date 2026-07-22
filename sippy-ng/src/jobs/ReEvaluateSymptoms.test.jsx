@@ -5,13 +5,13 @@ import ReEvaluateButton from './ReEvaluateSymptoms'
 import userEvent from '@testing-library/user-event'
 
 beforeEach(() => {
-  jest.restoreAllMocks()
+  vi.restoreAllMocks()
   import.meta.env.VITE_API_URL = ''
 })
 
 function mockFetchResponses(...responses) {
   const iter = responses[Symbol.iterator]()
-  global.fetch = jest.fn(() => {
+  global.fetch = vi.fn(() => {
     const next = iter.next()
     if (next.done) throw new Error('unexpected extra fetch call')
     return Promise.resolve(next.value)
@@ -70,7 +70,7 @@ describe('ReEvaluateButton', () => {
     const deferredSecond = new Promise((r) => {
       resolveSecond = r
     })
-    global.fetch = jest
+    global.fetch = vi
       .fn()
       .mockResolvedValueOnce(successResponse('1'))
       .mockReturnValueOnce(deferredSecond.then(() => successResponse('2')))

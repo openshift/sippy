@@ -15,7 +15,9 @@ export default function TestPassRateCharts(props) {
 
     Promise.all([
       fetch(
-        `${import.meta.env.VITE_API_URL}/api/tests/analysis/${props.grouping}?release=${props.release}&test=${props.test}&filter=${filter}`
+        `${import.meta.env.VITE_API_URL}/api/tests/analysis/${
+          props.grouping
+        }?release=${props.release}&test=${props.test}&filter=${filter}`
       ),
     ])
       .then(([apiResponse]) => {

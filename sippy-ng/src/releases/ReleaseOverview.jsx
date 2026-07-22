@@ -86,9 +86,7 @@ export default function ReleaseOverview(props) {
   const releases = React.useContext(ReleasesContext)
 
   const fetchData = () => {
-    fetch(
-      import.meta.env.VITE_API_URL + '/api/health?release=' + props.release
-    )
+    fetch(import.meta.env.VITE_API_URL + '/api/health?release=' + props.release)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)
