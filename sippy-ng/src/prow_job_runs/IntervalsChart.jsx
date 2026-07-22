@@ -725,10 +725,15 @@ function filterIntervals(
   start,
   end
 ) {
-  let re = null
+  let matchesFilter = null
   if (filterText) {
-    // escapeRegex(filterText) causes loss of functionality like | in this case
-    re = new RegExp(filterText)
+    try {
+      const re = new RegExp(filterText)
+      matchesFilter = (text) => re.test(text)
+    } catch {
+      const lower = filterText.toLowerCase()
+      matchesFilter = (text) => text.toLowerCase().includes(lower)
+    }
   }
 
   let startFilter = new Date(start)
@@ -755,11 +760,11 @@ function filterIntervals(
     if (eventInterval.source === 'Disruption' && !eventInterval.display) {
       return shouldInclude
     }
-    if (re) {
+    if (matchesFilter) {
       if (
         !(
-          re.test(eventInterval.displayMessage) ||
-          re.test(eventInterval.displayLocator)
+          matchesFilter(eventInterval.displayMessage) ||
+          matchesFilter(eventInterval.displayLocator)
         )
       ) {
         return shouldInclude
