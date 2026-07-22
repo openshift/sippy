@@ -13,3 +13,4 @@
 000004_drop_variants_gin_index
 000005_drop_daily_summary_variant_combination
 000006_partition_cumulative_tables
+000007_drop_test_daily_summaries
