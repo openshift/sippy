@@ -360,7 +360,7 @@ export function JobAnalysis(props) {
   function withoutJobRunFilters(filterModel) {
     let jobRunFilters = ['cluster', 'timestamp']
 
-    if (!filterModel || filterModel.items === []) {
+    if (!filterModel || filterModel.items.length === 0) {
       return filterModel
     }
 

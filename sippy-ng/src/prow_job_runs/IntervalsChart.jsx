@@ -736,7 +736,7 @@ function filterIntervals(
 
   const sourceCountsTmp = {}
 
-  let intervals = _.filter(eventIntervals, function (eventInterval) {
+  let intervals = lodash.filter(eventIntervals, function (eventInterval) {
     let shouldInclude = false
     if (new Date(eventInterval.to) < startFilter) {
       // ended before the filtered interval
@@ -756,12 +756,10 @@ function filterIntervals(
       return shouldInclude
     }
     if (re) {
-      if (
-        !(
-          re.test(eventInterval.displayMessage) ||
-          re.test(eventInterval.displayLocator)
-        )
-      ) {
+      if (!(
+        re.test(eventInterval.displayMessage) ||
+        re.test(eventInterval.displayLocator)
+      )) {
         return shouldInclude
       }
     }

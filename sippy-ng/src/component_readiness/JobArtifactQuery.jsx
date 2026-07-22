@@ -1139,8 +1139,8 @@ export default function JobArtifactQuery(props) {
         matcherType === 'string'
           ? contentMatch.string.match
           : matcherType === 'regex'
-          ? contentMatch.regex.match
-          : ''
+            ? contentMatch.regex.match
+            : ''
 
       const allLabelIds = [...selectedLabelIds]
 
@@ -1184,8 +1184,8 @@ export default function JobArtifactQuery(props) {
             matcherType === 'string'
               ? contentMatch.string.match
               : matcherType === 'regex'
-              ? contentMatch.regex.match
-              : '',
+                ? contentMatch.regex.match
+                : '',
           label_ids: selectedLabelIds,
           filter_releases:
             selectedReleases.length > 0 ? selectedReleases : null,
@@ -1241,8 +1241,8 @@ export default function JobArtifactQuery(props) {
             matcherType === 'string'
               ? contentMatch.string.match
               : matcherType === 'regex'
-              ? contentMatch.regex.match
-              : '',
+                ? contentMatch.regex.match
+                : '',
           label_ids: selectedLabelIds,
           filter_releases:
             selectedReleases.length > 0 ? selectedReleases : null,

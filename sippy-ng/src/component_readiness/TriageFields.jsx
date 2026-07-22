@@ -110,7 +110,7 @@ export default function TriageFields({
   }
 
   const handleTriageEntrySubmit = () => {
-    const managingIds = triageEntryData.hasOwnProperty('ids')
+    const managingIds = Object.hasOwn(triageEntryData, 'ids')
     const validationErrors = []
     if (triageEntryData.type === 'type') {
       validationErrors.push('invalid type, please make a selection')

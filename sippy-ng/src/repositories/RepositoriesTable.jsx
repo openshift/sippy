@@ -292,7 +292,6 @@ function RepositoriesTable(props) {
   }
 
   return (
-    /* eslint-disable react/prop-types */
     <Fragment>
       <DataGrid
         className={gridClasses.root}

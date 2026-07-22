@@ -417,7 +417,6 @@ export default function PullRequestsTable(props) {
   }
 
   return (
-    /* eslint-disable react/prop-types */
     <Fragment>
       <DataGrid
         className={gridClasses.root}
