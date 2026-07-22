@@ -336,12 +336,12 @@ def _pids_sippy_serve() -> list[int]:
 
 def _pids_sippy_ng_dev() -> list[int]:
     def _match(cmd: str) -> bool:
-        return "react-scripts" in cmd or "npm start" in cmd
+        return "vite" in cmd or "npm start" in cmd
 
     return _find_pids(
         (REPO_ROOT / "sippy-ng").resolve(),
         _match,
-        ["react-scripts/scripts/start.js"],
+        ["vite"],
     )
 
 
@@ -512,9 +512,10 @@ async def sippy_ng_start(
 ) -> str:
     """Start the React dev server (``npm start`` in ``sippy-ng``) in the background.
 
-    CRA defaults to port 3000. ``log_file`` is resolved relative to the repo root;
+    Vite dev server defaults to port 3000 (configured in vite.config.js).
+    ``log_file`` is resolved relative to the repo root;
     absolute paths outside the repo are rejected. Skips starting if a matching
-    ``npm start`` / react-scripts process is already running, unless ``restart`` is True.
+    ``npm start`` / vite process is already running, unless ``restart`` is True.
 
     Always verifies HTTP readiness by polling the listen address before reporting ready,
     even when a process is already running.

@@ -1,7 +1,7 @@
 # Sippy React Frontend
 
-Sippy's frontend is written in React and [Material-UI](https://v4.mui.com/). This project was
-bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Sippy's frontend is written in React and [Material-UI](https://v4.mui.com/). The
+dev server and production build are powered by [Vite](https://vite.dev/).
 
 In development, you can start Sippy as usual, and then run `npm start`
 in the sippy-ng directory.  You can also just run `make build`, and use
@@ -9,8 +9,8 @@ the UI as embedded in the Sippy binary. This is how it's run in
 production.
 
 When developing on the UI, it's better to run the API and UI separately
-for quicker feedback (Sippy will listen on `:8080`, and when run with
-`npm start`, the UI defaults to `:3000`)
+for quicker feedback (Sippy will listen on `:8080`, and the Vite dev
+server defaults to `:3000`)
 
 You can browse to your local UI at http://localhost:3000/sippy-ng.
 
@@ -18,25 +18,25 @@ If you are just working on the UI, you can have the UI connect to the production
 To do this, change the [sippy-ng/.env.development](.env.development) file to contain:
 
 ```
-REACT_APP_API_URL="https://sippy.dptools.openshift.org"
+VITE_API_URL="https://sippy.dptools.openshift.org"
 ```
 
 This also works as a runtime setting:
 
 ```
-sippy/sippy-ng: $ REACT_APP_API_URL="https://sippy.dptools.openshift.org" npm start
+sippy/sippy-ng: $ VITE_API_URL="https://sippy.dptools.openshift.org" npm start
 ```
 
-If you are running tests and want to use the production Sippy API server, modify this line in [`setupTests.js`](src/setupTests.js):
+If you are running tests and want to use the production Sippy API server, modify this line in [`setupTests.jsx`](src/setupTests.jsx):
 
 ```
-process.env.REACT_APP_API_URL = 'http://localhost:8080'
+process.env.VITE_API_URL = 'http://localhost:8080'
 ```
 
 to be:
 
 ```
-process.env.REACT_APP_API_URL = 'https://sippy.dptools.openshift.org'
+process.env.VITE_API_URL = 'https://sippy.dptools.openshift.org'
 ```
 ## Formatting requirements
 
@@ -85,9 +85,7 @@ npm audit --production
 This command is also run by `lint`, to make sure we don't ignore CVE's.
 
 All audit commands should be given the flags `--production` or
-`--omit=dev`. We only audit production, as that's what we deploy. See
-[this GitHub issue](https://github.com/facebook/create-react-app/issues/11174) for a
-discussion about npm vulnerabilities and why we omit development deps.
+`--omit=dev`. We only audit production, as that's what we deploy.
 
 In the ideal case, the only thing you'll need to run is
 
@@ -226,13 +224,13 @@ In the project directory, you can run:
 
 ### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Starts the Vite dev server on [http://localhost:3000](http://localhost:3000).
+The page will reload if you make edits via hot module replacement (HMR).
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### `npm run build`
+
+Builds the app for production into the `build/` folder.
 
 ### `npm test`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Runs the Jest test suite.

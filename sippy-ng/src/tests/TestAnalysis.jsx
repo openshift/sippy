@@ -1,0 +1,537 @@
+import './TestAnalysis.css'
+import './TestTable.css'
+import {
+  Box,
+  Button,
+  Card,
+  Chip,
+  Container,
+  Grid,
+  IconButton,
+  Divider as MuiDivider,
+  Tooltip,
+  Typography,
+} from '@mui/material'
+import {
+  BugReport,
+  ContentCopy,
+  ErrorOutline,
+  FormatListBulleted,
+  OpenInNew,
+  SyncProblem,
+} from '@mui/icons-material'
+import {
+  filterFor,
+  not,
+  pathForJobRunsWithTest,
+  pathForJobRunsWithTestFailure,
+  pathForJobRunsWithTestFlake,
+  safeEncodeURIComponent,
+  SafeStringParam,
+  searchCI,
+  useStableJSONQueryParam,
+  withSort,
+} from '../helpers'
+import { Link } from 'react-router-dom'
+import { StringParam, useQueryParam } from 'use-query-params'
+import { TEST_THRESHOLDS } from '../constants'
+import { TestDurationChart } from './TestDurationChart'
+import { TestOutputs } from './TestOutputs'
+import { TestStackedChart } from './TestStackedChart'
+import { usePageContextForChat } from '../chat/store/useChatStore'
+import Alert from '@mui/material/Alert'
+import BugButton from '../bugs/BugButton'
+import BugTable from '../bugs/BugTable'
+import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
+import InfoIcon from '@mui/icons-material/Info'
+import PassRateIcon from '../components/PassRateIcon'
+import PropTypes from 'prop-types'
+import React, { Fragment, useEffect } from 'react'
+import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
+import SummaryCard from '../components/SummaryCard'
+import TestPassRateCharts from './TestPassRateCharts'
+import TestRegressionsTable from './TestRegressionsTable'
+import TestTable from './TestTable'
+
+export function TestAnalysis(props) {
+  const [isLoaded, setLoaded] = React.useState(false)
+  const [test, setTest] = React.useState({})
+  const [fetchError, setFetchError] = React.useState('')
+  const [testName = props.test] = useQueryParam('test', SafeStringParam)
+  const [period = 'default'] = useQueryParam('period', StringParam)
+  const { setPageContextForChat, unsetPageContextForChat } =
+    usePageContextForChat()
+
+  const [filterModel, setFilterModel] = useStableJSONQueryParam('filters', {
+    items: [
+      filterFor('name', 'equals', testName),
+      not(filterFor('variants', 'has entry', 'aggregated')),
+      not(filterFor('variants', 'has entry', 'never-stable')),
+    ],
+  })
+
+  const setFilterModelSafe = (m) => {
+    setFilterModel(m)
+    fetchData()
+  }
+
+  const fetchData = () => {
+    document.title = `Sippy > ${props.release} > Tests > ${testName}`
+    if (!testName || testName === '') {
+      setFetchError('Test name is required.')
+      return
+    }
+
+    const filter = safeEncodeURIComponent(JSON.stringify(filterModel))
+    const periodParam =
+      period && period !== 'default'
+        ? `&period=${safeEncodeURIComponent(period)}`
+        : ''
+
+    Promise.all([
+      fetch(
+        `${import.meta.env.VITE_API_URL}/api/tests?release=${props.release}&filter=${filter}${periodParam}`
+      ),
+    ])
+      .then(([test]) => {
+        if (test.status !== 200) {
+          throw new Error('server returned ' + test.status)
+        }
+
+        return Promise.all([test.json()])
+      })
+      .then(([test]) => {
+        if (test.length === 0) {
+          throw new Error('test not found')
+        }
+        setTest(test[0])
+        setLoaded(true)
+      })
+      .catch((error) => {
+        setFetchError(
+          'Could not retrieve test analysis ' + props.release + ', ' + error
+        )
+      })
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [period])
+
+  // Update page context for chat
+  useEffect(() => {
+    if (!isLoaded || !test || !testName) return
+
+    setPageContextForChat({
+      page: 'test-analysis',
+      url: window.location.href,
+      instructions: `The user is viewing detailed analysis for a specific test.
+        You can use your database query tools to answer additional questions about this test.
+        When querying the database, use the test name and apply the same filters shown in the context.
+        The test statistics shown are for the current ${
+          period === 'twoDay' ? '2-day' : '7-day'
+        } period compared to the previous ${
+        period === 'twoDay' ? '2-day' : '7-day'
+      } period.`,
+      suggestions: [
+        'What are the most common failure modes for this test?',
+        {
+          prompt: 'test-analysis',
+          label: 'Detailed Test Analysis',
+          args: {
+            release: props.release,
+            test_name: testName,
+          },
+        },
+      ],
+      data: {
+        release: props.release,
+        test_name: testName,
+        filters: filterModel,
+        statistics: {
+          current_pass_percentage: test.current_pass_percentage,
+          current_runs: test.current_runs,
+          current_successes: test.current_successes,
+          current_failures: test.current_failures,
+          current_flakes: test.current_flakes,
+          previous_pass_percentage: test.previous_pass_percentage,
+          previous_runs: test.previous_runs,
+          net_improvement: test.net_improvement,
+        },
+        jira_component: test.jira_component,
+      },
+    })
+
+    // Cleanup: Clear context when component unmounts
+    return () => {
+      unsetPageContextForChat()
+    }
+  }, [
+    isLoaded,
+    test,
+    testName,
+    filterModel,
+    period,
+    props.release,
+    setPageContextForChat,
+    unsetPageContextForChat,
+  ])
+
+  const breadcrumbs = (
+    <SimpleBreadcrumbs
+      release={props.release}
+      previousPage={<Link to={'/tests/' + props.release}>Tests</Link>}
+      currentPage="Test Analysis"
+    />
+  )
+
+  if (fetchError !== '') {
+    return (
+      <Fragment>
+        {breadcrumbs}
+
+        <Alert style={{ marginTop: 25 }} severity="error">
+          {fetchError}
+        </Alert>
+      </Fragment>
+    )
+  }
+
+  if (!isLoaded) {
+    return <p>Loading...</p>
+  }
+
+  return (
+    <Fragment>
+      <Container maxWidth="xl">
+        <Typography variant="h3" style={{ textAlign: 'center' }}>
+          Test Analysis
+        </Typography>
+        <MuiDivider style={{ margin: 20 }} />
+        <Grid container spacing={3} alignItems="stretch">
+          <Grid item md={3} xs={12}>
+            <SummaryCard
+              key="test-summary"
+              threshold={TEST_THRESHOLDS}
+              name={period === 'twoDay' ? '2 Day Overall' : '7 Day Overall'}
+              success={test.current_successes}
+              flakes={test.current_flakes}
+              caption={
+                <Fragment>
+                  <Tooltip title={`${test.current_runs} runs`}>
+                    <span>{test.current_pass_percentage.toFixed(2)}%</span>
+                  </Tooltip>
+                  <PassRateIcon improvement={test.net_improvement} />
+                  <Tooltip title={`${test.previous_runs} runs`}>
+                    <span>{test.previous_pass_percentage.toFixed(2)}%</span>
+                  </Tooltip>
+                </Fragment>
+              }
+              fail={test.current_failures}
+            />
+          </Grid>
+          <Grid item md={9} xs={12}>
+            <Card
+              className="test-failure-card"
+              elevation={5}
+              sx={{ height: '100%' }}
+            >
+              <div className="test-hero-topbar">
+                <div>
+                  {test.jira_component && (
+                    <Chip
+                      className="test-hero-jira-chip"
+                      icon={<BugReport sx={{ fontSize: 14 }} />}
+                      label={`Jira: ${test.jira_component}`}
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
+                </div>
+                <GridToolbarFilterMenu
+                  linkOperatorDisabled={true}
+                  standalone={true}
+                  filterModel={filterModel || { items: [] }}
+                  setFilterModel={setFilterModelSafe}
+                  columns={[
+                    {
+                      field: 'name',
+                      headerName: 'Name',
+                      filterable: true,
+                      disabled: true,
+                      type: 'string',
+                    },
+                    {
+                      field: 'variants',
+                      headerName: 'Variants',
+                      filterable: true,
+                      autocomplete: 'variants',
+                      type: 'array',
+                    },
+                  ]}
+                />
+              </div>
+
+              <div className="test-hero-name-wrapper">
+                <div className="test-hero-name-row">
+                  <Typography
+                    className="test-hero-name"
+                    variant="h6"
+                    component="h1"
+                  >
+                    {testName}
+                  </Typography>
+                  <Tooltip title="Copy test name">
+                    <IconButton
+                      className="test-hero-copy-btn"
+                      size="small"
+                      onClick={() => navigator.clipboard.writeText(testName)}
+                    >
+                      <ContentCopy fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              </div>
+
+              <div className="test-hero-action-bar">
+                <Button
+                  component={Link}
+                  to={withSort(
+                    pathForJobRunsWithTest(
+                      props.release,
+                      testName,
+                      {
+                        items: [
+                          ...filterModel.items.filter(
+                            (f) => f.columnField === 'variants'
+                          ),
+                        ],
+                      },
+                      period
+                    ),
+                    'timestamp',
+                    'desc'
+                  )}
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  startIcon={<FormatListBulleted />}
+                >
+                  All Runs ({test.current_runs})
+                </Button>
+                <Button
+                  component={Link}
+                  to={withSort(
+                    pathForJobRunsWithTestFailure(
+                      props.release,
+                      testName,
+                      {
+                        items: [
+                          ...filterModel.items.filter(
+                            (f) => f.columnField === 'variants'
+                          ),
+                        ],
+                      },
+                      period
+                    ),
+                    'timestamp',
+                    'desc'
+                  )}
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  startIcon={<ErrorOutline />}
+                >
+                  Failed Runs ({test.current_failures})
+                </Button>
+                <Button
+                  component={Link}
+                  to={withSort(
+                    pathForJobRunsWithTestFlake(
+                      props.release,
+                      testName,
+                      {
+                        items: [
+                          ...filterModel.items.filter(
+                            (f) => f.columnField === 'variants'
+                          ),
+                        ],
+                      },
+                      period
+                    ),
+                    'timestamp',
+                    'desc'
+                  )}
+                  size="small"
+                  variant="contained"
+                  color="warning"
+                  startIcon={<SyncProblem />}
+                >
+                  Flaked Runs ({test.current_flakes})
+                </Button>
+
+                <div className="test-hero-spacer" />
+
+                <Button
+                  href={searchCI(testName)}
+                  target="_blank"
+                  rel="noopener"
+                  size="small"
+                  variant="contained"
+                  color="secondary"
+                  endIcon={<OpenInNew sx={{ fontSize: '14px !important' }} />}
+                >
+                  Search Logs
+                </Button>
+              </div>
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Issues
+                <Tooltip title="Issues links to all known Jira issues mentioning this test. Only OCPBUGS project is indexed, not the mirrored older bugs from Bugzilla. Issues are shown from all releases.">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <BugTable testName={testName} />
+              <Box
+                sx={{
+                  display: 'flex',
+                  marginTop: 2,
+                }}
+              >
+                <BugButton
+                  jiraComponentID={test.jira_component_id}
+                  testName={testName}
+                />
+              </Box>
+              <Typography variant="h6" sx={{ marginTop: 3 }}>
+                Active Regressions
+                <Tooltip title="Active regressions detected by Component Readiness for this test. Honors variant filters applied above.">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <TestRegressionsTable
+                release={props.release}
+                testName={testName}
+                filterModel={filterModel}
+              />
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Pass Rate By NURP+ Combination
+                <Tooltip
+                  title={
+                    <p>
+                      NURP+ is the combination of a job&apos;s <b>N</b>etwork
+                      (e.g. sdn, ovn), <b>U</b>pgrade, from <b>R</b>elease (e.g.
+                      upgrading from a minor or micro),
+                      <b>P</b>latform (aws, azure, etc) and extras (realtime,
+                      serial, etc). It shows the current 7 day period compared
+                      to the last 7 day period by default.
+                    </p>
+                  }
+                >
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <TestTable
+                simpleLoading={true}
+                pageSize={5}
+                hideControls={true}
+                collapse={false}
+                release={props.release}
+                sortField="delta_from_passing_average"
+                sort="asc"
+                filterModel={filterModel}
+                period={period}
+              />
+            </Card>
+          </Grid>
+
+          <TestStackedChart
+            release={props.release}
+            test={testName}
+            filter={filterModel}
+          />
+
+          <TestPassRateCharts
+            test={testName}
+            release={props.release}
+            filterModel={filterModel}
+            grouping="jobs"
+          />
+
+          <TestPassRateCharts
+            test={testName}
+            release={props.release}
+            filterModel={filterModel}
+            grouping="variants"
+          />
+
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Average Test Duration (Seconds)
+                <Tooltip title={<p>Shows the average test duration by day.</p>}>
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <TestDurationChart
+                release={props.release}
+                test={testName}
+                filterModel={filterModel}
+              />
+            </Card>
+          </Grid>
+          <Grid item md={12}>
+            <Card className="test-failure-card" elevation={5}>
+              <Typography variant="h5">
+                Most Recent Failure Outputs
+                <Tooltip
+                  title={
+                    <p>
+                      Shows the outputs from at most the last 10 failures with a
+                      link to the Prow job run.
+                    </p>
+                  }
+                >
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <Box
+                style={{
+                  maxHeight: '35vh',
+                  minHeight: '35vh',
+                  overflow: 'auto',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <TestOutputs
+                  release={props.release}
+                  test={testName}
+                  filterModel={filterModel}
+                />
+              </Box>
+            </Card>
+          </Grid>
+        </Grid>
+      </Container>
+    </Fragment>
+  )
+}
+
+TestAnalysis.defaultProps = {
+  test: '',
+}
+
+TestAnalysis.propTypes = {
+  release: PropTypes.string.isRequired,
+  test: PropTypes.string,
+}
