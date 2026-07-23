@@ -341,10 +341,10 @@ func (p *PostgresProvider) queryAndScan(
 	return p.scanGroupedResults(ctx, query, innerArgs, groupMapping)
 }
 
-// scanGroupedResults executes a query within a transaction that disables
-// nested loops (to force parallel hash joins), scans rows that are already
-// grouped by variant_group_id (not variant_combination_id), and maps each
-// group ID back to dimension values via the group mapping.
+// scanGroupedResults executes a query within a transaction that increases
+// parallel workers, scans rows that are already grouped by variant_group_id
+// (not variant_combination_id), and maps each group ID back to dimension
+// values via the group mapping.
 //
 // Because the SQL already aggregates by group ID, each (test_id, group_id) pair
 // appears exactly once. No Go-side accumulation is needed.
@@ -358,13 +358,8 @@ func (p *PostgresProvider) scanGroupedResults(
 	var result map[string]crstatus.TestStatus
 
 	txErr := p.dbc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, stmt := range []string{
-			"SET LOCAL enable_nestloop = off",
-			"SET LOCAL max_parallel_workers_per_gather = 4",
-		} {
-			if err := tx.Exec(stmt).Error; err != nil {
-				return fmt.Errorf("executing %q: %w", stmt, err)
-			}
+		if err := tx.Exec("SET LOCAL max_parallel_workers_per_gather = 4").Error; err != nil {
+			return fmt.Errorf("setting max_parallel_workers_per_gather: %w", err)
 		}
 
 		rows, err := tx.Raw(query, args...).Rows()
