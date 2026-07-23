@@ -29,13 +29,13 @@ DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --table)      TABLE="$2"; shift 2 ;;
-        --days)       DAYS="$2"; shift 2 ;;
-        --namespace)  NAMESPACE="$2"; shift 2 ;;
-        --image)      IMAGE="$2"; shift 2 ;;
-        --db-secret)  DB_SECRET="$2"; shift 2 ;;
-        --pause)      PAUSE="$2"; shift 2 ;;
-        --batch)      BATCH="$2"; shift 2 ;;
+        --table)      [[ $# -ge 2 ]] || { echo "Error: --table requires a value" >&2; exit 1; }; TABLE="$2"; shift 2 ;;
+        --days)       [[ $# -ge 2 ]] || { echo "Error: --days requires a value" >&2; exit 1; }; DAYS="$2"; shift 2 ;;
+        --namespace)  [[ $# -ge 2 ]] || { echo "Error: --namespace requires a value" >&2; exit 1; }; NAMESPACE="$2"; shift 2 ;;
+        --image)      [[ $# -ge 2 ]] || { echo "Error: --image requires a value" >&2; exit 1; }; IMAGE="$2"; shift 2 ;;
+        --db-secret)  [[ $# -ge 2 ]] || { echo "Error: --db-secret requires a value" >&2; exit 1; }; DB_SECRET="$2"; shift 2 ;;
+        --pause)      [[ $# -ge 2 ]] || { echo "Error: --pause requires a value" >&2; exit 1; }; PAUSE="$2"; shift 2 ;;
+        --batch)      [[ $# -ge 2 ]] || { echo "Error: --batch requires a value" >&2; exit 1; }; BATCH="$2"; shift 2 ;;
         --dry-run)    DRY_RUN=true; shift ;;
         *)            echo "Unknown option: $1" >&2; exit 1 ;;
     esac
