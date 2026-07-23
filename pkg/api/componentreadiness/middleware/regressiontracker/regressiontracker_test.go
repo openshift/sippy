@@ -289,6 +289,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw.openRegressions = []*models.TestRegression{&tt.openRegression}
+			mw.regressionsByTestID = BuildRegressionIndex(mw.openRegressions)
 			mw.hasLoadedRegressions = true
 			mw.log = logrus.New()
 			err := mw.PostAnalysis(testKey, &tt.testStats)
@@ -380,11 +381,11 @@ func TestRegressionTracker_PreAnalysis_Adjustments(t *testing.T) {
 					Closed:   sql.NullTime{Valid: false},
 				}
 				mw.openRegressions = []*models.TestRegression{openRegression}
-				mw.hasLoadedRegressions = true
 			} else {
 				mw.openRegressions = []*models.TestRegression{}
-				mw.hasLoadedRegressions = true
 			}
+			mw.regressionsByTestID = BuildRegressionIndex(mw.openRegressions)
+			mw.hasLoadedRegressions = true
 
 			// Run PreAnalysis
 			err := mw.PreAnalysis(testKey, testStats)
@@ -566,6 +567,7 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 					},
 				},
 				openRegressions:      tt.openRegressions,
+				regressionsByTestID:  BuildRegressionIndex(tt.openRegressions),
 				hasLoadedRegressions: true,
 				log:                  logrus.New(),
 			}
@@ -702,7 +704,8 @@ func TestFindOpenRegression(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FindOpenRegression(sampleRelease, testID, false, variants, tt.regressions)
+			idx := BuildRegressionIndex(tt.regressions)
+			got := FindOpenRegression(sampleRelease, testID, false, variants, idx)
 			if !tt.wantMatch {
 				assert.Nil(t, got, "expected no match")
 				return
@@ -740,15 +743,17 @@ func TestFindOpenRegression_CrossCompareIsolation(t *testing.T) {
 		},
 	}
 
+	idx := BuildRegressionIndex(regressions)
+
 	t.Run("standard view selects standard regression", func(t *testing.T) {
-		got := FindOpenRegression(sampleRelease, testID, false, variants, regressions)
+		got := FindOpenRegression(sampleRelease, testID, false, variants, idx)
 		require.NotNil(t, got)
 		assert.Equal(t, uint(1), got.ID)
 		assert.False(t, got.CrossCompare)
 	})
 
 	t.Run("cross-compare view selects cross-compare regression", func(t *testing.T) {
-		got := FindOpenRegression(sampleRelease, testID, true, variants, regressions)
+		got := FindOpenRegression(sampleRelease, testID, true, variants, idx)
 		require.NotNil(t, got)
 		assert.Equal(t, uint(2), got.ID)
 		assert.True(t, got.CrossCompare)
@@ -867,7 +872,8 @@ func TestFindOpenRegression_SubsetMatching(t *testing.T) {
 				},
 			}
 
-			got := FindOpenRegression(sampleRelease, testID, false, tt.inputVariants, regressions)
+			idx := BuildRegressionIndex(regressions)
+			got := FindOpenRegression(sampleRelease, testID, false, tt.inputVariants, idx)
 
 			if !tt.wantMatch {
 				assert.Nil(t, got, "expected no match but got regression ID %v", got)
@@ -991,6 +997,7 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 				Triages:  []models.Triage{resolvedTriage},
 			}
 
+			openRegs := []*models.TestRegression{openRegression}
 			mw := RegressionTracker{
 				reqOptions: reqopts.RequestOptions{
 					BaseRelease:   reqopts.Release{Name: baseRelease},
@@ -1000,7 +1007,8 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 						KeyTestNames: []string{keyTestName},
 					},
 				},
-				openRegressions:      []*models.TestRegression{openRegression},
+				openRegressions:      openRegs,
+				regressionsByTestID:  BuildRegressionIndex(openRegs),
 				hasLoadedRegressions: true,
 				failureCounter: func(_ uint, _ time.Time) (int, error) {
 					return tt.failureCount, tt.failureCountErr

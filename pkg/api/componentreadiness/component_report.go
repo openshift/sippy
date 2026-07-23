@@ -2,7 +2,6 @@ package componentreadiness
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"maps"
 	"os"
@@ -65,9 +64,8 @@ func GetComponentTestVariants(ctx context.Context, provider dataprovider.DataPro
 		api.NewCacheSpec(generator, "TestVariants~", nil), generator.GenerateCacheVariants, CacheVariants{})
 }
 
-func GetJobVariants(ctx context.Context, provider dataprovider.DataProvider) (crtest.JobVariants,
-	[]error) {
-	return provider.QueryJobVariants(ctx)
+func GetJobVariants(ctx context.Context, provider dataprovider.DataProvider, reqOptions reqopts.RequestOptions) (crtest.JobVariants, []error) {
+	return provider.QueryJobVariants(ctx, reqOptions)
 }
 
 func GetComponentReport(
@@ -194,7 +192,8 @@ type GeneratorCacheKey struct {
 	AdvancedOption  reqopts.Advanced
 	TestFilters     reqopts.TestFilters
 	TestIDOptions   []reqopts.TestIdentification
-	IncludeAllTests bool `json:"include_all_tests,omitempty"`
+	IncludeAllTests bool   `json:"include_all_tests,omitempty"`
+	DataSource      string `json:",omitempty"`
 }
 
 // GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -210,6 +209,7 @@ func (c *ComponentReportGenerator) GetCacheKey() GeneratorCacheKey {
 		TestFilters:     c.ReqOptions.TestFilters,
 		TestIDOptions:   c.ReqOptions.TestIDOptions,
 		IncludeAllTests: c.ReqOptions.IncludeAllTests,
+		DataSource:      c.ReqOptions.DataSource,
 	}
 
 	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
@@ -425,29 +425,22 @@ func goInterruptible(ctx context.Context, wg *sync.WaitGroup, closure func()) {
 	}()
 }
 
-var componentAndCapabilityGetter func(test crtest.KeyWithVariants, stats crstatus.TestStatus) (string, []string)
+var componentAndCapabilityGetter func(stats crstatus.TestStatus) (string, []string)
 
-func testToComponentAndCapability(_ crtest.KeyWithVariants, stats crstatus.TestStatus) (string, []string) {
+func testToComponentAndCapability(stats crstatus.TestStatus) (string, []string) {
 	return stats.Component, stats.Capabilities
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
-func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crstatus.TestStatus) ([]crtest.RowIdentification, []crtest.ColumnID, error) {
-	var test crtest.KeyWithVariants
+func (c *ComponentReportGenerator) getRowColumnIdentifications(stats crstatus.TestStatus) ([]crtest.RowIdentification, []crtest.ColumnID) {
 	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
 	if len(c.ReqOptions.TestIDOptions) > 0 && c.ReqOptions.TestIDOptions[0].TestID != "" {
 		columnGroupByVariants = c.ReqOptions.VariantOption.DBGroupBy
 	}
 
-	// TODO: is this too slow?
-	err := json.Unmarshal([]byte(testIDStr), &test)
-	if err != nil {
-		return []crtest.RowIdentification{}, []crtest.ColumnID{}, err
-	}
-
-	testComponent, testCapabilities := componentAndCapabilityGetter(test, stats)
+	testComponent, testCapabilities := componentAndCapabilityGetter(stats)
 	rows := []crtest.RowIdentification{}
 	// First Page with no component requested
 	requestedComponent, requestedCapability, requestedTestID := "", "", ""
@@ -466,7 +459,7 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 
 		row := crtest.RowIdentification{
 			Component: testComponent,
-			TestID:    test.TestID,
+			TestID:    stats.TestID,
 			TestName:  stats.TestName,
 			TestSuite: stats.TestSuite,
 		}
@@ -494,18 +487,14 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 
 	columns := []crtest.ColumnID{}
 	column := crtest.ColumnIdentification{Variants: map[string]string{}}
-	for key, value := range test.Variants {
+	for key, value := range stats.Variants {
 		if columnGroupByVariants.Has(key) {
 			column.Variants[key] = value
 		}
 	}
-	columnKeyBytes, err := json.Marshal(column)
-	if err != nil {
-		return []crtest.RowIdentification{}, []crtest.ColumnID{}, err
-	}
-	columns = append(columns, crtest.ColumnID(columnKeyBytes))
+	columns = append(columns, column.Encode())
 
-	return rows, columns, nil
+	return rows, columns
 }
 
 type cellStatus struct {
@@ -638,10 +627,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 		if !sampleThere {
 			status = basisStatus
 		}
-		testKey, err := utils.DeserializeTestKey(status, testKeyStr)
-		if err != nil {
-			return crtype.ComponentReport{}, err
-		}
+		testKey := utils.DeserializeTestKey(status)
 
 		if !sampleThere {
 			// we use this to find tests associated with the basis that we don't see now in sample,
@@ -666,20 +652,14 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 			}
 		}
 
-		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, status)
-		if err != nil {
-			return crtype.ComponentReport{}, err
-		}
+		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(status)
 		updateCellStatus(
 			rowIdentifications, columnIdentifications, testKey, cellReport, includeAllTests, // inputs
 			aggregatedStatus, allRows, allColumns, // these three are maps to be updated
 		)
 	}
 
-	rows, err := buildReport(sortRowIdentifications(allRows), sortColumnIdentifications(allColumns), aggregatedStatus, includeAllTests)
-	if err != nil {
-		return crtype.ComponentReport{}, err
-	}
+	rows := buildReport(sortRowIdentifications(allRows), sortColumnIdentifications(allColumns), aggregatedStatus, includeAllTests)
 	return crtype.ComponentReport{Rows: rows}, nil
 }
 
@@ -715,7 +695,7 @@ func sortColumnIdentifications(allColumns map[crtest.ColumnID]struct{}) []crtest
 	return sortedColumns
 }
 
-func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.ColumnID, aggregatedStatus map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus, includeAllTests bool) ([]crtype.ReportRow, error) {
+func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.ColumnID, aggregatedStatus map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus, includeAllTests bool) []crtype.ReportRow {
 	// Now build the report
 	var regressionRows, goodRows []crtype.ReportRow
 	for _, rowID := range sortedRows {
@@ -729,11 +709,7 @@ func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.C
 			if reportRow.Columns == nil {
 				reportRow.Columns = []crtype.ReportColumn{}
 			}
-			var colIDStruct crtest.ColumnIdentification
-			err := json.Unmarshal([]byte(columnID), &colIDStruct)
-			if err != nil {
-				return nil, err
-			}
+			colIDStruct := crtest.DecodeColumnID(columnID)
 			reportColumn := crtype.ReportColumn{ColumnIdentification: colIDStruct}
 			status, ok := columns[columnID]
 			if !ok {
@@ -766,7 +742,7 @@ func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.C
 	}
 
 	regressionRows = append(regressionRows, goodRows...)
-	return regressionRows, nil
+	return regressionRows
 }
 
 func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crtest.Status {
@@ -938,7 +914,7 @@ func (c *ComponentReportGenerator) fischerExactTest(confidenceRequired, sampleFa
 func (c *ComponentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx context.Context, field string,
 	nested bool) ([]string,
 	error) {
-	return c.dataProvider.QueryUniqueVariantValues(ctx, field, nested)
+	return c.dataProvider.QueryUniqueVariantValues(ctx, c.ReqOptions, field, nested)
 }
 
 func init() {

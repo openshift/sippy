@@ -2,6 +2,7 @@ import { AccessibilityModeContext } from '../components/AccessibilityModeProvide
 import { alpha, InputBase, Typography } from '@mui/material'
 import { formatInTimeZone } from 'date-fns-tz'
 import { styled } from '@mui/styles'
+import { useCookies } from 'react-cookie'
 import Alert from '@mui/material/Alert'
 import blue from './blue.svg'
 import blue_missing_data from './none-blue.svg'
@@ -461,6 +462,10 @@ export function getUpdatedUrlParts(vars) {
     //component: vars.component,
   }
 
+  if (vars.dataSource) {
+    valuesMap.dataSource = vars.dataSource
+  }
+
   if (vars.samplePROrg && vars.samplePRRepo && vars.samplePRNumber) {
     valuesMap.samplePROrg = vars.samplePROrg
     valuesMap.samplePRRepo = vars.samplePRRepo
@@ -837,4 +842,9 @@ export function hasFailedFixRegression(triage, allRegressedTests) {
 
   // Check if any have status -1000
   return relevantRegressedTests.some((rt) => rt.status === -1000)
+}
+
+export function useDataSource() {
+  const [cookies] = useCookies(['testTableDBSource'])
+  return cookies['testTableDBSource'] === 'postgres' ? 'postgres' : ''
 }

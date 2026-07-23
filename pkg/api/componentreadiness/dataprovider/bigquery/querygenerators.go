@@ -314,8 +314,8 @@ func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotation
 				AND job_labels.prowjob_start >= DATETIME(@From)
 				AND job_labels.prowjob_start < DATETIME(@To)
 				AND job_labels.label = '%s'
-			WHERE modified_time >= DATETIME(@From)
-			AND modified_time < DATETIME(@To)
+			WHERE modified_time >= DATETIME_SUB(DATETIME(@From), INTERVAL 1 DAY)
+			AND modified_time < DATETIME_ADD(DATETIME(@To), INTERVAL 1 DAY)
 			AND skipped = false
 			AND job_labels.label IS NULL
 			%s
@@ -846,7 +846,9 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 		}
 	}
 
-	return tid.KeyOrDie(), cts, nil
+	cts.TestID = tid.TestID
+	cts.Variants = tid.Variants
+	return tid.Encode(), cts, nil
 }
 
 // sortedKeys is a helper that sorts the keys of a variant group map for consistent ordering.
@@ -1125,7 +1127,7 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 	}
 
 	// Serialize the test key once only so we don't have to keep recalculating
-	cts.TestKeyStr = cts.TestKey.KeyOrDie()
+	cts.TestKeyStr = cts.TestKey.Encode()
 
 	return cts, nil
 }

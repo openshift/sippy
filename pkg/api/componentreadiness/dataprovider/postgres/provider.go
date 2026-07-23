@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -21,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 var _ dataprovider.DataProvider = &PostgresProvider{}
@@ -64,16 +67,6 @@ func parseVariants(variants pq.StringArray) map[string]string {
 	return result
 }
 
-// variantMapToSlice converts a map to sorted "Key:Value" strings.
-func variantMapToSlice(m map[string]string) []string {
-	result := make([]string, 0, len(m))
-	for k, v := range m {
-		result = append(result, k+":"+v)
-	}
-	sort.Strings(result)
-	return result
-}
-
 // filterByDBGroupBy returns a copy of the variant map keeping only keys in dbGroupBy.
 func filterByDBGroupBy(variants map[string]string, dbGroupBy map[string]bool) map[string]string {
 	filtered := make(map[string]string, len(dbGroupBy))
@@ -101,7 +94,7 @@ func matchesIncludeVariants(variants map[string]string, includeVariants map[stri
 
 // --- MetadataQuerier ---
 
-func (p *PostgresProvider) QueryJobVariants(ctx context.Context) (crtest.JobVariants, []error) {
+func (p *PostgresProvider) QueryJobVariants(ctx context.Context, _ reqopts.RequestOptions) (crtest.JobVariants, []error) {
 	variants := crtest.JobVariants{Variants: map[string][]string{}}
 
 	var pairs []string
@@ -146,7 +139,7 @@ func (p *PostgresProvider) QueryReleaseDates(ctx context.Context, reqOptions req
 	return timeRanges, nil
 }
 
-func (p *PostgresProvider) QueryUniqueVariantValues(ctx context.Context, field string, nested bool) ([]string, error) {
+func (p *PostgresProvider) QueryUniqueVariantValues(ctx context.Context, _ reqopts.RequestOptions, field string, nested bool) ([]string, error) {
 	if nested {
 		// Return all variant key names
 		var pairs []string
@@ -206,134 +199,6 @@ func (p *PostgresProvider) QueryUniqueVariantValues(ctx context.Context, field s
 	return result, nil
 }
 
-// --- TestStatusQuerier ---
-
-// testStatusRow is the result of the aggregation query.
-type testStatusRow struct {
-	TestID       string         `gorm:"column:test_id"`
-	TestName     string         `gorm:"column:test_name"`
-	TestSuite    string         `gorm:"column:test_suite"`
-	Component    string         `gorm:"column:component"`
-	Capabilities pq.StringArray `gorm:"column:capabilities;type:text[]"`
-	ProwJobID    uint           `gorm:"column:prow_job_id"`
-	TotalCount   int            `gorm:"column:total_count"`
-	SuccessCount int            `gorm:"column:success_count"`
-	FlakeCount   int            `gorm:"column:flake_count"`
-	LastFailure  *time.Time     `gorm:"column:last_failure"`
-}
-
-const testStatusQuery = `
-WITH deduped AS (
-    SELECT DISTINCT ON (pjrt.prow_job_run_id, pjrt.test_id, pjrt.suite_id)
-        pjrt.test_id, pjrt.suite_id, pjrt.status,
-        pjr.timestamp, pj.id AS prow_job_id
-    FROM prow_job_run_tests pjrt
-    JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
-    JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
-    WHERE pj.release = ?
-      AND pjr.timestamp >= ? AND pjr.timestamp < ?
-      AND pjr.prow_job_release = ?
-      AND pjrt.prow_job_run_release = ?
-      AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
-      AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
-      AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])
-    ORDER BY pjrt.prow_job_run_id, pjrt.test_id, pjrt.suite_id,
-        CASE WHEN pjrt.status = 13 THEN 0 WHEN pjrt.status = 1 THEN 1 ELSE 2 END
-)
-SELECT
-    tow.unique_id AS test_id,
-    t.name AS test_name,
-    COALESCE(s.name, '') AS test_suite,
-    tow.component,
-    tow.capabilities,
-    d.prow_job_id,
-    COUNT(*) AS total_count,
-    SUM(CASE WHEN d.status IN (1, 13) THEN 1 ELSE 0 END) AS success_count,
-    SUM(CASE WHEN d.status = 13 THEN 1 ELSE 0 END) AS flake_count,
-    MAX(CASE WHEN d.status NOT IN (1, 13) THEN d.timestamp ELSE NULL END) AS last_failure
-FROM deduped d
-JOIN tests t ON t.id = d.test_id
-JOIN test_ownerships tow ON tow.test_id = d.test_id
-    AND (tow.suite_id = d.suite_id OR (tow.suite_id IS NULL AND d.suite_id IS NULL))
-LEFT JOIN suites s ON s.id = d.suite_id
-WHERE tow.staff_approved_obsolete = false
-GROUP BY tow.unique_id, t.name, s.name, tow.component, tow.capabilities, d.prow_job_id
-`
-
-func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, start, end time.Time,
-	includeVariants map[string][]string,
-	dbGroupBy map[string]bool) (map[string]crstatus.TestStatus, []error) {
-
-	var rows []testStatusRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(testStatusQuery, release, start, end, release, release, start, end).Scan(&rows).Error; err != nil {
-		return nil, []error{fmt.Errorf("querying test status: %w", err)}
-	}
-
-	// Batch-fetch all ProwJob variants we need
-	jobIDs := make(map[uint]bool, len(rows))
-	for _, r := range rows {
-		jobIDs[r.ProwJobID] = true
-	}
-	ids := make([]uint, 0, len(jobIDs))
-	for id := range jobIDs {
-		ids = append(ids, id)
-	}
-	jobVariantMap, err := p.fetchJobVariantsByIDs(ids)
-	if err != nil {
-		return nil, []error{err}
-	}
-
-	result := map[string]crstatus.TestStatus{}
-	for _, row := range rows {
-		variants, ok := jobVariantMap[row.ProwJobID]
-		if !ok {
-			continue
-		}
-
-		if !matchesIncludeVariants(variants, includeVariants) {
-			continue
-		}
-
-		filtered := filterByDBGroupBy(variants, dbGroupBy)
-		key := crtest.KeyWithVariants{
-			TestID:   row.TestID,
-			Variants: filtered,
-		}
-		keyStr := key.KeyOrDie()
-
-		existing, exists := result[keyStr]
-		if exists {
-			// Merge counts for same test+variant combo from different job runs
-			existing.TotalCount += row.TotalCount
-			existing.SuccessCount += row.SuccessCount
-			existing.FlakeCount += row.FlakeCount
-			if row.LastFailure != nil && (existing.LastFailure.IsZero() || row.LastFailure.After(existing.LastFailure)) {
-				existing.LastFailure = *row.LastFailure
-			}
-			result[keyStr] = existing
-		} else {
-			ts := crstatus.TestStatus{
-				TestName:     row.TestName,
-				TestSuite:    row.TestSuite,
-				Component:    row.Component,
-				Capabilities: row.Capabilities,
-				Variants:     variantMapToSlice(filtered),
-				Count: crtest.Count{
-					TotalCount:   row.TotalCount,
-					SuccessCount: row.SuccessCount,
-					FlakeCount:   row.FlakeCount,
-				},
-			}
-			if row.LastFailure != nil {
-				ts.LastFailure = *row.LastFailure
-			}
-			result[keyStr] = ts
-		}
-	}
-
-	return result, nil
-}
-
 // fetchJobVariantsByIDs loads ProwJob variant maps for the given job IDs.
 func (p *PostgresProvider) fetchJobVariantsByIDs(ids []uint) (map[uint]map[string]string, error) {
 	if len(ids) == 0 {
@@ -357,48 +222,67 @@ func (p *PostgresProvider) fetchJobVariantsByIDs(ids []uint) (map[uint]map[strin
 	return result, nil
 }
 
+// baseMatchesGAWindow returns true when the base release dates align with a
+// pre-computed GA window in prow_ga_raw_test_data.
+func (p *PostgresProvider) baseMatchesGAWindow(ctx context.Context, reqOptions reqopts.RequestOptions) bool {
+	var gaDate *time.Time
+	err := p.dbc.DB.WithContext(ctx).
+		Model(&models.ReleaseDefinition{}).
+		Where("release = ? AND ga_date < CURRENT_DATE", reqOptions.BaseRelease.Name).
+		Pluck("ga_date", &gaDate).Error
+	if err != nil {
+		log.WithError(err).WithField("release", reqOptions.BaseRelease.Name).
+			Warn("failed to query GA date, falling back to prefix-sum query")
+		return false
+	}
+	if gaDate == nil {
+		return false
+	}
+
+	windowDays := int(reqOptions.BaseRelease.End.Sub(reqOptions.BaseRelease.Start).Hours() / 24)
+	if !slices.Contains(utils.GAWindows, windowDays) {
+		return false
+	}
+
+	gaCivil := civil.DateOf(*gaDate)
+	expectedStart := utils.GAWindowStart(gaCivil, windowDays)
+	return civil.DateOf(reqOptions.BaseRelease.Start) == expectedStart &&
+		civil.DateOf(reqOptions.BaseRelease.End) == gaCivil
+}
+
 func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error) {
-
-	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
-	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
-		dbGroupBy[k] = true
+	if p.baseMatchesGAWindow(ctx, reqOptions) {
+		return p.queryBaseTestStatusGA(ctx, reqOptions)
 	}
-
-	includeVariants := reqOptions.VariantOption.IncludeVariants
-	if includeVariants == nil {
-		includeVariants = map[string][]string{}
-	}
-
-	return p.queryTestStatus(
-		ctx,
+	return p.queryTestStatusPrefixSum(ctx, reqOptions,
 		reqOptions.BaseRelease.Name,
-		reqOptions.BaseRelease.Start,
-		reqOptions.BaseRelease.End,
-		includeVariants,
-		dbGroupBy,
-	)
+		reqOptions.VariantOption.IncludeVariants,
+		reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End)
+}
+
+// mergeCompareVariants returns a copy of includeVariants with CompareVariants
+// merged in for cross-compare views. For cross-compare, IncludeVariants holds
+// base-side values (e.g. Topology:[ha]) while CompareVariants holds sample-side
+// values (e.g. Topology:[single]). Sample queries need the merged set.
+func mergeCompareVariants(reqOptions reqopts.RequestOptions, includeVariants map[string][]string) map[string][]string {
+	if len(reqOptions.VariantOption.VariantCrossCompare) == 0 {
+		return includeVariants
+	}
+	merged := make(map[string][]string, len(includeVariants))
+	for k, v := range includeVariants {
+		merged[k] = v
+	}
+	for k, v := range reqOptions.VariantOption.CompareVariants {
+		merged[k] = v
+	}
+	return merged
 }
 
 func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
-
-	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
-	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
-		dbGroupBy[k] = true
-	}
-
-	if includeVariants == nil {
-		includeVariants = map[string][]string{}
-	}
-
-	return p.queryTestStatus(
-		ctx,
-		reqOptions.SampleRelease.Name,
-		start, end,
-		includeVariants,
-		dbGroupBy,
-	)
+	includeVariants = mergeCompareVariants(reqOptions, includeVariants)
+	return p.queryTestStatusPrefixSum(ctx, reqOptions, reqOptions.SampleRelease.Name, includeVariants, start, end)
 }
 
 // --- TestDetailsQuerier ---
@@ -416,9 +300,37 @@ type testDetailRow struct {
 	JiraComponentID *uint     `gorm:"column:jira_component_id"`
 }
 
-const testDetailQuery = `
+func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
+	reqOptions reqopts.RequestOptions,
+	includeVariants map[string][]string) (map[string][]crstatus.TestJobRunRows, []error) {
+
+	if includeVariants == nil {
+		includeVariants = map[string][]string{}
+	}
+
+	// MATERIALIZED CTE forces the planner to resolve test_ids first, then
+	// drive prow_job_run_tests via the test_id index. Without it, the global
+	// work_mem=128MB setting causes the planner to choose a prow_jobs-first
+	// plan that scans ~20K runs × 30 partitions and never completes.
+	testIDs := make([]string, 0, len(reqOptions.TestIDOptions))
+	for _, tid := range reqOptions.TestIDOptions {
+		testIDs = append(testIDs, tid.TestID)
+	}
+
+	query := `WITH target_tests AS MATERIALIZED (
+    SELECT test_id, suite_id, unique_id, jira_component, jira_component_id
+    FROM test_ownerships
+    WHERE staff_approved_obsolete = false`
+
+	var args []any
+	if len(testIDs) > 0 {
+		query += ` AND unique_id IN (?)`
+		args = append(args, testIDs)
+	}
+
+	query += `)
 SELECT
-    tow.unique_id AS test_id,
+    tt.unique_id AS test_id,
     t.name AS test_name,
     pj.name AS prowjob_name,
     CAST(pjr.id AS TEXT) AS prowjob_run_id,
@@ -426,31 +338,36 @@ SELECT
     pjr.timestamp AS prowjob_start,
     pj.id AS prow_job_id,
     pjrt.status,
-    COALESCE(tow.jira_component, '') AS jira_component,
-    tow.jira_component_id
-FROM prow_job_run_tests pjrt
+    COALESCE(tt.jira_component, '') AS jira_component,
+    tt.jira_component_id
+FROM target_tests tt
+JOIN prow_job_run_tests pjrt ON pjrt.test_id = tt.test_id
+    AND (tt.suite_id = pjrt.suite_id OR (tt.suite_id IS NULL AND pjrt.suite_id IS NULL))
 JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
 JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
 JOIN tests t ON t.id = pjrt.test_id
-JOIN test_ownerships tow ON tow.test_id = pjrt.test_id
-    AND (tow.suite_id = pjrt.suite_id OR (tow.suite_id IS NULL AND pjrt.suite_id IS NULL))
 WHERE pj.release = ?
     AND pjr.timestamp >= ? AND pjr.timestamp < ?
     AND pjr.prow_job_release = ?
     AND pjrt.prow_job_run_release = ?
     AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
     AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
-    AND tow.staff_approved_obsolete = false
-    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])
-ORDER BY pjr.timestamp
-`
+    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`
 
-func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
-	reqOptions reqopts.RequestOptions,
-	includeVariants map[string][]string) (map[string][]crstatus.TestJobRunRows, []error) {
+	args = append(args, release, start, end, release, release, start, end)
+
+	if len(includeVariants) > 0 {
+		filterClause, filterArgs := buildVariantFilterClause(includeVariants)
+		if filterClause != "" {
+			query += " AND pj.variant_combination_id IN (SELECT vc.id FROM variant_combinations vc WHERE " + filterClause + ")"
+			args = append(args, filterArgs...)
+		}
+	}
+
+	query += " ORDER BY pjr.timestamp"
 
 	var rows []testDetailRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(testDetailQuery, release, start, end, release, release, start, end).Scan(&rows).Error; err != nil {
+	if err := p.dbc.DB.WithContext(ctx).Raw(query, args...).Scan(&rows).Error; err != nil {
 		return nil, []error{fmt.Errorf("querying test details: %w", err)}
 	}
 
@@ -459,11 +376,7 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 		dbGroupBy[k] = true
 	}
 
-	if includeVariants == nil {
-		includeVariants = map[string][]string{}
-	}
-
-	// Batch-fetch job variants
+	// Batch-fetch job variants for per-test requested variant filtering
 	jobIDs := map[uint]bool{}
 	for _, r := range rows {
 		jobIDs[r.ProwJobID] = true
@@ -477,12 +390,8 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 		return nil, []error{err}
 	}
 
-	// Filter test IDs if specified
-	// Build test ID filter and per-test requested variant filters
-	testIDFilter := map[string]bool{}
 	requestedVariantsByTestID := map[string]map[string]string{}
 	for _, tid := range reqOptions.TestIDOptions {
-		testIDFilter[tid.TestID] = true
 		if len(tid.RequestedVariants) > 0 {
 			requestedVariantsByTestID[tid.TestID] = tid.RequestedVariants
 		}
@@ -490,19 +399,11 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 
 	result := map[string][]crstatus.TestJobRunRows{}
 	for _, row := range rows {
-		if len(testIDFilter) > 0 && !testIDFilter[row.TestID] {
-			continue
-		}
-
 		variants, ok := jobVariantMap[row.ProwJobID]
 		if !ok {
 			continue
 		}
-		if !matchesIncludeVariants(variants, includeVariants) {
-			continue
-		}
 
-		// Filter by requested variants (exact match for specific test+variant combo)
 		if rv, ok := requestedVariantsByTestID[row.TestID]; ok {
 			match := true
 			for k, v := range rv {
@@ -539,7 +440,7 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 		normalizedName := utils.NormalizeProwJobName(row.ProwJobName)
 		entry := crstatus.TestJobRunRows{
 			TestKey:         key,
-			TestKeyStr:      key.KeyOrDie(),
+			TestKeyStr:      key.Encode(),
 			TestName:        row.TestName,
 			ProwJob:         normalizedName,
 			ProwJobRunID:    row.ProwJobRunID,
@@ -569,12 +470,11 @@ func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOpt
 func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
-
 	return p.queryTestDetails(
 		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
-		reqOptions, includeVariants,
+		reqOptions, mergeCompareVariants(reqOptions, includeVariants),
 	)
 }
 
@@ -657,7 +557,7 @@ func (p *PostgresProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.
 	return results, nil
 }
 
-func (p *PostgresProvider) QueryJobVariantValues(ctx context.Context, jobNames []string,
+func (p *PostgresProvider) QueryJobVariantValues(ctx context.Context, _ reqopts.RequestOptions, jobNames []string,
 	variantKeys []string) (map[string]map[string]string, error) {
 
 	if len(jobNames) == 0 {
@@ -697,7 +597,7 @@ func (p *PostgresProvider) QueryJobVariantValues(ctx context.Context, jobNames [
 	return results, nil
 }
 
-func (p *PostgresProvider) LookupJobVariants(ctx context.Context, jobName string) (map[string]string, error) {
+func (p *PostgresProvider) LookupJobVariants(ctx context.Context, _ reqopts.RequestOptions, jobName string) (map[string]string, error) {
 	type jvRow struct {
 		Variants pq.StringArray `gorm:"column:variants;type:text[]"`
 	}

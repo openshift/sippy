@@ -75,6 +75,7 @@ func (l *LinkInjector) PostAnalysis(testKey crtest.Identification, testStats *te
 		testKey.Capability,
 		variants,
 		baseReleaseOverride,
+		l.reqOptions.DataSource,
 	)
 	if err != nil {
 		l.log.WithError(err).Warnf("failed to generate test details URL for test %s", testKey.TestID)

@@ -27,11 +27,12 @@ type ReportTestStatus struct {
 // TestStatus is an internal type used to pass data from the data provider to the
 // actual report generation. It is not serialized over the API.
 type TestStatus struct {
-	TestName     string   `json:"test_name"`
-	TestSuite    string   `json:"test_suite"`
-	Component    string   `json:"component"`
-	Capabilities []string `json:"capabilities"`
-	Variants     []string `json:"variants"`
+	TestID       string            `json:"test_id"`
+	TestName     string            `json:"test_name"`
+	TestSuite    string            `json:"test_suite"`
+	Component    string            `json:"component"`
+	Capabilities []string          `json:"capabilities"`
+	Variants     map[string]string `json:"variants"`
 	crtest.Count
 	LastFailure time.Time `json:"last_failure"`
 }

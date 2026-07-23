@@ -90,6 +90,10 @@ func ParseComponentReportRequest(
 		return
 	}
 
+	if dataSource := param.SafeRead(req, "dataSource"); dataSource != "" {
+		opts.DataSource = dataSource
+	}
+
 	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
 	if err != nil {

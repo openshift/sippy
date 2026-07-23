@@ -10,7 +10,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -96,10 +95,11 @@ func GetDataFromCacheOrGenerate[T any](
 					"type": reflect.TypeOf(defaultVal).String(),
 				}).Infof("cache hit")
 				var cr T
-				if err := json.Unmarshal(res, &cr); err != nil {
-					return defaultVal, []error{errors.WithMessagef(err, "failed to unmarshal cached item.  cacheKey=%+v", cacheKey)}
+				unmarshalErr := json.Unmarshal(res, &cr)
+				if unmarshalErr == nil {
+					return cr, nil
 				}
-				return cr, nil
+				logrus.WithError(unmarshalErr).WithField("key", string(cacheKey)).Warn("cached item failed to unmarshal, regenerating")
 			} else if strings.Contains(err.Error(), "connection refused") {
 				logrus.WithError(err).Fatalf("redis URL specified but got connection refused, exiting due to cost issues in this configuration")
 			}

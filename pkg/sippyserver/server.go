@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -1012,12 +1013,13 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonJobVariants(w http.ResponseWriter, req *http.Request) {
 	if s.crDataProvider == nil {
 		failureResponse(w, http.StatusBadRequest, "job variants API is only available when a data provider is configured")
 		return
 	}
-	outputs, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
+	reqOptions := reqopts.RequestOptions{DataSource: param.SafeRead(req, "dataSource")}
+	outputs, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying job variants:", len(errs))
 		for _, err := range errs {
@@ -1089,9 +1091,10 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		}
 	}
 
-	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
+	variantReqOptions := reqopts.RequestOptions{DataSource: param.SafeRead(req, "dataSource")}
+	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, variantReqOptions)
 	if len(errs) > 0 {
-		return componentreport.ComponentReport{}, fmt.Errorf("failed to get job variants")
+		return componentreport.ComponentReport{}, fmt.Errorf("failed to get job variants: %v", errs)
 	}
 
 	allReleases, err := s.getReleases(req.Context())
@@ -1125,7 +1128,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 	return outputs, nil
 }
 
-func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonComponentReport(w http.ResponseWriter, req *http.Request) {
 	outputs, err := s.getComponentReportFromRequest(req)
 	if err != nil {
 		failureResponseWithError(w, "error generating component report", err)
@@ -1135,15 +1138,16 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonComponentReportTestDetails(w http.ResponseWriter, req *http.Request) {
 	if s.crDataProvider == nil {
 		failureResponseWithError(w, "error querying component test details",
 			&api.ValidationError{Message: "component report API is only available when a data provider is configured"})
 		return
 	}
-	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
+	variantReqOptions := reqopts.RequestOptions{DataSource: param.SafeRead(req, "dataSource")}
+	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, variantReqOptions)
 	if len(errs) > 0 {
-		failureResponseWithError(w, "error querying component test details", fmt.Errorf("failed to get job variants"))
+		failureResponseWithError(w, "error querying component test details", fmt.Errorf("failed to get job variants: %v", errs))
 		return
 	}
 	allReleases, err := s.getReleases(req.Context())
@@ -2535,9 +2539,9 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/job_variants",
-			Description:  "Reports all job variants defined in BigQuery",
+			Description:  "Reports all job variants",
 			Capabilities: []string{ComponentReadinessCapability},
-			HandlerFunc:  s.jsonJobVariantsFromBigQuery,
+			HandlerFunc:  s.jsonJobVariants,
 		},
 		{
 			EndpointPath: "/api/pull_requests",
@@ -2702,15 +2706,15 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/component_readiness",
-			Description:  "Reports component readiness from BigQuery",
+			Description:  "Reports component readiness",
 			Capabilities: []string{ComponentReadinessCapability},
-			HandlerFunc:  s.jsonComponentReportFromBigQuery,
+			HandlerFunc:  s.jsonComponentReport,
 		},
 		{
 			EndpointPath: "/api/component_readiness/test_details",
-			Description:  "Reports test details for component readiness from BigQuery",
+			Description:  "Reports test details for component readiness",
 			Capabilities: []string{ComponentReadinessCapability},
-			HandlerFunc:  s.jsonComponentReportTestDetailsFromBigQuery,
+			HandlerFunc:  s.jsonComponentReportTestDetails,
 		},
 		{
 			EndpointPath: "/api/component_readiness/variants",

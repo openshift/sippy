@@ -20,6 +20,7 @@ var _ dataprovider.DataProvider = &MixedProvider{}
 
 // MixedProvider wraps both a BigQuery and PostgreSQL provider, routing
 // release metadata queries to PostgreSQL and everything else to BigQuery.
+// When reqOptions.DataSource is "postgres", test status queries route to PG instead.
 type MixedProvider struct {
 	bq *bigquery.BigQueryProvider
 	pg *postgres.PostgresProvider
@@ -30,6 +31,13 @@ func NewMixedProvider(bqClient *bqcachedclient.Client, dbc *db.DB, cacheClient c
 		bq: bigquery.NewBigQueryProvider(bqClient),
 		pg: postgres.NewPostgresProvider(dbc, cacheClient),
 	}
+}
+
+func (p *MixedProvider) providerFor(reqOptions reqopts.RequestOptions) dataprovider.DataProvider {
+	if reqOptions.DataSource == "postgres" {
+		return p.pg
+	}
+	return p.bq
 }
 
 func (p *MixedProvider) Cache() cache.Cache {
@@ -44,38 +52,38 @@ func (p *MixedProvider) QueryReleaseDates(ctx context.Context, reqOptions reqopt
 	return p.pg.QueryReleaseDates(ctx, reqOptions)
 }
 
-func (p *MixedProvider) QueryJobVariants(ctx context.Context) (crtest.JobVariants, []error) {
-	return p.bq.QueryJobVariants(ctx)
+func (p *MixedProvider) QueryJobVariants(ctx context.Context, reqOptions reqopts.RequestOptions) (crtest.JobVariants, []error) {
+	return p.providerFor(reqOptions).QueryJobVariants(ctx, reqOptions)
 }
 
-func (p *MixedProvider) QueryUniqueVariantValues(ctx context.Context, field string, nested bool) ([]string, error) {
-	return p.bq.QueryUniqueVariantValues(ctx, field, nested)
+func (p *MixedProvider) QueryUniqueVariantValues(ctx context.Context, reqOptions reqopts.RequestOptions, field string, nested bool) ([]string, error) {
+	return p.providerFor(reqOptions).QueryUniqueVariantValues(ctx, reqOptions, field, nested)
 }
 
 func (p *MixedProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error) {
-	return p.bq.QueryBaseTestStatus(ctx, reqOptions)
+	return p.providerFor(reqOptions).QueryBaseTestStatus(ctx, reqOptions)
 }
 
 func (p *MixedProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, includeVariants map[string][]string, start, end time.Time) (map[string]crstatus.TestStatus, []error) {
-	return p.bq.QuerySampleTestStatus(ctx, reqOptions, includeVariants, start, end)
+	return p.providerFor(reqOptions).QuerySampleTestStatus(ctx, reqOptions, includeVariants, start, end)
 }
 
 func (p *MixedProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestJobRunRows, []error) {
-	return p.bq.QueryBaseJobRunTestStatus(ctx, reqOptions)
+	return p.providerFor(reqOptions).QueryBaseJobRunTestStatus(ctx, reqOptions)
 }
 
 func (p *MixedProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, includeVariants map[string][]string, start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
-	return p.bq.QuerySampleJobRunTestStatus(ctx, reqOptions, includeVariants, start, end)
+	return p.providerFor(reqOptions).QuerySampleJobRunTestStatus(ctx, reqOptions, includeVariants, start, end)
 }
 
 func (p *MixedProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions, release string, start, end time.Time) (map[string]dataprovider.JobRunStats, error) {
-	return p.bq.QueryJobRuns(ctx, reqOptions, release, start, end)
+	return p.providerFor(reqOptions).QueryJobRuns(ctx, reqOptions, release, start, end)
 }
 
-func (p *MixedProvider) QueryJobVariantValues(ctx context.Context, jobNames, variantKeys []string) (map[string]map[string]string, error) {
-	return p.bq.QueryJobVariantValues(ctx, jobNames, variantKeys)
+func (p *MixedProvider) QueryJobVariantValues(ctx context.Context, reqOptions reqopts.RequestOptions, jobNames, variantKeys []string) (map[string]map[string]string, error) {
+	return p.providerFor(reqOptions).QueryJobVariantValues(ctx, reqOptions, jobNames, variantKeys)
 }
 
-func (p *MixedProvider) LookupJobVariants(ctx context.Context, jobName string) (map[string]string, error) {
-	return p.bq.LookupJobVariants(ctx, jobName)
+func (p *MixedProvider) LookupJobVariants(ctx context.Context, reqOptions reqopts.RequestOptions, jobName string) (map[string]string, error) {
+	return p.providerFor(reqOptions).LookupJobVariants(ctx, reqOptions, jobName)
 }

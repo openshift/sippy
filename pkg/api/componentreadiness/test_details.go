@@ -160,7 +160,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 			TestID:   tOpt.TestID,
 			Variants: tOpt.RequestedVariants,
 		}
-		testKeyStr := testKey.KeyOrDie()
+		testKeyStr := testKey.Encode()
 		if statuses, ok := testKeyTestJobRunStatuses[testKeyStr]; ok {
 			report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
 			if len(generateReportErrs) > 0 {
@@ -186,16 +186,14 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 ) (testdetails.Report, []error) {
 
 	if testIDOption.TestID == "" {
-		return testdetails.Report{}, []error{&api.ValidationError{
-			Message: "test_id has to be defined for test details",
-		}}
+		return testdetails.Report{}, []error{&api.ValidationError{Message: "test_id has to be defined for test details"}}
 	}
 	for _, v := range sets.List(c.ReqOptions.VariantOption.DBGroupBy) {
 		if _, ok := testIDOption.RequestedVariants[v]; !ok {
-			return testdetails.Report{}, []error{&api.ValidationError{
-				Message: fmt.Sprintf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
-					v, testIDOption.RequestedVariants),
-			}}
+			return testdetails.Report{}, []error{
+				&api.ValidationError{Message: fmt.Sprintf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
+					v, testIDOption.RequestedVariants)},
+			}
 		}
 	}
 
@@ -324,6 +322,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 			testIDOption.Capability,
 			variants,
 			baseReleaseOverride,
+			c.ReqOptions.DataSource,
 		)
 		if err != nil {
 			logrus.WithError(err).Warnf("failed to generate latest test details URL for test %s", testIDOption.TestID)
@@ -437,8 +436,14 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 
 	totalBase, totalSample, report, result, lastFailure := c.summarizeRecordedTestStats(baseStatus, sampleStatus, testKey)
 
+	explanations := []string{}
+	if len(baseStatus) == 0 && c.ReqOptions.DataSource == "postgres" {
+		explanations = append(explanations,
+			"Base test details are not available: individual test run data has not been backfilled for this release in the PostgreSQL data source. Aggregated base statistics from the grid view remain accurate.")
+	}
+
 	testStats := testdetails.TestComparison{
-		Explanations:       []string{},
+		Explanations:       explanations,
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
 		SampleStats: testdetails.ReleaseStats{
 			Release: c.ReqOptions.SampleRelease.Name,

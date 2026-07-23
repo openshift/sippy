@@ -1,7 +1,8 @@
 package crtest
 
 import (
-	"encoding/json"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -96,14 +97,59 @@ type KeyWithVariants struct {
 	Variants map[string]string `json:"variants"`
 }
 
-// KeyOrDie serializes this test key into a json string suitable for use in maps.
-// JSON serialization uses sorted map keys, so the output is stable.
-func (t KeyWithVariants) KeyOrDie() string {
-	testIDBytes, err := json.Marshal(t)
-	if err != nil {
-		panic(err)
+// VariantKeyValueToString formats a variant key and value as "key:value".
+func VariantKeyValueToString(key, value string) string {
+	return key + ":" + value
+}
+
+// VariantStringToKeyValue splits a "key:value" string into its key and value.
+// Returns empty strings if the format is invalid.
+func VariantStringToKeyValue(variant string) (string, string) {
+	k, v, ok := strings.Cut(variant, ":")
+	if !ok {
+		return "", ""
 	}
-	return string(testIDBytes)
+	return k, v
+}
+
+// EncodeVariants returns a deterministic null-byte-separated encoding of variant pairs.
+func EncodeVariants(variants map[string]string) string {
+	pairs := make([]string, 0, len(variants))
+	for k, v := range variants {
+		pairs = append(pairs, VariantKeyValueToString(k, v))
+	}
+	sort.Strings(pairs)
+	return strings.Join(pairs, "\x00")
+}
+
+// Encode returns a deterministic string encoding suitable for use as a map key.
+// Format: testID\x00key1:val1\x00key2:val2 (sorted variant pairs, null-separated).
+func (t KeyWithVariants) Encode() string {
+	encoded := EncodeVariants(t.Variants)
+	if encoded == "" {
+		return t.TestID
+	}
+	return t.TestID + "\x00" + encoded
+}
+
+// Encode returns a deterministic string encoding for column identification.
+// Format: key1:val1\x00key2:val2 (sorted variant pairs, null-separated).
+func (c ColumnIdentification) Encode() ColumnID {
+	return ColumnID(EncodeVariants(c.Variants))
+}
+
+// DecodeColumnID reverses ColumnIdentification.Encode().
+func DecodeColumnID(key ColumnID) ColumnIdentification {
+	variants := make(map[string]string)
+	if key == "" {
+		return ColumnIdentification{Variants: variants}
+	}
+	for p := range strings.SplitSeq(string(key), "\x00") {
+		if k, v := VariantStringToKeyValue(p); k != "" {
+			variants[k] = v
+		}
+	}
+	return ColumnIdentification{Variants: variants}
 }
 
 type ReleaseTimeRange struct {

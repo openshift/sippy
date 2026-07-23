@@ -34,7 +34,7 @@ type TestDetailsQuerier interface {
 // MetadataQuerier fetches reference data used to configure and parameterize reports.
 type MetadataQuerier interface {
 	// QueryJobVariants returns all variant names and their possible values.
-	QueryJobVariants(ctx context.Context) (crtest.JobVariants, []error)
+	QueryJobVariants(ctx context.Context, reqOptions reqopts.RequestOptions) (crtest.JobVariants, []error)
 
 	// QueryReleaseDates returns the time ranges for each known release.
 	QueryReleaseDates(ctx context.Context, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error)
@@ -44,7 +44,7 @@ type MetadataQuerier interface {
 
 	// QueryUniqueVariantValues returns distinct values for a variant column
 	// from the past 60 days.
-	QueryUniqueVariantValues(ctx context.Context, field string, nested bool) ([]string, error)
+	QueryUniqueVariantValues(ctx context.Context, reqOptions reqopts.RequestOptions, field string, nested bool) ([]string, error)
 }
 
 // JobQuerier fetches job-level data for the view-jobs and diagnose endpoints.
@@ -54,11 +54,11 @@ type JobQuerier interface {
 		release string, start, end time.Time) (map[string]JobRunStats, error)
 
 	// QueryJobVariantValues returns variant key/value pairs for the given jobs.
-	QueryJobVariantValues(ctx context.Context, jobNames []string,
+	QueryJobVariantValues(ctx context.Context, reqOptions reqopts.RequestOptions, jobNames []string,
 		variantKeys []string) (map[string]map[string]string, error)
 
 	// LookupJobVariants returns all variant key/value pairs for a single job.
-	LookupJobVariants(ctx context.Context, jobName string) (map[string]string, error)
+	LookupJobVariants(ctx context.Context, reqOptions reqopts.RequestOptions, jobName string) (map[string]string, error)
 }
 
 // DataProvider combines all query capabilities needed by Component Readiness.

@@ -205,8 +205,7 @@ type TestCumulativeSummary struct {
 }
 
 // ProwGARawTestDatum stores raw BigQuery test results for GA release windows.
-// Fetched once per GA date and persisted so that the aggregation into
-// prow_ga_test_statuses_matview can be re-run cheaply when dimension tables change.
+// Fetched once per GA date and persisted for query-time aggregation.
 // Each (release, window_days) pair holds results aggregated over a different lookback
 // period (e.g. 1, 30, or 90 days before GA).
 type ProwGARawTestDatum struct {

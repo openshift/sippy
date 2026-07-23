@@ -13,6 +13,7 @@ import {
   getComponentReadinessViewsAPIUrl,
   getJobVariantsAPIUrl,
   gotFetchError,
+  useDataSource,
 } from './CompReadyUtils'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent, SafeStringParam } from '../helpers'
@@ -133,6 +134,10 @@ export const CompReadyVarsProvider = ({ children }) => {
   // Find the most recent GA releases
   const { defaultBaseRelease, defaultSampleRelease, getReleaseDate } =
     gaReleaseInfo(useContext(ReleasesContext))
+
+  // Read the app-wide BQ/PG toggle cookie to route CR queries
+  const dataSource = useDataSource()
+
   const days = 24 * 60 * 60 * 1000
   const seconds = 1000
   const now = new Date()
@@ -141,10 +146,10 @@ export const CompReadyVarsProvider = ({ children }) => {
   const initialSampleStartTime = new Date(now.getTime() - 7 * days)
   const initialSampleEndTime = new Date(now.getTime())
 
-  // Base is 28 days from the default base release's GA date
+  // Base is 30 days from the default base release's GA date
   // Match what the metrics uses in the api.
   const initialBaseStartTime =
-    getReleaseDate(defaultBaseRelease).getTime() - 27 * days
+    getReleaseDate(defaultBaseRelease).getTime() - 30 * days
   const initialBaseEndTime =
     getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
 
@@ -225,6 +230,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [flakeAsFailure, setFlakeAsFailure] = React.useState(false)
   const [includeMultiReleaseAnalysis, setIncludeMultiReleaseAnalysis] =
     React.useState(false)
+
   /******************************************************************************
    * Parameters that are used to refine the query as the user drills down into CR
    ****************************************************************************** */
@@ -450,7 +456,10 @@ export const CompReadyVarsProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    const jobVariantsAPIURL = getJobVariantsAPIUrl()
+    const dsParam = dataSource
+      ? `?dataSource=${safeEncodeURIComponent(dataSource)}`
+      : ''
+    const jobVariantsAPIURL = getJobVariantsAPIUrl() + dsParam
     const viewsAPIURL = getComponentReadinessViewsAPIUrl()
     Promise.all([fetch(jobVariantsAPIURL), fetch(viewsAPIURL)])
       .then(([variantsResp, viewsResp]) => {
@@ -501,7 +510,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
-  }, [])
+  }, [dataSource])
 
   const shouldLoadDefaultView = () => {
     // Attempt to decide if we should pre-select the default view, or if we were given params:
@@ -620,6 +629,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         setFlakeAsFailure,
         includeMultiReleaseAnalysis,
         setIncludeMultiReleaseAnalysis,
+        dataSource,
         component,
         capability,
         environment,

@@ -2,7 +2,6 @@
 package componentreadiness
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -22,7 +21,7 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 )
 
-func fakeComponentAndCapabilityGetter(test crtest.KeyWithVariants, stats crstatus.TestStatus) (string, []string) {
+func fakeComponentAndCapabilityGetter(stats crstatus.TestStatus) (string, []string) {
 	name := stats.TestName
 	known := map[string]struct {
 		component    string
@@ -158,6 +157,12 @@ var (
 	}
 )
 
+func withTestKey(key crtest.KeyWithVariants, status crstatus.TestStatus) crstatus.TestStatus {
+	status.TestID = key.TestID
+	status.Variants = key.Variants
+	return status
+}
+
 func filterColumnIDByDefault(id crtest.ColumnIdentification) crtest.ColumnIdentification {
 	ret := crtest.ColumnIdentification{Variants: map[string]string{}}
 	for _, variant := range strings.Split(DefaultDBGroupBy, ",") {
@@ -182,10 +187,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Installer":    "ipi",
 		},
 	}
-	awsAMD64OVNTestBytes, err := json.Marshal(awsAMD64OVNTest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVNTest")
-	}
+	awsAMD64OVNTestKey := awsAMD64OVNTest.Encode()
 	awsAMD64SDNTest := crtest.KeyWithVariants{
 		TestID: "2",
 		Variants: map[string]string{
@@ -199,10 +201,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Installer":    "ipi",
 		},
 	}
-	awsAMD64SDNTestBytes, err := json.Marshal(awsAMD64SDNTest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64SDNTest")
-	}
+	awsAMD64SDNTestKey := awsAMD64SDNTest.Encode()
 	awsAMD64SDNInstallerUPITest := crtest.KeyWithVariants{
 		TestID: "2",
 		Variants: map[string]string{
@@ -216,10 +215,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Installer":    "upi",
 		},
 	}
-	awsAMD64SDNInstallerUPITestBytes, err := json.Marshal(awsAMD64SDNInstallerUPITest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64SDNInstallerUPITest")
-	}
+	awsAMD64SDNInstallerUPITestKey := awsAMD64SDNInstallerUPITest.Encode()
 	awsAMD64OVN2Test := crtest.KeyWithVariants{
 		TestID: "3",
 		Variants: map[string]string{
@@ -229,10 +225,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Upgrade":      "upgrade-micro",
 		},
 	}
-	awsAMD64OVN2TestBytes, err := json.Marshal(awsAMD64OVN2Test)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVN2Test")
-	}
+	awsAMD64OVN2TestKey := awsAMD64OVN2Test.Encode()
 	awsAMD64OVNInstallerIPITest := crtest.KeyWithVariants{
 		TestID: "1",
 		Variants: map[string]string{
@@ -246,13 +239,10 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Installer":    "ipi",
 		},
 	}
-	awsAMD64OVNVariantsTestBytes, err := json.Marshal(awsAMD64OVNInstallerIPITest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVNInstallerIPITest")
-	}
+	awsAMD64OVNVariantsTestKey := awsAMD64OVNInstallerIPITest.Encode()
 	awsAMD64OVNBaseTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -261,7 +251,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNBaseTestStats50Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -270,7 +260,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNBaseTestStatsVariants90Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard", "fips"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -279,7 +269,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -288,7 +278,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStats85Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -297,7 +287,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStats50Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -306,7 +296,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStatsTiny := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   3,
 			FlakeCount:   0,
@@ -315,7 +305,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStatsVariants90Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard", "fips"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -324,7 +314,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64SDNBaseTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 2",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -333,7 +323,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64SDNBaseTestStats50Percent := crstatus.TestStatus{
 		TestName: "test 2",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -342,7 +332,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64SDNSampleTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 2",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -351,7 +341,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVN2BaseTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 3",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -360,7 +350,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVN2SampleTestStats80Percent := crstatus.TestStatus{
 		TestName: "test 3",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -453,12 +443,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test no significant and missing data",
 			generator: defaultComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats85Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -499,14 +489,14 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test with both improvement and regression",
 			generator: defaultComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2BaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey:  withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64OVN2TestKey: withTestKey(awsAMD64OVN2Test, awsAMD64OVN2BaseTestStats90Percent),
+				awsAMD64SDNTestKey:  withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2SampleTestStats80Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey:  withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats50Percent),
+				awsAMD64OVN2TestKey: withTestKey(awsAMD64OVN2Test, awsAMD64OVN2SampleTestStats80Percent),
+				awsAMD64SDNTestKey:  withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -629,12 +619,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "component page test no significant and missing data",
 			generator: componentPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -671,12 +661,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "component page test with both improvement and regression",
 			generator: componentPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats50Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -713,12 +703,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "capability page test no significant and missing data",
 			generator: capabilityPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -742,12 +732,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "capability page test with both improvement and regression",
 			generator: capabilityPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats50Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -771,12 +761,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "test page test no significant and missing data",
 			generator: testPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -800,12 +790,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "test page test with both improvement and regression",
 			generator: testPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats50Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -840,12 +830,12 @@ func TestGenerateComponentReport(t *testing.T) {
 				},
 			},
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats85Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -937,12 +927,12 @@ func TestGenerateComponentReport(t *testing.T) {
 				},
 			},
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats85Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -979,12 +969,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test minimum failure no regression",
 			generator: defaultComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStatsTiny,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStatsTiny),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -1021,12 +1011,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test group by installer",
 			generator: groupByInstallerComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNVariantsTestBytes):     awsAMD64OVNBaseTestStatsVariants90Percent,
-				string(awsAMD64SDNInstallerUPITestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNVariantsTestKey:     withTestKey(awsAMD64OVNInstallerIPITest, awsAMD64OVNBaseTestStatsVariants90Percent),
+				awsAMD64SDNInstallerUPITestKey: withTestKey(awsAMD64SDNInstallerUPITest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNVariantsTestBytes):     awsAMD64OVNSampleTestStatsVariants90Percent,
-				string(awsAMD64SDNInstallerUPITestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNVariantsTestKey:     withTestKey(awsAMD64OVNInstallerIPITest, awsAMD64OVNSampleTestStatsVariants90Percent),
+				awsAMD64SDNInstallerUPITestKey: withTestKey(awsAMD64SDNInstallerUPITest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -1067,14 +1057,14 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test with both improvement and regression flake as failure",
 			generator: flakeFailComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2BaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey:  withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64OVN2TestKey: withTestKey(awsAMD64OVN2Test, awsAMD64OVN2BaseTestStats90Percent),
+				awsAMD64SDNTestKey:  withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2SampleTestStats80Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey:  withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats50Percent),
+				awsAMD64OVN2TestKey: withTestKey(awsAMD64OVN2Test, awsAMD64OVN2SampleTestStats80Percent),
+				awsAMD64SDNTestKey:  withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{

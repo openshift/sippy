@@ -873,6 +873,7 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 		regression.Capability,
 		regression.Variants,
 		regression.BaseRelease,
+		"",
 	)
 }
 
