@@ -282,7 +282,7 @@ See the [sippy test details|${url}] for additional context.
       })
   }
 
-  const clearAlerts = () => {
+  const _clearAlerts = () => {
     setSuccessAlert(null)
     setErrorAlert('')
     setIsValidationError(false)

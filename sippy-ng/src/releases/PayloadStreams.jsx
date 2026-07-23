@@ -5,7 +5,7 @@ import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   title: {
     textAlign: 'center',
   },

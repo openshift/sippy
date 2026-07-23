@@ -299,7 +299,7 @@ export default function FeatureGates(props) {
         const basename = '/sippy-ng'
         const path = url.pathname
         return path.startsWith(basename) ? path.slice(basename.length) : path
-      } catch (e) {
+      } catch (_e) {
         // fall through
       }
     }

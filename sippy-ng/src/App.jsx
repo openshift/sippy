@@ -399,7 +399,7 @@ const ChatInterfaceWrapper = () => {
   return <ChatInterface mode="fullPage" conversationId={id} />
 }
 
-function App(props) {
+function App(_props) {
   const classes = useStyles()
   const theme = useTheme()
 

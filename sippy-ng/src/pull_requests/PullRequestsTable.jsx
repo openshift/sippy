@@ -22,7 +22,7 @@ import {
   useStableJSONQueryParam,
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -31,8 +31,6 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const overallTestName = 'Overall'
-
 const bookmarks = [
   {
     name: 'Runs > 10',
@@ -40,7 +38,7 @@ const bookmarks = [
   },
 ]
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
@@ -63,10 +61,9 @@ const useStyles = makeStyles((theme) => ({
 }))
 
 export default function PullRequestsTable(props) {
-  const { classes } = props
+  const _classes = props.classes
   const gridClasses = useStyles()
   const theme = useTheme()
-  const location = useLocation().pathname
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)

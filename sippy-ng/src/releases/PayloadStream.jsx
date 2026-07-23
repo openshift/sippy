@@ -27,18 +27,18 @@ export default function PayloadStream(props) {
   const location = useLocation()
   const basePath = `/release/${props.release}/streams/${props.arch}/${props.stream}`
 
-  const [currentTab, setCurrentTab] = useState(0)
-  function handleTabChange(event, newValue) {
+  const [_currentTab, _setCurrentTab] = useState(0)
+  function _handleTabChange(_event, newValue) {
     console.warn('Setting new value ' + newValue)
-    setCurrentTab(newValue)
+    _setCurrentTab(newValue)
   }
 
-  const [release = props.release, setRelease] = useQueryParam(
+  const [_release = props.release, _setRelease] = useQueryParam(
     'release',
     StringParam
   )
-  const [arch = props.arch, setArch] = useQueryParam('arch', StringParam)
-  const [stream = props.stream, setStream] = useQueryParam(
+  const [arch = props.arch, _setArch] = useQueryParam('arch', StringParam)
+  const [stream = props.stream, _setStream] = useQueryParam(
     'stream',
     StringParam
   )

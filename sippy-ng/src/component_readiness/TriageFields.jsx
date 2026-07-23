@@ -62,7 +62,7 @@ export default function TriageFields({
   handleAddToExistingTriage,
 }) {
   const classes = useStyles()
-  const { view, sampleRelease } = useContext(CompReadyVarsContext)
+  const { sampleRelease } = useContext(CompReadyVarsContext)
 
   const [matchingTriages, setMatchingTriages] = React.useState([])
   const [triageValidationErrors, setTriageValidationErrors] = React.useState([])

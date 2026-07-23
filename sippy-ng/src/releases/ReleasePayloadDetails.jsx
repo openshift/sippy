@@ -42,7 +42,7 @@ export default function ReleasePayloadDetails(props) {
 
   const [tag, setTag] = React.useState({})
 
-  const [releaseTag = props.releaseTag, setReleaseTag] = useQueryParam(
+  const [releaseTag = props.releaseTag, _setReleaseTag] = useQueryParam(
     'release_tag',
     StringParam
   )

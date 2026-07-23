@@ -1,6 +1,6 @@
 import './Install.css'
 import { Grid, Typography } from '@mui/material'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -9,7 +9,6 @@ import TestByVariantTable from '../tests/TestByVariantTable'
 import TopLevelIndicators from './InstallTopLevelIndicators'
 
 export default function Install(props) {
-  const location = useLocation()
   const basePath = `/install/${props.release}`
 
   const [fetchError, setFetchError] = React.useState('')

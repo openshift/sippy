@@ -34,7 +34,7 @@ import WarningsBanner from './WarningsBanner'
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
-const cancelFetch = () => {
+const _cancelFetch = () => {
   console.log('Aborting page4')
   abortController.abort()
 }
@@ -58,8 +58,8 @@ export default function CompReadyEnvCapabilityTest(props) {
     'searchRow',
     StringParam
   )
-  const [searchRowRegex, setSearchRowRegex] = useState(searchRowRegexURL)
-  const handleSearchRowRegexChange = (event) => {
+  const [_searchRowRegex, setSearchRowRegex] = useState(searchRowRegexURL)
+  const _handleSearchRowRegexChange = (event) => {
     const searchValue = event.target.value
     setSearchRowRegex(searchValue)
   }
@@ -68,9 +68,9 @@ export default function CompReadyEnvCapabilityTest(props) {
     'searchColumn',
     StringParam
   )
-  const [searchColumnRegex, setSearchColumnRegex] =
+  const [_searchColumnRegex, setSearchColumnRegex] =
     useState(searchColumnRegexURL)
-  const handleSearchColumnRegexChange = (event) => {
+  const _handleSearchColumnRegexChange = (event) => {
     const searchValue = event.target.value
     setSearchColumnRegex(searchValue)
   }
@@ -79,12 +79,12 @@ export default function CompReadyEnvCapabilityTest(props) {
     'redOnly',
     BooleanParam
   )
-  const [redOnlyChecked, setRedOnlyChecked] = React.useState(redOnlyURL)
-  const handleRedOnlyCheckboxChange = (event) => {
+  const [_redOnlyChecked, setRedOnlyChecked] = React.useState(redOnlyURL)
+  const _handleRedOnlyCheckboxChange = (event) => {
     setRedOnlyChecked(event.target.checked)
   }
 
-  const clearSearches = () => {
+  const _clearSearches = () => {
     setSearchRowRegex('')
     if (searchRowRegexURL && searchRowRegexURL !== '') {
       setSearchRowRegexURL('')

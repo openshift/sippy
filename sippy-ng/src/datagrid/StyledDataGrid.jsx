@@ -1,7 +1,7 @@
 import { DataGrid } from '@mui/x-data-grid'
 import { styled } from '@mui/material/styles'
 
-export const StyledDataGrid = styled(DataGrid)(({ theme }) => ({
+export const StyledDataGrid = styled(DataGrid)(({ _theme }) => ({
   '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
     textOverflow: 'ellipsis',
     display: '-webkit-box',

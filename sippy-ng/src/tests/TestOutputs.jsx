@@ -15,7 +15,7 @@ import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   table: {
     '& .MuiTableCell-root': {
       border: '1px solid #cccccc',

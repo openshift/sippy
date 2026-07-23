@@ -45,13 +45,7 @@ const faqs = [
   },
 ]
 
-const style = {
-  bgColor: 'background.paper',
-  boxShadow: 24,
-  p: 4,
-}
-
-export default function ComponentReadinessHelp(props) {
+export default function ComponentReadinessHelp(_props) {
   return (
     <Fragment>
       <Grid className="component-readiness-help-dialog">

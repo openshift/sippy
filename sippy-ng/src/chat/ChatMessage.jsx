@@ -9,7 +9,7 @@ import {
 } from '@mui/icons-material'
 import { formatChatTimestamp, humanize, MESSAGE_TYPES } from './chatUtils'
 import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '@mui/styles'
 import { useModels } from './store/useChatStore'
 import MessageChart from './MessageChart'
 import PropTypes from 'prop-types'
@@ -19,7 +19,6 @@ import remarkGfm from 'remark-gfm'
 
 // Custom link component for ReactMarkdown that opens external links in new tabs
 const ChatLink = ({ href, children, ...props }) => {
-  const theme = useTheme()
   const isExternal =
     href && (href.startsWith('http://') || href.startsWith('https://'))
 
@@ -284,7 +283,7 @@ const useStyles = makeStyles((theme) => ({
 export default function ChatMessage({
   message,
   showTimestamp = true,
-  showTools = true,
+  showTools: _showTools = true,
 }) {
   const classes = useStyles()
   const { models } = useModels()
