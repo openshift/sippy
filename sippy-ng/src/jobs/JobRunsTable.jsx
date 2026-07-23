@@ -362,6 +362,7 @@ export default function JobRunsTable(props) {
       autocomplete: 'tests',
       headerName: 'Failed tests',
       hide: true,
+      sortable: false,
     },
     {
       field: 'flaked_test_names',
@@ -369,6 +370,7 @@ export default function JobRunsTable(props) {
       autocomplete: 'tests',
       headerName: 'Flaked tests',
       hide: true,
+      sortable: false,
     },
     {
       field: 'ran_test_names',
@@ -376,6 +378,7 @@ export default function JobRunsTable(props) {
       autocomplete: 'tests',
       headerName: 'Tests ran',
       hide: true,
+      sortable: false,
     },
     {
       field: 'pull_request_author',

@@ -13,14 +13,7 @@ const replaceTimeNow = "|||TIMENOW|||"
 const timestampFormat = "2006-01-02 15:04:05"
 
 // TODO: for historical sippy we need to specify the pinnedDate and not use NOW
-var PostgresMatViews = []PostgresView{
-	{
-		Name:              "prow_job_runs_report_matview",
-		Definition:        jobRunsReportMatView,
-		IndexColumns:      []string{"id"},
-		AdditionalIndexes: []string{"release, timestamp DESC"},
-	},
-}
+var PostgresMatViews = []PostgresView{}
 
 // PostgresViews are regular, non-materialized views:
 var PostgresViews = []PostgresView{}
@@ -147,71 +140,3 @@ func syncPostgresViews(db *gorm.DB, reportEnd *time.Time) error {
 
 	return nil
 }
-
-// jobRunsReportMatView limits all data to a 90-day window. This is intentional:
-// prow_job_run_tests is heavily partitioned and scanning beyond 90 days is expensive
-// with no consumer needing older per-test failure/flake details in this view.
-const jobRunsReportMatView = `
-WITH test_results AS (
-	SELECT prow_job_run_tests.prow_job_run_id,
-		prow_job_run_tests.prow_job_run_release,
-		count(tests.id)       FILTER (WHERE prow_job_run_tests.status = 12) AS failed_test_count,
-		array_agg(tests.name) FILTER (WHERE prow_job_run_tests.status = 12) AS failed_test_names,
-		count(tests.id)       FILTER (WHERE prow_job_run_tests.status = 13) AS flaked_test_count,
-		array_agg(tests.name) FILTER (WHERE prow_job_run_tests.status = 13) AS flaked_test_names
-	FROM prow_job_run_tests
-		JOIN tests ON tests.id = prow_job_run_tests.test_id
-	WHERE prow_job_run_tests.status IN (12, 13)
-		AND prow_job_run_tests.prow_job_run_timestamp >= |||TIMENOW||| - interval '90 days'
-	GROUP BY prow_job_run_tests.prow_job_run_id, prow_job_run_tests.prow_job_run_release
-),
-pull_requests AS (
-	SELECT
-		DISTINCT ON(prow_job_runs.id)
-		prow_job_runs.id as id,
-		prow_pull_requests.link,
-		prow_pull_requests.sha,
-		prow_pull_requests.org,
-		prow_pull_requests.author,
-		prow_pull_requests.repo
-        FROM
-                prow_pull_requests
-        INNER JOIN
-                prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id
-        INNER JOIN
-                prow_job_runs ON prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
-        WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
-        GROUP BY prow_job_runs.id, prow_pull_requests.link, prow_pull_requests.sha, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.author
-)
-SELECT prow_job_runs.id,
-   prow_jobs.release,
-   prow_jobs.name,
-   prow_jobs.name AS job,
-   prow_jobs.variants,
-   regexp_replace(prow_jobs.name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-'::text, ''::text) AS brief_name,
-   prow_job_runs.overall_result,
-   prow_job_runs.url AS test_grid_url,
-   prow_job_runs.url,
-   prow_job_runs.succeeded,
-   prow_job_runs.infrastructure_failure,
-   prow_job_runs.known_failure,
-   (EXTRACT(epoch FROM (prow_job_runs."timestamp" AT TIME ZONE 'utc'::text)) * 1000::numeric)::bigint AS "timestamp",
-   prow_job_runs.id AS prow_id,
-   prow_job_runs.cluster AS cluster,
-   prow_job_runs.labels as labels,
-   test_results.flaked_test_names AS flaked_test_names,
-   test_results.flaked_test_count AS test_flakes,
-   test_results.failed_test_names AS failed_test_names,
-   test_results.failed_test_count AS test_failures,
-   pull_requests.link as pull_request_link,
-   pull_requests.sha as pull_request_sha,
-   pull_requests.org as pull_request_org,
-   pull_requests.repo as pull_request_repo,
-   pull_requests.author as pull_request_author
-FROM prow_job_runs
-   LEFT JOIN test_results ON test_results.prow_job_run_id = prow_job_runs.id
-       AND test_results.prow_job_run_release = prow_job_runs.prow_job_release
-   LEFT JOIN pull_requests ON pull_requests.id = prow_job_runs.id
-   JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
-WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
-`
