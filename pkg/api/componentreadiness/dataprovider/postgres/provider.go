@@ -225,19 +225,20 @@ func (p *PostgresProvider) fetchJobVariantsByIDs(ids []uint) (map[uint]map[strin
 // baseMatchesGAWindow returns true when the base release dates align with a
 // pre-computed GA window in prow_ga_raw_test_data.
 func (p *PostgresProvider) baseMatchesGAWindow(ctx context.Context, reqOptions reqopts.RequestOptions) bool {
-	var gaDate *time.Time
+	var rd models.ReleaseDefinition
 	err := p.dbc.DB.WithContext(ctx).
-		Model(&models.ReleaseDefinition{}).
+		Select("ga_date").
 		Where("release = ? AND ga_date < CURRENT_DATE", reqOptions.BaseRelease.Name).
-		Pluck("ga_date", &gaDate).Error
+		First(&rd).Error
 	if err != nil {
 		log.WithError(err).WithField("release", reqOptions.BaseRelease.Name).
 			Warn("failed to query GA date, falling back to prefix-sum query")
 		return false
 	}
-	if gaDate == nil {
+	if rd.GADate == nil {
 		return false
 	}
+	gaDate := rd.GADate
 
 	windowDays := int(reqOptions.BaseRelease.End.Sub(reqOptions.BaseRelease.Start).Hours() / 24)
 	if !slices.Contains(utils.GAWindows, windowDays) {
