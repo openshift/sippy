@@ -47,7 +47,7 @@ func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string, reportE
 	return results, nil
 }
 
-func GetTestFailuresForPayload(db *gorm.DB, payloadTag string) ([]models.PayloadFailedTest, error) {
+func GetTestFailuresForPayload(db *gorm.DB, payloadTag, release string, releaseTime time.Time) ([]models.PayloadFailedTest, error) {
 	results := make([]models.PayloadFailedTest, 0)
 	result := db.Raw(`SELECT DISTINCT
 	rt.release,
@@ -75,11 +75,13 @@ func GetTestFailuresForPayload(db *gorm.DB, payloadTag string) ([]models.Payload
 	/*AND rjr.kind = 'Blocking'*/
 	AND rjr.State = 'Failed'
 	AND pjrt.prow_job_run_id = rjr.prow_job_run_id
+	AND pjrt.prow_job_run_release = ?
+	AND pjrt.prow_job_run_timestamp >= ?
 	AND pjrt.status = 12
 	AND t.id = pjrt.test_id
 	AND pjr.id = pjrt.prow_job_run_id
 	AND pj.id = pjr.prow_job_id
-	ORDER BY pjrt.id DESC`, payloadTag).Scan(&results)
+	ORDER BY pjrt.id DESC`, payloadTag, release, releaseTime).Scan(&results)
 
 	if result.Error != nil {
 		return nil, result.Error
