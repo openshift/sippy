@@ -4,7 +4,6 @@ import { useTheme } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React from 'react'
 
-// eslint-disable-next-line react/prop-types
 export default function ViewPicker(props) {
   const theme = useTheme()
   const classes = useStyles(theme)

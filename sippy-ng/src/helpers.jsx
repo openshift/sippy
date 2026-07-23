@@ -70,7 +70,7 @@ export function formatDateToSeconds(dateString) {
 // This is because the ES6 Intl.RelativeTime isn't available in all environments yet,
 // e.g. Safari and NodeJS.
 export function relativeTime(date, startDate) {
-  if (!date instanceof Date) {
+  if (!(date instanceof Date)) {
     date = new Date(date)
   }
 
@@ -266,7 +266,7 @@ export function pathForJobRunsWithTestFlake(release, test, filter, period) {
 }
 
 export function pathForJobRunsWithFilter(release, filter) {
-  if (!filter || filter.items === []) {
+  if (!filter || filter.items.length === 0) {
     return `/jobs/${release}/runs`
   }
 
@@ -288,7 +288,7 @@ export function pathForTestSubstringByVariant(release, test) {
 }
 
 export function pathForTestsWithFilter(release, filter) {
-  if (!filter || filter.items === []) {
+  if (!filter || filter.items.length === 0) {
     return `/tests/${release}`
   }
 
@@ -299,7 +299,7 @@ export function pathForTestsWithFilter(release, filter) {
 
 // apiPath should be something like '/tests/4.12' or '/tests/4.12/details'
 export function pathForAPIWithFilter(apiPath, filter) {
-  if (!filter || filter.items === []) {
+  if (!filter || filter.items.length === 0) {
     return apiPath
   }
 
@@ -307,7 +307,7 @@ export function pathForAPIWithFilter(apiPath, filter) {
 }
 
 export function pathForJobsWithFilter(release, filter) {
-  if (!filter || filter.items === []) {
+  if (!filter || filter.items.length === 0) {
     return `/jobs/${release}`
   }
 
@@ -436,6 +436,6 @@ export function getTestStatus(stats, flake, fail, success) {
   return stats.flake_count > 0
     ? flake
     : stats.failure_count > 0
-    ? fail
-    : success
+      ? fail
+      : success
 }

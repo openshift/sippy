@@ -3,7 +3,7 @@ WORKDIR /go/src/sippy
 COPY . .
 ENV PATH="/go/bin:${PATH}"
 ENV GOPATH="/go"
-RUN dnf module enable nodejs:18 -y && dnf install -y go make npm && make build
+RUN dnf module enable nodejs:20 -y && dnf install -y go make npm && make build
 RUN go build -cover -coverpkg=./cmd/...,./pkg/... -mod=vendor -o ./sippy-cover ./cmd/sippy
 
 FROM registry.access.redhat.com/ubi9/ubi:latest AS base

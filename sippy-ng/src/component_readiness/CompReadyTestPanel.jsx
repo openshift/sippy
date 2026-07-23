@@ -236,18 +236,20 @@ export default function CompReadyTestPanel(props) {
             )}
           </Grid>
         )}
-        {data.sample_stats && data.sample_stats.Start && data.sample_stats.End && (
-          <Grid item xs={6}>
-            {printParamsAndStats(
-              'Sample (being evaluated)',
-              data.sample_stats,
-              data.sample_stats.Start.toString(),
-              data.sample_stats.End.toString(),
-              loadedParams.variantCrossCompare,
-              loadedParams.compareVariantsCheckedItems
-            )}
-          </Grid>
-        )}
+        {data.sample_stats &&
+          data.sample_stats.Start &&
+          data.sample_stats.End && (
+            <Grid item xs={6}>
+              {printParamsAndStats(
+                'Sample (being evaluated)',
+                data.sample_stats,
+                data.sample_stats.Start.toString(),
+                data.sample_stats.End.toString(),
+                loadedParams.variantCrossCompare,
+                loadedParams.compareVariantsCheckedItems
+              )}
+            </Grid>
+          )}
       </Grid>
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
         <FormGroup row>

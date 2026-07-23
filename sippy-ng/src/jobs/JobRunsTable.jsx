@@ -743,7 +743,6 @@ export default function JobRunsTable(props) {
     </Dialog>
   )
 
-  /* eslint-disable react/prop-types */
   return (
     <Fragment>
       {pageTitle()}

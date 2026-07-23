@@ -415,8 +415,8 @@ function App(props) {
     colorModePreference === 'dark' || colorModePreference === 'light'
       ? colorModePreference
       : systemPrefersDark
-      ? 'dark'
-      : 'light'
+        ? 'dark'
+        : 'light'
   )
 
   const colorMode = React.useMemo(
@@ -823,7 +823,6 @@ function App(props) {
                             />
                           </Routes>
                         </ErrorBoundary>
-                        {/* eslint-enable react/prop-types */}
                       </Main>
                     </div>
                   </QueryParamProvider>

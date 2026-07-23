@@ -150,8 +150,8 @@ export default function TopLevelIndicators(props) {
                       improvement > 0
                         ? theme.palette.success.main
                         : improvement < 0
-                        ? theme.palette.error.main
-                        : theme.palette.text.secondary,
+                          ? theme.palette.error.main
+                          : theme.palette.text.secondary,
                     fontWeight: 500,
                   }}
                 >

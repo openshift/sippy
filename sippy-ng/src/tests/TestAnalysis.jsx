@@ -133,8 +133,8 @@ export function TestAnalysis(props) {
         The test statistics shown are for the current ${
           period === 'twoDay' ? '2-day' : '7-day'
         } period compared to the previous ${
-        period === 'twoDay' ? '2-day' : '7-day'
-      } period.`,
+          period === 'twoDay' ? '2-day' : '7-day'
+        } period.`,
       suggestions: [
         'What are the most common failure modes for this test?',
         {

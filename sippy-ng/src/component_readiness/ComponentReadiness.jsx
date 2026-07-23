@@ -500,7 +500,6 @@ export default function ComponentReadiness(props) {
               className="cr-view"
             ></Grid>
             {isMainRoute && <WarningsBanner warnings={warnings} />}
-            {/* eslint-disable react/prop-types */}
             <Routes>
               <Route index element={<Navigate to="main" replace />} />
               <Route

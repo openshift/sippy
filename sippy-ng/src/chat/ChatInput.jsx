@@ -480,8 +480,8 @@ export default function ChatInput({
             canSend
               ? 'Send message'
               : isTyping
-              ? 'Stop generation'
-              : 'Send message'
+                ? 'Stop generation'
+                : 'Send message'
           }
         >
           <span>

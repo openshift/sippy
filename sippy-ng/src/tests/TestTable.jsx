@@ -1070,7 +1070,6 @@ function TestTable(props) {
   }
 
   return (
-    /* eslint-disable react/prop-types */
     <Fragment>
       {requiresNonDefaultFilter && (
         <Alert severity="info" sx={{ mb: 2 }}>
