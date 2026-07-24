@@ -492,7 +492,7 @@ func jobNamesTestResultFunc(dbc *db.DB, release string) testResultsByJobNameFunc
 
 		analyzeSince := time.Now().Add(-14 * 24 * time.Hour)
 
-		q := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, testName, jobNames, release)
+		q := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, release, release, testName, jobNames)
 		if q.Error != nil {
 			return nil, q.Error
 		}

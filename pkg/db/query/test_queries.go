@@ -66,12 +66,27 @@ const (
     GROUP BY bug_tests.test_id`
 
 	QueryTestAnalysis = `
-        select current_successes, current_runs,
+        SELECT current_successes, current_runs,
                current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage
-        from (
-            select sum(runs) as current_runs, sum(passes) as current_successes
-            from test_analysis_by_job_by_dates
-            where date >= ? AND test_name = ? AND job_name IN ? AND release = ?
+        FROM (
+            SELECT
+                SUM(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0)) AS current_successes,
+                SUM(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)) AS current_runs
+            -- e = latest cumulative snapshot for the release
+            FROM test_cumulative_summaries e
+            JOIN tests t ON t.id = e.test_id
+            JOIN prow_jobs pj ON pj.id = e.prow_job_id
+            -- s = prior-day baseline; the difference e - s gives the windowed totals
+            LEFT JOIN test_cumulative_summaries s
+                ON s.test_id = e.test_id
+                AND s.prow_job_id = e.prow_job_id
+                AND s.suite_id = e.suite_id
+                AND s.release = e.release
+                AND s.date = (?::date - INTERVAL '1 day')::date
+            WHERE e.date = (SELECT MAX(date) FROM test_cumulative_summaries WHERE release = ?)
+                AND e.release = ?
+                AND t.name = ?
+                AND pj.name IN ?
         ) t`
 )
 
