@@ -99,6 +99,8 @@ func matchesIncludeVariants(variants map[string]string, includeVariants map[stri
 	return true
 }
 
+// hasCapabilityIntersection returns true if any of the test's capabilities
+// appear in the requested set.
 func hasCapabilityIntersection(testCaps []string, requestedCaps map[string]bool) bool {
 	for _, c := range testCaps {
 		if requestedCaps[c] {
