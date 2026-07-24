@@ -175,6 +175,70 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 
 }
 
+func TestClient_ListRecentlyMergedPRs(t *testing.T) {
+	now := time.Now()
+	headSHA1 := "aaa111"
+	headSHA2 := "bbb222"
+	mergeSHA1 := "ccc333"
+	num1 := 10
+	num2 := 20
+	num3 := 30
+
+	client := &Client{
+		ctx:         context.TODO(),
+		closedCache: make(map[string]map[string]map[int]*gh.PullRequest),
+		gitHubListClosedPRs: func(org, repo string) (map[int]*gh.PullRequest, error) {
+			return map[int]*gh.PullRequest{
+				num1: {
+					Number:         &num1,
+					MergedAt:       &now,
+					MergeCommitSHA: &mergeSHA1,
+					Head:           &gh.PullRequestBranch{SHA: &headSHA1},
+				},
+				num2: {
+					Number:   &num2,
+					MergedAt: nil, // closed but not merged
+					Head:     &gh.PullRequestBranch{SHA: &headSHA2},
+				},
+				num3: {
+					Number:   &num3,
+					MergedAt: &now,
+					Head:     nil, // merged but missing Head (shouldn't happen, but be safe)
+				},
+			}, nil
+		},
+	}
+
+	merged, err := client.ListRecentlyMergedPRs(openshift, kubernetes)
+	if err != nil {
+		t.Fatalf("ListRecentlyMergedPRs() unexpected error: %v", err)
+	}
+
+	if len(merged) != 1 {
+		t.Fatalf("ListRecentlyMergedPRs() want 1 merged PR, got %d", len(merged))
+	}
+
+	m := merged[0]
+	if m.Number != num1 {
+		t.Errorf("ListRecentlyMergedPRs() number = %d, want %d", m.Number, num1)
+	}
+	if m.HeadSHA != headSHA1 {
+		t.Errorf("ListRecentlyMergedPRs() HeadSHA = %s, want %s (not MergeCommitSHA %s)", m.HeadSHA, headSHA1, mergeSHA1)
+	}
+	if !m.MergedAt.Equal(now) {
+		t.Errorf("ListRecentlyMergedPRs() MergedAt = %v, want %v", m.MergedAt, now)
+	}
+
+	// Second call should use cache, not refetch
+	merged2, err := client.ListRecentlyMergedPRs(openshift, kubernetes)
+	if err != nil {
+		t.Fatalf("ListRecentlyMergedPRs() second call unexpected error: %v", err)
+	}
+	if len(merged2) != 1 {
+		t.Errorf("ListRecentlyMergedPRs() second call want 1, got %d", len(merged2))
+	}
+}
+
 func TestClient_IsCommentIdMatch(t *testing.T) {
 	client := &Client{commentMetaRegEx: regexp.MustCompile(commentIDRegex)}
 

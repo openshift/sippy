@@ -45,6 +45,12 @@ type PREntry struct {
 	State    *string
 }
 
+type MergedPR struct {
+	Number   int
+	HeadSHA  string
+	MergedAt time.Time
+}
+
 type Client struct {
 	ctx                 context.Context
 	cache               map[prlocator]*PREntry
@@ -218,6 +224,38 @@ func (c *Client) IsPrRecentlyMerged(org, repo string, number int) (*time.Time, *
 	}
 	// we didn't find it
 	return nil, nil, err
+}
+
+func (c *Client) ListRecentlyMergedPRs(org, repo string) ([]MergedPR, error) {
+	c.closedCacheLock.Lock()
+	defer c.closedCacheLock.Unlock()
+	if c.closedCache[org] == nil {
+		c.closedCache[org] = make(map[string]map[int]*gh.PullRequest)
+	}
+
+	var fetchErr error
+	if c.closedCache[org][repo] == nil {
+		c.closedCache[org][repo], fetchErr = c.gitHubListClosedPRs(org, repo)
+		if fetchErr != nil {
+			log.WithError(fetchErr).Errorf("Error fetching closed PRs for %s/%s", org, repo)
+		}
+	}
+
+	var merged []MergedPR
+	for _, pr := range c.closedCache[org][repo] {
+		if pr == nil || pr.MergedAt == nil || pr.Number == nil {
+			continue
+		}
+		if pr.Head == nil || pr.Head.SHA == nil {
+			continue
+		}
+		merged = append(merged, MergedPR{
+			Number:   *pr.Number,
+			HeadSHA:  *pr.Head.SHA,
+			MergedAt: *pr.MergedAt,
+		})
+	}
+	return merged, fetchErr
 }
 
 func (c *Client) IsWithinRateLimitThreshold() bool {
