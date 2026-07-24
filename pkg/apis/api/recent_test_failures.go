@@ -8,6 +8,7 @@ import (
 // RecentTestFailure represents a test that failed during the queried period.
 type RecentTestFailure struct {
 	TestID        uint                      `json:"test_id"`
+	SuiteID       *uint                     `json:"suite_id,omitempty"`
 	TestName      string                    `json:"test_name"`
 	SuiteName     string                    `json:"suite_name,omitempty"`
 	JiraComponent string                    `json:"jira_component,omitempty"`
@@ -53,6 +54,11 @@ func (r RecentTestFailure) GetNumericalValue(param string) (float64, error) {
 	switch param {
 	case "test_id":
 		return float64(r.TestID), nil
+	case "suite_id":
+		if r.SuiteID != nil {
+			return float64(*r.SuiteID), nil
+		}
+		return 0, nil
 	case "failure_count":
 		return float64(r.FailureCount), nil
 	case "first_failure":
