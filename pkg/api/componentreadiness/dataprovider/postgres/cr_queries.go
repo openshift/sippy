@@ -117,8 +117,7 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
 		return nil, []error{err}
 	}
 
-	// Shared join fragment for both failure and existence queries.
-	prefixSumJoin := fmt.Sprintf(`
+	prefixSumFrom := fmt.Sprintf(`
         FROM test_cumulative_summaries e
         LEFT JOIN test_cumulative_summaries s
             ON s.release = e.release AND s.test_id = e.test_id
@@ -126,9 +125,7 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
             AND s.date = ?
         JOIN prow_jobs pj ON pj.id = e.prow_job_id AND pj.deleted_at IS NULL
             AND pj.variant_combination_id IN (%s)
-        JOIN (%s) AS vg(vcid, group_id) ON vg.vcid = pj.variant_combination_id
-        WHERE e.release = ? AND e.date = ?
-        GROUP BY e.test_id, e.suite_id, vg.group_id`,
+        JOIN (%s) AS vg(vcid, group_id) ON vg.vcid = pj.variant_combination_id`,
 		setup.variantSubquery, setup.groupMapping.valuesClause)
 
 	joinArgs := []any{startDate}
@@ -142,10 +139,12 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
             SUM(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0)) AS success_count,
             SUM(e.prefix_sum_flakes - COALESCE(s.prefix_sum_flakes, 0)) AS flake_count
         %s
+        WHERE e.release = ? AND e.date = ?
+        GROUP BY e.test_id, e.suite_id, vg.group_id
         HAVING SUM(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)) > 0
             AND SUM(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0))
               - SUM(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0)) >= ?`,
-		prefixSumJoin)
+		prefixSumFrom)
 
 	failureInner := fmt.Sprintf(lastFailureLateral, failureAgg)
 
@@ -153,17 +152,35 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
 	copy(failureArgs, joinArgs)
 	failureArgs = append(failureArgs, setup.minimumFailure, release, start, end)
 
-	existenceInner := fmt.Sprintf(`
-        SELECT e.test_id, e.suite_id, vg.group_id AS variant_group_id
+	colMapping := buildColumnGroupMapping(setup.groupMapping.groupToVariants, reqOptions.VariantOption.ColumnGroupBy)
+
+	placeholderQuery := fmt.Sprintf(`
+        SELECT
+            'grid:' || tow.component AS test_id,
+            '' AS test_name,
+            '' AS test_suite,
+            tow.component,
+            tow.capabilities,
+            cm.col_group_id AS variant_group_id,
+            1 AS total_count,
+            1 AS success_count,
+            0 AS flake_count,
+            NULL::timestamptz AS last_failure
         %s
+        JOIN test_ownerships tow ON tow.test_id = e.test_id
+            AND (tow.suite_id = e.suite_id OR (tow.suite_id IS NULL AND e.suite_id = 0))
+            AND tow.staff_approved_obsolete = false
+        JOIN (%s) AS cm(group_id, col_group_id) ON cm.group_id = vg.group_id
+        WHERE e.release = ? AND e.date = ?
+        GROUP BY tow.component, tow.capabilities, cm.col_group_id
         HAVING SUM(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)) > 0`,
-		prefixSumJoin)
+		prefixSumFrom, colMapping.valuesClause)
 
-	existenceArgs := make([]any, len(joinArgs))
-	copy(existenceArgs, joinArgs)
+	placeholderArgs := make([]any, len(joinArgs))
+	copy(placeholderArgs, joinArgs)
 
-	return p.runFailureAndExistence(ctx, failureInner, failureArgs, existenceInner, existenceArgs,
-		setup.groupMapping, reqOptions.VariantOption.ColumnGroupBy)
+	return p.runFailureAndPlaceholder(ctx, failureInner, failureArgs, placeholderQuery, placeholderArgs,
+		setup.groupMapping)
 }
 
 // queryBaseTestStatusGA queries prow_ga_raw_test_data to compute aggregated
@@ -185,13 +202,11 @@ func (p *PostgresProvider) queryBaseTestStatusGA(
 	release := reqOptions.BaseRelease.Name
 	windowDays := int(reqOptions.BaseRelease.End.Sub(reqOptions.BaseRelease.Start).Hours() / 24)
 
-	gaJoin := fmt.Sprintf(`
+	gaFrom := fmt.Sprintf(`
         FROM prow_ga_raw_test_data raw
         JOIN prow_jobs pj ON pj.id = raw.prow_job_id AND pj.deleted_at IS NULL
             AND pj.variant_combination_id IN (%s)
-        JOIN (%s) AS vg(vcid, group_id) ON vg.vcid = pj.variant_combination_id
-        WHERE raw.release = ? AND raw.window_days = ?
-        GROUP BY raw.test_id, raw.suite_id, vg.group_id`,
+        JOIN (%s) AS vg(vcid, group_id) ON vg.vcid = pj.variant_combination_id`,
 		setup.variantSubquery, setup.groupMapping.valuesClause)
 
 	joinArgs := make([]any, 0, len(setup.filterArgs)+2)
@@ -205,9 +220,11 @@ func (p *PostgresProvider) queryBaseTestStatusGA(
             SUM(raw.passes) AS success_count,
             SUM(raw.flakes) AS flake_count
         %s
+        WHERE raw.release = ? AND raw.window_days = ?
+        GROUP BY raw.test_id, raw.suite_id, vg.group_id
         HAVING SUM(raw.runs) > 0
             AND SUM(raw.runs) - SUM(raw.passes) >= ?`,
-		gaJoin)
+		gaFrom)
 
 	failureInner := fmt.Sprintf(lastFailureLateral, failureAgg)
 
@@ -217,58 +234,50 @@ func (p *PostgresProvider) queryBaseTestStatusGA(
 	copy(failureArgs, joinArgs)
 	failureArgs = append(failureArgs, setup.minimumFailure, release, baseStart, baseEnd)
 
-	existenceInner := fmt.Sprintf(`
-        SELECT raw.test_id, raw.suite_id, vg.group_id AS variant_group_id
+	colMapping := buildColumnGroupMapping(setup.groupMapping.groupToVariants, reqOptions.VariantOption.ColumnGroupBy)
+
+	placeholderQuery := fmt.Sprintf(`
+        SELECT
+            'grid:' || tow.component AS test_id,
+            '' AS test_name,
+            '' AS test_suite,
+            tow.component,
+            tow.capabilities,
+            cm.col_group_id AS variant_group_id,
+            1 AS total_count,
+            1 AS success_count,
+            0 AS flake_count,
+            NULL::timestamptz AS last_failure
         %s
+        JOIN test_ownerships tow ON tow.test_id = raw.test_id
+            AND (tow.suite_id = raw.suite_id OR (tow.suite_id IS NULL AND raw.suite_id = 0))
+            AND tow.staff_approved_obsolete = false
+        JOIN (%s) AS cm(group_id, col_group_id) ON cm.group_id = vg.group_id
+        WHERE raw.release = ? AND raw.window_days = ?
+        GROUP BY tow.component, tow.capabilities, cm.col_group_id
         HAVING SUM(raw.runs) > 0`,
-		gaJoin)
+		gaFrom, colMapping.valuesClause)
 
-	existenceArgs := make([]any, len(joinArgs))
-	copy(existenceArgs, joinArgs)
+	placeholderArgs := make([]any, len(joinArgs))
+	copy(placeholderArgs, joinArgs)
 
-	return p.runFailureAndExistence(ctx, failureInner, failureArgs, existenceInner, existenceArgs,
-		setup.groupMapping, reqOptions.VariantOption.ColumnGroupBy)
+	return p.runFailureAndPlaceholder(ctx, failureInner, failureArgs, placeholderQuery, placeholderArgs,
+		setup.groupMapping)
 }
 
-// placeholderOuterQuery wraps the inner existence subquery to produce
-// placeholder rows in the same 9-column format as outerQuery. Each row
-// represents a (component, column) cell with data, using synthetic test IDs
-// and placeholder counts (1 total, 1 success) so they evaluate as NotSignificant.
-// The column group mapping (cm) maps real group_ids to column-level col_group_ids.
-const placeholderOuterQuery = `SELECT DISTINCT
-    'grid:' || tow.component AS test_id,
-    '' AS test_name,
-    '' AS test_suite,
-    tow.component,
-    tow.capabilities,
-    cm.col_group_id AS variant_group_id,
-    1 AS total_count,
-    1 AS success_count,
-    0 AS flake_count,
-    NULL::timestamptz AS last_failure
-FROM (%s) pa
-JOIN test_ownerships tow ON tow.test_id = pa.test_id
-    AND (tow.suite_id = pa.suite_id OR (tow.suite_id IS NULL AND pa.suite_id = 0))
-JOIN (%s) AS cm(group_id, col_group_id) ON cm.group_id = pa.variant_group_id
-WHERE tow.staff_approved_obsolete = false`
-
-// runFailureAndExistence runs the failure query and a placeholder query in
-// parallel. The placeholder query reshapes existence data into the same
-// 9-column format as the failure query, using column-level variant groups and
-// synthetic test IDs. After both complete, placeholder entries are merged into
-// the failure map for cells that have data but no failures.
-func (p *PostgresProvider) runFailureAndExistence(
+// runFailureAndPlaceholder runs the failure query and a placeholder query in
+// parallel. The placeholder query groups by (component, col_group_id) to
+// identify grid cells that have data, returning rows in the same 10-column
+// format as the failure query. After both complete, placeholder entries are
+// merged into the failure map for cells that have data but no failures.
+func (p *PostgresProvider) runFailureAndPlaceholder(
 	ctx context.Context,
 	failureInner string,
 	failureArgs []any,
-	existenceInner string,
-	existenceArgs []any,
+	placeholderQuery string,
+	placeholderArgs []any,
 	groupMapping variantGroupMapping,
-	columnGroupBy sets.Set[string],
 ) (map[string]crstatus.TestStatus, []error) {
-
-	colMapping := buildColumnGroupMapping(groupMapping.groupToVariants, columnGroupBy)
-	placeholderQuery := fmt.Sprintf(placeholderOuterQuery, existenceInner, colMapping.valuesClause)
 
 	var failureResult map[string]crstatus.TestStatus
 	var failureErrs []error
@@ -280,7 +289,7 @@ func (p *PostgresProvider) runFailureAndExistence(
 		failureResult, failureErrs = p.queryAndScan(ctx, failureInner, failureArgs, groupMapping)
 	})
 	wg.Go(func() {
-		placeholderResult, placeholderErrs = p.scanGroupedResults(ctx, placeholderQuery, existenceArgs, groupMapping)
+		placeholderResult, placeholderErrs = p.scanGroupedResults(ctx, placeholderQuery, placeholderArgs, groupMapping)
 	})
 	wg.Wait()
 
@@ -359,7 +368,13 @@ func (p *PostgresProvider) scanGroupedResults(
 
 	txErr := p.dbc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Exec("SET LOCAL max_parallel_workers_per_gather = 4").Error; err != nil {
-			return fmt.Errorf("setting max_parallel_workers_per_gather: %w", err)
+			return fmt.Errorf("setting parallel query hints: %w", err)
+		}
+		if err := tx.Exec("SET LOCAL parallel_setup_cost = 0").Error; err != nil {
+			return fmt.Errorf("setting parallel query hints: %w", err)
+		}
+		if err := tx.Exec("SET LOCAL parallel_tuple_cost = 0").Error; err != nil {
+			return fmt.Errorf("setting parallel query hints: %w", err)
 		}
 
 		rows, err := tx.Raw(query, args...).Rows()

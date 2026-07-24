@@ -20,7 +20,7 @@ func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString strin
 	for _, v := range variants {
 		// ensure the variant is one we've recorded in BQ, not just some random string
 		if _, ok := allJobVariants.Variants[v]; !ok {
-			return variantSet, fmt.Errorf("invalid variant %s in variants string %s", v, variantsString)
+			return variantSet, &ValidationError{Message: fmt.Sprintf("invalid variant %s in variants string %s", v, variantsString)}
 		}
 		variantSet.Insert(v)
 	}
@@ -35,13 +35,13 @@ func VariantListToMap(allJobVariants crtest.JobVariants, variants []string) (map
 	for _, variant := range variants {
 		kv := strings.Split(variant, ":")
 		if len(kv) != 2 {
-			err = fmt.Errorf("invalid variant %s in list", variant)
+			err = &ValidationError{Message: fmt.Sprintf("invalid variant %s in list", variant)}
 			return variantsMap, err
 		}
 		// ensure the variant name/value is one we've recorded in BQ, not just some random string
 		values, ok := allJobVariants.Variants[kv[0]]
 		if !ok {
-			err = fmt.Errorf("invalid name from list variant %s", variant)
+			err = &ValidationError{Message: fmt.Sprintf("invalid name from list variant %s", variant)}
 			return variantsMap, err
 		}
 		found := false
@@ -53,7 +53,7 @@ func VariantListToMap(allJobVariants crtest.JobVariants, variants []string) (map
 			}
 		}
 		if !found {
-			err = fmt.Errorf("invalid value from list variant %s", variant)
+			err = &ValidationError{Message: fmt.Sprintf("invalid value from list variant %s", variant)}
 			return variantsMap, err
 		}
 	}
@@ -94,7 +94,7 @@ func VariantListToMapWithWarnings(allJobVariants crtest.JobVariants, variants []
 		kv := strings.Split(variant, ":")
 		if len(kv) != 2 {
 			// This is a fatal error as the format is completely wrong
-			return variantsMap, nil, fmt.Errorf("invalid variant %s in list", variant)
+			return variantsMap, nil, &ValidationError{Message: fmt.Sprintf("invalid variant %s in list", variant)}
 		}
 		variantsMap[kv[0]] = append(variantsMap[kv[0]], kv[1])
 	}
