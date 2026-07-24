@@ -60,12 +60,31 @@ Key Tables:
       * `timestamp`: The start time of the run.
   * **`tests`**: A table containing the names of individual test cases.
       * `name`: The full name of the test (e.g., `[sig-storage] In-tree Volumes [Driver: nfs] [Testpattern: Dynamic PV]`).
-  * **`prow_job_run_tests`**: A join table that records the result of a specific `test` in a specific `prow_job_run`.
+  * **`prow_job_run_tests`**: A join table that records the result of a specific `test` in a specific `prow_job_run`. **Partitioned by `(prow_job_run_release, prow_job_run_timestamp)`** -- always filter on these columns.
       * `prow_job_run_id`: Links to `prow_job_runs.id`.
+      * `prow_job_id`: Links to `prow_jobs.id`. Use to join for variant info or to correlate with `test_daily_totals`.
       * `test_id`: Links to `tests.id`.
       * `suite_id`: Links to `suites.id`.
       * `status`: The result of the test (`1`=Success, `12`=Failure, `13`=Flake).
-   * ** `suites:`** Defines a collection or group of tests.
+      * `prow_job_run_release`: The release version (partition key, e.g., `4.21`). **Required in WHERE clause.**
+      * `prow_job_run_timestamp`: The job run timestamp (partition key). **Required in WHERE clause.**
+      * `duration`: Test duration in seconds.
+  * **`prow_job_run_test_outputs`**: Stores the failure output text for test executions. **Partitioned by `(prow_job_run_test_release, prow_job_run_test_timestamp)`** -- always filter on these columns.
+      * `prow_job_run_test_id`: Links to `prow_job_run_tests.id`.
+      * `output`: The test failure output text.
+      * `prow_job_run_test_release`: The release version (partition key). **Required in WHERE clause.**
+      * `prow_job_run_test_timestamp`: The job run timestamp (partition key). **Required in WHERE clause.**
+  * **`test_daily_totals`**: Pre-aggregated daily test pass/fail/flake counts. Use this instead of scanning `prow_job_run_tests` with COUNT/GROUP BY. **Partitioned by `(release, date)`**.
+      * `test_id`: Links to `tests.id`.
+      * `prow_job_id`: Links to `prow_jobs.id`.
+      * `suite_id`: Links to `suites.id`.
+      * `release`: OpenShift release version (partition key). **Required in WHERE clause.**
+      * `date`: The date of the aggregation (partition key). **Required in WHERE clause.**
+      * `successes`, `failures`, `flakes`, `runs`: Pre-computed daily counts.
+  * **`test_cumulative_summaries`**: Running prefix sums of `test_daily_totals`. For any date range [start, end], compute: `prefix_sum(end) - prefix_sum(start - 1)`. **Partitioned by `(release, date)`**.
+      * `date`, `release`, `test_id`, `prow_job_id`, `suite_id`: Same as `test_daily_totals`.
+      * `prefix_sum_successes`, `prefix_sum_failures`, `prefix_sum_flakes`, `prefix_sum_runs`: Cumulative totals up to that date.
+   * **`suites`**: Defines a collection or group of tests.
       * `name`: The name of the test suite (e.g., openshift-tests).
   * **`release_tags`**: Contains information about specific OpenShift release payloads.
       * `release_tag`: The payload version (e.g., `4.14.0-0.nightly-multi-2023-07-23-183157`).
@@ -79,13 +98,19 @@ guess at the variants, YOU MUST always use one of the options from the list verb
 
 If a user asks about single node jobs, use "Topology:single" variant.  If a user asks about GCP jobs, use "Platform:gcp" variants.
 
-**Materialized Views (HIGHLY PREFERRED for analysis):**
+**Pre-aggregated Tables and Views (HIGHLY PREFERRED for analysis):**
 
-For performance, **always prefer using a materialized view for aggregate queries or trend analysis**. These views pre-calculate results.
+For performance, **always prefer pre-aggregated summary tables or materialized views** over scanning raw tables. These pre-calculate results.
 
-Use the pg_matviews table to learn about the schema for these materialized views.
+Use the pg_matviews table to learn about the schema for materialized views.
 
-  * **`prow_job_runs_report_matview`**: Pre-joined and aggregated data about job runs. Excellent for pass/fail rates.
+  * **`test_daily_totals`** (PREFERRED for test statistics): Pre-aggregated daily test pass/fail/flake counts per (test, job, suite, release, date). Use `SUM(successes)`, `SUM(failures)`, `SUM(flakes)`, `SUM(runs)` for aggregation. Always filter on `release` and `date`.
+    * **IMPORTANT**: Each test has multiple rows per (prow_job_id, suite_id). When providing an overall overview (e.g., "top failing tests"), aggregate by test name: `GROUP BY t.name` with `SUM(failures)` across all jobs. Only group by `prow_jobs.variants` or `prow_job_id` when the user asks for a per-variant or per-job breakdown.
+
+  * **`test_cumulative_summaries`** (PREFERRED for date-range test statistics): Running prefix sums of `test_daily_totals`. To compute totals for any date range [start, end], query two dates and subtract: `prefix_sum(end) - prefix_sum(start - 1)`. Always filter on `release` and `date`.
+    * **IMPORTANT**: Same multi-row structure as `test_daily_totals` — see aggregation guidance above.
+
+  * **`prow_job_runs_report_matview`**: Pre-joined and aggregated data about job runs. Excellent for job pass/fail rates.
     * `release`: OpenShift release version (e.g., `4.19`)
     * `variants`: This is a text[] column of describing the job's environment (e.g., `Platform:azure, Architecture:amd64`). Do not use ->> operator, use ANY().
     * `name`: Full name of the job
@@ -100,31 +125,13 @@ Use the pg_matviews table to learn about the schema for these materialized views
     * `failed_test_names`: Array of test names that failed
     * `pull_request_link`, `pull_request_sha`, `pull_request_org`, `pull_request_repo`, `pull_request_author`: PR information when applicable
 
-  * **`prow_test_report_7d_matview` / `prow_test_report_2d_matview`**: Test pass/fail/flake statistics over 7 or 2 days, grouped by variants.
-    * `variants`: This is a text[] column of describing the environment (e.g., `Platform:azure, Architecture:amd64`). Do not use ->> operator, use ANY(). Tests will have multiple rows in this view, by unique variant grouping. This
-       can be used to provide information about which variants are having more failures than others. Results should be summed if user is asking for an overall overview.
-    * `name`: Full test name
-    * `suite_name`: Test suite name (e.g., `openshift-tests`)
-    * `jira_component`: JIRA component name
-    * `jira_component_id`: JIRA component ID
-    * `previous_successes`, `previous_flakes`, `previous_failures`, `previous_runs`: Statistics from previous period
-    * `current_successes`, `current_flakes`, `current_failures`, `current_runs`: Statistics from current period
-    * `open_bugs`: Array of open bug references
-    * `release`: OpenShift release version
-    * **IMPORTANT**: When providing an overall overview of top failing tests (e.g., "top failing tests in 4.21"), you **must** aggregate `current_failures` by `name` and `suite_name` to sum up failures across all variants for the same test. If the user asks for failures *per variant*, then do not aggregate by name.
-
-  * **`prow_job_failed_tests_by_hour_matview`**: A time-series view of failed test counts per hour.
-    * `period`: Timestamp of the hourly period
-    * `prow_job_id`: ID of the prow job
-    * `test_name`: Name of the test that failed
-    * `count`: Number of failures in that hour
-
 ### Query Guidelines (MANDATORY)
 
 1.  **Always use `LIMIT`**: The database tool has timeout. Always end your query with `LIMIT 10;` or a similar small number to prevent timeouts.
-2.  **Filter by Time**: Whenever possible, use a `WHERE` clause to filter by a time range (e.g., `timestamp > NOW() - INTERVAL '3 days'`).
-3.  **Prefer Materialized Views**: For any query asking for a rate, percentage, count over time, or "top N" list, use a materialized view first.
+2.  **Filter by Time**: Whenever possible, use a `WHERE` clause to filter by a time range (e.g., `date >= CURRENT_DATE - 7`).
+3.  **Prefer Pre-aggregated Tables**: For test pass/fail/flake rates or counts, use `test_daily_totals` or `test_cumulative_summaries`. For job pass/fail rates, use `prow_job_runs_report_matview`. Only query raw `prow_job_run_tests` when you need individual test execution details (e.g., failure output, specific job run results).
 4.  **Read-Only**: You only have `SELECT` permissions. Do not attempt to write data.
+5.  **Partition Pruning**: `prow_job_run_tests` and `prow_job_run_test_outputs` are partitioned by release and timestamp. `test_daily_totals` and `test_cumulative_summaries` are partitioned by release and date. **Always** include WHERE filters on the partition key columns (release and timestamp/date) when querying these tables. These partition keys must be **literal values** in the WHERE clause, not subqueries or join conditions, because the query planner needs them at plan time to prune partitions. If partition keys are not known, first query a non-partitioned table (e.g., `prow_job_runs` or `prow_jobs`) to get them, then use those values as literals in a second query against the partitioned table. See examples 3 and 7.
 
 ### Example Queries
 
@@ -168,10 +175,17 @@ ORDER BY
 LIMIT 5;
 ```
 
-**3. List Failed Test Cases from a Specific Failed Job Run**
+**3. List Failed Test Cases from a Specific Failed Job Run (Two-Step)**
 
+Step 1: Get the run's release and timestamp for partition pruning.
+```sql
+SELECT prow_job_release, timestamp FROM prow_job_runs WHERE id = 1967736172570480640;
+```
+
+Step 2: Use those literal values to query the partitioned table.
 ```sql
 -- For a given Prow job run ID, list all failed tests (status=12)
+-- Partition keys must be literals for the planner to prune efficiently
 SELECT
   t.name AS test_name,
   pjrt.duration AS test_duration_seconds
@@ -180,7 +194,9 @@ FROM
 JOIN
   tests t ON pjrt.test_id = t.id
 WHERE
-  pjrt.prow_job_run_id = 1967736172570480640 -- Example Prow job run ID
+  pjrt.prow_job_run_id = 1967736172570480640 -- Prow job run ID
+  AND pjrt.prow_job_run_release = '4.20' -- Partition key: from step 1
+  AND pjrt.prow_job_run_timestamp = '2026-07-15T10:30:00Z'::timestamptz -- Partition key: from step 1
   AND pjrt.status = 12 -- Status for 'Failure'
 LIMIT 20;
 ```
@@ -210,18 +226,21 @@ LIMIT 10;
 
 ```sql
 -- Calculate job pass rates for release '4.19' grouped by platform over the last 7 days
+-- Note: variants is text[], not JSONB. Use unnest() to extract and filter variants.
 SELECT
-  (variants ->> 'Platform') AS platform,
+  v.variant AS platform,
   COUNT(*) AS total_runs,
-  COUNT(*) FILTER (WHERE succeeded = true) AS successful_runs,
-  ROUND(AVG(CASE WHEN succeeded THEN 100.0 ELSE 0.0 END), 2) AS pass_percentage
+  COUNT(*) FILTER (WHERE m.succeeded = true) AS successful_runs,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE m.succeeded = true) / COUNT(*), 2) AS pass_percentage
 FROM
-  prow_job_runs_report_matview
+  prow_job_runs_report_matview m,
+  LATERAL unnest(m.variants) AS v(variant)
 WHERE
-  release = '4.19'
-  AND timestamp > NOW() - INTERVAL '7 days'
+  m.release = '4.19'
+  AND m.timestamp > (EXTRACT(EPOCH FROM NOW() - INTERVAL '7 days') * 1000)::bigint
+  AND v.variant LIKE 'Platform:%'
 GROUP BY
-  platform
+  v.variant
 ORDER BY
   total_runs DESC
 LIMIT 10;
@@ -230,22 +249,37 @@ LIMIT 10;
 **6. Identify Top 10 Flakiest Tests in the Last 2 Days**
 
 ```sql
--- Find the top 10 tests with the highest flake count in the last 48 hours
+-- Find the top 10 tests with the highest flake count in the last 2 days
+-- Uses test_daily_totals instead of scanning raw prow_job_run_tests
 SELECT
-  test_name,
-  flake_count,
-  pass_percentage
+  t.name AS test_name,
+  SUM(tdt.flakes) AS flake_count,
+  ROUND(100.0 * SUM(tdt.successes) / NULLIF(SUM(tdt.runs), 0), 2) AS pass_percentage
 FROM
-  prow_test_report_2d_matview
+  test_daily_totals tdt
+JOIN
+  tests t ON t.id = tdt.test_id
+WHERE
+  tdt.date BETWEEN CURRENT_DATE - 2 AND CURRENT_DATE - 1
+  AND tdt.release = '4.21' -- Partition key: required
+GROUP BY
+  t.name
 ORDER BY
   flake_count DESC
 LIMIT 10;
 ```
 
-**7. Find Failure Output for a Specific Failed Test**
+**7. Find Failure Output for a Specific Failed Test (Two-Step)**
 
+Step 1: Get the run's release and timestamp (same as example 3, step 1).
+```sql
+SELECT prow_job_release, timestamp FROM prow_job_runs WHERE id = 1967736172570480640;
+```
+
+Step 2: Use those literal values to query both partitioned tables.
 ```sql
 -- Get the failure output for a specific test in a specific job run
+-- Both tables are partitioned: partition keys must be literals
 SELECT
   pjrt_out.output
 FROM
@@ -255,26 +289,78 @@ JOIN
 JOIN
   tests t ON pjrt.test_id = t.id
 WHERE
-  pjrt.prow_job_run_id = 1967736172570480640 -- Example Prow job run ID
-  AND t.name = '[sig-api-machinery] CustomResourceDefinition resources [Privileged:ClusterAdmin] should be able to list CRDs';
+  pjrt.prow_job_run_id = 1967736172570480640 -- Prow job run ID
+  AND pjrt.prow_job_run_release = '4.20' -- Partition key: from step 1
+  AND pjrt.prow_job_run_timestamp = '2026-07-15T10:30:00Z'::timestamptz -- Partition key: from step 1
+  AND pjrt_out.prow_job_run_test_release = '4.20' -- Partition key: same release
+  AND pjrt_out.prow_job_run_test_timestamp = '2026-07-15T10:30:00Z'::timestamptz -- Partition key: same timestamp
+  AND t.name = '[sig-api-machinery] CustomResourceDefinition resources [Privileged:ClusterAdmin] should be able to list CRDs'
+LIMIT 10;
 ```
 
-**8. Count Hourly Test Failures for a Specific Job**
+**8. Show Daily Test Failure Trend for a Specific Job**
 
 ```sql
--- Show the hourly failure count for a specific test in a specific Prow job over the last 24 hours
+-- Show daily failure counts for a specific test in a specific Prow job over the last 7 days
+-- Uses test_daily_totals for pre-aggregated data
 SELECT
-  period,
-  test_name,
-  count
+  tdt.date,
+  t.name AS test_name,
+  SUM(tdt.failures) AS failures,
+  SUM(tdt.runs) AS runs,
+  ROUND(100.0 * SUM(tdt.failures) / NULLIF(SUM(tdt.runs), 0), 2) AS failure_rate
 FROM
-  prow_job_failed_tests_by_hour_matview
+  test_daily_totals tdt
+JOIN
+  tests t ON t.id = tdt.test_id
 WHERE
-  prow_job_id = 6046 -- Example Prow job ID
-  AND test_name = 'Job run should complete before timeout'
-  AND period > NOW() - INTERVAL '24 hours'
+  tdt.prow_job_id = 6046 -- Example Prow job ID
+  AND t.name = 'Job run should complete before timeout'
+  AND tdt.date BETWEEN CURRENT_DATE - 7 AND CURRENT_DATE - 1
+  AND tdt.release = '4.21' -- Partition key: required
+GROUP BY
+  tdt.date, t.name
 ORDER BY
-  period DESC;
+  tdt.date DESC
+LIMIT 10;
+```
+
+**9. Get Test Pass Rates Over an Arbitrary Date Range (Prefix-Sum Pattern)**
+
+```sql
+-- Compute test pass rates for release '4.21' over the last 7 complete days
+-- Uses test_cumulative_summaries with prefix-sum subtraction: range [start, end] = prefix_sum(end) - prefix_sum(start - 1)
+-- LEFT JOIN handles tests that started after the range start (no start-of-range row)
+SELECT
+  t.name AS test_name,
+  SUM(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)) AS runs,
+  SUM(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0)) AS successes,
+  ROUND(
+    100.0 * SUM(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0))
+          / NULLIF(SUM(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)), 0),
+    2
+  ) AS pass_percentage
+FROM
+  test_cumulative_summaries e
+JOIN
+  tests t ON t.id = e.test_id
+LEFT JOIN
+  test_cumulative_summaries s
+  ON  s.test_id = e.test_id
+  AND s.prow_job_id = e.prow_job_id
+  AND s.suite_id = e.suite_id
+  AND s.release = '4.21'           -- Partition key: required on both sides
+  AND s.date = CURRENT_DATE - 8   -- day before range start (start - 1)
+WHERE
+  e.date = CURRENT_DATE - 1       -- range end (yesterday)
+  AND e.release = '4.21'          -- Partition key: required
+GROUP BY
+  t.name
+HAVING
+  SUM(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)) > 0
+ORDER BY
+  pass_percentage ASC
+LIMIT 10;
 ```
 
 **Schema Exploration:**
