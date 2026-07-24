@@ -160,7 +160,7 @@ function ReleasePayloadJobRuns(props) {
     )
     newItems.push({
       id: 99,
-      columnField: 'releaseTag',
+      columnField: 'release_tag',
       operatorValue: 'contains',
       value: searchValue,
     })
