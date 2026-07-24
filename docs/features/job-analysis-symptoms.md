@@ -108,6 +108,9 @@ Labels are relevant in several Sippy pages:
 - Payload job runs table - labels column.
 - JAQ dialog - symptom management and label display.
 - Triage details - symptom summaries per regression displayed on test details pages.
+- Re-evaluation controls - button in the JAQ dialog action bar. Triggers retroactive symptom
+  matching for selected (or all visible) job runs in the dialog (requires SSO authentication
+  via the write-enabled deployment).
 
 They are also displayed in Spyglass (the Deck display of a Prow job) - an HTML summary added to the
 job's bucket entry is included by the html lens.
@@ -190,8 +193,6 @@ documentation.
 The symptoms pipeline (definition → detection → labeling → display) is fully operational.
 Active/planned work includes:
 
-- **Retroactive re-evaluation** ([TRT-2695](https://redhat.atlassian.net/browse/TRT-2695))
-  - Backend API complete (`POST /api/jobs/runs/reevaluate`). Frontend UI is pending.
 - **Compound symptoms** ([TRT-2466](https://redhat.atlassian.net/browse/TRT-2466))
   - richer CEL-based label composition.
 - **Full management UI** ([TRT-2479](https://redhat.atlassian.net/browse/TRT-2479))

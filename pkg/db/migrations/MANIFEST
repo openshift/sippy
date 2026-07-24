@@ -1,0 +1,16 @@
+# Migration manifest. Each line is a migration prefix (NNNNNN_name) that
+# must have matching .up.sql and .down.sql files in this directory.
+# Versions must be sequential with no gaps or duplicates.
+#
+# When adding a new migration, append it here. This file forces a git
+# merge conflict if two PRs independently add the same version number.
+#
+# Run `make verify-migrations` to validate.
+
+000001_create_partitioned_tables
+000002_create_test_daily_summaries
+000003_create_variant_combinations
+000004_drop_variants_gin_index
+000005_drop_daily_summary_variant_combination
+000006_partition_cumulative_tables
+000007_drop_test_daily_summaries

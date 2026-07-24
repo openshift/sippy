@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // openshiftJobsNeverStable is a list of jobs that have permafailed
@@ -24,6 +24,11 @@ import (
 var openshiftJobsNeverStableRaw string
 var openshiftJobsNeverStable = strings.Split(openshiftJobsNeverStableRaw, "\n")
 
+// importantVariants controls which BigQuery variant keys are stored in
+// prow_jobs.variants in PostgreSQL. Release-family keys (Release,
+// ReleaseMinor, ReleaseMajor, FromRelease, FromReleaseMinor,
+// FromReleaseMajor) are excluded because they are redundant with
+// prow_jobs.release and the Upgrade variant.
 var importantVariants = []string{
 	"Platform",
 	"Architecture",
@@ -39,6 +44,14 @@ var importantVariants = []string{
 	"Component",
 	"Capability",
 	"OS",
+	"Procedure",
+	"Aggregation",
+	"NetworkAccess",
+	"Scheduler",
+	"Suite",
+	"ContainerRuntime",
+	"CGroupMode",
+	"LayeredProduct",
 }
 
 const (
@@ -56,7 +69,7 @@ GROUP BY
 
 type openshiftVariants struct {
 	jobVariants   map[string][]string
-	variantValues map[string]sets.String
+	variantValues map[string]sets.Set[string]
 }
 
 type variant struct {
@@ -80,7 +93,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	}
 
 	mgr := openshiftVariants{
-		variantValues: make(map[string]sets.String),
+		variantValues: make(map[string]sets.Set[string]),
 		jobVariants:   make(map[string][]string),
 	}
 
@@ -95,7 +108,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	}
 
 	jobVariants := make(map[string][]string)
-	variantKeyValues := make(map[string]sets.String)
+	variantKeyValues := make(map[string]sets.Set[string])
 	for {
 		var row jobVariant
 		err := it.Next(&row)
@@ -110,7 +123,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 			if _, ok := variantKeyValues[v.VariantName]; ok {
 				variantKeyValues[v.VariantName].Insert(v.VariantValue)
 			} else {
-				variantKeyValues[v.VariantName] = sets.NewString(v.VariantValue)
+				variantKeyValues[v.VariantName] = sets.New(v.VariantValue)
 			}
 		}
 	}
@@ -123,7 +136,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	return &mgr, nil
 }
 
-func (v *openshiftVariants) AllPlatforms() sets.String {
+func (v *openshiftVariants) AllPlatforms() sets.Set[string] {
 	return v.variantValues["Platform"]
 }
 
@@ -133,9 +146,6 @@ func (v *openshiftVariants) IdentifyVariants(jobName string) []string {
 		allVariants = append(allVariants, NeverStable)
 	}
 
-	// Ensure filtered by important variants; including them all
-	// significantly increases cardinality and slows matview refreshes
-	// to a crawl.
 	return filterVariants(allVariants, importantVariants)
 }
 

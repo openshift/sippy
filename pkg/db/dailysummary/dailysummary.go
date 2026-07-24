@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/db"
@@ -17,116 +18,145 @@ const (
 	parallelWorkers     = 4
 )
 
-var valueColumns = []string{"variant_combination_id", "successes", "failures", "flakes", "runs"}
+var valueColumns = []string{"successes", "failures", "flakes", "runs"}
 
-var (
-	insertSQL        = buildInsertSQL()
-	onConflictClause = buildOnConflictClause()
-)
-
-func buildInsertSQL() string {
+func buildInsertSQL(tableName, dateColumn string) string {
 	return fmt.Sprintf(`
-		INSERT INTO test_daily_summaries (test_id, prow_job_id, suite_id, release, summary_date, %s)
+		INSERT INTO %s (test_id, prow_job_id, suite_id, release, %s, %s)
 		SELECT
 			pjrt.test_id,
 			pjrt.prow_job_id,
 			COALESCE(pjrt.suite_id, 0),
 			pjrt.prow_job_run_release,
 			date(pjrt.prow_job_run_timestamp),
-			pj.variant_combination_id,
 			COUNT(*) FILTER (WHERE pjrt.status = 1),
 			COUNT(*) FILTER (WHERE pjrt.status = 12),
 			COUNT(*) FILTER (WHERE pjrt.status = 13),
 			COUNT(*)
 		FROM prow_job_run_tests pjrt
-		JOIN prow_jobs pj ON pjrt.prow_job_id = pj.id
 		WHERE pjrt.prow_job_run_timestamp >= ?::date
 		  AND pjrt.prow_job_run_timestamp < (?::date + INTERVAL '1 day')
 		  AND pjrt.prow_job_run_release = ?
-		GROUP BY pjrt.test_id, pjrt.prow_job_id, COALESCE(pjrt.suite_id, 0), pjrt.prow_job_run_release, date(pjrt.prow_job_run_timestamp), pj.variant_combination_id`,
-		strings.Join(valueColumns, ", "))
+		GROUP BY pjrt.test_id, pjrt.prow_job_id, COALESCE(pjrt.suite_id, 0), pjrt.prow_job_run_release, date(pjrt.prow_job_run_timestamp)`,
+		tableName, dateColumn, strings.Join(valueColumns, ", "))
 }
 
-func buildOnConflictClause() string {
+func buildOnConflictClause(tableName, dateColumn string) string {
 	var setClauses, oldCols, newCols []string
 	for _, col := range valueColumns {
 		setClauses = append(setClauses, fmt.Sprintf("%s = EXCLUDED.%s", col, col))
-		oldCols = append(oldCols, "test_daily_summaries."+col)
+		oldCols = append(oldCols, tableName+"."+col)
 		newCols = append(newCols, "EXCLUDED."+col)
 	}
 
 	return fmt.Sprintf(`
-		ON CONFLICT (test_id, prow_job_id, suite_id, release, summary_date)
+		ON CONFLICT (test_id, prow_job_id, suite_id, release, %s)
 		DO UPDATE SET %s
 		WHERE (%s) IS DISTINCT FROM (%s)`,
+		dateColumn,
 		strings.Join(setClauses, ", "),
 		strings.Join(oldCols, ", "),
 		strings.Join(newCols, ", "))
 }
 
 type summaryStore interface {
-	MaxSummaryDate() (*time.Time, error)
-	Truncate() error
+	MaxSummaryDate() (*civil.Date, error)
 	Releases() ([]string, error)
-	AggregateRangeForRelease(start, end time.Time, release string, skipConflictDetection bool) error
+	AggregateRangeForRelease(start, end civil.Date, release string, skipConflictDetection bool) error
 }
 
-// Options configures the daily summary refresh.
-type Options struct {
-	Rebuild       bool
-	StartOverride *time.Time
-	EndOverride   *time.Time
-}
-
-// Refresh aggregates prow_job_run_tests into the test_daily_summaries
-// table. It runs before matview refreshes so the matviews read from
-// pre-aggregated data instead of scanning raw rows.
-func Refresh(dbc *db.DB, opts Options) error {
-	return refreshSummaries(&pgStore{dbc: dbc}, opts)
-}
-
-func refreshSummaries(store summaryStore, opts Options) error {
+func refreshSummaries(store summaryStore) (civil.Date, error) {
 	loadStart := time.Now()
 	log.Info("refreshing daily summaries")
 
-	now := time.Now()
-
-	startDate, endDate, err := dateRange(store, opts, now)
+	today := civil.DateOf(time.Now().UTC())
+	maxDate, err := store.MaxSummaryDate()
 	if err != nil {
-		return err
+		return civil.Date{}, fmt.Errorf("querying max summary date: %w", err)
 	}
 
+	startDate := startDateFromMax(maxDate, today)
+	skipConflictDetection := maxDate == nil
+
+	if err := doAggregate(store, startDate, today, skipConflictDetection, loadStart); err != nil {
+		return civil.Date{}, err
+	}
+	return startDate, nil
+}
+
+// Refresh aggregates prow_job_run_tests into the partitioned
+// test_daily_totals table. Returns the earliest date that was refreshed
+// so downstream consumers (cumulative summaries) know which dates
+// may have changed.
+func Refresh(dbc *db.DB) (civil.Date, error) {
+	return refreshSummaries(&pgStore{dbc: dbc, tableName: "test_daily_totals", dateColumn: "date"})
+}
+
+// Backfill processes an explicit date range without automatic date detection.
+func Backfill(dbc *db.DB, startDate, endDate civil.Date) error {
+	return backfillSummaries(&pgStore{dbc: dbc, tableName: "test_daily_totals", dateColumn: "date"}, startDate, endDate)
+}
+
+func backfillSummaries(store summaryStore, startDate, endDate civil.Date) error {
+	loadStart := time.Now()
 	releases, err := store.Releases()
 	if err != nil {
 		return fmt.Errorf("querying releases: %w", err)
 	}
 
-	skipConflictDetection := opts.Rebuild
-	if skipConflictDetection {
-		log.Info("rebuild requested, truncating test_daily_summaries")
-		if err := store.Truncate(); err != nil {
-			return fmt.Errorf("truncating table: %w", err)
+	days := endDate.DaysSince(startDate) + 1
+	log.WithFields(log.Fields{
+		"start":    startDate,
+		"end":      endDate,
+		"days":     days,
+		"releases": len(releases),
+	}).Info("backfilling daily summaries")
+
+	for date := startDate; !date.After(endDate); date = date.AddDays(1) {
+		dayStart := time.Now()
+		if err := aggregateReleases(store, releases, date, date, false); err != nil {
+			return fmt.Errorf("backfilling %s: %w", date, err)
 		}
-	} else {
-		maxDate, err := store.MaxSummaryDate()
-		if err != nil {
-			return fmt.Errorf("checking if table is empty: %w", err)
-		}
-		skipConflictDetection = maxDate == nil
+		log.WithFields(log.Fields{
+			"date":    date,
+			"elapsed": time.Since(dayStart),
+		}).Info("backfilled daily summaries for date")
 	}
 
-	log.Infof("aggregating daily summaries from %s to %s",
-		startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	log.WithField("elapsed", time.Since(loadStart)).Info("daily summary backfill complete")
+	return nil
+}
 
-	if err := aggregateReleases(store, releases, startDate, endDate, skipConflictDetection); err != nil {
-		return err
+func doAggregate(store summaryStore, startDate, endDate civil.Date, skipConflictDetection bool, loadStart time.Time) error {
+	releases, err := store.Releases()
+	if err != nil {
+		return fmt.Errorf("querying releases: %w", err)
+	}
+
+	days := endDate.DaysSince(startDate) + 1
+	log.WithFields(log.Fields{
+		"start":    startDate,
+		"end":      endDate,
+		"days":     days,
+		"releases": len(releases),
+	}).Info("aggregating daily summaries")
+
+	for date := startDate; !date.After(endDate); date = date.AddDays(1) {
+		dayStart := time.Now()
+		if err := aggregateReleases(store, releases, date, date, skipConflictDetection); err != nil {
+			return fmt.Errorf("aggregating %s: %w", date, err)
+		}
+		log.WithFields(log.Fields{
+			"date":    date,
+			"elapsed": time.Since(dayStart),
+		}).Debug("aggregated daily summaries for date")
 	}
 
 	log.WithField("elapsed", time.Since(loadStart)).Info("daily summary refresh complete")
 	return nil
 }
 
-func aggregateReleases(store summaryStore, releases []string, startDate, endDate time.Time, skipConflictDetection bool) error {
+func aggregateReleases(store summaryStore, releases []string, startDate, endDate civil.Date, skipConflictDetection bool) error {
 	errs := make(chan error, len(releases))
 	work := make(chan string, len(releases))
 
@@ -157,81 +187,46 @@ func aggregateReleases(store summaryStore, releases []string, startDate, endDate
 	return errors.Join(combined...)
 }
 
-// dateRange computes the aggregation window. If explicit overrides were
-// provided, those are used directly. Otherwise the start is the last
-// summarized date (capped at yesterday) or the default lookback,
-// and the end is now.
-func dateRange(store summaryStore, opts Options, now time.Time) (time.Time, time.Time, error) {
-	if opts.StartOverride != nil && opts.EndOverride != nil {
-		return *opts.StartOverride, *opts.EndOverride, nil
-	}
-
-	endDate := now
-	if opts.EndOverride != nil {
-		endDate = *opts.EndOverride
-	}
-
-	if opts.StartOverride != nil {
-		return *opts.StartOverride, endDate, nil
-	}
-
-	if opts.Rebuild {
-		return now.AddDate(0, 0, -defaultLookbackDays), endDate, nil
-	}
-
-	startDate, err := resolveStartDate(store, now)
-	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("querying max summary date: %w", err)
-	}
-
-	return startDate, endDate, nil
-}
-
-// resolveStartDate returns the last summarized date capped at yesterday,
-// or the default lookback if no summaries exist.
-func resolveStartDate(store summaryStore, now time.Time) (time.Time, error) {
-	yesterday := now.AddDate(0, 0, -1)
-
-	maxSummary, err := store.MaxSummaryDate()
-	if err != nil {
-		return time.Time{}, err
-	}
+func startDateFromMax(maxSummary *civil.Date, today civil.Date) civil.Date {
+	yesterday := today.AddDays(-1)
 	if maxSummary != nil {
 		if maxSummary.Before(yesterday) {
-			return *maxSummary, nil
+			return *maxSummary
 		}
-		return yesterday, nil
+		return yesterday
+	}
+	return today.AddDays(-defaultLookbackDays)
+}
+
+type pgStore struct {
+	dbc        *db.DB
+	tableName  string
+	dateColumn string
+}
+
+func (s *pgStore) MaxSummaryDate() (*civil.Date, error) {
+	var d *civil.Date
+	err := s.dbc.DB.Table(s.tableName).
+		Select(fmt.Sprintf("MAX(%s)", s.dateColumn)).Row().Scan(&d)
+	if err != nil {
+		return nil, err
 	}
 
-	return now.AddDate(0, 0, -defaultLookbackDays), nil
-}
-
-// pgStore implements summaryStore against PostgreSQL.
-type pgStore struct {
-	dbc *db.DB
-}
-
-func (s *pgStore) MaxSummaryDate() (*time.Time, error) {
-	var maxDate *time.Time
-	err := s.dbc.DB.Table("test_daily_summaries").
-		Select("MAX(summary_date)").Row().Scan(&maxDate)
-	return maxDate, err
-}
-
-func (s *pgStore) Truncate() error {
-	return s.dbc.DB.Exec("TRUNCATE test_daily_summaries").Error
+	return d, nil
 }
 
 func (s *pgStore) Releases() ([]string, error) {
 	var releases []string
-	err := s.dbc.DB.Table("prow_jobs").Distinct("release").Pluck("release", &releases).Error
+	err := s.dbc.DB.Table("release_definitions").
+		Order("major DESC, minor DESC").
+		Pluck("release", &releases).Error
 	return releases, err
 }
 
-func (s *pgStore) AggregateRangeForRelease(startDate, endDate time.Time, release string, skipConflictDetection bool) error {
-	sql := insertSQL
+func (s *pgStore) AggregateRangeForRelease(startDate, endDate civil.Date, release string, skipConflictDetection bool) error {
+	sql := buildInsertSQL(s.tableName, s.dateColumn)
 	if !skipConflictDetection {
-		sql += onConflictClause
+		sql += buildOnConflictClause(s.tableName, s.dateColumn)
 	}
 	return s.dbc.DB.Exec(sql, startDate, endDate, release).Error
 }

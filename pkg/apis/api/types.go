@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	bq "cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
@@ -343,7 +342,7 @@ type JobRun struct {
 	Variants              pq.StringArray      `json:"variants" gorm:"type:text[]"`
 	Tags                  pq.StringArray      `json:"tags" gorm:"type:text[]"`
 	TestGridURL           string              `json:"test_grid_url"`
-	ProwID                uint                `json:"prow_id"`
+	ProwID                string              `json:"prow_id"`
 	Job                   string              `json:"job"`
 	Cluster               string              `json:"cluster"`
 	URL                   string              `json:"url"`
@@ -465,10 +464,9 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 	}
 }
 
-// Test contains the full accounting of a test's history, with a synthetic ID. The format
+// Test contains the full accounting of a test's history. The format
 // of this struct is suitable for use in a data table.
 type Test struct {
-	ID        int            `json:"id,omitempty"`
 	Name      string         `json:"name"`
 	SuiteName string         `json:"suite_name"`
 	Variant   string         `json:"variant,omitempty"`
@@ -543,8 +541,6 @@ func (test Test) GetStringValue(param string) (string, error) {
 // nolint:gocyclo
 func (test Test) GetNumericalValue(param string) (float64, error) {
 	switch param {
-	case "id":
-		return float64(test.ID), nil
 	case "current_successes":
 		return float64(test.CurrentSuccesses), nil
 	case "current_failures":
@@ -621,10 +617,9 @@ func (test Test) GetArrayValue(param string) ([]string, error) {
 	}
 }
 
-// TestBQ contains the full accounting of a test's history, with a synthetic ID. The format
+// TestBQ contains the full accounting of a test's history. The format
 // of this struct is suitable for use in a data table.
 type TestBQ struct {
-	ID        int            `json:"id,omitempty" bigquery:"id"`
 	TestID    string         `json:"test_id" bigquery:"test_id"`
 	Name      string         `json:"name" bigquery:"name"`
 	SuiteName string         `json:"suite_name" bigquery:"suite_name"`
@@ -700,8 +695,6 @@ func (test TestBQ) GetStringValue(param string) (string, error) {
 // nolint:gocyclo
 func (test TestBQ) GetNumericalValue(param string) (float64, error) {
 	switch param {
-	case "id":
-		return float64(test.ID), nil
 	case "current_successes":
 		return float64(test.CurrentSuccesses), nil
 	case "current_failures":
@@ -857,9 +850,9 @@ type FailedPayload struct {
 
 // JobPayload represents the payload release tag information for a job run.
 type JobPayload struct {
-	ProwjobJobName string        `json:"prowjob_job_name" bigquery:"prowjob_job_name"`
-	Payload        bq.NullString `json:"payload" bigquery:"release_verify_tag"`
-	ProwjobBuildID string        `json:"prowjob_build_id" bigquery:"prowjob_build_id"`
+	ProwjobJobName string  `json:"prowjob_job_name"`
+	Payload        *string `json:"payload"`
+	ProwjobBuildID string  `json:"prowjob_build_id"`
 }
 
 // CalendarEvent is an API type representing a FullCalendar.io event type, for use
@@ -1032,14 +1025,15 @@ type SippyViews struct {
 }
 
 type FeatureGate struct {
-	ID               int            `json:"id"`
-	FeatureGate      string         `json:"feature_gate"`
-	Release          string         `json:"release"`
-	UniqueTestCount  int64          `json:"unique_test_count"`
-	FirstSeenIn      string         `json:"first_seen_in"`
-	FirstSeenInMajor int64          `json:"first_seen_in_major"`
-	FirstSeenInMinor int64          `json:"first_seen_in_minor"`
-	Enabled          pq.StringArray `json:"enabled" gorm:"type:text[]"`
+	ID               int               `json:"id"`
+	FeatureGate      string            `json:"feature_gate"`
+	Release          string            `json:"release"`
+	UniqueTestCount  int64             `json:"unique_test_count"`
+	FirstSeenIn      string            `json:"first_seen_in"`
+	FirstSeenInMajor int64             `json:"first_seen_in_major"`
+	FirstSeenInMinor int64             `json:"first_seen_in_minor"`
+	Enabled          pq.StringArray    `json:"enabled" gorm:"type:text[]"`
+	Links            map[string]string `json:"links,omitempty" gorm:"-"`
 }
 
 func (fg FeatureGate) GetFieldType(param string) ColumnType {

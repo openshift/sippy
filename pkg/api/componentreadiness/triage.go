@@ -323,6 +323,20 @@ func ListRegressions(dbc *db.DB, release string, views []crview.View, releases [
 	return regressions, err
 }
 
+// GetRegressionsForTest returns regressions matching a specific test name, optionally filtered by release.
+func GetRegressionsForTest(dbc *db.DB, release, testName string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
+	regressions, err := query.GetRegressionsForTest(dbc, release, testName)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range regressions {
+		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, crTimeRoundingOffset, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
+	}
+
+	return regressions, err
+}
+
 // GetRegression returns the regression with the matching ID
 func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) (*models.TestRegression, error) {
 	regression := &models.TestRegression{}

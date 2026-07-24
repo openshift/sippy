@@ -15,11 +15,11 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 func fakeComponentAndCapabilityGetter(test crtest.KeyWithVariants, stats crstatus.TestStatus) (string, []string) {
@@ -53,8 +53,8 @@ var (
 		PityFactor:     5,
 		MinimumFailure: 3,
 	}
-	defaultColumnGroupByVariants    = sets.NewString(strings.Split(DefaultColumnGroupBy, ",")...)
-	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
+	defaultColumnGroupByVariants    = sets.New(strings.Split(DefaultColumnGroupBy, ",")...)
+	defaultDBGroupByVariants        = sets.New(strings.Split(DefaultDBGroupBy, ",")...)
 	defaultComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
 			VariantOption: reqopts.Variants{
@@ -79,7 +79,7 @@ var (
 			AdvancedOption: flakeFailAdvancedOption,
 		},
 	}
-	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
+	installerColumnGroupByVariants           = sets.New("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
 			VariantOption: reqopts.Variants{
@@ -127,6 +127,7 @@ var (
 					TestID:     "2",
 				},
 			},
+			IncludeAllTests: true,
 			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
@@ -1217,6 +1218,18 @@ func TestGenerateComponentReport(t *testing.T) {
 						report.Rows[ir].Columns[ic].RegressedTests[it].FisherExact = nil
 
 					}
+
+					if tc.generator.includeAllTests() {
+						// Level 4 (testId set): AllTests should be a superset of RegressedTests
+						assert.GreaterOrEqual(t, len(report.Rows[ir].Columns[ic].AllTests),
+							len(report.Rows[ir].Columns[ic].RegressedTests),
+							"AllTests should be a superset of RegressedTests for row %d col %d", ir, ic)
+					} else {
+						// Levels 1-3: AllTests is not populated to avoid response bloat
+						assert.Empty(t, report.Rows[ir].Columns[ic].AllTests,
+							"AllTests should be empty at non-test-level for row %d col %d", ir, ic)
+					}
+					report.Rows[ir].Columns[ic].AllTests = nil
 				}
 			}
 			assert.Equal(t, tc.expectedReport, report, "expected report %+v, got %+v", tc.expectedReport, report)

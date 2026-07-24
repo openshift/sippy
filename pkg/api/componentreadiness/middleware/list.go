@@ -11,17 +11,17 @@ import (
 
 type List []Middleware
 
-func (l List) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
+func (l List) Query(ctx context.Context, wg *sync.WaitGroup, baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
 	// Invoke the Query phase for each middleware configured:
 	for _, mw := range l {
-		mw.Query(ctx, wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
+		mw.Query(ctx, wg, baseStatusCh, sampleStatusCh, errCh)
 	}
 }
 
-func (l List) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
+func (l List) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
 	// Invoke the QueryTestDetails phase for each middleware configured:
 	for _, mw := range l {
-		mw.QueryTestDetails(ctx, wg, errCh, allJobVariants)
+		mw.QueryTestDetails(ctx, wg, errCh)
 	}
 }
 

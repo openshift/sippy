@@ -7,7 +7,7 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/openshift/sippy/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // TODO: this should get removed? Including the TestResult struct
@@ -69,7 +69,7 @@ func getDataForTestsByVariantFromDB(dbc *db.DB, release string, testSubStrings [
 		aggregationToOverallTestResult: map[string]*currPrevTestResult{}, // may not be used in output in our first use case
 	}
 
-	testReports, err := query.TestReportsByVariant(dbc, release, sippyprocessingv1.CurrentReport, testSubStrings, nil)
+	testReports, err := query.TestReportsByVariant(dbc, release, sippyprocessingv1.CurrentReport, query.TestNameMatches{Substrings: testSubStrings}, nil, false)
 	if err != nil {
 		return ret, err
 	}

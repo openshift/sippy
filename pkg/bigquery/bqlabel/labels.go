@@ -77,9 +77,9 @@ const (
 	TDJunitSample                       QueryValue = "test-details-junit-sample"
 	DisruptionDelta                     QueryValue = "disruption-delta"
 	ReleaseAllReleases                  QueryValue = "release-all-releases"
-	BugLoaderJobBugMappings             QueryValue = "bug-loader-job-bug-mappings"
-	BugLoaderTestBugMappings            QueryValue = "bug-loader-test-bug-mappings"
-	BugLoaderTriageBugMappings          QueryValue = "bug-loader-triage-bug-mappings"
+	BugLoaderFetchBugs                  QueryValue = "bug-loader-fetch-bugs"
+	BugLoaderTestBugs                   QueryValue = "bug-loader-test-bugs"
+	BugLoaderJobBugs                    QueryValue = "bug-loader-job-bugs"
 	ProwLoaderProwJobs                  QueryValue = "prow-loader-prow-jobs"
 	ProwLoaderTestAnalysis              QueryValue = "prow-loader-test-analysis"
 	ProwLoaderJobLabels                 QueryValue = "prow-loader-job-labels"
@@ -92,7 +92,6 @@ const (
 	TestOutputs                         QueryValue = "test-outputs"
 	TestResults                         QueryValue = "test-results"
 	TestResultsOverall                  QueryValue = "test-results-overall"
-	JobRunPayload                       QueryValue = "job-run-payload"
 	JobRunLabels                        QueryValue = "job-run-labels"
 	JobRunLabelsReEvaluate              QueryValue = "job-run-labels-reevaluate"
 	JobRunLabelsReEvaluateDelete        QueryValue = "job-run-labels-reevaluate-delete"
@@ -101,6 +100,7 @@ const (
 	JobVariants                         QueryValue = "job-variants"
 	PRTestResults                       QueryValue = "pr-test-results"
 	CacheLookup                         QueryValue = "cache-lookup"
+	GATestStatusLoader                  QueryValue = "ga-test-status-loader"
 )
 
 // sanitizeLabelValue sanitizes a label value to meet BigQuery requirements:

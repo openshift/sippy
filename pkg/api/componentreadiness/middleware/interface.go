@@ -16,11 +16,11 @@ type Middleware interface {
 	// Query phase allows middleware to inject additional TestStatus beyond the normal base/sample queries.
 	// Base and sample status can be submitted using the provided channels for a map of ALL test keys
 	// (ID plus variant info serialized) to TestStatus.
-	Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants,
+	Query(ctx context.Context, wg *sync.WaitGroup,
 		baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error)
 
 	// QueryTestDetails phase allow middleware to load data that will later be used.
-	QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants)
+	QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error)
 
 	// PreAnalysis gives middleware opportunity to adjust test analysis data prior to running analysis.
 	// Implementations can alter base/sample data as needed, request confidence levels, and add explanations for

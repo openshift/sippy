@@ -107,7 +107,7 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 		q = sq.Where("name ILIKE ?", fmt.Sprintf("%%%s%%", search))
 	}
 
-	q = q.Limit(50).Scan(&result)
+	q = q.Limit(100).Scan(&result)
 	if q.Error != nil {
 		RespondWithJSON(503, w, map[string]string{"message": q.Error.Error()})
 		return

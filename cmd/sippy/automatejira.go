@@ -12,10 +12,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
@@ -23,7 +22,6 @@ import (
 	"github.com/openshift/sippy/pkg/componentreadiness/jiraautomator"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/flags/configflags"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type AutomateJiraFlags struct {
@@ -34,10 +32,11 @@ type AutomateJiraFlags struct {
 	ConfigFlags             *configflags.ConfigFlags
 	PostgresFlags           *flags.PostgresFlags
 	JiraFlags               flags.JiraFlags
+	DataProvider            string
 	SippyURL                string
 	IncludeComponentsStr    string
 	// IncludeComponents is a set of string in the format of jiraProject:jiraComponent
-	IncludeComponents   sets.String
+	IncludeComponents   sets.Set[string]
 	ColumnThresholdStrs []string
 	ColumnThresholds    map[jiraautomator.Variant]int
 	JiraAccount         string
@@ -70,6 +69,7 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&f.ColumnThresholdStrs, "column-threshold", f.ColumnThresholdStrs, "A threshold of red cell counts over which a jira issue will be created against a component corresponding to an interesting variant of a column (e.g. Bare Metal Hardware Provisioning for metal platform). The format of the threshold string is [variant]:[value]:[threshold] (e.g. Platform:metal:3).")
 	fs.StringVar(&f.JiraAccount, "jira-account", f.JiraAccount, "The jira account used to automate jira")
 	fs.BoolVar(&f.DryRun, "dry-run", f.DryRun, "Print the tasks of automating jiras without real interaction with jira.")
+	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider: default, bigquery, or postgres")
 }
 
 func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
@@ -79,7 +79,7 @@ func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
 	if len(f.JiraAccount) == 0 {
 		return fmt.Errorf("--jira-account is required")
 	}
-	f.IncludeComponents = sets.NewString()
+	f.IncludeComponents = sets.New[string]()
 	if len(f.IncludeComponentsStr) > 0 {
 		components := strings.Split(f.IncludeComponentsStr, ",")
 		for _, c := range components {
@@ -152,11 +152,6 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("unable to load views")
 			}
-			releases, err := api.GetReleases(context.Background(), bigQueryClient, false)
-			if err != nil {
-				log.WithError(err).Fatal("error querying releases")
-			}
-
 			jiraClient, err := f.JiraFlags.GetJiraClient()
 			if err != nil {
 				return errors.WithMessage(err, "couldn't get jira client")
@@ -165,7 +160,14 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return fmt.Errorf("couldn't get jira client: jira auth is not configured")
 			}
 
-			provider := bqprovider.NewBigQueryProvider(bigQueryClient)
+			dbc, err := f.PostgresFlags.GetDBClient()
+			if err != nil {
+				log.WithError(err).Warn("unable to connect to postgres, will use BigQuery for release metadata")
+			}
+			provider, err := newDataProvider(f.DataProvider, bigQueryClient, dbc, cacheClient)
+			if err != nil {
+				return err
+			}
 			allVariants, errs := componentreadiness.GetJobVariants(ctx, provider)
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get job variants: %v", errs)
@@ -178,10 +180,11 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return errors.WithMessage(err, "error validating options")
 			}
 
-			dbc, err := f.PostgresFlags.GetDBClient()
+			releases, err := provider.QueryReleases(ctx)
 			if err != nil {
-				log.WithError(err).Fatal("unable to connect to postgres")
+				log.WithError(err).Fatal("error querying releases")
 			}
+
 			j, err := jiraautomator.NewJiraAutomator(
 				jiraClient, bigQueryClient, provider, dbc, cacheOpts,
 				views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount,

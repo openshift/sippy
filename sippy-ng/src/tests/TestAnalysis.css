@@ -43,7 +43,7 @@
 
 .test-hero-name {
   flex: 1;
-  font-family: "Roboto Mono", "SF Mono", "Fira Code", monospace !important;
+  font-family: 'Roboto Mono', 'SF Mono', 'Fira Code', monospace !important;
   font-size: 0.95rem !important;
   font-weight: 400 !important;
   line-height: 1.6 !important;

@@ -7,9 +7,9 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
@@ -26,8 +26,8 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 
 	baseReqOptions := reqopts.RequestOptions{
 		VariantOption: reqopts.Variants{
-			ColumnGroupBy:   sets.NewString("Platform"),
-			DBGroupBy:       sets.NewString("Network"),
+			ColumnGroupBy:   sets.New("Platform"),
+			DBGroupBy:       sets.New("Network"),
 			IncludeVariants: map[string][]string{},
 		},
 		AdvancedOption: reqopts.Advanced{
@@ -184,8 +184,8 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 
 	reqOptions := reqopts.RequestOptions{
 		VariantOption: reqopts.Variants{
-			ColumnGroupBy:   sets.NewString("Platform"),
-			DBGroupBy:       sets.NewString(),
+			ColumnGroupBy:   sets.New("Platform"),
+			DBGroupBy:       sets.New[string](),
 			IncludeVariants: map[string][]string{},
 		},
 		AdvancedOption: reqopts.Advanced{
@@ -261,8 +261,8 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 
 	baseReqOptions := reqopts.RequestOptions{
 		VariantOption: reqopts.Variants{
-			ColumnGroupBy:   sets.NewString("Platform"),
-			DBGroupBy:       sets.NewString(),
+			ColumnGroupBy:   sets.New("Platform"),
+			DBGroupBy:       sets.New[string](),
 			IncludeVariants: map[string][]string{},
 		},
 		AdvancedOption: reqopts.Advanced{},

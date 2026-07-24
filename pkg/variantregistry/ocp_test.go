@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/flags/configflags"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 func TestVariantSyncer(t *testing.T) {
@@ -2294,6 +2294,36 @@ func TestVariantSyncer(t *testing.T) {
 				VariantCapability:       "AWSDualStackInstall",
 			},
 		},
+		{
+			job: "periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-compact-iso-no-registry-techpreview",
+			expected: map[string]string{
+				VariantRelease:          "5.0",
+				VariantReleaseMajor:     "5",
+				VariantReleaseMinor:     "0",
+				VariantArch:             "amd64",
+				VariantInstaller:        "agent",
+				VariantPlatform:         "metal",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng",
+				VariantTopology:         "compact",
+				VariantSuite:            "unknown",
+				VariantUpgrade:          VariantNoValue,
+				VariantProcedure:        VariantNoValue,
+				VariantJobTier:          "candidate",
+				VariantAggregation:      VariantNoValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantFeatureSet:       "techpreview",
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+				VariantOS:               "rhcos10",
+				VariantComponent:        "Installer / Agent based installation",
+				VariantCapability:       "NoRegistryClusterInstall",
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {
@@ -2567,8 +2597,8 @@ func testView(name string, includeVariants map[string][]string) crview.View {
 	return crview.View{
 		Name: name,
 		VariantOptions: reqopts.Variants{
-			ColumnGroupBy:   sets.String{},
-			DBGroupBy:       sets.String{},
+			ColumnGroupBy:   sets.New[string](),
+			DBGroupBy:       sets.New[string](),
 			IncludeVariants: includeVariants,
 		},
 	}

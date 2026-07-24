@@ -14,13 +14,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -243,7 +243,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, provider datapr
 	releaseStatus := getReleaseStatus(releases, view.SampleRelease.Name)
 	for _, row := range report.Rows {
 		totalRegressedTestsByComponent := 0
-		uniqueRegressedTestsByComponent := sets.NewString()
+		uniqueRegressedTestsByComponent := sets.New[string]()
 		for _, col := range row.Columns {
 			// Calculate total number of regressions by component, this can include a test multiple times
 			// if it's regressed in multiple NURP's.

@@ -16,6 +16,8 @@ import (
 	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -24,6 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
@@ -35,7 +38,7 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.release_pull_request_id = release_pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{"code": http.StatusBadRequest, "message": err.Error()})
 		return
 	}
 	q, err = filter.FilterableDBResult(q, filterOpts, nil)
@@ -228,7 +231,7 @@ func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogge
 	// a matview for the failed tests in the last two weeks.
 
 	// Query all test failures for the given payload stream in the last two weeks:
-	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag)
+	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag, payload.Release, payload.ReleaseTime)
 	if err != nil {
 		logger.WithError(err).Error("unable to list test failures for payload")
 		return nil, err
@@ -331,7 +334,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "release_tag", apitype.SortDescending)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{"code": http.StatusBadRequest, "message": "Error building releases report: " + err.Error()})
 		return
 	}
 	q, err := filter.FilterableDBResult(releaseFilter(req, dbClient.DB), filterOpts, nil)
@@ -512,6 +515,90 @@ func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
 	return release
 }
 
+// GetReleaseRowsFromBigQuery fetches raw release rows from BigQuery's Releases table.
+func GetReleaseRowsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]sippyv1.ReleaseRow, error) {
+	var rows []sippyv1.ReleaseRow
+
+	queryString := fmt.Sprintf("SELECT * FROM `%s` ORDER BY DevelStartDate DESC", client.ReleasesTable)
+
+	q := client.Query(ctx, bqlabel.ReleaseAllReleases, queryString)
+	it, err := q.Read(ctx)
+	if err != nil {
+		log.WithError(err).Error("error querying releases data from bigquery")
+		return rows, err
+	}
+
+	for {
+		r := sippyv1.ReleaseRow{}
+		err := it.Next(&r)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing release row from bigquery")
+			return rows, err
+		}
+		rows = append(rows, r)
+	}
+	return rows, nil
+}
+
+// GetReleaseDatesFromDB derives CR time ranges from release_definitions GA dates.
+func GetReleaseDatesFromDB(ctx context.Context, dbc *db.DB, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, error) {
+	if dbc == nil || dbc.DB == nil {
+		return nil, fmt.Errorf("no database connection available for release dates")
+	}
+	releases, err := GetReleasesFromDB(ctx, dbc)
+	if err != nil {
+		return nil, err
+	}
+	var timeRanges []crtest.ReleaseTimeRange
+	for _, release := range releases {
+		tr := crtest.ReleaseTimeRange{Release: release.Release}
+		if release.GADate != nil {
+			prior := util.AdjustReleaseTime(*release.GADate, true, "30", reqOptions.CacheOption.CRTimeRoundingFactor, reqOptions.CacheOption.CRTimeRoundingOffset)
+			tr.Start = &prior
+			tr.End = release.GADate
+		}
+		timeRanges = append(timeRanges, tr)
+	}
+	return timeRanges, nil
+}
+
+// GetReleasesFromDB queries release metadata from the release_definitions table.
+func GetReleasesFromDB(ctx context.Context, dbc *db.DB) ([]sippyv1.Release, error) {
+	if dbc == nil || dbc.DB == nil {
+		return nil, fmt.Errorf("no database connection available for releases")
+	}
+	var defs []models.ReleaseDefinition
+	err := dbc.DB.WithContext(ctx).Order("development_start_date DESC").Find(&defs).Error
+	if err != nil {
+		return nil, fmt.Errorf("querying release definitions: %w", err)
+	}
+	releases := make([]sippyv1.Release, 0, len(defs))
+	for _, def := range defs {
+		releases = append(releases, DefinitionToRelease(def))
+	}
+	return releases, nil
+}
+
+// DefinitionToRelease converts a models.ReleaseDefinition to a sippyv1.Release.
+func DefinitionToRelease(def models.ReleaseDefinition) sippyv1.Release {
+	caps := make(map[sippyv1.ReleaseCapability]bool, len(def.Capabilities))
+	for _, cap := range def.Capabilities {
+		caps[sippyv1.ReleaseCapability(cap)] = true
+	}
+	return sippyv1.Release{
+		Release:              def.Release,
+		Status:               def.Status,
+		GADate:               def.GADate,
+		DevelopmentStartDate: def.DevelopmentStartDate,
+		PreviousRelease:      def.PreviousRelease,
+		Capabilities:         caps,
+		Product:              def.Product,
+	}
+}
+
 // BuildReleasesResponse creates the API response structure for releases
 func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) apitype.Releases {
 	gaDateMap := make(map[string]time.Time)
@@ -548,46 +635,18 @@ func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) ap
 }
 
 // PayloadForJobRun returns the payload release tag that was used for a given job run.
-func PayloadForJobRun(ctx context.Context, bigQueryClient *bqcachedclient.Client, jobRunID string) ([]apitype.JobPayload, error) {
-	// Calculate date range: 6 months ago through today
-	now := time.Now()
-	sixMonthsAgo := now.AddDate(0, -6, 0)
-
-	queryStr := fmt.Sprintf(`SELECT prowjob_job_name, release_verify_tag, prowjob_build_id
-		FROM `+"`openshift-gce-devel.ci_analysis_us.jobs`"+` 
-		WHERE prowjob_start BETWEEN DATETIME('%s') AND DATETIME_ADD('%s', INTERVAL 1 DAY) 
-		AND prowjob_build_id = '%s'
-		LIMIT 10`,
-		sixMonthsAgo.Format("2006-01-02"),
-		now.Format("2006-01-02"),
-		jobRunID)
-
-	q := bigQueryClient.Query(ctx, bqlabel.JobRunPayload, queryStr)
-	log.WithFields(log.Fields{
-		"jobRunID":  jobRunID,
-		"dateRange": fmt.Sprintf("%s to %s", sixMonthsAgo.Format("2006-01-02"), now.Format("2006-01-02")),
-		"query":     queryStr,
-	}).Info("Executing BigQuery payload query")
-
-	it, err := bqcachedclient.LoggedRead(ctx, q)
-	if err != nil {
-		log.WithError(err).Error("error querying job run payload from bigquery")
-		return nil, fmt.Errorf("error querying job run payload from bigquery: %w", err)
-	}
-
+func PayloadForJobRun(dbClient *db.DB, jobRunID string) ([]apitype.JobPayload, error) {
 	var results []apitype.JobPayload
-	for {
-		var row apitype.JobPayload
-		err := it.Next(&row)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.WithError(err).Error("error parsing job run payload from bigquery")
-			return nil, fmt.Errorf("error parsing job run payload from bigquery: %w", err)
-		}
-
-		results = append(results, row)
+	res := dbClient.DB.Table("release_job_runs").
+		Select(`release_job_runs.job_name AS prowjob_job_name,
+			release_tags.release_tag AS payload,
+			release_job_runs.prow_job_run_id AS prowjob_build_id`).
+		Joins("JOIN release_tags ON release_tags.id = release_job_runs.release_tag_id").
+		Where("release_job_runs.prow_job_run_id = ?", jobRunID).
+		Find(&results)
+	if res.Error != nil {
+		log.WithError(res.Error).Error("error querying job run payload from database")
+		return nil, fmt.Errorf("error querying job run payload from database: %w", res.Error)
 	}
 
 	return results, nil

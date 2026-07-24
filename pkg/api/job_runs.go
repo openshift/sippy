@@ -371,9 +371,8 @@ func JobRunRiskAnalysis(
 	// master, so it should be safe to assume the latest compareRelease in the db.
 	compareRelease := jobRun.ProwJob.Release
 	neverStableJob := false
-	if compareRelease == "Presubmits" {
-		// Get latest release from the DB:
-		ar, err := GetReleases(ctx, bqc, false)
+	if compareRelease == models.ReleasePresubmits {
+		ar, err := GetReleasesFromDB(ctx, dbc)
 		if err != nil {
 			return apitype.ProwJobRunRiskAnalysis{}, err
 		}
@@ -422,8 +421,7 @@ func JobRunRiskAnalysis(
 	}
 
 	if totalJobRuns < 20 {
-		// go back to the prior release and get more jobIds to compare against
-		releases, err := GetReleases(ctx, bqc, false)
+		releases, err := GetReleasesFromDB(ctx, dbc)
 		if err != nil {
 			logger.WithError(err).Error("Failed to get releases for prior release lookup")
 		} else {

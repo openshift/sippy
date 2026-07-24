@@ -13,7 +13,6 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/dailysummary"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
@@ -691,7 +690,7 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 			name: "MatviewTestReport7d",
 			fn: func(dbc *db.DB) error {
 				results, err := query.TestReportsByVariant(dbc, benchmarkRelease,
-					v1.CurrentReport, []string{benchmarkTestName}, nil)
+					v1.CurrentReport, query.TestNameMatches{Substrings: []string{benchmarkTestName}}, nil, false)
 				if err == nil {
 					log.Printf("MatviewTestReport7d: %d results", len(results))
 				}
@@ -702,7 +701,7 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 			name: "MatviewTestReport2d",
 			fn: func(dbc *db.DB) error {
 				results, err := query.TestReportsByVariant(dbc, benchmarkRelease,
-					v1.TwoDayReport, []string{benchmarkTestName}, nil)
+					v1.TwoDayReport, query.TestNameMatches{Substrings: []string{benchmarkTestName}}, nil, false)
 				if err == nil {
 					log.Printf("MatviewTestReport2d: %d results", len(results))
 				}
@@ -729,54 +728,6 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 					log.Printf("MatviewJobRunsReport: %d rows", result.TotalRows)
 				}
 				return err
-			},
-		},
-		{
-			name: "MatviewFailedTestsByDay",
-			fn: func(dbc *db.DB) error {
-				var prowJob models.ProwJob
-				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
-					return err
-				}
-				type testResult struct {
-					Period   time.Time
-					TestName string
-					Count    int
-				}
-				var results []testResult
-				res := dbc.DB.Table("prow_job_failed_tests_by_day_matview").
-					Select("period, test_name, count").
-					Where("prow_job_id = ?", prowJob.ID).
-					Scan(&results)
-				if res.Error != nil {
-					return res.Error
-				}
-				log.Printf("MatviewFailedTestsByDay: %d results for job %s", len(results), benchmarkJobName)
-				return nil
-			},
-		},
-		{
-			name: "MatviewFailedTestsByHour",
-			fn: func(dbc *db.DB) error {
-				var prowJob models.ProwJob
-				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
-					return err
-				}
-				type testResult struct {
-					Period   time.Time
-					TestName string
-					Count    int
-				}
-				var results []testResult
-				res := dbc.DB.Table("prow_job_failed_tests_by_hour_matview").
-					Select("period, test_name, count").
-					Where("prow_job_id = ?", prowJob.ID).
-					Scan(&results)
-				if res.Error != nil {
-					return res.Error
-				}
-				log.Printf("MatviewFailedTestsByHour: %d results for job %s", len(results), benchmarkJobName)
-				return nil
 			},
 		},
 		{
@@ -914,15 +865,19 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 						{Field: "current_flake_percentage", Operator: filter.OperatorArithmeticEquals, Value: "100", Not: true},
 					},
 				}
+				sample, base := query.PeriodsForReportType(v1.CurrentReport)
+				inner, err := query.TestReportQuery(dbc, benchmarkRelease, sample, base, query.TestNameMatches{})
+				if err != nil {
+					return err
+				}
 				rawQuery := dbc.DB.
-					Table("prow_test_report_7d_matview").
-					Where("release = ?", benchmarkRelease).
+					Table("(?) AS r", inner).
 					Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummer).
 					Group("suite_name, name, jira_component, jira_component_id")
 				rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
 
 				processedResults := dbc.DB.Table("(?) as results", rawQuery).
-					Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
+					Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
 					Where("current_runs > 0 or previous_runs > 0")
 
 				finalResults := dbc.DB.Table("(?) as final_results", processedResults)
@@ -985,76 +940,10 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 	}
 }
 
-func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
+func Test_BenchmarkCumulativeQueryTestsReport(t *testing.T) {
 	dbc, connName := getBenchmarkDBClient(t)
 
-	var source db.PostgresView
-	for _, mv := range db.PostgresMatViews {
-		if mv.Name == "prow_test_report_7d_matview" {
-			source = mv
-			break
-		}
-	}
-	if source.Name == "" {
-		t.Fatal("prow_test_report_7d_matview not found in PostgresMatViews")
-	}
-
-	matviewName := fmt.Sprintf("bench_test_report_7d_%s", strings.ReplaceAll(benchmarkRelease, ".", "_"))
-
-	viewDef := source.Definition
-	for k, v := range source.ReplaceStrings {
-		viewDef = strings.ReplaceAll(viewDef, k, v)
-	}
-	viewDef = strings.ReplaceAll(viewDef, "|||TIMENOW|||", "NOW()")
-
-	const tsPredicate = "prow_job_run_tests.prow_job_run_timestamp >="
-	if !strings.Contains(viewDef, tsPredicate) {
-		t.Fatalf("expected %q in %s definition", tsPredicate, source.Name)
-	}
-	viewDef = strings.Replace(viewDef,
-		tsPredicate,
-		fmt.Sprintf("prow_job_run_tests.prow_job_run_release = '%s'\n    AND %s", benchmarkRelease, tsPredicate),
-		1)
-
-	t.Cleanup(func() {
-		if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-			t.Logf("failed to drop materialized view %s during cleanup: %v", matviewName, err)
-		}
-	})
-	if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-		t.Fatalf("failed to drop pre-existing materialized view %s: %v", matviewName, err)
-	}
-
 	var results []benchmarkResult
-
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "CreateMatview",
-		fn: func(dbc *db.DB) error {
-			if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-				return err
-			}
-			res := dbc.DB.Exec(fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH DATA", matviewName, viewDef))
-			if res.Error != nil {
-				return res.Error
-			}
-			var count int64
-			if err := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matviewName)).Scan(&count).Error; err != nil {
-				return err
-			}
-			log.Printf("CreateMatview: %s populated with %d rows", matviewName, count)
-			return nil
-		},
-	}, 1))
-
-	indexName := fmt.Sprintf("idx_%s", matviewName)
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "CreateIndex",
-		fn: func(dbc *db.DB) error {
-			indexCols := strings.Join(source.IndexColumns, ", ")
-			res := dbc.DB.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, matviewName, indexCols))
-			return res.Error
-		},
-	}, 1))
 
 	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
 		name: "QueryAPITestsReport",
@@ -1072,15 +961,19 @@ func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
 					{Field: "current_flake_percentage", Operator: filter.OperatorArithmeticEquals, Value: "100", Not: true},
 				},
 			}
+			sample, base := query.PeriodsForReportType(v1.CurrentReport)
+			inner, err := query.TestReportQuery(dbc, benchmarkRelease, sample, base, query.TestNameMatches{})
+			if err != nil {
+				return err
+			}
 			rawQuery := dbc.DB.
-				Table(matviewName).
-				Where("release = ?", benchmarkRelease).
+				Table("(?) AS r", inner).
 				Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummer).
 				Group("suite_name, name, jira_component, jira_component_id")
 			rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
 
 			processedResults := dbc.DB.Table("(?) as results", rawQuery).
-				Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
+				Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
 				Where("current_runs > 0 or previous_runs > 0")
 
 			finalResults := dbc.DB.Table("(?) as final_results", processedResults)
@@ -1091,7 +984,7 @@ func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
 			if res.Error != nil {
 				return res.Error
 			}
-			log.Printf("QueryAPITestsReport: %d tests from %s", len(testReports), matviewName)
+			log.Printf("QueryAPITestsReport: %d tests from cumulative summaries", len(testReports))
 			return nil
 		},
 	}, 3))
@@ -1231,8 +1124,7 @@ func Test_BenchmarkRefreshData(t *testing.T) {
 	r := runBenchmarkCase(t, dbc, benchmarkCase{
 		name: "RefreshData",
 		fn: func(dbc *db.DB) error {
-			sippyserver.RefreshData(dbc, nil, false, dailysummary.Options{})
-			return nil
+			return sippyserver.RefreshData(dbc, nil, sippyserver.RefreshOptions{})
 		},
 	}, 1)
 	printSummaryTable(t, []benchmarkResult{r}, connName)

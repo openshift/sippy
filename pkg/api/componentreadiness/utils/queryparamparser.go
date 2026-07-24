@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -15,9 +14,9 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/param"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// nolint:gocyclo
 func ParseComponentReportRequest(
 	views []crview.View,
 	releases []v1.Release,
@@ -29,51 +28,21 @@ func ParseComponentReportRequest(
 	warnings []string,
 	err error,
 ) {
-	// Check if the user specified a view, which provides defaults that can be overridden by URL params
 	view, err := getRequestedView(req, views)
 	if err != nil {
 		return
 	}
-
-	// Start with view defaults if provided
 	if view != nil {
-		opts.ViewName = view.Name
-		opts.VariantOption = view.VariantOptions
-		opts.AdvancedOption = view.AdvancedOptions
-		opts.TestFilters = view.TestFilters
-		opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
+		opts, warnings, err = applyViewDefaults(view, releases, allJobVariants, crTimeRoundingFactor, crTimeRoundingOffset)
 		if err != nil {
 			return
 		}
-		opts.SampleRelease, err = GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor, crTimeRoundingOffset)
-		if err != nil {
-			return
-		}
-
-		// Validate variants from the view's include_variants
-		if opts.VariantOption.IncludeVariants != nil {
-			viewWarnings := api.ValidateVariants(allJobVariants, opts.VariantOption.IncludeVariants, " from view")
-			warnings = append(warnings, viewWarnings...)
-		}
 	}
 
-	// Parse URL parameters - these override view defaults if view was provided
-	// If no view, these are required parameters
-	if baseRelease := param.SafeRead(req, "baseRelease"); baseRelease != "" {
-		opts.BaseRelease.Name = baseRelease
-	} else if view == nil {
-		err = fmt.Errorf("missing baseRelease")
+	if err = parseRequiredReleases(req, view, &opts); err != nil {
 		return
 	}
 
-	if sampleRelease := param.SafeRead(req, "sampleRelease"); sampleRelease != "" {
-		opts.SampleRelease.Name = sampleRelease
-	} else if view == nil {
-		err = fmt.Errorf("missing sampleRelease")
-		return
-	}
-
-	// PR and Payload options override view defaults
 	if prOpts := parsePROptions(req); prOpts != nil {
 		opts.SampleRelease.PullRequestOptions = prOpts
 	}
@@ -81,7 +50,6 @@ func ParseComponentReportRequest(
 		opts.SampleRelease.PayloadOptions = payloadOpts
 	}
 
-	// Test filters override view defaults
 	if testCaps := req.URL.Query()["testCapabilities"]; len(testCaps) > 0 {
 		opts.Capabilities = testCaps
 	}
@@ -89,76 +57,19 @@ func ParseComponentReportRequest(
 		opts.Lifecycles = testLifecycles
 	}
 
-	// Variant options - merge with view defaults
 	variantOpts, vWarnings, vErr := parseVariantOptions(req, allJobVariants)
 	if vErr != nil {
-		err = vErr
-		return
+		return opts, warnings, vErr
 	}
 	warnings = append(warnings, vWarnings...)
-	if view != nil {
-		// Merge: override individual fields from URL while preserving view defaults
-		if req.URL.Query().Get("columnGroupBy") != "" {
-			opts.VariantOption.ColumnGroupBy = variantOpts.ColumnGroupBy
-		}
-		if req.URL.Query().Get("dbGroupBy") != "" {
-			opts.VariantOption.DBGroupBy = variantOpts.DBGroupBy
-		}
-		if len(req.URL.Query()["includeVariant"]) > 0 {
-			opts.VariantOption.IncludeVariants = variantOpts.IncludeVariants
-		}
-		if len(req.URL.Query()["compareVariant"]) > 0 || len(req.URL.Query()["variantCrossCompare"]) > 0 {
-			// CompareVariants and VariantCrossCompare are related, update together
-			opts.VariantOption.CompareVariants = variantOpts.CompareVariants
-			opts.VariantOption.VariantCrossCompare = variantOpts.VariantCrossCompare
-		}
-	} else {
-		opts.VariantOption = variantOpts
-	}
+	opts.VariantOption = mergeVariantOptions(req, view != nil, opts.VariantOption, variantOpts)
 
-	// Advanced options - merge with view defaults
 	advOpts, advErr := parseAdvancedOptions(req)
 	if advErr != nil {
-		err = advErr
-		return
+		return opts, warnings, advErr
 	}
-	if view != nil {
-		// Merge: only override fields that were explicitly provided in URL
-		if req.URL.Query().Get("confidence") != "" {
-			opts.AdvancedOption.Confidence = advOpts.Confidence
-		}
-		if req.URL.Query().Get("pity") != "" {
-			opts.AdvancedOption.PityFactor = advOpts.PityFactor
-		}
-		if req.URL.Query().Get("minFail") != "" {
-			opts.AdvancedOption.MinimumFailure = advOpts.MinimumFailure
-		}
-		if req.URL.Query().Get("passRateNewTests") != "" {
-			opts.AdvancedOption.PassRateRequiredNewTests = advOpts.PassRateRequiredNewTests
-		}
-		if req.URL.Query().Get("passRateAllTests") != "" {
-			opts.AdvancedOption.PassRateRequiredAllTests = advOpts.PassRateRequiredAllTests
-		}
-		if req.URL.Query().Get("ignoreMissing") != "" {
-			opts.AdvancedOption.IgnoreMissing = advOpts.IgnoreMissing
-		}
-		if req.URL.Query().Get("ignoreDisruption") != "" {
-			opts.AdvancedOption.IgnoreDisruption = advOpts.IgnoreDisruption
-		}
-		if req.URL.Query().Get("flakeAsFailure") != "" {
-			opts.AdvancedOption.FlakeAsFailure = advOpts.FlakeAsFailure
-		}
-		if req.URL.Query().Get("includeMultiReleaseAnalysis") != "" {
-			opts.AdvancedOption.IncludeMultiReleaseAnalysis = advOpts.IncludeMultiReleaseAnalysis
-		}
-		if len(req.URL.Query()["keyTestName"]) > 0 {
-			opts.AdvancedOption.KeyTestNames = advOpts.KeyTestNames
-		}
-	} else {
-		opts.AdvancedOption = advOpts
-	}
+	opts.AdvancedOption = mergeAdvancedOptions(req, view != nil, opts.AdvancedOption, advOpts)
 
-	// Date ranges override view defaults
 	if hasDateRangeInURL(req, "baseStartTime", "baseEndTime") {
 		opts.BaseRelease, err = parseDateRange(releases, req, opts.BaseRelease, "baseStartTime", "baseEndTime", 0, 0)
 		if err != nil {
@@ -172,42 +83,11 @@ func ParseComponentReportRequest(
 		}
 	}
 
-	// Params below this point can be used with and without views:
-	// TODO: leave nil for safer cache keys if params not set, sync with metrics and primecache.go
-	// TODO: unit test that metrics and primecache cache keys match a request object here
-	opts.TestIDOptions = []reqopts.TestIdentification{
-		{
-			// these are semi-freeform and only used in lookup keys, so don't need validation
-			Component:  req.URL.Query().Get("component"),
-			Capability: req.URL.Query().Get("capability"),
-			TestID:     req.URL.Query().Get("testId"),
-		},
-	}
-	if opts.AdvancedOption.IncludeMultiReleaseAnalysis {
-		// check to see if we have an individual test which is using a fallback release for basis
-		testBasisRelease := param.SafeRead(req, "testBasisRelease")
-		if len(testBasisRelease) > 0 && releases != nil {
-			// indicates we fell back to a previous release
-			// get that release and find the dates associated with it.
-			for _, release := range releases {
-				if release.Release == testBasisRelease {
-					// found the release so update if not already set
-					// if it is already the base release we don't update
-					// change dates
-					if opts.BaseRelease.Name != testBasisRelease {
-						opts.TestIDOptions[0].BaseOverrideRelease = testBasisRelease
-					}
-					break
-				}
-			}
-		}
-	}
-	opts.TestIDOptions[0].RequestedVariants = map[string]string{}
-	// Only the dbGroupBy variants can be specifically requested
-	for _, variant := range opts.VariantOption.DBGroupBy.List() {
-		if value := req.URL.Query().Get(variant); value != "" {
-			opts.TestIDOptions[0].RequestedVariants[variant] = value
-		}
+	opts.TestIDOptions = parseTestIDOptions(req, releases, opts.BaseRelease, opts.AdvancedOption, opts.VariantOption)
+
+	opts.IncludeAllTests, err = ParseBoolArg(req, "includeAllTests", false)
+	if err != nil {
+		return
 	}
 
 	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)
@@ -217,6 +97,140 @@ func ParseComponentReportRequest(
 	}
 
 	return
+}
+
+func applyViewDefaults(
+	view *crview.View,
+	releases []v1.Release,
+	allJobVariants crtest.JobVariants,
+	crTimeRoundingFactor, crTimeRoundingOffset time.Duration,
+) (opts reqopts.RequestOptions, warnings []string, err error) {
+	opts.ViewName = view.Name
+	opts.VariantOption = view.VariantOptions
+	opts.AdvancedOption = view.AdvancedOptions
+	opts.TestFilters = view.TestFilters
+	opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
+	if err != nil {
+		return
+	}
+	opts.SampleRelease, err = GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor, crTimeRoundingOffset)
+	if err != nil {
+		return
+	}
+	if opts.VariantOption.IncludeVariants != nil {
+		viewWarnings := api.ValidateVariants(allJobVariants, opts.VariantOption.IncludeVariants, " from view")
+		warnings = append(warnings, viewWarnings...)
+	}
+	return
+}
+
+func parseRequiredReleases(req *http.Request, view *crview.View, opts *reqopts.RequestOptions) error {
+	if baseRelease := param.SafeRead(req, "baseRelease"); baseRelease != "" {
+		opts.BaseRelease.Name = baseRelease
+	} else if view == nil {
+		return &api.ValidationError{Message: "missing baseRelease"}
+	}
+	if sampleRelease := param.SafeRead(req, "sampleRelease"); sampleRelease != "" {
+		opts.SampleRelease.Name = sampleRelease
+	} else if view == nil {
+		return &api.ValidationError{Message: "missing sampleRelease"}
+	}
+	return nil
+}
+
+func mergeVariantOptions(req *http.Request, hasView bool, viewOpts, parsedOpts reqopts.Variants) reqopts.Variants {
+	if !hasView {
+		return parsedOpts
+	}
+	if req.URL.Query().Get("columnGroupBy") != "" {
+		viewOpts.ColumnGroupBy = parsedOpts.ColumnGroupBy
+	}
+	if req.URL.Query().Get("dbGroupBy") != "" {
+		viewOpts.DBGroupBy = parsedOpts.DBGroupBy
+	}
+	if len(req.URL.Query()["includeVariant"]) > 0 {
+		viewOpts.IncludeVariants = parsedOpts.IncludeVariants
+	}
+	if len(req.URL.Query()["compareVariant"]) > 0 || len(req.URL.Query()["variantCrossCompare"]) > 0 {
+		viewOpts.CompareVariants = parsedOpts.CompareVariants
+		viewOpts.VariantCrossCompare = parsedOpts.VariantCrossCompare
+	}
+	return viewOpts
+}
+
+func mergeAdvancedOptions(req *http.Request, hasView bool, viewOpts, parsedOpts reqopts.Advanced) reqopts.Advanced {
+	if !hasView {
+		return parsedOpts
+	}
+	if req.URL.Query().Get("confidence") != "" {
+		viewOpts.Confidence = parsedOpts.Confidence
+	}
+	if req.URL.Query().Get("pity") != "" {
+		viewOpts.PityFactor = parsedOpts.PityFactor
+	}
+	if req.URL.Query().Get("minFail") != "" {
+		viewOpts.MinimumFailure = parsedOpts.MinimumFailure
+	}
+	if req.URL.Query().Get("passRateNewTests") != "" {
+		viewOpts.PassRateRequiredNewTests = parsedOpts.PassRateRequiredNewTests
+	}
+	if req.URL.Query().Get("passRateAllTests") != "" {
+		viewOpts.PassRateRequiredAllTests = parsedOpts.PassRateRequiredAllTests
+	}
+	if req.URL.Query().Get("ignoreMissing") != "" {
+		viewOpts.IgnoreMissing = parsedOpts.IgnoreMissing
+	}
+	if req.URL.Query().Get("ignoreDisruption") != "" {
+		viewOpts.IgnoreDisruption = parsedOpts.IgnoreDisruption
+	}
+	if req.URL.Query().Get("flakeAsFailure") != "" {
+		viewOpts.FlakeAsFailure = parsedOpts.FlakeAsFailure
+	}
+	if req.URL.Query().Get("includeMultiReleaseAnalysis") != "" {
+		viewOpts.IncludeMultiReleaseAnalysis = parsedOpts.IncludeMultiReleaseAnalysis
+	}
+	if len(req.URL.Query()["keyTestName"]) > 0 {
+		viewOpts.KeyTestNames = parsedOpts.KeyTestNames
+	}
+	return viewOpts
+}
+
+// parseTestIDOptions builds the test identification from URL params, including
+// multi-release basis override and per-variant filtering.
+func parseTestIDOptions(
+	req *http.Request,
+	releases []v1.Release,
+	baseRelease reqopts.Release,
+	advancedOption reqopts.Advanced,
+	variantOption reqopts.Variants,
+) []reqopts.TestIdentification {
+	// TODO: leave nil for safer cache keys if params not set, sync with metrics and primecache.go
+	// TODO: unit test that metrics and primecache cache keys match a request object here
+	tid := reqopts.TestIdentification{
+		Component:  req.URL.Query().Get("component"),
+		Capability: req.URL.Query().Get("capability"),
+		TestID:     req.URL.Query().Get("testId"),
+	}
+	if advancedOption.IncludeMultiReleaseAnalysis {
+		testBasisRelease := param.SafeRead(req, "testBasisRelease")
+		if len(testBasisRelease) > 0 && releases != nil {
+			for _, release := range releases {
+				if release.Release == testBasisRelease {
+					if baseRelease.Name != testBasisRelease {
+						tid.BaseOverrideRelease = testBasisRelease
+					}
+					break
+				}
+			}
+		}
+	}
+	tid.RequestedVariants = map[string]string{}
+	for _, variant := range sets.List(variantOption.DBGroupBy) {
+		if value := req.URL.Query().Get(variant); value != "" {
+			tid.RequestedVariants[variant] = value
+		}
+	}
+	return []reqopts.TestIdentification{tid}
 }
 
 // getRequestedView returns the view requested per the view param, or nil if none.
@@ -233,7 +247,7 @@ func getRequestedView(req *http.Request, views []crview.View) (*crview.View, err
 			return &view, nil
 		}
 	}
-	return nil, fmt.Errorf("unknown view: %s", viewRequested)
+	return nil, &api.ValidationError{Message: fmt.Sprintf("unknown view: %s", viewRequested)}
 }
 
 // Translate relative start/end times to actual time.Time:
@@ -248,11 +262,11 @@ func GetViewReleaseOptions(
 	opts := reqopts.Release{Name: viewRelease.Name}
 	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
+		return opts, &api.ValidationError{Message: fmt.Sprintf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)}
 	}
 	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
+		return opts, &api.ValidationError{Message: fmt.Sprintf("%s end time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)}
 	}
 	return opts, nil
 }
@@ -330,10 +344,10 @@ func ParseIntArg(req *http.Request, name string, defaultVal int, validator func(
 	}
 	val, err := strconv.Atoi(valueStr)
 	if err != nil {
-		return val, errors.New(name + " is not an integer")
+		return val, &api.ValidationError{Message: name + " is not an integer"}
 	}
 	if !validator(val) {
-		return val, errors.New("confidence is not in the correct range")
+		return val, &api.ValidationError{Message: name + " is not in the correct range"}
 	}
 	return val, nil
 }
@@ -345,7 +359,7 @@ func ParseBoolArg(req *http.Request, name string, defaultVal bool) (bool, error)
 	}
 	val, err := strconv.ParseBool(valueStr)
 	if err != nil {
-		return val, errors.New(name + " is not a boolean")
+		return val, &api.ValidationError{Message: name + " is not a boolean"}
 	}
 	return val, nil
 }
@@ -418,13 +432,13 @@ func parseDateRange(allReleases []v1.Release, req *http.Request,
 	timeStr := req.URL.Query().Get(startName)
 	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, true, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return releaseOpts, errors.New(startName + " in wrong format")
+		return releaseOpts, &api.ValidationError{Message: startName + " in wrong format"}
 	}
 
 	timeStr = req.URL.Query().Get(endName)
 	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, false, nil, roundingFactor, roundingOffset)
 	if err != nil {
-		return releaseOpts, errors.New(endName + " in wrong format")
+		return releaseOpts, &api.ValidationError{Message: endName + " in wrong format"}
 	}
 	return releaseOpts, nil
 }

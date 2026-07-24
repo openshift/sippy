@@ -1,29 +1,53 @@
 package query
 
 import (
-	"gorm.io/gorm"
+	"fmt"
+	"time"
+
+	"cloud.google.com/go/civil"
 
 	"github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
 )
 
-func GetFeatureGatesFromDB(dbc *gorm.DB, release string, filterOpts *filter.FilterOptions) ([]api.FeatureGate, error) {
-	// Get tests by feature gate.
-	// Install related FG is special and is covered by install should succeed case.
-	// Pre-filter with LIKE to avoid running expensive regex on every row.
-	// regexp_matches(..., 'g') counts every tag in the name, not only the first.
-	byTag := dbc.Table("prow_test_report_7d_matview AS ptr").
-		Select("ptr.name, ptr.release, (m.match)[2] AS gate_name").
-		Joins(`CROSS JOIN LATERAL regexp_matches(ptr.name, '\[(FeatureGate|OCPFeatureGate):([^\]]+)\]', 'g') AS m(match)`).
-		Where("ptr.release = ? AND ptr.name LIKE ?", release, "%FeatureGate:%")
-	byInstall := dbc.Table("prow_test_report_7d_matview").
-		Select("name, release, NULL::text AS gate_name").
-		Where("release = ? AND name LIKE ?", release, "%install should succeed%")
-	subQuery := dbc.Raw("? UNION ALL ?", byTag, byInstall)
+func GetFeatureGatesFromDB(dbc *db.DB, release string, filterOpts *filter.FilterOptions) ([]api.FeatureGate, error) {
+	// Get test names that had actual runs in the last 7 days. We compare
+	// prefix_sum_runs at the end vs start of the range to confirm the test ran
+	// at least once, filtering out tests that merely have carried-forward rows.
+	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
+	dr := DateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
+	if err := resolveDateRanges(dbc, release, &dr); err != nil {
+		return nil, err
+	}
+	lookupEnd := dr.End.AddDays(-1)
+	lookupStart := dr.Start.AddDays(-1)
+
+	activeTestExists := `EXISTS (
+		SELECT 1 FROM test_cumulative_summaries e
+		LEFT JOIN test_cumulative_summaries s
+			ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id
+			AND s.suite_id = e.suite_id AND s.release = e.release
+			AND s.date = ?
+		WHERE e.test_id = t.id AND e.date = ? AND e.release = ?
+			AND e.prefix_sum_runs > COALESCE(s.prefix_sum_runs, 0)
+	)`
+
+	byTag := dbc.DB.Table("tests t").
+		Select("t.name, ? AS release, (m.match)[2] AS gate_name", release).
+		Joins(`CROSS JOIN LATERAL regexp_matches(t.name, '\[(FeatureGate|OCPFeatureGate):([^\]]+)\]', 'g') AS m(match)`).
+		Where("t.name LIKE ?", "%FeatureGate:%").
+		Where(activeTestExists, lookupStart, lookupEnd, release)
+
+	byInstall := dbc.DB.Table("tests t").
+		Select("t.name, ? AS release, NULL::text AS gate_name", release).
+		Where("t.name LIKE ?", "%install should succeed%").
+		Where(activeTestExists, lookupStart, lookupEnd, release)
+
+	subQuery := dbc.DB.Raw("? UNION ALL ?", byTag, byInstall)
 
 	// Figure out the first release we ever saw a FG.
-	// Use DISTINCT ON to return exactly one row per feature gate (the earliest release).
-	firstSeenQuery := dbc.Raw(`
+	firstSeenQuery := dbc.DB.Raw(`
 		SELECT DISTINCT ON (feature_gate)
 			feature_gate,
 			release AS first_seen_in,
@@ -34,7 +58,7 @@ func GetFeatureGatesFromDB(dbc *gorm.DB, release string, filterOpts *filter.Filt
 		ORDER BY feature_gate, string_to_array(release, '.')::int[] ASC
 	`)
 
-	query := dbc.Table("feature_gates AS fg").
+	fgQuery := dbc.DB.Table("feature_gates AS fg").
 		Select(`
 			ROW_NUMBER() OVER (ORDER BY fg.feature_gate) AS id,
 			fg.feature_gate,
@@ -52,17 +76,17 @@ func GetFeatureGatesFromDB(dbc *gorm.DB, release string, filterOpts *filter.Filt
 		Group("fg.feature_gate, fg.release, fs.first_seen_in, fs.first_seen_in_major, fs.first_seen_in_minor").
 		Order("fg.feature_gate")
 
-	table := dbc.Table("(?) AS results", query)
+	table := dbc.DB.Table("(?) AS results", fgQuery)
 
 	q, err := filter.FilterableDBResult(table, filterOpts, api.FeatureGate{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to apply filter: %w", err)
 	}
 
 	results := make([]api.FeatureGate, 0)
 	tx := q.Scan(&results)
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, fmt.Errorf("failed to scan feature gates: %w", tx.Error)
 	}
 
 	return results, nil

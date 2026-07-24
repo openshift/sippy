@@ -26,6 +26,7 @@ type ReportColumn struct {
 	crtest.ColumnIdentification
 	Status         crtest.Status       `json:"status"`
 	RegressedTests []ReportTestSummary `json:"regressed_tests,omitempty"`
+	AllTests       []ReportTestSummary `json:"all_tests,omitempty"`
 }
 
 type ReportTestSummary struct {

@@ -40,8 +40,10 @@ func (rt *ReleasesTool) GetHandler() func(ctx context.Context, request mcp.CallT
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		log.Debug("Handling get_releases tool call")
 
-		// Get releases from BigQuery (never force refresh for MCP)
-		releases, err := api.GetReleases(ctx, rt.deps.BigQueryClient, false)
+		releases, err := api.GetReleasesFromDB(ctx, rt.deps.DBClient)
+		if err != nil && rt.deps.BigQueryClient != nil {
+			releases, err = api.GetReleasesFromBigQuery(ctx, rt.deps.BigQueryClient)
+		}
 		if err != nil {
 			log.WithError(err).Error("error querying releases")
 			return rt.CreateErrorResponse(fmt.Errorf("error querying releases: %w", err))

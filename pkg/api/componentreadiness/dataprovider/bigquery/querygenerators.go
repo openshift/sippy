@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -407,7 +408,7 @@ func BuildComponentReportQuery(
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON junit_data.variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			client.Dataset, v, v, v, v)
 	}
-	for _, v := range reqOptions.VariantOption.DBGroupBy.List() {
+	for _, v := range sets.List(reqOptions.VariantOption.DBGroupBy) {
 		v = param.Cleanse(v)
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
@@ -570,7 +571,7 @@ func buildTestDetailsQuery(
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			client.Dataset, v, v, v, v)
 	}
-	for _, v := range c.VariantOption.DBGroupBy.List() {
+	for _, v := range sets.List(c.VariantOption.DBGroupBy) {
 		v = param.Cleanse(v)
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)

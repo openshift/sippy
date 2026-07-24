@@ -16,43 +16,22 @@ import (
 )
 
 const TestFailureSummaryFilePrefix = "risk-analysis"
-const ClusterDataFilePrefix = "cluster-data_"
-const JunitRegExStr = "\\/.*junit.*xml"
-const intervalFilesRegExStr = "\\/(e2e-events|e2e-timelines).*json"
 
-var (
-	defaultRiskAnalysisSummaryFileRegEx *regexp.Regexp
-	defaultClusterDataFileRegEx         *regexp.Regexp
-	defaultJunitFileRegEx               *regexp.Regexp
-	intervalFilesRegex                  *regexp.Regexp
+const (
+	GlobJunitXML      = "**junit**.xml"
+	GlobEventsJSON    = "**/gather-extra/artifacts/events.json"
+	GlobIntervalsJSON = "**e2e-events*.json"
+	GlobTimelinesJSON = "**e2e-timelines*.json"
+	GlobClusterData   = "**/cluster-data_*.json"
 )
+
+var defaultRiskAnalysisSummaryFileRegEx *regexp.Regexp
 
 func GetDefaultRiskAnalysisSummaryFile() *regexp.Regexp {
 	if defaultRiskAnalysisSummaryFileRegEx == nil {
 		defaultRiskAnalysisSummaryFileRegEx = regexp.MustCompile(fmt.Sprintf("%s.json", TestFailureSummaryFilePrefix))
 	}
 	return defaultRiskAnalysisSummaryFileRegEx
-}
-
-func GetDefaultClusterDataFile() *regexp.Regexp {
-	if defaultClusterDataFileRegEx == nil {
-		defaultClusterDataFileRegEx = regexp.MustCompile(fmt.Sprintf("%s.*json", ClusterDataFilePrefix))
-	}
-	return defaultClusterDataFileRegEx
-}
-
-func GetDefaultJunitFile() *regexp.Regexp {
-	if defaultJunitFileRegEx == nil {
-		defaultJunitFileRegEx = regexp.MustCompile(JunitRegExStr)
-	}
-	return defaultJunitFileRegEx
-}
-
-func GetIntervalFile() *regexp.Regexp {
-	if intervalFilesRegex == nil {
-		intervalFilesRegex = regexp.MustCompile(intervalFilesRegExStr)
-	}
-	return intervalFilesRegex
 }
 
 type GCSJobRun struct {
@@ -76,16 +55,13 @@ func (j *GCSJobRun) SetGCSJunitPaths(paths []string) {
 	j.gcsJunitPaths = paths
 }
 
-func (j *GCSJobRun) GetGCSJunitPaths() ([]string, error) {
+func (j *GCSJobRun) GetGCSJunitPaths(ctx context.Context) ([]string, error) {
 	if len(j.gcsJunitPaths) == 0 {
-		matches, err := j.FindAllMatches([]*regexp.Regexp{GetDefaultJunitFile()})
+		matches, err := j.FindAllMatches(ctx, GlobJunitXML)
 		if err != nil {
 			return nil, err
 		}
-
-		if len(matches) > 0 {
-			j.gcsJunitPaths = matches[0]
-		}
+		j.gcsJunitPaths = matches
 	}
 
 	return j.gcsJunitPaths, nil
@@ -93,7 +69,7 @@ func (j *GCSJobRun) GetGCSJunitPaths() ([]string, error) {
 
 func (j *GCSJobRun) GetCombinedJUnitTestSuites(ctx context.Context) (*junit.TestSuites, error) {
 	testSuites := &junit.TestSuites{}
-	junitPaths, err := j.GetGCSJunitPaths()
+	junitPaths, err := j.GetGCSJunitPaths(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -135,19 +111,7 @@ func (j *GCSJobRun) GetContent(ctx context.Context, path string) ([]byte, error)
 		return content, nil
 	}
 
-	// Get an Object handle for the path
 	obj := j.bkt.Object(path)
-
-	// use the object attributes to try to get the latest generation to try to retrieve the data without getting a cached
-	// version of data that does not match the latest content.  I don't know if this will work, but in the easy case
-	// it doesn't seem to fail.
-	objAttrs, err := obj.Attrs(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error reading GCS attributes for jobrun: %w", err)
-	}
-	obj = obj.Generation(objAttrs.Generation)
-
-	// Get an io.Reader for the object.
 	gcsReader, err := obj.NewReader(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error reading GCS content for jobrun: %w", err)
@@ -196,20 +160,19 @@ func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
 	return nil
 }
 
-// FindAllMatches takes an array of regexes
-// and compares the name of the object in gcs
-// with each regex for a match
-// each regex that matches will get the attribute name
-// in the returned matches with the index matching the regex
-func (j *GCSJobRun) FindAllMatches(filenames []*regexp.Regexp) ([][]string, error) {
-	if len(filenames) < 1 {
-		return nil, nil
+// FindAllMatches lists GCS objects under the job run path that match the
+// given glob pattern, using server-side filtering via MatchGlob.
+func (j *GCSJobRun) FindAllMatches(ctx context.Context, glob string) ([]string, error) {
+	q := &storage.Query{
+		Prefix:    j.gcsProwJobPath,
+		MatchGlob: glob,
 	}
-	matches := make([][]string, len(filenames))
+	if err := q.SetAttrSelection([]string{"Name"}); err != nil {
+		return nil, errors.Wrap(err, "error setting attribute selection")
+	}
 
-	it := j.bkt.Objects(context.Background(), &storage.Query{
-		Prefix: j.gcsProwJobPath,
-	})
+	var matches []string
+	it := j.bkt.Objects(ctx, q)
 	for {
 		attrs, err := it.Next()
 		if errors.Is(err, iterator.Done) {
@@ -218,15 +181,7 @@ func (j *GCSJobRun) FindAllMatches(filenames []*regexp.Regexp) ([][]string, erro
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading GCS attributes for job run")
 		}
-
-		for i, filename := range filenames {
-			if matches[i] == nil {
-				matches[i] = make([]string, 0)
-			}
-			if filename.MatchString(attrs.Name) {
-				matches[i] = append(matches[i], attrs.Name)
-			}
-		}
+		matches = append(matches, attrs.Name)
 	}
 
 	return matches, nil

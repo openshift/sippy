@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import os
 import tempfile
 from pathlib import Path
@@ -176,37 +175,26 @@ class TestResolveBigqueryCreds:
 
 
 class TestDataMode:
-    @contextlib.contextmanager
-    def _patch_dotenv(self, vals):
-        with mock.patch("server.dotenv_values", return_value=vals), \
-             mock.patch("server._DEVCONTAINER_ENV") as mock_env:
-            mock_env.is_file.return_value = True
-            yield
-
     def test_default_is_seed(self):
-        with self._patch_dotenv({}):
+        with mock.patch.dict(os.environ, clear=False):
+            os.environ.pop("SIPPY_DATA_MODE", None)
             assert _data_mode() == "seed"
 
     def test_seed_mode(self):
-        with self._patch_dotenv({"SIPPY_DATA_MODE": "seed"}):
+        with mock.patch.dict(os.environ, {"SIPPY_DATA_MODE": "seed"}, clear=False):
             assert _data_mode() == "seed"
 
     def test_prod_like_mode(self):
-        with self._patch_dotenv({"SIPPY_DATA_MODE": "prod-like"}):
+        with mock.patch.dict(os.environ, {"SIPPY_DATA_MODE": "prod-like"}, clear=False):
             assert _data_mode() == "prod-like"
 
     def test_invalid_mode_falls_back_to_seed(self):
-        with self._patch_dotenv({"SIPPY_DATA_MODE": "invalid"}):
+        with mock.patch.dict(os.environ, {"SIPPY_DATA_MODE": "invalid"}, clear=False):
             assert _data_mode() == "seed"
 
     def test_case_insensitive(self):
-        with self._patch_dotenv({"SIPPY_DATA_MODE": "PROD-LIKE"}):
+        with mock.patch.dict(os.environ, {"SIPPY_DATA_MODE": "PROD-LIKE"}, clear=False):
             assert _data_mode() == "prod-like"
-
-    def test_no_env_file(self):
-        with mock.patch("server._DEVCONTAINER_ENV") as mock_path:
-            mock_path.is_file.return_value = False
-            assert _data_mode() == "seed"
 
 
 class TestDsnForMode:

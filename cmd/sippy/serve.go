@@ -19,11 +19,13 @@ import (
 	resources "github.com/openshift/sippy"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
+	mixedprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/mixed"
 	pgprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/flags/configflags"
@@ -70,7 +72,7 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.ConfigFlags.BindFlags(flagSet)
 	f.APIFlags.BindFlags(flagSet)
 	f.JiraFlags.BindFlags(flagSet)
-	flagSet.StringVar(&f.DataProvider, "data-provider", "bigquery", "Data provider for component readiness: bigquery, postgres")
+	flagSet.StringVar(&f.DataProvider, "data-provider", "default", "Data provider: default, bigquery, or postgres")
 }
 
 func (f *ServerFlags) Validate() error {
@@ -110,7 +112,7 @@ func NewServeCommand() *cobra.Command {
 			var gcsClient *storage.Client
 			var crDataProvider dataprovider.DataProvider
 			switch f.DataProvider {
-			case "bigquery":
+			case "default", "bigquery":
 				if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
 					opCtx := bqlabel.OperationalContext{
 						App:     bqlabel.AppSippy,
@@ -132,16 +134,12 @@ func NewServeCommand() *cobra.Command {
 					if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
 						bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 					}
-
-					crDataProvider = bqprovider.NewBigQueryProvider(bigQueryClient)
 				}
+			}
 
-			case "postgres":
-				crDataProvider = pgprovider.NewPostgresProvider(dbc, cacheClient)
-				log.Info("Using Postgres data provider for component readiness")
-
-			default:
-				return fmt.Errorf("unknown --data-provider %q, must be bigquery or postgres", f.DataProvider)
+			crDataProvider, err = newDataProvider(f.DataProvider, bigQueryClient, dbc, cacheClient)
+			if err != nil {
+				return err
 			}
 
 			gcsClient, err = gcs.NewGCSClient(context.TODO(),
@@ -261,4 +259,34 @@ func NewServeCommand() *cobra.Command {
 
 	f.BindFlags(cmd.Flags())
 	return cmd
+}
+
+func newDataProvider(name string, bigQueryClient *bigquery.Client, dbc *db.DB, cacheClient cache.Cache) (dataprovider.DataProvider, error) {
+	switch name {
+	case "default":
+		if bigQueryClient != nil && dbc != nil {
+			return mixedprovider.NewMixedProvider(bigQueryClient, dbc, cacheClient), nil
+		} else if bigQueryClient != nil {
+			return bqprovider.NewBigQueryProvider(bigQueryClient), nil
+		} else if dbc != nil {
+			return pgprovider.NewPostgresProvider(dbc, cacheClient), nil
+		}
+		return nil, fmt.Errorf("default data provider requires at least one of BigQuery or PostgreSQL to be configured")
+
+	case "bigquery":
+		if bigQueryClient != nil {
+			return bqprovider.NewBigQueryProvider(bigQueryClient), nil
+		}
+		return nil, fmt.Errorf("bigquery data provider requires google-service-account-credential-file to be configured")
+
+	case "postgres":
+		if dbc == nil {
+			return nil, fmt.Errorf("postgres data provider requires a database connection")
+		}
+		log.Info("Using Postgres data provider for component readiness")
+		return pgprovider.NewPostgresProvider(dbc, cacheClient), nil
+
+	default:
+		return nil, fmt.Errorf("unknown --data-provider %q, must be default, bigquery, or postgres", name)
+	}
 }

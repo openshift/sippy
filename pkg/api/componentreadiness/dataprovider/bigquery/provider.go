@@ -2,6 +2,7 @@ package bigquery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	apiPkg "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -22,7 +24,6 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/util/param"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 var _ dataprovider.DataProvider = &BigQueryProvider{}
@@ -49,8 +50,11 @@ func (p *BigQueryProvider) Cache() apiCache.Cache {
 
 // --- TestStatusQuerier ---
 
-func (p *BigQueryProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error) {
+func (p *BigQueryProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error) {
+	allJobVariants, errs := p.QueryJobVariants(ctx)
+	if len(errs) > 0 {
+		return nil, errs
+	}
 
 	generator := NewBaseQueryGenerator(p.client, reqOptions, allJobVariants)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.ReportTestStatus](
@@ -64,9 +68,12 @@ func (p *BigQueryProvider) QueryBaseTestStatus(ctx context.Context, reqOptions r
 }
 
 func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
+	allJobVariants, errs := p.QueryJobVariants(ctx)
+	if len(errs) > 0 {
+		return nil, errs
+	}
 
 	generator := NewSampleQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.ReportTestStatus](
@@ -81,8 +88,11 @@ func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 
 // --- TestDetailsQuerier ---
 
-func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants) (map[string][]crstatus.TestJobRunRows, []error) {
+func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestJobRunRows, []error) {
+	allJobVariants, errs := p.QueryJobVariants(ctx)
+	if len(errs) > 0 {
+		return nil, errs
+	}
 
 	generator := NewBaseTestDetailsQueryGenerator(
 		log.WithField("func", "QueryBaseJobRunTestStatus"),
@@ -101,9 +111,12 @@ func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOpt
 }
 
 func (p *BigQueryProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
+	allJobVariants, errs := p.QueryJobVariants(ctx)
+	if len(errs) > 0 {
+		return nil, errs
+	}
 
 	generator := NewSampleTestDetailsQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.TestJobRunStatuses](
@@ -118,7 +131,18 @@ func (p *BigQueryProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqO
 
 // --- MetadataQuerier ---
 
+type jobVariantsCacheKey struct {
+	Dataset string
+}
+
 func (p *BigQueryProvider) QueryJobVariants(ctx context.Context) (crtest.JobVariants, []error) {
+	return apiPkg.GetDataFromCacheOrGenerate[crtest.JobVariants](
+		ctx, p.client.Cache, apiCache.RequestOptions{},
+		apiPkg.NewCacheSpec(jobVariantsCacheKey{Dataset: p.client.Dataset}, "BQJobVariants~", nil),
+		p.queryJobVariantsFromBQ, crtest.JobVariants{})
+}
+
+func (p *BigQueryProvider) queryJobVariantsFromBQ(ctx context.Context) (crtest.JobVariants, []error) {
 	variants := crtest.JobVariants{Variants: map[string][]string{}}
 	queryString := fmt.Sprintf(`SELECT variant_name, ARRAY_AGG(DISTINCT variant_value ORDER BY variant_value) AS variant_values
 					FROM
@@ -134,7 +158,7 @@ func (p *BigQueryProvider) QueryJobVariants(ctx context.Context) (crtest.JobVari
 		return variants, []error{err}
 	}
 
-	floatVariants := sets.NewString("FromRelease", "FromReleaseMajor", "FromReleaseMinor", "Release", "ReleaseMajor", "ReleaseMinor")
+	floatVariants := sets.New("FromRelease", "FromReleaseMajor", "FromReleaseMinor", "Release", "ReleaseMajor", "ReleaseMinor")
 	for {
 		row := crstatus.JobVariant{}
 		err := it.Next(&row)
@@ -201,8 +225,11 @@ func (p *BigQueryProvider) QueryUniqueVariantValues(ctx context.Context, field s
 // --- JobQuerier ---
 
 func (p *BigQueryProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time) (map[string]dataprovider.JobRunStats, error) {
+	allJobVariants, errs := p.QueryJobVariants(ctx)
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("fetching job variants: %w", errors.Join(errs...))
+	}
 
 	joinVariants := ""
 	for _, v := range sortedKeys(allJobVariants.Variants) {

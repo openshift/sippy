@@ -29,6 +29,8 @@ const (
 	partitionedTableProwJobRunTests                         = "prow_job_run_tests"
 	partitionedTableProwJobRunTestsOutputs                  = "prow_job_run_test_outputs"
 	partitionedTableTestAnalysisByJobByDates                = "test_analysis_by_job_by_dates"
+	partitionedTableTestDailyTotals                         = "test_daily_totals"
+	partitionedTableTestCumulativeSummaries                 = "test_cumulative_summaries"
 )
 
 type DB struct {
@@ -89,6 +91,8 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 	// partitions. Custom plans use actual parameter values for partition pruning.
 	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
+	pgxConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60s"
+	pgxConfig.RuntimeParams["random_page_cost"] = "1.1"
 	if cfg.enablePartitionwise {
 		pgxConfig.RuntimeParams["enable_partitionwise_aggregate"] = "on"
 		pgxConfig.RuntimeParams["enable_partitionwise_join"] = "on"
@@ -137,10 +141,12 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 
 	// List of all models to migrate
 	modelsToMigrate := []any{
+		&models.ReleaseDefinition{},
 		&models.ReleaseTag{},
 		&models.ReleasePullRequest{},
 		&models.ReleaseRepository{},
 		&models.ReleaseJobRun{},
+		&models.ProwGARawTestDatum{},
 		&models.VariantCombination{},
 		&models.ProwJob{},
 		&models.ProwJobRun{},
@@ -167,7 +173,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ChatConversation{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
-		&models.TestDailySummary{},
 	}
 
 	// Currently we need RunMigrations to run prior
@@ -215,6 +220,8 @@ func (d *DB) PartitionedTables() []string {
 		partitionedTableProwJobRunTests,
 		partitionedTableProwJobRunTestsOutputs,
 		partitionedTableTestAnalysisByJobByDates,
+		partitionedTableTestDailyTotals,
+		partitionedTableTestCumulativeSummaries,
 	}
 }
 
@@ -240,7 +247,7 @@ func (d *DB) EnsurePartitions(releases []string, startDate, endDate time.Time, d
 			dateColumn = "prow_job_run_timestamp"
 		case partitionedTableProwJobRunTestsOutputs:
 			dateColumn = "prow_job_run_test_timestamp"
-		case partitionedTableTestAnalysisByJobByDates:
+		case partitionedTableTestAnalysisByJobByDates, partitionedTableTestDailyTotals, partitionedTableTestCumulativeSummaries:
 			dateColumn = "date"
 		default:
 			log.Warnf("unknown partitioned table: %s", tableName)
@@ -547,10 +554,9 @@ func ensureTriageSymptomCascade(db *gorm.DB) error {
 // function is created by migration 000003; the table is created by
 // AutoMigrate, so this must run after both.
 //
-// When the trigger is first attached, existing rows are backfilled
-// and test_daily_summaries is truncated so the next refresh
-// populates it with variant_combination_id set. In steady state
-// (trigger already exists) this is a single catalog lookup.
+// When the trigger is first attached, existing rows are backfilled.
+// In steady state (trigger already exists) this is a single catalog
+// lookup.
 func ensureVariantCombinationTrigger(db *gorm.DB) error {
 	return db.Exec(`
 		DO $$
@@ -576,8 +582,6 @@ func ensureVariantCombinationTrigger(db *gorm.DB) error {
 				WHERE prow_jobs.variants = vc.variants
 				  AND prow_jobs.variants IS NOT NULL
 				  AND prow_jobs.variant_combination_id IS NULL;
-
-				TRUNCATE test_daily_summaries;
 			END IF;
 		END $$`).Error
 }

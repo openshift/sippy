@@ -1,7 +1,6 @@
 package query
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	jira "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/util"
 )
 
@@ -59,6 +59,12 @@ const (
 
 	QueryTestSummarizer = QueryTestFields + "," + QueryTestPercentages
 
+	openBugsSQL = `SELECT bug_tests.test_id, COUNT(DISTINCT bugs.id) AS open_bugs
+    FROM bug_tests
+    INNER JOIN bugs ON bug_tests.bug_id = bugs.id
+    WHERE LOWER(bugs.status) <> 'closed'
+    GROUP BY bug_tests.test_id`
+
 	QueryTestAnalysis = `
         select current_successes, current_runs,
                current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage
@@ -96,65 +102,73 @@ func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, erro
 	return testCache, nil
 }
 
-// TestReportsByVariant returns a test report for every test in the db matching the given substrings, separated by variant.
+// TestReportsByVariant returns per-variant test report rows for every test matching
+// the given name criteria. When includeAll is true, an additional "All" aggregate row
+// per test is included via UNION ALL (Variant = "All", counting runs across all
+// variant_combination_ids without unnesting).
 func TestReportsByVariant(
 	dbc *db.DB,
 	release string,
-	reportType v1.ReportType, // defaults to "current" or last 7 days vs prev 7 days
-	testSubStrings []string,
+	reportType v1.ReportType,
+	nameMatches TestNameMatches,
 	excludeVariants []string,
+	includeAll bool,
 ) ([]api.Test, error) {
 	now := time.Now()
 
-	testSubstringFilter := strings.Join(testSubStrings, "|")
-	testSubstringFilter = strings.ReplaceAll(testSubstringFilter, "[", "\\[")
-	testSubstringFilter = strings.ReplaceAll(testSubstringFilter, "]", "\\]")
+	sample, base := PeriodsForReportType(reportType)
+	inner, err := TestReportQuery(dbc, release, sample, base, nameMatches)
+	if err != nil {
+		return nil, err
+	}
+	excludeArr := pq.Array(excludeVariants)
 
-	// Query and group by variant:
+	perVariant := dbc.DB.Table("(?) AS r", inner).
+		Select(`name, release,
+			sum(current_runs)       AS current_runs,
+			sum(current_successes)  AS current_successes,
+			sum(current_failures)   AS current_failures,
+			sum(current_flakes)     AS current_flakes,
+			sum(previous_runs)      AS previous_runs,
+			sum(previous_successes) AS previous_successes,
+			sum(previous_failures)  AS previous_failures,
+			sum(previous_flakes)    AS previous_flakes,
+			unnest(variants)        AS variant`).
+		Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? && variants AND id = variant_combination_id)", excludeArr).
+		Group("name, release, variant")
+
+	var aggregated *gorm.DB
+	if includeAll {
+		allArm := dbc.DB.Table("(?) AS r", inner).
+			Select(`name, release,
+				sum(current_runs)       AS current_runs,
+				sum(current_successes)  AS current_successes,
+				sum(current_failures)   AS current_failures,
+				sum(current_flakes)     AS current_flakes,
+				sum(previous_runs)      AS previous_runs,
+				sum(previous_successes) AS previous_successes,
+				sum(previous_failures)  AS previous_failures,
+				sum(previous_flakes)    AS previous_flakes,
+				'All'::text             AS variant`).
+			Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? && variants AND id = variant_combination_id)", excludeArr).
+			Group("name, release")
+		aggregated = dbc.DB.Raw("? UNION ALL ?", perVariant, allArm)
+	} else {
+		aggregated = perVariant
+	}
+
 	var testReports []api.Test
-	q := `
-WITH results AS (
-    SELECT name,
-           release,
-           sum(current_runs)       AS current_runs,
-           sum(current_successes)  AS current_successes,
-           sum(current_failures)   AS current_failures,
-           sum(current_flakes)     AS current_flakes,
-           sum(previous_runs)      AS previous_runs,
-           sum(previous_successes) AS previous_successes,
-           sum(previous_failures)  AS previous_failures,
-           sum(previous_flakes)    AS previous_flakes,
-           unnest(variants)        AS variant
-    FROM prow_test_report_7d_matview
-	WHERE release = @release AND name ~* @testsubstrings
-          AND NOT(variants is not null and @excluded && variants)
-    GROUP BY name, release, variant
-)
-SELECT *,
-       current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
-       current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-       previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
-       previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-       (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-FROM results;
-`
-	if reportType == v1.TwoDayReport {
-		q = strings.ReplaceAll(q, "prow_test_report_7d_matview", "prow_test_report_2d_matview")
-	}
-
-	qParams := []interface{}{
-		sql.Named("excluded", pq.Array(excludeVariants)),
-		sql.Named("release", release),
-		sql.Named("testsubstrings", testSubstringFilter),
-	}
-	r := dbc.DB.Raw(q, qParams...).Scan(&testReports)
+	r := dbc.DB.Table("(?) AS agg", aggregated).
+		Select(fmt.Sprintf("*, %s", QueryTestPercentages)).
+		Where("agg.current_runs > 0 OR agg.previous_runs > 0").
+		Scan(&testReports)
 	if r.Error != nil {
 		log.Error(r.Error)
 		return testReports, r.Error
 	}
 
 	elapsed := time.Since(now)
-	log.Infof("TestReportsByVariant completed in %s with %d results from db", elapsed, len(testReports))
+	log.WithFields(log.Fields{"elapsed": elapsed, "count": len(testReports)}).Info("TestReportsByVariant completed")
 	return testReports, nil
 }
 
@@ -167,34 +181,41 @@ func TestReportExcludeVariants(dbc *db.DB, release, testName string, excludeVari
 		WithField("release", release).
 		WithField("test", testName)
 
-	// Query and group by variant:
-	var testReport api.Test
-	q := `WITH results AS (
-    SELECT name,
-           release,
-           sum(current_runs)       AS current_runs,
-           sum(current_successes)  AS current_successes,
-           sum(current_failures)   AS current_failures,
-           sum(current_flakes)     AS current_flakes,
-           sum(previous_runs)      AS previous_runs,
-           sum(previous_successes) AS previous_successes,
-           sum(previous_failures)  AS previous_failures,
-           sum(previous_flakes)    AS previous_flakes
-    FROM prow_test_report_7d_matview
-    WHERE release = @release AND name = @testname
-          AND NOT(variants is not null and @excluded && variants)
-    GROUP BY name, release
-) SELECT *, %s FROM results;`
-
-	q = fmt.Sprintf(q, QueryTestPercentages)
-	qParams := []interface{}{
-		sql.Named("excluded", pq.Array(excludeVariants)),
-		sql.Named("release", release),
-		sql.Named("testname", testName),
+	sample, base := PeriodsForReportType(v1.CurrentReport)
+	inner, err := TestReportQuery(dbc, release, sample, base, TestNameMatches{ExactNames: []string{testName}})
+	if err != nil {
+		logger.WithError(err).Error("failed to build test report query")
+		return api.Test{}, false
 	}
-	if r := dbc.DB.Raw(q, qParams...).First(&testReport); r.Error != nil {
+
+	aggregated := dbc.DB.Table("(?) AS r", inner).
+		Select(`name, release,
+			sum(current_runs)       AS current_runs,
+			sum(current_successes)  AS current_successes,
+			sum(current_failures)   AS current_failures,
+			sum(current_flakes)     AS current_flakes,
+			sum(previous_runs)      AS previous_runs,
+			sum(previous_successes) AS previous_successes,
+			sum(previous_failures)  AS previous_failures,
+			sum(previous_flakes)    AS previous_flakes`).
+		Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? && variants AND id = variant_combination_id)", pq.Array(excludeVariants)).
+		Group("name, release")
+
+	var testReports []api.Test
+	r := dbc.DB.Table("(?) AS agg", aggregated).
+		Select(fmt.Sprintf("*, %s", QueryTestPercentages)).
+		Limit(1).
+		Find(&testReports)
+	if r.Error == nil && len(testReports) == 0 {
+		r.Error = gorm.ErrRecordNotFound
+	}
+	var testReport api.Test
+	if len(testReports) > 0 {
+		testReport = testReports[0]
+	}
+	if r.Error != nil {
 		if errors.Is(r.Error, gorm.ErrRecordNotFound) {
-			logger.Debug("test not found")
+			logger.WithField("test", testName).Warn("test not found in cumulative summaries")
 		} else {
 			logger.WithError(r.Error).Error("query failed")
 		}
@@ -232,18 +253,159 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 	return results, nil
 }
 
-// TestsByNURPAndStandardDeviation returns a test report for every test in the db, separated by variant.
-// Each row includes current/previous test rates and cross-variant statistics (AVG, STDDEV, delta)
-// that are pre-computed in the matview. Only the deltas are computed at query time.
-func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB {
-	return dbc.DB.
-		Table(table).
-		Select(`*,
-			(current_working_percentage - working_average) AS delta_from_working_average,
-			(current_pass_percentage - passing_average) AS delta_from_passing_average,
-			(current_flake_percentage - flake_average) AS delta_from_flake_average`).
-		Where(`release = ?`, release).
-		Where(fmt.Sprintf("NOT ('never-stable'=any(%s.variants))", table))
+// UncollapsedTestReportWithStats builds a per-variant test report with cross-variant
+// statistics using a materialized common table expression (CTE) pipeline: filtered -> post_filtered -> stats.
+// The filtered CTE applies name matches, variant filters, and the never-stable/zero-run
+// exclusions. The post_filtered CTE applies arithmetic processedFilter conditions
+// (current_runs >= N, failure_percentage >= M) so the stats CTE only scans test_ids
+// that survive all filters. Stats are computed across ALL variant combinations for
+// each (test_id, suite_id), regardless of which individual variants passed filtering.
+//
+// Any processedFilter items with unsupported operators (ILIKE, array membership) are
+// returned as remainingFilter for the caller to apply via GORM on the outer query.
+func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base DateRange, nameFilter, variantFilter, processedFilter *filter.Filter) (*gorm.DB, *filter.Filter, error) {
+	end, boundary, start, err := resolvePrefixSumDates(dbc, release, &sample, &base)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var args []any
+	var buf strings.Builder
+
+	nameJoinClause := ""
+	var nameJoinArgs []any
+	if nameConds, nameArgs := nameFilterConditions(nameFilter); len(nameConds) > 0 {
+		joiner := " OR "
+		if nameFilter.LinkOperator == filter.LinkOperatorAnd {
+			joiner = " AND "
+		}
+		nameJoinClause = "JOIN tests ON tests.id = e.test_id AND (" + strings.Join(nameConds, joiner) + ")"
+		nameJoinArgs = nameArgs
+	}
+
+	variantConds, variantArgs := variantFilterConditions(variantFilter)
+	pfConds, pfArgs, remainingFilter := processedFilterConditions(processedFilter)
+
+	// === filtered CTE: per-variant test report with percentages ===
+	buf.WriteString(`WITH filtered AS MATERIALIZED (
+  SELECT pre.test_id, tests.name, pre.suite_id, suites.name AS suite_name,
+    jira_components.name AS jira_component, jira_components.id AS jira_component_id,
+    pre.current_successes, pre.current_failures, pre.current_flakes, pre.current_runs,
+    pre.previous_successes, pre.previous_failures, pre.previous_flakes, pre.previous_runs,
+    ob.open_bugs, vc.variants, pre.variant_combination_id, pre.release,
+    `)
+	buf.WriteString(QueryTestPercentages)
+	buf.WriteString(`
+  FROM (
+    SELECT e.test_id, e.suite_id, pj.variant_combination_id, e.release,
+      SUM(COALESCE(m.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))::bigint AS previous_successes,
+      SUM(COALESCE(m.prefix_sum_flakes    - COALESCE(s.prefix_sum_flakes,    0), 0))::bigint AS previous_flakes,
+      SUM(COALESCE(m.prefix_sum_failures  - COALESCE(s.prefix_sum_failures,  0), 0))::bigint AS previous_failures,
+      SUM(COALESCE(m.prefix_sum_runs      - COALESCE(s.prefix_sum_runs,      0), 0))::bigint AS previous_runs,
+      SUM(COALESCE(e.prefix_sum_successes - COALESCE(m.prefix_sum_successes, 0), 0))::bigint AS current_successes,
+      SUM(COALESCE(e.prefix_sum_flakes    - COALESCE(m.prefix_sum_flakes,    0), 0))::bigint AS current_flakes,
+      SUM(COALESCE(e.prefix_sum_failures  - COALESCE(m.prefix_sum_failures,  0), 0))::bigint AS current_failures,
+      SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs
+    FROM test_cumulative_summaries e
+    JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
+    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
+    LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.release = e.release AND s.date = ?
+`)
+	args = append(args, boundary, start)
+
+	if nameJoinClause != "" {
+		buf.WriteString("    ")
+		buf.WriteString(nameJoinClause)
+		buf.WriteString("\n")
+		args = append(args, nameJoinArgs...)
+	}
+
+	buf.WriteString(`    WHERE e.date = ? AND e.release = ?
+    GROUP BY e.test_id, e.suite_id, pj.variant_combination_id, e.release
+  ) AS pre
+  JOIN tests ON tests.id = pre.test_id
+  LEFT JOIN variant_combinations vc ON pre.variant_combination_id = vc.id
+  LEFT JOIN suites ON suites.id = pre.suite_id
+  LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND pre.suite_id = test_ownerships.suite_id)
+  LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
+  LEFT JOIN (
+    ` + openBugsSQL + `
+  ) AS ob ON tests.id = ob.test_id
+  WHERE NOT EXISTS (SELECT 1 FROM variant_combinations WHERE 'never-stable' = any(variants) AND id = variant_combination_id)
+    AND (current_runs > 0 OR previous_runs > 0)`)
+	args = append(args, end, release)
+
+	for _, cond := range variantConds {
+		buf.WriteString("\n    AND ")
+		buf.WriteString(cond)
+	}
+	args = append(args, variantArgs...)
+
+	buf.WriteString("\n)")
+
+	// === post_filtered CTE: narrows filtered rows by arithmetic processedFilter
+	// conditions (e.g., current_runs >= 7). This determines which test_ids the stats
+	// CTE processes, avoiding a full-release scan when filters are selective.
+	statsSource := "filtered"
+	resultSource := "filtered f"
+	if len(pfConds) > 0 {
+		statsSource = "post_filtered"
+		resultSource = "post_filtered f"
+		buf.WriteString(`,
+post_filtered AS MATERIALIZED (
+  SELECT * FROM filtered
+  WHERE `)
+		buf.WriteString(strings.Join(pfConds, " AND "))
+		buf.WriteString("\n)")
+		args = append(args, pfArgs...)
+	}
+
+	// === stats CTE: AVG/STDDEV across all variant combinations per (test_id, suite_id),
+	// scoped to test_ids from the filtered/post_filtered CTE. Uses a 2-way prefix sum
+	// join (current period only) since base-period counts are not needed for
+	// cross-variant statistics.
+	fmt.Fprintf(&buf, `,
+stats AS (
+  SELECT c.test_id, c.suite_id,
+    AVG((c.current_successes + c.current_flakes) * 100.0 / NULLIF(c.current_runs, 0)) AS working_average,
+    STDDEV((c.current_successes + c.current_flakes) * 100.0 / NULLIF(c.current_runs, 0)) AS working_standard_deviation,
+    AVG(c.current_successes * 100.0 / NULLIF(c.current_runs, 0)) AS passing_average,
+    STDDEV(c.current_successes * 100.0 / NULLIF(c.current_runs, 0)) AS passing_standard_deviation,
+    AVG(c.current_flakes * 100.0 / NULLIF(c.current_runs, 0)) AS flake_average,
+    STDDEV(c.current_flakes * 100.0 / NULLIF(c.current_runs, 0)) AS flake_standard_deviation
+  FROM (
+    SELECT e.test_id, e.suite_id, pj.variant_combination_id,
+      SUM(e.prefix_sum_successes - COALESCE(m.prefix_sum_successes, 0))::bigint AS current_successes,
+      SUM(e.prefix_sum_flakes    - COALESCE(m.prefix_sum_flakes, 0))::bigint    AS current_flakes,
+      SUM(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs, 0))::bigint      AS current_runs
+    FROM test_cumulative_summaries e
+    JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
+    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
+    WHERE e.date = ? AND e.release = ?
+      AND e.test_id IN (SELECT DISTINCT test_id FROM %s)
+      AND NOT EXISTS (SELECT 1 FROM variant_combinations WHERE 'never-stable' = any(variants) AND id = pj.variant_combination_id)
+    GROUP BY e.test_id, e.suite_id, pj.variant_combination_id
+  ) c
+  GROUP BY c.test_id, c.suite_id
+)`, statsSource)
+	args = append(args, boundary, end, release)
+
+	// === Final SELECT: join filtered/post_filtered rows with their cross-variant statistics ===
+	fmt.Fprintf(&buf, `
+SELECT f.*,
+  COALESCE(s.working_average, 0) AS working_average,
+  COALESCE(s.working_standard_deviation, 0) AS working_standard_deviation,
+  f.current_working_percentage - COALESCE(s.working_average, 0) AS delta_from_working_average,
+  COALESCE(s.passing_average, 0) AS passing_average,
+  COALESCE(s.passing_standard_deviation, 0) AS passing_standard_deviation,
+  f.current_pass_percentage - COALESCE(s.passing_average, 0) AS delta_from_passing_average,
+  COALESCE(s.flake_average, 0) AS flake_average,
+  COALESCE(s.flake_standard_deviation, 0) AS flake_standard_deviation,
+  f.current_flake_percentage - COALESCE(s.flake_average, 0) AS delta_from_flake_average
+FROM %s
+LEFT JOIN stats s ON f.test_id = s.test_id AND f.suite_id = s.suite_id`, resultSource)
+
+	return dbc.DB.Raw(buf.String(), args...), remainingFilter, nil
 }
 
 func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVariants []string, quantity int) ([]api.TestOutput, error) {
@@ -262,11 +424,11 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 		Where("prow_job_run_test_outputs.prow_job_run_test_release = ?", release)
 
 	for _, variant := range includedVariants {
-		q = q.Where("? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	for _, variant := range excludedVariants {
-		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+		q = q.Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? = any(variants) AND id = prow_jobs.variant_combination_id)", variant)
 	}
 
 	res := q.
@@ -295,11 +457,11 @@ func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedV
 		Where("prow_job_run_tests.prow_job_run_release = ?", release)
 
 	for _, variant := range includedVariants {
-		q = q.Where("? = any(prow_jobs.variants)", variant)
+		q = q.Where("prow_jobs.variant_combination_id IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)
 	}
 
 	for _, variant := range excludedVariants {
-		q = q.Where("NOT ? = any(prow_jobs.variants)", variant)
+		q = q.Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? = any(variants) AND id = prow_jobs.variant_combination_id)", variant)
 	}
 
 	res := q.

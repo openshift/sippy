@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
-	"github.com/openshift/sippy/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // These types represent report options requested by the user,
@@ -18,7 +18,8 @@ type RequestOptions struct {
 	AdvancedOption Advanced
 	CacheOption    cache.RequestOptions
 	TestFilters
-	TestIDOptions []TestIdentification
+	TestIDOptions   []TestIdentification
+	IncludeAllTests bool `json:"include_all_tests,omitempty"`
 	// ViewName is the name of the view used for this request, if any.
 	// When generating test details URLs, if a view is present, we include just the view parameter
 	// plus test-specific overrides, rather than expanding all view parameters into the URL.
@@ -94,8 +95,8 @@ func AnyAreBaseOverrides(opts []TestIdentification) bool {
 }
 
 type Variants struct {
-	ColumnGroupBy       sets.String         `json:"column_group_by" yaml:"column_group_by"`
-	DBGroupBy           sets.String         `json:"db_group_by" yaml:"db_group_by"`
+	ColumnGroupBy       sets.Set[string]    `json:"column_group_by" yaml:"column_group_by"`
+	DBGroupBy           sets.Set[string]    `json:"db_group_by" yaml:"db_group_by"`
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
 	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
 	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`

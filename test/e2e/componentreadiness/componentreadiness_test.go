@@ -62,9 +62,9 @@ func TestRegressionCacheLoader(t *testing.T) {
 	require.NoError(t, err, "error parsing seed views")
 	require.Greater(t, len(sippyViews.ComponentReadiness), 0, "no views found in seed-views.yaml")
 
-	// Get release configs from BigQuery
-	releaseConfigs, err := api.GetReleasesFromBigQuery(ctx, bqClient)
-	require.NoError(t, err, "error getting releases from bigquery")
+	// Get release configs from PostgreSQL
+	releaseConfigs, err := api.GetReleasesFromDB(ctx, dbc)
+	require.NoError(t, err, "error getting releases from postgres")
 
 	// Build a regression store
 	regressionStore := componentreadiness.NewPostgresRegressionStore(dbc, nil)

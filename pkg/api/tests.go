@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	gosort "sort"
 	"strconv"
@@ -12,16 +12,17 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	bq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/html/installhtml"
@@ -29,10 +30,6 @@ import (
 )
 
 const (
-	testReport7dMatView          = "prow_test_report_7d_matview"
-	testReport2dMatView          = "prow_test_report_2d_matview"
-	testReport7dCollapsedMatView = "prow_test_report_7d_collapsed_matview"
-	testReport2dCollapsedMatView = "prow_test_report_2d_collapsed_matview"
 	payloadFailedTests14dMatView = "payload_test_failures_14d_matview"
 )
 
@@ -348,7 +345,7 @@ func PrintTestsJSONFromDB(
 
 	result, err := spec.buildTestsResultsFromPostgres(req.Context(), dbc, cacheClient)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		RespondWithError(w, "error building test report", err)
 		return
 	}
 
@@ -368,7 +365,7 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 
 	result, err := spec.buildTestsResultsFromBigQuery(req.Context(), bqc)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		RespondWithError(w, "error building test report", err)
 		return
 	}
 
@@ -382,7 +379,7 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 
 func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, error) {
 	if lookbackDays < 1 {
-		return -1, -1, errors.New("Lookback Days must be greater than zero")
+		return -1, -1, errors.New("lookback days must be greater than zero")
 	}
 	// Calculate the truncated time
 	now := time.Now().UTC()
@@ -427,66 +424,25 @@ type testResults struct {
 const testResultsCacheDuration = time.Hour
 
 func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) (testResults, error) {
-	matview := testReport7dMatView
-	if spec.Period == "twoDay" {
-		matview = testReport2dMatView
-	}
+	sample, base := query.PeriodsForReportType(v1.ReportType(spec.Period))
 
 	generator := func(ctx context.Context) (testResults, []error) {
-		return spec.buildTestsResultsPGGenerator(ctx, dbc, matview)
+		return spec.buildTestsResultsPGGenerator(ctx, dbc, sample, base)
 	}
-	result, errs := GetDataFromCacheOrMatview(ctx, cacheClient,
+	result, errs := GetDataFromCacheOrGenerate(ctx, cacheClient, cache.RequestOptions{Expiry: testResultsCacheDuration},
 		NewCacheSpec(spec, "PostgresTestsResults~", nil),
-		matview, testResultsCacheDuration,
 		generator,
 		testResults{},
 	)
 	if errs != nil {
-		return result, fmt.Errorf("error(s) querying test results: %v", errs)
+		return result, errors.Join(errs...)
 	}
 	return result, nil
 }
 
-// variantFiltersCoveredByCollapsedMatview returns true if all variant filter items
-// are "NOT has entry" exclusions for values that are already pre-excluded in the
-// collapsed matview. When true, these filters can be dropped and the collapsed
-// matview used directly.
-// variantFiltersCoveredByCollapsedMatview returns true if the variant filters
-// exactly match the exclusions baked into the collapsed matview. Every filter
-// item must be a "NOT has entry" for one of the pre-excluded values, and every
-// pre-excluded value must have a corresponding filter item.
-func variantFiltersCoveredByCollapsedMatview(variantFilter *filter.Filter) bool {
-	if variantFilter == nil || len(variantFilter.Items) == 0 {
-		return false
-	}
-
-	matched := make(map[string]bool)
-	for _, item := range variantFilter.Items {
-		if !item.Not || item.Operator != filter.OperatorHasEntry {
-			return false
-		}
-		found := false
-		for _, excluded := range db.CollapsedVariantExclusions {
-			if item.Value == excluded {
-				matched[excluded] = true
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return len(matched) == len(db.CollapsedVariantExclusions)
-}
-
-func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, dbc *db.DB, matview string) (result testResults, errs []error) {
+func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, dbc *db.DB, sample, base query.DateRange) (result testResults, errs []error) {
 	now := time.Now()
 
-	// Test results are generated by using two subqueries, which need to be filtered separately. Once during
-	// pre-processing where we're evaluating summed variant results, and in post-processing after we've
-	// assembled our final temporary table.
 	var nameFilter, variantFilter, processedFilter *filter.Filter
 	if spec.Filter != nil {
 		var rawFilter *filter.Filter
@@ -494,91 +450,69 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		nameFilter, variantFilter = rawFilter.Split([]string{"name"})
 	}
 
-	// When collapsing and the variant filters are only the default exclusions (never-stable,
-	// aggregated), use the pre-filtered collapsed matview which has these exclusions baked in
-	// and the GROUP BY pre-computed. This reduces query time from ~5s to ~430ms.
-	useCollapsedMatview := spec.Collapse && variantFiltersCoveredByCollapsedMatview(variantFilter)
-	if useCollapsedMatview {
-		collapsedMatview := testReport7dCollapsedMatView
-		if spec.Period == "twoDay" {
-			collapsedMatview = testReport2dCollapsedMatView
-		}
-		matview = collapsedMatview
-	}
-
-	rawQuery := dbc.DB.WithContext(ctx).
-		Table(matview).
-		Where("release = ?", spec.Release)
-
-	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
 	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id"}
-	var variantColumns []string
-	if spec.Collapse {
-		if useCollapsedMatview {
-			rawQuery = rawQuery.Select(strings.Join(append(testMetadataColumns, query.QueryTestFields), ","))
-		} else {
-			rawQuery = rawQuery.Select(strings.Join(append(testMetadataColumns, query.QueryTestSummer), ",")).Group(strings.Join(testMetadataColumns, ","))
-		}
-	} else {
-		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, spec.Release, matview)
-		variantColumns = []string{
-			"suite_name", "variants",
-			"delta_from_working_average", "working_average", "working_standard_deviation",
-			"delta_from_passing_average", "passing_average", "passing_standard_deviation",
-			"delta_from_flake_average", "flake_average", "flake_standard_deviation",
-		}
-	}
 
-	// Apply name and variant filters via dimension table lookups rather than directly on
-	// the matview. Running ILIKE against the small tests table (~36K rows) and joining by
-	// ID is much faster than running ILIKE against the large matview (~700K+ rows per release).
-	if nameFilter != nil && len(nameFilter.Items) > 0 {
-		testSubquery := nameFilter.ToSQL(dbc.DB.Model(&models.Test{}).Select("id"), apitype.Test{})
-		rawQuery = rawQuery.Where("id IN (?)", testSubquery)
-	}
-	// Variant filters are already applied in the collapsed matview; only apply them
-	// when using the base matview.
-	if !useCollapsedMatview && variantFilter != nil && len(variantFilter.Items) > 0 {
-		rawQuery = variantFilter.ToSQL(rawQuery, apitype.Test{})
+	var finalResults *gorm.DB
+	workMem := "4MB"
+	if spec.Collapse {
+		workMem = "16MB"
+
+		collapsedQuery, err := query.TestReportQueryCollapsed(dbc, spec.Release, sample, base, variantFilter, nameFilter)
+		if err != nil {
+			errs = append(errs, err)
+			return
+		}
+		collapsedColumns := append(testMetadataColumns, query.QueryTestFields)
+		rawQuery := dbc.DB.WithContext(ctx).
+			Table("(?) AS r", collapsedQuery).
+			Select(strings.Join(collapsedColumns, ","))
+
+		// Collapsed path: inner query only has counts, so the outer layer computes
+		// percentages and net improvements via QueryTestSummarizer.
+		selectColumns := append(testMetadataColumns, query.QueryTestSummarizer)
+		processedResults := dbc.DB.Table("(?) as results", rawQuery).
+			Select(strings.Join(selectColumns, ",")).
+			Where("current_runs > 0 or previous_runs > 0")
+		finalResults = dbc.DB.Table("(?) as final_results", processedResults)
+	} else {
+		rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(dbc, spec.Release, sample, base, nameFilter, variantFilter, processedFilter)
+		if err != nil {
+			errs = append(errs, err)
+			return
+		}
+		processedFilter = remainingFilter
+		finalResults = dbc.DB.Table("(?) as final_results", rawQuery)
 	}
 
 	testReports := make([]apitype.Test, 0)
-	// FIXME: Add test id to matview, for now generate with ROW_NUMBER OVER
-	selectColumns := []string{"ROW_NUMBER() OVER() as id"}
-	selectColumns = append(selectColumns, testMetadataColumns...)
-	selectColumns = append(selectColumns, variantColumns...)
-	selectColumns = append(selectColumns, query.QueryTestSummarizer)
-	processedResults := dbc.DB.Table("(?) as results", rawQuery).
-		Select(strings.Join(selectColumns, ",")).
-		Where("current_runs > 0 or previous_runs > 0")
 
-	finalResults := dbc.DB.Table("(?) as final_results", processedResults)
 	if processedFilter != nil {
 		finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
 	}
 
-	frr := finalResults.Scan(&testReports)
-	if frr.Error != nil {
-		log.WithError(finalResults.Error).Error("error querying test reports")
+	// The global connection-level work_mem (128MB) causes the planner to
+	// choose sort-based plans for the large GROUP BY in the prefix sum join.
+	// A lower work_mem lets it choose parallel HashAggregates that fit in
+	// memory. SET LOCAL is scoped to the transaction. All scan paths use
+	// tx.Table() to ensure the query runs on the same connection.
+	scanErr := dbc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SET LOCAL work_mem = '" + workMem + "'").Error; err != nil {
+			return err
+		}
+		return tx.Table("(?) AS q", finalResults).Scan(&testReports).Error
+	})
+	if scanErr != nil {
+		log.WithError(scanErr).Error("error querying test reports")
 		result.TestsAPIResult = []apitype.Test{}
-		errs = append(errs, frr.Error)
+		errs = append(errs, scanErr)
 		return
 	}
 
-	// Produce a special "overall" test that has a summary of all the selected tests.
+	// Produce a special "overall" test that has a summary of all the selected tests
+	// by aggregating the already-scanned results in Go, avoiding a second full query.
 	var overallTest *apitype.Test
 	if spec.IncludeOverall {
-		finalResults := dbc.DB.Table("(?) as final_results", finalResults)
-		finalResults = finalResults.Select(query.QueryTestSummer)
-		summaryResult := dbc.DB.Table("(?) as overall", finalResults).Select(query.QueryTestSummarizer)
-		overallTest = &apitype.Test{
-			ID:   math.MaxInt32,
-			Name: "Overall",
-		}
-		// TODO: column open_bugs does not exist here?
-		if err := summaryResult.Scan(overallTest).Error; err != nil {
-			errs = append(errs, err)
-		}
+		overallTest = computeOverallTest(testReports)
 	}
 
 	elapsed := time.Since(now)
@@ -590,6 +524,42 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	result.TestsAPIResult = testReports
 	result.Test = overallTest
 	return
+}
+
+func safePercent(numerator, denominator int) float64 {
+	if denominator == 0 {
+		return 0
+	}
+	return float64(numerator) * 100.0 / float64(denominator)
+}
+
+func computeOverallTest(testReports []apitype.Test) *apitype.Test {
+	overall := &apitype.Test{
+		Name: "Overall",
+	}
+	for _, t := range testReports {
+		overall.CurrentRuns += t.CurrentRuns
+		overall.CurrentSuccesses += t.CurrentSuccesses
+		overall.CurrentFailures += t.CurrentFailures
+		overall.CurrentFlakes += t.CurrentFlakes
+		overall.PreviousRuns += t.PreviousRuns
+		overall.PreviousSuccesses += t.PreviousSuccesses
+		overall.PreviousFailures += t.PreviousFailures
+		overall.PreviousFlakes += t.PreviousFlakes
+	}
+	overall.CurrentPassPercentage = safePercent(overall.CurrentSuccesses, overall.CurrentRuns)
+	overall.CurrentFailurePercentage = safePercent(overall.CurrentFailures, overall.CurrentRuns)
+	overall.CurrentFlakePercentage = safePercent(overall.CurrentFlakes, overall.CurrentRuns)
+	overall.CurrentWorkingPercentage = safePercent(overall.CurrentSuccesses+overall.CurrentFlakes, overall.CurrentRuns)
+	overall.PreviousPassPercentage = safePercent(overall.PreviousSuccesses, overall.PreviousRuns)
+	overall.PreviousFailurePercentage = safePercent(overall.PreviousFailures, overall.PreviousRuns)
+	overall.PreviousFlakePercentage = safePercent(overall.PreviousFlakes, overall.PreviousRuns)
+	overall.PreviousWorkingPercentage = safePercent(overall.PreviousSuccesses+overall.PreviousFlakes, overall.PreviousRuns)
+	overall.NetFailureImprovement = overall.PreviousFailurePercentage - overall.CurrentFailurePercentage
+	overall.NetFlakeImprovement = overall.PreviousFlakePercentage - overall.CurrentFlakePercentage
+	overall.NetWorkingImprovement = overall.CurrentWorkingPercentage - overall.PreviousWorkingPercentage
+	overall.NetImprovement = overall.CurrentPassPercentage - overall.PreviousPassPercentage
+	return overall
 }
 
 type testResultsBQ struct {
@@ -609,7 +579,7 @@ func (spec *TestResultsSpec) buildTestsResultsFromBigQuery(ctx context.Context, 
 		generator,
 		testResultsBQ{})
 	if errs != nil {
-		return result, fmt.Errorf("error(s) querying test results: %v", errs)
+		return result, errors.Join(errs...)
 	}
 	return result, nil
 }
@@ -663,7 +633,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	),
 	candidate_query AS (
 		SELECT
-			ROW_NUMBER() OVER() as id,
 			test_id,
 			name,
 			jira_component,
@@ -694,7 +663,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 		GROUP BY test_id, testsuite),
 	unfiltered_candidate_query AS (
 		SELECT
-			ROW_NUMBER() OVER() as id,
 			cm.cm_id as test_id,
 			name,
 			jira_component,
@@ -755,7 +723,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 		}
 
 		overallTest = &overallReports[0]
-		overallTest.ID = math.MaxInt32
 		overallTest.Name = "Overall"
 	}
 
@@ -788,7 +755,7 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 		}
 		if err != nil {
 			log.WithError(err).Error("error parsing test result from bigquery")
-			errs = append(errs, errors.Wrap(err, "error parsing test result from bigquery"))
+			errs = append(errs, pkgerrors.Wrap(err, "error parsing test result from bigquery"))
 			continue
 		}
 		result = append(result, row)
@@ -807,7 +774,7 @@ func GetTestCapabilitiesFromDB(ctx context.Context, dbc *db.DB) ([]string, error
 		Pluck("capability", &capabilities).Error
 	if err != nil {
 		log.WithError(err).Error("error querying test capabilities from database")
-		return []string{}, errors.Wrap(err, "error querying test capabilities from database")
+		return []string{}, pkgerrors.Wrap(err, "error querying test capabilities from database")
 	}
 	return capabilities, nil
 }
@@ -824,7 +791,7 @@ func GetTestLifecyclesFromDB(ctx context.Context, dbc *db.DB) ([]string, error) 
 		Pluck("pair", &pairs).Error
 	if err != nil {
 		log.WithError(err).Error("error querying test lifecycles from database")
-		return []string{}, errors.Wrap(err, "error querying test lifecycles from database")
+		return []string{}, pkgerrors.Wrap(err, "error querying test lifecycles from database")
 	}
 
 	var lifecycles []string

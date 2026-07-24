@@ -24,6 +24,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/releaseoverride"
 	"github.com/openshift/sippy/pkg/util"
 )
@@ -215,14 +216,10 @@ ORDER BY j.prowjob_job_name;
 						}
 						bkt := v.gcsClient.Bucket(jlr.GCSBucket.StringVal)
 						gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-						allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
+						clusterMatches, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobClusterData)
 						if err != nil {
 							jLog.WithError(err).Error("error finding cluster data file, proceeding without")
-							allMatches = [][]string{}
-						}
-						var clusterMatches []string
-						if len(allMatches) > 0 {
-							clusterMatches = allMatches[0]
+							clusterMatches = nil
 						}
 						for _, cm := range clusterMatches {
 							// log with the file prefix for easy click/copy to browser:
@@ -700,9 +697,9 @@ func setNetworkStack(_ logrus.FieldLogger, variants map[string]string, jobName s
 }
 
 func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[string]string, jobName string) {
-	// Presubmits on main branch are set as "Presubmits"
+	// Presubmits on main branch use the Presubmits pseudo-release
 	if presubmitRegex.MatchString(jobName) {
-		variants[VariantRelease] = "Presubmits"
+		variants[VariantRelease] = models.ReleasePresubmits
 		return
 	}
 
@@ -767,6 +764,7 @@ var componentCapabilityPatterns = []componentCapabilityEntry{
 	{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning", "spotcheck-30d"},
 	{[]string{"-etcd-scaling"}, "Etcd", "Scaling", "spotcheck-30d"},
 	{[]string{"-aws-ovn-installer-dualstack"}, "Installer", "AWSDualStackInstall", "candidate"},
+	{[]string{"-iso-no-registry"}, "Installer / Agent based installation", "NoRegistryClusterInstall", "candidate"},
 }
 
 // setComponentAndCapability identifies the component and capability owner for a job.
@@ -958,7 +956,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		variants[VariantJobTier] = "blocking"
 	case util.StrSliceContainsEither(v.config.Releases[release].InformingJobs, jobName, mainJobName):
 		variants[VariantJobTier] = "informing"
-	case release == "Presubmits", v.config.Releases[release].Jobs[jobName], v.config.Releases[release].Jobs[mainJobName]:
+	case release == models.ReleasePresubmits, v.config.Releases[release].Jobs[jobName], v.config.Releases[release].Jobs[mainJobName]:
 		variants[VariantJobTier] = "standard"
 	default:
 		variants[VariantJobTier] = "candidate"
@@ -1138,6 +1136,9 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-osd-ccs-gcp", "osd-gcp"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
+		// iso-no-registry agent baremetal jobs deploy on bare metal
+		// but don't have -metal in their name; match before the generic -metal pattern.
+		{"-iso-no-registry", "metal"},
 		{"-metal", "metal"},
 		{"-nutanix", "nutanix"},
 		{"-openstack", "openstack"},

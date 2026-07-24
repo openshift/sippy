@@ -869,7 +869,8 @@ func Test_RegressionViews(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
 		defer cleanupRegressionViews(dbc)
 
-		beforeCreate := time.Now()
+		var beforeCreate time.Time
+		require.NoError(t, dbc.DB.Raw("SELECT NOW()").Scan(&beforeCreate).Error)
 		reg, err := tracker.OpenRegression(view, newRegSummary("upsert-create"))
 		require.NoError(t, err)
 
@@ -964,7 +965,7 @@ func Test_RegressionViews(t *testing.T) {
 		err = tracker.UpsertRegressionView(reg.ID, "4.19-ppc64le")
 		require.NoError(t, err)
 
-		beforeDeactivate := time.Now()
+		beforeDeactivate := time.Now().Truncate(time.Microsecond)
 
 		// Only 4.19-main is still active
 		activeViewMap := map[uint][]string{

@@ -32,11 +32,11 @@ type LinkInjector struct {
 	baseURL    string
 }
 
-func (l *LinkInjector) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
+func (l *LinkInjector) Query(_ context.Context, _ *sync.WaitGroup, _, _ chan map[string]crstatus.TestStatus, _ chan error) {
 	// unused
 }
 
-func (l *LinkInjector) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
+func (l *LinkInjector) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 	// unused
 }
 
@@ -47,11 +47,6 @@ func (l *LinkInjector) PreAnalysis(testKey crtest.Identification, testStats *tes
 
 // PostAnalysis injects HATEOAS links into test analysis results
 func (l *LinkInjector) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
-	// Early return if status is above FixedRegression (i.e. regression has not yet rolled off)
-	if testStats.ReportStatus > crtest.FixedRegression {
-		return nil
-	}
-
 	// Initialize Links map if it doesn't exist
 	if testStats.Links == nil {
 		testStats.Links = make(map[string]string)

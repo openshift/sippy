@@ -1,7 +1,7 @@
 package testidentification
 
 import (
-	"github.com/openshift/sippy/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type noVariants struct{}
@@ -10,8 +10,8 @@ func NewEmptyVariantManager() VariantManager {
 	return noVariants{}
 }
 
-func (noVariants) AllPlatforms() sets.String {
-	return sets.String{}
+func (noVariants) AllPlatforms() sets.Set[string] {
+	return sets.New[string]()
 }
 
 func (v noVariants) IdentifyVariants(jobName string) []string {

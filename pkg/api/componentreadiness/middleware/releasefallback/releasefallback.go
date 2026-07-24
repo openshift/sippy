@@ -16,8 +16,8 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	apiCache "github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 )
@@ -71,7 +71,7 @@ func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, rep
 	return nil
 }
 
-func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants,
+func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup,
 	_, _ chan map[string]crstatus.TestStatus, errCh chan error) {
 	wg.Add(1)
 	go func() {
@@ -81,7 +81,7 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 			r.log.Infof("Context canceled while fetching fallback query status")
 			return
 		default:
-			errs := r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Name, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
+			errs := r.getFallbackBaseQueryStatus(ctx, r.reqOptions.BaseRelease.Name, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
 			if len(errs) > 0 {
 				for _, err := range errs {
 					errCh <- err
@@ -171,9 +171,8 @@ func (r *ReleaseFallback) PostAnalysis(testKey crtest.Identification, testStats 
 }
 
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
-	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time) []error {
-	generator := newFallbackTestQueryReleasesGenerator(r.dataProvider, r.reqOptions, allJobVariants, release, start, end, r.releaseConfigs)
+	generator := newFallbackTestQueryReleasesGenerator(r.dataProvider, r.reqOptions, release, start, end, r.releaseConfigs)
 
 	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*FallbackReleases](
 		ctx, r.dataProvider.Cache(), r.reqOptions.CacheOption,
@@ -189,7 +188,7 @@ func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	return nil
 }
 
-func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
+func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
 	r.log.Infof("Querying fallback override test statuses for %d test ID options", len(r.reqOptions.TestIDOptions))
 
 	// Lookup all release dates, we're going to need them
@@ -241,7 +240,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 				fallbackReqOpts.BaseRelease.End = *end
 				fallbackReqOpts.TestIDOptions = testIDOpts
 
-				baseStatus, bsErrs := r.dataProvider.QueryBaseJobRunTestStatus(ctx, fallbackReqOpts, allJobVariants)
+				baseStatus, bsErrs := r.dataProvider.QueryBaseJobRunTestStatus(ctx, fallbackReqOpts)
 
 				for _, bsErr := range bsErrs {
 					errCh <- bsErr
@@ -297,7 +296,6 @@ func (r *ReleaseFallback) TestDetailsAnalyze(report *testdetails.Report) error {
 type fallbackTestQueryReleasesGenerator struct {
 	dataProvider               dataprovider.DataProvider
 	cacheOption                apiCache.RequestOptions
-	allJobVariants             crtest.JobVariants
 	BaseRelease                string
 	BaseStart                  time.Time
 	BaseEnd                    time.Time
@@ -310,7 +308,6 @@ type fallbackTestQueryReleasesGenerator struct {
 func newFallbackTestQueryReleasesGenerator(
 	provider dataprovider.DataProvider,
 	reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time,
 	releaseConfigs []v1.Release,
 ) fallbackTestQueryReleasesGenerator {
@@ -318,7 +315,6 @@ func newFallbackTestQueryReleasesGenerator(
 	generator := fallbackTestQueryReleasesGenerator{
 		dataProvider:   provider,
 		cacheOption:    reqOptions.CacheOption,
-		allJobVariants: allJobVariants,
 		BaseRelease:    release,
 		BaseStart:      start,
 		BaseEnd:        end,
@@ -334,7 +330,7 @@ type fallbackTestQueryReleasesGeneratorCacheKey struct {
 	BaseStart   time.Time
 	BaseEnd     time.Time
 	// VariantDBGroupBy is the only field within VariantOption that is used here
-	VariantDBGroupBy sets.String
+	VariantDBGroupBy sets.Set[string]
 	// CRTimeRoundingFactor is used by GetReleaseDatesFromBigQuery
 	CRTimeRoundingFactor time.Duration
 	CRTimeRoundingOffset time.Duration
@@ -461,7 +457,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.
 	fallbackReqOpts.BaseRelease.Start = start
 	fallbackReqOpts.BaseRelease.End = end
 
-	baseStatus, errs := f.dataProvider.QueryBaseTestStatus(ctx, fallbackReqOpts, f.allJobVariants)
+	baseStatus, errs := f.dataProvider.QueryBaseTestStatus(ctx, fallbackReqOpts)
 	if len(errs) > 0 {
 		return crstatus.ReportTestStatus{}, errs
 	}

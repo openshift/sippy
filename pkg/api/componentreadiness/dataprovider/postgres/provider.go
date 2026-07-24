@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
@@ -132,96 +134,16 @@ func (p *PostgresProvider) QueryJobVariants(ctx context.Context) (crtest.JobVari
 	return variants, nil
 }
 
-// releaseMetadata holds hardcoded release info for known releases.
-// This avoids needing a releases table — we derive release names from prow_jobs
-// and fill in metadata from this map.
-var releaseMetadata = map[string]struct {
-	previousRelease string
-	gaOffsetDays    int    // 0 = no GA date (in development)
-	product         string // empty = defaults to "OCP"
-}{
-	"4.17": {previousRelease: "4.16", gaOffsetDays: -540},
-	"4.18": {previousRelease: "4.17", gaOffsetDays: -395},
-	"4.19": {previousRelease: "4.18", gaOffsetDays: -289},
-	"4.20": {previousRelease: "4.19", gaOffsetDays: -163},
-	"4.21": {previousRelease: "4.20", gaOffsetDays: -58},
-	"4.22": {previousRelease: "4.21"},
-	"5.0":  {previousRelease: "4.22"},
-}
-
 func (p *PostgresProvider) QueryReleases(ctx context.Context) ([]v1.Release, error) {
-	var releaseNames []string
-	err := p.dbc.DB.WithContext(ctx).Raw(`SELECT DISTINCT release FROM prow_jobs WHERE deleted_at IS NULL ORDER BY release DESC`).
-		Pluck("release", &releaseNames).Error
-	if err != nil {
-		return nil, fmt.Errorf("querying releases: %w", err)
-	}
-
-	caps := map[v1.ReleaseCapability]bool{
-		v1.ComponentReadinessCap: true,
-		v1.FeatureGatesCap:       true,
-		v1.MetricsCap:            true,
-		v1.PayloadTagsCap:        true,
-		v1.SippyClassicCap:       true,
-	}
-
-	now := time.Now().UTC()
-	var releases []v1.Release
-	for _, name := range releaseNames {
-		rel := v1.Release{
-			Release:      name,
-			Capabilities: caps,
-			Product:      "OCP",
-		}
-		if meta, ok := releaseMetadata[name]; ok {
-			rel.PreviousRelease = meta.previousRelease
-			if meta.gaOffsetDays != 0 {
-				ga := now.AddDate(0, 0, meta.gaOffsetDays)
-				rel.GADate = &ga
-			}
-			if meta.product != "" {
-				rel.Product = meta.product
-			}
-		}
-		releases = append(releases, rel)
-	}
-	return releases, nil
+	return api.GetReleasesFromDB(ctx, p.dbc)
 }
 
-func (p *PostgresProvider) QueryReleaseDates(ctx context.Context, _ reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error) {
-	// Derive time ranges from actual data in the DB rather than hardcoded GA dates.
-	// This ensures fallback queries find data where it actually exists.
-	type releaseRange struct {
-		Release string
-		Start   time.Time
-		End     time.Time
-	}
-	var ranges []releaseRange
-	err := p.dbc.DB.WithContext(ctx).Raw(`
-		SELECT pj.release,
-		       MIN(pjr.timestamp) AS start,
-		       MAX(pjr.timestamp) AS end
-		FROM prow_job_runs pjr
-		JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
-		WHERE pj.deleted_at IS NULL AND pjr.deleted_at IS NULL
-		GROUP BY pj.release
-		ORDER BY pj.release DESC
-	`).Scan(&ranges).Error
+func (p *PostgresProvider) QueryReleaseDates(ctx context.Context, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error) {
+	timeRanges, err := api.GetReleaseDatesFromDB(ctx, p.dbc, reqOptions)
 	if err != nil {
-		return nil, []error{fmt.Errorf("querying release dates: %w", err)}
+		return nil, []error{err}
 	}
-
-	var dates []crtest.ReleaseTimeRange
-	for _, r := range ranges {
-		start := r.Start
-		end := r.End
-		dates = append(dates, crtest.ReleaseTimeRange{
-			Release: r.Release,
-			Start:   &start,
-			End:     &end,
-		})
-	}
-	return dates, nil
+	return timeRanges, nil
 }
 
 func (p *PostgresProvider) QueryUniqueVariantValues(ctx context.Context, field string, nested bool) ([]string, error) {
@@ -339,7 +261,7 @@ GROUP BY tow.unique_id, t.name, s.name, tow.component, tow.capabilities, d.prow_
 `
 
 func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, start, end time.Time,
-	_ crtest.JobVariants, includeVariants map[string][]string,
+	includeVariants map[string][]string,
 	dbGroupBy map[string]bool) (map[string]crstatus.TestStatus, []error) {
 
 	var rows []testStatusRow
@@ -435,11 +357,10 @@ func (p *PostgresProvider) fetchJobVariantsByIDs(ids []uint) (map[uint]map[strin
 	return result, nil
 }
 
-func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error) {
+func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error) {
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
-	for _, k := range reqOptions.VariantOption.DBGroupBy.List() {
+	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
 		dbGroupBy[k] = true
 	}
 
@@ -453,19 +374,17 @@ func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions r
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start,
 		reqOptions.BaseRelease.End,
-		allJobVariants,
 		includeVariants,
 		dbGroupBy,
 	)
 }
 
 func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
-	for _, k := range reqOptions.VariantOption.DBGroupBy.List() {
+	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
 		dbGroupBy[k] = true
 	}
 
@@ -477,7 +396,6 @@ func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
-		allJobVariants,
 		includeVariants,
 		dbGroupBy,
 	)
@@ -528,7 +446,7 @@ ORDER BY pjr.timestamp
 `
 
 func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
-	reqOptions reqopts.RequestOptions, _ crtest.JobVariants,
+	reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	var rows []testDetailRow
@@ -537,7 +455,7 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 	}
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
-	for _, k := range reqOptions.VariantOption.DBGroupBy.List() {
+	for _, k := range sets.List(reqOptions.VariantOption.DBGroupBy) {
 		dbGroupBy[k] = true
 	}
 
@@ -638,19 +556,17 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 	return result, nil
 }
 
-func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants) (map[string][]crstatus.TestJobRunRows, []error) {
+func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	return p.queryTestDetails(
 		ctx,
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End,
-		reqOptions, allJobVariants, reqOptions.VariantOption.IncludeVariants,
+		reqOptions, reqOptions.VariantOption.IncludeVariants,
 	)
 }
 
 func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
@@ -658,14 +574,13 @@ func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqO
 		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
-		reqOptions, allJobVariants, includeVariants,
+		reqOptions, includeVariants,
 	)
 }
 
 // --- JobQuerier ---
 
 func (p *PostgresProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time) (map[string]dataprovider.JobRunStats, error) {
 
 	type jobRunRow struct {

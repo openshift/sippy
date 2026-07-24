@@ -17,8 +17,8 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -36,7 +36,7 @@ func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc
 		ctx,
 		generator.getCache(),
 		generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(ctx), TestDetailsReportCacheKeyPrefix, nil),
+		api.NewCacheSpec(generator.GetCacheKey(), TestDetailsReportCacheKeyPrefix, nil),
 		generator.GenerateTestDetailsReport,
 		testdetails.Report{})
 	if len(errs) > 0 {
@@ -186,14 +186,16 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 ) (testdetails.Report, []error) {
 
 	if testIDOption.TestID == "" {
-		return testdetails.Report{}, []error{fmt.Errorf("test_id has to be defined for test details")}
+		return testdetails.Report{}, []error{&api.ValidationError{
+			Message: "test_id has to be defined for test details",
+		}}
 	}
-	for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
+	for _, v := range sets.List(c.ReqOptions.VariantOption.DBGroupBy) {
 		if _, ok := testIDOption.RequestedVariants[v]; !ok {
-			return testdetails.Report{}, []error{
-				fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
+			return testdetails.Report{}, []error{&api.ValidationError{
+				Message: fmt.Sprintf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
 					v, testIDOption.RequestedVariants),
-			}
+			}}
 		}
 	}
 
@@ -335,7 +337,6 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 
 func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	ctx context.Context,
-	allJobVariants crtest.JobVariants,
 	baseRelease string,
 	baseStart time.Time,
 	baseEnd time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
@@ -344,32 +345,26 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	reqOpts.BaseRelease.Name = baseRelease
 	reqOpts.BaseRelease.Start = baseStart
 	reqOpts.BaseRelease.End = baseEnd
-	return c.dataProvider.QueryBaseJobRunTestStatus(ctx, reqOpts, allJobVariants)
+	return c.dataProvider.QueryBaseJobRunTestStatus(ctx, reqOpts)
 }
 
 func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 	ctx context.Context,
-	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	return c.dataProvider.QuerySampleJobRunTestStatus(ctx, c.ReqOptions, allJobVariants, includeVariants, start, end)
+	return c.dataProvider.QuerySampleJobRunTestStatus(ctx, c.ReqOptions, includeVariants, start, end)
 }
 
 func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
 	fLog := logrus.WithField("func", "getJobRunTestStatus")
-	allJobVariants, errs := GetJobVariants(ctx, c.dataProvider)
-	if len(errs) > 0 {
-		logrus.Errorf("failed to get job variants")
-		return crstatus.TestJobRunStatuses{}, errs
-	}
 	var baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
 	errCh := make(chan error)
 
-	c.middlewares.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
+	c.middlewares.QueryTestDetails(ctx, &wg, errCh)
 
 	wg.Add(1)
 	go func() {
@@ -379,7 +374,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 			logrus.Infof("Context canceled while fetching base job run test status")
 			return
 		default:
-			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseRelease.Name, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
+			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, c.ReqOptions.BaseRelease.Name, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
 		}
 	}()
 
@@ -392,7 +387,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 			return
 		default:
 			fLog.Infof("running sample status query with includeVariants: %+v", c.ReqOptions.VariantOption.IncludeVariants)
-			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.VariantOption.IncludeVariants,
+			status, errs := c.getSampleJobRunTestStatus(ctx, c.ReqOptions.VariantOption.IncludeVariants,
 				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
 			fLog.Infof("received %d test statuses and %d errors from sample query", len(status), len(errs))
 			sampleStatus = status
@@ -411,6 +406,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 	}
 
 	fLog.Infof("total test statuses: %d", len(sampleStatus))
+	var errs []error
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 || len(middlewareErrs) != 0 {
 		errs = append(errs, baseErrs...)
 		errs = append(errs, sampleErrs...)
@@ -487,7 +483,7 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
 
 	// merge the job names from both base and sample status and assess each once
-	jobNames := sets.NewString(slices.Collect(maps.Keys(baseStatus))...)
+	jobNames := sets.New(slices.Collect(maps.Keys(baseStatus))...)
 	jobNames.Insert(slices.Collect(maps.Keys(sampleStatus))...)
 	for job := range jobNames {
 		// tally up base job stats and matching sample job stats (if any); record job names, component, etc in the result

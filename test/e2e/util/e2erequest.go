@@ -40,8 +40,12 @@ func BuildE2EURL(apiPath string) string {
 }
 
 func SippyGet(path string, data interface{}) error {
+	return SippyGetAbsolute(BuildE2EURL(path), data)
+}
+
+func SippyGetAbsolute(url string, data interface{}) error {
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := client.Get(BuildE2EURL(path)) //nolint:gosec // G704: URL is constructed from test helper's hardcoded localhost base URL
+	req, err := client.Get(url) //nolint:gosec // G107: URL is either from BuildE2EURL (hardcoded localhost) or a server-returned HATEOAS link in e2e tests
 	if err != nil {
 		return err
 	}

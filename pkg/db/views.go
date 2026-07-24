@@ -15,65 +15,10 @@ const timestampFormat = "2006-01-02 15:04:05"
 // TODO: for historical sippy we need to specify the pinnedDate and not use NOW
 var PostgresMatViews = []PostgresView{
 	{
-		Name:         "prow_test_report_7d_matview",
-		Definition:   testReportMatView,
-		IndexColumns: []string{"release", "name", "id", "variant_combination_id", "suite_name"},
-		ReplaceStrings: map[string]string{
-			"|||START|||":    "|||TIMENOW||| - INTERVAL '14 DAY'",
-			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '7 DAY'",
-			"|||END|||":      "|||TIMENOW|||",
-		},
-	},
-	{
-		Name:         "prow_test_report_2d_matview",
-		Definition:   testReportMatView,
-		IndexColumns: []string{"release", "name", "id", "variant_combination_id", "suite_name"},
-		RefreshPhase: 1, // avoid CPU overload from refreshing concurrently with the 7d matview
-		ReplaceStrings: map[string]string{
-			"|||START|||":    "|||TIMENOW||| - INTERVAL '9 DAY'",
-			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '2 DAY'",
-			"|||END|||":      "|||TIMENOW|||",
-		},
-	},
-	{
 		Name:              "prow_job_runs_report_matview",
 		Definition:        jobRunsReportMatView,
 		IndexColumns:      []string{"id"},
 		AdditionalIndexes: []string{"release, timestamp DESC"},
-	},
-	{
-		Name:         "prow_job_failed_tests_by_day_matview",
-		Definition:   prowJobFailedTestsMatView,
-		IndexColumns: []string{"period", "prow_job_id", "test_name"},
-		ReplaceStrings: map[string]string{
-			"|||BY|||": "day",
-		},
-	},
-	{
-		Name:         "prow_job_failed_tests_by_hour_matview",
-		Definition:   prowJobFailedTestsMatView,
-		IndexColumns: []string{"period", "prow_job_id", "test_name"},
-		ReplaceStrings: map[string]string{
-			"|||BY|||": "hour",
-		},
-	},
-	{
-		Name:         "prow_test_report_7d_collapsed_matview",
-		Definition:   testReportCollapsedMatView,
-		IndexColumns: []string{"release", "id", "suite_name", "jira_component", "jira_component_id"},
-		RefreshPhase: 2, // reads from prow_test_report_7d_matview, which refreshes in phase 0
-		ReplaceStrings: map[string]string{
-			"|||SOURCE|||": "prow_test_report_7d_matview",
-		},
-	},
-	{
-		Name:         "prow_test_report_2d_collapsed_matview",
-		Definition:   testReportCollapsedMatView,
-		IndexColumns: []string{"release", "id", "suite_name", "jira_component", "jira_component_id"},
-		RefreshPhase: 2, // reads from prow_test_report_2d_matview, which refreshes in phase 1
-		ReplaceStrings: map[string]string{
-			"|||SOURCE|||": "prow_test_report_2d_matview",
-		},
 	},
 	{
 		// TODO: this probably doesn't need to be a matview anymore since we only keep 3 months of data,
@@ -82,6 +27,12 @@ var PostgresMatViews = []PostgresView{
 		Definition:     payloadTestFailuresMatView,
 		IndexColumns:   []string{"release", "architecture", "stream", "prow_job_run_id", "test_id", "suite_id"},
 		ReplaceStrings: map[string]string{},
+	},
+	{
+		Name:         "prow_ga_test_statuses_matview",
+		Definition:   gaTestStatusMatView,
+		IndexColumns: []string{"release", "window_days", "test_id", "suite_id", "variant_combination_id"},
+		RefreshPhase: 1,
 	},
 }
 
@@ -283,116 +234,6 @@ FROM prow_job_runs
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
 `
-const testReportMatView = `
-SELECT base.*,
-    COALESCE(base.current_successes * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_pass_percentage,
-    COALESCE(base.current_failures * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_failure_percentage,
-    COALESCE(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_flake_percentage,
-    COALESCE((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0), 0) AS current_working_percentage,
-    COALESCE(base.previous_successes * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_pass_percentage,
-    COALESCE(base.previous_failures * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_failure_percentage,
-    COALESCE(base.previous_flakes * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_flake_percentage,
-    COALESCE((base.previous_successes + base.previous_flakes) * 100.0 / NULLIF(base.previous_runs, 0), 0) AS previous_working_percentage,
-    AVG((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS working_average,
-    STDDEV((base.current_successes + base.current_flakes) * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS working_standard_deviation,
-    AVG(base.current_successes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS passing_average,
-    STDDEV(base.current_successes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS passing_standard_deviation,
-    AVG(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS flake_average,
-    STDDEV(base.current_flakes * 100.0 / NULLIF(base.current_runs, 0)) OVER w AS flake_standard_deviation
-FROM (
-    WITH open_bugs AS (
-      SELECT
-        test_id,
-        COUNT(DISTINCT bugs.id) AS open_bugs
-      FROM
-        bug_tests
-        INNER JOIN tests ON tests.id = bug_tests.test_id
-        INNER JOIN bugs ON bug_tests.bug_id = bugs.id
-      WHERE
-        LOWER(bugs.status) <> 'closed'
-      GROUP BY
-        test_id
-    ),
-    pre_agg AS (
-      SELECT
-        variant_combination_id,
-        test_id,
-        suite_id,
-        release AS prow_job_run_release,
-        COALESCE(SUM(successes) FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_successes,
-        COALESCE(SUM(flakes)    FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_flakes,
-        COALESCE(SUM(failures)  FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_failures,
-        COALESCE(SUM(runs)      FILTER (WHERE summary_date >= |||START||| AND summary_date < |||BOUNDARY|||), 0) AS previous_runs,
-        COALESCE(SUM(successes) FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_successes,
-        COALESCE(SUM(flakes)    FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_flakes,
-        COALESCE(SUM(failures)  FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_failures,
-        COALESCE(SUM(runs)      FILTER (WHERE summary_date >= |||BOUNDARY||| AND summary_date <= |||END|||), 0) AS current_runs
-      FROM
-        test_daily_summaries
-      WHERE
-        summary_date >= |||START||| AND summary_date <= |||END|||
-      GROUP BY
-        variant_combination_id, test_id, suite_id, release
-    )
-    SELECT
-        tests.id,
-        tests.name,
-        suites.name AS suite_name,
-        jira_components.name AS jira_component,
-        jira_components.id AS jira_component_id,
-        pre_agg.previous_successes::bigint AS previous_successes,
-        pre_agg.previous_flakes::bigint AS previous_flakes,
-        pre_agg.previous_failures::bigint AS previous_failures,
-        pre_agg.previous_runs::bigint AS previous_runs,
-        pre_agg.current_successes::bigint AS current_successes,
-        pre_agg.current_flakes::bigint AS current_flakes,
-        pre_agg.current_failures::bigint AS current_failures,
-        pre_agg.current_runs::bigint AS current_runs,
-        open_bugs.open_bugs AS open_bugs,
-        vc.variants,
-        pre_agg.variant_combination_id,
-        pre_agg.prow_job_run_release AS release
-    FROM
-        pre_agg
-        JOIN tests ON tests.id = pre_agg.test_id
-        LEFT JOIN open_bugs ON pre_agg.test_id = open_bugs.test_id
-        LEFT JOIN suites ON suites.id = pre_agg.suite_id
-        LEFT JOIN test_ownerships ON (tests.id = test_ownerships.test_id AND pre_agg.suite_id = test_ownerships.suite_id)
-        LEFT JOIN jira_components ON test_ownerships.jira_component = jira_components.name
-        LEFT JOIN variant_combinations vc ON pre_agg.variant_combination_id = vc.id
-) AS base
-WINDOW w AS (PARTITION BY base.id, base.suite_name, base.release)
-`
-
-// CollapsedVariantExclusions lists the variant values that are pre-excluded in
-// the collapsed matview. The API checks incoming variant filters against this
-// list to decide whether the collapsed matview can be used.
-var CollapsedVariantExclusions = []string{"never-stable", "aggregated"}
-
-var testReportCollapsedMatView = buildCollapsedMatViewSQL()
-
-func buildCollapsedMatViewSQL() string {
-	var clauses []string
-	for _, v := range CollapsedVariantExclusions {
-		clauses = append(clauses, fmt.Sprintf("NOT ('%s' = any(variants))", v))
-	}
-	return `
-SELECT suite_name, name, id, jira_component, jira_component_id, release,
-    SUM(current_runs)::bigint AS current_runs,
-    SUM(current_successes)::bigint AS current_successes,
-    SUM(current_failures)::bigint AS current_failures,
-    SUM(current_flakes)::bigint AS current_flakes,
-    SUM(previous_runs)::bigint AS previous_runs,
-    SUM(previous_successes)::bigint AS previous_successes,
-    SUM(previous_failures)::bigint AS previous_failures,
-    SUM(previous_flakes)::bigint AS previous_flakes,
-    (array_agg(open_bugs))[1] AS open_bugs
-FROM |||SOURCE|||
-WHERE ` + strings.Join(clauses, "\n  AND ") + `
-GROUP BY suite_name, name, id, jira_component, jira_component_id, release
-`
-}
-
 const testAnalysisByVariantView = `
 SELECT
 	byjob.test_id AS test_id,
@@ -435,17 +276,6 @@ GROUP BY
     tests.name, tests.id, date(prow_job_run_tests.prow_job_run_timestamp), prow_job_run_tests.prow_job_run_release, prow_jobs.name
 `
 
-const prowJobFailedTestsMatView = `
-SELECT date_trunc('|||BY|||'::text, pjrt.prow_job_run_timestamp) AS period,
-   pjrt.prow_job_id,
-   tests.name AS test_name,
-   count(tests.name) AS count
-FROM prow_job_run_tests pjrt
-   JOIN tests tests ON pjrt.test_id = tests.id
-WHERE pjrt.status = 12
-GROUP BY tests.name, (date_trunc('|||BY|||'::text, pjrt.prow_job_run_timestamp)), pjrt.prow_job_id
-`
-
 // TODO: remove distinct once bug fixed re dupes in release_job_runs
 const payloadTestFailuresMatView = `
 SELECT DISTINCT
@@ -476,9 +306,26 @@ WHERE
     AND rjr.kind = 'Blocking'
     AND rjr.State = 'Failed'
     AND pjrt.prow_job_run_id = rjr.prow_job_run_id
+    AND pjrt.prow_job_run_release = rt.release
+    AND pjrt.prow_job_run_timestamp = pjr.timestamp
     AND pjrt.status = 12
     AND t.id = pjrt.test_id
     AND pjr.id = pjrt.prow_job_run_id
     AND pj.id = pjr.prow_job_id
 ORDER BY pjrt.id DESC
+`
+
+const gaTestStatusMatView = `
+SELECT
+    raw.test_id,
+    raw.suite_id,
+    pj.variant_combination_id,
+    raw.release,
+    raw.window_days,
+    SUM(raw.runs)::int AS total_count,
+    SUM(raw.passes + raw.flakes)::int AS success_count,
+    SUM(raw.flakes)::int AS flake_count
+FROM prow_ga_raw_test_data raw
+JOIN prow_jobs pj ON pj.id = raw.prow_job_id AND pj.deleted_at IS NULL AND pj.variant_combination_id IS NOT NULL
+GROUP BY raw.test_id, raw.suite_id, pj.variant_combination_id, raw.release, raw.window_days
 `

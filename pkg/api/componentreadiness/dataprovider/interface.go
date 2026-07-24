@@ -14,23 +14,19 @@ import (
 // TestStatusQuerier fetches aggregated test pass/fail counts.
 type TestStatusQuerier interface {
 	// QueryBaseTestStatus returns test status for the basis release.
-	QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-		allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error)
+	QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error)
 
 	// QuerySampleTestStatus returns test status for the sample release.
 	QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-		allJobVariants crtest.JobVariants,
 		includeVariants map[string][]string,
 		start, end time.Time) (map[string]crstatus.TestStatus, []error)
 }
 
 // TestDetailsQuerier fetches per-job-run test breakdowns used for test details reports.
 type TestDetailsQuerier interface {
-	QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-		allJobVariants crtest.JobVariants) (map[string][]crstatus.TestJobRunRows, []error)
+	QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestJobRunRows, []error)
 
 	QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-		allJobVariants crtest.JobVariants,
 		includeVariants map[string][]string,
 		start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error)
 }
@@ -55,7 +51,6 @@ type MetadataQuerier interface {
 type JobQuerier interface {
 	// QueryJobRuns returns pass/fail statistics per job for a release in a time window.
 	QueryJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
-		allJobVariants crtest.JobVariants,
 		release string, start, end time.Time) (map[string]JobRunStats, error)
 
 	// QueryJobVariantValues returns variant key/value pairs for the given jobs.

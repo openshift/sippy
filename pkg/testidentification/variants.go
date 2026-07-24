@@ -1,13 +1,13 @@
 package testidentification
 
 import (
-	"github.com/openshift/sippy/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // VariantManager identifies and describes different variants
 type VariantManager interface {
 	// AllPlatforms returns a set of all known platform variants
-	AllPlatforms() sets.String
+	AllPlatforms() sets.Set[string]
 
 	// IdentifyVariants takes a job name and returns the list of variants that job belongs to.
 	IdentifyVariants(jobName string) []string
