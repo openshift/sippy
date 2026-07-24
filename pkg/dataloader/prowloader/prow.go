@@ -1717,6 +1717,7 @@ func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.T
 				Status:    int(status),
 				Duration:  tc.Duration,
 				Output:    output,
+				Lifecycle: tc.Lifecycle,
 			}
 		} else if (existing.Status == int(sippyprocessingv1.TestStatusFailure) && status == sippyprocessingv1.TestStatusSuccess) ||
 			(existing.Status == int(sippyprocessingv1.TestStatusSuccess) && status == sippyprocessingv1.TestStatusFailure) {
