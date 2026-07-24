@@ -8,7 +8,7 @@ import GridToolbarPeriodSelector from '../datagrid/GridToolbarPeriodSelector'
 import GridToolbarViewSelector from './GridToolbarViewSelector'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useEffect, useRef } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import TextField from '@mui/material/TextField'
 
@@ -39,6 +39,33 @@ export default function GridToolbar(props) {
   const classes = useStyles(theme)
 
   const [search, setSearch] = React.useState('')
+  const initializedFromFilter = useRef(false)
+
+  useEffect(() => {
+    if (
+      initializedFromFilter.current ||
+      !props.searchField ||
+      !props.filterModel ||
+      !props.filterModel.items
+    ) {
+      return
+    }
+    const filtersForField = props.filterModel.items.filter(
+      (f) => f.columnField === props.searchField
+    )
+    if (filtersForField.length !== 1) {
+      return
+    }
+    const filter = filtersForField[0]
+    if (
+      filter.operatorValue === 'contains' &&
+      filter.not !== true &&
+      filter.value
+    ) {
+      setSearch(filter.value)
+      initializedFromFilter.current = true
+    }
+  }, [props.searchField, props.filterModel])
 
   return (
     <div className={classes.root}>
@@ -92,7 +119,6 @@ export default function GridToolbar(props) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && props.doSearch(search)}
-            onBlur={() => props.doSearch(search)}
             placeholder="Search…"
             InputProps={{
               endAdornment: (
@@ -145,4 +171,5 @@ GridToolbar.propTypes = {
   downloadDataFunc: PropTypes.func,
   downloadFilePrefix: PropTypes.string,
   autocompleteData: PropTypes.array,
+  searchField: PropTypes.string,
 }

@@ -261,17 +261,14 @@ export function JobAnalysis(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const currentFilters = testFilter
-    currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'name'
-    )
-    currentFilters.items.push({
+    const newItems = testFilter.items.filter((f) => f.columnField !== 'name')
+    newItems.push({
       id: 99,
       columnField: 'name',
       operatorValue: 'contains',
       value: searchValue,
     })
-    setTestFilter(currentFilters)
+    setTestFilter({ ...testFilter, items: newItems })
   }
 
   const updateSelectionModel = (m) => {
@@ -600,6 +597,7 @@ export function JobAnalysis(props) {
                           setFilterModel: setTestFilter,
                           clearSearch: () => requestSearch(''),
                           doSearch: requestSearch,
+                          searchField: 'name',
                         },
                       }}
                     />
