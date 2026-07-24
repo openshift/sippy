@@ -5,7 +5,7 @@ import React, { Fragment } from 'react'
 import ReleasePayloadTable from './ReleasePayloadTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   title: {
     textAlign: 'center',
   },

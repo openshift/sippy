@@ -112,7 +112,7 @@ function isComponentReadinessIncludedJobTier(variant) {
   )
 }
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   backdrop: {
     zIndex: 999999,
     color: '#fff',
@@ -153,7 +153,7 @@ function TestTable(props) {
     NumberParam
   )
 
-  const [cookies, setCookie] = useCookies(['testTableDBSource'])
+  const [cookies, _setCookie] = useCookies(['testTableDBSource'])
   const testTableDBSource = cookies['testTableDBSource']
 
   // For "Tests By Variant" (collapse=false), check if any non-default filters are applied

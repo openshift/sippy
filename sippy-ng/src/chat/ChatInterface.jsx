@@ -191,20 +191,28 @@ export default function ChatInterface({
   const [isMaximized, setIsMaximized] = useState(false)
 
   // Get state and actions from custom hooks
-  const { sessions, activeSessionId, activeSession } = useSessionState()
+  const {
+    sessions: _sessions,
+    activeSessionId,
+    activeSession,
+  } = useSessionState()
   const {
     initializeSessions,
-    createSession,
-    switchSession,
-    deleteSession,
+    createSession: _createSession,
+    switchSession: _switchSession,
+    deleteSession: _deleteSession,
     forkActiveSession,
   } = useSessionActions()
 
-  const { shareLoading, loadingShared } = useShareState()
+  const { shareLoading: _shareLoading, loadingShared } = useShareState()
   const { clearSharedUrl, loadSharedConversationFromAPI } = useShareActions()
 
-  const { connectionState, isTyping, error, currentThinking } =
-    useConnectionState()
+  const {
+    connectionState,
+    isTyping: _isTyping,
+    error,
+    currentThinking,
+  } = useConnectionState()
   const { settings, ensureClientId } = useSettings()
 
   // Get messages from active session
@@ -220,7 +228,7 @@ export default function ChatInterface({
   const { messagesEndRef, messagesListRef, lastMessageRef } =
     useScrollManagement(activeSessionId, activeSession, messages, settings)
 
-  const isConnected = connectionState === CONNECTION_STATES.CONNECTED
+  const _isConnected = connectionState === CONNECTION_STATES.CONNECTED
 
   // Initialize sessions and client ID on mount
   useEffect(() => {

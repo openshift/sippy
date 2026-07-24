@@ -131,7 +131,7 @@ export function JobStackedChart(props) {
     },
   }
 
-  const handleClick = (e) => {
+  const handleClick = (_e) => {
     navigate(
       `/jobs/${
         props.release
@@ -192,7 +192,7 @@ export function JobStackedChart(props) {
   }
 
   const handleLeave = (e, item, legend) => {
-    legend.chart.data.datasets.forEach((dataset, index) => {
+    legend.chart.data.datasets.forEach((dataset, _index) => {
       dataset.backgroundColor = colorByName[dataset.label]
       dataset.borderColor = colorByName[dataset.label]
     })
@@ -233,7 +233,7 @@ export function JobStackedChart(props) {
         stacked: true,
         max: 100,
         ticks: {
-          callback: (value, index, values) => {
+          callback: (value, _index, _values) => {
             return `${value}%`
           },
         },

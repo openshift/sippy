@@ -21,12 +21,12 @@ import SummaryCard from '../components/SummaryCard'
 function PayloadStreamOverview(props) {
   const theme = useTheme()
 
-  const [release = props.release, setRelease] = useQueryParam(
+  const [_release = props.release, _setRelease] = useQueryParam(
     'release',
     StringParam
   )
-  const [arch = props.arch, setArch] = useQueryParam('arch', StringParam)
-  const [stream = props.stream, setStream] = useQueryParam(
+  const [_arch = props.arch, _setArch] = useQueryParam('arch', StringParam)
+  const [_stream = props.stream, _setStream] = useQueryParam(
     'stream',
     StringParam
   )

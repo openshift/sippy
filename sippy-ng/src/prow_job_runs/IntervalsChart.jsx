@@ -96,13 +96,13 @@ const intervalColorizers = {
       return ['InterestingEvent', '#6E6E6E']
     }
   },
-  OperatorAvailable: function (interval) {
+  OperatorAvailable: function (_interval) {
     return ['OperatorUnavailable', '#d0312d']
   },
-  OperatorDegraded: function (interval) {
+  OperatorDegraded: function (_interval) {
     return ['OperatorDegraded', '#ffa500']
   },
-  OperatorProgressing: function (interval) {
+  OperatorProgressing: function (_interval) {
     return ['OperatorProgressing', '#fada5e']
   },
   NodeState: function (interval) {
@@ -145,16 +145,16 @@ const intervalColorizers = {
         return ['KubeletLogError', '#d0312d']
     }
   },
-  APIServerGracefulShutdown: function (interval) {
+  APIServerGracefulShutdown: function (_interval) {
     return ['GracefulShutdownInterval', '#6E6E6E']
   },
-  E2EPassed: function (interval) {
+  E2EPassed: function (_interval) {
     return ['Passed', '#3cb043']
   },
-  E2EFailed: function (interval) {
+  E2EFailed: function (_interval) {
     return ['Failed', '#d0312d']
   },
-  E2EFlaked: function (interval) {
+  E2EFlaked: function (_interval) {
     return ['Flaked', '#ffa500']
   },
   PodState: function (interval) {
@@ -538,7 +538,7 @@ export default function IntervalsChart(props) {
     setEnd(event.target.value)
   }
 
-  const resetTimeFilters = (event) => {
+  const resetTimeFilters = (_event) => {
     console.log('reset time filters')
     setStart(eventIntervals[0].from)
     setEnd(eventIntervals[eventIntervals.length - 1].to)

@@ -90,7 +90,7 @@ export default function MessageChart({ visualizations }) {
     }
   }
 
-  const handleExpandChart = (viz, index) => {
+  const handleExpandChart = (viz, _index) => {
     const expandedLayout = {
       ...viz.layout,
       paper_bgcolor: theme.palette.background.default,

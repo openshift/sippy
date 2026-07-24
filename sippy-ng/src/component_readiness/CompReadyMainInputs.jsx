@@ -46,7 +46,7 @@ export default function CompReadyMainInputs({ controlsOpts }) {
   ])
 
   const varsContext = useContext(CompReadyVarsContext)
-  const navigate = useNavigate()
+  const _navigate = useNavigate()
   const compReadyEnvOptions = (
     <div>
       <GroupByCheckboxList
