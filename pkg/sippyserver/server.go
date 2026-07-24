@@ -741,31 +741,40 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 }
 
 func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
-	fg.Links = make(map[string]string, 3)
+	fg.Links = make(map[string]string, 4)
 
-	// Trailing "]" anchors the match so a shorter gate name can't prefix-match a longer one.
 	annotationFilter := filter.Filter{
 		Items: []filter.FilterItem{
 			{Field: "name", Operator: filter.OperatorContains, Value: fmt.Sprintf("FeatureGate:%s]", fg.FeatureGate)},
 		},
 	}
-	fg.Links["tests_by_annotation"] = buildFilteredTestsURL(baseAPIURL, release, annotationFilter)
+	fg.Links["gate_tests"] = buildFilteredTestsURL(baseAPIURL, release, annotationFilter)
 
-	// Installer gates currently run a broad conformance suite where full passes aren't
-	// required, so "install should succeed" is the meaningful signal. Switch to
-	// "openshift-tests should work" once installer jobs run a minimal conformance suite.
-	capabilityTestName := "openshift-tests should work"
 	if strings.Contains(fg.FeatureGate, "Install") {
-		capabilityTestName = "install should succeed"
+		installFilter := filter.Filter{
+			Items: []filter.FilterItem{
+				{Field: "name", Operator: filter.OperatorContains, Value: "install should succeed"},
+				{Field: "variants", Operator: filter.OperatorContains, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
+			},
+			LinkOperator: filter.LinkOperatorAnd,
+		}
+		fg.Links["install_tests"] = buildFilteredTestsURL(baseAPIURL, release, installFilter)
 	}
-	capabilityFilter := filter.Filter{
+
+	jobTestsFilter := filter.Filter{
 		Items: []filter.FilterItem{
-			{Field: "name", Operator: filter.OperatorContains, Value: capabilityTestName},
-			{Field: "variants", Operator: filter.OperatorContains, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
+			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "never-stable"},
+			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "aggregated"},
+			{Field: "variants", Operator: filter.OperatorHasEntry, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
+			{Field: "current_working_percentage", Operator: filter.OperatorArithmeticLessThan, Value: "92"},
+			{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "0"},
+			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "install should succeed"},
+			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "openshift-tests should work"},
+			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "infrastructure should work"},
 		},
 		LinkOperator: filter.LinkOperatorAnd,
 	}
-	fg.Links["tests_by_capability"] = buildFilteredTestsURL(baseAPIURL, release, capabilityFilter)
+	fg.Links["gate_job_tests"] = buildFilteredTestsURL(baseAPIURL, release, jobTestsFilter)
 
 	fg.Links["ui_detail"] = fmt.Sprintf(
 		"%s/sippy-ng/feature_gates/%s/%s",

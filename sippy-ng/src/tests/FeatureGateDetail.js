@@ -16,7 +16,7 @@ import Alert from '@mui/material/Alert'
 import FeatureGatePromotionTab from './FeatureGatePromotionTab'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useEffect, useMemo } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestTable from './TestTable'
 
@@ -70,20 +70,6 @@ export default function FeatureGateDetail(props) {
       })
   }, [release, featureGate])
 
-  const tabAutoSelected = React.useRef(false)
-
-  // When the annotation tab loads with 0 or 1 results (only the implicit
-  // "Overall" row), auto-switch to the capability tab instead.
-  const handleAnnotationDataLoaded = React.useCallback(
-    (count) => {
-      if (!tabAutoSelected.current && activeTab === 1 && count <= 1) {
-        setActiveTab(2)
-        tabAutoSelected.current = true
-      }
-    },
-    [activeTab]
-  )
-
   const annotationFilter = {
     items: [
       {
@@ -94,20 +80,12 @@ export default function FeatureGateDetail(props) {
     ],
   }
 
-  // Installer gates currently run a broad conformance suite where full passes
-  // aren't required, so "install should succeed" is the meaningful signal.
-  // Switch to "openshift-tests should work" once installer jobs run a minimal
-  // conformance suite.
-  const capabilityTestName = featureGate.includes('Install')
-    ? 'install should succeed'
-    : 'openshift-tests should work'
-
-  const capabilityFilter = {
+  const installFilter = {
     items: [
       {
         columnField: 'name',
         operatorValue: 'contains',
-        value: capabilityTestName,
+        value: 'install should succeed',
       },
       {
         columnField: 'variants',
@@ -117,6 +95,89 @@ export default function FeatureGateDetail(props) {
     ],
     linkOperator: 'and',
   }
+
+  const jobTestsFilter = {
+    items: [
+      {
+        columnField: 'variants',
+        not: true,
+        operatorValue: 'has entry',
+        value: 'never-stable',
+      },
+      {
+        columnField: 'variants',
+        not: true,
+        operatorValue: 'has entry',
+        value: 'aggregated',
+      },
+      {
+        columnField: 'variants',
+        operatorValue: 'has entry',
+        value: `Capability:${featureGate}`,
+      },
+      {
+        columnField: 'current_working_percentage',
+        operatorValue: '<',
+        value: '92',
+      },
+      {
+        columnField: 'current_runs',
+        operatorValue: '>=',
+        value: '0',
+      },
+      {
+        columnField: 'name',
+        not: true,
+        operatorValue: 'contains',
+        value: 'install should succeed',
+      },
+      {
+        columnField: 'name',
+        not: true,
+        operatorValue: 'contains',
+        value: 'openshift-tests should work',
+      },
+      {
+        columnField: 'name',
+        not: true,
+        operatorValue: 'contains',
+        value: 'infrastructure should work',
+      },
+    ],
+    linkOperator: 'and',
+  }
+
+  const tabs = useMemo(() => {
+    const t = [
+      { key: 'promotion', label: 'Promotion Readiness' },
+      { key: 'gate_tests', label: 'Gate Tests' },
+    ]
+    if (gate?.links?.install_tests) {
+      t.push({ key: 'install_tests', label: 'Install Tests' })
+    }
+    if (gate?.links?.gate_job_tests) {
+      t.push({ key: 'gate_job_tests', label: 'Gate Job Tests' })
+    }
+    return t
+  }, [gate])
+
+  const tabAutoSelected = React.useRef(false)
+
+  const handleAnnotationDataLoaded = React.useCallback(
+    (count) => {
+      const fgTestsIdx = tabs.findIndex((t) => t.key === 'gate_tests')
+      if (!tabAutoSelected.current && activeTab === fgTestsIdx && count <= 1) {
+        const nextIdx = tabs.findIndex(
+          (t) => t.key === 'install_tests' || t.key === 'gate_job_tests'
+        )
+        if (nextIdx !== -1) {
+          setActiveTab(nextIdx)
+        }
+        tabAutoSelected.current = true
+      }
+    },
+    [activeTab, tabs]
+  )
 
   if (fetchError) {
     return (
@@ -198,41 +259,53 @@ export default function FeatureGateDetail(props) {
             onChange={(e, v) => setActiveTab(v)}
             aria-label="feature gate test sections"
           >
-            <Tab label="Promotion Readiness" />
-            <Tab label="Tests by Annotation" />
-            <Tab label="Tests by Capability" />
+            {tabs.map((t) => (
+              <Tab key={t.key} label={t.label} />
+            ))}
           </Tabs>
         </Box>
 
-        <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
-          <FeatureGatePromotionTab
-            key={'fg-promotion-' + featureGate}
-            release={release}
-            featureGate={featureGate}
-            onCellClick={(variant, testName) => {
-              setActiveTab(1)
-            }}
-          />
-        </Box>
-
-        <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
-          <TestTable
-            key={'fg-annotation-' + featureGate}
-            release={release}
-            collapse={false}
-            filterModel={annotationFilter}
-            onDataLoaded={handleAnnotationDataLoaded}
-          />
-        </Box>
-
-        <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
-          <TestTable
-            key={'fg-capability-' + featureGate}
-            release={release}
-            collapse={false}
-            filterModel={capabilityFilter}
-          />
-        </Box>
+        {tabs.map((t, i) => (
+          <Box key={t.key} sx={{ display: activeTab === i ? 'block' : 'none' }}>
+            {t.key === 'promotion' && (
+              <FeatureGatePromotionTab
+                key={'fg-promotion-' + featureGate}
+                release={release}
+                featureGate={featureGate}
+                onCellClick={() => {
+                  setActiveTab(
+                    tabs.findIndex((tab) => tab.key === 'gate_tests')
+                  )
+                }}
+              />
+            )}
+            {t.key === 'gate_tests' && (
+              <TestTable
+                key={'fg-annotation-' + featureGate}
+                release={release}
+                collapse={false}
+                filterModel={annotationFilter}
+                onDataLoaded={handleAnnotationDataLoaded}
+              />
+            )}
+            {t.key === 'install_tests' && (
+              <TestTable
+                key={'fg-install-' + featureGate}
+                release={release}
+                collapse={false}
+                filterModel={installFilter}
+              />
+            )}
+            {t.key === 'gate_job_tests' && (
+              <TestTable
+                key={'fg-jobtests-' + featureGate}
+                release={release}
+                collapse={false}
+                filterModel={jobTestsFilter}
+              />
+            )}
+          </Box>
+        ))}
       </Container>
     </Fragment>
   )
