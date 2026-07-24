@@ -189,15 +189,19 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [includeVariantsCheckedItems, setIncludeVariantsCheckedItems] =
     useState({})
   const replaceIncludeVariantsCheckedItems = (variant, checkedItems) => {
-    includeVariantsCheckedItems[variant] = checkedItems
-    setIncludeVariantsCheckedItems(includeVariantsCheckedItems)
+    setIncludeVariantsCheckedItems((prev) => ({
+      ...prev,
+      [variant]: checkedItems,
+    }))
   }
   // The list of individual variants (e.g. "Architecture:arm64") that are checked for cross-variant comparison
   const [compareVariantsCheckedItems, setCompareVariantsCheckedItems] =
-    useState([])
+    useState({})
   const replaceCompareVariantsCheckedItems = (variant, checkedItems) => {
-    compareVariantsCheckedItems[variant] = checkedItems
-    setCompareVariantsCheckedItems(compareVariantsCheckedItems)
+    setCompareVariantsCheckedItems((prev) => ({
+      ...prev,
+      [variant]: checkedItems,
+    }))
   }
   // The list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
   const [variantCrossCompare, setVariantCrossCompare] = useState([])
@@ -427,6 +431,18 @@ export const CompReadyVarsProvider = ({ children }) => {
       setVariantCrossCompare(view.variant_options.variant_cross_compare)
     if (Object.hasOwn(view.variant_options, 'compare_variants'))
       setCompareVariantsCheckedItems(view.variant_options.compare_variants)
+    if (view.test_filters) {
+      if (Object.hasOwn(view.test_filters, 'lifecycles'))
+        setTestLifecycles(view.test_filters.lifecycles)
+      else setTestLifecycles([])
+      if (Object.hasOwn(view.test_filters, 'capabilities'))
+        setTestCapabilities(view.test_filters.capabilities)
+      else setTestCapabilities([])
+    } else {
+      setTestLifecycles([])
+      setTestCapabilities([])
+    }
+
     if (Object.hasOwn(view.advanced_options, 'confidence'))
       setConfidence(view.advanced_options.confidence)
     if (Object.hasOwn(view.advanced_options, 'pity_factor'))
