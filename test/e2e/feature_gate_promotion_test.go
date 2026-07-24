@@ -53,6 +53,18 @@ func TestFeatureGatePromotionInstallGate(t *testing.T) {
 	assert.Equal(t, util.Release, status.Release)
 }
 
+func TestFeatureGatePromotionCapabilityRegressionsLink(t *testing.T) {
+	var status featuregatepromotion.PromotionStatus
+	err := util.SippyGet("/api/feature_gates/promotion?release="+util.Release+"&feature_gate=NetworkSegmentation", &status)
+	require.NoError(t, err)
+
+	require.NotNil(t, status.Links)
+	link, ok := status.Links["capability_regressions"]
+	assert.True(t, ok, "missing capability_regressions link")
+	assert.Contains(t, link, "/api/tests")
+	assert.Contains(t, link, "Capability%3ANetworkSegmentation")
+}
+
 func TestFeatureGatePromotionMissingParams(t *testing.T) {
 	t.Run("missing release", func(t *testing.T) {
 		var status featuregatepromotion.PromotionStatus

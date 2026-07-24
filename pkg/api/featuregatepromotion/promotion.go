@@ -52,11 +52,10 @@ var (
 )
 
 // GetPromotionStatus computes the promotion readiness for a feature gate.
-// It combines two sources of test data:
+// It combines multiple sources of test data:
 //   - Annotation tests: tests whose names contain [FeatureGate:NAME]
-//   - Capability tests: tests whose job variants include Capability:NAME,
-//     filtered to "install should succeed" (Install gates) or
-//     "openshift-tests should work" (all others)
+//   - Capability tests (Install gates only): "install should succeed" tests
+//     on jobs with Capability:NAME variant
 func GetPromotionStatus(dbc *db.DB, release, featureGate string) (*PromotionStatus, error) {
 	topologies, err := getGateTopologies(dbc, release, featureGate)
 	if err != nil {
@@ -70,15 +69,17 @@ func GetPromotionStatus(dbc *db.DB, release, featureGate string) (*PromotionStat
 		return nil, fmt.Errorf("querying annotation test results: %w", err)
 	}
 
-	capabilityRows, err := queryCapabilityBasedResults(dbc, release, featureGate)
-	if err != nil {
-		return nil, fmt.Errorf("querying capability test results: %w", err)
+	rows := annotationRows
+
+	if strings.Contains(featureGate, "Install") {
+		capabilityRows, err := queryCapabilityBasedResults(dbc, release, featureGate)
+		if err != nil {
+			return nil, fmt.Errorf("querying capability test results: %w", err)
+		}
+		rows = append(rows, capabilityRows...)
 	}
 
-	rows := append(annotationRows, capabilityRows...)
-
-	result := buildPromotionStatus(featureGate, release, variantsToCheck, rows)
-	return result, nil
+	return buildPromotionStatus(featureGate, release, variantsToCheck, rows), nil
 }
 
 // getGateTopologies returns the set of topologies where this feature gate is enabled.
@@ -276,9 +277,8 @@ func queryTestBasedResults(dbc *db.DB, release, featureGate string) ([]testQuery
 	return rows, nil
 }
 
-// queryCapabilityBasedResults queries test results for jobs tagged with the
-// Capability:NAME variant. Install gates look for "install should succeed"
-// tests; all others look for "openshift-tests should work".
+// queryCapabilityBasedResults queries "install should succeed" test results
+// for Install gates on jobs tagged with the Capability:NAME variant.
 func queryCapabilityBasedResults(dbc *db.DB, release, featureGate string) ([]testQueryRow, error) {
 	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
 	sample := dateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
@@ -293,11 +293,7 @@ func queryCapabilityBasedResults(dbc *db.DB, release, featureGate string) ([]tes
 	start := base.Start.AddDays(-1)
 
 	capabilityVariant := fmt.Sprintf("Capability:%s", featureGate)
-
-	testPattern := "%openshift-tests should work%"
-	if strings.Contains(featureGate, "Install") {
-		testPattern = "%install should succeed%"
-	}
+	testPattern := "%install should succeed%"
 
 	query := `
 		SELECT

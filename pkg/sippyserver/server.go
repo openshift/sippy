@@ -789,12 +789,26 @@ func (s *Server) jsonFeatureGatePromotion(w http.ResponseWriter, req *http.Reque
 	}
 
 	baseAPIURL := api.GetBaseURL(req)
+	capabilityRegressionFilter := filter.Filter{
+		Items: []filter.FilterItem{
+			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "never-stable"},
+			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "aggregated"},
+			{Field: "variants", Operator: filter.OperatorHasEntry, Value: fmt.Sprintf("Capability:%s", featureGate)},
+			{Field: "current_working_percentage", Operator: filter.OperatorArithmeticLessThan, Value: "92"},
+			{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "0"},
+			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "install should succeed"},
+			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "openshift-tests should work"},
+			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "infrastructure should work"},
+		},
+		LinkOperator: filter.LinkOperatorAnd,
+	}
 	status.Links = map[string]string{
 		"feature_gate": fmt.Sprintf("%s/api/feature_gates?release=%s&filter=%s",
 			baseAPIURL,
 			url.QueryEscape(release),
 			url.QueryEscape(fmt.Sprintf(`{"items":[{"columnField":"feature_gate","operatorValue":"equals","value":"%s"}]}`, featureGate)),
 		),
+		"capability_regressions": buildFilteredTestsURL(baseAPIURL, release, capabilityRegressionFilter),
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, status)
