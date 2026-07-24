@@ -1,7 +1,8 @@
 {
   "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "low": true,
   "allowlist": [
     // RSC-only CSRF vulnerability; sippy does not use React Server Components
-    "GHSA-qwww-vcr4-c8h2"
+    "GHSA-qwww-vcr4-c8h2|react-router-dom>react-router"
   ]
 }

@@ -55,7 +55,7 @@ lint: builddir npm
 	cd sippy-ng; npx eslint .
 	# See https://github.com/facebook/create-react-app/issues/11174 about
 	# why we only audit production deps:
-	cd sippy-ng; npx audit-ci --skip-dev
+	cd sippy-ng; npx audit-ci --config ./audit-ci.jsonc --skip-dev
 
 npm: sippy-ng/node_modules/.package-lock.json
 
