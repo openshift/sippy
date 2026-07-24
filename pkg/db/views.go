@@ -37,12 +37,7 @@ var PostgresMatViews = []PostgresView{
 }
 
 // PostgresViews are regular, non-materialized views:
-var PostgresViews = []PostgresView{
-	{
-		Name:       "prow_test_analysis_by_variant_14d_view",
-		Definition: testAnalysisByVariantView,
-	},
-}
+var PostgresViews = []PostgresView{}
 
 type PostgresView struct {
 	// Name is the name of the materialized view in postgres.
@@ -233,47 +228,6 @@ FROM prow_job_runs
    LEFT JOIN pull_requests ON pull_requests.id = prow_job_runs.id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
-`
-const testAnalysisByVariantView = `
-SELECT
-	byjob.test_id AS test_id,
-	byjob.test_name AS test_name,
-	byjob.date AS date,
-	unnest(prow_jobs.variants) AS variant,
-	prow_jobs.release,
-	SUM(runs) as runs,
-	SUM(passes) as passes,
-	SUM(flakes) as flakes,
-	SUM(failures) as failures
-FROM
-	test_analysis_by_job_by_dates byjob
-	JOIN tests ON tests.id = byjob.test_id
-	JOIN prow_jobs ON prow_jobs.name = byjob.job_name
-WHERE
-	byjob.date >= (|||TIMENOW||| - '15 days'::interval)
-GROUP BY
-	tests.name, tests.id, byjob.test_id, byjob.test_name, date, unnest(prow_jobs.variants), prow_jobs.release
-`
-
-const testAnalysisByJobMatView = `
-SELECT
-    tests.id AS test_id,
-    tests.name AS test_name,
-    date(prow_job_run_tests.prow_job_run_timestamp) AS date,
-    prow_job_run_tests.prow_job_run_release AS release,
-    prow_jobs.name AS job_name,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.prow_job_run_timestamp >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_run_tests.prow_job_run_timestamp <= |||TIMENOW|||) AS runs,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_run_tests.prow_job_run_timestamp >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_run_tests.prow_job_run_timestamp <= |||TIMENOW|||) AS passes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_run_tests.prow_job_run_timestamp >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_run_tests.prow_job_run_timestamp <= |||TIMENOW|||) AS flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_run_tests.prow_job_run_timestamp >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_run_tests.prow_job_run_timestamp <= |||TIMENOW|||) AS failures
-FROM
-    prow_job_run_tests
-    JOIN tests ON tests.id = prow_job_run_tests.test_id
-    JOIN prow_jobs ON prow_jobs.id = prow_job_run_tests.prow_job_id
-WHERE
-    prow_job_run_tests.prow_job_run_timestamp > (|||TIMENOW||| - '14 days'::interval)
-GROUP BY
-    tests.name, tests.id, date(prow_job_run_tests.prow_job_run_timestamp), prow_job_run_tests.prow_job_run_release, prow_jobs.name
 `
 
 // TODO: remove distinct once bug fixed re dupes in release_job_runs
