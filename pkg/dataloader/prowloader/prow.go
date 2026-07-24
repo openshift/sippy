@@ -30,7 +30,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -814,59 +813,102 @@ func (pl *ProwLoader) syncPRStatus() error {
 		return nil
 	}
 
-	pulls := make([]models.ProwPullRequest, 0)
+	type orgRepo struct {
+		Org  string
+		Repo string
+	}
+	var repos []orgRepo
 	if res := pl.dbc.DB.
 		Table("prow_pull_requests").
-		Where("merged_at IS NULL").Scan(&pulls); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return errors.Wrap(res.Error, "could not fetch prow_pull_requests")
+		Select("DISTINCT org, repo").
+		Where("merged_at IS NULL").
+		Scan(&repos); res.Error != nil {
+		return errors.Wrap(res.Error, "could not fetch distinct repos from prow_pull_requests")
 	}
 
-	for _, pr := range pulls {
-		logger := log.WithField("org", pr.Org).
-			WithField("repo", pr.Repo).
-			WithField("number", pr.Number).
-			WithField("sha", pr.SHA)
-
-		// first check to see if this pr has recently closed (indicating it may have merged)
-		recentMergedAt, mergeCommitSha, err := pl.githubClient.IsPrRecentlyMerged(pr.Org, pr.Repo, pr.Number)
-
-		// the client should have logged the error, we want
-		// to see if we are rate limited or not, if so return
-		// otherwise keep processing
+	type mergedRow struct {
+		Org      string
+		Repo     string
+		Number   int
+		SHA      string
+		MergedAt time.Time
+	}
+	var allMerged []mergedRow
+	for _, r := range repos {
+		merged, err := pl.githubClient.ListRecentlyMergedPRs(r.Org, r.Repo)
 		if err != nil {
 			if pl.githubClient.IsWithinRateLimitThreshold() {
 				return err
 			}
+			continue
 		}
-
-		if recentMergedAt != nil {
-			// we have the recentMergedAt but, we don't know if it is associated with this SHA so do
-			// the SHA specific verification
-			if mergeCommitSha != nil && *mergeCommitSha == pr.SHA {
-				if pr.MergedAt != recentMergedAt {
-					pr.MergedAt = recentMergedAt
-					if res := pl.dbc.DB.Save(pr); res.Error != nil {
-						logger.WithError(res.Error).Errorf("unexpected error updating pull request %s (%s)", pr.Link, pr.SHA)
-						continue
-					}
-				}
-			}
-
-			// if we see that any sha has merged for this pr then we should clear out any risk analysis pending comment records
-			// if we don't get them here we will catch them before writing the risk analysis comment
-			// but, we should clean up here if possible
-			pendingComments, err := pl.ghCommenter.QueryPRPendingComments(pr.Org, pr.Repo, pr.Number, models.CommentTypeRiskAnalysis)
-
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				logger.WithError(err).Error("Unable to fetch pending comments ")
-			}
-
-			for _, pc := range pendingComments {
-				pcp := pc
-				pl.ghCommenter.ClearPendingRecord(pcp.Org, pcp.Repo, pcp.PullNumber, pcp.SHA, models.CommentTypeRiskAnalysis, &pcp)
-			}
+		for _, m := range merged {
+			allMerged = append(allMerged, mergedRow{
+				Org:      r.Org,
+				Repo:     r.Repo,
+				Number:   m.Number,
+				SHA:      m.HeadSHA,
+				MergedAt: m.MergedAt,
+			})
 		}
 	}
+
+	if len(allMerged) == 0 {
+		return nil
+	}
+
+	log.WithField("count", len(allMerged)).Info("syncing merged PR status in bulk")
+
+	ctx := pl.ctx
+	sqlDB, err := pl.dbc.DB.DB()
+	if err != nil {
+		return fmt.Errorf("getting sql.DB: %w", err)
+	}
+	conn, err := stdlib.AcquireConn(sqlDB)
+	if err != nil {
+		return fmt.Errorf("acquiring pgx conn: %w", err)
+	}
+	defer func() {
+		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
+			log.WithError(err).Error("failed to release pgx conn")
+		}
+	}()
+
+	cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_merged_prs", allMerged,
+		[]db.TempColumn[mergedRow]{
+			{Name: "org", Type: "text NOT NULL", Value: func(r *mergedRow) any { return r.Org }},
+			{Name: "repo", Type: "text NOT NULL", Value: func(r *mergedRow) any { return r.Repo }},
+			{Name: "number", Type: "int NOT NULL", Value: func(r *mergedRow) any { return r.Number }},
+			{Name: "sha", Type: "text NOT NULL", Value: func(r *mergedRow) any { return r.SHA }},
+			{Name: "merged_at", Type: "timestamptz NOT NULL", Value: func(r *mergedRow) any { return r.MergedAt }},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("copying merged PRs to temp table: %w", err)
+	}
+	defer cleanup()
+
+	res, err := conn.Exec(ctx, `
+		UPDATE prow_pull_requests p
+		SET merged_at = t.merged_at, updated_at = NOW()
+		FROM tmp_merged_prs t
+		WHERE p.sha = t.sha AND p.merged_at IS NULL
+	`)
+	if err != nil {
+		return fmt.Errorf("bulk updating merged_at: %w", err)
+	}
+	log.WithField("rows", res.RowsAffected()).Info("updated prow_pull_requests merged_at")
+
+	res, err = conn.Exec(ctx, `
+		DELETE FROM pull_request_comments c
+		USING (SELECT DISTINCT org, repo, number FROM tmp_merged_prs) t
+		WHERE c.org = t.org AND c.repo = t.repo AND c.pull_number = t.number
+			AND c.comment_type = $1
+	`, int(models.CommentTypeRiskAnalysis))
+	if err != nil {
+		return fmt.Errorf("bulk deleting pending comments for merged PRs: %w", err)
+	}
+	log.WithField("rows", res.RowsAffected()).Info("deleted pending risk analysis comments for merged PRs")
 
 	return nil
 }
