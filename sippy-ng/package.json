@@ -13,7 +13,7 @@
     "@mui/icons-material": "^5.14.16",
     "@mui/lab": "^5.0.0-alpha.152",
     "@mui/material": "^5.14.17",
-    "@mui/styles": "^6.5.0",
+    "@mui/styles": "^5.16.14",
     "@mui/x-data-grid": "^5.17.26",
     "@mui/x-date-pickers": "^5.0.20",
     "@testing-library/jest-dom": "^5.14.1",
