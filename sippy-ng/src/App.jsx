@@ -465,7 +465,6 @@ function App(props) {
   const [reportDate, setReportDate] = React.useState([])
   const [fetchError, setFetchError] = React.useState('')
 
-  // Disable console.log in production
   useEffect(() => {
     if (import.meta.env.PROD) {
       console.log = function () {}
