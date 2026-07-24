@@ -851,6 +851,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// vSphere hybrid-env jobs are not yet stable enough for component readiness
 		{[]string{"-hybrid-env"}, "candidate"},
 
+		// Nutanix upgrade job not yet stable due to CSI operator conformance failures
+		{[]string{"-e2e-nutanix-upgrade"}, "candidate"},
+
 		// All 4.19/4.20 MCO jobs default to candidate
 		{[]string{"machine-config-operator-release-4.19"}, "candidate"},
 		{[]string{"machine-config-operator-release-4.20"}, "candidate"},
