@@ -144,6 +144,43 @@ func TestExtractTestCases(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "passing test with lifecycle",
+			suite: &junit.TestSuite{
+				Name: "openshift-tests",
+				TestCases: []*junit.TestCase{
+					{Name: "test-a", Duration: 1.5, Lifecycle: "informing"},
+				},
+			},
+			expected: map[testCaseKey]*types.TestCaseEntry{
+				{SuiteName: "openshift-tests", TestName: "test-a"}: {
+					TestName:  "test-a",
+					SuiteName: "openshift-tests",
+					Status:    int(sippyprocessingv1.TestStatusSuccess),
+					Duration:  1.5,
+					Lifecycle: "informing",
+				},
+			},
+		},
+		{
+			name: "failing test with output and lifecycle",
+			suite: &junit.TestSuite{
+				Name: "openshift-tests",
+				TestCases: []*junit.TestCase{
+					{Name: "test-a", Duration: 2.0, FailureOutput: &junit.FailureOutput{Output: failMsg}, Lifecycle: "blocking"},
+				},
+			},
+			expected: map[testCaseKey]*types.TestCaseEntry{
+				{SuiteName: "openshift-tests", TestName: "test-a"}: {
+					TestName:  "test-a",
+					SuiteName: "openshift-tests",
+					Status:    int(sippyprocessingv1.TestStatusFailure),
+					Duration:  2.0,
+					Output:    &failMsg,
+					Lifecycle: "blocking",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
