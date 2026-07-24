@@ -465,11 +465,23 @@ function App(props) {
   const [reportDate, setReportDate] = React.useState([])
   const [fetchError, setFetchError] = React.useState('')
 
-  const fetchData = () => {
+  // Disable console.log in production
+  useEffect(() => {
+    if (import.meta.env.PROD) {
+      console.log = function () {}
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isLoaded) return
+
+    const controller = new AbortController()
+    const signal = controller.signal
+
     Promise.all([
-      fetch(import.meta.env.VITE_API_URL + '/api/releases'),
-      fetch(import.meta.env.VITE_API_URL + '/api/capabilities'),
-      fetch(import.meta.env.VITE_API_URL + '/api/report_date'),
+      fetch(import.meta.env.VITE_API_URL + '/api/releases', { signal }),
+      fetch(import.meta.env.VITE_API_URL + '/api/capabilities', { signal }),
+      fetch(import.meta.env.VITE_API_URL + '/api/report_date', { signal }),
     ])
       .then(([releases, sippyCapabilities, reportDate]) => {
         if (releases.status !== 200) {
@@ -505,22 +517,12 @@ function App(props) {
         setLoaded(true)
       })
       .catch((error) => {
+        if (error.name === 'AbortError') return
         setLoaded(true)
         setFetchError('could not retrieve data:' + error)
       })
-  }
 
-  // Disable console.log in production
-  useEffect(() => {
-    if (import.meta.env.PROD) {
-      console.log = function () {}
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!isLoaded) {
-      fetchData()
-    }
+    return () => controller.abort()
   }, [isLoaded])
 
   const handleDrawerOpen = () => {
@@ -569,6 +571,7 @@ function App(props) {
                   <QueryParamProvider
                     adapter={ReactRouter6Adapter}
                     options={{
+                      enableBatching: true,
                       searchStringToObject: parse,
                       objectToSearchString: stringify,
                     }}
