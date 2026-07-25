@@ -1,3 +1,4 @@
+import './chartSetup'
 import { AccessibilityModeProvider } from './components/AccessibilityModeProvider'
 import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
 import { createTheme, useTheme } from '@mui/material/styles'
