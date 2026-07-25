@@ -131,9 +131,9 @@ func VariantReports(dbc *db.DB, release string, start, boundary, end time.Time) 
 	q := dbc.DB.Raw(`
 WITH results AS (
         select unnest(prow_jobs.variants) as variant,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_fails,
-                coalesce(count(case when timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_runs,
+                coalesce(count(case when succeeded = true AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_passes,
+                coalesce(count(case when succeeded = false AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_fails,
+                coalesce(count(case when timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_runs,
                 coalesce(count(case when succeeded = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_passes,
                 coalesce(count(case when succeeded = false AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_fails,        
                 coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs
