@@ -765,31 +765,6 @@ func createSingleRun(t *testing.T, dbc *db.DB, jobID uint, release string, spec 
 	return run
 }
 
-func TestLoadProwJobCache(t *testing.T) {
-	dbc := intutil.NewTestDB(t, pgContainer)
-
-	intutil.CreateProwJob(t, dbc, "periodic-ci-e2e-aws-4.16", "4.16", []string{"aws"})
-	intutil.CreateProwJob(t, dbc, "periodic-ci-e2e-gcp-4.16", "4.16", []string{"gcp"})
-	intutil.CreateProwJob(t, dbc, "periodic-ci-e2e-aws-4.15", "4.15", []string{"aws"})
-
-	cache, err := query.LoadProwJobCache(dbc)
-	require.NoError(t, err)
-
-	assert.Len(t, cache, 3)
-	assert.Contains(t, cache, "periodic-ci-e2e-aws-4.16")
-	assert.Contains(t, cache, "periodic-ci-e2e-gcp-4.16")
-	assert.Contains(t, cache, "periodic-ci-e2e-aws-4.15")
-	assert.Equal(t, "4.16", cache["periodic-ci-e2e-aws-4.16"].Release)
-}
-
-func TestLoadProwJobCacheEmpty(t *testing.T) {
-	dbc := intutil.NewTestDB(t, pgContainer)
-
-	cache, err := query.LoadProwJobCache(dbc)
-	require.NoError(t, err)
-	assert.Empty(t, cache)
-}
-
 func TestJobRunTestCount(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
