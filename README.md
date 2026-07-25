@@ -29,9 +29,11 @@ See [the front end documentation](sippy-ng/README.md)
 After cloning or restoring the production database to staging, query
 performance will be degraded due to stale planner statistics and
 lazy-loaded EBS storage. Run `scripts/analyze-db.sh` to warm up the
-database via a one-shot pod that runs `ANALYZE VERBOSE` (updates planner
-statistics) and `REINDEX DATABASE CONCURRENTLY` (forces index pages off
-lazy-loaded storage):
+database via a one-shot pod that runs three steps: `ANALYZE VERBOSE`
+(updates planner statistics), `REINDEX DATABASE CONCURRENTLY` (forces
+index pages off lazy-loaded storage), and a cache warming pass that runs
+`SELECT count(*)` on every table (scoped to the last 30 days for tables
+with date/timestamp columns) to pull hot heap pages off S3:
 
 ```bash
 ./scripts/analyze-db.sh
