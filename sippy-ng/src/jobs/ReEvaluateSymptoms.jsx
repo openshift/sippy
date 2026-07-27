@@ -104,10 +104,12 @@ export default function ReEvaluateButton({
   const [snackbar, setSnackbar] = useState(null)
   const pollTimerRef = useRef(null)
   const taskIDRef = useRef(null)
+  const pollingActiveRef = useRef(false)
 
   // Clean up polling on unmount
   useEffect(() => {
     return () => {
+      pollingActiveRef.current = false
       if (pollTimerRef.current) {
         clearTimeout(pollTimerRef.current)
       }
@@ -218,11 +220,15 @@ export default function ReEvaluateButton({
   const startPolling = useCallback(
     (taskID, total) => {
       taskIDRef.current = taskID
+      pollingActiveRef.current = true
       let pollCount = 0
 
       const poll = async () => {
+        if (!pollingActiveRef.current) return
+
         pollCount++
         if (pollCount > MAX_POLL_COUNT) {
+          pollingActiveRef.current = false
           pollTimerRef.current = null
           setRunning(false)
           setSnackbar({
@@ -235,6 +241,7 @@ export default function ReEvaluateButton({
 
         try {
           const task = await pollTaskStatus(taskID)
+          if (!pollingActiveRef.current) return
 
           setProgress({
             total: task.total,
@@ -243,6 +250,7 @@ export default function ReEvaluateButton({
           })
 
           if (task.status === 'completed' || task.status === 'failed') {
+            pollingActiveRef.current = false
             pollTimerRef.current = null
             setRunning(false)
 
@@ -258,8 +266,12 @@ export default function ReEvaluateButton({
           }
 
           // Schedule the next poll only after this one completes.
-          pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS)
+          if (pollingActiveRef.current) {
+            pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS)
+          }
         } catch (err) {
+          if (!pollingActiveRef.current) return
+          pollingActiveRef.current = false
           pollTimerRef.current = null
           setRunning(false)
           setSnackbar({

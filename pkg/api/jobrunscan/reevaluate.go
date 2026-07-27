@@ -77,10 +77,11 @@ type ReEvalTaskResponse struct {
 // TaskStore provides thread-safe in-memory storage for async re-evaluation tasks.
 // Completed tasks are automatically cleaned up after the configured TTL.
 type TaskStore struct {
-	mu    sync.RWMutex
-	tasks map[string]*ReEvalTask
-	ttl   time.Duration
-	done  chan struct{}
+	mu       sync.RWMutex
+	tasks    map[string]*ReEvalTask
+	ttl      time.Duration
+	done     chan struct{}
+	stopOnce sync.Once
 }
 
 // NewTaskStore creates a TaskStore that removes completed tasks after the given TTL.
@@ -95,9 +96,12 @@ func NewTaskStore(ttl time.Duration) *TaskStore {
 	return s
 }
 
-// Stop terminates the background cleanup goroutine.
+// Stop terminates the background cleanup goroutine. It is safe to call
+// multiple times; only the first call closes the channel.
 func (s *TaskStore) Stop() {
-	close(s.done)
+	s.stopOnce.Do(func() {
+		close(s.done)
+	})
 }
 
 // TaskCreated holds the immutable snapshot returned by Create so callers
