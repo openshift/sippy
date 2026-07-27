@@ -21,9 +21,9 @@ func BuildClusterHealth(dbc *db.DB, start, boundary, end time.Time) ([]models.Bu
 	rawResults := dbc.DB.Select(`
 		ROW_NUMBER() OVER() AS id,
 		cluster,
-		coalesce(count(case when succeeded = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_passes,
-		coalesce(count(case when succeeded = false AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_failures,
-		coalesce(count(case when timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_runs,
+		coalesce(count(case when succeeded = true AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_passes,
+		coalesce(count(case when succeeded = false AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_fails,
+		coalesce(count(case when timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_runs,
 		coalesce(count(case when succeeded = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_passes,
 		coalesce(count(case when succeeded = false AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_fails,
 		coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs
