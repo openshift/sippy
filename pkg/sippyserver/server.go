@@ -3013,6 +3013,10 @@ func (s *Server) Serve() {
 		if err := s.httpServer.Shutdown(ctx); err != nil {
 			log.WithError(err).Error("Error during server shutdown")
 		}
+		// Stop the task-store cleanup goroutine to prevent a leak.
+		if s.reEvalTaskStore != nil {
+			s.reEvalTaskStore.Stop()
+		}
 	}()
 
 	if err := s.httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {

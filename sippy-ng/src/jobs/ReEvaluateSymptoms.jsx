@@ -14,6 +14,8 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 
 const POLL_INTERVAL_MS = 2000
 const MAX_RETRIES = 1
+const MAX_POLL_COUNT = 300 // ~10 minutes at 2s intervals
+const RETRY_DELAY_MS = 1000
 
 async function submitReEvaluation(buildIDs) {
   const response = await fetch(
@@ -107,7 +109,7 @@ export default function ReEvaluateButton({
   useEffect(() => {
     return () => {
       if (pollTimerRef.current) {
-        clearInterval(pollTimerRef.current)
+        clearTimeout(pollTimerRef.current)
       }
     }
   }, [])
@@ -216,8 +218,21 @@ export default function ReEvaluateButton({
   const startPolling = useCallback(
     (taskID, total) => {
       taskIDRef.current = taskID
+      let pollCount = 0
 
-      pollTimerRef.current = setInterval(async () => {
+      const poll = async () => {
+        pollCount++
+        if (pollCount > MAX_POLL_COUNT) {
+          pollTimerRef.current = null
+          setRunning(false)
+          setSnackbar({
+            severity: 'error',
+            message:
+              'Re-evaluation timed out: polling exceeded maximum duration (~10 min)',
+          })
+          return
+        }
+
         try {
           const task = await pollTaskStatus(taskID)
 
@@ -228,7 +243,6 @@ export default function ReEvaluateButton({
           })
 
           if (task.status === 'completed' || task.status === 'failed') {
-            clearInterval(pollTimerRef.current)
             pollTimerRef.current = null
             setRunning(false)
 
@@ -240,9 +254,12 @@ export default function ReEvaluateButton({
             } else {
               handleTaskComplete(task.results || [])
             }
+            return
           }
+
+          // Schedule the next poll only after this one completes.
+          pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS)
         } catch (err) {
-          clearInterval(pollTimerRef.current)
           pollTimerRef.current = null
           setRunning(false)
           setSnackbar({
@@ -250,7 +267,10 @@ export default function ReEvaluateButton({
             message: `Error polling task status: ${err.message}`,
           })
         }
-      }, POLL_INTERVAL_MS)
+      }
+
+      // Kick off the first poll after one interval.
+      pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS)
     },
     [handleTaskComplete]
   )
@@ -271,9 +291,13 @@ export default function ReEvaluateButton({
         return
       } catch (err) {
         lastError = err
-        if (attempt < MAX_RETRIES) {
-          continue
+        // Only retry on network errors (TypeError from fetch);
+        // HTTP errors (thrown as Error by submitReEvaluation) should not be retried
+        // because the server already created a task.
+        if (!(err instanceof TypeError) || attempt >= MAX_RETRIES) {
+          break
         }
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
       }
     }
 
@@ -291,7 +315,11 @@ export default function ReEvaluateButton({
       <Stack spacing={0.5} sx={{ minWidth: 200 }}>
         <LinearProgress
           variant="determinate"
-          value={(progress.processed / progress.total) * 100}
+          value={
+            progress.total > 0
+              ? (progress.processed / progress.total) * 100
+              : 0
+          }
         />
         <Typography variant="caption" color="text.secondary">
           {progress.processed}/{progress.total} completed

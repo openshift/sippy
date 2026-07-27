@@ -222,39 +222,45 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 		return
 	}
 
-	task := s.reEvalTaskStore.Create(len(body.ProwJobBuildIDs))
+	created := s.reEvalTaskStore.Create(len(body.ProwJobBuildIDs))
 	baseURL := api.GetBaseURL(req)
+
+	// Build the response from the immutable TaskCreated snapshot BEFORE
+	// launching the goroutine to avoid a data race on the task pointer.
+	resp := apijobrunscan.ReEvalTaskResponse{
+		ID:        created.ID,
+		Status:    created.Status,
+		Processed: 0,
+		Total:     created.Total,
+		Results:   []apijobrunscan.ReEvaluationResult{},
+		CreatedAt: created.CreatedAt,
+	}
+	apijobrunscan.InjectTaskHATEOASLinks(&resp, baseURL)
+
+	// Capture taskID for the goroutine so it never touches the response.
+	taskID := created.ID
 
 	// Launch background processing. Use a detached context so the goroutine
 	// is not cancelled when the HTTP request completes.
 	go func() {
 		ctx := context.Background()
-		s.reEvalTaskStore.SetRunning(task.ID)
+		s.reEvalTaskStore.SetRunning(taskID)
 
 		re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, body.DryRun)
 		symptoms, err := re.LoadActiveSymptoms()
 		if err != nil {
-			s.reEvalTaskStore.Complete(task.ID, err)
+			s.reEvalTaskStore.Complete(taskID, err)
 			return
 		}
 
 		for _, buildID := range body.ProwJobBuildIDs {
 			result := re.ReEvaluateOne(ctx, buildID, symptoms)
-			s.reEvalTaskStore.AppendResult(task.ID, result)
+			s.reEvalTaskStore.AppendResult(taskID, result)
 		}
 
-		s.reEvalTaskStore.Complete(task.ID, nil)
+		s.reEvalTaskStore.Complete(taskID, nil)
 	}()
 
-	resp := apijobrunscan.ReEvalTaskResponse{
-		ID:        task.ID,
-		Status:    task.Status,
-		Processed: task.Processed,
-		Total:     task.Total,
-		Results:   task.Results,
-		CreatedAt: task.CreatedAt,
-	}
-	apijobrunscan.InjectTaskHATEOASLinks(&resp, baseURL)
 	api.RespondWithJSON(http.StatusAccepted, w, resp)
 }
 

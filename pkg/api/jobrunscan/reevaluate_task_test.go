@@ -10,39 +10,39 @@ func TestTaskStoreCreateAndGet(t *testing.T) {
 	store := NewTaskStore(1 * time.Hour)
 	defer store.Stop()
 
-	task := store.Create(10)
-	if task.ID == "" {
+	created := store.Create(10)
+	if created.ID == "" {
 		t.Fatal("expected non-empty task ID")
 	}
-	if task.Status != ReEvalTaskPending {
-		t.Errorf("expected status %q, got %q", ReEvalTaskPending, task.Status)
+	if created.Status != ReEvalTaskPending {
+		t.Errorf("expected status %q, got %q", ReEvalTaskPending, created.Status)
 	}
-	if task.Total != 10 {
-		t.Errorf("expected total 10, got %d", task.Total)
+	if created.Total != 10 {
+		t.Errorf("expected total 10, got %d", created.Total)
 	}
-	if task.Processed != 0 {
-		t.Errorf("expected processed 0, got %d", task.Processed)
-	}
-	if len(task.Results) != 0 {
-		t.Errorf("expected empty results, got %d", len(task.Results))
-	}
-	if task.CreatedAt.IsZero() {
+	if created.CreatedAt.IsZero() {
 		t.Error("expected non-zero CreatedAt")
-	}
-	if task.CompletedAt != nil {
-		t.Error("expected nil CompletedAt")
 	}
 
 	// Get returns a copy
-	got := store.Get(task.ID)
+	got := store.Get(created.ID)
 	if got == nil {
 		t.Fatal("expected to find task")
 	}
-	if got.ID != task.ID {
-		t.Errorf("expected ID %q, got %q", task.ID, got.ID)
+	if got.ID != created.ID {
+		t.Errorf("expected ID %q, got %q", created.ID, got.ID)
 	}
 	if got.Status != ReEvalTaskPending {
 		t.Errorf("expected status %q, got %q", ReEvalTaskPending, got.Status)
+	}
+	if got.Processed != 0 {
+		t.Errorf("expected processed 0, got %d", got.Processed)
+	}
+	if len(got.Results) != 0 {
+		t.Errorf("expected empty results, got %d", len(got.Results))
+	}
+	if got.CompletedAt != nil {
+		t.Error("expected nil CompletedAt")
 	}
 
 	// Get unknown ID returns nil
@@ -55,14 +55,14 @@ func TestTaskStoreGetReturnsCopy(t *testing.T) {
 	store := NewTaskStore(1 * time.Hour)
 	defer store.Stop()
 
-	task := store.Create(5)
-	got := store.Get(task.ID)
+	created := store.Create(5)
+	got := store.Get(created.ID)
 
 	// Mutating the returned copy should not affect the store
 	got.Status = ReEvalTaskCompleted
 	got.Processed = 99
 
-	original := store.Get(task.ID)
+	original := store.Get(created.ID)
 	if original.Status != ReEvalTaskPending {
 		t.Errorf("store mutation leaked: expected status %q, got %q", ReEvalTaskPending, original.Status)
 	}
@@ -71,24 +71,46 @@ func TestTaskStoreGetReturnsCopy(t *testing.T) {
 	}
 }
 
+func TestTaskStoreGetDeepCopiesCompletedAt(t *testing.T) {
+	store := NewTaskStore(1 * time.Hour)
+	defer store.Stop()
+
+	created := store.Create(1)
+	store.Complete(created.ID, nil)
+
+	got := store.Get(created.ID)
+	if got.CompletedAt == nil {
+		t.Fatal("expected non-nil CompletedAt")
+	}
+
+	// Mutating CompletedAt on the copy must not affect the store.
+	modified := got.CompletedAt.Add(1 * time.Hour)
+	got.CompletedAt = &modified
+
+	original := store.Get(created.ID)
+	if original.CompletedAt.Equal(modified) {
+		t.Error("CompletedAt pointer was shared between store and copy")
+	}
+}
+
 func TestTaskStoreProgressTracking(t *testing.T) {
 	store := NewTaskStore(1 * time.Hour)
 	defer store.Stop()
 
-	task := store.Create(3)
+	created := store.Create(3)
 
-	store.SetRunning(task.ID)
-	got := store.Get(task.ID)
+	store.SetRunning(created.ID)
+	got := store.Get(created.ID)
 	if got.Status != ReEvalTaskRunning {
 		t.Errorf("expected status %q, got %q", ReEvalTaskRunning, got.Status)
 	}
 
 	// Append results one at a time
-	store.AppendResult(task.ID, ReEvaluationResult{
+	store.AppendResult(created.ID, ReEvaluationResult{
 		ProwJobBuildID: "111",
 		Status:         ReEvalSuccess,
 	})
-	got = store.Get(task.ID)
+	got = store.Get(created.ID)
 	if got.Processed != 1 {
 		t.Errorf("expected processed 1, got %d", got.Processed)
 	}
@@ -96,17 +118,17 @@ func TestTaskStoreProgressTracking(t *testing.T) {
 		t.Errorf("expected 1 result, got %d", len(got.Results))
 	}
 
-	store.AppendResult(task.ID, ReEvaluationResult{
+	store.AppendResult(created.ID, ReEvaluationResult{
 		ProwJobBuildID: "222",
 		Status:         ReEvalMissingError,
 		Error:          "not found",
 	})
-	store.AppendResult(task.ID, ReEvaluationResult{
+	store.AppendResult(created.ID, ReEvaluationResult{
 		ProwJobBuildID: "333",
 		Status:         ReEvalSuccess,
 	})
 
-	got = store.Get(task.ID)
+	got = store.Get(created.ID)
 	if got.Processed != 3 {
 		t.Errorf("expected processed 3, got %d", got.Processed)
 	}
@@ -123,8 +145,8 @@ func TestTaskStoreProgressTracking(t *testing.T) {
 	}
 
 	// Complete the task
-	store.Complete(task.ID, nil)
-	got = store.Get(task.ID)
+	store.Complete(created.ID, nil)
+	got = store.Get(created.ID)
 	if got.Status != ReEvalTaskCompleted {
 		t.Errorf("expected status %q, got %q", ReEvalTaskCompleted, got.Status)
 	}
@@ -140,11 +162,11 @@ func TestTaskStoreCompleteWithError(t *testing.T) {
 	store := NewTaskStore(1 * time.Hour)
 	defer store.Stop()
 
-	task := store.Create(5)
-	store.SetRunning(task.ID)
+	created := store.Create(5)
+	store.SetRunning(created.ID)
 
-	store.Complete(task.ID, errForTest("symptom load failed"))
-	got := store.Get(task.ID)
+	store.Complete(created.ID, errForTest("symptom load failed"))
+	got := store.Get(created.ID)
 	if got.Status != ReEvalTaskFailed {
 		t.Errorf("expected status %q, got %q", ReEvalTaskFailed, got.Status)
 	}
@@ -160,8 +182,8 @@ func TestTaskStoreConcurrentAccess(t *testing.T) {
 	store := NewTaskStore(1 * time.Hour)
 	defer store.Stop()
 
-	task := store.Create(100)
-	store.SetRunning(task.ID)
+	created := store.Create(100)
+	store.SetRunning(created.ID)
 
 	var wg sync.WaitGroup
 
@@ -170,7 +192,7 @@ func TestTaskStoreConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			store.AppendResult(task.ID, ReEvaluationResult{
+			store.AppendResult(created.ID, ReEvaluationResult{
 				ProwJobBuildID: makeIDs(1)[0],
 				Status:         ReEvalSuccess,
 			})
@@ -182,7 +204,7 @@ func TestTaskStoreConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			got := store.Get(task.ID)
+			got := store.Get(created.ID)
 			if got == nil {
 				t.Error("expected to find task during concurrent read")
 			}
@@ -191,7 +213,7 @@ func TestTaskStoreConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 
-	got := store.Get(task.ID)
+	got := store.Get(created.ID)
 	if got.Processed != 100 {
 		t.Errorf("expected processed 100 after concurrent writes, got %d", got.Processed)
 	}
@@ -202,11 +224,11 @@ func TestTaskStoreCleanupExpired(t *testing.T) {
 	store := NewTaskStore(50 * time.Millisecond)
 	defer store.Stop()
 
-	task1 := store.Create(1)
-	task2 := store.Create(1)
+	created1 := store.Create(1)
+	created2 := store.Create(1)
 
-	// Complete task1 but leave task2 pending
-	store.Complete(task1.ID, nil)
+	// Complete created1 but leave created2 pending
+	store.Complete(created1.ID, nil)
 
 	// Wait for the TTL to expire
 	time.Sleep(100 * time.Millisecond)
@@ -214,13 +236,13 @@ func TestTaskStoreCleanupExpired(t *testing.T) {
 	// Manually trigger cleanup (don't wait for the 5-minute ticker)
 	store.removeExpired()
 
-	// task1 should be cleaned up (completed + expired)
-	if store.Get(task1.ID) != nil {
+	// created1 should be cleaned up (completed + expired)
+	if store.Get(created1.ID) != nil {
 		t.Error("expected completed+expired task to be cleaned up")
 	}
 
-	// task2 should still exist (not completed)
-	if store.Get(task2.ID) == nil {
+	// created2 should still exist (not completed)
+	if store.Get(created2.ID) == nil {
 		t.Error("expected pending task to survive cleanup")
 	}
 }
@@ -229,13 +251,13 @@ func TestTaskStoreCleanupKeepsRecent(t *testing.T) {
 	store := NewTaskStore(1 * time.Hour)
 	defer store.Stop()
 
-	task := store.Create(1)
-	store.Complete(task.ID, nil)
+	created := store.Create(1)
+	store.Complete(created.ID, nil)
 
 	// Cleanup should not remove recently completed tasks
 	store.removeExpired()
 
-	if store.Get(task.ID) == nil {
+	if store.Get(created.ID) == nil {
 		t.Error("expected recently completed task to survive cleanup")
 	}
 }
@@ -244,21 +266,21 @@ func TestTaskStoreMultipleTasks(t *testing.T) {
 	store := NewTaskStore(1 * time.Hour)
 	defer store.Stop()
 
-	task1 := store.Create(5)
-	task2 := store.Create(10)
+	created1 := store.Create(5)
+	created2 := store.Create(10)
 
-	if task1.ID == task2.ID {
+	if created1.ID == created2.ID {
 		t.Error("expected unique task IDs")
 	}
 
-	store.SetRunning(task1.ID)
-	store.AppendResult(task1.ID, ReEvaluationResult{
+	store.SetRunning(created1.ID)
+	store.AppendResult(created1.ID, ReEvaluationResult{
 		ProwJobBuildID: "111",
 		Status:         ReEvalSuccess,
 	})
 
-	// task2 should be unaffected
-	got2 := store.Get(task2.ID)
+	// created2 should be unaffected
+	got2 := store.Get(created2.ID)
 	if got2.Status != ReEvalTaskPending {
 		t.Errorf("expected task2 status %q, got %q", ReEvalTaskPending, got2.Status)
 	}
@@ -266,7 +288,7 @@ func TestTaskStoreMultipleTasks(t *testing.T) {
 		t.Errorf("expected task2 processed 0, got %d", got2.Processed)
 	}
 
-	got1 := store.Get(task1.ID)
+	got1 := store.Get(created1.ID)
 	if got1.Status != ReEvalTaskRunning {
 		t.Errorf("expected task1 status %q, got %q", ReEvalTaskRunning, got1.Status)
 	}

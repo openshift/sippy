@@ -100,8 +100,19 @@ func (s *TaskStore) Stop() {
 	close(s.done)
 }
 
-// Create initializes a new pending task for the given number of job runs and returns it.
-func (s *TaskStore) Create(total int) *ReEvalTask {
+// TaskCreated holds the immutable snapshot returned by Create so callers
+// never share a pointer with the internal map entry.
+type TaskCreated struct {
+	ID        string
+	Status    ReEvalTaskStatus
+	Total     int
+	CreatedAt time.Time
+}
+
+// Create initializes a new pending task for the given number of job runs.
+// It returns a TaskCreated snapshot (not a pointer into the store) so the
+// caller can build an HTTP response without a data race.
+func (s *TaskStore) Create(total int) TaskCreated {
 	task := &ReEvalTask{
 		ID:        uuid.New().String(),
 		Status:    ReEvalTaskPending,
@@ -113,7 +124,12 @@ func (s *TaskStore) Create(total int) *ReEvalTask {
 	s.tasks[task.ID] = task
 	s.mu.Unlock()
 	log.WithFields(log.Fields{"taskID": task.ID, "total": total}).Info("symptom reEval: created async task")
-	return task
+	return TaskCreated{
+		ID:        task.ID,
+		Status:    task.Status,
+		Total:     task.Total,
+		CreatedAt: task.CreatedAt,
+	}
 }
 
 // Get returns a snapshot of the task with the given ID, or nil if not found.
@@ -125,10 +141,14 @@ func (s *TaskStore) Get(id string) *ReEvalTask {
 		s.mu.RUnlock()
 		return nil
 	}
-	// Return a copy to avoid data races on the caller side.
+	// Return a deep copy to avoid data races on the caller side.
 	cp := *task
 	cp.Results = make([]ReEvaluationResult, len(task.Results))
 	copy(cp.Results, task.Results)
+	if task.CompletedAt != nil {
+		t := *task.CompletedAt
+		cp.CompletedAt = &t
+	}
 	if task.Links != nil {
 		cp.Links = make(map[string]string, len(task.Links))
 		for k, v := range task.Links {
