@@ -3,7 +3,10 @@ package sippyserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"runtime/debug"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/openshift/sippy/pkg/api"
@@ -222,6 +225,12 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 		return
 	}
 
+	if !s.reEvalTaskStore.TryAcquire() {
+		failureResponse(w, http.StatusTooManyRequests,
+			fmt.Sprintf("too many concurrent re-evaluation tasks (max %d); retry later", apijobrunscan.MaxConcurrentTasks))
+		return
+	}
+
 	created := s.reEvalTaskStore.Create(len(body.ProwJobBuildIDs))
 	baseURL := api.GetBaseURL(req)
 
@@ -240,10 +249,29 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 	// Capture taskID for the goroutine so it never touches the response.
 	taskID := created.ID
 
-	// Launch background processing. Use a detached context so the goroutine
-	// is not cancelled when the HTTP request completes.
+	// Launch background processing. Use a detached context with a timeout
+	// so the goroutine is not cancelled when the HTTP request completes
+	// but cannot run indefinitely.
+	s.reEvalTaskStore.TrackGoroutine()
 	go func() {
-		ctx := context.Background()
+		defer s.reEvalTaskStore.GoroutineDone()
+		defer s.reEvalTaskStore.Release()
+
+		// Recover from panics to prevent taking down the entire process.
+		defer func() {
+			if r := recover(); r != nil {
+				log.WithFields(log.Fields{
+					"taskID": taskID,
+					"panic":  r,
+					"stack":  string(debug.Stack()),
+				}).Error("symptom reEval: panic in background goroutine")
+				s.reEvalTaskStore.Complete(taskID, fmt.Errorf("internal error: panic during re-evaluation"))
+			}
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		defer cancel()
+
 		s.reEvalTaskStore.SetRunning(taskID)
 
 		re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, body.DryRun)
@@ -253,7 +281,12 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 			return
 		}
 
-		for _, buildID := range body.ProwJobBuildIDs {
+		for i, buildID := range body.ProwJobBuildIDs {
+			if err := ctx.Err(); err != nil {
+				s.reEvalTaskStore.Complete(taskID, fmt.Errorf("context cancelled after processing %d/%d job runs: %w",
+					i, len(body.ProwJobBuildIDs), err))
+				return
+			}
 			result := re.ReEvaluateOne(ctx, buildID, symptoms)
 			s.reEvalTaskStore.AppendResult(taskID, result)
 		}

@@ -36,6 +36,10 @@ const (
 	maxJobRunsPerReq    = 50
 	maxJobRunsAsyncReq  = 500
 	DefaultTaskStoreTTL = 1 * time.Hour
+
+	// MaxConcurrentTasks limits the number of async re-evaluation goroutines
+	// that can run simultaneously, preventing resource exhaustion under load.
+	MaxConcurrentTasks = 5
 )
 
 // ReEvalTaskStatus indicates the lifecycle state of an async re-evaluation task.
@@ -82,6 +86,8 @@ type TaskStore struct {
 	ttl      time.Duration
 	done     chan struct{}
 	stopOnce sync.Once
+	sem      chan struct{}
+	wg       sync.WaitGroup
 }
 
 // NewTaskStore creates a TaskStore that removes completed tasks after the given TTL.
@@ -91,17 +97,46 @@ func NewTaskStore(ttl time.Duration) *TaskStore {
 		tasks: make(map[string]*ReEvalTask),
 		ttl:   ttl,
 		done:  make(chan struct{}),
+		sem:   make(chan struct{}, MaxConcurrentTasks),
 	}
 	go s.cleanup()
 	return s
 }
 
-// Stop terminates the background cleanup goroutine. It is safe to call
-// multiple times; only the first call closes the channel.
+// Stop terminates the background cleanup goroutine and waits for all
+// in-flight goroutines to finish. It is safe to call multiple times;
+// only the first call closes the channel.
 func (s *TaskStore) Stop() {
 	s.stopOnce.Do(func() {
 		close(s.done)
 	})
+	s.wg.Wait()
+}
+
+// TryAcquire attempts to acquire a concurrency slot. Returns false if
+// the maximum number of concurrent tasks is already running.
+func (s *TaskStore) TryAcquire() bool {
+	select {
+	case s.sem <- struct{}{}:
+		return true
+	default:
+		return false
+	}
+}
+
+// Release frees a concurrency slot previously acquired by TryAcquire.
+func (s *TaskStore) Release() {
+	<-s.sem
+}
+
+// TrackGoroutine increments the WaitGroup so Stop() can wait for in-flight work.
+func (s *TaskStore) TrackGoroutine() {
+	s.wg.Add(1)
+}
+
+// GoroutineDone decrements the WaitGroup when a background goroutine finishes.
+func (s *TaskStore) GoroutineDone() {
+	s.wg.Done()
 }
 
 // TaskCreated holds the immutable snapshot returned by Create so callers
@@ -219,14 +254,21 @@ func (s *TaskStore) cleanup() {
 }
 
 // removeExpired deletes terminal tasks whose CompletedAt is older than the TTL.
+// It also removes any task (including stuck running/pending ones) whose
+// CreatedAt exceeds the TTL, preventing indefinite memory leaks from
+// goroutines that hang or panic without completing the task.
 func (s *TaskStore) removeExpired() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cutoff := time.Now().Add(-s.ttl)
 	for id, t := range s.tasks {
-		if t.CompletedAt != nil && t.CompletedAt.Before(cutoff) {
+		if (t.CompletedAt != nil && t.CompletedAt.Before(cutoff)) ||
+			t.CreatedAt.Before(cutoff) {
 			delete(s.tasks, id)
-			log.WithField("taskID", id).Debug("symptom reEval: cleaned up expired task")
+			log.WithFields(log.Fields{
+				"taskID": id,
+				"status": t.Status,
+			}).Debug("symptom reEval: cleaned up expired task")
 		}
 	}
 }

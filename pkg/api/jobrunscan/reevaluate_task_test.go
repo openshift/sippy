@@ -241,9 +241,16 @@ func TestTaskStoreCleanupExpired(t *testing.T) {
 		t.Error("expected completed+expired task to be cleaned up")
 	}
 
-	// created2 should still exist (not completed)
-	if store.Get(created2.ID) == nil {
-		t.Error("expected pending task to survive cleanup")
+	// created2 should also be cleaned up (stuck pending past TTL based on CreatedAt)
+	if store.Get(created2.ID) != nil {
+		t.Error("expected stuck pending task to be cleaned up after TTL based on CreatedAt")
+	}
+
+	// Verify that a newly created task is NOT cleaned up
+	created3 := store.Create(1)
+	store.removeExpired()
+	if store.Get(created3.ID) == nil {
+		t.Error("expected fresh pending task to survive cleanup")
 	}
 }
 
@@ -309,6 +316,83 @@ func TestInjectTaskHATEOASLinks(t *testing.T) {
 	}
 	if resp.Links["reevaluate"] != "http://localhost:8080/api/jobs/runs/reevaluate" {
 		t.Errorf("unexpected reevaluate link: %q", resp.Links["reevaluate"])
+	}
+}
+
+func TestTaskStoreCleanupStuckByCreatedAt(t *testing.T) {
+	store := NewTaskStore(50 * time.Millisecond)
+	defer store.Stop()
+
+	// Create a task but never complete it (simulates a stuck goroutine).
+	created := store.Create(10)
+	store.SetRunning(created.ID)
+
+	// Verify the task exists while TTL has not expired.
+	if store.Get(created.ID) == nil {
+		t.Fatal("expected stuck task to exist before TTL expiry")
+	}
+
+	// Wait for the TTL to expire.
+	time.Sleep(100 * time.Millisecond)
+
+	// removeExpired should clean up based on CreatedAt even though
+	// CompletedAt is nil (task was never completed).
+	store.removeExpired()
+
+	if store.Get(created.ID) != nil {
+		t.Error("expected stuck (never-completed) task to be cleaned up after TTL based on CreatedAt")
+	}
+}
+
+func TestTaskStoreTryAcquireRelease(t *testing.T) {
+	store := NewTaskStore(1 * time.Hour)
+	defer store.Stop()
+
+	// Acquire all available slots.
+	for i := 0; i < MaxConcurrentTasks; i++ {
+		if !store.TryAcquire() {
+			t.Fatalf("expected TryAcquire to succeed on slot %d", i)
+		}
+	}
+
+	// The next acquire should fail since all slots are taken.
+	if store.TryAcquire() {
+		t.Error("expected TryAcquire to fail when at capacity")
+	}
+
+	// Release one slot and verify we can acquire again.
+	store.Release()
+	if !store.TryAcquire() {
+		t.Error("expected TryAcquire to succeed after Release")
+	}
+
+	// Clean up remaining slots.
+	for i := 0; i < MaxConcurrentTasks; i++ {
+		store.Release()
+	}
+}
+
+func TestTaskStoreTrackGoroutine(t *testing.T) {
+	store := NewTaskStore(1 * time.Hour)
+
+	store.TrackGoroutine()
+	done := make(chan struct{})
+	go func() {
+		defer store.GoroutineDone()
+		// Simulate some work.
+		time.Sleep(20 * time.Millisecond)
+	}()
+
+	go func() {
+		store.Stop() // Stop waits for the WaitGroup
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Stop returned after goroutine finished — success.
+	case <-time.After(2 * time.Second):
+		t.Fatal("Stop() did not return after goroutine finished")
 	}
 }
 
