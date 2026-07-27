@@ -837,7 +837,7 @@ type TestFailureAnalysis struct {
 	// BlockerScoreReasons explain to humans why the blocker_score was given.
 	BlockerScoreReasons []string `json:"blocker_score_reasons"`
 
-	// FailedPayloads contains information about where this test failed in a specific rejected payload.
+	// FailedPayloads contains information about where this test failed in a specific payload.
 	FailedPayloads map[string]*FailedPayload `json:"failed_payloads"`
 }
 
