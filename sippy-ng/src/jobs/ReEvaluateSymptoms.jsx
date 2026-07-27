@@ -218,7 +218,7 @@ export default function ReEvaluateButton({
   )
 
   const startPolling = useCallback(
-    (taskID, total) => {
+    (taskID) => {
       taskIDRef.current = taskID
       pollingActiveRef.current = true
       let pollCount = 0
@@ -299,7 +299,7 @@ export default function ReEvaluateButton({
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         const data = await submitReEvaluation(prowJobBuildIDs)
-        startPolling(data.id, total)
+        startPolling(data.id)
         return
       } catch (err) {
         lastError = err
