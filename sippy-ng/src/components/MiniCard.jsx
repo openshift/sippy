@@ -18,7 +18,7 @@ const useStyles = makeStyles({
   cardContent: {
     textAlign: 'center',
   },
-  miniCard: (props) => ({
+  miniCard: (_props) => ({
     height: '100%',
   }),
 })

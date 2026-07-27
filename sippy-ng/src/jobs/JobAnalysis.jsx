@@ -252,7 +252,7 @@ export function JobAnalysis(props) {
       y: {
         max: 100,
         ticks: {
-          callback: (value, index, values) => {
+          callback: (value, _index, _values) => {
             return `${value}%`
           },
         },

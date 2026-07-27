@@ -11,7 +11,7 @@ export const SafeJSONParam = {
   decode: (j) => {
     try {
       return JSON.parse(decodeURIComponent(j))
-    } catch (e) {
+    } catch (_e) {
       // return undefined
     }
   },
@@ -25,7 +25,7 @@ export const SafeStringParam = {
     if (s === undefined || s === null) return s
     try {
       return decodeURIComponent(s)
-    } catch (e) {
+    } catch (_e) {
       // return undefined
     }
   },

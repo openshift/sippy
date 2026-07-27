@@ -42,7 +42,7 @@ export default function CompReadyTestDetailRow(props) {
   } = props
 
   const handlerForJobRunSelect = (jobId) => {
-    return (element) => {
+    return (_element) => {
       if (searchJobRunIds.has(jobId)) {
         setSearchJobRunIds(searchJobRunIds.difference(new Set([jobId])))
       } else {

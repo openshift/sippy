@@ -171,7 +171,7 @@ export default function JobArtifactQuery(props) {
   // used to track which runs are selected from the table for further action
   const [selectedJobRunIds, setSelectedJobRunIds] = React.useState(new Set())
   // TODO: enable sorting the table by column headers
-  const [sortModel, setSortModel] = React.useState([
+  const [_sortModel, _setSortModel] = React.useState([
     { field: 'job_run_id', sort: 'desc' },
   ])
   // the search result rows for our table, raw and filtered
@@ -196,7 +196,7 @@ export default function JobArtifactQuery(props) {
     const abortController = new AbortController()
 
     // set up the artifact query when parameters are given
-    const [qParams, url] = constructArtifactQuery()
+    const [_qParams, url] = constructArtifactQuery()
     setApiCallURL(url)
     if (!url) {
       setRows(emptyRows)
@@ -704,7 +704,7 @@ export default function JobArtifactQuery(props) {
   function JAQOpenArtifactsButton(props) {
     const { artifacts } = props
 
-    function handleOpenLinks(event) {
+    function handleOpenLinks(_event) {
       artifacts.forEach((file) => {
         window.open(file.artifact_url, '_blank')
       })

@@ -46,8 +46,12 @@ export default [
     },
     rules: {
       'no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
       ],
       'react/display-name': 'off',
       'react/jsx-uses-react': 'warn',

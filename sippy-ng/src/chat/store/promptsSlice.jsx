@@ -1,7 +1,7 @@
 /**
  * Zustand slice for managing slash command prompts
  */
-export const createPromptsSlice = (set, get) => ({
+export const createPromptsSlice = (set, _get) => ({
   // State
   prompts: [],
   promptsLoading: false,

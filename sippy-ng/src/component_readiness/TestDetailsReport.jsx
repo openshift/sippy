@@ -54,7 +54,7 @@ import UpsertTriageModal from './UpsertTriageModal'
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
-const cancelFetch = () => {
+const _cancelFetch = () => {
   console.log('Aborting page5a')
   abortController.abort()
 }
@@ -365,11 +365,6 @@ export default function TestDetailsReport(props) {
     0,
     accessibilityModeOn
   )
-  const significanceTitle = `Test results for individual Prow Jobs may not be statistically
-  significant, but when taken in aggregate, there may be a statistically
-  significant difference compared to the historical basis
-  `
-
   let url
   if (testDetailsApiCall.startsWith('/')) {
     // In production mode, there is no hostname so we add it so that 'new URL' will work

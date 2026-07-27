@@ -86,7 +86,7 @@ export const createSessionSlice = (set, get) => ({
       setCurrentThinking,
       setError,
       setIsTyping,
-      connectionState,
+      connectionState: _connectionState,
       sendMessage,
     } = get()
 
@@ -319,7 +319,7 @@ export const createSessionSlice = (set, get) => ({
   // Message operations - operate on messages within the active session
   // Add a message to the active session
   addMessage: (message) => {
-    const { activeSessionId, sessions } = get()
+    const { activeSessionId, sessions: _sessions } = get()
     if (!activeSessionId) {
       console.warn('Cannot add message: no active session')
       return

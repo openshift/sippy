@@ -32,7 +32,7 @@ export default function GridToolbarViewSelector(props) {
         open={Boolean(anchor)}
         onClose={handleClose}
       >
-        {Object.entries(props.views).map(([e, v]) => (
+        {Object.entries(props.views).map(([e, _v]) => (
           <MenuItem
             key={e}
             style={{

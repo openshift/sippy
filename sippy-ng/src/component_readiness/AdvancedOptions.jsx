@@ -19,7 +19,7 @@ import Typography from '@mui/material/Typography'
 
 export default function AdvancedOptions(props) {
   const {
-    headerName,
+    headerName: _headerName,
     confidence,
     pity,
     minFail,
@@ -71,7 +71,7 @@ export default function AdvancedOptions(props) {
   const handleChangeMinFail = (event, newValue) => {
     setMinFail(newValue)
   }
-  const handleChangePassRateNewTests = (event, newValue) => {
+  const handleChangePassRateNewTests = (event, _newValue) => {
     let value = parseInt(event.target.value, 10)
 
     if (value < 0) {
@@ -81,7 +81,7 @@ export default function AdvancedOptions(props) {
     }
     setPassRateNewTests(value)
   }
-  const handleChangePassRateAllTests = (event, newValue) => {
+  const handleChangePassRateAllTests = (event, _newValue) => {
     let value = parseInt(event.target.value, 10)
 
     if (value < 0) {

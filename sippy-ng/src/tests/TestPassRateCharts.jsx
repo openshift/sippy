@@ -107,19 +107,6 @@ export default function TestPassRateCharts(props) {
     datasets: [],
   }
 
-  const columns = [
-    {
-      field: 'id',
-      hide: true,
-      filterable: false,
-    },
-    {
-      field: 'name',
-      headerName: props.grouping,
-      flex: 4,
-    },
-  ]
-
   const options = {
     parsing: {
       xAxisKey: 'date',
@@ -142,7 +129,7 @@ export default function TestPassRateCharts(props) {
       y: {
         max: 100,
         ticks: {
-          callback: (value, index, values) => {
+          callback: (value, _index, _values) => {
             return `${value}%`
           },
         },

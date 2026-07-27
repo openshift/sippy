@@ -30,7 +30,7 @@ export default function JobDetailTable(props) {
     setTestDialogOpen(true)
   }
 
-  const closeTestDialog = (details) => {
+  const closeTestDialog = (_details) => {
     setTestDialogOpen(false)
   }
 

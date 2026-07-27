@@ -14,8 +14,6 @@ import React, { Fragment } from 'react'
 import SummaryCard from '../components/SummaryCard'
 
 export default function TopLevelIndicators(props) {
-  const TOOLTIP = 'Top level install indicators showing install health'
-
   const indicatorCaption = (indicator) => {
     return (
       <Box component="h3">

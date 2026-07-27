@@ -7,7 +7,7 @@ import BuildClusterTable from './BuildClusterTable'
 import Grid from '@mui/material/Grid'
 import InfoIcon from '@mui/icons-material/Info'
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   root: {
     flexGrow: 1,
   },
@@ -21,8 +21,8 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function BuildClusterOverview(props) {
-  const classes = useStyles()
+export default function BuildClusterOverview(_props) {
+  const _classes = useStyles()
 
   return (
     <Container size="xl">

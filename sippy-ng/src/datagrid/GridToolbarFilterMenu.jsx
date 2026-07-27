@@ -82,7 +82,7 @@ export default function GridToolbarFilterMenu(props) {
     let errored = 0
     let newModels = []
 
-    models.map((m, index) => {
+    models.map((m, _index) => {
       if (m.errors && m.errors.length > 0) {
         errored++
       }

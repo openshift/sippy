@@ -348,7 +348,7 @@ export const CompReadyVarsProvider = ({ children }) => {
 
   // This runs when someone pushes the "Generate Report" button.
   // It sets all parameters based on current state; this causes the URL to be updated and page to load with new params.
-  const handleGenerateReport = (event, callback) => {
+  const handleGenerateReport = (event, _callback) => {
     if (event && event.preventDefault) {
       event.preventDefault()
     }
@@ -550,7 +550,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     return retVal
   }
 
-  const cancelFetch = () => {
+  const _cancelFetch = () => {
     // This button will do nothing for now and may never need to
     // since the api call is very quick.
     console.log('Aborting /variant sippy API call')

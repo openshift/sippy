@@ -275,7 +275,7 @@ export const createShareSlice = (set, get) => ({
           },
         })
       })
-      .catch((err) => {
+      .catch((_err) => {
         set({
           shareSnackbar: {
             open: true,

@@ -1,7 +1,7 @@
 /**
  * Persona slice - manages available chat personas
  */
-export const createPersonaSlice = (set, get) => ({
+export const createPersonaSlice = (set, _get) => ({
   personas: [],
   personasLoading: false,
   personasError: null,

@@ -35,7 +35,7 @@ import WarningsBanner from './WarningsBanner'
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
-const cancelFetch = () => {
+const _cancelFetch = () => {
   console.log('Aborting page3')
   abortController.abort()
 }
@@ -219,7 +219,7 @@ export default function CompReadyEnvCapability(props) {
                 <Typography className={classes.crCellCapabCol}>Name</Typography>
               </TableCell>
               {columnNames
-                .filter((column, idx) =>
+                .filter((column, _idx) =>
                   column.match(new RegExp(escapeRegex(searchColumnRegex), 'i'))
                 )
                 .map((column, idx) => {
@@ -269,7 +269,7 @@ export default function CompReadyEnvCapability(props) {
                       testName={data.rows[componentIndex].test_name}
                       testId={data.rows[componentIndex].test_id}
                       results={data.rows[componentIndex].columns.filter(
-                        (column, idx) =>
+                        (column, _idx) =>
                           formColumnName(column).match(
                             new RegExp(escapeRegex(searchColumnRegex), 'i')
                           )

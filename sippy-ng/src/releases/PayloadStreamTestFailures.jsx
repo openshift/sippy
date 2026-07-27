@@ -85,12 +85,12 @@ function PayloadStreamTestFailures(props) {
     },
   ]
 
-  const [release = props.release, setRelease] = useQueryParam(
+  const [release = props.release, _setRelease] = useQueryParam(
     'release',
     StringParam
   )
-  const [arch = props.arch, setArch] = useQueryParam('arch', StringParam)
-  const [stream = props.stream, setStream] = useQueryParam(
+  const [arch = props.arch, _setArch] = useQueryParam('arch', StringParam)
+  const [stream = props.stream, _setStream] = useQueryParam(
     'stream',
     StringParam
   )

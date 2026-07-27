@@ -13,7 +13,6 @@ import {
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
-import { useTheme } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 
@@ -46,7 +45,6 @@ export default function RegressionPotentialMatchesTab({
   completeTriageSubmission,
   onMatchesFound,
 }) {
-  const theme = useTheme()
   const classes = useStyles()
   const [matches, setMatches] = useState([])
   const [loadingMatches, setLoadingMatches] = useState(false)

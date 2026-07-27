@@ -70,7 +70,7 @@ function PayloadTestFailures(props) {
     },
   ]
 
-  const [payload = props.payload, setPayload] = useQueryParam(
+  const [payload = props.payload, _setPayload] = useQueryParam(
     'payload',
     StringParam
   )

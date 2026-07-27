@@ -12,7 +12,7 @@ import TableRow from '@mui/material/TableRow'
 export default function CompCapTestRow(props) {
   const classes = useContext(ComponentReadinessStyleContext)
 
-  const { testCols, columnNames } = props
+  const { testCols, columnNames: _columnNames } = props
 
   // Put the testName on the left side with no link.
   const testNameColumn = (

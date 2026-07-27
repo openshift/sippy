@@ -74,7 +74,7 @@ export default function IncludeVariantCheckBoxList(props) {
   const [isCompareMode, setIsCompareMode] = useState(
     varsContext.variantCrossCompare.includes(variantGroupName)
   )
-  const handleToggleCompare = (event) => {
+  const handleToggleCompare = (_event) => {
     varsContext.updateVariantCrossCompare(variantGroupName, !isCompareMode)
     setIsCompareMode(!isCompareMode)
   }
