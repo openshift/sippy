@@ -16,6 +16,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -168,7 +169,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			allVariants, errs := componentreadiness.GetJobVariants(ctx, provider)
+			allVariants, errs := componentreadiness.GetJobVariants(ctx, provider, reqopts.RequestOptions{})
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get job variants: %v", errs)
 			}

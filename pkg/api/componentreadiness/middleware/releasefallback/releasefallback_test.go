@@ -1,7 +1,6 @@
 package releasefallback
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -25,14 +24,11 @@ func Test_PreAnalysis(t *testing.T) {
 		"Arch":     "amd64",
 		"Platform": "aws",
 	}
-	test1VariantsFlattened := []string{"Arch:amd64", "Platform:aws"}
 	test1MapKey := crtest.KeyWithVariants{
 		TestID:   test1ID,
 		Variants: test1Variants,
 	}
-	test1KeyBytes, err := json.Marshal(test1MapKey)
-	test1KeyStr := string(test1KeyBytes)
-	assert.NoError(t, err)
+	test1KeyStr := test1MapKey.Encode()
 	test1RTI := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
 			Component:  "",
@@ -65,7 +61,7 @@ func Test_PreAnalysis(t *testing.T) {
 	fallbackMap418 := ReleaseTestMap{
 		ReleaseTimeRange: release418,
 		Tests: map[string]crstatus.TestStatus{
-			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 95, 0),
+			test1KeyStr: buildTestStatus("test1", test1Variants, 100, 95, 0),
 		},
 	}
 
@@ -79,7 +75,7 @@ func Test_PreAnalysis(t *testing.T) {
 	fallbackMap417 := ReleaseTestMap{
 		ReleaseTimeRange: release417,
 		Tests: map[string]crstatus.TestStatus{
-			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 98, 0),
+			test1KeyStr: buildTestStatus("test1", test1Variants, 100, 98, 0),
 		},
 	}
 
@@ -224,7 +220,7 @@ func TestCalculateFallbackReleases(t *testing.T) {
 }
 
 //nolint:unparam
-func buildTestStatus(testName string, variants []string, total, success, flake int) crstatus.TestStatus {
+func buildTestStatus(testName string, variants map[string]string, total, success, flake int) crstatus.TestStatus {
 	return crstatus.TestStatus{
 		TestName:     testName,
 		TestSuite:    "conformance",

@@ -10,6 +10,11 @@ import (
 // These types represent report options requested by the user,
 // which need to be serialized as part of caching the report results.
 
+const (
+	DataSourceBigQuery = "bigquery"
+	DataSourcePostgres = "postgres"
+)
+
 // RequestOptions is a struct packaging all the options for a CR request.
 type RequestOptions struct {
 	BaseRelease    Release
@@ -24,6 +29,9 @@ type RequestOptions struct {
 	// When generating test details URLs, if a view is present, we include just the view parameter
 	// plus test-specific overrides, rather than expanding all view parameters into the URL.
 	ViewName string `json:"view_name,omitempty" yaml:"view_name,omitempty"`
+	// DataSource controls which backend is used for CR test queries.
+	// Valid values: "" (default, uses BigQuery), DataSourceBigQuery, DataSourcePostgres.
+	DataSource string `json:"data_source,omitempty" yaml:"data_source,omitempty"`
 }
 
 // PullRequest specifies a specific pull request to use as the

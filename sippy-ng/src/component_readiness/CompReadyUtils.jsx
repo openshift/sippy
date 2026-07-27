@@ -400,6 +400,9 @@ export function makeRFC3339Time(aUrlStr) {
   // The api thinks that the null component is real and will filter accordingly
   // so omit it.
   retVal = retVal.replace(/&component=null/g, '')
+
+  // The browser URL uses crDataSource, but the API expects dataSource.
+  retVal = retVal.replace(/crDataSource=/g, 'dataSource=')
   return retVal
 }
 
@@ -459,6 +462,10 @@ export function getUpdatedUrlParts(vars) {
     flakeAsFailure: vars.flakeAsFailure,
     includeMultiReleaseAnalysis: vars.includeMultiReleaseAnalysis,
     //component: vars.component,
+  }
+
+  if (vars.dataSource) {
+    valuesMap.crDataSource = vars.dataSource
   }
 
   if (vars.samplePROrg && vars.samplePRRepo && vars.samplePRNumber) {
@@ -766,14 +773,18 @@ export function convertApiUrlToUiUrl(apiUrl) {
   if (apiIndex === -1) {
     return apiUrl
   }
-  const pathAndQuery = apiUrl.substring(apiIndex)
+  let pathAndQuery = apiUrl.substring(apiIndex)
   if (pathAndQuery.startsWith('/api/component_readiness/')) {
-    return pathAndQuery.replace(
+    pathAndQuery = pathAndQuery.replace(
       '/api/component_readiness/',
       '/sippy-ng/component_readiness/'
     )
+  } else {
+    pathAndQuery = pathAndQuery.replace('/api/', '/sippy-ng/')
   }
-  return pathAndQuery.replace('/api/', '/sippy-ng/')
+  // The API uses dataSource, but the browser URL uses crDataSource.
+  pathAndQuery = pathAndQuery.replace(/dataSource=/g, 'crDataSource=')
+  return pathAndQuery
 }
 
 // Extracts the test_details link from HATEOAS links. Prefers the plain

@@ -21,12 +21,10 @@ import (
 
 // GATestStatusLoader populates prow_ga_raw_test_data for releases that have reached GA.
 //
-// The loader has two conceptual phases:
-//  1. Fetch: for each GA release, query BigQuery once for all configured windows
-//     and persist the raw results in prow_ga_raw_test_data. This runs only when
-//     the raw data is missing or the GA date changed, or when forced.
-//  2. Aggregate: handled by the prow_ga_test_statuses_matview, which joins
-//     raw data with current dimension tables on each refresh cycle.
+// For each GA release, it queries BigQuery once for all configured windows
+// and persists the raw results in prow_ga_raw_test_data. This runs only when
+// the raw data is missing or the GA date changed, or when forced.
+// Aggregation happens at query time in the Component Readiness provider.
 type GATestStatusLoader struct {
 	ctx      context.Context
 	dbc      *db.DB

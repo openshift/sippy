@@ -290,10 +290,11 @@ func SyncRegressionsForReport(
 
 	var openedRegs, reopenedRegs, ongoingRegs, statsUpdatedRegs int
 	var activeRegressions []*models.TestRegression // all the matches we found, and new regressions opened, used to determine what had no match
+	regressionIndex := regressiontracker.BuildRegressionIndex(regressions)
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
+	crossCompare := len(view.VariantOptions.VariantCrossCompare) > 0
 	for _, regTest := range allRegressedTests {
-		crossCompare := len(view.VariantOptions.VariantCrossCompare) > 0
-		if openReg := regressiontracker.FindOpenRegression(view.SampleRelease.Name, regTest.TestID, crossCompare, regTest.Variants, regressions); openReg != nil {
+		if openReg := regressiontracker.FindOpenRegression(view.SampleRelease.Name, regTest.TestID, crossCompare, regTest.Variants, regressionIndex); openReg != nil {
 
 			// Check if we need to add new variants to the regression found via subset matching.
 			// This allows regressions to be split by new variant dimensions when db_column_groupby is modified.

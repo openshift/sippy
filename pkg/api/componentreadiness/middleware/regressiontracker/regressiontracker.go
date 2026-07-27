@@ -3,7 +3,6 @@ package regressiontracker
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -57,11 +56,12 @@ func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions reqopts.RequestOption
 // inject details onto regressed test stats if they match known regressions.
 // It also handles adjustments if those regressions are triaged to bugs.
 type RegressionTracker struct {
-	log             log.FieldLogger
-	reqOptions      reqopts.RequestOptions
-	dbc             *db.DB
-	failureCounter  failureCounterFunc
-	openRegressions []*models.TestRegression
+	log                 log.FieldLogger
+	reqOptions          reqopts.RequestOptions
+	dbc                 *db.DB
+	failureCounter      failureCounterFunc
+	openRegressions     []*models.TestRegression
+	regressionsByTestID map[string][]*models.TestRegression
 	// hasLoadedRegressions will be true once we've loaded regression data
 	hasLoadedRegressions bool
 }
@@ -91,14 +91,24 @@ func (r *RegressionTracker) ensureRegressionsLoaded() error {
 	if err != nil {
 		return err
 	}
+	r.regressionsByTestID = BuildRegressionIndex(r.openRegressions)
 	r.log.Infof("Found %d open regressions", len(r.openRegressions))
 	r.hasLoadedRegressions = true
 	return nil
 }
 
+// BuildRegressionIndex groups regressions by TestID for O(1) lookup.
+func BuildRegressionIndex(regressions []*models.TestRegression) map[string][]*models.TestRegression {
+	idx := make(map[string][]*models.TestRegression, len(regressions))
+	for _, reg := range regressions {
+		idx[reg.TestID] = append(idx[reg.TestID], reg)
+	}
+	return idx
+}
+
 func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	if len(r.openRegressions) > 0 {
-		or := FindOpenRegression(r.reqOptions.SampleRelease.Name, testKey.TestID, len(r.reqOptions.VariantOption.VariantCrossCompare) > 0, testKey.Variants, r.openRegressions)
+		or := FindOpenRegression(r.reqOptions.SampleRelease.Name, testKey.TestID, len(r.reqOptions.VariantOption.VariantCrossCompare) > 0, testKey.Variants, r.regressionsByTestID)
 		if or != nil {
 			testStats.Regression = or
 
@@ -130,7 +140,7 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 		return err
 	}
 	if len(r.openRegressions) > 0 {
-		or := FindOpenRegression(r.reqOptions.SampleRelease.Name, testKey.TestID, len(r.reqOptions.VariantOption.VariantCrossCompare) > 0, testKey.Variants, r.openRegressions)
+		or := FindOpenRegression(r.reqOptions.SampleRelease.Name, testKey.TestID, len(r.reqOptions.VariantOption.VariantCrossCompare) > 0, testKey.Variants, r.regressionsByTestID)
 		r.log.Debugf("checking regressions for %+v", testKey)
 		if or == nil {
 			return nil
@@ -203,56 +213,41 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 	return nil
 }
 
-// FindOpenRegression scans the list of open regressions for any that match the given test summary.
-// The regressions list is expected to be pre-filtered by sample release (e.g. from ListOpenRegressions);
-// the sampleRelease check is redundant but kept for safety.
+// FindOpenRegression looks up open regressions matching the given test by
+// testID, then checks release, crossCompare, and variant subset matching.
+// The index is keyed by testID for O(1) lookup instead of a linear scan.
 func FindOpenRegression(sampleRelease, testID string,
 	crossCompare bool,
 	variants map[string]string,
-	regressions []*models.TestRegression) *models.TestRegression {
+	regressionsByTestID map[string][]*models.TestRegression) *models.TestRegression {
 
-	var matches []*models.TestRegression
-	for _, tr := range regressions {
+	candidates := regressionsByTestID[testID]
+	for _, tr := range candidates {
 		if sampleRelease != tr.Release {
 			continue
 		}
 		if tr.CrossCompare != crossCompare {
 			continue
 		}
-		// We compare test ID not name, as names can change.
-		if tr.TestID != testID {
+		if !variantsMatch(tr.Variants, variants) {
 			continue
 		}
-		// Subset matching: check if ALL regression variants are present in the input variants.
-		// This allows the input to have additional variants beyond what the regression has,
-		// which supports db_column_groupby modifications that add new variants.
-		found := true
-		for _, variant := range tr.Variants {
-			keyVal := strings.Split(variant, ":")
-			if len(keyVal) != 2 {
-				// Malformed variant, skip this regression
-				found = false
-				break
-			}
-			variantKey := keyVal[0]
-			variantValue := keyVal[1]
-
-			inputValue, exists := variants[variantKey]
-			if !exists || inputValue != variantValue {
-				found = false
-				break
-			}
-		}
-		if !found {
-			continue
-		}
-		// If we made it this far, this appears to be a match:
-		matches = append(matches, tr)
-	}
-	if len(matches) > 0 {
-		return matches[0]
+		return tr
 	}
 	return nil
+}
+
+// variantsMatch checks if ALL regression variants are present in the input
+// variants (subset matching). This allows the input to have additional variants
+// beyond what the regression has, supporting db_column_groupby modifications.
+func variantsMatch(regressionVariants []string, inputVariants map[string]string) bool {
+	for _, variant := range regressionVariants {
+		key, value := crtest.VariantStringToKeyValue(variant)
+		if key == "" || inputVariants[key] != value {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {

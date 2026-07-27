@@ -24,7 +24,7 @@ import {
   StatusLegend,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { escapeRegex } from '../helpers'
+import { escapeRegex, safeEncodeURIComponent } from '../helpers'
 import { grey } from '@mui/material/colors'
 import { makeStyles, useTheme } from '@mui/styles'
 import {
@@ -282,6 +282,10 @@ export default function ComponentReadiness(_props) {
 
     if (varsContext.view != null && varsContext.view !== '') {
       apiCallStr += '?view=' + varsContext.view
+      if (varsContext.dataSource) {
+        apiCallStr +=
+          '&dataSource=' + safeEncodeURIComponent(varsContext.dataSource)
+      }
     } else {
       apiCallStr += getUpdatedUrlParts(varsContext)
     }
