@@ -1101,6 +1101,7 @@ type prowJobRunRow struct {
 	Timestamp      time.Time
 	OverallResult  sippyprocessingv1.JobOverallResult
 	TestFailures   int
+	TestFlakes     int
 	Succeeded      bool
 	Labels         []string
 }
@@ -1141,7 +1142,7 @@ type jobRunResult struct {
 }
 
 func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, id uint64, path string, junitMatches []string, dbProwJob *models.ProwJob) (*jobRunResult, error) {
-	tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), dbProwJob.ID, dbProwJob.Release, path, junitMatches)
+	tests, failures, flakes, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), dbProwJob.ID, dbProwJob.Release, path, junitMatches)
 	if err != nil {
 		return nil, err
 	}
@@ -1187,6 +1188,7 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 			Timestamp:      pj.Status.StartTime,
 			OverallResult:  overallResult,
 			TestFailures:   failures,
+			TestFlakes:     flakes,
 			Succeeded:      overallResult == sippyprocessingv1.JobSucceeded,
 			Labels:         []string(pl.labelsCache[pj.Status.BuildID]),
 		},
@@ -1209,6 +1211,7 @@ var (
 		{Name: "timestamp", Type: "timestamptz NOT NULL", Value: func(r *prowJobRunRow) any { return r.Timestamp }},
 		{Name: "overall_result", Type: "text NOT NULL DEFAULT ''", Value: func(r *prowJobRunRow) any { return string(r.OverallResult) }},
 		{Name: "test_failures", Type: "integer NOT NULL DEFAULT 0", Value: func(r *prowJobRunRow) any { return r.TestFailures }},
+		{Name: "test_flakes", Type: "integer NOT NULL DEFAULT 0", Value: func(r *prowJobRunRow) any { return r.TestFlakes }},
 		{Name: "succeeded", Type: "boolean NOT NULL DEFAULT false", Value: func(r *prowJobRunRow) any { return r.Succeeded }},
 		{Name: "labels", Type: "text[]", Value: func(r *prowJobRunRow) any { return r.Labels }},
 	}
@@ -1355,11 +1358,13 @@ func (pl *ProwLoader) writeJobRunBatch(ctx context.Context, batch []jobRunResult
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO prow_job_runs (id, cluster, duration, prow_job_id, prow_job_release,
-			url, gcs_bucket, timestamp, overall_result, test_failures, succeeded,
-			failed, infrastructure_failure, known_failure, labels, created_at, updated_at)
+			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
+			succeeded, failed, infrastructure_failure, known_failure, labels,
+			created_at, updated_at)
 		SELECT id, cluster, duration, prow_job_id, prow_job_release,
-			url, gcs_bucket, timestamp, overall_result, test_failures, succeeded,
-			false, false, false, labels, NOW(), NOW()
+			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
+			succeeded, false, false, false, labels,
+			NOW(), NOW()
 		FROM tmp_prow_job_runs
 	`); err != nil {
 		return fmt.Errorf("inserting prow_job_runs: %w", err)
@@ -1639,14 +1644,14 @@ type testCaseKey struct {
 	TestName  string
 }
 
-func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]prowJobRunTestRow, int, sippyprocessingv1.JobOverallResult, error) {
+func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]prowJobRunTestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
 	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
 	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 	gcsJobRun.SetGCSJunitPaths(junitPaths)
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(ctx)
 	if err != nil {
 		log.Warningf("failed to get junit test suites: %s", err.Error())
-		return nil, 0, "", err
+		return nil, 0, 0, "", err
 	}
 
 	testCases := make(map[testCaseKey]*types.TestCaseEntry)
@@ -1662,12 +1667,13 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, oldTestCases, pl.syntheticTestManager)
 
 	if !db.IsSuiteImportable(syntheticSuite.Name) {
-		return nil, 0, "", fmt.Errorf("synthetic suite %q is missing from the importable list", syntheticSuite.Name)
+		return nil, 0, 0, "", fmt.Errorf("synthetic suite %q is missing from the importable list", syntheticSuite.Name)
 	}
 	extractTestCases(syntheticSuite, testCases)
 	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
 
 	failures := 0
+	flakes := 0
 	results := make([]prowJobRunTestRow, 0, len(testCases))
 	for _, tc := range testCases {
 		if testidentification.IsIgnoredTest(tc.TestName) {
@@ -1684,12 +1690,15 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 			Duration:            tc.Duration,
 			Output:              tc.Output,
 		})
-		if tc.Status == int(sippyprocessingv1.TestStatusFailure) {
+		switch tc.Status {
+		case int(sippyprocessingv1.TestStatusFailure):
 			failures++
+		case int(sippyprocessingv1.TestStatusFlake):
+			flakes++
 		}
 	}
 
-	return results, failures, jobResult, nil
+	return results, failures, flakes, jobResult, nil
 }
 
 func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.TestCaseEntry) {
