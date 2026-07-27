@@ -403,6 +403,9 @@ Endpoint: `POST /api/jobs/runs/reevaluate`
 Re-runs all symptom definitions against the artifacts for specified job runs and updates
 BigQuery, GCS, and PostgreSQL with the results. Requires `--enable-write-endpoints`.
 
+By default, the endpoint operates **asynchronously**: it returns HTTP 202 with a task ID
+and a polling URL. Use `?sync=true` to get the previous synchronous behavior.
+
 ### Request
 
 ```json
@@ -412,12 +415,40 @@ BigQuery, GCS, and PostgreSQL with the results. Requires `--enable-write-endpoin
 }
 ```
 
-Maximum 50 job run IDs per request. IDs must be numeric strings.
+Maximum 500 job run IDs per async request, 50 for sync (`?sync=true`).
+IDs must be numeric strings.
 
-### Response (200 OK)
+### Async Response (202 Accepted)
+
+Returned by default (no query parameter).
 
 ```json
 {
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "pending",
+  "processed": 0,
+  "total": 2,
+  "results": [],
+  "created_at": "2025-01-15T10:30:00Z",
+  "links": {
+    "self": "http://localhost:8080/api/jobs/runs/reevaluate/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "reevaluate": "http://localhost:8080/api/jobs/runs/reevaluate"
+  }
+}
+```
+
+### Poll Task Status
+
+Endpoint: `GET /api/jobs/runs/reevaluate/{task_id}`
+
+Returns the current status, progress, and (partial or final) results for an async task.
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "completed",
+  "processed": 2,
+  "total": 2,
   "results": [
     {
       "prow_job_build_id": "1234567890",
@@ -439,13 +470,53 @@ Maximum 50 job run IDs per request. IDs must be numeric strings.
       "error": "job run 0987654321 not found in database"
     }
   ],
+  "created_at": "2025-01-15T10:30:00Z",
+  "completed_at": "2025-01-15T10:30:45Z",
+  "links": {
+    "self": "http://localhost:8080/api/jobs/runs/reevaluate/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "reevaluate": "http://localhost:8080/api/jobs/runs/reevaluate"
+  }
+}
+```
+
+### Task Status Values
+
+- `pending` - task created, processing has not started.
+- `running` - task is actively processing job runs.
+- `completed` - all job runs have been processed.
+- `failed` - the task encountered a fatal error (e.g. could not load symptoms).
+
+Completed and failed tasks are automatically cleaned up after 1 hour.
+
+### Sync Response (200 OK)
+
+Returned when `?sync=true` is appended to the URL.
+
+```json
+{
+  "results": [
+    {
+      "prow_job_build_id": "1234567890",
+      "status": "success",
+      "symptoms_evaluated": 42,
+      "symptoms_matched": ["CreatePodSandboxForPodFailedInJournal"],
+      "labels_applied": ["InfraFailure", "NodeProblem"],
+      "bq_entries_written": 2,
+      "gcs_artifacts_written": 2,
+      "postgres_updated": true,
+      "links": {
+        "job_run": "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/.../1234567890",
+        "symptom:CreatePodSandboxForPodFailedInJournal": "http://localhost:8080/api/jobs/symptoms/SomeSymptom"
+      }
+    }
+  ],
   "links": {
     "self": "http://localhost:8080/api/jobs/runs/reevaluate"
   }
 }
 ```
 
-### Status Values
+### Per-Result Status Values
 
 - `success` - re-evaluation completed and all backends updated.
 - `missing_error` - the job run ID was not found in the database.

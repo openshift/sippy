@@ -7,8 +7,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -30,9 +32,188 @@ import (
 )
 
 const (
-	reEvalSourceTool = "sippy-api-reevaluate"
-	maxJobRunsPerReq = 50
+	reEvalSourceTool    = "sippy-api-reevaluate"
+	maxJobRunsPerReq    = 50
+	maxJobRunsAsyncReq  = 500
+	DefaultTaskStoreTTL = 1 * time.Hour
 )
+
+// ReEvalTaskStatus indicates the lifecycle state of an async re-evaluation task.
+type ReEvalTaskStatus string
+
+const (
+	ReEvalTaskPending   ReEvalTaskStatus = "pending"
+	ReEvalTaskRunning   ReEvalTaskStatus = "running"
+	ReEvalTaskCompleted ReEvalTaskStatus = "completed"
+	ReEvalTaskFailed    ReEvalTaskStatus = "failed"
+)
+
+// ReEvalTask tracks the state of an async re-evaluation request.
+type ReEvalTask struct {
+	ID          string               `json:"id"`
+	Status      ReEvalTaskStatus     `json:"status"`
+	Processed   int                  `json:"processed"`
+	Total       int                  `json:"total"`
+	Results     []ReEvaluationResult `json:"results"`
+	CreatedAt   time.Time            `json:"created_at"`
+	CompletedAt *time.Time           `json:"completed_at,omitempty"`
+	Error       string               `json:"error,omitempty"`
+	Links       map[string]string    `json:"links,omitempty"`
+}
+
+// ReEvalTaskResponse wraps a task with HATEOAS links for API responses.
+type ReEvalTaskResponse struct {
+	ID          string               `json:"id"`
+	Status      ReEvalTaskStatus     `json:"status"`
+	Processed   int                  `json:"processed"`
+	Total       int                  `json:"total"`
+	Results     []ReEvaluationResult `json:"results"`
+	CreatedAt   time.Time            `json:"created_at"`
+	CompletedAt *time.Time           `json:"completed_at,omitempty"`
+	Error       string               `json:"error,omitempty"`
+	Links       map[string]string    `json:"links"`
+}
+
+// TaskStore provides thread-safe in-memory storage for async re-evaluation tasks.
+// Completed tasks are automatically cleaned up after the configured TTL.
+type TaskStore struct {
+	mu    sync.RWMutex
+	tasks map[string]*ReEvalTask
+	ttl   time.Duration
+	done  chan struct{}
+}
+
+// NewTaskStore creates a TaskStore that removes completed tasks after the given TTL.
+// Call Stop() when the store is no longer needed to release the cleanup goroutine.
+func NewTaskStore(ttl time.Duration) *TaskStore {
+	s := &TaskStore{
+		tasks: make(map[string]*ReEvalTask),
+		ttl:   ttl,
+		done:  make(chan struct{}),
+	}
+	go s.cleanup()
+	return s
+}
+
+// Stop terminates the background cleanup goroutine.
+func (s *TaskStore) Stop() {
+	close(s.done)
+}
+
+// Create initializes a new pending task for the given number of job runs and returns it.
+func (s *TaskStore) Create(total int) *ReEvalTask {
+	task := &ReEvalTask{
+		ID:        uuid.New().String(),
+		Status:    ReEvalTaskPending,
+		Total:     total,
+		Results:   make([]ReEvaluationResult, 0, total),
+		CreatedAt: time.Now(),
+	}
+	s.mu.Lock()
+	s.tasks[task.ID] = task
+	s.mu.Unlock()
+	log.WithFields(log.Fields{"taskID": task.ID, "total": total}).Info("symptom reEval: created async task")
+	return task
+}
+
+// Get returns a snapshot of the task with the given ID, or nil if not found.
+// The returned task is a copy so callers cannot mutate store state.
+func (s *TaskStore) Get(id string) *ReEvalTask {
+	s.mu.RLock()
+	task, ok := s.tasks[id]
+	if !ok {
+		s.mu.RUnlock()
+		return nil
+	}
+	// Return a copy to avoid data races on the caller side.
+	cp := *task
+	cp.Results = make([]ReEvaluationResult, len(task.Results))
+	copy(cp.Results, task.Results)
+	if task.Links != nil {
+		cp.Links = make(map[string]string, len(task.Links))
+		for k, v := range task.Links {
+			cp.Links[k] = v
+		}
+	}
+	s.mu.RUnlock()
+	return &cp
+}
+
+// SetRunning transitions a task to running status.
+func (s *TaskStore) SetRunning(id string) {
+	s.mu.Lock()
+	if t, ok := s.tasks[id]; ok {
+		t.Status = ReEvalTaskRunning
+	}
+	s.mu.Unlock()
+}
+
+// AppendResult adds a result to the task and increments the processed count.
+func (s *TaskStore) AppendResult(id string, result ReEvaluationResult) {
+	s.mu.Lock()
+	if t, ok := s.tasks[id]; ok {
+		t.Results = append(t.Results, result)
+		t.Processed = len(t.Results)
+	}
+	s.mu.Unlock()
+}
+
+// Complete marks a task as completed or failed.
+func (s *TaskStore) Complete(id string, err error) {
+	s.mu.Lock()
+	if t, ok := s.tasks[id]; ok {
+		now := time.Now()
+		t.CompletedAt = &now
+		if err != nil {
+			t.Status = ReEvalTaskFailed
+			t.Error = err.Error()
+		} else {
+			t.Status = ReEvalTaskCompleted
+		}
+		log.WithFields(log.Fields{
+			"taskID":    id,
+			"status":    t.Status,
+			"processed": t.Processed,
+			"total":     t.Total,
+		}).Info("symptom reEval: task finished")
+	}
+	s.mu.Unlock()
+}
+
+// cleanup periodically removes completed/failed tasks older than the TTL.
+func (s *TaskStore) cleanup() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-ticker.C:
+			s.removeExpired()
+		}
+	}
+}
+
+// removeExpired deletes terminal tasks whose CompletedAt is older than the TTL.
+func (s *TaskStore) removeExpired() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cutoff := time.Now().Add(-s.ttl)
+	for id, t := range s.tasks {
+		if t.CompletedAt != nil && t.CompletedAt.Before(cutoff) {
+			delete(s.tasks, id)
+			log.WithField("taskID", id).Debug("symptom reEval: cleaned up expired task")
+		}
+	}
+}
+
+// InjectTaskHATEOASLinks populates HATEOAS links on a task response.
+func InjectTaskHATEOASLinks(resp *ReEvalTaskResponse, baseURL string) {
+	resp.Links = map[string]string{
+		"self":       baseURL + "/api/jobs/runs/reevaluate/" + resp.ID,
+		"reevaluate": baseURL + "/api/jobs/runs/reevaluate",
+	}
+}
 
 // ReEvalStatus indicates the outcome of re-evaluating symptoms for a single job run.
 type ReEvalStatus string
@@ -119,7 +300,7 @@ type symptomMatch struct {
 
 // ReEvaluateJobRuns re-evaluates all symptom matches for the specified job runs.
 func (r *ReEvaluator) ReEvaluateJobRuns(ctx context.Context, prowJobBuildIDs []string) ([]ReEvaluationResult, error) {
-	symptoms, err := r.loadActiveSymptoms()
+	symptoms, err := r.LoadActiveSymptoms()
 	if err != nil {
 		return nil, fmt.Errorf("loading symptoms: %w", err)
 	}
@@ -127,14 +308,14 @@ func (r *ReEvaluator) ReEvaluateJobRuns(ctx context.Context, prowJobBuildIDs []s
 
 	results := make([]ReEvaluationResult, 0, len(prowJobBuildIDs))
 	for _, buildID := range prowJobBuildIDs {
-		result := r.reEvaluateOne(ctx, buildID, symptoms)
+		result := r.ReEvaluateOne(ctx, buildID, symptoms)
 		results = append(results, result)
 	}
 	return results, nil
 }
 
-// loadActiveSymptoms fetches all symptom definitions with implemented matcher types.
-func (r *ReEvaluator) loadActiveSymptoms() ([]jobrunscan.Symptom, error) {
+// LoadActiveSymptoms fetches all symptom definitions with implemented matcher types.
+func (r *ReEvaluator) LoadActiveSymptoms() ([]jobrunscan.Symptom, error) {
 	var all []jobrunscan.Symptom
 	res := r.db.DB.Order("id").Find(&all)
 	if res.Error != nil {
@@ -162,8 +343,8 @@ func filterRelevantSymptoms(symptoms []jobrunscan.Symptom) []jobrunscan.Symptom 
 	return filtered
 }
 
-// reEvaluateOne processes a single job run through all symptoms.
-func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptoms []jobrunscan.Symptom) ReEvaluationResult {
+// ReEvaluateOne processes a single job run through all symptoms.
+func (r *ReEvaluator) ReEvaluateOne(ctx context.Context, buildID string, symptoms []jobrunscan.Symptom) ReEvaluationResult {
 	result := ReEvaluationResult{
 		ProwJobBuildID:    buildID,
 		SymptomsEvaluated: len(symptoms),
@@ -595,12 +776,13 @@ func uniqueLabels(labels []models.JobRunLabel) []string {
 }
 
 // ValidateReEvalRequest validates the re-evaluation request parameters.
-func ValidateReEvalRequest(prowJobBuildIDs []string) error {
+// Use maxJobRunsPerReq for sync requests and maxJobRunsAsyncReq for async.
+func ValidateReEvalRequest(prowJobBuildIDs []string, maxIDs int) error {
 	if len(prowJobBuildIDs) == 0 {
 		return fmt.Errorf("prow_job_build_ids is required")
 	}
-	if len(prowJobBuildIDs) > maxJobRunsPerReq {
-		return fmt.Errorf("maximum %d job runs per request", maxJobRunsPerReq)
+	if len(prowJobBuildIDs) > maxIDs {
+		return fmt.Errorf("maximum %d job runs per request", maxIDs)
 	}
 	for _, id := range prowJobBuildIDs {
 		if _, err := strconv.ParseInt(id, 10, 64); err != nil {
@@ -608,4 +790,14 @@ func ValidateReEvalRequest(prowJobBuildIDs []string) error {
 		}
 	}
 	return nil
+}
+
+// MaxJobRunsSyncReq returns the maximum job runs allowed in a synchronous request.
+func MaxJobRunsSyncReq() int {
+	return maxJobRunsPerReq
+}
+
+// MaxJobRunsAsyncReq returns the maximum job runs allowed in an async request.
+func MaxJobRunsAsyncReq() int {
+	return maxJobRunsAsyncReq
 }

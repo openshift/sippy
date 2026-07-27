@@ -8,74 +8,56 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import pLimit from 'p-limit'
 import PropTypes from 'prop-types'
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import RefreshIcon from '@mui/icons-material/Refresh'
 
-const CONCURRENCY = 10
+const POLL_INTERVAL_MS = 2000
 const MAX_RETRIES = 1
-const REQUEST_TIMEOUT_MS = 120000
 
-async function reEvaluateOne(buildID) {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-  try {
-    const response = await fetch(
-      import.meta.env.VITE_API_URL + '/api/jobs/runs/reevaluate',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prow_job_build_ids: [buildID] }),
-        signal: controller.signal,
-      }
-    )
-
-    if (!response.ok) {
-      let errorMsg = `HTTP ${response.status}`
-      try {
-        const errBody = await response.json()
-        if (errBody.message) errorMsg = errBody.message
-      } catch {
-        // fall back to status text if response isn't JSON
-      }
-      return {
-        prow_job_build_id: buildID,
-        status: 'eval_error',
-        error: errorMsg,
-      }
+async function submitReEvaluation(buildIDs) {
+  const response = await fetch(
+    import.meta.env.VITE_API_URL + '/api/jobs/runs/reevaluate',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prow_job_build_ids: buildIDs }),
     }
+  )
 
-    const data = await response.json()
-    return (
-      data.results?.[0] ?? { prow_job_build_id: buildID, status: 'eval_error' }
-    )
-  } catch (err) {
-    return {
-      prow_job_build_id: buildID,
-      status: 'eval_error',
-      error:
-        err.name === 'AbortError'
-          ? 'request timed out'
-          : err.message || String(err),
+  if (!response.ok) {
+    let errorMsg = `HTTP ${response.status}`
+    try {
+      const errBody = await response.json()
+      if (errBody.message) errorMsg = errBody.message
+    } catch {
+      // fall back to status text if response isn't JSON
     }
-  } finally {
-    clearTimeout(timeoutId)
+    throw new Error(errorMsg)
   }
+
+  return response.json()
 }
 
-async function runPool(ids, onProgress) {
-  const limit = pLimit(CONCURRENCY)
-  const results = []
-  const tasks = ids.map((id) =>
-    limit(async () => {
-      const result = await reEvaluateOne(id)
-      results.push(result)
-      onProgress([...results])
-    })
+async function pollTaskStatus(taskID) {
+  const response = await fetch(
+    import.meta.env.VITE_API_URL +
+      '/api/jobs/runs/reevaluate/' +
+      encodeURIComponent(taskID)
   )
-  await Promise.all(tasks)
-  return results
+
+  if (!response.ok) {
+    let errorMsg = `HTTP ${response.status}`
+    try {
+      const errBody = await response.json()
+      if (errBody.message) errorMsg = errBody.message
+    } catch {
+      // fall back to status text if response isn't JSON
+    }
+    throw new Error(errorMsg)
+  }
+
+  return response.json()
 }
 
 function errorDetails(failures) {
@@ -118,37 +100,20 @@ export default function ReEvaluateButton({
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(null)
   const [snackbar, setSnackbar] = useState(null)
+  const pollTimerRef = useRef(null)
+  const taskIDRef = useRef(null)
 
-  const handleReEvaluate = async () => {
-    if (!prowJobBuildIDs?.length) return
-    setRunning(true)
-    setSnackbar(null)
-
-    const total = prowJobBuildIDs.length
-    setProgress({ total, results: [] })
-
-    try {
-      let results = await runPool(prowJobBuildIDs, (partial) =>
-        setProgress({ total, results: partial })
-      )
-
-      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        const retryable = results.filter(
-          (r) => r.status === 'eval_error' || r.status === 'rewrite_error'
-        )
-        if (retryable.length === 0) break
-
-        const kept = results.filter(
-          (r) => r.status !== 'eval_error' && r.status !== 'rewrite_error'
-        )
-        const retryIDs = retryable.map((r) => r.prow_job_build_id)
-        const retryResults = await runPool(retryIDs, (partial) =>
-          setProgress({ total, results: [...kept, ...partial] })
-        )
-        results = [...kept, ...retryResults]
-        setProgress({ total, results })
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current)
       }
+    }
+  }, [])
 
+  const handleTaskComplete = useCallback(
+    (results) => {
       const successCount = results.filter((r) => r.status === 'success').length
       const rewriteErrors = results.filter((r) => r.status === 'rewrite_error')
       const evalErrors = results.filter((r) => r.status === 'eval_error')
@@ -244,14 +209,79 @@ export default function ReEvaluateButton({
           ),
         })
       }
-    } catch (err) {
-      setSnackbar({
-        severity: 'error',
-        message: `Re-evaluation failed: ${err.message}`,
-      })
-    } finally {
-      setRunning(false)
+    },
+    [forceRefreshURL]
+  )
+
+  const startPolling = useCallback(
+    (taskID, total) => {
+      taskIDRef.current = taskID
+
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const task = await pollTaskStatus(taskID)
+
+          setProgress({
+            total: task.total,
+            processed: task.processed,
+            results: task.results || [],
+          })
+
+          if (task.status === 'completed' || task.status === 'failed') {
+            clearInterval(pollTimerRef.current)
+            pollTimerRef.current = null
+            setRunning(false)
+
+            if (task.status === 'failed') {
+              setSnackbar({
+                severity: 'error',
+                message: `Re-evaluation failed: ${task.error || 'unknown error'}`,
+              })
+            } else {
+              handleTaskComplete(task.results || [])
+            }
+          }
+        } catch (err) {
+          clearInterval(pollTimerRef.current)
+          pollTimerRef.current = null
+          setRunning(false)
+          setSnackbar({
+            severity: 'error',
+            message: `Error polling task status: ${err.message}`,
+          })
+        }
+      }, POLL_INTERVAL_MS)
+    },
+    [handleTaskComplete]
+  )
+
+  const handleReEvaluate = async () => {
+    if (!prowJobBuildIDs?.length) return
+    setRunning(true)
+    setSnackbar(null)
+
+    const total = prowJobBuildIDs.length
+    setProgress({ total, processed: 0, results: [] })
+
+    let lastError = null
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const data = await submitReEvaluation(prowJobBuildIDs)
+        startPolling(data.id, total)
+        return
+      } catch (err) {
+        lastError = err
+        if (attempt < MAX_RETRIES) {
+          continue
+        }
+      }
     }
+
+    setRunning(false)
+    setSnackbar({
+      severity: 'error',
+      message: `Re-evaluation failed: ${lastError?.message || 'unknown error'}`,
+    })
   }
 
   const isDisabled = disabled || running || !prowJobBuildIDs?.length
@@ -261,10 +291,10 @@ export default function ReEvaluateButton({
       <Stack spacing={0.5} sx={{ minWidth: 200 }}>
         <LinearProgress
           variant="determinate"
-          value={(progress.results.length / progress.total) * 100}
+          value={(progress.processed / progress.total) * 100}
         />
         <Typography variant="caption" color="text.secondary">
-          {progress.results.length}/{progress.total} completed
+          {progress.processed}/{progress.total} completed
           {progress.results.filter((r) => r.status === 'success').length > 0 &&
             ` (${
               progress.results.filter((r) => r.status === 'success').length

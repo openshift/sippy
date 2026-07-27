@@ -17,53 +17,74 @@ func TestValidateReEvalRequest(t *testing.T) {
 	tests := []struct {
 		name    string
 		ids     []string
+		maxIDs  int
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name:    "empty IDs",
 			ids:     []string{},
+			maxIDs:  maxJobRunsPerReq,
 			wantErr: true,
 			errMsg:  "prow_job_build_ids is required",
 		},
 		{
 			name:    "nil IDs",
 			ids:     nil,
+			maxIDs:  maxJobRunsPerReq,
 			wantErr: true,
 			errMsg:  "prow_job_build_ids is required",
 		},
 		{
 			name:    "valid single ID",
 			ids:     []string{"1234567890"},
+			maxIDs:  maxJobRunsPerReq,
 			wantErr: false,
 		},
 		{
 			name:    "valid multiple IDs",
 			ids:     []string{"111", "222", "333"},
+			maxIDs:  maxJobRunsPerReq,
 			wantErr: false,
 		},
 		{
 			name:    "non-numeric ID",
 			ids:     []string{"abc"},
+			maxIDs:  maxJobRunsPerReq,
 			wantErr: true,
 			errMsg:  "invalid prow_job_build_id",
 		},
 		{
-			name:    "exceeds max batch size",
+			name:    "exceeds sync max batch size",
 			ids:     makeIDs(51),
+			maxIDs:  maxJobRunsPerReq,
 			wantErr: true,
 			errMsg:  "maximum 50 job runs per request",
 		},
 		{
-			name:    "at max batch size",
+			name:    "at sync max batch size",
 			ids:     makeIDs(50),
+			maxIDs:  maxJobRunsPerReq,
+			wantErr: false,
+		},
+		{
+			name:    "exceeds async max batch size",
+			ids:     makeIDs(501),
+			maxIDs:  maxJobRunsAsyncReq,
+			wantErr: true,
+			errMsg:  "maximum 500 job runs per request",
+		},
+		{
+			name:    "at async max batch size",
+			ids:     makeIDs(500),
+			maxIDs:  maxJobRunsAsyncReq,
 			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateReEvalRequest(tt.ids)
+			err := ValidateReEvalRequest(tt.ids, tt.maxIDs)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateReEvalRequest() error = %v, wantErr %v", err, tt.wantErr)
 			}

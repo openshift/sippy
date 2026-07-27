@@ -121,6 +121,12 @@ The `POST /api/jobs/runs/reevaluate` endpoint re-runs symptom detection for spec
 Unlike the cloud function (which processes files as they arrive), the re-evaluator scans all
 artifacts at once for completed job runs.
 
+The endpoint operates asynchronously by default: it returns HTTP 202 with a task ID and a
+polling URL. Clients poll `GET /api/jobs/runs/reevaluate/{task_id}` to track progress and
+retrieve results. The synchronous mode (append `?sync=true`) is preserved for backward
+compatibility. Async mode supports up to 500 job runs per request (sync mode keeps the
+50-run limit).
+
 Flow:
 
 1. Load all active symptom definitions from PostgreSQL (excluding unimplemented matcher types).
@@ -129,9 +135,14 @@ Flow:
 4. Write new results to BQ (`job_labels` table), GCS (label JSON files + HTML summary), and
    PostgreSQL (`prow_job_runs.labels` and `release_job_runs.labels`).
 
+Results are appended to the task as each job run completes, so clients can observe partial
+progress by polling the task status endpoint.
+
 The delete-then-insert strategy makes re-evaluation idempotent: if a symptom is modified, added, or
 removed, re-evaluating produces the correct result. Manually-applied labels (those with empty
 `symptom_id`) are preserved through re-evaluation.
+
+Task state is stored in memory and automatically cleaned up 1 hour after completion.
 
 ## Key Code Locations
 
@@ -170,7 +181,8 @@ All endpoints are under `/api/jobs/` and support standard CRUD:
 - `GET/PUT/DELETE /api/jobs/labels/{id}` - read / update / delete
 - `GET/POST /api/jobs/symptoms` - list / create symptoms
 - `GET/PUT/DELETE /api/jobs/symptoms/{id}` - read / update / delete
-- `POST /api/jobs/runs/reevaluate` - re-evaluate symptoms for specified job runs
+- `POST /api/jobs/runs/reevaluate` - re-evaluate symptoms for specified job runs (async by default, sync with `?sync=true`)
+- `GET /api/jobs/runs/reevaluate/{task_id}` - poll async re-evaluation task status and results
 
 See `pkg/api/jobrunscan/` for validation rules and `pkg/api/README.md` for broader API
 documentation.

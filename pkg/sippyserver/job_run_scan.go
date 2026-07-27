@@ -1,6 +1,7 @@
 package sippyserver
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -171,10 +172,11 @@ func (s *Server) jsonDeleteSymptom(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Job run symptom re-evaluation handler
+// Job run symptom re-evaluation handlers
 
 func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.Request) {
-	log.WithField("user", getUserForRequest(req)).Info("symptom re-evaluation POST")
+	user := getUserForRequest(req)
+	log.WithField("user", user).Info("symptom re-evaluation POST")
 
 	var body struct {
 		ProwJobBuildIDs []string `json:"prow_job_build_ids"`
@@ -188,23 +190,94 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 		return
 	}
 
-	if err := apijobrunscan.ValidateReEvalRequest(body.ProwJobBuildIDs); err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
 	if s.bigQueryClient == nil || s.gcsClient == nil || s.gcsBucket == "" {
 		failureResponse(w, http.StatusServiceUnavailable, "symptom re-evaluation requires BigQuery and GCS configuration")
 		return
 	}
 
-	re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, body.DryRun)
-	results, err := re.ReEvaluateJobRuns(req.Context(), body.ProwJobBuildIDs)
-	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, err.Error())
+	// Synchronous mode: preserve backward compatibility via ?sync=true
+	syncMode := req.URL.Query().Get("sync") == "true"
+
+	if syncMode {
+		if err := apijobrunscan.ValidateReEvalRequest(body.ProwJobBuildIDs, apijobrunscan.MaxJobRunsSyncReq()); err != nil {
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, body.DryRun)
+		results, err := re.ReEvaluateJobRuns(req.Context(), body.ProwJobBuildIDs)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		resp := apijobrunscan.ReEvaluationResponse{Results: results}
+		apijobrunscan.InjectReEvalHATEOASLinks(&resp, api.GetBaseURL(req))
+		api.RespondWithJSON(http.StatusOK, w, resp)
 		return
 	}
-	resp := apijobrunscan.ReEvaluationResponse{Results: results}
-	apijobrunscan.InjectReEvalHATEOASLinks(&resp, api.GetBaseURL(req))
+
+	// Async mode (default): create a task and return 202 Accepted
+	if err := apijobrunscan.ValidateReEvalRequest(body.ProwJobBuildIDs, apijobrunscan.MaxJobRunsAsyncReq()); err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	task := s.reEvalTaskStore.Create(len(body.ProwJobBuildIDs))
+	baseURL := api.GetBaseURL(req)
+
+	// Launch background processing. Use a detached context so the goroutine
+	// is not cancelled when the HTTP request completes.
+	go func() {
+		ctx := context.Background()
+		s.reEvalTaskStore.SetRunning(task.ID)
+
+		re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, body.DryRun)
+		symptoms, err := re.LoadActiveSymptoms()
+		if err != nil {
+			s.reEvalTaskStore.Complete(task.ID, err)
+			return
+		}
+
+		for _, buildID := range body.ProwJobBuildIDs {
+			result := re.ReEvaluateOne(ctx, buildID, symptoms)
+			s.reEvalTaskStore.AppendResult(task.ID, result)
+		}
+
+		s.reEvalTaskStore.Complete(task.ID, nil)
+	}()
+
+	resp := apijobrunscan.ReEvalTaskResponse{
+		ID:        task.ID,
+		Status:    task.Status,
+		Processed: task.Processed,
+		Total:     task.Total,
+		Results:   task.Results,
+		CreatedAt: task.CreatedAt,
+	}
+	apijobrunscan.InjectTaskHATEOASLinks(&resp, baseURL)
+	api.RespondWithJSON(http.StatusAccepted, w, resp)
+}
+
+// jsonGetReEvaluationTask returns the current state of an async re-evaluation task.
+func (s *Server) jsonGetReEvaluationTask(w http.ResponseWriter, req *http.Request) {
+	taskID := mux.Vars(req)["task_id"]
+
+	task := s.reEvalTaskStore.Get(taskID)
+	if task == nil {
+		failureResponse(w, http.StatusNotFound, "task not found")
+		return
+	}
+
+	resp := apijobrunscan.ReEvalTaskResponse{
+		ID:          task.ID,
+		Status:      task.Status,
+		Processed:   task.Processed,
+		Total:       task.Total,
+		Results:     task.Results,
+		CreatedAt:   task.CreatedAt,
+		CompletedAt: task.CompletedAt,
+		Error:       task.Error,
+	}
+	apijobrunscan.InjectTaskHATEOASLinks(&resp, api.GetBaseURL(req))
 	api.RespondWithJSON(http.StatusOK, w, resp)
 }

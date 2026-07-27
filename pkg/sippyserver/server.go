@@ -50,6 +50,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/jobrunevents"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
+	apijobrunscan "github.com/openshift/sippy/pkg/api/jobrunscan"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -121,6 +122,7 @@ func NewServer(
 		enableWriteAPIs:      enableWriteEndpoints,
 		chatAPIURL:           chatAPIURL,
 		jiraClient:           jiraClient,
+		reEvalTaskStore:      apijobrunscan.NewTaskStore(apijobrunscan.DefaultTaskStoreTTL),
 	}
 
 	if crDataProvider != nil {
@@ -189,6 +191,7 @@ type Server struct {
 	chatAPIURL           string
 	jiraClient           *jira.Client
 	rateLimiters         map[string]*rateLimiter
+	reEvalTaskStore      *apijobrunscan.TaskStore
 }
 
 // getReleases returns release data via the configured data provider.
@@ -2528,10 +2531,17 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/jobs/runs/reevaluate",
-			Description:  "Re-evaluate symptom matches for specified job runs",
+			Description:  "Re-evaluate symptom matches for specified job runs (async by default, sync with ?sync=true)",
 			Methods:      []string{http.MethodPost},
 			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonReEvaluateJobRunSymptoms,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/reevaluate/{task_id}",
+			Description:  "Get status and results of an async re-evaluation task",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetReEvaluationTask,
 		},
 		{
 			EndpointPath: "/api/job_variants",
