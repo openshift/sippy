@@ -734,14 +734,55 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 		baseAPIURL := api.GetBaseURL(req)
 		baseFrontendURL := api.GetBaseFrontendURL(req)
 		for i := range gates {
-			injectFeatureGateHATEOASLinks(&gates[i], release, baseAPIURL, baseFrontendURL)
+			injectFeatureGateListLinks(&gates[i], release, baseAPIURL, baseFrontendURL)
 		}
 		api.RespondWithJSON(http.StatusOK, w, gates)
 	}
 }
 
-func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
-	fg.Links = make(map[string]string, 4)
+func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request) {
+	release := s.getParamOrFail(w, req, "release")
+	if release == "" {
+		return
+	}
+	featureGate := mux.Vars(req)["feature_gate"]
+
+	filterOpts := &filter.FilterOptions{
+		Filter: &filter.Filter{
+			Items: []filter.FilterItem{
+				{Field: "feature_gate", Operator: filter.OperatorEquals, Value: featureGate},
+			},
+		},
+	}
+	gates, err := query.GetFeatureGatesFromDB(s.db, release, filterOpts)
+	if err != nil {
+		failureResponseWithError(w, "couldn't query feature gate", err)
+		return
+	}
+	if len(gates) == 0 {
+		failureResponse(w, http.StatusNotFound, fmt.Sprintf("feature gate %q not found in release %s", featureGate, release))
+		return
+	}
+
+	baseAPIURL := api.GetBaseURL(req)
+	baseFrontendURL := api.GetBaseFrontendURL(req)
+	injectFeatureGateDetailLinks(&gates[0], release, baseAPIURL, baseFrontendURL)
+	api.RespondWithJSON(http.StatusOK, w, gates[0])
+}
+
+func injectFeatureGateListLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
+	fg.Links = map[string]string{
+		"ui_detail": fmt.Sprintf(
+			"%s/sippy-ng/feature_gates/%s/%s",
+			baseFrontendURL, release, url.PathEscape(fg.FeatureGate)),
+		"api_detail": fmt.Sprintf(
+			"%s/api/feature_gates/%s?release=%s",
+			baseAPIURL, url.PathEscape(fg.FeatureGate), url.QueryEscape(release)),
+	}
+}
+
+func injectFeatureGateDetailLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
+	fg.Links = make(map[string]string, 5)
 
 	annotationFilter := filter.Filter{
 		Items: []filter.FilterItem{
@@ -779,6 +820,9 @@ func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL,
 	fg.Links["ui_detail"] = fmt.Sprintf(
 		"%s/sippy-ng/feature_gates/%s/%s",
 		baseFrontendURL, release, url.PathEscape(fg.FeatureGate))
+	fg.Links["api_detail"] = fmt.Sprintf(
+		"%s/api/feature_gates/%s?release=%s",
+		baseAPIURL, url.PathEscape(fg.FeatureGate), url.QueryEscape(release))
 }
 
 func (s *Server) jsonFeatureGatePromotion(w http.ResponseWriter, req *http.Request) {
@@ -786,10 +830,7 @@ func (s *Server) jsonFeatureGatePromotion(w http.ResponseWriter, req *http.Reque
 	if release == "" {
 		return
 	}
-	featureGate := s.getParamOrFail(w, req, "feature_gate")
-	if featureGate == "" {
-		return
-	}
+	featureGate := mux.Vars(req)["feature_gate"]
 
 	status, err := featuregatepromotion.GetPromotionStatus(s.db, release, featureGate)
 	if err != nil {
@@ -812,11 +853,8 @@ func (s *Server) jsonFeatureGatePromotion(w http.ResponseWriter, req *http.Reque
 		LinkOperator: filter.LinkOperatorAnd,
 	}
 	status.Links = map[string]string{
-		"feature_gate": fmt.Sprintf("%s/api/feature_gates?release=%s&filter=%s",
-			baseAPIURL,
-			url.QueryEscape(release),
-			url.QueryEscape(fmt.Sprintf(`{"items":[{"columnField":"feature_gate","operatorValue":"equals","value":"%s"}]}`, featureGate)),
-		),
+		"feature_gate": fmt.Sprintf("%s/api/feature_gates/%s?release=%s",
+			baseAPIURL, url.PathEscape(featureGate), url.QueryEscape(release)),
 		"capability_regressions": buildFilteredTestsURL(baseAPIURL, release, capabilityRegressionFilter),
 	}
 
@@ -2939,7 +2977,14 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonFeatureGates,
 		},
 		{
-			EndpointPath: "/api/feature_gates/promotion",
+			EndpointPath: "/api/feature_gates/{feature_gate}",
+			Description:  "Reports details and test links for a specific feature gate",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    4 * time.Hour,
+			HandlerFunc:  s.jsonFeatureGateDetail,
+		},
+		{
+			EndpointPath: "/api/feature_gates/{feature_gate}/promotion",
 			Description:  "Reports promotion readiness for a feature gate across required variant combinations",
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    4 * time.Hour,

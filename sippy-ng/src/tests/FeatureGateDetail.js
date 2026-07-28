@@ -11,7 +11,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Link } from 'react-router-dom'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { SafeJSONParam } from '../helpers'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import FeatureGatePromotionTab from './FeatureGatePromotionTab'
@@ -43,24 +43,10 @@ export default function FeatureGateDetail(props) {
     setLoaded(false)
     setFetchError('')
 
-    const filterParam = safeEncodeURIComponent(
-      JSON.stringify({
-        items: [
-          {
-            columnField: 'feature_gate',
-            operatorValue: 'equals',
-            value: featureGate,
-          },
-        ],
-      })
-    )
-
     fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/feature_gates?release=' +
-        release +
-        '&filter=' +
-        filterParam
+      `${process.env.REACT_APP_API_URL}/api/feature_gates/${encodeURIComponent(
+        featureGate
+      )}?release=${encodeURIComponent(release)}`
     )
       .then((response) => {
         if (response.status !== 200) {
@@ -69,9 +55,7 @@ export default function FeatureGateDetail(props) {
         return response.json()
       })
       .then((json) => {
-        if (json && json.length > 0) {
-          setGate(json[0])
-        }
+        setGate(json)
         setLoaded(true)
       })
       .catch((error) => {

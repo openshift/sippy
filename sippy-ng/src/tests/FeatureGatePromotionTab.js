@@ -57,11 +57,9 @@ export default function FeatureGatePromotionTab(props) {
     setFetchError('')
 
     fetch(
-      `${
-        process.env.REACT_APP_API_URL
-      }/api/feature_gates/promotion?release=${encodeURIComponent(
-        release
-      )}&feature_gate=${encodeURIComponent(featureGate)}`
+      `${process.env.REACT_APP_API_URL}/api/feature_gates/${encodeURIComponent(
+        featureGate
+      )}/promotion?release=${encodeURIComponent(release)}`
     )
       .then((response) => {
         if (response.status !== 200) {

@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/openshift/sippy/pkg/apis/api"
@@ -44,49 +43,74 @@ func TestFeatureGatesHATEOASLinks(t *testing.T) {
 	require.Greater(t, len(gates), 0, "no feature gates returned")
 
 	for _, fg := range gates {
-		t.Run(fg.FeatureGate+" has HATEOAS links", func(t *testing.T) {
+		t.Run(fg.FeatureGate+" has list HATEOAS links", func(t *testing.T) {
 			require.NotNil(t, fg.Links, "Links map should not be nil")
-
-			fgTests, ok := fg.Links["gate_tests"]
-			assert.True(t, ok, "missing gate_tests link")
-			assert.Contains(t, fgTests, "/api/tests?release="+util.Release)
-			assert.Contains(t, fgTests, "FeatureGate%3A"+fg.FeatureGate)
-
-			if strings.Contains(fg.FeatureGate, "Install") {
-				installTests, ok := fg.Links["install_tests"]
-				assert.True(t, ok, "Install gate missing install_tests link")
-				assert.Contains(t, installTests, "/api/tests?release="+util.Release)
-				assert.Contains(t, installTests, "Capability%3A"+fg.FeatureGate)
-				assert.Contains(t, installTests, "install+should+succeed")
-			} else {
-				_, ok := fg.Links["install_tests"]
-				assert.False(t, ok, "non-Install gate should not have install_tests link")
-			}
-
-			jobTests, ok := fg.Links["gate_job_tests"]
-			assert.True(t, ok, "missing gate_job_tests link")
-			assert.Contains(t, jobTests, "/api/tests?release="+util.Release)
-			assert.Contains(t, jobTests, "Capability%3A"+fg.FeatureGate)
 
 			uiDetail, ok := fg.Links["ui_detail"]
 			assert.True(t, ok, "missing ui_detail link")
 			assert.Contains(t, uiDetail, "/feature_gates/"+util.Release+"/"+fg.FeatureGate)
+
+			apiDetail, ok := fg.Links["api_detail"]
+			assert.True(t, ok, "missing api_detail link")
+			assert.Contains(t, apiDetail, "/api/feature_gates/"+fg.FeatureGate)
+			assert.Contains(t, apiDetail, "release="+util.Release)
+
+			assert.Len(t, fg.Links, 2, "list API should only have ui_detail and api_detail links")
 		})
 	}
 }
 
+func TestFeatureGateDetailAPI(t *testing.T) {
+	var fg api.FeatureGate
+	err := util.SippyGet("/api/feature_gates/NetworkSegmentation?release="+util.Release, &fg)
+	require.NoError(t, err, "error fetching feature gate detail")
+
+	assert.Equal(t, "NetworkSegmentation", fg.FeatureGate)
+	assert.Equal(t, util.Release, fg.Release)
+	assert.Greater(t, fg.UniqueTestCount, int64(0), "expected tests for NetworkSegmentation")
+
+	require.NotNil(t, fg.Links, "Links map should not be nil")
+
+	gateTests, ok := fg.Links["gate_tests"]
+	assert.True(t, ok, "missing gate_tests link")
+	assert.Contains(t, gateTests, "/api/tests?release="+util.Release)
+	assert.Contains(t, gateTests, "FeatureGate%3ANetworkSegmentation")
+
+	_, hasInstall := fg.Links["install_tests"]
+	assert.False(t, hasInstall, "NetworkSegmentation should not have install_tests link")
+
+	jobTests, ok := fg.Links["gate_job_tests"]
+	assert.True(t, ok, "missing gate_job_tests link")
+	assert.Contains(t, jobTests, "/api/tests?release="+util.Release)
+	assert.Contains(t, jobTests, "Capability%3ANetworkSegmentation")
+
+	uiDetail, ok := fg.Links["ui_detail"]
+	assert.True(t, ok, "missing ui_detail link")
+	assert.Contains(t, uiDetail, "/feature_gates/"+util.Release+"/NetworkSegmentation")
+}
+
+func TestFeatureGateDetailInstallGate(t *testing.T) {
+	var fg api.FeatureGate
+	err := util.SippyGet("/api/feature_gates/AWSDualStackInstall?release="+util.Release, &fg)
+	require.NoError(t, err, "error fetching Install gate detail")
+
+	assert.Equal(t, "AWSDualStackInstall", fg.FeatureGate)
+	require.NotNil(t, fg.Links)
+
+	_, ok := fg.Links["install_tests"]
+	assert.True(t, ok, "Install gate should have install_tests link")
+}
+
+func TestFeatureGateDetailNotFound(t *testing.T) {
+	var fg api.FeatureGate
+	err := util.SippyGet("/api/feature_gates/NonExistentGate12345?release="+util.Release, &fg)
+	assert.Error(t, err, "should return error for non-existent gate")
+}
+
 func TestFeatureGatesAnnotationLinkFollowable(t *testing.T) {
-	var gates []api.FeatureGate
-	err := util.SippyGet("/api/feature_gates?release="+util.Release, &gates)
-	require.NoError(t, err)
-
-	gatesByName := make(map[string]api.FeatureGate)
-	for _, g := range gates {
-		gatesByName[g.FeatureGate] = g
-	}
-
-	fg, ok := gatesByName["NetworkSegmentation"]
-	require.True(t, ok, "NetworkSegmentation not found")
+	var fg api.FeatureGate
+	err := util.SippyGet("/api/feature_gates/NetworkSegmentation?release="+util.Release, &fg)
+	require.NoError(t, err, "error fetching NetworkSegmentation detail")
 
 	link := fg.Links["gate_tests"]
 	require.NotEmpty(t, link)
@@ -101,17 +125,9 @@ func TestFeatureGatesAnnotationLinkFollowable(t *testing.T) {
 }
 
 func TestFeatureGatesInstallTestsLinkFollowable(t *testing.T) {
-	var gates []api.FeatureGate
-	err := util.SippyGet("/api/feature_gates?release="+util.Release, &gates)
-	require.NoError(t, err)
-
-	gatesByName := make(map[string]api.FeatureGate)
-	for _, g := range gates {
-		gatesByName[g.FeatureGate] = g
-	}
-
-	fg, ok := gatesByName["AWSDualStackInstall"]
-	require.True(t, ok, "AWSDualStackInstall not found")
+	var fg api.FeatureGate
+	err := util.SippyGet("/api/feature_gates/AWSDualStackInstall?release="+util.Release, &fg)
+	require.NoError(t, err, "error fetching AWSDualStackInstall detail")
 
 	link := fg.Links["install_tests"]
 	require.NotEmpty(t, link)

@@ -572,3 +572,42 @@ Endpoint: `/api/tests`
 ```
 
 </details>
+
+## Feature Gates
+
+### List Feature Gates
+
+Endpoint: `/api/feature_gates`
+
+Returns all feature gates and their test counts for a release. Each gate includes
+lightweight HATEOAS links (`ui_detail` and `api_detail`) for navigation.
+
+| Option   | Type   | Description                                              |
+|----------|--------|----------------------------------------------------------|
+| release* | String | The OpenShift release to return results from (e.g., 5.0) |
+| filter   | Filter | Filters the results. See filtering above.                |
+
+### Feature Gate Detail
+
+Endpoint: `/api/feature_gates/{feature_gate}`
+
+Returns a single feature gate with full HATEOAS links for test queries
+(`gate_tests`, `install_tests`, `gate_job_tests`, `ui_detail`, `api_detail`).
+The `install_tests` link is only present for gates whose name contains "Install".
+
+| Option        | Type   | Description                                              |
+|---------------|--------|----------------------------------------------------------|
+| release*      | String | The OpenShift release to return results from (e.g., 5.0) |
+| feature_gate  | Path   | The feature gate name (in the URL path)                  |
+
+### Feature Gate Promotion Readiness
+
+Endpoint: `/api/feature_gates/{feature_gate}/promotion`
+
+Reports promotion readiness for a feature gate across required variant
+combinations, including per-variant test pass rates and overall sufficiency.
+
+| Option        | Type   | Description                                              |
+|---------------|--------|----------------------------------------------------------|
+| release*      | String | The OpenShift release to return results from (e.g., 5.0) |
+| feature_gate  | Path   | The feature gate name (in the URL path)                  |

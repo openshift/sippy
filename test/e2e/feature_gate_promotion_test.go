@@ -11,7 +11,7 @@ import (
 
 func TestFeatureGatePromotionAPI(t *testing.T) {
 	var status featuregatepromotion.PromotionStatus
-	err := util.SippyGet("/api/feature_gates/promotion?release="+util.Release+"&feature_gate=NetworkSegmentation", &status)
+	err := util.SippyGet("/api/feature_gates/NetworkSegmentation/promotion?release="+util.Release, &status)
 	require.NoError(t, err, "error fetching feature gate promotion status")
 
 	assert.Equal(t, "NetworkSegmentation", status.FeatureGate)
@@ -21,20 +21,20 @@ func TestFeatureGatePromotionAPI(t *testing.T) {
 
 func TestFeatureGatePromotionHATEOASLinks(t *testing.T) {
 	var status featuregatepromotion.PromotionStatus
-	err := util.SippyGet("/api/feature_gates/promotion?release="+util.Release+"&feature_gate=NetworkSegmentation", &status)
+	err := util.SippyGet("/api/feature_gates/NetworkSegmentation/promotion?release="+util.Release, &status)
 	require.NoError(t, err)
 
 	require.NotNil(t, status.Links, "Links map should not be nil")
 
 	featureGateLink, ok := status.Links["feature_gate"]
 	assert.True(t, ok, "missing feature_gate link")
-	assert.Contains(t, featureGateLink, "/api/feature_gates")
-	assert.Contains(t, featureGateLink, "NetworkSegmentation")
+	assert.Contains(t, featureGateLink, "/api/feature_gates/NetworkSegmentation")
+	assert.Contains(t, featureGateLink, "release=")
 }
 
 func TestFeatureGatePromotionVariantResults(t *testing.T) {
 	var status featuregatepromotion.PromotionStatus
-	err := util.SippyGet("/api/feature_gates/promotion?release="+util.Release+"&feature_gate=NetworkSegmentation", &status)
+	err := util.SippyGet("/api/feature_gates/NetworkSegmentation/promotion?release="+util.Release, &status)
 	require.NoError(t, err)
 
 	for _, v := range status.ResultsByVariant {
@@ -46,7 +46,7 @@ func TestFeatureGatePromotionVariantResults(t *testing.T) {
 
 func TestFeatureGatePromotionInstallGate(t *testing.T) {
 	var status featuregatepromotion.PromotionStatus
-	err := util.SippyGet("/api/feature_gates/promotion?release="+util.Release+"&feature_gate=AWSDualStackInstall", &status)
+	err := util.SippyGet("/api/feature_gates/AWSDualStackInstall/promotion?release="+util.Release, &status)
 	require.NoError(t, err, "error fetching Install gate promotion status")
 
 	assert.Equal(t, "AWSDualStackInstall", status.FeatureGate)
@@ -55,7 +55,7 @@ func TestFeatureGatePromotionInstallGate(t *testing.T) {
 
 func TestFeatureGatePromotionCapabilityRegressionsLink(t *testing.T) {
 	var status featuregatepromotion.PromotionStatus
-	err := util.SippyGet("/api/feature_gates/promotion?release="+util.Release+"&feature_gate=NetworkSegmentation", &status)
+	err := util.SippyGet("/api/feature_gates/NetworkSegmentation/promotion?release="+util.Release, &status)
 	require.NoError(t, err)
 
 	require.NotNil(t, status.Links)
@@ -65,16 +65,8 @@ func TestFeatureGatePromotionCapabilityRegressionsLink(t *testing.T) {
 	assert.Contains(t, link, "Capability%3ANetworkSegmentation")
 }
 
-func TestFeatureGatePromotionMissingParams(t *testing.T) {
-	t.Run("missing release", func(t *testing.T) {
-		var status featuregatepromotion.PromotionStatus
-		err := util.SippyGet("/api/feature_gates/promotion?feature_gate=NetworkSegmentation", &status)
-		assert.Error(t, err, "should fail without release param")
-	})
-
-	t.Run("missing feature_gate", func(t *testing.T) {
-		var status featuregatepromotion.PromotionStatus
-		err := util.SippyGet("/api/feature_gates/promotion?release="+util.Release, &status)
-		assert.Error(t, err, "should fail without feature_gate param")
-	})
+func TestFeatureGatePromotionMissingRelease(t *testing.T) {
+	var status featuregatepromotion.PromotionStatus
+	err := util.SippyGet("/api/feature_gates/NetworkSegmentation/promotion", &status)
+	assert.Error(t, err, "should fail without release param")
 }
