@@ -330,6 +330,9 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 	// plan that scans ~20K runs × 30 partitions and never completes.
 	testIDs := make([]string, 0, len(reqOptions.TestIDOptions))
 	for _, tid := range reqOptions.TestIDOptions {
+		if tid.TestID == "" {
+			continue
+		}
 		testIDs = append(testIDs, tid.TestID)
 	}
 
