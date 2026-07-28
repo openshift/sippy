@@ -11,7 +11,8 @@ import {
   Typography,
 } from '@mui/material'
 import { Link } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
+import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import FeatureGatePromotionTab from './FeatureGatePromotionTab'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
@@ -26,7 +27,16 @@ export default function FeatureGateDetail(props) {
   const [gate, setGate] = React.useState(null)
   const [isLoaded, setLoaded] = React.useState(false)
   const [fetchError, setFetchError] = React.useState('')
-  const [activeTab, setActiveTab] = React.useState(0)
+  const [activeTab, setActiveTabRaw] = React.useState(0)
+  const [, setFiltersParam] = useQueryParam('filters', SafeJSONParam)
+
+  const setActiveTab = React.useCallback(
+    (tab) => {
+      setFiltersParam(undefined)
+      setActiveTabRaw(tab)
+    },
+    [setFiltersParam]
+  )
 
   useEffect(() => {
     document.title = `Sippy > ${release} > Feature Gates > ${featureGate}`
@@ -161,24 +171,6 @@ export default function FeatureGateDetail(props) {
     return t
   }, [gate])
 
-  const tabAutoSelected = React.useRef(false)
-
-  const handleAnnotationDataLoaded = React.useCallback(
-    (count) => {
-      const fgTestsIdx = tabs.findIndex((t) => t.key === 'gate_tests')
-      if (!tabAutoSelected.current && activeTab === fgTestsIdx && count <= 1) {
-        const nextIdx = tabs.findIndex(
-          (t) => t.key === 'install_tests' || t.key === 'gate_job_tests'
-        )
-        if (nextIdx !== -1) {
-          setActiveTab(nextIdx)
-        }
-        tabAutoSelected.current = true
-      }
-    },
-    [activeTab, tabs]
-  )
-
   if (fetchError) {
     return (
       <Container size="xl">
@@ -265,47 +257,40 @@ export default function FeatureGateDetail(props) {
           </Tabs>
         </Box>
 
-        {tabs.map((t, i) => (
-          <Box key={t.key} sx={{ display: activeTab === i ? 'block' : 'none' }}>
-            {t.key === 'promotion' && (
-              <FeatureGatePromotionTab
-                key={'fg-promotion-' + featureGate}
-                release={release}
-                featureGate={featureGate}
-                onCellClick={() => {
-                  setActiveTab(
-                    tabs.findIndex((tab) => tab.key === 'gate_tests')
-                  )
-                }}
-              />
-            )}
-            {t.key === 'gate_tests' && (
-              <TestTable
-                key={'fg-annotation-' + featureGate}
-                release={release}
-                collapse={false}
-                filterModel={annotationFilter}
-                onDataLoaded={handleAnnotationDataLoaded}
-              />
-            )}
-            {t.key === 'install_tests' && (
-              <TestTable
-                key={'fg-install-' + featureGate}
-                release={release}
-                collapse={false}
-                filterModel={installFilter}
-              />
-            )}
-            {t.key === 'gate_job_tests' && (
-              <TestTable
-                key={'fg-jobtests-' + featureGate}
-                release={release}
-                collapse={false}
-                filterModel={jobTestsFilter}
-              />
-            )}
-          </Box>
-        ))}
+        {tabs[activeTab]?.key === 'promotion' && (
+          <FeatureGatePromotionTab
+            key={'fg-promotion-' + featureGate}
+            release={release}
+            featureGate={featureGate}
+            onCellClick={() => {
+              setActiveTab(tabs.findIndex((tab) => tab.key === 'gate_tests'))
+            }}
+          />
+        )}
+        {tabs[activeTab]?.key === 'gate_tests' && (
+          <TestTable
+            key={'fg-annotation-' + featureGate}
+            release={release}
+            collapse={false}
+            filterModel={annotationFilter}
+          />
+        )}
+        {tabs[activeTab]?.key === 'install_tests' && (
+          <TestTable
+            key={'fg-install-' + featureGate}
+            release={release}
+            collapse={false}
+            filterModel={installFilter}
+          />
+        )}
+        {tabs[activeTab]?.key === 'gate_job_tests' && (
+          <TestTable
+            key={'fg-jobtests-' + featureGate}
+            release={release}
+            collapse={false}
+            filterModel={jobTestsFilter}
+          />
+        )}
       </Container>
     </Fragment>
   )
