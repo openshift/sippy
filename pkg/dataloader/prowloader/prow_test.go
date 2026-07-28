@@ -312,3 +312,55 @@ func TestMatchRelease(t *testing.T) {
 		})
 	}
 }
+
+func TestPartitionStartDate(t *testing.T) {
+	loadSince := time.Date(2026, 7, 14, 0, 0, 0, 0, time.UTC)
+	graceAdjusted := loadSince.AddDate(0, 0, -1)
+
+	prowJobWithStart := func(start time.Time) prow.ProwJob {
+		return prow.ProwJob{Status: prow.ProwJobStatus{StartTime: start}}
+	}
+
+	tests := []struct {
+		name     string
+		prowJobs []prow.ProwJob
+		expected time.Time
+	}{
+		{
+			name:     "no jobs falls back to loadSince with grace period",
+			prowJobs: nil,
+			expected: graceAdjusted,
+		},
+		{
+			name: "all jobs within the grace window leave the bound unchanged",
+			prowJobs: []prow.ProwJob{
+				prowJobWithStart(graceAdjusted.AddDate(0, 0, 1)),
+				prowJobWithStart(graceAdjusted),
+			},
+			expected: graceAdjusted,
+		},
+		{
+			name: "zero-value start times are ignored",
+			prowJobs: []prow.ProwJob{
+				{},
+				prowJobWithStart(graceAdjusted),
+			},
+			expected: graceAdjusted,
+		},
+		{
+			name: "outlier job start time extends the bound",
+			prowJobs: []prow.ProwJob{
+				prowJobWithStart(graceAdjusted),
+				// e.g. a job Prow marked aborted days after it actually started
+				prowJobWithStart(loadSince.AddDate(0, 0, -5)),
+			},
+			expected: loadSince.AddDate(0, 0, -5),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.True(t, tt.expected.Equal(partitionStartDate(loadSince, tt.prowJobs)))
+		})
+	}
+}

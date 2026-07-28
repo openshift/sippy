@@ -189,12 +189,38 @@ func (pl *ProwLoader) Errors() []error {
 	return pl.errors
 }
 
+// partitionStartDate computes the start of the date range for which partitions must
+// exist to accommodate the given prowJobs. loadSince (minus a 1 day grace period, since
+// bq imports based on modified time which can include job_run_start_time a day earlier,
+// see https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473)
+// is the default start date, extended earlier if any job's StartTime precedes it.
+//
+// That grace period covers the common case, but some jobs (e.g. ones Prow eventually marks
+// as aborted after getting stuck) can report a StartTime days before their completion time,
+// which is what the BQ query actually filters on. So the start bound is extended to the
+// earliest job we're actually about to write, to guarantee a partition exists for every row.
+func partitionStartDate(loadSince time.Time, prowJobs []prow.ProwJob) time.Time {
+	startDate := loadSince.AddDate(0, 0, -1)
+	for i := range prowJobs {
+		if st := prowJobs[i].Status.StartTime; !st.IsZero() && st.Before(startDate) {
+			startDate = st
+		}
+	}
+	return startDate
+}
+
 // ensurePartitions creates necessary partitions for partitioned tables.
 // It uses the release list from pl.releases and determines the date range based on:
-//   - pl.loadSince if available, otherwise looks back one week
+//   - pl.loadSince if available, otherwise looks back DefaultLookbackDays days, plus a 1 day grace period
+//   - the earliest prowJobs StartTime, in case it falls outside the above window
 //   - Creates partitions 2 days forward from now
-func (pl *ProwLoader) ensurePartitions() error {
-	startDate := pl.resolveLoadSince()
+func (pl *ProwLoader) ensurePartitions(prowJobs []prow.ProwJob) error {
+	defaultStartDate := pl.resolveLoadSince().AddDate(0, 0, -1)
+	startDate := partitionStartDate(pl.resolveLoadSince(), prowJobs)
+	if startDate.Before(defaultStartDate) {
+		log.Warnf("extending partition start date to %s to cover outlier job StartTime (default was %s)",
+			startDate.Format("2006-01-02"), defaultStartDate.Format("2006-01-02"))
+	}
 
 	// Create partitions 2 days forward from now
 	endDate := time.Now().AddDate(0, 0, 2)
@@ -202,9 +228,7 @@ func (pl *ProwLoader) ensurePartitions() error {
 	log.Infof("Ensuring partitions for releases %v from %s to %s",
 		pl.releases, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	// https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473 bq imports based on modified time which can include job_run_start_time a day earlier
-	// add grace to ensure we have a valid partition for new dbs.
-	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate.AddDate(0, 0, -1), endDate, false)
+	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate, endDate, false)
 	if err != nil {
 		return fmt.Errorf("failed to ensure partitions: %w", err)
 	}
@@ -247,7 +271,7 @@ func (pl *ProwLoader) Load() {
 	}
 
 	// Ensure we have partitions for the new data
-	if err := pl.ensurePartitions(); err != nil {
+	if err := pl.ensurePartitions(prowJobs); err != nil {
 		pl.errors = append(pl.errors, errors.Wrap(err, "failed to ensure partitions"))
 		return
 	}
