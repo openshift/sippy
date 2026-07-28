@@ -182,9 +182,10 @@ func (pl *ProwLoader) Errors() []error {
 }
 
 // partitionStartDate computes the start of the date range for which partitions must
-// exist to accommodate the given prowJobs. loadSince is used as a floor, with a 1 day
-// grace period since bq imports based on modified time which can include job_run_start_time
-// a day earlier (see https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473).
+// exist to accommodate the given prowJobs. loadSince (minus a 1 day grace period, since
+// bq imports based on modified time which can include job_run_start_time a day earlier,
+// see https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473)
+// is the default start date, extended earlier if any job's StartTime precedes it.
 //
 // That grace period covers the common case, but some jobs (e.g. ones Prow eventually marks
 // as aborted after getting stuck) can report a StartTime days before their completion time,
@@ -202,11 +203,16 @@ func partitionStartDate(loadSince time.Time, prowJobs []prow.ProwJob) time.Time 
 
 // ensurePartitions creates necessary partitions for partitioned tables.
 // It uses the release list from pl.releases and determines the date range based on:
-//   - pl.loadSince if available, otherwise looks back one week, plus a 1 day grace period
+//   - pl.loadSince if available, otherwise looks back DefaultLookbackDays days, plus a 1 day grace period
 //   - the earliest prowJobs StartTime, in case it falls outside the above window
 //   - Creates partitions 2 days forward from now
 func (pl *ProwLoader) ensurePartitions(prowJobs []prow.ProwJob) error {
+	defaultStartDate := pl.resolveLoadSince().AddDate(0, 0, -1)
 	startDate := partitionStartDate(pl.resolveLoadSince(), prowJobs)
+	if startDate.Before(defaultStartDate) {
+		log.Warnf("extending partition start date to %s to cover outlier job StartTime (default was %s)",
+			startDate.Format("2006-01-02"), defaultStartDate.Format("2006-01-02"))
+	}
 
 	// Create partitions 2 days forward from now
 	endDate := time.Now().AddDate(0, 0, 2)
