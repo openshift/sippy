@@ -1039,6 +1039,7 @@ type FeatureGate struct {
 	FirstSeenInMajor int64             `json:"first_seen_in_major"`
 	FirstSeenInMinor int64             `json:"first_seen_in_minor"`
 	Enabled          pq.StringArray    `json:"enabled" gorm:"type:text[]"`
+	MatchingJobs     []string          `json:"matching_jobs" gorm:"-"`
 	Links            map[string]string `json:"links,omitempty" gorm:"-"`
 }
 

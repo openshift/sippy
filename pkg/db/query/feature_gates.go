@@ -2,13 +2,15 @@ package query
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"cloud.google.com/go/civil"
 
-	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/filter"
+
+	"github.com/openshift/sippy/pkg/apis/api"
 )
 
 func GetFeatureGatesFromDB(dbc *db.DB, release string, filterOpts *filter.FilterOptions) ([]api.FeatureGate, error) {
@@ -90,4 +92,20 @@ func GetFeatureGatesFromDB(dbc *db.DB, release string, filterOpts *filter.Filter
 	}
 
 	return results, nil
+}
+
+// GetMatchingJobsForCapability returns the sorted names of prow jobs whose
+// variants array contains "Capability:<capabilityName>" for the given release.
+func GetMatchingJobsForCapability(dbc *db.DB, release, capabilityName string) ([]string, error) {
+	capabilityVariant := fmt.Sprintf("Capability:%s", capabilityName)
+	names := make([]string, 0)
+	tx := dbc.DB.Table("prow_jobs").
+		Select("DISTINCT name").
+		Where("release = ? AND ? = ANY(variants)", release, capabilityVariant).
+		Scan(&names)
+	if tx.Error != nil {
+		return nil, fmt.Errorf("failed to query matching jobs for capability %q: %w", capabilityName, tx.Error)
+	}
+	sort.Strings(names)
+	return names, nil
 }

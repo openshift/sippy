@@ -764,6 +764,13 @@ func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
+	matchingJobs, err := query.GetMatchingJobsForCapability(s.db, release, featureGate)
+	if err != nil {
+		failureResponseWithError(w, "couldn't query matching jobs for capability", err)
+		return
+	}
+	gates[0].MatchingJobs = matchingJobs
+
 	baseAPIURL := api.GetBaseURL(req)
 	baseFrontendURL := api.GetBaseFrontendURL(req)
 	injectFeatureGateDetailLinks(&gates[0], release, baseAPIURL, baseFrontendURL)

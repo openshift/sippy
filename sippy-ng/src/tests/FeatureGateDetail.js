@@ -226,6 +226,19 @@ export default function FeatureGateDetail(props) {
                   <Chip key={e} label={e} size="small" sx={{ mr: 0.5 }} />
                 ))}
             </Typography>
+            <Typography variant="body1" component="div" sx={{ mt: 1 }}>
+              <strong>Matching Jobs:</strong>{' '}
+              {gate.matching_jobs && gate.matching_jobs.length > 0
+                ? gate.matching_jobs.map((job) => (
+                    <Chip
+                      key={job}
+                      label={job}
+                      size="small"
+                      sx={{ mr: 0.5, mb: 0.5 }}
+                    />
+                  ))
+                : 'None'}
+            </Typography>
           </CardContent>
         </Card>
 
