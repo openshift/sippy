@@ -73,7 +73,7 @@ function ReleaseSelector(props) {
   const setGADate = () => {
     let start = new Date(versions[version])
     setStartTime(
-      formatLongDate(start.setDate(start.getDate() - 27), dateFormat)
+      formatLongDate(start.setDate(start.getDate() - 30), dateFormat)
     )
     setEndTime(formatLongDate(versions[version], dateEndFormat))
   }
@@ -337,7 +337,7 @@ function ReleaseSelector(props) {
                 <Filter4 fontSize="small" />
               </ToggleButton>
             </Tooltip>
-            <Tooltip title="4 weeks before GA">
+            <Tooltip title="30 days before GA">
               <ToggleButton
                 onClick={setGADate}
                 value=""

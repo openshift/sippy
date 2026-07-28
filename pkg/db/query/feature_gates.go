@@ -17,7 +17,7 @@ func GetFeatureGatesFromDB(dbc *db.DB, release string, filterOpts *filter.Filter
 	// at least once, filtering out tests that merely have carried-forward rows.
 	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
 	dr := DateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
-	if err := resolveDateRanges(dbc, release, &dr); err != nil {
+	if err := ResolveDateRanges(dbc, release, &dr); err != nil {
 		return nil, err
 	}
 	lookupEnd := dr.End.AddDays(-1)
