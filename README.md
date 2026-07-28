@@ -24,6 +24,27 @@ See [the API documentation](pkg/api/README.md)
 
 See [the front end documentation](sippy-ng/README.md)
 
+## Database Operations
+
+After cloning or restoring the production database to staging, query
+performance will be degraded due to stale planner statistics and
+lazy-loaded EBS storage. Run `scripts/analyze-db.sh` to warm up the
+database via a one-shot pod that runs three steps: `ANALYZE VERBOSE`
+(updates planner statistics), `REINDEX DATABASE CONCURRENTLY` (forces
+index pages off lazy-loaded storage), and a cache warming pass that runs
+`SELECT count(*)` on every table (scoped to the last 30 days for tables
+with date/timestamp columns) to pull hot heap pages off S3:
+
+```bash
+./scripts/analyze-db.sh
+```
+
+The pod runs detached, so your local machine does not need to stay
+connected. Use `--wait` to block until completion instead. The script
+defaults to the `sippy` namespace and `postgres-aws` secret. Use
+`--namespace` and `--db-secret` to override, and `--dry-run` to preview
+the command without executing.
+
 ## Chat
 
 See [the chat documentation](chat/README.md)
