@@ -222309,7 +222309,7 @@ periodic-ci-openshift-ovn-kubernetes-release-4.19-periodics-e2e-metal-ipi-ovn-du
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -222333,7 +222333,7 @@ periodic-ci-openshift-ovn-kubernetes-release-4.19-periodics-e2e-metal-ipi-ovn-du
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -222477,7 +222477,7 @@ periodic-ci-openshift-ovn-kubernetes-release-4.20-periodics-e2e-metal-ipi-ovn-du
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -222644,7 +222644,7 @@ periodic-ci-openshift-ovn-kubernetes-release-4.21-periodics-e2e-metal-ipi-ovn-du
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -222788,7 +222788,7 @@ periodic-ci-openshift-ovn-kubernetes-release-4.22-periodics-e2e-metal-ipi-ovn-du
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -222812,7 +222812,7 @@ periodic-ci-openshift-ovn-kubernetes-release-4.22-periodics-e2e-metal-ipi-ovn-du
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -222956,7 +222956,7 @@ periodic-ci-openshift-ovn-kubernetes-release-4.23-periodics-e2e-metal-ipi-ovn-du
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -223146,7 +223146,7 @@ periodic-ci-openshift-ovn-kubernetes-release-5.0-periodics-e2e-metal-ipi-ovn-dua
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -223170,7 +223170,7 @@ periodic-ci-openshift-ovn-kubernetes-release-5.0-periodics-e2e-metal-ipi-ovn-dua
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
