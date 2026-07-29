@@ -1742,7 +1742,7 @@ periodic-ci-RedHatQE-interop-testing-master-acm-cnv-ocp-4.22-p2p-lp-interop-aws:
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: virt
+    LayeredProduct: lp-interop--acm-virt
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -1766,7 +1766,7 @@ periodic-ci-RedHatQE-interop-testing-master-acm-virt-ocp4.22-p2p-cclm-liv-mig-lp
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: virt
+    LayeredProduct: lp-interop--acm-virt
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
