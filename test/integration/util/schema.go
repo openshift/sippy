@@ -57,7 +57,6 @@ func SetupIntegrationSchema(dbc *db.DB) error {
 		// Created here as regular tables for integration testing.
 		&models.ProwJobRunTest{},
 		&models.ProwJobRunTestOutput{},
-		&models.TestAnalysisByJobByDate{},
 		&models.TestDailyTotal{},
 		&models.TestCumulativeSummary{},
 	}

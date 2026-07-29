@@ -90,33 +90,6 @@ const (
         ) t`
 )
 
-func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
-	// Cache all tests by name to their ID, used for the join object.
-	testCache := map[string]*models.Test{}
-	q := dbc.DB.Model(&models.Test{})
-	for _, p := range preloads {
-		q = q.Preload(p)
-	}
-
-	// Kube exceeds 60000 tests, more than postgres can load at once:
-	testsBatch := []*models.Test{}
-	res := q.FindInBatches(&testsBatch, 5000, func(tx *gorm.DB, batch int) error {
-		for _, idn := range testsBatch {
-			if _, ok := testCache[idn.Name]; !ok {
-				testCache[idn.Name] = idn
-			}
-		}
-		return nil
-	})
-
-	if res.Error != nil {
-		return map[string]*models.Test{}, res.Error
-	}
-
-	log.Infof("test cache created with %d entries from database", len(testCache))
-	return testCache, nil
-}
-
 // TestReportsByVariant returns per-variant test report rows for every test matching
 // the given name criteria. When includeAll is true, an additional "All" aggregate row
 // per test is included via UNION ALL (Variant = "All", counting runs across all
