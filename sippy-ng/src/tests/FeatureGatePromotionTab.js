@@ -2,7 +2,6 @@ import {
   Alert,
   Box,
   Chip,
-  CircularProgress,
   Collapse,
   IconButton,
   Table,
@@ -17,7 +16,7 @@ import {
 } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PropTypes from 'prop-types'
-import React, { useEffect } from 'react'
+import React from 'react'
 
 const PASS_COLOR = '#d4edda'
 const PASS_TEXT = '#155724'
@@ -42,54 +41,12 @@ function variantColumnHeader(variant) {
 }
 
 export default function FeatureGatePromotionTab(props) {
-  const { release, featureGate, onCellClick } = props
+  const { release, featureGate, data, onCellClick } = props
 
-  const [data, setData] = React.useState(null)
-  const [isLoaded, setLoaded] = React.useState(false)
-  const [fetchError, setFetchError] = React.useState('')
   const [showWarnings, setShowWarnings] = React.useState(false)
   const [showErrors, setShowErrors] = React.useState(false)
   const [orderBy, setOrderBy] = React.useState('test_name')
   const [order, setOrder] = React.useState('asc')
-
-  useEffect(() => {
-    setLoaded(false)
-    setFetchError('')
-
-    fetch(
-      `${process.env.REACT_APP_API_URL}/api/feature_gates/${encodeURIComponent(
-        featureGate
-      )}/promotion?release=${encodeURIComponent(release)}`
-    )
-      .then((response) => {
-        if (response.status !== 200) {
-          throw new Error('server returned ' + response.status)
-        }
-        return response.json()
-      })
-      .then((json) => {
-        setData(json)
-        setLoaded(true)
-      })
-      .catch((error) => {
-        setFetchError(
-          'Could not retrieve promotion readiness: ' + error.message
-        )
-        setLoaded(true)
-      })
-  }, [release, featureGate])
-
-  if (fetchError) {
-    return <Alert severity="error">{fetchError}</Alert>
-  }
-
-  if (!isLoaded) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Box>
-    )
-  }
 
   if (!data) {
     return (
@@ -471,6 +428,7 @@ function variantKey(v) {
 FeatureGatePromotionTab.propTypes = {
   release: PropTypes.string.isRequired,
   featureGate: PropTypes.string.isRequired,
+  data: PropTypes.object,
   onCellClick: PropTypes.func,
 }
 

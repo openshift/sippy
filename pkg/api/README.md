@@ -592,20 +592,12 @@ lightweight HATEOAS links (`ui_detail` and `api_detail`) for navigation.
 Endpoint: `/api/feature_gates/{feature_gate}`
 
 Returns a single feature gate with full HATEOAS links for test queries
-(`gate_tests`, `install_tests`, `gate_job_tests`, `ui_detail`, `api_detail`).
+(`gate_tests`, `install_tests`, `gate_job_tests`, `capability_regressions`,
+`ui_detail`, `api_detail`).
 The `install_tests` link is only present for gates whose name contains "Install".
 
-| Option        | Type   | Description                                              |
-|---------------|--------|----------------------------------------------------------|
-| release*      | String | The OpenShift release to return results from (e.g., 5.0) |
-| feature_gate  | Path   | The feature gate name (in the URL path)                  |
-
-### Feature Gate Promotion Readiness
-
-Endpoint: `/api/feature_gates/{feature_gate}/promotion`
-
-Reports promotion readiness for a feature gate across required variant
-combinations, including per-variant test pass rates and overall sufficiency.
+The response includes a `promotion` object with promotion readiness data:
+per-variant test pass rates, overall sufficiency, warnings, and errors.
 
 | Option        | Type   | Description                                              |
 |---------------|--------|----------------------------------------------------------|

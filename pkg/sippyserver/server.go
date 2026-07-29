@@ -771,6 +771,13 @@ func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request)
 	}
 	gates[0].MatchingJobs = matchingJobs
 
+	promotionStatus, err := featuregatepromotion.GetPromotionStatus(s.db, release, featureGate)
+	if err != nil {
+		failureResponseWithError(w, "couldn't compute feature gate promotion status", err)
+		return
+	}
+	gates[0].Promotion = convertPromotionStatus(promotionStatus)
+
 	baseAPIURL := api.GetBaseURL(req)
 	baseFrontendURL := api.GetBaseFrontendURL(req)
 	injectFeatureGateDetailLinks(&gates[0], release, baseAPIURL, baseFrontendURL)
@@ -789,7 +796,7 @@ func injectFeatureGateListLinks(fg *apitype.FeatureGate, release, baseAPIURL, ba
 }
 
 func injectFeatureGateDetailLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
-	fg.Links = make(map[string]string, 5)
+	fg.Links = make(map[string]string, 6)
 
 	annotationFilter := filter.Filter{
 		Items: []filter.FilterItem{
@@ -809,7 +816,7 @@ func injectFeatureGateDetailLinks(fg *apitype.FeatureGate, release, baseAPIURL, 
 		fg.Links["install_tests"] = buildFilteredTestsURL(baseAPIURL, release, installFilter)
 	}
 
-	jobTestsFilter := filter.Filter{
+	capabilityRegressionFilter := filter.Filter{
 		Items: []filter.FilterItem{
 			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "never-stable"},
 			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "aggregated"},
@@ -822,7 +829,8 @@ func injectFeatureGateDetailLinks(fg *apitype.FeatureGate, release, baseAPIURL, 
 		},
 		LinkOperator: filter.LinkOperatorAnd,
 	}
-	fg.Links["gate_job_tests"] = buildFilteredTestsURL(baseAPIURL, release, jobTestsFilter)
+	fg.Links["gate_job_tests"] = buildFilteredTestsURL(baseAPIURL, release, capabilityRegressionFilter)
+	fg.Links["capability_regressions"] = fg.Links["gate_job_tests"]
 
 	fg.Links["ui_detail"] = fmt.Sprintf(
 		"%s/sippy-ng/feature_gates/%s/%s",
@@ -832,40 +840,38 @@ func injectFeatureGateDetailLinks(fg *apitype.FeatureGate, release, baseAPIURL, 
 		baseAPIURL, url.PathEscape(fg.FeatureGate), url.QueryEscape(release))
 }
 
-func (s *Server) jsonFeatureGatePromotion(w http.ResponseWriter, req *http.Request) {
-	release := s.getParamOrFail(w, req, "release")
-	if release == "" {
-		return
+func convertPromotionStatus(status *featuregatepromotion.PromotionStatus) *apitype.FeatureGatePromotion {
+	if status == nil {
+		return nil
 	}
-	featureGate := mux.Vars(req)["feature_gate"]
-
-	status, err := featuregatepromotion.GetPromotionStatus(s.db, release, featureGate)
-	if err != nil {
-		failureResponseWithError(w, "couldn't compute feature gate promotion status", err)
-		return
+	promotion := &apitype.FeatureGatePromotion{
+		Sufficient: status.Sufficient,
+		Warnings:   status.Warnings,
+		Errors:     status.Errors,
 	}
-
-	baseAPIURL := api.GetBaseURL(req)
-	capabilityRegressionFilter := filter.Filter{
-		Items: []filter.FilterItem{
-			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "never-stable"},
-			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "aggregated"},
-			{Field: "variants", Operator: filter.OperatorHasEntry, Value: fmt.Sprintf("Capability:%s", featureGate)},
-			{Field: "current_working_percentage", Operator: filter.OperatorArithmeticLessThan, Value: "92"},
-			{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "0"},
-			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "install should succeed"},
-			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "openshift-tests should work"},
-			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "infrastructure should work"},
-		},
-		LinkOperator: filter.LinkOperatorAnd,
+	for _, vr := range status.ResultsByVariant {
+		variant := apitype.FeatureGateVariantResult{
+			Variants:   vr.Variants,
+			Optional:   vr.Optional,
+			Sufficient: vr.Sufficient,
+			Warnings:   vr.Warnings,
+			Errors:     vr.Errors,
+		}
+		for _, tr := range vr.TestResults {
+			variant.TestResults = append(variant.TestResults, apitype.FeatureGateTestResult{
+				TestName:       tr.TestName,
+				TotalRuns:      tr.TotalRuns,
+				SuccessfulRuns: tr.SuccessfulRuns,
+				FailedRuns:     tr.FailedRuns,
+				FlakedRuns:     tr.FlakedRuns,
+				PassPercent:    tr.PassPercent,
+				Sufficient:     tr.Sufficient,
+				Links:          tr.Links,
+			})
+		}
+		promotion.ResultsByVariant = append(promotion.ResultsByVariant, variant)
 	}
-	status.Links = map[string]string{
-		"feature_gate": fmt.Sprintf("%s/api/feature_gates/%s?release=%s",
-			baseAPIURL, url.PathEscape(featureGate), url.QueryEscape(release)),
-		"capability_regressions": buildFilteredTestsURL(baseAPIURL, release, capabilityRegressionFilter),
-	}
-
-	api.RespondWithJSON(http.StatusOK, w, status)
+	return promotion
 }
 
 func buildFilteredTestsURL(baseAPIURL, release string, f filter.Filter) string {
@@ -2989,13 +2995,6 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    4 * time.Hour,
 			HandlerFunc:  s.jsonFeatureGateDetail,
-		},
-		{
-			EndpointPath: "/api/feature_gates/{feature_gate}/promotion",
-			Description:  "Reports promotion readiness for a feature gate across required variant combinations",
-			Capabilities: []string{LocalDBCapability},
-			CacheTime:    4 * time.Hour,
-			HandlerFunc:  s.jsonFeatureGatePromotion,
 		},
 		{
 			EndpointPath: "/api/chat",

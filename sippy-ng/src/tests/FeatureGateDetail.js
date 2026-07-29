@@ -227,7 +227,18 @@ export default function FeatureGateDetail(props) {
                 ))}
             </Typography>
             <Typography variant="body1" component="div" sx={{ mt: 1 }}>
-              <strong>Matching Jobs:</strong>{' '}
+              <strong>Matching Jobs:</strong>
+              <Tooltip title="These jobs are explicitly owned by this feature gate because their Capability variant matches the feature gate name. All tests in these jobs must meet a minimum pass rate to promote.">
+                <HelpOutlineIcon
+                  fontSize="small"
+                  sx={{
+                    ml: 0.5,
+                    mr: 0.5,
+                    verticalAlign: 'middle',
+                    color: 'text.secondary',
+                  }}
+                />
+              </Tooltip>
               {gate.matching_jobs && gate.matching_jobs.length > 0
                 ? gate.matching_jobs.map((job) => (
                     <Chip
@@ -259,6 +270,7 @@ export default function FeatureGateDetail(props) {
             key={'fg-promotion-' + featureGate}
             release={release}
             featureGate={featureGate}
+            data={gate?.promotion}
             onCellClick={() => {
               setActiveTab(tabs.findIndex((tab) => tab.key === 'gate_tests'))
             }}
