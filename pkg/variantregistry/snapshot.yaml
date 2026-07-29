@@ -3471,33 +3471,6 @@ periodic-ci-kubevirt-hyperconverged-cluster-operator-main-hco-e2e-deploy-nightly
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-medik8s-system-tests-main-4.22-upgrade-e2e-far-upgrade-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.22"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "22"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: micro
 periodic-ci-mtc-qe-mtc-e2e-qev2-master-mtc1.8-ocp4.14-lp-interop-mtc-interop-aws:
     Aggregation: none
     Architecture: amd64
@@ -72515,6 +72488,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osd-gcp-staging-ocm-fvt-perio
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osdfm-integration-ocm-fvt-periodic-osdfm-basic-periodic-integration:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-integration
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osdfm-integration-ocm-fvt-periodic-osdfm-mc-autoscaling-integration:
     Aggregation: none
     Architecture: amd64
@@ -72550,6 +72543,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osdfm-integration-ocm-fvt-per
     Platform: rosa
     Procedure: none
     Release: rosa-integration
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osdfm-staging-ocm-fvt-periodic-osdfm-basic-periodic-stage:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
