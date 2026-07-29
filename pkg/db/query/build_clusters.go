@@ -49,7 +49,6 @@ func BuildClusterAnalysis(dbc *db.DB, period string) ([]models.BuildClusterHealt
 	results := make([]models.BuildClusterHealth, 0)
 
 	q := dbc.DB.Raw(fmt.Sprintf(`
-WITH results AS (
 SELECT
     cluster,
     date_trunc('%s', timestamp) as period,
@@ -69,25 +68,7 @@ AND
     cluster != ''
 AND
     timestamp > NOW() - INTERVAL '14 DAY'
-GROUP BY cluster, period),
-percentages AS (
-    SELECT
-        period,
-        sum(passes) * 100.0 / sum(total_runs) as mean_success
-    FROM results
-    GROUP BY period
-)
-SELECT
-    results.cluster,
-    results.period,
-    results.total_runs,
-    results.passes,
-    results.failures,
-    results.pass_percentage
-FROM
-    results
-LEFT JOIN
-    percentages on results.period = percentages.period
+GROUP BY cluster, period
 `, period)).Scan(&results)
 	return results, q.Error
 }

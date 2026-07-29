@@ -2,11 +2,9 @@ package query
 
 import (
 	"database/sql"
-	"errors"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -81,7 +79,7 @@ func ProwJobRunIDs(dbc *db.DB, prowJobID uint) ([]uint, error) {
 func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (int, error) {
 
 	var historicalProwJobRunTestCount float64
-	q := dbc.DB.Raw(`SELECT avg(count)
+	q := dbc.DB.Raw(`SELECT COALESCE(avg(count), 0)
 	FROM (SELECT count(*)
 	FROM prow_job_run_tests
 	WHERE prow_job_run_tests.prow_job_id = ?
@@ -94,9 +92,6 @@ func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (in
 	}
 
 	if err := q.First(&historicalProwJobRunTestCount).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, nil
-		}
 		return 0, err
 	}
 
@@ -197,7 +192,7 @@ func LoadBugsForJobs(dbc *db.DB,
 	timeLimit := "(UPPER(status) IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '14 days') OR " +
 		"(UPPER(status) NOT IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '90 days')"
 	if filterClosed {
-		q = q.Preload("Bugs", timeLimit+" and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
+		q = q.Preload("Bugs", "("+timeLimit+") and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
 	} else {
 		q = q.Preload("Bugs", timeLimit)
 	}
