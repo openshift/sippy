@@ -821,13 +821,20 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 		}
 	}
 
-	// Update test_failures count
+	// Update test_failures and test_flakes counts
 	if err := dbc.DB.Exec(`
-		UPDATE prow_job_runs SET test_failures = COALESCE((
-			SELECT COUNT(*) FROM prow_job_run_tests
-			WHERE prow_job_run_id = prow_job_runs.id AND status = 12
-		), 0) WHERE prow_job_id = ?`, prowJob.ID).Error; err != nil {
-		return 0, 0, fmt.Errorf("updating test_failures for prow job %s: %w", prowJob.Name, err)
+		UPDATE prow_job_runs SET
+			test_failures = COALESCE((
+				SELECT COUNT(*) FROM prow_job_run_tests
+				WHERE prow_job_run_id = prow_job_runs.id AND status = ?
+			), 0),
+			test_flakes = COALESCE((
+				SELECT COUNT(*) FROM prow_job_run_tests
+				WHERE prow_job_run_id = prow_job_runs.id AND status = ?
+			), 0)
+		WHERE prow_job_id = ?`,
+		int(v1.TestStatusFailure), int(v1.TestStatusFlake), prowJob.ID).Error; err != nil {
+		return 0, 0, fmt.Errorf("updating test counts for prow job %s: %w", prowJob.Name, err)
 	}
 
 	return totalRuns, totalResults, nil

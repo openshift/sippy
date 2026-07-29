@@ -60,6 +60,7 @@ type ProwJobRun struct {
 	GCSBucket    string
 	URL          string
 	TestFailures int
+	TestFlakes   int `gorm:"not null;default:0"`
 	Tests        []ProwJobRunTest
 	PullRequests []ProwPullRequest      `gorm:"many2many:prow_job_run_prow_pull_requests;constraint:OnDelete:CASCADE;"`
 	Annotations  []ProwJobRunAnnotation `gorm:"constraint:OnDelete:CASCADE;"`
