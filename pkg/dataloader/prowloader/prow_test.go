@@ -14,6 +14,25 @@ import (
 	"github.com/openshift/sippy/pkg/releaseoverride"
 )
 
+func TestNormalizeLifecycle(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "empty defaults to blocking", input: "", expected: "blocking"},
+		{name: "blocking passes through", input: "blocking", expected: "blocking"},
+		{name: "informing passes through", input: "informing", expected: "informing"},
+		{name: "unknown value passes through lowercased", input: "experimental", expected: "experimental"},
+		{name: "mixed case is lowercased", input: "Informing", expected: "informing"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, normalizeLifecycle(tt.input))
+		})
+	}
+}
+
 func TestDateTimeNameComparisons(t *testing.T) {
 	tests := []struct {
 		name           string

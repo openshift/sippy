@@ -129,6 +129,7 @@ type ProwJobRunTest struct {
 	Suite     Suite
 	Status    int
 	Duration  float64
+	Lifecycle string `gorm:"default:blocking"`
 	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt
 

@@ -1048,6 +1048,7 @@ type prowJobRunTestRow struct {
 	Status              int
 	Duration            float64
 	Output              *string
+	Lifecycle           string
 }
 
 type prowJobRunRow struct {
@@ -1209,6 +1210,7 @@ var (
 		{Name: "status", Type: "integer NOT NULL", Value: func(r *prowJobRunTestRow) any { return r.Status }},
 		{Name: "duration", Type: "double precision NOT NULL DEFAULT 0", Value: func(r *prowJobRunTestRow) any { return r.Duration }},
 		{Name: "output", Type: "text", Value: func(r *prowJobRunTestRow) any { return r.Output }},
+		{Name: "lifecycle", Type: "text NOT NULL DEFAULT 'blocking'", Value: func(r *prowJobRunTestRow) any { return r.Lifecycle }},
 	}
 )
 
@@ -1401,9 +1403,9 @@ func (pl *ProwLoader) writeJobRunBatch(ctx context.Context, batch []jobRunResult
 		if _, err := tx.Exec(ctx, `
 			WITH inserted AS (
 				INSERT INTO prow_job_run_tests (prow_job_run_id, prow_job_id, prow_job_run_timestamp,
-					prow_job_run_release, test_id, suite_id, status, duration, created_at, updated_at)
+					prow_job_run_release, test_id, suite_id, status, duration, lifecycle, created_at, updated_at)
 				SELECT tmp.prow_job_run_id, tmp.prow_job_id, tmp.prow_job_run_timestamp,
-					tmp.prow_job_run_release, t.id, s.id, tmp.status, tmp.duration, NOW(), NOW()
+					tmp.prow_job_run_release, t.id, s.id, tmp.status, tmp.duration, tmp.lifecycle, NOW(), NOW()
 				FROM tmp_job_run_tests tmp
 				INNER JOIN tests t ON t.name = tmp.test_name AND t.deleted_at IS NULL
 				LEFT JOIN suites s ON s.name = tmp.suite_name AND s.deleted_at IS NULL
@@ -1661,6 +1663,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 			Status:              tc.Status,
 			Duration:            tc.Duration,
 			Output:              tc.Output,
+			Lifecycle:           tc.Lifecycle,
 		})
 		switch tc.Status {
 		case int(sippyprocessingv1.TestStatusFailure):
@@ -1698,6 +1701,7 @@ func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.T
 				Status:    int(status),
 				Duration:  tc.Duration,
 				Output:    output,
+				Lifecycle: normalizeLifecycle(tc.Lifecycle),
 			}
 		} else if (existing.Status == int(sippyprocessingv1.TestStatusFailure) && status == sippyprocessingv1.TestStatusSuccess) ||
 			(existing.Status == int(sippyprocessingv1.TestStatusSuccess) && status == sippyprocessingv1.TestStatusFailure) {
@@ -1711,4 +1715,13 @@ func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.T
 	for _, c := range suite.Children {
 		extractTestCases(c, testCases)
 	}
+}
+
+// normalizeLifecycle returns the lifecycle value from JUnit XML, defaulting
+// empty/missing values to "blocking" (matches BQ COALESCE behavior).
+func normalizeLifecycle(raw string) string {
+	if raw == "" {
+		return "blocking"
+	}
+	return strings.ToLower(raw)
 }

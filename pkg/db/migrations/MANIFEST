@@ -15,3 +15,4 @@
 000006_partition_cumulative_tables
 000007_drop_test_daily_summaries
 000008_add_summary_timestamps
+000009_add_lifecycle_to_prow_job_run_tests
