@@ -15,7 +15,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	sippyv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 )
@@ -65,27 +64,6 @@ func prepareVariantQuery(
 	}, nil
 }
 
-// lastFailureLateral wraps a failure aggregation subquery with a LATERAL join
-// that finds the most recent failure timestamp for each (test_id, suite_id).
-// The LATERAL is not scoped to the variant group or includeVariants filter,
-// so the timestamp may come from a run outside the reported cell. This matches
-// the documented BQ/PG parity gap (see PR description for known gaps).
-// Parameters after the inner query args: release, rangeStart, rangeEnd.
-const lastFailureLateral = `
-        SELECT fi.test_id, fi.suite_id, fi.variant_group_id,
-               fi.total_count, fi.success_count, fi.flake_count,
-               lf.last_failure
-        FROM (%s) fi
-        LEFT JOIN LATERAL (
-            SELECT MAX(pjrt.prow_job_run_timestamp) AS last_failure
-            FROM prow_job_run_tests pjrt
-            WHERE pjrt.test_id = fi.test_id
-              AND (pjrt.suite_id = fi.suite_id OR (fi.suite_id = 0 AND pjrt.suite_id IS NULL))
-              AND pjrt.prow_job_run_release = ?
-              AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
-              AND pjrt.status = %d
-        ) lf ON true`
-
 // drilldownFilters holds optional SQL WHERE fragments for TestID and
 // Capability filtering when drilling down to a specific test + environment.
 type drilldownFilters struct {
@@ -127,23 +105,21 @@ func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 // prefix-sum and GA query paths. The two paths differ only in their source
 // table, aggregation expressions, and date/window filter.
 type testStatusSpec struct {
-	fromTemplate string // FROM clause template with two %s for variantSubquery and groupMapping
-	preJoinArgs  []any  // args bound in the FROM clause before filterArgs (e.g. lookupStart)
-	totalExpr    string // SQL expression for total runs
-	successExpr  string // SQL expression for successes
-	flakeExpr    string // SQL expression for flakes
-	whereFilter  string // WHERE fragment like "e.release = ? AND e.date = ?"
-	whereArgs    []any  // args for whereFilter
-	release      string // for LATERAL join on prow_job_run_tests
-	dateRange    query.DateRange
+	fromTemplate    string // FROM clause template with two %s for variantSubquery and groupMapping
+	preJoinArgs     []any  // args bound in the FROM clause before filterArgs (e.g. lookupStart)
+	totalExpr       string // SQL expression for total runs
+	successExpr     string // SQL expression for successes
+	flakeExpr       string // SQL expression for flakes
+	lastFailureExpr string // SQL expression for last failure timestamp (e.g. "MAX(e.prefix_max_last_failure)" or "NULL::timestamptz")
+	whereFilter     string // WHERE fragment like "e.release = ? AND e.date = ?"
+	whereArgs       []any  // args for whereFilter
 }
 
 // queryTestStatus builds and executes the failure + placeholder query pair
 // that both queryTestStatusPrefixSum and queryBaseTestStatusGA share.
 //
 // Two queries run in parallel:
-//   - Failure query: tests with >= MinimumFailure failures (regression candidates),
-//     wrapped in a LATERAL join to find the most recent failure timestamp
+//   - Failure query: tests with >= MinimumFailure failures (regression candidates)
 //   - Placeholder query: (component, col_group_id) pairs with any runs (for grid gating)
 //
 // Grid placeholders are only injected for cells where data confirms
@@ -174,28 +150,28 @@ func (p *PostgresProvider) queryTestStatus(
 	joinArgs = append(joinArgs, setup.filterArgs...)
 	joinArgs = append(joinArgs, spec.whereArgs...)
 
-	failureAgg := fmt.Sprintf(`
+	failureInner := fmt.Sprintf(`
         SELECT
             e.test_id, e.suite_id, vg.group_id AS variant_group_id,
             SUM(%s) AS total_count,
             SUM(%s) AS success_count,
-            SUM(%s) AS flake_count
+            SUM(%s) AS flake_count,
+            %s AS last_failure
         %s
         WHERE %s`+filters.innerClause+`
         GROUP BY e.test_id, e.suite_id, vg.group_id
         HAVING SUM(%s) > 0
             AND SUM(%s) - SUM(%s) - SUM(%s) >= ?`,
 		spec.totalExpr, spec.successExpr, spec.flakeExpr,
+		spec.lastFailureExpr,
 		fromClause,
 		spec.whereFilter,
 		spec.totalExpr, spec.totalExpr, spec.successExpr, spec.flakeExpr)
 
-	failureInner := fmt.Sprintf(lastFailureLateral, failureAgg, sippyv1.TestStatusFailure)
-
 	failureArgs := make([]any, len(joinArgs))
 	copy(failureArgs, joinArgs)
 	failureArgs = append(failureArgs, filters.innerArgs...)
-	failureArgs = append(failureArgs, setup.minimumFailure, spec.release, spec.dateRange.Start, spec.dateRange.End)
+	failureArgs = append(failureArgs, setup.minimumFailure)
 
 	colMapping := buildColumnGroupMapping(setup.groupMapping.groupToVariants, reqOptions.VariantOption.ColumnGroupBy)
 
@@ -255,14 +231,13 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
         JOIN prow_jobs pj ON pj.id = e.prow_job_id AND pj.deleted_at IS NULL
             AND pj.variant_combination_id IN (%s)
         JOIN (%s) AS vg(vcid, group_id) ON vg.vcid = pj.variant_combination_id`,
-		preJoinArgs: []any{lookupStart},
-		totalExpr:   "e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)",
-		successExpr: "e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0)",
-		flakeExpr:   "e.prefix_sum_flakes - COALESCE(s.prefix_sum_flakes, 0)",
-		whereFilter: "e.release = ? AND e.date = ?",
-		whereArgs:   []any{release, lookupEnd},
-		release:     release,
-		dateRange:   dateRange,
+		preJoinArgs:     []any{lookupStart},
+		totalExpr:       "e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)",
+		successExpr:     "e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0)",
+		flakeExpr:       "e.prefix_sum_flakes - COALESCE(s.prefix_sum_flakes, 0)",
+		lastFailureExpr: "MAX(e.prefix_max_last_failure)",
+		whereFilter:     "e.release = ? AND e.date = ?",
+		whereArgs:       []any{release, lookupEnd},
 	})
 }
 
@@ -283,13 +258,12 @@ func (p *PostgresProvider) queryBaseTestStatusGA(
         JOIN prow_jobs pj ON pj.id = e.prow_job_id AND pj.deleted_at IS NULL
             AND pj.variant_combination_id IN (%s)
         JOIN (%s) AS vg(vcid, group_id) ON vg.vcid = pj.variant_combination_id`,
-		totalExpr:   "e.runs",
-		successExpr: "e.passes",
-		flakeExpr:   "e.flakes",
-		whereFilter: "e.release = ? AND e.window_days = ?",
-		whereArgs:   []any{release, windowDays},
-		release:     release,
-		dateRange:   baseRange,
+		totalExpr:       "e.runs",
+		successExpr:     "e.passes",
+		flakeExpr:       "e.flakes",
+		lastFailureExpr: "NULL::timestamptz",
+		whereFilter:     "e.release = ? AND e.window_days = ?",
+		whereArgs:       []any{release, windowDays},
 	})
 }
 
