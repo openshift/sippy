@@ -1305,8 +1305,7 @@ func seedFeatureGates(dbc *db.DB) error {
 }
 
 // seedGARawTestData populates prow_ga_raw_test_data for GA releases using
-// the same synthetic test/job definitions. This gives the
-// prow_ga_test_statuses_matview data to aggregate when refreshed.
+// the same synthetic test/job definitions.
 func seedGARawTestData(dbc *db.DB) error {
 	var gaReleases []models.ReleaseDefinition
 	if err := dbc.DB.Where("ga_date IS NOT NULL AND ga_date < CURRENT_DATE").Find(&gaReleases).Error; err != nil {
