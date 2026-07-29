@@ -68,6 +68,9 @@ type TestCase struct {
 	// Duration is the time taken in seconds to run the test
 	Duration float64 `xml:"time,attr"`
 
+	// Lifecycle is the lifecycle of this test case
+	Lifecycle string `xml:"lifecycle,attr"`
+
 	// SkipMessage holds the reason why the test was skipped
 	SkipMessage *SkipMessage `xml:"skipped"`
 
