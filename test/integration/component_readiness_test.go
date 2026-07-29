@@ -76,17 +76,32 @@ func createTestOwnership(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, u
 	return tow
 }
 
-func createCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release string, testID, prowJobID, suiteID uint, runs, successes, flakes int64) {
+type cumulativeSummaryOpts struct {
+	prefixMaxLastFailure *time.Time
+}
+
+type cumulativeSummaryOption func(*cumulativeSummaryOpts)
+
+func withLastFailure(t time.Time) cumulativeSummaryOption {
+	return func(o *cumulativeSummaryOpts) { o.prefixMaxLastFailure = &t }
+}
+
+func createCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release string, testID, prowJobID, suiteID uint, runs, successes, flakes int64, options ...cumulativeSummaryOption) {
 	t.Helper()
+	var o cumulativeSummaryOpts
+	for _, fn := range options {
+		fn(&o)
+	}
 	tcs := models.TestCumulativeSummary{
-		Date:               date,
-		Release:            release,
-		TestID:             testID,
-		ProwJobID:          prowJobID,
-		SuiteID:            suiteID,
-		PrefixSumRuns:      runs,
-		PrefixSumSuccesses: successes,
-		PrefixSumFlakes:    flakes,
+		Date:                 date,
+		Release:              release,
+		TestID:               testID,
+		ProwJobID:            prowJobID,
+		SuiteID:              suiteID,
+		PrefixSumRuns:        runs,
+		PrefixSumSuccesses:   successes,
+		PrefixSumFlakes:      flakes,
+		PrefixMaxLastFailure: o.prefixMaxLastFailure,
 	}
 	require.NoError(t, dbc.DB.Create(&tcs).Error)
 }
@@ -743,16 +758,12 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
 		endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
 
-		// runs=10, successes=8, flakes=1 -> failures=1
-		createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job.ID, suite.ID, 100, 90, 5)
-		createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job.ID, suite.ID, 110, 98, 6)
+		failTime := time.Date(2024, 6, 10, 18, 0, 0, 0, time.UTC)
 
-		failTime1 := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
-		failTime2 := time.Date(2024, 6, 10, 18, 0, 0, 0, time.UTC)
-		run1 := createProwJobRunForCR(t, dbc, job.ID, release, failTime1)
-		run2 := createProwJobRunForCR(t, dbc, job.ID, release, failTime2)
-		createProwJobRunTest(t, dbc, run1.ID, job.ID, test.ID, &suite.ID, 12, release, failTime1) // failure
-		createProwJobRunTest(t, dbc, run2.ID, job.ID, test.ID, &suite.ID, 12, release, failTime2) // later failure
+		// runs=10, successes=8, flakes=1 -> failures=1
+		// The end-of-window row carries the prefix_max_last_failure timestamp.
+		createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+		createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job.ID, suite.ID, 110, 98, 6, withLastFailure(failTime))
 
 		provider := postgres.NewPostgresProvider(dbc, nil)
 		opts := defaultReqOptions(release)
@@ -768,9 +779,101 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		}
 		ts, ok := result[key.Encode()]
 		require.True(t, ok, "expected result for test with failures")
-		assert.False(t, ts.LastFailure.IsZero(), "LastFailure should be populated when failures exist")
-		assert.True(t, ts.LastFailure.Equal(failTime2),
-			"LastFailure should be the most recent failure: got %v, want %v", ts.LastFailure, failTime2)
+		assert.False(t, ts.LastFailure.IsZero(), "LastFailure should be populated when prefix_max_last_failure is set")
+		assert.True(t, ts.LastFailure.Equal(failTime),
+			"LastFailure should match prefix_max_last_failure: got %v, want %v", ts.LastFailure, failTime)
+	})
+
+	t.Run("last failure picks MAX across multiple jobs in same variant group", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc1 := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:ha"})
+		vc2 := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:single"})
+		job1 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha-lf", release, vc1)
+		job2 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single-lf", release, vc2)
+
+		test := createTest(t, dbc, "openshift-tests:[sig-storage] multi-job last failure")
+		suite := createSuite(t, dbc, "openshift-tests-mj-lf")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:mj-lf-test", "Storage", []string{"PVC"})
+
+		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+		endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+		earlierFailure := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+		laterFailure := time.Date(2024, 6, 12, 9, 0, 0, 0, time.UTC)
+
+		// job1: runs=6, successes=4, flakes=1 -> failures=1, earlier failure timestamp
+		createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job1.ID, suite.ID, 50, 45, 2)
+		createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job1.ID, suite.ID, 56, 49, 3, withLastFailure(earlierFailure))
+
+		// job2: runs=8, successes=6, flakes=1 -> failures=1, later failure timestamp
+		createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job2.ID, suite.ID, 30, 25, 1)
+		createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job2.ID, suite.ID, 38, 31, 2, withLastFailure(laterFailure))
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.VariantOption.DBGroupBy = sets.New[string]("Platform")
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts,
+			map[string][]string{"Platform": {"aws"}},
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+
+		key := crtest.KeyWithVariants{
+			TestID:   tow.UniqueID,
+			Variants: map[string]string{"Platform": "aws"},
+		}
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected collapsed group result")
+		assert.Equal(t, 14, ts.TotalCount, "runs should aggregate: 6 + 8")
+		assert.True(t, ts.LastFailure.Equal(laterFailure),
+			"LastFailure should be MAX across jobs: got %v, want %v", ts.LastFailure, laterFailure)
+	})
+
+	t.Run("last failure picks non-NULL when mixed with NULL across jobs", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc1 := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:ha"})
+		vc2 := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:single"})
+		job1 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha-mixed", release, vc1)
+		job2 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single-mixed", release, vc2)
+
+		test := createTest(t, dbc, "openshift-tests:[sig-storage] mixed null last failure")
+		suite := createSuite(t, dbc, "openshift-tests-mix-lf")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:mix-lf-test", "Storage", []string{"PVC"})
+
+		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+		endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+		failTime := time.Date(2024, 6, 8, 15, 0, 0, 0, time.UTC)
+
+		// job1: has a failure timestamp
+		createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job1.ID, suite.ID, 50, 45, 2)
+		createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job1.ID, suite.ID, 56, 49, 3, withLastFailure(failTime))
+
+		// job2: no failure timestamp (NULL prefix_max_last_failure)
+		createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job2.ID, suite.ID, 30, 25, 1)
+		createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job2.ID, suite.ID, 38, 31, 2)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.VariantOption.DBGroupBy = sets.New[string]("Platform")
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts,
+			map[string][]string{"Platform": {"aws"}},
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+
+		key := crtest.KeyWithVariants{
+			TestID:   tow.UniqueID,
+			Variants: map[string]string{"Platform": "aws"},
+		}
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected collapsed group result")
+		assert.True(t, ts.LastFailure.Equal(failTime),
+			"LastFailure should be the non-NULL value: got %v, want %v", ts.LastFailure, failTime)
 	})
 
 	t.Run("results limited to available data when requested range exceeds it", func(t *testing.T) {
@@ -1103,6 +1206,7 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 	assert.Equal(t, 50, ts.TotalCount)
 	assert.Equal(t, 45, ts.SuccessCount)
 	assert.Equal(t, 2, ts.FlakeCount)
+	assert.True(t, ts.LastFailure.IsZero(), "GA base path should not populate LastFailure")
 
 	t.Run("GA drill-down with TestID", func(t *testing.T) {
 		opts2 := opts
