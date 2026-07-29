@@ -47,6 +47,7 @@ type PREntry struct {
 
 type Client struct {
 	ctx                 context.Context
+	apiClient           *gh.Client
 	cache               map[prlocator]*PREntry
 	cacheLock           sync.RWMutex
 	closedCache         map[string]map[string]map[int]*gh.PullRequest
@@ -67,6 +68,7 @@ func New(ctx context.Context, org GitHubOrg) *Client {
 		closedCache: make(map[string]map[string]map[int]*gh.PullRequest),
 	}
 	ghc := gh.NewClient(newGHAuthClient(client.ctx, org))
+	client.apiClient = ghc
 
 	client.prFetch = func(org, repo string, number int) (*gh.PullRequest, error) {
 		pr, _, err := ghc.PullRequests.Get(client.ctx, org, repo, number)
@@ -138,6 +140,10 @@ func New(ctx context.Context, org GitHubOrg) *Client {
 	client.commentMetaRegEx = regexp.MustCompile(commentIDRegex)
 
 	return client
+}
+
+func (c *Client) APIClient() *gh.Client {
+	return c.apiClient
 }
 
 // we could use the app token to look up github app installation ids at https://api.github.com/app/installations

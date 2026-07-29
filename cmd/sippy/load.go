@@ -359,7 +359,8 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					fgLoader := featuregateloader.New(ctx, dbc, releaseConfigs)
+					ghc := github.New(ctx, github.OpenshiftOrg)
+					fgLoader := featuregateloader.New(ctx, dbc, ghc.APIClient(), releaseConfigs)
 					loaders = append(loaders, fgLoader)
 				}
 

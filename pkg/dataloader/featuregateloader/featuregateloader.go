@@ -2,28 +2,24 @@ package featuregateloader
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	gh "github.com/google/go-github/v45/github"
 	"github.com/jackc/pgx/v4/stdlib"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
 const (
-	githubAPIBase   = "https://api.github.com"
 	repoOwner       = "openshift"
 	repoName        = "api"
 	featureGatePath = "payload-manifests/featuregates"
@@ -32,20 +28,16 @@ const (
 type FeatureGateLoader struct {
 	ctx            context.Context
 	dbc            *db.DB
-	httpClient     *http.Client
-	githubToken    string
+	ghClient       *gh.Client
 	errs           []error
 	releaseConfigs []v1.Release
 }
 
-func New(ctx context.Context, dbc *db.DB, configs []v1.Release) *FeatureGateLoader {
-	httpClient := &http.Client{Timeout: 30 * time.Second}
-
+func New(ctx context.Context, dbc *db.DB, ghClient *gh.Client, configs []v1.Release) *FeatureGateLoader {
 	return &FeatureGateLoader{
 		ctx:            ctx,
 		dbc:            dbc,
-		httpClient:     httpClient,
-		githubToken:    os.Getenv("GITHUB_TOKEN"),
+		ghClient:       ghClient,
 		releaseConfigs: configs,
 	}
 }
@@ -82,13 +74,6 @@ func (l *FeatureGateLoader) getTargetReleases() []string {
 	return targetReleases
 }
 
-// githubContent represents a file entry from the GitHub Contents API.
-type githubContent struct {
-	Name        string `json:"name"`
-	DownloadURL string `json:"download_url"`
-	Type        string `json:"type"`
-}
-
 func (l *FeatureGateLoader) getFeatureGatesFromGitHub(releases []string) []models.FeatureGate {
 	if len(releases) == 0 {
 		log.Info("no releases found to load feature gates")
@@ -114,104 +99,63 @@ func (l *FeatureGateLoader) getFeatureGatesFromGitHub(releases []string) []model
 }
 
 func (l *FeatureGateLoader) fetchFeatureGatesForBranch(release, branch string) ([]models.FeatureGate, error) {
-	entries, err := l.listDirectory(branch)
+	opts := &gh.RepositoryContentGetOptions{Ref: branch}
+	_, entries, _, err := l.ghClient.Repositories.GetContents(l.ctx, repoOwner, repoName, featureGatePath, opts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listing directory for branch %s: %w", branch, err)
 	}
 
 	var dbFeatureGates []models.FeatureGate
 	for _, entry := range entries {
-		if entry.Type != "file" {
+		if entry.GetType() != "file" {
 			continue
 		}
 
-		topology, featureSet, valid := parseFeatureGateFilename(entry.Name)
+		topology, featureSet, valid := parseFeatureGateFilename(entry.GetName())
 		if !valid {
 			continue
 		}
 
-		if entry.DownloadURL == "" {
-			l.errs = append(l.errs, fmt.Errorf("feature gate file %s on branch %s has no download URL", entry.Name, branch))
+		downloadURL := entry.GetDownloadURL()
+		if downloadURL == "" {
+			l.errs = append(l.errs, fmt.Errorf("feature gate file %s on branch %s has no download URL", entry.GetName(), branch))
 			continue
 		}
 
-		data, err := l.downloadFile(entry.DownloadURL)
+		data, err := l.downloadFile(downloadURL)
 		if err != nil {
-			return nil, fmt.Errorf("failed to download %s: %w", entry.Name, err)
+			l.errs = append(l.errs, fmt.Errorf("failed to download %s: %w", entry.GetName(), err))
+			continue
 		}
 
 		var fg FeatureGate
 		if err := yaml.Unmarshal(data, &fg); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal YAML from %s: %w", entry.Name, err)
+			l.errs = append(l.errs, fmt.Errorf("failed to unmarshal YAML from %s: %w", entry.GetName(), err))
+			continue
 		}
 
-		dbFeatureGates = append(dbFeatureGates, convertAPIToDB(fg, release, topology, featureSet, entry.DownloadURL)...)
+		dbFeatureGates = append(dbFeatureGates, convertAPIToDB(fg, release, topology, featureSet, downloadURL)...)
 	}
 
 	return dbFeatureGates, nil
 }
 
-func (l *FeatureGateLoader) listDirectory(branch string) ([]githubContent, error) {
-	apiURL := fmt.Sprintf("%s/repos/%s/%s/contents/%s?ref=%s",
-		githubAPIBase, repoOwner, repoName, featureGatePath, url.QueryEscape(branch))
-
-	body, err := l.doGet(apiURL, map[string]string{"Accept": "application/vnd.github.v3+json"})
-	if err != nil {
-		return nil, fmt.Errorf("listing directory for branch %s: %w", branch, err)
-	}
-
-	var entries []githubContent
-	if err := json.Unmarshal(body, &entries); err != nil {
-		return nil, fmt.Errorf("decoding directory listing for branch %s: %w", branch, err)
-	}
-
-	return entries, nil
-}
-
 func (l *FeatureGateLoader) downloadFile(downloadURL string) ([]byte, error) {
-	if !isAllowedDownloadURL(downloadURL) {
-		return nil, fmt.Errorf("download URL not from an allowed host: %s", downloadURL)
-	}
-	return l.doGet(downloadURL, nil)
-}
+	ctx, cancel := context.WithTimeout(l.ctx, 30*time.Second)
+	defer cancel()
 
-var allowedDownloadHosts = sets.New[string](
-	"raw.githubusercontent.com",
-	"objects.githubusercontent.com",
-)
-
-func isAllowedDownloadURL(rawURL string) bool {
-	u, err := url.Parse(rawURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
-		return false
+		return nil, fmt.Errorf("creating request for %s: %w", downloadURL, err)
 	}
-	return u.Scheme == "https" && allowedDownloadHosts.Has(u.Host)
-}
-
-// doGet performs an authenticated GET request and returns the response body.
-func (l *FeatureGateLoader) doGet(targetURL string, headers map[string]string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(l.ctx, http.MethodGet, targetURL, nil)
+	resp, err := l.ghClient.Client().Do(req) //nolint:gosec // URL comes from GitHub Contents API response
 	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-	if l.githubToken != "" {
-		req.Header.Set("Authorization", "token "+l.githubToken)
-	}
-
-	resp, err := l.httpClient.Do(req) //nolint:gosec
-	if err != nil {
-		return nil, fmt.Errorf("HTTP GET %s: %w", targetURL, err)
+		return nil, fmt.Errorf("HTTP GET %s: %w", downloadURL, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("not found: %s", targetURL)
-	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %s from %s", resp.Status, targetURL)
+		return nil, fmt.Errorf("HTTP %s from %s", resp.Status, downloadURL)
 	}
 
 	return io.ReadAll(io.LimitReader(resp.Body, 10<<20))
