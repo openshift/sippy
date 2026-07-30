@@ -14,6 +14,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -22,6 +23,9 @@ const PASS_COLOR = '#d4edda'
 const PASS_TEXT = '#155724'
 const FAIL_COLOR = '#f8d7da'
 const FAIL_TEXT = '#721c24'
+
+// Variant keys that are included in navigation filters but not displayed in column headers
+const HIDDEN_VARIANT_KEYS = new Set(['Capability'])
 
 function topologyDisplayName(topology) {
   if (topology === 'external') return 'hypershift'
@@ -40,8 +44,44 @@ function variantColumnHeader(variant) {
   return parts
 }
 
+function buildTestAnalysisPath(release, variant, testName) {
+  const v = variant.variants || {}
+  const items = [
+    { columnField: 'name', operatorValue: 'contains', value: testName },
+  ]
+  let id = 1
+  for (const [key, val] of Object.entries(v)) {
+    if (!val) continue
+    items.push({
+      id: id++,
+      columnField: 'variants',
+      operatorValue: 'has entry',
+      value: `${key}:${val}`,
+    })
+  }
+  items.push({
+    id: id++,
+    columnField: 'variants',
+    not: true,
+    operatorValue: 'has entry',
+    value: 'never-stable',
+  })
+  items.push({
+    id: id++,
+    columnField: 'variants',
+    not: true,
+    operatorValue: 'has entry',
+    value: 'aggregated',
+  })
+  const filters = { items, linkOperator: 'and' }
+  return `/tests/${release}/details?filters=${encodeURIComponent(
+    JSON.stringify(filters)
+  )}&sortField=net_improvement&sort=asc`
+}
+
 export default function FeatureGatePromotionTab(props) {
-  const { release, featureGate, data, onCellClick } = props
+  const { release, featureGate, data } = props
+  const navigate = useNavigate()
 
   const [showWarnings, setShowWarnings] = React.useState(false)
   const [showErrors, setShowErrors] = React.useState(false)
@@ -307,7 +347,7 @@ export default function FeatureGatePromotionTab(props) {
                         testName={testName}
                         release={release}
                         featureGate={featureGate}
-                        onCellClick={onCellClick}
+                        navigate={navigate}
                         requiredRuns={thresholds.requiredRuns}
                         requiredPassRate={thresholds.requiredPassRate}
                       />
@@ -353,10 +393,14 @@ function PromotionCell({
   testName,
   release,
   featureGate,
-  onCellClick,
+  navigate,
   requiredRuns,
   requiredPassRate,
 }) {
+  const handleClick = () => {
+    navigate(buildTestAnalysisPath(release, variant, testName))
+  }
+
   if (!testResult) {
     return (
       <Tooltip title={cellTooltip(null, requiredRuns, requiredPassRate)}>
@@ -365,9 +409,9 @@ function PromotionCell({
           sx={{
             backgroundColor: FAIL_COLOR,
             color: FAIL_TEXT,
-            cursor: onCellClick ? 'pointer' : 'default',
+            cursor: 'pointer',
           }}
-          onClick={() => onCellClick && onCellClick(variant, testName)}
+          onClick={handleClick}
         >
           <Typography variant="body2" color="inherit">
             <strong>FAIL</strong>
@@ -402,9 +446,9 @@ function PromotionCell({
         sx={{
           backgroundColor: bgColor,
           color: textColor,
-          cursor: onCellClick ? 'pointer' : 'default',
+          cursor: 'pointer',
         }}
-        onClick={() => onCellClick && onCellClick(variant, testName)}
+        onClick={handleClick}
       >
         <Typography variant="body2" color="inherit">
           <strong>{label}</strong>
@@ -429,7 +473,6 @@ FeatureGatePromotionTab.propTypes = {
   release: PropTypes.string.isRequired,
   featureGate: PropTypes.string.isRequired,
   data: PropTypes.object,
-  onCellClick: PropTypes.func,
 }
 
 PromotionCell.propTypes = {
@@ -438,7 +481,7 @@ PromotionCell.propTypes = {
   testName: PropTypes.string.isRequired,
   release: PropTypes.string.isRequired,
   featureGate: PropTypes.string.isRequired,
-  onCellClick: PropTypes.func,
+  navigate: PropTypes.func.isRequired,
   requiredRuns: PropTypes.number.isRequired,
   requiredPassRate: PropTypes.number.isRequired,
 }

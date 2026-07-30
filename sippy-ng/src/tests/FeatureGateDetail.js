@@ -319,9 +319,6 @@ export default function FeatureGateDetail(props) {
             release={release}
             featureGate={featureGate}
             data={gate?.promotion}
-            onCellClick={() => {
-              setActiveTab(tabs.findIndex((tab) => tab.key === 'gate_tests'))
-            }}
           />
         )}
         {tabs[activeTab]?.key === 'gate_tests' && (

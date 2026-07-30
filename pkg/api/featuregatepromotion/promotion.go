@@ -215,6 +215,7 @@ func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVari
 
 	for _, jv := range variantsToCheck {
 		vr := buildVariantResult(jv, tests)
+		vr.Variants["Capability"] = featureGate
 		status.ResultsByVariant = append(status.ResultsByVariant, vr)
 
 		status.Warnings = append(status.Warnings, vr.Warnings...)
