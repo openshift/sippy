@@ -8,7 +8,7 @@ import GridToolbarPeriodSelector from '../datagrid/GridToolbarPeriodSelector'
 import GridToolbarViewSelector from './GridToolbarViewSelector'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect, useRef } from 'react'
+import React, { Fragment, useEffect } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import TextField from '@mui/material/TextField'
 
@@ -39,33 +39,27 @@ export default function GridToolbar(props) {
   const classes = useStyles(theme)
 
   const [search, setSearch] = React.useState('')
-  const initializedFromFilter = useRef(false)
 
-  useEffect(() => {
-    if (
-      initializedFromFilter.current ||
-      !props.searchField ||
-      !props.filterModel ||
-      !props.filterModel.items
-    ) {
-      return
-    }
+  const filterSearchValue = (() => {
+    if (!props.searchField || !props.filterModel?.items) return undefined
     const filtersForField = props.filterModel.items.filter(
       (f) => f.columnField === props.searchField
     )
-    if (filtersForField.length !== 1) {
-      return
-    }
+    if (filtersForField.length !== 1) return undefined
     const filter = filtersForField[0]
     if (
       filter.operatorValue === 'contains' &&
       filter.not !== true &&
       filter.value
     ) {
-      setSearch(filter.value)
-      initializedFromFilter.current = true
+      return filter.value
     }
-  }, [props.searchField, props.filterModel])
+    return undefined
+  })()
+
+  useEffect(() => {
+    setSearch(filterSearchValue ?? '')
+  }, [filterSearchValue])
 
   return (
     <div className={classes.root}>
