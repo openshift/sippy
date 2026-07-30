@@ -150,7 +150,7 @@ export default function FeatureGateDetail(props) {
       t.push({ key: 'install_tests', label: 'Install Tests' })
     }
     if (gate?.links?.gate_job_tests) {
-      t.push({ key: 'gate_job_tests', label: 'Gate Job Tests' })
+      t.push({ key: 'gate_job_tests', label: 'Owned Job Test Issues' })
     }
     return t
   }, [gate])
