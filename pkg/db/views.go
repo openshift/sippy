@@ -21,12 +21,10 @@ var PostgresMatViews = []PostgresView{
 		AdditionalIndexes: []string{"release, timestamp DESC"},
 	},
 	{
-		// TODO: this probably doesn't need to be a matview anymore since we only keep 3 months of data,
-		// metrics show this refreshing in .6s a lot of the time, occasionally up to 5s.
-		Name:           "payload_test_failures_14d_matview",
-		Definition:     payloadTestFailuresMatView,
-		IndexColumns:   []string{"release", "architecture", "stream", "prow_job_run_id", "test_id", "suite_id"},
-		ReplaceStrings: map[string]string{},
+		Name:         "prow_ga_test_statuses_matview",
+		Definition:   gaTestStatusMatView,
+		IndexColumns: []string{"release", "window_days", "test_id", "suite_id", "variant_combination_id"},
+		RefreshPhase: 1,
 	},
 }
 
@@ -224,41 +222,17 @@ FROM prow_job_runs
 WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
 `
 
-// TODO: remove distinct once bug fixed re dupes in release_job_runs
-const payloadTestFailuresMatView = `
-SELECT DISTINCT
-       rt.release,
-       rt.architecture,
-       rt.stream,
-	   rt.release_tag,
-       pjrt.id, 
-       pjrt.test_id,
-       pjrt.suite_id,
-       pjrt.status,
-       t.name,
-       pjrt.prow_job_run_id as prow_job_run_id,
-       pjr.url as prow_job_run_url,
-       pj.name as prow_job_name
-FROM
-     release_tags rt,
-     release_job_runs rjr,
-     prow_job_run_tests pjrt,
-     tests t,
-     prow_jobs pj,
-     prow_job_runs pjr
-WHERE
-    rt.release_time > (|||TIMENOW||| - '14 days'::interval)
-    AND pjrt.prow_job_run_timestamp > (|||TIMENOW||| - '14 days'::interval)
-    AND pjr.timestamp > (|||TIMENOW||| - '14 days'::interval)
-    AND rjr.release_tag_id = rt.id
-    AND rjr.kind = 'Blocking'
-    AND rjr.State = 'Failed'
-    AND pjrt.prow_job_run_id = rjr.prow_job_run_id
-    AND pjrt.prow_job_run_release = rt.release
-    AND pjrt.prow_job_run_timestamp = pjr.timestamp
-    AND pjrt.status = 12
-    AND t.id = pjrt.test_id
-    AND pjr.id = pjrt.prow_job_run_id
-    AND pj.id = pjr.prow_job_id
-ORDER BY pjrt.id DESC
+const gaTestStatusMatView = `
+SELECT
+    raw.test_id,
+    raw.suite_id,
+    pj.variant_combination_id,
+    raw.release,
+    raw.window_days,
+    SUM(raw.runs)::int AS total_count,
+    SUM(raw.passes + raw.flakes)::int AS success_count,
+    SUM(raw.flakes)::int AS flake_count
+FROM prow_ga_raw_test_data raw
+JOIN prow_jobs pj ON pj.id = raw.prow_job_id AND pj.deleted_at IS NULL AND pj.variant_combination_id IS NOT NULL
+GROUP BY raw.test_id, raw.suite_id, pj.variant_combination_id, raw.release, raw.window_days
 `

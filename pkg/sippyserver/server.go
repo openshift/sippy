@@ -618,9 +618,17 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "", "")
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if filterOpts.SortField != "" || filterOpts.Sort != "" {
+		failureResponse(w, http.StatusBadRequest, "sorting is not supported for this endpoint")
+		return
+	}
+	if filterOpts.Limit > 0 {
+		failureResponse(w, http.StatusBadRequest, "limit is not supported for this endpoint")
 		return
 	}
 

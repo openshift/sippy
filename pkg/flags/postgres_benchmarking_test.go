@@ -732,27 +732,14 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 			},
 		},
 		{
-			name: "MatviewPayloadTestFailures",
+			name: "AggregatedPayloadTestFailures",
 			fn: func(dbc *db.DB) error {
-				type payloadFailure struct {
-					Release       string
-					Architecture  string
-					Stream        string
-					ProwJobRunID  uint
-					TestID        uint
-					Name          string
-					ProwJobName   string
-					ProwJobRunURL string
+				results, err := api.GetPayloadStreamTestFailures(dbc, benchmarkRelease, "nightly", "amd64",
+					&filter.FilterOptions{Filter: &filter.Filter{}}, asOf)
+				if err != nil {
+					return err
 				}
-				var results []payloadFailure
-				res := dbc.DB.Table("payload_test_failures_14d_matview").
-					Where("release = ?", benchmarkRelease).
-					Limit(50).
-					Scan(&results)
-				if res.Error != nil {
-					return res.Error
-				}
-				log.Printf("MatviewPayloadTestFailures: %d results for release %s", len(results), benchmarkRelease)
+				log.Printf("AggregatedPayloadTestFailures: %d test analyses for release %s", len(results), benchmarkRelease)
 				return nil
 			},
 		},

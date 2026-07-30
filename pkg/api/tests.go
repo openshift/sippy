@@ -29,10 +29,6 @@ import (
 	"github.com/openshift/sippy/pkg/util/param"
 )
 
-const (
-	payloadFailedTests14dMatView = "payload_test_failures_14d_matview"
-)
-
 func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubstrings []string, dbc *db.DB) {
 	responseStr, err := installhtml.TestDetailTestsFromDB(dbc, release, testSubstrings)
 	if err != nil {
