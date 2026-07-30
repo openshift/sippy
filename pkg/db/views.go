@@ -20,12 +20,6 @@ var PostgresMatViews = []PostgresView{
 		IndexColumns:      []string{"id"},
 		AdditionalIndexes: []string{"release, timestamp DESC"},
 	},
-	{
-		Name:         "prow_ga_test_statuses_matview",
-		Definition:   gaTestStatusMatView,
-		IndexColumns: []string{"release", "window_days", "test_id", "suite_id", "variant_combination_id"},
-		RefreshPhase: 1,
-	},
 }
 
 // PostgresViews are regular, non-materialized views:
@@ -220,19 +214,4 @@ FROM prow_job_runs
    LEFT JOIN pull_requests ON pull_requests.id = prow_job_runs.id
    JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE prow_job_runs."timestamp" >= |||TIMENOW||| - interval '90 days'
-`
-
-const gaTestStatusMatView = `
-SELECT
-    raw.test_id,
-    raw.suite_id,
-    pj.variant_combination_id,
-    raw.release,
-    raw.window_days,
-    SUM(raw.runs)::int AS total_count,
-    SUM(raw.passes + raw.flakes)::int AS success_count,
-    SUM(raw.flakes)::int AS flake_count
-FROM prow_ga_raw_test_data raw
-JOIN prow_jobs pj ON pj.id = raw.prow_job_id AND pj.deleted_at IS NULL AND pj.variant_combination_id IS NOT NULL
-GROUP BY raw.test_id, raw.suite_id, pj.variant_combination_id, raw.release, raw.window_days
 `
