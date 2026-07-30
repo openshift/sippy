@@ -143,14 +143,29 @@ export default function FeatureGateDetail(props) {
 
   const tabs = useMemo(() => {
     const t = [
-      { key: 'promotion', label: 'Promotion Readiness' },
-      { key: 'gate_tests', label: 'Gate Tests' },
+      { key: 'promotion', label: 'Promotion Readiness', tooltip: '' },
+      {
+        key: 'gate_tests',
+        label: 'Gate Tests',
+        tooltip:
+          'Tests that are explicitly owned by this feature gate because their Capability variant matches the feature gate name. All tests in these jobs must meet a minimum pass rate to promote.',
+      },
     ]
     if (gate?.links?.install_tests) {
-      t.push({ key: 'install_tests', label: 'Install Tests' })
+      t.push({
+        key: 'install_tests',
+        label: 'Install Tests',
+        tooltip:
+          'Install tests for this installer feature gate in the jobs owned by this feature gate. All tests in these jobs must meet a minimum pass rate to promote.',
+      })
     }
     if (gate?.links?.gate_job_tests) {
-      t.push({ key: 'gate_job_tests', label: 'Owned Job Test Issues' })
+      t.push({
+        key: 'gate_job_tests',
+        label: 'Owned Job Test Regressions',
+        tooltip:
+          'All tests that are not passing sufficiently in the jobs owned by this feature gate. (via Capability in the variant registry) Used to expose unexpected regressions in other components/functionality.',
+      })
     }
     return t
   }, [gate])
@@ -227,7 +242,7 @@ export default function FeatureGateDetail(props) {
                 ))}
             </Typography>
             <Typography variant="body1" component="div" sx={{ mt: 1 }}>
-              <strong>Matching Jobs:</strong>
+              <strong>Owned Jobs:</strong>
               <Tooltip title="These jobs are explicitly owned by this feature gate because their Capability variant matches the feature gate name. All tests in these jobs must meet a minimum pass rate to promote.">
                 <HelpOutlineIcon
                   fontSize="small"
@@ -260,7 +275,24 @@ export default function FeatureGateDetail(props) {
             aria-label="feature gate test sections"
           >
             {tabs.map((t) => (
-              <Tab key={t.key} label={t.label} />
+              <Tab
+                key={t.key}
+                label={
+                  t.tooltip ? (
+                    <Tooltip title={t.tooltip}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {t.label}
+                        <HelpOutlineIcon
+                          fontSize="small"
+                          sx={{ ml: 0.5, color: 'text.secondary' }}
+                        />
+                      </Box>
+                    </Tooltip>
+                  ) : (
+                    t.label
+                  )
+                }
+              />
             ))}
           </Tabs>
         </Box>
