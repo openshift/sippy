@@ -407,6 +407,7 @@ export default function TriagedRegressions({
             setFilterModel: setFilterModel,
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
+            searchField: 'description',
             autocompleteData: triageEntries,
             downloadDataFunc: () => {
               return filteredTriageEntries

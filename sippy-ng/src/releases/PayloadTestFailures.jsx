@@ -95,17 +95,17 @@ function PayloadTestFailures(props) {
   )
 
   const requestSearch = (searchValue) => {
-    const currentFilters = filterModel
-    currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'name'
-    )
-    currentFilters.items.push({
+    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
+    newItems.push({
       id: 99,
       columnField: 'name',
       operatorValue: 'contains',
       value: searchValue,
     })
-    setFilterModel(currentFilters)
+    setFilterModel({
+      ...filterModel,
+      items: newItems,
+    })
   }
 
   const addFilters = (filter) => {
@@ -232,6 +232,7 @@ function PayloadTestFailures(props) {
               columns: columns,
               clearSearch: () => requestSearch(''),
               doSearch: requestSearch,
+              searchField: 'name',
               addFilters: addFilters,
               filterModel: filterModel,
               setFilterModel: setFilterModel,
