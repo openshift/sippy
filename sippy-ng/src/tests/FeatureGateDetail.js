@@ -241,30 +241,44 @@ export default function FeatureGateDetail(props) {
                   <Chip key={e} label={e} size="small" sx={{ mr: 0.5 }} />
                 ))}
             </Typography>
-            <Typography variant="body1" component="div" sx={{ mt: 1 }}>
-              <strong>Owned Jobs:</strong>
-              <Tooltip title="These jobs are explicitly owned by this feature gate because their Capability variant matches the feature gate name. All tests in these jobs must meet a minimum pass rate to promote.">
-                <HelpOutlineIcon
-                  fontSize="small"
-                  sx={{
-                    ml: 0.5,
-                    mr: 0.5,
-                    verticalAlign: 'middle',
-                    color: 'text.secondary',
-                  }}
-                />
-              </Tooltip>
-              {gate.matching_jobs && gate.matching_jobs.length > 0
-                ? gate.matching_jobs.map((job) => (
-                    <Chip
-                      key={job}
-                      label={job}
-                      size="small"
-                      sx={{ mr: 0.5, mb: 0.5 }}
-                    />
-                  ))
-                : 'None'}
-            </Typography>
+            {gate.matching_jobs && gate.matching_jobs.length > 0 && (
+              <Typography variant="body1" component="div" sx={{ mt: 1 }}>
+                <strong>Owned Jobs:</strong>
+                <Tooltip title="These jobs are explicitly owned by this feature gate because their Capability variant matches the feature gate name. All tests in these jobs must meet a minimum pass rate to promote.">
+                  <HelpOutlineIcon
+                    fontSize="small"
+                    sx={{
+                      ml: 0.5,
+                      verticalAlign: 'middle',
+                      color: 'text.secondary',
+                    }}
+                  />
+                </Tooltip>
+                <ul style={{ margin: '4px 0 0', paddingLeft: '20px' }}>
+                  {gate.matching_jobs.map((job) => (
+                    <li key={job}>{job}</li>
+                  ))}
+                  <li>
+                    <Link
+                      to={`/jobs/${release}/analysis?filters=${encodeURIComponent(
+                        JSON.stringify({
+                          items: gate.matching_jobs.map((job, i) => ({
+                            id: i,
+                            columnField: 'name',
+                            operatorValue: 'equals',
+                            value: job,
+                          })),
+                          linkOperator: 'or',
+                        })
+                      )}`}
+                      style={{ textDecoration: 'underline' }}
+                    >
+                      Analyze All
+                    </Link>
+                  </li>
+                </ul>
+              </Typography>
+            )}
           </CardContent>
         </Card>
 
