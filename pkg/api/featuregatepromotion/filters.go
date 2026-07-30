@@ -45,7 +45,7 @@ func CapabilityRegressionsFilter(featureGate string) filter.Filter {
 			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "aggregated"},
 			{Field: "variants", Operator: filter.OperatorHasEntry, Value: fmt.Sprintf("Capability:%s", featureGate)},
 			{Field: "current_working_percentage", Operator: filter.OperatorArithmeticLessThan, Value: "92"},
-			{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "0"},
+			{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "1"},
 			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "install should succeed"},
 			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "openshift-tests should work"},
 			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "infrastructure should work"},
