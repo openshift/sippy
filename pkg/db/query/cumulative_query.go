@@ -303,8 +303,8 @@ func testReportCoreJoin(dbc *db.DB, release string, sample, base DateRange, name
 			SUM(COALESCE(e.prefix_sum_failures  - COALESCE(m.prefix_sum_failures,  0), 0))::bigint AS current_failures,
 			SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs`).
 		Joins("JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL").
-		Joins("LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?", boundary).
-		Joins("LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.release = e.release AND s.date = ?", start).
+		Joins("LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.lifecycle = e.lifecycle AND m.release = e.release AND m.date = ?", boundary).
+		Joins("LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.lifecycle = e.lifecycle AND s.release = e.release AND s.date = ?", start).
 		Where("e.date = ? AND e.release = ?", end, release).
 		Group("e.test_id, e.suite_id, pj.variant_combination_id, e.release")
 

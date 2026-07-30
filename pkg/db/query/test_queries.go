@@ -81,6 +81,7 @@ const (
                 ON s.test_id = e.test_id
                 AND s.prow_job_id = e.prow_job_id
                 AND s.suite_id = e.suite_id
+                AND s.lifecycle = e.lifecycle
                 AND s.release = e.release
                 AND s.date = (?::date - INTERVAL '1 day')::date
             WHERE e.date = (SELECT MAX(date) FROM test_cumulative_summaries WHERE release = ?)
@@ -296,8 +297,8 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
       SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs
     FROM test_cumulative_summaries e
     JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
-    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
-    LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.release = e.release AND s.date = ?
+    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.lifecycle = e.lifecycle AND m.release = e.release AND m.date = ?
+    LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.lifecycle = e.lifecycle AND s.release = e.release AND s.date = ?
 `)
 	args = append(args, boundary, start)
 
@@ -368,7 +369,7 @@ stats AS (
       SUM(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs, 0))::bigint      AS current_runs
     FROM test_cumulative_summaries e
     JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
-    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
+    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.lifecycle = e.lifecycle AND m.release = e.release AND m.date = ?
     WHERE e.date = ? AND e.release = ?
       AND e.test_id IN (SELECT DISTINCT test_id FROM %s)
       AND NOT EXISTS (SELECT 1 FROM variant_combinations WHERE 'never-stable' = any(variants) AND id = pj.variant_combination_id)

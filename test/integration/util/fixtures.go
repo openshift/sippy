@@ -87,6 +87,47 @@ func CreateProwJobRunTest(t *testing.T, dbc *db.DB, prowJobRunID, prowJobID, tes
 	return pjrt
 }
 
+func CreateProwJobRunTestWithSuite(t *testing.T, dbc *db.DB, prowJobRunID, prowJobID, testID, suiteID uint, release string, timestamp time.Time, status int) models.ProwJobRunTest {
+	t.Helper()
+	pjrt := models.ProwJobRunTest{
+		ProwJobRunID:        prowJobRunID,
+		ProwJobID:           prowJobID,
+		TestID:              testID,
+		SuiteID:             &suiteID,
+		ProwJobRunRelease:   release,
+		ProwJobRunTimestamp: timestamp,
+		Status:              status,
+	}
+	require.NoError(t, dbc.DB.Create(&pjrt).Error, "creating ProwJobRunTest")
+	return pjrt
+}
+
+func CreateProwJobRunTestWithLifecycle(t *testing.T, dbc *db.DB, prowJobRunID, prowJobID, testID uint, release string, timestamp time.Time, status int, lifecycle string) models.ProwJobRunTest {
+	t.Helper()
+	pjrt := models.ProwJobRunTest{
+		ProwJobRunID:        prowJobRunID,
+		ProwJobID:           prowJobID,
+		TestID:              testID,
+		ProwJobRunRelease:   release,
+		ProwJobRunTimestamp: timestamp,
+		Status:              status,
+		Lifecycle:           lifecycle,
+	}
+	require.NoError(t, dbc.DB.Create(&pjrt).Error, "creating ProwJobRunTest")
+	return pjrt
+}
+
+func CreateReleaseDefinition(t *testing.T, dbc *db.DB, release string, major, minor int) models.ReleaseDefinition {
+	t.Helper()
+	rd := models.ReleaseDefinition{
+		Release: release,
+		Major:   major,
+		Minor:   minor,
+	}
+	require.NoError(t, dbc.DB.Create(&rd).Error, "creating ReleaseDefinition %q", release)
+	return rd
+}
+
 func CreateBug(t *testing.T, dbc *db.DB, key, status, summary string, lastChangeTime time.Time, jobs []models.ProwJob) models.Bug {
 	t.Helper()
 	bug := models.Bug{

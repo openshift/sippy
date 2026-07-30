@@ -77,13 +77,28 @@ func createTestOwnership(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, u
 }
 
 type cumulativeSummaryOpts struct {
+	prefixSumFailures    int64
 	prefixMaxLastFailure *time.Time
+	prefixMaxLastSuccess *time.Time
+	lifecycle            string
 }
 
 type cumulativeSummaryOption func(*cumulativeSummaryOpts)
 
 func withLastFailure(t time.Time) cumulativeSummaryOption {
 	return func(o *cumulativeSummaryOpts) { o.prefixMaxLastFailure = &t }
+}
+
+func withLastSuccess(t time.Time) cumulativeSummaryOption {
+	return func(o *cumulativeSummaryOpts) { o.prefixMaxLastSuccess = &t }
+}
+
+func withFailures(failures int64) cumulativeSummaryOption {
+	return func(o *cumulativeSummaryOpts) { o.prefixSumFailures = failures }
+}
+
+func withLifecycle(lifecycle string) cumulativeSummaryOption {
+	return func(o *cumulativeSummaryOpts) { o.lifecycle = lifecycle }
 }
 
 func createCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release string, testID, prowJobID, suiteID uint, runs, successes, flakes int64, options ...cumulativeSummaryOption) {
@@ -98,10 +113,16 @@ func createCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release 
 		TestID:               testID,
 		ProwJobID:            prowJobID,
 		SuiteID:              suiteID,
+		Lifecycle:            o.lifecycle,
 		PrefixSumRuns:        runs,
 		PrefixSumSuccesses:   successes,
+		PrefixSumFailures:    o.prefixSumFailures,
 		PrefixSumFlakes:      flakes,
 		PrefixMaxLastFailure: o.prefixMaxLastFailure,
+		PrefixMaxLastSuccess: o.prefixMaxLastSuccess,
+	}
+	if tcs.Lifecycle == "" {
+		tcs.Lifecycle = "blocking"
 	}
 	require.NoError(t, dbc.DB.Create(&tcs).Error)
 }
@@ -2371,6 +2392,303 @@ func TestDrillDownBySecondaryCapability(t *testing.T) {
 	for _, ts := range nonPlaceholders {
 		assert.NotEqual(t, "openshift-tests:pvc-only", ts.TestID,
 			"test with only PVC capability should not appear in IPv4 drill-down")
+	}
+}
+
+func TestMixedLifecycleRowsProduceCorrectCounts(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-lifecycle", release, vc)
+	test := createTest(t, dbc, "openshift-tests:[sig-storage] PVC lifecycle test")
+	suite := createSuite(t, dbc, "openshift-tests")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:lifecycle", "Storage", []string{"PersistentVolumes"})
+
+	startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+	endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// Blocking: runs=10, successes=8, flakes=1
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job.ID, suite.ID, 100, 90, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job.ID, suite.ID, 110, 98, 6, withLifecycle("blocking"))
+
+	// Informing: runs=20, successes=15, flakes=2
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job.ID, suite.ID, 50, 40, 3, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job.ID, suite.ID, 70, 55, 5, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	includeVariants := map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+	require.NotEmpty(t, result)
+
+	key := crtest.KeyWithVariants{
+		TestID:   tow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	ts, ok := result[key.Encode()]
+	require.True(t, ok, "expected key %s in results", key.Encode())
+
+	// Correct: blocking (10) + informing (20) = 30 runs
+	// Without lifecycle join fix, cross-product would inflate to 40
+	assert.Equal(t, 30, ts.TotalCount)
+	assert.Equal(t, 23, ts.SuccessCount) // blocking 8 + informing 15
+	assert.Equal(t, 3, ts.FlakeCount)    // blocking 1 + informing 2
+}
+
+func TestLifecycleFilterExcludesInformingFromSample(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-lifecycle-filter", release, vc)
+	test := createTest(t, dbc, "openshift-tests:[sig-network] informing filter test")
+	suite := createSuite(t, dbc, "openshift-tests")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:lifecycle-filter", "Networking", []string{"Connectivity"})
+
+	// defaultReqOptions uses:
+	//   sample: 2024-06-01 to 2024-06-15 -> lookup dates: 2024-05-31 (start-1), 2024-06-14 (end-1)
+	//   base:   2024-05-15 to 2024-06-01 -> lookup dates: 2024-05-14 (start-1), 2024-06-01 (end+1-1)
+	// Create prefix-sum rows at all four lookup dates.
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// Blocking: base period adds 5 runs (3 success, 1 flake), sample period adds 10 runs (8 success, 1 flake)
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 70, 4, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 85, 73, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 85, 73, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 95, 81, 6, withLifecycle("blocking"))
+
+	// Informing: base period adds 8 runs (6 success, 1 flake), sample period adds 20 runs (15 success, 2 flakes)
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 30, 24, 2, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 38, 30, 3, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 38, 30, 3, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 58, 45, 5, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	includeVariants := map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	key := crtest.KeyWithVariants{
+		TestID:   tow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+
+	t.Run("sample with lifecycle=blocking excludes informing", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.Lifecycles = []string{"blocking"}
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Only blocking sample counts: 10 runs, 8 successes, 1 flake
+		assert.Equal(t, 10, ts.TotalCount)
+		assert.Equal(t, 8, ts.SuccessCount)
+		assert.Equal(t, 1, ts.FlakeCount)
+	})
+
+	t.Run("base query does not filter by lifecycle", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.Lifecycles = []string{"blocking"}
+
+		result, errs := provider.QueryBaseTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Base includes both blocking (5 runs) and informing (8 runs) = 13 runs
+		assert.Equal(t, 13, ts.TotalCount)
+		assert.Equal(t, 9, ts.SuccessCount) // blocking 3 + informing 6
+		assert.Equal(t, 2, ts.FlakeCount)   // blocking 1 + informing 1
+	})
+
+	t.Run("sample without lifecycle filter includes all", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Both blocking (10) + informing (20) = 30 runs
+		assert.Equal(t, 30, ts.TotalCount)
+		assert.Equal(t, 23, ts.SuccessCount) // blocking 8 + informing 15
+		assert.Equal(t, 3, ts.FlakeCount)    // blocking 1 + informing 2
+	})
+
+	t.Run("sample with lifecycle=informing returns only informing", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.Lifecycles = []string{"informing"}
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Only informing sample counts: 20 runs, 15 successes, 2 flakes
+		assert.Equal(t, 20, ts.TotalCount)
+		assert.Equal(t, 15, ts.SuccessCount)
+		assert.Equal(t, 2, ts.FlakeCount)
+	})
+
+	t.Run("sample with both lifecycles returns all", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.Lifecycles = []string{"blocking", "informing"}
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Both blocking (10) + informing (20) = 30 runs
+		assert.Equal(t, 30, ts.TotalCount)
+		assert.Equal(t, 23, ts.SuccessCount)
+		assert.Equal(t, 3, ts.FlakeCount)
+	})
+}
+
+func TestInformingOnlyTestExcludedFromSamplePlaceholders(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-placeholder-lifecycle", release, vc)
+
+	testBoth := createTest(t, dbc, "openshift-tests:[sig-network] test with both lifecycles")
+	testInformingOnly := createTest(t, dbc, "openshift-tests:[sig-storage] informing-only test")
+	suite := createSuite(t, dbc, "openshift-tests")
+
+	towBoth := createTestOwnership(t, dbc, testBoth.ID, &suite.ID, "openshift-tests:both-lifecycle", "Networking", []string{"Connectivity"})
+	createTestOwnership(t, dbc, testInformingOnly.ID, &suite.ID, "openshift-tests:informing-only", "Storage", []string{"PVC"})
+
+	startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+	endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// testBoth: blocking data in sample period (10 runs, 8 successes, 1 flake)
+	createCumulativeSummary(t, dbc, startMinus1, release, testBoth.ID, job.ID, suite.ID, 80, 70, 4, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, endMinus1, release, testBoth.ID, job.ID, suite.ID, 90, 78, 5, withLifecycle("blocking"))
+	// testBoth: informing data
+	createCumulativeSummary(t, dbc, startMinus1, release, testBoth.ID, job.ID, suite.ID, 30, 24, 2, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, testBoth.ID, job.ID, suite.ID, 50, 39, 4, withLifecycle("informing"))
+
+	// testInformingOnly: ONLY informing data in sample period (20 runs)
+	createCumulativeSummary(t, dbc, startMinus1, release, testInformingOnly.ID, job.ID, suite.ID, 30, 24, 2, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, testInformingOnly.ID, job.ID, suite.ID, 50, 39, 4, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	includeVariants := map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	opts := defaultReqOptions(release)
+	opts.Lifecycles = []string{"blocking"}
+
+	result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+
+	keyBoth := crtest.KeyWithVariants{
+		TestID:   towBoth.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	ts, ok := result[keyBoth.Encode()]
+	require.True(t, ok, "test with blocking data should be present")
+	assert.Equal(t, 10, ts.TotalCount)
+	assert.Equal(t, 8, ts.SuccessCount)
+	assert.Equal(t, 1, ts.FlakeCount)
+
+	// testInformingOnly should be absent entirely, including placeholders.
+	// With lifecycle=blocking, this test has no data, so its component (Storage)
+	// should not appear in the grid.
+	for encodedKey, ts := range result {
+		if ts.Component == "Storage" {
+			t.Errorf("informing-only test's component should not appear in results, found key %s with component Storage", encodedKey)
+		}
+	}
+}
+
+func TestCrossCompareWithLifecycleFilter(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vcHA := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:ha"})
+	vcSingle := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:single"})
+
+	jobHA := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha-lifecycle", release, vcHA)
+	jobSingle := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single-lifecycle", release, vcSingle)
+
+	test := createTest(t, dbc, "openshift-tests:[sig-storage] cross-compare lifecycle test")
+	suite := createSuite(t, dbc, "openshift-tests-ccl")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:cc-lifecycle", "Storage", []string{"PVC"})
+
+	startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+	endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// HA job: blocking 10 runs, informing 5 runs in sample period
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, jobHA.ID, suite.ID, 100, 90, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, jobHA.ID, suite.ID, 110, 98, 6, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, jobHA.ID, suite.ID, 40, 35, 2, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, jobHA.ID, suite.ID, 45, 39, 3, withLifecycle("informing"))
+
+	// Single job: blocking 20 runs (15 successes, 2 flakes), informing 8 runs in sample period
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, jobSingle.ID, suite.ID, 50, 40, 3, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, jobSingle.ID, suite.ID, 70, 55, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, jobSingle.ID, suite.ID, 20, 18, 1, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, jobSingle.ID, suite.ID, 28, 25, 2, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.Lifecycles = []string{"blocking"}
+	opts.VariantOption.DBGroupBy = sets.New[string]("Platform", "Topology")
+	opts.VariantOption.ColumnGroupBy = sets.New[string]("Platform")
+	opts.VariantOption.VariantCrossCompare = []string{"Topology"}
+	opts.VariantOption.CompareVariants = map[string][]string{"Topology": {"single"}}
+
+	includeVariants := map[string][]string{
+		"Platform": {"aws"},
+		"Topology": {"ha"},
+	}
+
+	result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+
+	nonPlaceholders := filterPlaceholders(result)
+	require.NotEmpty(t, nonPlaceholders, "should return results for cross-compare with lifecycle filter")
+	for _, ts := range nonPlaceholders {
+		assert.Equal(t, "single", ts.Variants["Topology"],
+			"should return sample-side (single) data, not base-side (ha)")
+		// Only blocking counts from the single job: 20 runs, 15 successes, 2 flakes
+		assert.Equal(t, 20, ts.TotalCount)
+		assert.Equal(t, 15, ts.SuccessCount)
+		assert.Equal(t, 2, ts.FlakeCount)
 	}
 }
 

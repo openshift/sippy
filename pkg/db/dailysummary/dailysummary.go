@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/db"
 )
@@ -26,11 +27,12 @@ var valueColumns = []string{
 
 func buildInsertSQL(tableName, dateColumn string) string {
 	return fmt.Sprintf(`
-		INSERT INTO %s (test_id, prow_job_id, suite_id, release, %s, %s)
+		INSERT INTO %s (test_id, prow_job_id, suite_id, lifecycle, release, %s, %s)
 		SELECT
 			pjrt.test_id,
 			pjrt.prow_job_id,
 			COALESCE(pjrt.suite_id, 0),
+			pjrt.lifecycle,
 			pjrt.prow_job_run_release,
 			date(pjrt.prow_job_run_timestamp),
 			COUNT(*) FILTER (WHERE pjrt.status = 1),
@@ -45,7 +47,7 @@ func buildInsertSQL(tableName, dateColumn string) string {
 		WHERE pjrt.prow_job_run_timestamp >= ?::date
 		  AND pjrt.prow_job_run_timestamp < (?::date + INTERVAL '1 day')
 		  AND pjrt.prow_job_run_release = ?
-		GROUP BY pjrt.test_id, pjrt.prow_job_id, COALESCE(pjrt.suite_id, 0), pjrt.prow_job_run_release, date(pjrt.prow_job_run_timestamp)`,
+		GROUP BY pjrt.test_id, pjrt.prow_job_id, COALESCE(pjrt.suite_id, 0), pjrt.lifecycle, pjrt.prow_job_run_release, date(pjrt.prow_job_run_timestamp)`,
 		tableName, dateColumn, strings.Join(valueColumns, ", "))
 }
 
@@ -58,13 +60,39 @@ func buildOnConflictClause(tableName, dateColumn string) string {
 	}
 
 	return fmt.Sprintf(`
-		ON CONFLICT (test_id, prow_job_id, suite_id, release, %s)
+		ON CONFLICT (release, %s, test_id, suite_id, lifecycle, prow_job_id)
 		DO UPDATE SET %s
 		WHERE (%s) IS DISTINCT FROM (%s)`,
 		dateColumn,
 		strings.Join(setClauses, ", "),
 		strings.Join(oldCols, ", "),
 		strings.Join(newCols, ", "))
+}
+
+// buildCleanupDeleteSQL removes rows whose key no longer has any
+// supporting raw result. ON CONFLICT DO UPDATE can only ever touch keys
+// present in the freshly aggregated data - it can never notice that a
+// previously-valid key (e.g. a test's lifecycle was reclassified, or its
+// suite changed, or the underlying job run was reprocessed away) no
+// longer applies. This is a separate, targeted delete rather than
+// DELETE-then-INSERT so it only touches genuinely defunct rows instead of
+// unconditionally churning every row in the range on every run.
+func buildCleanupDeleteSQL(tableName, dateColumn string) string {
+	return fmt.Sprintf(`
+		DELETE FROM %[1]s dt
+		WHERE dt.release = ?
+		  AND dt.%[2]s >= ?
+		  AND dt.%[2]s <= ?
+		  AND NOT EXISTS (
+		      SELECT 1 FROM prow_job_run_tests pjrt
+		      WHERE pjrt.prow_job_run_release = dt.release
+		        AND pjrt.test_id = dt.test_id
+		        AND pjrt.prow_job_id = dt.prow_job_id
+		        AND COALESCE(pjrt.suite_id, 0) = dt.suite_id
+		        AND pjrt.lifecycle = dt.lifecycle
+		        AND date(pjrt.prow_job_run_timestamp) = dt.%[2]s
+		  )`,
+		tableName, dateColumn)
 }
 
 type summaryStore interface {
@@ -232,9 +260,19 @@ func (s *pgStore) Releases() ([]string, error) {
 }
 
 func (s *pgStore) AggregateRangeForRelease(startDate, endDate civil.Date, release string, skipConflictDetection bool) error {
-	sql := buildInsertSQL(s.tableName, s.dateColumn)
-	if !skipConflictDetection {
-		sql += buildOnConflictClause(s.tableName, s.dateColumn)
+	insertSQL := buildInsertSQL(s.tableName, s.dateColumn)
+	if skipConflictDetection {
+		// Table is known empty for this range, so there is nothing to
+		// merge with or clean up - skip both the conflict clause and the
+		// cleanup delete.
+		return s.dbc.DB.Exec(insertSQL, startDate, endDate, release).Error
 	}
-	return s.dbc.DB.Exec(sql, startDate, endDate, release).Error
+	insertSQL += buildOnConflictClause(s.tableName, s.dateColumn)
+	cleanupSQL := buildCleanupDeleteSQL(s.tableName, s.dateColumn)
+	return s.dbc.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(insertSQL, startDate, endDate, release).Error; err != nil {
+			return err
+		}
+		return tx.Exec(cleanupSQL, release, startDate, endDate).Error
+	})
 }

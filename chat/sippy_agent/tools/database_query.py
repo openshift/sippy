@@ -78,11 +78,12 @@ Key Tables:
       * `test_id`: Links to `tests.id`.
       * `prow_job_id`: Links to `prow_jobs.id`.
       * `suite_id`: Links to `suites.id`.
+      * `lifecycle`: Whether this test is `blocking` or `informing` for this execution.
       * `release`: OpenShift release version (partition key). **Required in WHERE clause.**
       * `date`: The date of the aggregation (partition key). **Required in WHERE clause.**
       * `successes`, `failures`, `flakes`, `runs`: Pre-computed daily counts.
   * **`test_cumulative_summaries`**: Running prefix sums of `test_daily_totals`. For any date range [start, end], compute: `prefix_sum(end) - prefix_sum(start - 1)`. **Partitioned by `(release, date)`**.
-      * `date`, `release`, `test_id`, `prow_job_id`, `suite_id`: Same as `test_daily_totals`.
+      * `date`, `release`, `test_id`, `prow_job_id`, `suite_id`, `lifecycle`: Same as `test_daily_totals`.
       * `prefix_sum_successes`, `prefix_sum_failures`, `prefix_sum_flakes`, `prefix_sum_runs`: Cumulative totals up to that date.
    * **`suites`**: Defines a collection or group of tests.
       * `name`: The name of the test suite (e.g., openshift-tests).
@@ -104,8 +105,8 @@ For performance, **always prefer pre-aggregated summary tables or materialized v
 
 Use the pg_matviews table to learn about the schema for materialized views.
 
-  * **`test_daily_totals`** (PREFERRED for test statistics): Pre-aggregated daily test pass/fail/flake counts per (test, job, suite, release, date). Use `SUM(successes)`, `SUM(failures)`, `SUM(flakes)`, `SUM(runs)` for aggregation. Always filter on `release` and `date`.
-    * **IMPORTANT**: Each test has multiple rows per (prow_job_id, suite_id). When providing an overall overview (e.g., "top failing tests"), aggregate by test name: `GROUP BY t.name` with `SUM(failures)` across all jobs. Only group by `prow_jobs.variants` or `prow_job_id` when the user asks for a per-variant or per-job breakdown.
+  * **`test_daily_totals`** (PREFERRED for test statistics): Pre-aggregated daily test pass/fail/flake counts per (test, job, suite, lifecycle, release, date). Use `SUM(successes)`, `SUM(failures)`, `SUM(flakes)`, `SUM(runs)` for aggregation. Always filter on `release` and `date`.
+    * **IMPORTANT**: Each test has multiple rows per (prow_job_id, suite_id, lifecycle). When providing an overall overview (e.g., "top failing tests"), aggregate by test name: `GROUP BY t.name` with `SUM(failures)` across all jobs. Only group by `prow_jobs.variants` or `prow_job_id` when the user asks for a per-variant or per-job breakdown.
 
   * **`test_cumulative_summaries`** (PREFERRED for date-range test statistics): Running prefix sums of `test_daily_totals`. To compute totals for any date range [start, end], query two dates and subtract: `prefix_sum(end) - prefix_sum(start - 1)`. Always filter on `release` and `date`.
     * **IMPORTANT**: Same multi-row structure as `test_daily_totals` — see aggregation guidance above.
@@ -349,6 +350,7 @@ LEFT JOIN
   ON  s.test_id = e.test_id
   AND s.prow_job_id = e.prow_job_id
   AND s.suite_id = e.suite_id
+  AND s.lifecycle = e.lifecycle
   AND s.release = '4.21'           -- Partition key: required on both sides
   AND s.date = CURRENT_DATE - 8   -- day before range start (start - 1)
 WHERE

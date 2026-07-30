@@ -105,14 +105,15 @@ func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 // prefix-sum and GA query paths. The two paths differ only in their source
 // table, aggregation expressions, and date/window filter.
 type testStatusSpec struct {
-	fromTemplate    string // FROM clause template with two %s for variantSubquery and groupMapping
-	preJoinArgs     []any  // args bound in the FROM clause before filterArgs (e.g. lookupStart)
-	totalExpr       string // SQL expression for total runs
-	successExpr     string // SQL expression for successes
-	flakeExpr       string // SQL expression for flakes
-	lastFailureExpr string // SQL expression for last failure timestamp (e.g. "MAX(e.prefix_max_last_failure)" or "NULL::timestamptz")
-	whereFilter     string // WHERE fragment like "e.release = ? AND e.date = ?"
-	whereArgs       []any  // args for whereFilter
+	fromTemplate    string   // FROM clause template with two %s for variantSubquery and groupMapping
+	preJoinArgs     []any    // args bound in the FROM clause before filterArgs (e.g. lookupStart)
+	totalExpr       string   // SQL expression for total runs
+	successExpr     string   // SQL expression for successes
+	flakeExpr       string   // SQL expression for flakes
+	lastFailureExpr string   // SQL expression for last failure timestamp (e.g. "MAX(e.prefix_max_last_failure)" or "NULL::timestamptz")
+	whereFilter     string   // WHERE fragment like "e.release = ? AND e.date = ?"
+	whereArgs       []any    // args for whereFilter
+	lifecycles      []string // when non-empty, filter e.lifecycle to these values (sample-only, matching BQ)
 }
 
 // queryTestStatus builds and executes the failure + placeholder query pair
@@ -141,6 +142,11 @@ func (p *PostgresProvider) queryTestStatus(
 	}
 	if setup == nil {
 		return map[string]crstatus.TestStatus{}, nil
+	}
+
+	if len(spec.lifecycles) > 0 {
+		spec.whereFilter += " AND e.lifecycle = ANY(?)"
+		spec.whereArgs = append(spec.whereArgs, pq.Array(spec.lifecycles))
 	}
 
 	fromClause := fmt.Sprintf(spec.fromTemplate, setup.variantSubquery, setup.groupMapping.valuesClause)
@@ -211,6 +217,7 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
 	ctx context.Context,
 	reqOptions reqopts.RequestOptions,
 	release string,
+	lifecycles []string,
 	includeVariants map[string][]string,
 	dateRange query.DateRange,
 ) (map[string]crstatus.TestStatus, []error) {
@@ -227,7 +234,7 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
         LEFT JOIN test_cumulative_summaries s
             ON s.release = e.release AND s.test_id = e.test_id
             AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id
-            AND s.date = ?
+            AND s.lifecycle = e.lifecycle AND s.date = ?
         JOIN prow_jobs pj ON pj.id = e.prow_job_id AND pj.deleted_at IS NULL
             AND pj.variant_combination_id IN (%s)
         JOIN (%s) AS vg(vcid, group_id) ON vg.vcid = pj.variant_combination_id`,
@@ -238,6 +245,7 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
 		lastFailureExpr: "MAX(e.prefix_max_last_failure)",
 		whereFilter:     "e.release = ? AND e.date = ?",
 		whereArgs:       []any{release, lookupEnd},
+		lifecycles:      lifecycles,
 	})
 }
 
