@@ -14,6 +14,25 @@ import (
 	"github.com/openshift/sippy/pkg/releaseoverride"
 )
 
+func TestNormalizeLifecycle(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "empty defaults to blocking", input: "", expected: "blocking"},
+		{name: "blocking passes through", input: "blocking", expected: "blocking"},
+		{name: "informing passes through", input: "informing", expected: "informing"},
+		{name: "unknown value passes through lowercased", input: "experimental", expected: "experimental"},
+		{name: "mixed case is lowercased", input: "Informing", expected: "informing"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, normalizeLifecycle(tt.input))
+		})
+	}
+}
+
 func TestDateTimeNameComparisons(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -93,97 +112,6 @@ func TestParseVariantDataFile(t *testing.T) {
 	assert.Equal(t, "gcp", clusterData["Platform"])
 	assert.Equal(t, "IPv4", clusterData["NetworkStack"])
 	assert.Equal(t, "foo", clusterData["AddonProp1"])
-}
-
-func TestGetTestAnalysisByJobFromToDates(t *testing.T) {
-	tests := []struct {
-		name          string
-		lastSummary   time.Time
-		now           time.Time
-		expectedDates []string
-	}{
-		{
-			name:        "empty db to yesterday",
-			lastSummary: time.Time{},
-			now:         time.Date(2024, time.October, 31, 9, 0, 0, 0, time.UTC),
-			expectedDates: []string{
-				"2024-10-16",
-				"2024-10-17",
-				"2024-10-18",
-				"2024-10-19",
-				"2024-10-20",
-				"2024-10-21",
-				"2024-10-22",
-				"2024-10-23",
-				"2024-10-24",
-				"2024-10-25",
-				"2024-10-26",
-				"2024-10-27",
-				"2024-10-28",
-				"2024-10-29",
-				"2024-10-30",
-			},
-		},
-		{
-			name:        "empty db to two days ago if early",
-			lastSummary: time.Time{},
-			now:         time.Date(2024, time.October, 31, 3, 0, 0, 0, time.UTC),
-			expectedDates: []string{
-				"2024-10-15",
-				"2024-10-16",
-				"2024-10-17",
-				"2024-10-18",
-				"2024-10-19",
-				"2024-10-20",
-				"2024-10-21",
-				"2024-10-22",
-				"2024-10-23",
-				"2024-10-24",
-				"2024-10-25",
-				"2024-10-26",
-				"2024-10-27",
-				"2024-10-28",
-				"2024-10-29",
-			},
-		},
-		{
-			name:          "yesterday",
-			lastSummary:   time.Date(2024, time.October, 29, 0, 0, 0, 0, time.UTC),
-			now:           time.Date(2024, time.October, 31, 9, 0, 0, 0, time.UTC),
-			expectedDates: []string{"2024-10-30"},
-		},
-		{
-			name:          "too early",
-			lastSummary:   time.Date(2024, time.October, 29, 0, 0, 0, 0, time.UTC),
-			now:           time.Date(2024, time.October, 31, 2, 0, 0, 0, time.UTC),
-			expectedDates: []string{},
-		},
-		{
-			name:          "already updated today",
-			lastSummary:   time.Date(2024, time.October, 30, 0, 0, 0, 0, time.UTC),
-			now:           time.Date(2024, time.October, 31, 9, 0, 0, 0, time.UTC),
-			expectedDates: []string{},
-		},
-		{
-			name:        "last 5 days",
-			lastSummary: time.Date(2024, time.October, 24, 0, 0, 0, 0, time.UTC),
-			now:         time.Date(2024, time.October, 31, 9, 0, 0, 0, time.UTC),
-			expectedDates: []string{
-				"2024-10-25",
-				"2024-10-26",
-				"2024-10-27",
-				"2024-10-28",
-				"2024-10-29",
-				"2024-10-30",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			dates := getTestAnalysisByJobFromToDates(tt.lastSummary, tt.now, nil)
-			assert.Equal(t, tt.expectedDates, dates)
-		})
-	}
 }
 
 func TestIsPayloadPresubmit(t *testing.T) {
@@ -309,6 +237,58 @@ func TestMatchRelease(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, tt.pl.matchRelease(tt.pj))
+		})
+	}
+}
+
+func TestPartitionStartDate(t *testing.T) {
+	loadSince := time.Date(2026, 7, 14, 0, 0, 0, 0, time.UTC)
+	graceAdjusted := loadSince.AddDate(0, 0, -1)
+
+	prowJobWithStart := func(start time.Time) prow.ProwJob {
+		return prow.ProwJob{Status: prow.ProwJobStatus{StartTime: start}}
+	}
+
+	tests := []struct {
+		name     string
+		prowJobs []prow.ProwJob
+		expected time.Time
+	}{
+		{
+			name:     "no jobs falls back to loadSince with grace period",
+			prowJobs: nil,
+			expected: graceAdjusted,
+		},
+		{
+			name: "all jobs within the grace window leave the bound unchanged",
+			prowJobs: []prow.ProwJob{
+				prowJobWithStart(graceAdjusted.AddDate(0, 0, 1)),
+				prowJobWithStart(graceAdjusted),
+			},
+			expected: graceAdjusted,
+		},
+		{
+			name: "zero-value start times are ignored",
+			prowJobs: []prow.ProwJob{
+				{},
+				prowJobWithStart(graceAdjusted),
+			},
+			expected: graceAdjusted,
+		},
+		{
+			name: "outlier job start time extends the bound",
+			prowJobs: []prow.ProwJob{
+				prowJobWithStart(graceAdjusted),
+				// e.g. a job Prow marked aborted days after it actually started
+				prowJobWithStart(loadSince.AddDate(0, 0, -5)),
+			},
+			expected: loadSince.AddDate(0, 0, -5),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.True(t, tt.expected.Equal(partitionStartDate(loadSince, tt.prowJobs)))
 		})
 	}
 }

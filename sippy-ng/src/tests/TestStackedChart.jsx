@@ -157,7 +157,7 @@ export function TestStackedChart(props) {
   }
 
   const handleLeave = (e, item, legend) => {
-    legend.chart.data.datasets.forEach((dataset, index) => {
+    legend.chart.data.datasets.forEach((dataset, _index) => {
       dataset.backgroundColor = colorByName[dataset.label]
       dataset.borderColor = colorByName[dataset.label]
     })
@@ -185,7 +185,7 @@ export function TestStackedChart(props) {
         stacked: true,
         max: 100,
         ticks: {
-          callback: (value, index, values) => {
+          callback: (value, _index, _values) => {
             return `${value}%`
           },
         },

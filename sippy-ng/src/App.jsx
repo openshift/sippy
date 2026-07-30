@@ -1,3 +1,4 @@
+import './chartSetup'
 import { AccessibilityModeProvider } from './components/AccessibilityModeProvider'
 import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
 import { createTheme, useTheme } from '@mui/material/styles'
@@ -399,7 +400,7 @@ const ChatInterfaceWrapper = () => {
   return <ChatInterface mode="fullPage" conversationId={id} />
 }
 
-function App(props) {
+function App(_props) {
   const classes = useStyles()
   const theme = useTheme()
 

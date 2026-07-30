@@ -21,9 +21,9 @@ func BuildClusterHealth(dbc *db.DB, start, boundary, end time.Time) ([]models.Bu
 	rawResults := dbc.DB.Select(`
 		ROW_NUMBER() OVER() AS id,
 		cluster,
-		coalesce(count(case when succeeded = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_passes,
-		coalesce(count(case when succeeded = false AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_failures,
-		coalesce(count(case when timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_runs,
+		coalesce(count(case when succeeded = true AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_passes,
+		coalesce(count(case when succeeded = false AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_fails,
+		coalesce(count(case when timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_runs,
 		coalesce(count(case when succeeded = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_passes,
 		coalesce(count(case when succeeded = false AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_fails,
 		coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs
@@ -49,7 +49,6 @@ func BuildClusterAnalysis(dbc *db.DB, period string) ([]models.BuildClusterHealt
 	results := make([]models.BuildClusterHealth, 0)
 
 	q := dbc.DB.Raw(fmt.Sprintf(`
-WITH results AS (
 SELECT
     cluster,
     date_trunc('%s', timestamp) as period,
@@ -69,25 +68,7 @@ AND
     cluster != ''
 AND
     timestamp > NOW() - INTERVAL '14 DAY'
-GROUP BY cluster, period),
-percentages AS (
-    SELECT
-        period,
-        sum(passes) * 100.0 / sum(total_runs) as mean_success
-    FROM results
-    GROUP BY period
-)
-SELECT
-    results.cluster,
-    results.period,
-    results.total_runs,
-    results.passes,
-    results.failures,
-    results.pass_percentage
-FROM
-    results
-LEFT JOIN
-    percentages on results.period = percentages.period
+GROUP BY cluster, period
 `, period)).Scan(&results)
 	return results, q.Error
 }

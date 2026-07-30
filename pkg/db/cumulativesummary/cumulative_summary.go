@@ -133,7 +133,8 @@ func (s *pgStore) Releases() ([]string, error) {
 func (s *pgStore) UpdateDateForRelease(date civil.Date, release string) error {
 	return s.dbc.DB.Exec(`
 		INSERT INTO test_cumulative_summaries (date, test_id, prow_job_id, suite_id, release,
-		                         prefix_sum_successes, prefix_sum_failures, prefix_sum_flakes, prefix_sum_runs)
+		                         prefix_sum_successes, prefix_sum_failures, prefix_sum_flakes, prefix_sum_runs,
+		                         prefix_max_last_failure, prefix_max_last_success)
 		SELECT
 			?,
 			COALESCE(prev.test_id, tds.test_id),
@@ -143,7 +144,9 @@ func (s *pgStore) UpdateDateForRelease(date civil.Date, release string) error {
 			COALESCE(prev.prefix_sum_successes, 0) + COALESCE(tds.successes, 0),
 			COALESCE(prev.prefix_sum_failures, 0) + COALESCE(tds.failures, 0),
 			COALESCE(prev.prefix_sum_flakes, 0) + COALESCE(tds.flakes, 0),
-			COALESCE(prev.prefix_sum_runs, 0) + COALESCE(tds.runs, 0)
+			COALESCE(prev.prefix_sum_runs, 0) + COALESCE(tds.runs, 0),
+			GREATEST(prev.prefix_max_last_failure, tds.last_failure_timestamp),
+			GREATEST(prev.prefix_max_last_success, tds.last_success_timestamp)
 		FROM (SELECT * FROM test_cumulative_summaries WHERE date = ?::date - 1 AND release = ?) prev
 		FULL OUTER JOIN (SELECT * FROM test_daily_totals WHERE date = ? AND release = ?) tds
 			ON prev.test_id = tds.test_id
@@ -154,11 +157,15 @@ func (s *pgStore) UpdateDateForRelease(date civil.Date, release string) error {
 			prefix_sum_successes = EXCLUDED.prefix_sum_successes,
 			prefix_sum_failures = EXCLUDED.prefix_sum_failures,
 			prefix_sum_flakes = EXCLUDED.prefix_sum_flakes,
-			prefix_sum_runs = EXCLUDED.prefix_sum_runs
+			prefix_sum_runs = EXCLUDED.prefix_sum_runs,
+			prefix_max_last_failure = EXCLUDED.prefix_max_last_failure,
+			prefix_max_last_success = EXCLUDED.prefix_max_last_success
 		WHERE (test_cumulative_summaries.prefix_sum_successes, test_cumulative_summaries.prefix_sum_failures,
-		       test_cumulative_summaries.prefix_sum_flakes, test_cumulative_summaries.prefix_sum_runs)
+		       test_cumulative_summaries.prefix_sum_flakes, test_cumulative_summaries.prefix_sum_runs,
+		       test_cumulative_summaries.prefix_max_last_failure, test_cumulative_summaries.prefix_max_last_success)
 		   IS DISTINCT FROM
 		      (EXCLUDED.prefix_sum_successes, EXCLUDED.prefix_sum_failures,
-		       EXCLUDED.prefix_sum_flakes, EXCLUDED.prefix_sum_runs)
+		       EXCLUDED.prefix_sum_flakes, EXCLUDED.prefix_sum_runs,
+		       EXCLUDED.prefix_max_last_failure, EXCLUDED.prefix_max_last_success)
 	`, date, date, release, date, release).Error
 }

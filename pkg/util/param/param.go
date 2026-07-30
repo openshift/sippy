@@ -63,7 +63,8 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"samplePRRepo":     nameRegexp,
 	"samplePRNumber":   uintRegexp,
 	"samplePayloadTag": nameRegexp,
-	"view":             nameRegexp, // component readiness view name
+	"view":             nameRegexp,                                  // component readiness view name
+	"dataSource":       regexp.MustCompile(`^(bigquery|postgres)$`), // data source for CR queries
 	// jobartifacts params
 	"prowJobRuns":        regexp.MustCompile(`^\d+(,\d+)*$`), // comma-separated integers
 	"pathGlob":           nonEmptyRegex,                      // a glob can be anything

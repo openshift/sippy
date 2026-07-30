@@ -68,6 +68,9 @@ type TestCase struct {
 	// Duration is the time taken in seconds to run the test
 	Duration float64 `xml:"time,attr"`
 
+	// Lifecycle indicates whether this test is "blocking" or "informing", set via OTE in test source code
+	Lifecycle string `xml:"lifecycle,attr,omitempty"`
+
 	// SkipMessage holds the reason why the test was skipped
 	SkipMessage *SkipMessage `xml:"skipped"`
 

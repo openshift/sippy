@@ -24,7 +24,7 @@ import {
   StatusLegend,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { escapeRegex } from '../helpers'
+import { escapeRegex, safeEncodeURIComponent } from '../helpers'
 import { grey } from '@mui/material/colors'
 import { makeStyles, useTheme } from '@mui/styles'
 import {
@@ -199,11 +199,11 @@ export const TestLifecyclesContext = React.createContext([])
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
-const cancelFetch = () => {
+const _cancelFetch = () => {
   abortController.abort()
 }
 
-export default function ComponentReadiness(props) {
+export default function ComponentReadiness(_props) {
   const theme = useTheme()
   const classes = useStyles(theme)
 
@@ -244,7 +244,6 @@ export default function ComponentReadiness(props) {
     useContext(CompReadyVarsContext)
 
   const location = useLocation()
-  const currentPath = location.pathname
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -253,33 +252,6 @@ export default function ComponentReadiness(props) {
 
   const [triageActionTaken, setTriageActionTaken] = React.useState(false)
   const [componentTab, setComponentTab] = React.useState(0)
-
-  const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
-  const copyPopoverOpen = Boolean(copyPopoverEl)
-
-  const linkToReport = () => {
-    const currentUrl = new URL(window.location.href)
-    if (searchRowRegex && searchRowRegex !== '') {
-      currentUrl.searchParams.set('searchComponent', searchRowRegex)
-    }
-
-    if (searchColumnRegex && searchColumnRegex !== '') {
-      currentUrl.searchParams.set('searchColumn', searchColumnRegex)
-    }
-
-    if (redOnlyChecked) {
-      currentUrl.searchParams.set('redOnly', '1')
-    }
-
-    return currentUrl.href
-  }
-
-  const copyLinkToReport = (event) => {
-    event.preventDefault()
-    navigator.clipboard.writeText(linkToReport())
-    setCopyPopoverEl(event.currentTarget)
-    setTimeout(() => setCopyPopoverEl(null), 2000)
-  }
 
   const clearSearches = () => {
     setSearchRowRegex('')
@@ -310,6 +282,10 @@ export default function ComponentReadiness(props) {
 
     if (varsContext.view != null && varsContext.view !== '') {
       apiCallStr += '?view=' + varsContext.view
+      if (varsContext.dataSource) {
+        apiCallStr +=
+          '&dataSource=' + safeEncodeURIComponent(varsContext.dataSource)
+      }
     } else {
       apiCallStr += getUpdatedUrlParts(varsContext)
     }

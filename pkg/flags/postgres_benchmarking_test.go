@@ -246,7 +246,7 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 					CurrentPassPercent float64
 				}
 				var result testResult
-				res := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, benchmarkTestName, []string{benchmarkJobName}, benchmarkRelease)
+				res := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, benchmarkRelease, benchmarkRelease, benchmarkTestName, []string{benchmarkJobName})
 				if res.Error != nil {
 					return res.Error
 				}
@@ -481,9 +481,10 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 				var result passRate
 				res := dbc.DB.Raw(query.QueryTestAnalysis,
 					time.Now().Add(-24*14*time.Hour),
+					benchmarkRelease,
+					benchmarkRelease,
 					benchmarkTestName,
-					[]string{benchmarkJobName},
-					benchmarkRelease).Scan(&result)
+					[]string{benchmarkJobName}).Scan(&result)
 				if res.Error != nil {
 					return res.Error
 				}

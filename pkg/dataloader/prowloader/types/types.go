@@ -6,4 +6,5 @@ type TestCaseEntry struct {
 	Status    int
 	Duration  float64
 	Output    *string
+	Lifecycle string
 }

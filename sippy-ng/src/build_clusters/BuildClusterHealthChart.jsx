@@ -42,9 +42,9 @@ export default function BuildClusterHealthChart(props) {
     return <p>Loading...</p>
   }
 
-  let periodCount = 14
+  let _periodCount = 14
   if (props.period === 'hour') {
-    periodCount = 24
+    _periodCount = 24
   }
 
   let lastPeriodsSet = new Set()
@@ -70,7 +70,7 @@ export default function BuildClusterHealthChart(props) {
     plugins: {
       tooltip: {
         callbacks: {
-          label: function (context, index) {
+          label: function (context, _index) {
             return `${context.dataset.label} ${context.formattedValue}% (${
               data[context.dataset.label].by_period[context.label].current_runs
             } runs)`

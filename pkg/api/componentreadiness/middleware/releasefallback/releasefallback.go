@@ -2,7 +2,6 @@ package releasefallback
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -102,8 +101,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *
 		TestID:   testKey.TestID,
 		Variants: testKey.Variants,
 	}
-	testIDBytes, _ := json.Marshal(testIDVariantsKey)
-	testKeyStr := string(testIDBytes)
+	testKeyStr := testIDVariantsKey.Encode()
 
 	if r.cachedFallbackTestStatuses == nil {
 		// In the test details path, this map is not initialized and we have no work to do for pre analysis.
@@ -280,7 +278,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {
 	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
-	testKeyStr := testKey.KeyOrDie()
+	testKeyStr := testKey.Encode()
 	if _, ok := r.baseOverrideStatus[testKeyStr]; ok {
 		status.BaseOverrideStatus = r.baseOverrideStatus[testKeyStr]
 	}
@@ -336,6 +334,7 @@ type fallbackTestQueryReleasesGeneratorCacheKey struct {
 	CRTimeRoundingOffset time.Duration
 	// KeyTestNames affects the BuildComponentReportQuery results via filtering logic
 	KeyTestNames []string
+	DataSource   string `json:",omitempty"`
 }
 
 // getCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -350,6 +349,7 @@ func (f *fallbackTestQueryReleasesGenerator) getCacheKey() fallbackTestQueryRele
 		CRTimeRoundingFactor: f.ReqOptions.CacheOption.CRTimeRoundingFactor,
 		CRTimeRoundingOffset: f.ReqOptions.CacheOption.CRTimeRoundingOffset,
 		KeyTestNames:         f.ReqOptions.AdvancedOption.KeyTestNames,
+		DataSource:           f.ReqOptions.DataSource,
 	}
 }
 

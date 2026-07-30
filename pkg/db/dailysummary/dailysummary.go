@@ -18,7 +18,11 @@ const (
 	parallelWorkers     = 4
 )
 
-var valueColumns = []string{"successes", "failures", "flakes", "runs"}
+var valueColumns = []string{
+	"successes", "failures", "flakes", "runs",
+	"first_failure_timestamp", "last_failure_timestamp",
+	"first_success_timestamp", "last_success_timestamp",
+}
 
 func buildInsertSQL(tableName, dateColumn string) string {
 	return fmt.Sprintf(`
@@ -32,7 +36,11 @@ func buildInsertSQL(tableName, dateColumn string) string {
 			COUNT(*) FILTER (WHERE pjrt.status = 1),
 			COUNT(*) FILTER (WHERE pjrt.status = 12),
 			COUNT(*) FILTER (WHERE pjrt.status = 13),
-			COUNT(*)
+			COUNT(*),
+			MIN(pjrt.prow_job_run_timestamp) FILTER (WHERE pjrt.status = 12),
+			MAX(pjrt.prow_job_run_timestamp) FILTER (WHERE pjrt.status = 12),
+			MIN(pjrt.prow_job_run_timestamp) FILTER (WHERE pjrt.status = 1),
+			MAX(pjrt.prow_job_run_timestamp) FILTER (WHERE pjrt.status = 1)
 		FROM prow_job_run_tests pjrt
 		WHERE pjrt.prow_job_run_timestamp >= ?::date
 		  AND pjrt.prow_job_run_timestamp < (?::date + INTERVAL '1 day')

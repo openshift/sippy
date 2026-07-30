@@ -79,6 +79,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Platform:aws"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(url, "/api/component_readiness/test_details"))
@@ -98,6 +99,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{},
 			"",
+			"",
 		)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "testID cannot be empty")
@@ -116,6 +118,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			"",
 			[]string{"Architecture:amd64", "InvalidVariant", "Platform:aws"},
+			"",
 			"",
 		)
 		require.NoError(t, err)
@@ -141,6 +144,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			// Use variants in non-alphabetical order to test sorting
 			[]string{"Topology:ha", "Architecture:amd64", "Platform:aws", "Network:ovn"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 
@@ -161,6 +165,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"component-example",
 			"capability-example",
 			[]string{"Architecture:amd64", "Platform:aws"},
+			"",
 			"",
 		)
 		require.NoError(t, err)
@@ -196,6 +201,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Architecture:amd64", "Platform:aws"},
 			"4.17", // Different from view's base release
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -272,6 +278,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 				"FeatureSet:default",
 			},
 			"4.18",
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -361,6 +368,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 
@@ -434,6 +442,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Platform:aws"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 
@@ -482,6 +491,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Platform:aws"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -516,6 +526,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Platform:aws"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -544,6 +555,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			"",
 			[]string{"Platform:aws"},
+			"",
 			"",
 		)
 		require.NoError(t, err)
@@ -576,6 +588,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"capability-example",
 			[]string{"Platform:aws", "Architecture:amd64"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -603,6 +616,46 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Contains(t, url, "baseEndTime=")
 		assert.Contains(t, url, "sampleStartTime=")
 		assert.Contains(t, url, "sampleEndTime=")
+	})
+
+	t.Run("dataSource parameter is included when set", func(t *testing.T) {
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"https://sippy.example.com",
+			"",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			reqopts.TestFilters{},
+			"",
+			"",
+			[]string{"Platform:aws"},
+			"",
+			"postgres",
+		)
+		require.NoError(t, err)
+		assert.Contains(t, url, "dataSource=postgres")
+	})
+
+	t.Run("dataSource parameter is omitted when empty", func(t *testing.T) {
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"https://sippy.example.com",
+			"",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			reqopts.TestFilters{},
+			"",
+			"",
+			[]string{"Platform:aws"},
+			"",
+			"",
+		)
+		require.NoError(t, err)
+		assert.NotContains(t, url, "dataSource")
 	})
 
 }

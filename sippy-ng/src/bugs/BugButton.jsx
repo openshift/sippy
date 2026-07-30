@@ -4,7 +4,7 @@ import { safeEncodeURIComponent } from '../helpers'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   alignedButton: {
     float: 'left',
   },
@@ -12,7 +12,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function BugButton(props) {
   const classes = useStyles()
-  const [open, setOpen] = useState(false)
+  const [_open, _setOpen] = useState(false)
 
   const text = `
 The following test is failing more than expected:

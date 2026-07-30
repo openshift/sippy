@@ -1,4 +1,8 @@
-import { getRegressionAPIUrl, getTestDetailsLink } from './CompReadyUtils'
+import {
+  convertApiUrlToUiUrl,
+  getRegressionAPIUrl,
+  getTestDetailsLink,
+} from './CompReadyUtils'
 import { useNavigate, useParams } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import React from 'react'
@@ -37,24 +41,21 @@ export default function RegressionRedirect() {
           setError('No test details link available for this regression.')
           return
         }
-        const apiIndex = testDetailsUrl.indexOf('/api/')
-        if (apiIndex === -1) {
-          setError('Could not parse test details link.')
-          return
-        }
-        const pathAfterApi = testDetailsUrl.substring(apiIndex + 5)
+        const uiUrl = convertApiUrlToUiUrl(testDetailsUrl)
         let parsed
         try {
-          parsed = new URL(pathAfterApi, window.location.origin)
+          parsed = new URL(uiUrl, window.location.origin)
         } catch {
           setError('Could not parse test details link.')
           return
         }
-        if (!parsed.pathname.startsWith('/component_readiness/')) {
+        if (!parsed.pathname.startsWith('/sippy-ng/component_readiness/')) {
           setError('Unexpected redirect path.')
           return
         }
-        navigate(parsed.pathname + parsed.search, { replace: true })
+        const navigatePath =
+          parsed.pathname.replace('/sippy-ng', '') + parsed.search
+        navigate(navigatePath, { replace: true })
       })
       .catch((err) => {
         if (err.name === 'AbortError') {

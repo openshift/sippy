@@ -9,7 +9,7 @@ import React, { Fragment } from 'react'
 import RegressionPotentialMatchesTab from './RegressionPotentialMatchesTab'
 import TriageFields from './TriageFields'
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   noMatchesMessage: {
     textAlign: 'center',
     padding: '8px',

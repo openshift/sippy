@@ -31,7 +31,7 @@ const bookmarks = [
   { name: 'Upgrade related', model: [BOOKMARKS.UPGRADE] },
 ]
 
-export const getColumns = (config, openBugzillaDialog) => {
+export const getColumns = (config, _openBugzillaDialog) => {
   return {
     name: {
       field: 'name',
@@ -382,7 +382,7 @@ export const getViews = (props) => {
   }
 }
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   root: {
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
@@ -441,7 +441,7 @@ function JobTable(props) {
 
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
-  const [jobDetails, setJobDetails] = React.useState({ bugs: [] })
+  const [_jobDetails, _setJobDetails] = React.useState({ bugs: [] })
 
   // Update page context for chat (only if this is the main page, not embedded)
   useEffect(() => {

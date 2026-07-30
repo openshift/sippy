@@ -95,6 +95,14 @@ devcontainer-claude:
 e2e:
 	./scripts/e2e.sh
 
+.PHONY: integration
+integration:
+ifeq ($(ARTIFACT_DIR),)
+	gotestsum --junitfile ./integration-junit.xml ./test/integration/... -count 1 -p 1
+else
+	gotestsum --junitfile $(ARTIFACT_DIR)/integration-junit.xml ./test/integration/... -count 1 -p 1
+endif
+
 images:
 	$(DOCKER) build .
 

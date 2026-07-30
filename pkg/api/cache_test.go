@@ -505,6 +505,31 @@ func TestNewCacheSpec_Prefix(t *testing.T) {
 	assert.NotContains(t, string(keyWithout), "pfx~")
 }
 
+// TestGetDataFromCacheOrGenerate_MalformedCacheEntry verifies that a cached
+// entry that fails to unmarshal triggers regeneration instead of returning an error.
+func TestGetDataFromCacheOrGenerate_MalformedCacheEntry(t *testing.T) {
+	mc := newMockCache()
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "prefix~", nil)
+
+	// Pre-populate the cache with invalid JSON
+	cacheKey, err := spec.GetCacheKey()
+	require.NoError(t, err)
+	mc.store[string(cacheKey)] = []byte(`{not valid json`)
+
+	var generateCalls int
+	expected := testResult{Value: "regenerated"}
+	result, errs := GetDataFromCacheOrGenerate(
+		context.Background(), mc, cache.RequestOptions{}, spec,
+		makeGenerateFn(expected, &generateCalls), testResult{},
+	)
+
+	assert.Empty(t, errs)
+	assert.Equal(t, expected, result, "should return regenerated value")
+	assert.Equal(t, 1, generateCalls, "should call generateFn when cached data is malformed")
+	assert.Equal(t, 1, mc.getCalls, "should attempt cache read")
+	assert.Equal(t, 1, mc.setCalls, "should cache the regenerated value")
+}
+
 func timePtr(t time.Time) *time.Time {
 	return &t
 }

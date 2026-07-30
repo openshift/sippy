@@ -1,6 +1,6 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React from 'react'
 
@@ -8,14 +8,13 @@ const useStyles = makeStyles({
   cardContent: {
     textAlign: 'center',
   },
-  numberCard: (props) => ({
+  numberCard: (_props) => ({
     height: '100%',
   }),
 })
 
 export default function NumberCard(props) {
   const classes = useStyles(props)
-  const theme = useTheme()
 
   let card = (
     <Card

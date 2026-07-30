@@ -8,7 +8,7 @@ import PullRequestsTable from '../pull_requests/PullRequestsTable'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles((_theme) => ({
   root: {
     flexGrow: 1,
   },
