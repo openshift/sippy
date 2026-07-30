@@ -32,7 +32,7 @@ var (
 		{Cloud: "metal", Architecture: "amd64", Topology: "ha", NetworkStack: "ipv6"},
 		{Cloud: "metal", Architecture: "amd64", Topology: "ha", NetworkStack: "dual"},
 		{Cloud: "aws", Architecture: "amd64", Topology: "single"},
-		{Cloud: "aws", Architecture: "amd64", Topology: "ha", OS: "rhel10", Optional: true},
+		{Cloud: "aws", Architecture: "amd64", Topology: "ha", OS: "rhcos10", Optional: true},
 	}
 
 	OptionalSelfManagedPlatformVariants = []JobVariant{
@@ -408,4 +408,3 @@ func (a OrderedJobVariants) Less(i, j int) bool {
 	}
 	return strings.Compare(a[i].JobTiers, a[j].JobTiers) < 0
 }
-
