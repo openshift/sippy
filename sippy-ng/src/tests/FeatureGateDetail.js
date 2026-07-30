@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -254,28 +255,29 @@ export default function FeatureGateDetail(props) {
                     }}
                   />
                 </Tooltip>
+                <Button
+                  component={Link}
+                  to={`/jobs/${release}/analysis?filters=${encodeURIComponent(
+                    JSON.stringify({
+                      items: gate.matching_jobs.map((job, i) => ({
+                        id: i,
+                        columnField: 'name',
+                        operatorValue: 'equals',
+                        value: job,
+                      })),
+                      linkOperator: 'or',
+                    })
+                  )}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ ml: 1, verticalAlign: 'middle' }}
+                >
+                  Analyze All
+                </Button>
                 <ul style={{ margin: '4px 0 0', paddingLeft: '20px' }}>
                   {gate.matching_jobs.map((job) => (
                     <li key={job}>{job}</li>
                   ))}
-                  <li>
-                    <Link
-                      to={`/jobs/${release}/analysis?filters=${encodeURIComponent(
-                        JSON.stringify({
-                          items: gate.matching_jobs.map((job, i) => ({
-                            id: i,
-                            columnField: 'name',
-                            operatorValue: 'equals',
-                            value: job,
-                          })),
-                          linkOperator: 'or',
-                        })
-                      )}`}
-                      style={{ textDecoration: 'underline' }}
-                    >
-                      Analyze All
-                    </Link>
-                  </li>
                 </ul>
               </Typography>
             )}
