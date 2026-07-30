@@ -365,7 +365,11 @@ func NewLoadCommand() *cobra.Command {
 				// Feature gates
 				if l == "feature-gates" {
 					refreshMatviews = true
-					fgLoader := featuregateloader.New(dbc, releaseConfigs)
+					if dbErr != nil {
+						return dbErr
+					}
+					ghc := github.New(ctx, github.OpenshiftOrg)
+					fgLoader := featuregateloader.New(ctx, dbc, ghc.APIClient(), releaseConfigs)
 					loaders = append(loaders, fgLoader)
 				}
 
