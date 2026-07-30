@@ -43,22 +43,3 @@ type JobVariant struct {
 	JobTiers     string
 	Optional     bool
 }
-
-// testQueryRow represents a single row returned by the promotion readiness query.
-type testQueryRow struct {
-	TestName          string
-	Platform          string
-	Architecture      string
-	Topology          string
-	NetworkStack      string
-	OS                string
-	JobTier           string
-	CurrentRuns       int
-	CurrentSuccesses  int
-	CurrentFailures   int
-	CurrentFlakes     int
-	PreviousRuns      int
-	PreviousSuccesses int
-	PreviousFailures  int
-	PreviousFlakes    int
-}

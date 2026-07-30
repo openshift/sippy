@@ -5,7 +5,41 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/lib/pq"
+
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 )
+
+// makeTest creates an apitype.Test with the given variant dimensions and run counts.
+func makeTest(name, platform, arch, topology, networkStack, os, jobTier string, currentRuns, currentSuccesses, currentFailures, currentFlakes, previousRuns, previousSuccesses, previousFailures, previousFlakes int) apitype.Test {
+	variants := pq.StringArray{
+		"Platform:" + platform,
+		"Architecture:" + arch,
+		"Topology:" + topology,
+	}
+	if networkStack != "" {
+		variants = append(variants, "NetworkStack:"+networkStack)
+	}
+	if os != "" {
+		variants = append(variants, "OS:"+os)
+	}
+	if jobTier != "" {
+		variants = append(variants, "JobTier:"+jobTier)
+	}
+	return apitype.Test{
+		Name:              name,
+		Variants:          variants,
+		CurrentRuns:       currentRuns,
+		CurrentSuccesses:  currentSuccesses,
+		CurrentFailures:   currentFailures,
+		CurrentFlakes:     currentFlakes,
+		PreviousRuns:      previousRuns,
+		PreviousSuccesses: previousSuccesses,
+		PreviousFailures:  previousFailures,
+		PreviousFlakes:    previousFlakes,
+	}
+}
 
 func TestValidateJobTiers_Candidate(t *testing.T) {
 	tests := []struct {
@@ -109,82 +143,66 @@ func TestValidateJobTiers_Comprehensive(t *testing.T) {
 }
 
 func TestBuildVariantResult_CandidateVariants(t *testing.T) {
-	sufficientRows := func(hasCandidateTier bool) []testQueryRow {
+	sufficientTests := func(hasCandidateTier bool) []apitype.Test {
 		tier := "standard"
 		if hasCandidateTier {
 			tier = "candidate"
 		}
-		var rows []testQueryRow
+		var tests []apitype.Test
 		for i := 1; i <= 5; i++ {
-			rows = append(rows, testQueryRow{
-				TestName:         fmt.Sprintf("test%d", i),
-				Platform:         "aws",
-				Architecture:     "amd64",
-				Topology:         "ha",
-				JobTier:          tier,
-				CurrentRuns:      15,
-				CurrentSuccesses: 15,
-			})
+			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), "aws", "amd64", "ha", "", "", tier, 15, 15, 0, 0, 0, 0, 0, 0))
 		}
-		return rows
+		return tests
 	}
 
-	insufficientRows := func(hasCandidateTier bool) []testQueryRow {
+	insufficientTests := func(hasCandidateTier bool) []apitype.Test {
 		tier := "standard"
 		if hasCandidateTier {
 			tier = "candidate"
 		}
-		var rows []testQueryRow
+		var tests []apitype.Test
 		for i := 1; i <= 2; i++ {
-			rows = append(rows, testQueryRow{
-				TestName:         fmt.Sprintf("test%d", i),
-				Platform:         "aws",
-				Architecture:     "amd64",
-				Topology:         "ha",
-				JobTier:          tier,
-				CurrentRuns:      15,
-				CurrentSuccesses: 15,
-			})
+			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), "aws", "amd64", "ha", "", "", tier, 15, 15, 0, 0, 0, 0, 0, 0))
 		}
-		return rows
+		return tests
 	}
 
 	tests := []struct {
 		name       string
 		variant    JobVariant
-		rows       []testQueryRow
+		testData   []apitype.Test
 		wantErrors int
 		wantWarns  int
 	}{
 		{
 			name:       "candidate tier with sufficient tests - warning about component readiness",
 			variant:    JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
-			rows:       sufficientRows(true),
+			testData:   sufficientTests(true),
 			wantErrors: 0,
 			wantWarns:  1,
 		},
 		{
 			name:       "candidate tier with insufficient tests - blocking error plus warning",
 			variant:    JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
-			rows:       insufficientRows(true),
+			testData:   insufficientTests(true),
 			wantErrors: 1,
 			wantWarns:  1,
 		},
 		{
 			name:       "no candidate tier results - no warning",
 			variant:    JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
-			rows:       sufficientRows(false),
+			testData:   sufficientTests(false),
 			wantErrors: 0,
 			wantWarns:  0,
 		},
 		{
 			name:    "candidate tier with low pass rate - blocking error plus warning",
 			variant: JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
-			rows: func() []testQueryRow {
-				rows := sufficientRows(true)
-				rows[0].CurrentSuccesses = 13 // 86% pass rate
-				rows[0].CurrentFailures = 2
-				return rows
+			testData: func() []apitype.Test {
+				tests := sufficientTests(true)
+				tests[0].CurrentSuccesses = 13
+				tests[0].CurrentFailures = 2
+				return tests
 			}(),
 			wantErrors: 1,
 			wantWarns:  1,
@@ -193,7 +211,7 @@ func TestBuildVariantResult_CandidateVariants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vr := buildVariantResult(tt.variant, tt.rows)
+			vr := buildVariantResult(tt.variant, tt.testData)
 			if len(vr.Errors) != tt.wantErrors {
 				t.Errorf("got %d errors, want %d: %v", len(vr.Errors), tt.wantErrors, vr.Errors)
 			}
@@ -205,55 +223,46 @@ func TestBuildVariantResult_CandidateVariants(t *testing.T) {
 }
 
 func TestBuildVariantResult_OptionalVariants(t *testing.T) {
-	makeRows := func(platform, os string, numTests int, runs, successes int) []testQueryRow {
-		var rows []testQueryRow
+	makeTests := func(platform, os string, numTests int, runs, successes int) []apitype.Test {
+		var tests []apitype.Test
 		for i := 1; i <= numTests; i++ {
-			rows = append(rows, testQueryRow{
-				TestName:         fmt.Sprintf("test%d", i),
-				Platform:         platform,
-				Architecture:     "amd64",
-				Topology:         "ha",
-				OS:               os,
-				JobTier:          "standard",
-				CurrentRuns:      runs,
-				CurrentSuccesses: successes,
-			})
+			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), platform, "amd64", "ha", "", os, "standard", runs, successes, runs-successes, 0, 0, 0, 0, 0))
 		}
-		return rows
+		return tests
 	}
 
 	tests := []struct {
 		name       string
 		variant    JobVariant
-		rows       []testQueryRow
+		testData   []apitype.Test
 		wantErrors int
 		wantSuff   bool
 	}{
 		{
 			name:       "required variant with insufficient tests - error",
 			variant:    JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
-			rows:       makeRows("aws", "", 2, 15, 15),
+			testData:   makeTests("aws", "", 2, 15, 15),
 			wantErrors: 1,
 			wantSuff:   false,
 		},
 		{
 			name:       "optional variant with insufficient tests - still errors on variant level",
 			variant:    JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha", OS: "rhel10", Optional: true},
-			rows:       makeRows("aws", "rhel10", 2, 15, 15),
+			testData:   makeTests("aws", "rhel10", 2, 15, 15),
 			wantErrors: 1,
 			wantSuff:   false,
 		},
 		{
 			name:       "required variant with insufficient runs - error",
 			variant:    JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
-			rows:       makeRows("aws", "", 5, 10, 10),
+			testData:   makeTests("aws", "", 5, 10, 10),
 			wantErrors: 5,
 			wantSuff:   false,
 		},
 		{
 			name:       "required variant with low pass rate - error",
 			variant:    JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
-			rows:       makeRows("aws", "", 5, 20, 18),
+			testData:   makeTests("aws", "", 5, 20, 18),
 			wantErrors: 5,
 			wantSuff:   false,
 		},
@@ -261,7 +270,7 @@ func TestBuildVariantResult_OptionalVariants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vr := buildVariantResult(tt.variant, tt.rows)
+			vr := buildVariantResult(tt.variant, tt.testData)
 			if len(vr.Errors) != tt.wantErrors {
 				t.Errorf("got %d errors, want %d: %v", len(vr.Errors), tt.wantErrors, vr.Errors)
 			}
@@ -273,15 +282,15 @@ func TestBuildVariantResult_OptionalVariants(t *testing.T) {
 }
 
 func TestBuildPromotionStatus_OptionalDoNotBlock(t *testing.T) {
-	rows := []testQueryRow{
+	tests := []apitype.Test{
 		// Required variant with sufficient data
-		{TestName: "test1", Platform: "aws", Architecture: "amd64", Topology: "ha", JobTier: "standard", CurrentRuns: 15, CurrentSuccesses: 15},
-		{TestName: "test2", Platform: "aws", Architecture: "amd64", Topology: "ha", JobTier: "standard", CurrentRuns: 15, CurrentSuccesses: 15},
-		{TestName: "test3", Platform: "aws", Architecture: "amd64", Topology: "ha", JobTier: "standard", CurrentRuns: 15, CurrentSuccesses: 15},
-		{TestName: "test4", Platform: "aws", Architecture: "amd64", Topology: "ha", JobTier: "standard", CurrentRuns: 15, CurrentSuccesses: 15},
-		{TestName: "test5", Platform: "aws", Architecture: "amd64", Topology: "ha", JobTier: "standard", CurrentRuns: 15, CurrentSuccesses: 15},
+		makeTest("test1", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
+		makeTest("test2", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
+		makeTest("test3", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
+		makeTest("test4", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
+		makeTest("test5", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
 		// Optional variant with insufficient data
-		{TestName: "test1", Platform: "aws", Architecture: "amd64", Topology: "ha", OS: "rhel10", JobTier: "standard", CurrentRuns: 2, CurrentSuccesses: 2},
+		makeTest("test1", "aws", "amd64", "ha", "", "rhel10", "standard", 2, 2, 0, 0, 0, 0, 0, 0),
 	}
 
 	variants := []JobVariant{
@@ -289,7 +298,7 @@ func TestBuildPromotionStatus_OptionalDoNotBlock(t *testing.T) {
 		{Cloud: "aws", Architecture: "amd64", Topology: "ha", OS: "rhel10", Optional: true},
 	}
 
-	status := buildPromotionStatus("TestFeature", "5.0", variants, rows)
+	status := buildPromotionStatus("TestFeature", "5.0", variants, tests)
 
 	if !status.Sufficient {
 		t.Error("expected Sufficient=true when only optional variants fail")
@@ -575,40 +584,20 @@ func TestLookbackLogic(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		rows          []testQueryRow
+		testData      []apitype.Test
 		wantTotalRuns int
 	}{
 		{
 			name: "sufficient current runs uses only current window",
-			rows: []testQueryRow{
-				{
-					TestName:          "test1",
-					Platform:          "aws",
-					Architecture:      "amd64",
-					Topology:          "ha",
-					JobTier:           "standard",
-					CurrentRuns:       20,
-					CurrentSuccesses:  20,
-					PreviousRuns:      10,
-					PreviousSuccesses: 10,
-				},
+			testData: []apitype.Test{
+				makeTest("test1", "aws", "amd64", "ha", "", "", "standard", 20, 20, 0, 0, 10, 10, 0, 0),
 			},
 			wantTotalRuns: 20,
 		},
 		{
 			name: "insufficient current runs extends to previous window",
-			rows: []testQueryRow{
-				{
-					TestName:          "test1",
-					Platform:          "aws",
-					Architecture:      "amd64",
-					Topology:          "ha",
-					JobTier:           "standard",
-					CurrentRuns:       10,
-					CurrentSuccesses:  10,
-					PreviousRuns:      10,
-					PreviousSuccesses: 10,
-				},
+			testData: []apitype.Test{
+				makeTest("test1", "aws", "amd64", "ha", "", "", "standard", 10, 10, 0, 0, 10, 10, 0, 0),
 			},
 			wantTotalRuns: 20,
 		},
@@ -616,7 +605,7 @@ func TestLookbackLogic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vr := buildVariantResult(jv, tt.rows)
+			vr := buildVariantResult(jv, tt.testData)
 			if len(vr.TestResults) != 1 {
 				t.Fatalf("expected 1 test result, got %d", len(vr.TestResults))
 			}
@@ -627,52 +616,52 @@ func TestLookbackLogic(t *testing.T) {
 	}
 }
 
-func TestMatchesVariant(t *testing.T) {
+func TestMatchesParsedVariant(t *testing.T) {
 	tests := []struct {
 		name    string
-		row     testQueryRow
+		parsed  map[string]string
 		variant JobVariant
 		want    bool
 	}{
 		{
 			name:    "exact match",
-			row:     testQueryRow{Platform: "aws", Architecture: "amd64", Topology: "ha"},
+			parsed:  map[string]string{"Platform": "aws", "Architecture": "amd64", "Topology": "ha"},
 			variant: JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
 			want:    true,
 		},
 		{
 			name:    "case insensitive match",
-			row:     testQueryRow{Platform: "AWS", Architecture: "AMD64", Topology: "HA"},
+			parsed:  map[string]string{"Platform": "AWS", "Architecture": "AMD64", "Topology": "HA"},
 			variant: JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
 			want:    true,
 		},
 		{
 			name:    "platform mismatch",
-			row:     testQueryRow{Platform: "gcp", Architecture: "amd64", Topology: "ha"},
+			parsed:  map[string]string{"Platform": "gcp", "Architecture": "amd64", "Topology": "ha"},
 			variant: JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
 			want:    false,
 		},
 		{
-			name:    "network stack required but missing",
-			row:     testQueryRow{Platform: "metal", Architecture: "amd64", Topology: "ha", NetworkStack: "ipv6"},
+			name:    "network stack required but different",
+			parsed:  map[string]string{"Platform": "metal", "Architecture": "amd64", "Topology": "ha", "NetworkStack": "ipv6"},
 			variant: JobVariant{Cloud: "metal", Architecture: "amd64", Topology: "ha", NetworkStack: "ipv4"},
 			want:    false,
 		},
 		{
 			name:    "network stack not required, any matches",
-			row:     testQueryRow{Platform: "aws", Architecture: "amd64", Topology: "ha", NetworkStack: "ipv4"},
+			parsed:  map[string]string{"Platform": "aws", "Architecture": "amd64", "Topology": "ha", "NetworkStack": "ipv4"},
 			variant: JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
 			want:    true,
 		},
 		{
 			name:    "OS required and matches",
-			row:     testQueryRow{Platform: "aws", Architecture: "amd64", Topology: "ha", OS: "rhel10"},
+			parsed:  map[string]string{"Platform": "aws", "Architecture": "amd64", "Topology": "ha", "OS": "rhel10"},
 			variant: JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha", OS: "rhel10"},
 			want:    true,
 		},
 		{
 			name:    "OS required but missing",
-			row:     testQueryRow{Platform: "aws", Architecture: "amd64", Topology: "ha"},
+			parsed:  map[string]string{"Platform": "aws", "Architecture": "amd64", "Topology": "ha"},
 			variant: JobVariant{Cloud: "aws", Architecture: "amd64", Topology: "ha", OS: "rhel10"},
 			want:    false,
 		},
@@ -680,9 +669,47 @@ func TestMatchesVariant(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := matchesVariant(tt.row, tt.variant)
+			got := matchesParsedVariant(tt.parsed, tt.variant)
 			if got != tt.want {
-				t.Errorf("matchesVariant() = %v, want %v", got, tt.want)
+				t.Errorf("matchesParsedVariant() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseVariants(t *testing.T) {
+	tests := []struct {
+		name     string
+		variants []string
+		want     map[string]string
+	}{
+		{
+			name:     "standard variants",
+			variants: []string{"Platform:aws", "Architecture:amd64", "Topology:ha"},
+			want:     map[string]string{"Platform": "aws", "Architecture": "amd64", "Topology": "ha"},
+		},
+		{
+			name:     "with network stack and job tier",
+			variants: []string{"Platform:metal", "Architecture:amd64", "Topology:ha", "NetworkStack:ipv4", "JobTier:standard"},
+			want:     map[string]string{"Platform": "metal", "Architecture": "amd64", "Topology": "ha", "NetworkStack": "ipv4", "JobTier": "standard"},
+		},
+		{
+			name:     "empty input",
+			variants: nil,
+			want:     map[string]string{},
+		},
+		{
+			name:     "entries without colon are skipped",
+			variants: []string{"Platform:aws", "never-stable", "Architecture:amd64"},
+			want:     map[string]string{"Platform": "aws", "Architecture": "amd64"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseVariants(tt.variants)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseVariants() = %v, want %v", got, tt.want)
 			}
 		})
 	}

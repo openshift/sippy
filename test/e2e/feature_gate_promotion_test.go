@@ -40,14 +40,3 @@ func TestFeatureGatePromotionInstallGate(t *testing.T) {
 	require.NotNil(t, fg.Promotion, "promotion field should not be nil for Install gate")
 }
 
-func TestFeatureGatePromotionCapabilityRegressionsLink(t *testing.T) {
-	var fg api.FeatureGate
-	err := util.SippyGet("/api/feature_gates/NetworkSegmentation?release="+util.Release, &fg)
-	require.NoError(t, err)
-
-	require.NotNil(t, fg.Links)
-	link, ok := fg.Links["capability_regressions"]
-	assert.True(t, ok, "missing capability_regressions link")
-	assert.Contains(t, link, "/api/tests")
-	assert.Contains(t, link, "Capability%3ANetworkSegmentation")
-}

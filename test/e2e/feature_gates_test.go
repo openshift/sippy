@@ -84,10 +84,6 @@ func TestFeatureGateDetailAPI(t *testing.T) {
 	assert.Contains(t, jobTests, "/api/tests?release="+util.Release)
 	assert.Contains(t, jobTests, "Capability%3ANetworkSegmentation")
 
-	capReg, ok := fg.Links["capability_regressions"]
-	assert.True(t, ok, "missing capability_regressions link")
-	assert.Contains(t, capReg, "/api/tests")
-
 	uiDetail, ok := fg.Links["ui_detail"]
 	assert.True(t, ok, "missing ui_detail link")
 	assert.Contains(t, uiDetail, "/feature_gates/"+util.Release+"/NetworkSegmentation")

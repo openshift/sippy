@@ -1,16 +1,18 @@
 package featuregatepromotion
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
-	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	sippyapi "github.com/openshift/sippy/pkg/api"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/db"
 )
 
@@ -52,11 +54,9 @@ var (
 )
 
 // GetPromotionStatus computes the promotion readiness for a feature gate.
-// It combines multiple sources of test data:
-//   - Annotation tests: tests whose names contain [FeatureGate:NAME]
-//   - Capability tests (Install gates only): "install should succeed" tests
-//     on jobs with Capability:NAME variant
-func GetPromotionStatus(dbc *db.DB, release, featureGate string) (*PromotionStatus, error) {
+// It queries test data using the same filters and query path as the /api/tests
+// endpoint, ensuring the evaluated data matches what HATEOAS links point to.
+func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, release, featureGate string) (*PromotionStatus, error) {
 	topologies, err := getGateTopologies(dbc, release, featureGate)
 	if err != nil {
 		return nil, fmt.Errorf("getting gate topologies: %w", err)
@@ -64,22 +64,30 @@ func GetPromotionStatus(dbc *db.DB, release, featureGate string) (*PromotionStat
 
 	variantsToCheck := determineVariantsToCheck(featureGate, topologies)
 
-	annotationRows, err := queryTestBasedResults(dbc, release, featureGate)
+	gateFilter := GateTestFilter(featureGate)
+	annotationTests, err := sippyapi.QueryTestResults(ctx, dbc, cacheClient, release, &gateFilter)
 	if err != nil {
 		return nil, fmt.Errorf("querying annotation test results: %w", err)
 	}
 
-	rows := annotationRows
+	allTests := annotationTests
 
 	if strings.Contains(featureGate, "Install") {
-		capabilityRows, err := queryCapabilityBasedResults(dbc, release, featureGate)
+		installFilter := InstallTestFilter(featureGate)
+		capabilityTests, err := sippyapi.QueryTestResults(ctx, dbc, cacheClient, release, &installFilter)
 		if err != nil {
 			return nil, fmt.Errorf("querying capability test results: %w", err)
 		}
-		rows = append(rows, capabilityRows...)
+		allTests = append(allTests, capabilityTests...)
 	}
 
-	return buildPromotionStatus(featureGate, release, variantsToCheck, rows), nil
+	log.WithFields(log.Fields{
+		"release":      release,
+		"feature_gate": featureGate,
+		"test_count":   len(allTests),
+	}).Debug("promotion readiness query complete")
+
+	return buildPromotionStatus(featureGate, release, variantsToCheck, allTests), nil
 }
 
 // getGateTopologies returns the set of topologies where this feature gate is enabled.
@@ -195,173 +203,9 @@ func JobTiersForVariant(v JobVariant) []string {
 	return sets.List(tierSet)
 }
 
-// queryTestBasedResults runs a single SQL query to get test results for all
-// required variants at once, using the prefix sum approach.
-func queryTestBasedResults(dbc *db.DB, release, featureGate string) ([]testQueryRow, error) {
-	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
-	sample := dateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
-	base := dateRange{Start: tomorrow.AddDays(-15), End: sample.Start}
-
-	if err := clampDateRanges(dbc, release, &sample, &base); err != nil {
-		return nil, err
-	}
-
-	end := sample.End.AddDays(-1)
-	boundary := sample.Start.AddDays(-1)
-	start := base.Start.AddDays(-1)
-
-	testPattern := fmt.Sprintf("%%FeatureGate:%s]%%", featureGate)
-
-	query := `
-		SELECT
-			t.name AS test_name,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Platform:%' LIMIT 1) AS platform,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Architecture:%' LIMIT 1) AS architecture,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Topology:%' LIMIT 1) AS topology,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'NetworkStack:%' LIMIT 1) AS network_stack,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'OS:%' LIMIT 1) AS os,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'JobTier:%' LIMIT 1) AS job_tier,
-			SUM(COALESCE(e.prefix_sum_successes - COALESCE(m.prefix_sum_successes, 0), 0))::int AS current_successes,
-			SUM(COALESCE(e.prefix_sum_failures  - COALESCE(m.prefix_sum_failures,  0), 0))::int AS current_failures,
-			SUM(COALESCE(e.prefix_sum_flakes    - COALESCE(m.prefix_sum_flakes,    0), 0))::int AS current_flakes,
-			SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::int AS current_runs,
-			SUM(COALESCE(m.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))::int AS previous_successes,
-			SUM(COALESCE(m.prefix_sum_failures  - COALESCE(s.prefix_sum_failures,  0), 0))::int AS previous_failures,
-			SUM(COALESCE(m.prefix_sum_flakes    - COALESCE(s.prefix_sum_flakes,    0), 0))::int AS previous_flakes,
-			SUM(COALESCE(m.prefix_sum_runs      - COALESCE(s.prefix_sum_runs,      0), 0))::int AS previous_runs
-		FROM test_cumulative_summaries e
-		JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
-		JOIN variant_combinations vc ON pj.variant_combination_id = vc.id
-		JOIN tests t ON t.id = e.test_id
-		LEFT JOIN test_cumulative_summaries m
-			ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id
-			AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
-		LEFT JOIN test_cumulative_summaries s
-			ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id
-			AND s.suite_id = e.suite_id AND s.release = e.release AND s.date = ?
-		WHERE e.date = ? AND e.release = ?
-			AND t.name LIKE ?
-			AND NOT EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = 'never-stable')
-			AND NOT EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = 'aggregated')
-		GROUP BY t.name,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Platform:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Architecture:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Topology:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'NetworkStack:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'OS:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'JobTier:%' LIMIT 1)
-	`
-
-	var rows []testQueryRow
-	tx := dbc.DB.Raw(query, boundary, start, end, release, testPattern).Scan(&rows)
-	if tx.Error != nil {
-		return nil, fmt.Errorf("querying test results: %w", tx.Error)
-	}
-
-	// Strip the "Key:" prefixes from variant dimension values
-	for i := range rows {
-		rows[i].Platform = stripPrefix(rows[i].Platform, "Platform:")
-		rows[i].Architecture = stripPrefix(rows[i].Architecture, "Architecture:")
-		rows[i].Topology = stripPrefix(rows[i].Topology, "Topology:")
-		rows[i].NetworkStack = stripPrefix(rows[i].NetworkStack, "NetworkStack:")
-		rows[i].OS = stripPrefix(rows[i].OS, "OS:")
-		rows[i].JobTier = stripPrefix(rows[i].JobTier, "JobTier:")
-	}
-
-	log.WithFields(log.Fields{
-		"release":      release,
-		"feature_gate": featureGate,
-		"row_count":    len(rows),
-	}).Debug("promotion readiness query complete")
-
-	return rows, nil
-}
-
-// queryCapabilityBasedResults queries "install should succeed" test results
-// for Install gates on jobs tagged with the Capability:NAME variant.
-func queryCapabilityBasedResults(dbc *db.DB, release, featureGate string) ([]testQueryRow, error) {
-	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
-	sample := dateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
-	base := dateRange{Start: tomorrow.AddDays(-15), End: sample.Start}
-
-	if err := clampDateRanges(dbc, release, &sample, &base); err != nil {
-		return nil, err
-	}
-
-	end := sample.End.AddDays(-1)
-	boundary := sample.Start.AddDays(-1)
-	start := base.Start.AddDays(-1)
-
-	capabilityVariant := fmt.Sprintf("Capability:%s", featureGate)
-	testPattern := "%install should succeed%"
-
-	query := `
-		SELECT
-			t.name AS test_name,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Platform:%' LIMIT 1) AS platform,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Architecture:%' LIMIT 1) AS architecture,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Topology:%' LIMIT 1) AS topology,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'NetworkStack:%' LIMIT 1) AS network_stack,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'OS:%' LIMIT 1) AS os,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'JobTier:%' LIMIT 1) AS job_tier,
-			SUM(COALESCE(e.prefix_sum_successes - COALESCE(m.prefix_sum_successes, 0), 0))::int AS current_successes,
-			SUM(COALESCE(e.prefix_sum_failures  - COALESCE(m.prefix_sum_failures,  0), 0))::int AS current_failures,
-			SUM(COALESCE(e.prefix_sum_flakes    - COALESCE(m.prefix_sum_flakes,    0), 0))::int AS current_flakes,
-			SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::int AS current_runs,
-			SUM(COALESCE(m.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))::int AS previous_successes,
-			SUM(COALESCE(m.prefix_sum_failures  - COALESCE(s.prefix_sum_failures,  0), 0))::int AS previous_failures,
-			SUM(COALESCE(m.prefix_sum_flakes    - COALESCE(s.prefix_sum_flakes,    0), 0))::int AS previous_flakes,
-			SUM(COALESCE(m.prefix_sum_runs      - COALESCE(s.prefix_sum_runs,      0), 0))::int AS previous_runs
-		FROM test_cumulative_summaries e
-		JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
-		JOIN variant_combinations vc ON pj.variant_combination_id = vc.id
-		JOIN tests t ON t.id = e.test_id
-		LEFT JOIN test_cumulative_summaries m
-			ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id
-			AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
-		LEFT JOIN test_cumulative_summaries s
-			ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id
-			AND s.suite_id = e.suite_id AND s.release = e.release AND s.date = ?
-		WHERE e.date = ? AND e.release = ?
-			AND t.name LIKE ?
-			AND EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = ?)
-			AND NOT EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = 'never-stable')
-			AND NOT EXISTS (SELECT 1 FROM unnest(vc.variants) AS v WHERE v = 'aggregated')
-		GROUP BY t.name,
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Platform:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Architecture:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'Topology:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'NetworkStack:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'OS:%' LIMIT 1),
-			(SELECT v FROM unnest(vc.variants) AS v WHERE v LIKE 'JobTier:%' LIMIT 1)
-	`
-
-	var rows []testQueryRow
-	tx := dbc.DB.Raw(query, boundary, start, end, release, testPattern, capabilityVariant).Scan(&rows)
-	if tx.Error != nil {
-		return nil, fmt.Errorf("querying capability test results: %w", tx.Error)
-	}
-
-	for i := range rows {
-		rows[i].Platform = stripPrefix(rows[i].Platform, "Platform:")
-		rows[i].Architecture = stripPrefix(rows[i].Architecture, "Architecture:")
-		rows[i].Topology = stripPrefix(rows[i].Topology, "Topology:")
-		rows[i].NetworkStack = stripPrefix(rows[i].NetworkStack, "NetworkStack:")
-		rows[i].OS = stripPrefix(rows[i].OS, "OS:")
-		rows[i].JobTier = stripPrefix(rows[i].JobTier, "JobTier:")
-	}
-
-	log.WithFields(log.Fields{
-		"release":      release,
-		"feature_gate": featureGate,
-		"row_count":    len(rows),
-	}).Debug("capability-based promotion readiness query complete")
-
-	return rows, nil
-}
-
-// buildPromotionStatus assembles the PromotionStatus from query results.
-func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVariant, rows []testQueryRow) *PromotionStatus {
+// buildPromotionStatus assembles the PromotionStatus from test results returned
+// by the shared query function (same data as /api/tests).
+func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVariant, tests []apitype.Test) *PromotionStatus {
 	status := &PromotionStatus{
 		FeatureGate: featureGate,
 		Release:     release,
@@ -371,7 +215,7 @@ func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVari
 	sort.Sort(OrderedJobVariants(variantsToCheck))
 
 	for _, jv := range variantsToCheck {
-		vr := buildVariantResult(jv, rows)
+		vr := buildVariantResult(jv, tests)
 		status.ResultsByVariant = append(status.ResultsByVariant, vr)
 
 		status.Warnings = append(status.Warnings, vr.Warnings...)
@@ -395,8 +239,8 @@ func buildPromotionStatus(featureGate, release string, variantsToCheck []JobVari
 	return status
 }
 
-// buildVariantResult processes query rows for a single variant combo.
-func buildVariantResult(jv JobVariant, allRows []testQueryRow) VariantResult {
+// buildVariantResult processes test results for a single variant combo.
+func buildVariantResult(jv JobVariant, allTests []apitype.Test) VariantResult {
 	variants := map[string]string{
 		"Platform":     jv.Cloud,
 		"Architecture": jv.Architecture,
@@ -417,39 +261,40 @@ func buildVariantResult(jv JobVariant, allRows []testQueryRow) VariantResult {
 
 	allowedTiers := sets.New(JobTiersForVariant(jv)...)
 
-	// Collect rows matching this variant, accumulating across job tiers
+	// Collect tests matching this variant, accumulating across job tiers
 	testMap := map[string]*TestResult{}
 	hasCandidateTierResults := false
 
-	for _, row := range allRows {
-		if !matchesVariant(row, jv) {
+	for _, test := range allTests {
+		parsed := parseVariants(test.Variants)
+		if !matchesParsedVariant(parsed, jv) {
 			continue
 		}
-		if row.JobTier != "" && !allowedTiers.Has(row.JobTier) {
+		if jobTier := parsed["JobTier"]; jobTier != "" && !allowedTiers.Has(jobTier) {
 			continue
 		}
 
-		if row.JobTier == "candidate" {
+		if parsed["JobTier"] == "candidate" {
 			hasCandidateTierResults = true
 		}
 
-		tr, ok := testMap[row.TestName]
+		tr, ok := testMap[test.Name]
 		if !ok {
-			tr = &TestResult{TestName: row.TestName}
-			testMap[row.TestName] = tr
+			tr = &TestResult{TestName: test.Name}
+			testMap[test.Name] = tr
 		}
 
 		// Apply lookback: use 7-day window if sufficient, else extend to 14 days
-		if row.CurrentRuns >= RequiredNumberOfTestRunsPerVariant {
-			tr.TotalRuns += row.CurrentRuns
-			tr.SuccessfulRuns += row.CurrentSuccesses
-			tr.FailedRuns += row.CurrentFailures
-			tr.FlakedRuns += row.CurrentFlakes
+		if test.CurrentRuns >= RequiredNumberOfTestRunsPerVariant {
+			tr.TotalRuns += test.CurrentRuns
+			tr.SuccessfulRuns += test.CurrentSuccesses
+			tr.FailedRuns += test.CurrentFailures
+			tr.FlakedRuns += test.CurrentFlakes
 		} else {
-			tr.TotalRuns += row.CurrentRuns + row.PreviousRuns
-			tr.SuccessfulRuns += row.CurrentSuccesses + row.PreviousSuccesses
-			tr.FailedRuns += row.CurrentFailures + row.PreviousFailures
-			tr.FlakedRuns += row.CurrentFlakes + row.PreviousFlakes
+			tr.TotalRuns += test.CurrentRuns + test.PreviousRuns
+			tr.SuccessfulRuns += test.CurrentSuccesses + test.PreviousSuccesses
+			tr.FailedRuns += test.CurrentFailures + test.PreviousFailures
+			tr.FlakedRuns += test.CurrentFlakes + test.PreviousFlakes
 		}
 	}
 
@@ -496,21 +341,33 @@ func buildVariantResult(jv JobVariant, allRows []testQueryRow) VariantResult {
 	return vr
 }
 
-// matchesVariant checks if a query row matches a required variant combo.
-func matchesVariant(row testQueryRow, jv JobVariant) bool {
-	if !strings.EqualFold(row.Platform, jv.Cloud) {
+// parseVariants extracts variant key-value pairs from a pq.StringArray.
+// Each entry is formatted as "Key:value" (e.g., "Platform:aws").
+func parseVariants(variants []string) map[string]string {
+	parsed := make(map[string]string, len(variants))
+	for _, v := range variants {
+		if idx := strings.IndexByte(v, ':'); idx > 0 {
+			parsed[v[:idx]] = v[idx+1:]
+		}
+	}
+	return parsed
+}
+
+// matchesParsedVariant checks if parsed variant dimensions match a required variant combo.
+func matchesParsedVariant(parsed map[string]string, jv JobVariant) bool {
+	if !strings.EqualFold(parsed["Platform"], jv.Cloud) {
 		return false
 	}
-	if !strings.EqualFold(row.Architecture, jv.Architecture) {
+	if !strings.EqualFold(parsed["Architecture"], jv.Architecture) {
 		return false
 	}
-	if !strings.EqualFold(row.Topology, jv.Topology) {
+	if !strings.EqualFold(parsed["Topology"], jv.Topology) {
 		return false
 	}
-	if jv.NetworkStack != "" && !strings.EqualFold(row.NetworkStack, jv.NetworkStack) {
+	if jv.NetworkStack != "" && !strings.EqualFold(parsed["NetworkStack"], jv.NetworkStack) {
 		return false
 	}
-	if jv.OS != "" && !strings.EqualFold(row.OS, jv.OS) {
+	if jv.OS != "" && !strings.EqualFold(parsed["OS"], jv.OS) {
 		return false
 	}
 	return true
@@ -525,10 +382,6 @@ func variantLabel(jv JobVariant) string {
 		parts = append(parts, "OS:"+jv.OS)
 	}
 	return strings.Join(parts, "/")
-}
-
-func stripPrefix(s, prefix string) string {
-	return strings.TrimPrefix(s, prefix)
 }
 
 // OrderedJobVariants implements sort.Interface for consistent variant ordering.
@@ -556,32 +409,3 @@ func (a OrderedJobVariants) Less(i, j int) bool {
 	return strings.Compare(a[i].JobTiers, a[j].JobTiers) < 0
 }
 
-// dateRange is a local copy to avoid depending on the query package directly.
-type dateRange struct {
-	Start civil.Date
-	End   civil.Date
-}
-
-func clampDateRanges(dbc *db.DB, release string, ranges ...*dateRange) error {
-	var maxDate *civil.Date
-	row := dbc.DB.Table("test_cumulative_summaries").
-		Select("MAX(date)").
-		Where("release = ?", release).
-		Row()
-	if err := row.Scan(&maxDate); err != nil {
-		return fmt.Errorf("resolving max date for release %s: %w", release, err)
-	}
-	if maxDate == nil {
-		return nil
-	}
-	clampTo := maxDate.AddDays(1)
-	for _, dr := range ranges {
-		if dr.End.After(clampTo) {
-			dr.End = clampTo
-		}
-		if dr.Start.After(clampTo) {
-			dr.Start = clampTo
-		}
-	}
-	return nil
-}

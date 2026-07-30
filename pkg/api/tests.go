@@ -358,6 +358,24 @@ func PrintTestsJSONFromDB(
 	RespondWithJSON(http.StatusOK, w, testsResult)
 }
 
+// QueryTestResults queries test results using the same logic as the /api/tests
+// endpoint but without requiring an HTTP request. This allows internal callers
+// (such as promotion readiness) to reuse the exact same query path and filters.
+func QueryTestResults(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, release string, f *filter.Filter) ([]apitype.Test, error) {
+	spec := &TestResultsSpec{
+		Release:        release,
+		Period:         "default",
+		Collapse:       false,
+		IncludeOverall: false,
+		Filter:         f,
+	}
+	result, err := spec.buildTestsResultsFromPostgres(ctx, dbc, cacheClient)
+	if err != nil {
+		return nil, err
+	}
+	return result.TestsAPIResult, nil
+}
+
 func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http.Request, bqc *bq.Client) {
 	spec, ok := makeTestsResultsSpec(w, req, release)
 	if !ok {

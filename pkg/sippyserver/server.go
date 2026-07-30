@@ -771,7 +771,7 @@ func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request)
 	}
 	gates[0].MatchingJobs = matchingJobs
 
-	promotionStatus, err := featuregatepromotion.GetPromotionStatus(s.db, release, featureGate)
+	promotionStatus, err := featuregatepromotion.GetPromotionStatus(req.Context(), s.db, s.cache, release, featureGate)
 	if err != nil {
 		failureResponseWithError(w, "couldn't compute feature gate promotion status", err)
 		return
@@ -798,46 +798,20 @@ func injectFeatureGateListLinks(fg *apitype.FeatureGate, release, baseAPIURL, ba
 func injectFeatureGateDetailLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
 	fg.Links = make(map[string]string, 6)
 
-	annotationFilter := filter.Filter{
-		Items: []filter.FilterItem{
-			{Field: "name", Operator: filter.OperatorContains, Value: fmt.Sprintf("FeatureGate:%s]", fg.FeatureGate)},
-		},
-	}
-	fg.Links["gate_tests"] = buildFilteredTestsURL(baseAPIURL, release, annotationFilter)
+	gateFilter := featuregatepromotion.GateTestFilter(fg.FeatureGate)
+	fg.Links["gate_tests"] = buildFilteredTestsURL(baseAPIURL, release, gateFilter)
 
 	if strings.Contains(fg.FeatureGate, "Install") {
-		installFilter := filter.Filter{
-			Items: []filter.FilterItem{
-				{Field: "name", Operator: filter.OperatorContains, Value: "install should succeed"},
-				{Field: "variants", Operator: filter.OperatorContains, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
-			},
-			LinkOperator: filter.LinkOperatorAnd,
-		}
+		installFilter := featuregatepromotion.InstallTestFilter(fg.FeatureGate)
 		fg.Links["install_tests"] = buildFilteredTestsURL(baseAPIURL, release, installFilter)
 	}
 
-	capabilityRegressionFilter := filter.Filter{
-		Items: []filter.FilterItem{
-			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "never-stable"},
-			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "aggregated"},
-			{Field: "variants", Operator: filter.OperatorHasEntry, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
-			{Field: "current_working_percentage", Operator: filter.OperatorArithmeticLessThan, Value: "92"},
-			{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "0"},
-			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "install should succeed"},
-			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "openshift-tests should work"},
-			{Field: "name", Not: true, Operator: filter.OperatorContains, Value: "infrastructure should work"},
-		},
-		LinkOperator: filter.LinkOperatorAnd,
-	}
+	capabilityRegressionFilter := featuregatepromotion.CapabilityRegressionsFilter(fg.FeatureGate)
 	fg.Links["gate_job_tests"] = buildFilteredTestsURL(baseAPIURL, release, capabilityRegressionFilter)
-	fg.Links["capability_regressions"] = fg.Links["gate_job_tests"]
 
 	fg.Links["ui_detail"] = fmt.Sprintf(
 		"%s/sippy-ng/feature_gates/%s/%s",
 		baseFrontendURL, release, url.PathEscape(fg.FeatureGate))
-	fg.Links["api_detail"] = fmt.Sprintf(
-		"%s/api/feature_gates/%s?release=%s",
-		baseAPIURL, url.PathEscape(fg.FeatureGate), url.QueryEscape(release))
 }
 
 func convertPromotionStatus(status *featuregatepromotion.PromotionStatus) *apitype.FeatureGatePromotion {
