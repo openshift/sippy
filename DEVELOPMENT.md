@@ -220,6 +220,27 @@ the comment processing as described in [From GitHub](DEVELOPMENT.md) also within
   --include-repo-commenting=origin
 ```
 
+## Run Integration Tests
+
+Integration tests live in `test/integration/` and exercise SQL-level
+behavior against a real PostgreSQL instance. By default they use
+[testcontainers-go](https://golang.testcontainers.org/) to start a
+temporary Postgres container, so Docker or Podman must be available.
+
+```bash
+make integration
+```
+
+To use an existing PostgreSQL server instead of spinning up a container
+(for example, the devcontainer database), set `INTEGRATION_DATABASE_DSN`:
+
+```bash
+INTEGRATION_DATABASE_DSN="postgresql://postgres:password@localhost:5432/postgres" make integration
+```
+
+Each test run creates randomly named template and test databases, so
+multiple runs can safely execute concurrently against the same server.
+
 ## Run E2E Tests
 
 Sippy has a currently basic/minimal set of e2e tests which run a temporary postgres container, load the database with an

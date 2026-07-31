@@ -1,0 +1,8 @@
+# Extends the build root with PostgreSQL 16 for integration tests.
+# ci-operator replaces this FROM with the "src" image (build root + source).
+FROM replaced-by-ci-operator
+
+RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
+      dnf install -y postgresql16-server && \
+      dnf clean all && \
+      rm -rf /var/cache/dnf

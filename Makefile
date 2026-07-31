@@ -95,6 +95,9 @@ devcontainer-claude:
 e2e:
 	./scripts/e2e.sh
 
+# By default, integration tests start a Postgres container via testcontainers-go.
+# Set INTEGRATION_DATABASE_DSN to use an external Postgres instance instead
+# (e.g. the devcontainer database).
 .PHONY: integration
 integration:
 ifeq ($(ARTIFACT_DIR),)

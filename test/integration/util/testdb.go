@@ -2,8 +2,11 @@ package util
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -19,10 +22,6 @@ import (
 
 	gormlogger "gorm.io/gorm/logger"
 )
-
-func init() {
-	configurePodmanIfNeeded()
-}
 
 // configurePodmanIfNeeded detects Podman and sets the environment
 // variables that testcontainers-go needs to use it.
@@ -75,21 +74,55 @@ const (
 	postgresUser     = "test"
 	postgresPassword = "test"
 	postgresDB       = "sippy_integration"
-	templateDB       = "template_integration"
 )
 
-// PostgresContainer holds a running testcontainers Postgres instance and
-// provides helpers to create per-test database clones.
-type PostgresContainer struct {
-	container testcontainers.Container
-	baseDSN   string
+func randomSuffix() string {
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		panic("failed to generate random suffix: " + err.Error())
+	}
+	return hex.EncodeToString(b)
 }
 
-// StartPostgresContainer launches a Postgres container, creates a template
-// database with the integration schema applied, and returns a handle for
-// creating per-test clones. Call cleanup() (or use the returned container's
-// Terminate) when done.
+// PostgresContainer holds a Postgres instance (either a testcontainers
+// container or an external server) and provides helpers to create per-test
+// database clones.
+type PostgresContainer struct {
+	container  testcontainers.Container
+	baseDSN    string
+	templateDB string
+}
+
+// StartPostgresContainer returns a PostgresContainer backed by either an
+// external Postgres server (when INTEGRATION_DATABASE_DSN is set) or a
+// testcontainers-managed container. The external DSN path allows CI
+// environments to supply a sidecar Postgres without needing a container
+// runtime.
 func StartPostgresContainer(ctx context.Context) (*PostgresContainer, error) {
+	if dsn := os.Getenv("INTEGRATION_DATABASE_DSN"); dsn != "" {
+		log.Printf("Using external Postgres from INTEGRATION_DATABASE_DSN")
+		return startExternalPostgres(dsn)
+	}
+	log.Printf("Starting Postgres via testcontainers (set INTEGRATION_DATABASE_DSN to use an external instance)")
+	return startTestcontainersPostgres(ctx)
+}
+
+func startExternalPostgres(dsn string) (*PostgresContainer, error) {
+	u, err := url.Parse(dsn)
+	if err != nil || u.Scheme == "" {
+		return nil, fmt.Errorf("INTEGRATION_DATABASE_DSN must be a URL (e.g. postgresql://host/db)")
+	}
+
+	templateDB, err := createTemplateDB(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("creating template database on external postgres: %w", err)
+	}
+	return &PostgresContainer{baseDSN: dsn, templateDB: templateDB}, nil
+}
+
+func startTestcontainersPostgres(ctx context.Context) (*PostgresContainer, error) {
+	configurePodmanIfNeeded()
+
 	pgContainer, err := tcpostgres.Run(ctx,
 		postgresImage,
 		tcpostgres.WithDatabase(postgresDB),
@@ -113,7 +146,8 @@ func StartPostgresContainer(ctx context.Context) (*PostgresContainer, error) {
 		return nil, fmt.Errorf("getting connection string: %w", err)
 	}
 
-	if err := createTemplateDB(connStr); err != nil {
+	templateDB, err := createTemplateDB(connStr)
+	if err != nil {
 		if termErr := pgContainer.Terminate(ctx); termErr != nil {
 			err = fmt.Errorf("%w (also failed to terminate container: %v)", err, termErr)
 		}
@@ -121,53 +155,76 @@ func StartPostgresContainer(ctx context.Context) (*PostgresContainer, error) {
 	}
 
 	return &PostgresContainer{
-		container: pgContainer,
-		baseDSN:   connStr,
+		container:  pgContainer,
+		baseDSN:    connStr,
+		templateDB: templateDB,
 	}, nil
 }
 
-// Terminate stops and removes the container.
+// Terminate stops and removes the container, or cleans up the template
+// database for external Postgres instances.
 func (pc *PostgresContainer) Terminate(ctx context.Context) error {
-	return pc.container.Terminate(ctx)
+	if pc.container != nil {
+		return pc.container.Terminate(ctx)
+	}
+	return dropTemplateDB(ctx, pc.baseDSN, pc.templateDB)
 }
 
-// createTemplateDB creates a fresh database, applies the integration schema,
-// and marks it as a template for fast cloning.
-func createTemplateDB(baseDSN string) error {
+func dropTemplateDB(ctx context.Context, baseDSN, templateDB string) error {
 	adminDB, err := sql.Open("pgx", baseDSN)
 	if err != nil {
 		return fmt.Errorf("connecting to admin db: %w", err)
 	}
 	defer adminDB.Close()
-
-	if _, err := adminDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", templateDB)); err != nil {
-		return fmt.Errorf("dropping old template: %w", err)
+	if _, err := adminDB.ExecContext(ctx, fmt.Sprintf("ALTER DATABASE %s IS_TEMPLATE = false", templateDB)); err != nil {
+		return fmt.Errorf("unmarking template db: %w", err)
 	}
+	if _, err := adminDB.ExecContext(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", templateDB)); err != nil {
+		return fmt.Errorf("dropping template db: %w", err)
+	}
+	return nil
+}
+
+// createTemplateDB creates a fresh database with a random name, applies the
+// integration schema, and marks it as a template for fast cloning.
+func createTemplateDB(baseDSN string) (string, error) {
+	templateDB := "tmpl_" + randomSuffix()
+
+	adminDB, err := sql.Open("pgx", baseDSN)
+	if err != nil {
+		return "", fmt.Errorf("connecting to admin db: %w", err)
+	}
+	defer adminDB.Close()
+
 	if _, err := adminDB.Exec(fmt.Sprintf("CREATE DATABASE %s", templateDB)); err != nil {
-		return fmt.Errorf("creating template db: %w", err)
+		return "", fmt.Errorf("creating template db: %w", err)
+	}
+	cleanupOnErr := func(err error) (string, error) {
+		_, _ = adminDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", templateDB))
+		return "", err
 	}
 
 	templateDSN := replaceDBName(baseDSN, templateDB)
 	dbc, err := db.New(templateDSN, gormlogger.Silent)
 	if err != nil {
-		return fmt.Errorf("connecting to template db: %w", err)
+		return cleanupOnErr(fmt.Errorf("connecting to template db: %w", err))
 	}
 	sqlDB, err := dbc.DB.DB()
 	if err != nil {
-		return fmt.Errorf("getting sql.DB from template: %w", err)
+		return cleanupOnErr(fmt.Errorf("getting sql.DB from template: %w", err))
 	}
 	if err := SetupIntegrationSchema(dbc); err != nil {
 		sqlDB.Close()
-		return fmt.Errorf("setting up schema: %w", err)
+		return cleanupOnErr(fmt.Errorf("setting up schema: %w", err))
 	}
 
 	sqlDB.Close()
 
 	if _, err := adminDB.Exec(fmt.Sprintf("ALTER DATABASE %s IS_TEMPLATE = true", templateDB)); err != nil {
-		return fmt.Errorf("marking db as template: %w", err)
+		return "", fmt.Errorf("marking db as template: %w", err)
 	}
 
-	return nil
+	return templateDB, nil
 }
 
 // NewTestDB creates a fresh database cloned from the template and returns
@@ -175,14 +232,14 @@ func createTemplateDB(baseDSN string) error {
 func NewTestDB(t *testing.T, pc *PostgresContainer) *db.DB {
 	t.Helper()
 
-	dbName := fmt.Sprintf("test_%s_%d", sanitize(t.Name()), time.Now().UnixNano())
+	dbName := "test_" + randomSuffix()
 
 	adminDB, err := sql.Open("pgx", pc.baseDSN)
 	if err != nil {
 		t.Fatalf("connecting to admin db: %v", err)
 	}
 
-	if _, err := adminDB.Exec(fmt.Sprintf("CREATE DATABASE %s TEMPLATE %s", dbName, templateDB)); err != nil {
+	if _, err := adminDB.Exec(fmt.Sprintf("CREATE DATABASE %s TEMPLATE %s", dbName, pc.templateDB)); err != nil {
 		adminDB.Close()
 		t.Fatalf("cloning template db: %v", err)
 	}
@@ -226,23 +283,4 @@ func replaceDBName(dsn, newDB string) string {
 	}
 	u.Path = "/" + newDB
 	return u.String()
-}
-
-// sanitize replaces characters that are not valid in Postgres identifiers.
-func sanitize(name string) string {
-	result := make([]byte, 0, len(name))
-	for i := range len(name) {
-		c := name[i]
-		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' {
-			result = append(result, c)
-		} else if c >= 'A' && c <= 'Z' {
-			result = append(result, c+32) // lowercase
-		} else {
-			result = append(result, '_')
-		}
-	}
-	if len(result) > 38 {
-		result = result[:38]
-	}
-	return string(result)
 }
