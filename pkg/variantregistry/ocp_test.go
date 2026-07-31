@@ -1799,7 +1799,7 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job:          "periodic-ci-red-hat-storage-ocs-ci-master-odf-ocp-4.22-lpGA-lp-interop-cr--odf--aws",
+			job:          "periodic-ci-red-hat-storage-ocs-ci-master-odf-ocp-4.22-lpGA-lp-interop-cr--aws",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
 				VariantRelease:          "4.22",
