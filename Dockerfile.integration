@@ -1,0 +1,22 @@
+# Extends the build root with nested-podman support for integration tests.
+# ci-operator replaces this FROM with the "src" image (build root + source).
+# For local builds: podman build --from sippy-buildroot -f Dockerfile.integration .
+FROM replaced-by-ci-operator
+
+RUN dnf install -y podman fuse-overlayfs shadow-utils && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+COPY scripts/nested-podman-entrypoint.sh /nested-podman-entrypoint.sh
+ENV BUILDAH_ISOLATION=chroot
+RUN chmod +rx /nested-podman-entrypoint.sh && \
+    chown 0:0 /etc/passwd /etc/group && \
+    chmod g=u /etc/passwd /etc/group && \
+    setcap cap_setuid+ep /usr/bin/newuidmap && \
+    setcap cap_setgid+ep /usr/bin/newgidmap && \
+    touch /etc/subgid /etc/subuid && \
+    chown 0:0 /etc/subgid /etc/subuid && \
+    chmod -R g=u /etc/subuid /etc/subgid
+
+ENTRYPOINT ["/usr/libexec/podman/catatonit", "--", "/nested-podman-entrypoint.sh"]
+CMD ["make", "integration"]
