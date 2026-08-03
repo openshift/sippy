@@ -266,6 +266,7 @@ func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions r
 	}
 	return p.queryTestStatusPrefixSum(ctx, reqOptions,
 		reqOptions.BaseRelease.Name,
+		nil,
 		reqOptions.VariantOption.IncludeVariants,
 		baseRange)
 }
@@ -294,7 +295,9 @@ func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
 	includeVariants = mergeCompareVariants(reqOptions, includeVariants)
-	return p.queryTestStatusPrefixSum(ctx, reqOptions, reqOptions.SampleRelease.Name, includeVariants,
+	return p.queryTestStatusPrefixSum(ctx, reqOptions, reqOptions.SampleRelease.Name,
+		reqOptions.Lifecycles,
+		includeVariants,
 		query.DateRange{
 			Start: civil.DateOf(start),
 			End:   civil.DateOf(end).AddDays(1),

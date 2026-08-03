@@ -27,9 +27,10 @@ func GetFeatureGatesFromDB(dbc *db.DB, release string, filterOpts *filter.Filter
 		SELECT 1 FROM test_cumulative_summaries e
 		LEFT JOIN test_cumulative_summaries s
 			ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id
-			AND s.suite_id = e.suite_id AND s.release = e.release
-			AND s.date = ?
+			AND s.suite_id = e.suite_id AND s.lifecycle = e.lifecycle
+			AND s.release = e.release AND s.date = ?
 		WHERE e.test_id = t.id AND e.date = ? AND e.release = ?
+			AND e.lifecycle = 'blocking'
 			AND e.prefix_sum_runs > COALESCE(s.prefix_sum_runs, 0)
 	)`
 

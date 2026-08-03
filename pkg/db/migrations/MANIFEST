@@ -17,3 +17,4 @@
 000008_add_summary_timestamps
 000009_add_lifecycle_to_prow_job_run_tests
 000010_drop_test_analysis_by_job_by_dates
+000011_add_lifecycle_to_summaries
