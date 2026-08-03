@@ -164,11 +164,12 @@ type Suite struct {
 // Table is partitioned (LIST by release, RANGE by date) -
 // schema managed by migration 000006, not AutoMigrate.
 type TestDailyTotal struct {
-	TestID                uint       `gorm:"column:test_id;not null"`
-	ProwJobID             uint       `gorm:"column:prow_job_id;not null"`
-	SuiteID               uint       `gorm:"column:suite_id;not null;default:0"`
-	Release               string     `gorm:"column:release;not null"`
-	Date                  civil.Date `gorm:"column:date;type:date;not null"`
+	Release               string     `gorm:"column:release;not null;uniqueIndex:idx_test_daily_totals_key,priority:1"`
+	Date                  civil.Date `gorm:"column:date;type:date;not null;uniqueIndex:idx_test_daily_totals_key,priority:2"`
+	TestID                uint       `gorm:"column:test_id;not null;uniqueIndex:idx_test_daily_totals_key,priority:3"`
+	SuiteID               uint       `gorm:"column:suite_id;not null;default:0;uniqueIndex:idx_test_daily_totals_key,priority:4"`
+	Lifecycle             string     `gorm:"column:lifecycle;not null;default:blocking;uniqueIndex:idx_test_daily_totals_key,priority:5"`
+	ProwJobID             uint       `gorm:"column:prow_job_id;not null;uniqueIndex:idx_test_daily_totals_key,priority:6"`
 	Successes             int32      `gorm:"column:successes;not null;default:0"`
 	Failures              int32      `gorm:"column:failures;not null;default:0"`
 	Flakes                int32      `gorm:"column:flakes;not null;default:0"`
@@ -187,11 +188,12 @@ type TestDailyTotal struct {
 // Table is partitioned (LIST by release, RANGE by date) -
 // schema managed by migration 000006, not AutoMigrate.
 type TestCumulativeSummary struct {
-	Date                 civil.Date `gorm:"column:date;type:date;not null;primaryKey;priority:1"`
-	Release              string     `gorm:"column:release;not null;primaryKey;priority:2"`
-	TestID               uint       `gorm:"column:test_id;not null;primaryKey;priority:3"`
-	ProwJobID            uint       `gorm:"column:prow_job_id;not null;primaryKey;priority:4;index:idx_test_cumulative_summaries_prow_job_id"`
-	SuiteID              uint       `gorm:"column:suite_id;not null;default:0;primaryKey;priority:5"`
+	Release              string     `gorm:"column:release;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:1"`
+	Date                 civil.Date `gorm:"column:date;type:date;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:2"`
+	TestID               uint       `gorm:"column:test_id;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:3"`
+	SuiteID              uint       `gorm:"column:suite_id;not null;default:0;uniqueIndex:idx_test_cumulative_summaries_key,priority:4"`
+	Lifecycle            string     `gorm:"column:lifecycle;not null;default:blocking;uniqueIndex:idx_test_cumulative_summaries_key,priority:5"`
+	ProwJobID            uint       `gorm:"column:prow_job_id;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:6;index:idx_test_cumulative_summaries_prow_job_id"`
 	PrefixSumSuccesses   int64      `gorm:"column:prefix_sum_successes;not null;default:0"`
 	PrefixSumFailures    int64      `gorm:"column:prefix_sum_failures;not null;default:0"`
 	PrefixSumFlakes      int64      `gorm:"column:prefix_sum_flakes;not null;default:0"`

@@ -48,20 +48,6 @@ func createProwJobWithVC(t *testing.T, dbc *db.DB, name, release string, vc mode
 	return job
 }
 
-func createTest(t *testing.T, dbc *db.DB, name string) models.Test {
-	t.Helper()
-	test := models.Test{Name: name}
-	require.NoError(t, dbc.DB.Create(&test).Error)
-	return test
-}
-
-func createSuite(t *testing.T, dbc *db.DB, name string) models.Suite {
-	t.Helper()
-	suite := models.Suite{Name: name}
-	require.NoError(t, dbc.DB.Create(&suite).Error)
-	return suite
-}
-
 func createTestOwnership(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, uniqueID, component string, caps []string) models.TestOwnership {
 	t.Helper()
 	tow := models.TestOwnership{
@@ -77,13 +63,28 @@ func createTestOwnership(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, u
 }
 
 type cumulativeSummaryOpts struct {
+	prefixSumFailures    int64
 	prefixMaxLastFailure *time.Time
+	prefixMaxLastSuccess *time.Time
+	lifecycle            string
 }
 
 type cumulativeSummaryOption func(*cumulativeSummaryOpts)
 
 func withLastFailure(t time.Time) cumulativeSummaryOption {
 	return func(o *cumulativeSummaryOpts) { o.prefixMaxLastFailure = &t }
+}
+
+func withLastSuccess(t time.Time) cumulativeSummaryOption {
+	return func(o *cumulativeSummaryOpts) { o.prefixMaxLastSuccess = &t }
+}
+
+func withFailures(failures int64) cumulativeSummaryOption {
+	return func(o *cumulativeSummaryOpts) { o.prefixSumFailures = failures }
+}
+
+func withLifecycle(lifecycle string) cumulativeSummaryOption {
+	return func(o *cumulativeSummaryOpts) { o.lifecycle = lifecycle }
 }
 
 func createCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release string, testID, prowJobID, suiteID uint, runs, successes, flakes int64, options ...cumulativeSummaryOption) {
@@ -98,10 +99,16 @@ func createCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release 
 		TestID:               testID,
 		ProwJobID:            prowJobID,
 		SuiteID:              suiteID,
+		Lifecycle:            o.lifecycle,
 		PrefixSumRuns:        runs,
 		PrefixSumSuccesses:   successes,
+		PrefixSumFailures:    o.prefixSumFailures,
 		PrefixSumFlakes:      flakes,
 		PrefixMaxLastFailure: o.prefixMaxLastFailure,
+		PrefixMaxLastSuccess: o.prefixMaxLastSuccess,
+	}
+	if tcs.Lifecycle == "" {
+		tcs.Lifecycle = "blocking"
 	}
 	require.NoError(t, dbc.DB.Create(&tcs).Error)
 }
@@ -235,11 +242,11 @@ func seedCRData(t *testing.T, dbc *db.DB) crSeedData {
 	jobGCP := createProwJobWithVC(t, dbc, "periodic-e2e-gcp-sdn", release, vcGCP)
 	jobAWS2 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-sdn", release, vcAWS2)
 
-	test1 := createTest(t, dbc, "openshift-tests:[sig-storage] PVC should work")
-	test2 := createTest(t, dbc, "openshift-tests:[sig-network] Services should serve")
-	test3 := createTest(t, dbc, "openshift-tests:[sig-auth] RBAC should restrict")
+	test1 := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] PVC should work")
+	test2 := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] Services should serve")
+	test3 := intutil.CreateTest(t, dbc, "openshift-tests:[sig-auth] RBAC should restrict")
 
-	suite := createSuite(t, dbc, "openshift-tests")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests")
 
 	tow1 := createTestOwnership(t, dbc, test1.ID, &suite.ID, "openshift-tests:aaa", "Storage", []string{"PersistentVolumes", "IPv4"})
 	tow2 := createTestOwnership(t, dbc, test2.ID, &suite.ID, "openshift-tests:bbb", "Networking", []string{"Services", "IPv4"})
@@ -370,8 +377,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		job1 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha", release, vc1)
 		job2 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single", release, vc2)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] PVC test")
-		suite := createSuite(t, dbc, "openshift-tests")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] PVC test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests")
 		createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:pvc", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -567,8 +574,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		sampleJob := createProwJobWithVC(t, dbc, "periodic-e2e-aws-sample", sampleRelease, vc)
 		distractorJob := createProwJobWithVC(t, dbc, "periodic-e2e-aws-distractor", distractorRelease, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] release isolation")
-		suite := createSuite(t, dbc, "openshift-tests-ri")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] release isolation")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-ri")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ri-test", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -606,8 +613,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-obs", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] obsolete test")
-		suite := createSuite(t, dbc, "openshift-tests-obs")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] obsolete test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-obs")
 
 		obsOwnership := models.TestOwnership{
 			TestID:                test.ID,
@@ -646,9 +653,9 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-suite", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] multi-suite test")
-		suiteA := createSuite(t, dbc, "suite-a")
-		suiteB := createSuite(t, dbc, "suite-b")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] multi-suite test")
+		suiteA := intutil.CreateSuite(t, dbc, "suite-a")
+		suiteB := intutil.CreateSuite(t, dbc, "suite-b")
 
 		towA := createTestOwnership(t, dbc, test.ID, &suiteA.ID, "suite-a:multi", "Storage", []string{"PVC"})
 		towB := createTestOwnership(t, dbc, test.ID, &suiteB.ID, "suite-b:multi", "Storage", []string{"PVC"})
@@ -702,8 +709,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		jobHA := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha", release, vcHA)
 		jobSingle := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single", release, vcSingle)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] cross-compare test")
-		suite := createSuite(t, dbc, "openshift-tests-cc")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] cross-compare test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-cc")
 		createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:cc-test", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -751,8 +758,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-lf", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] last failure test")
-		suite := createSuite(t, dbc, "openshift-tests-lf")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] last failure test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-lf")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:lf-test", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -793,8 +800,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		job1 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha-lf", release, vc1)
 		job2 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single-lf", release, vc2)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] multi-job last failure")
-		suite := createSuite(t, dbc, "openshift-tests-mj-lf")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] multi-job last failure")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-mj-lf")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:mj-lf-test", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -840,8 +847,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		job1 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha-mixed", release, vc1)
 		job2 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single-mixed", release, vc2)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] mixed null last failure")
-		suite := createSuite(t, dbc, "openshift-tests-mix-lf")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] mixed null last failure")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-mix-lf")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:mix-lf-test", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -883,8 +890,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-clamp", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] clamping test")
-		suite := createSuite(t, dbc, "openshift-tests-clamp")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] clamping test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-clamp")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:clamp-test", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -918,7 +925,7 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-nosuite", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] no suite test")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] no suite test")
 		tow := createTestOwnership(t, dbc, test.ID, nil, "openshift-tests:nosuite-test", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -952,8 +959,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-coalesce", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] coalesce test")
-		suite := createSuite(t, dbc, "openshift-tests-co")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] coalesce test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-co")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:coalesce-test", "Storage", []string{"PVC"})
 
 		endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
@@ -985,8 +992,8 @@ func TestQuerySampleTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-merge", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] merge test")
-		suite := createSuite(t, dbc, "openshift-tests-merge")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] merge test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-merge")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:merge-test", "Storage", []string{"PVC"})
 
 		startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
@@ -1096,8 +1103,8 @@ func TestQueryTestStatus_DifferentBaseAndSampleReleases(t *testing.T) {
 	baseJob := createProwJobWithVC(t, dbc, "periodic-e2e-aws-base", baseRelease, vc)
 	sampleJob := createProwJobWithVC(t, dbc, "periodic-e2e-aws-sample", sampleRelease, vc)
 
-	test := createTest(t, dbc, "openshift-tests:[sig-storage] cross-release test")
-	suite := createSuite(t, dbc, "openshift-tests-xr")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] cross-release test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-xr")
 	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:xr-test", "Storage", []string{"PVC"})
 
 	// Base period: [2024-05-15, 2024-06-01) -> lookupStart=2024-05-14, lookupEnd=2024-06-01
@@ -1175,8 +1182,8 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 
 	vcAWS := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 	jobAWS := createProwJobWithVC(t, dbc, "periodic-ga-aws-ovn", release, vcAWS)
-	test := createTest(t, dbc, "openshift-tests:[sig-storage] GA PVC test")
-	suite := createSuite(t, dbc, "openshift-tests-ga")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] GA PVC test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga")
 	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-pvc", "Storage", []string{"PVC"})
 
 	// GA raw data: 50 runs, 45 passes, 2 flakes
@@ -1244,8 +1251,8 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-ga-nil-aws", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] GA nil date test")
-		suite := createSuite(t, dbc, "openshift-tests-ga-nil")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] GA nil date test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga-nil")
 		createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-nil", "Storage", []string{"PVC"})
 
 		// Seed prefix-sum data for base period
@@ -1283,8 +1290,8 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-ga-future-aws", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] GA future date test")
-		suite := createSuite(t, dbc, "openshift-tests-ga-future")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] GA future date test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga-future")
 		createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-future", "Storage", []string{"PVC"})
 
 		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
@@ -1322,8 +1329,8 @@ func TestQueryBaseTestStatus_GA(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-ga-nonstandard-aws", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] GA nonstandard window test")
-		suite := createSuite(t, dbc, "openshift-tests-ga-ns")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] GA nonstandard window test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga-ns")
 		createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-nonstandard", "Storage", []string{"PVC"})
 
 		// Base period: May 17 to June 2 (= GAWindowEnd for June 1)
@@ -1369,8 +1376,8 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 	jobAWS := createProwJobWithVC(t, dbc, "periodic-jr-aws", release, vcAWS)
 	jobGCP := createProwJobWithVC(t, dbc, "periodic-jr-gcp", release, vcGCP)
 
-	test := createTest(t, dbc, "openshift-tests:[sig-storage] JR PVC test")
-	suite := createSuite(t, dbc, "openshift-tests-jr")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] JR PVC test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-jr")
 	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:jr-pvc", "Storage", []string{"PVC"})
 
 	ts1 := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
@@ -1451,8 +1458,8 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-jr-infra", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] infra exclusion test")
-		suite := createSuite(t, dbc, "openshift-tests-infra")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] infra exclusion test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-infra")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:infra-test", "Storage", []string{"PVC"})
 
 		normalTS := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
@@ -1488,8 +1495,8 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 		job := createProwJobWithVC(t, dbc, "periodic-jr-jira", release, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] jira component test")
-		suite := createSuite(t, dbc, "openshift-tests-jira")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] jira component test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-jira")
 		tow := createTestOwnershipFull(t, dbc, test.ID, &suite.ID, "openshift-tests:jira-test", "Storage", []string{"PVC"}, uintPtr(42))
 
 		ts := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
@@ -1524,8 +1531,8 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 		sampleJob := createProwJobWithVC(t, dbc, "periodic-jr-sample", sampleRelease, vc)
 		distractorJob := createProwJobWithVC(t, dbc, "periodic-jr-distractor", distractorRelease, vc)
 
-		test := createTest(t, dbc, "openshift-tests:[sig-storage] JR release isolation")
-		suite := createSuite(t, dbc, "openshift-tests-jr-ri")
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] JR release isolation")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-jr-ri")
 		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:jr-ri", "Storage", []string{"PVC"})
 
 		ts1 := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
@@ -1561,8 +1568,8 @@ func TestQueryBaseJobRunTestStatus(t *testing.T) {
 	vcAWS := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 	jobAWS := createProwJobWithVC(t, dbc, "periodic-base-jr-aws", release, vcAWS)
 
-	test := createTest(t, dbc, "openshift-tests:[sig-network] Base JR test")
-	suite := createSuite(t, dbc, "openshift-tests-base-jr")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] Base JR test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-base-jr")
 	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:base-jr", "Networking", []string{"Services"})
 
 	ts1 := time.Date(2024, 5, 20, 12, 0, 0, 0, time.UTC)
@@ -1901,8 +1908,8 @@ func TestGAPathAggregatesMultipleJobs(t *testing.T) {
 	job1 := createProwJobWithVC(t, dbc, "periodic-ga-multi-1", release, vc1)
 	job2 := createProwJobWithVC(t, dbc, "periodic-ga-multi-2", release, vc2)
 
-	test := createTest(t, dbc, "openshift-tests:[sig-storage] GA multi-job test")
-	suite := createSuite(t, dbc, "openshift-tests-ga-mj")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] GA multi-job test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga-mj")
 	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-multi", "Storage", []string{"PVC"})
 
 	// Two jobs contribute GA data for the same test on the same variant group (when grouped by Platform only)
@@ -1943,9 +1950,9 @@ func TestMultipleTestsInSameComponent(t *testing.T) {
 	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-multi", release, vc)
 
-	testA := createTest(t, dbc, "openshift-tests:[sig-storage] PVC create")
-	testB := createTest(t, dbc, "openshift-tests:[sig-storage] PVC expand")
-	suite := createSuite(t, dbc, "openshift-tests-multi")
+	testA := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] PVC create")
+	testB := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] PVC expand")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-multi")
 
 	towA := createTestOwnership(t, dbc, testA.ID, &suite.ID, "openshift-tests:pvc-create", "Storage", []string{"PVC"})
 	towB := createTestOwnership(t, dbc, testB.ID, &suite.ID, "openshift-tests:pvc-expand", "Storage", []string{"PVC"})
@@ -2000,8 +2007,8 @@ func TestBaseAggregatesMultipleJobsInSameVariantGroup(t *testing.T) {
 	job1 := createProwJobWithVC(t, dbc, "periodic-base-agg-1", release, vc1)
 	job2 := createProwJobWithVC(t, dbc, "periodic-base-agg-2", release, vc2)
 
-	test := createTest(t, dbc, "openshift-tests:[sig-storage] base agg test")
-	suite := createSuite(t, dbc, "openshift-tests-bagg")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] base agg test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-bagg")
 	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:base-agg", "Storage", []string{"PVC"})
 
 	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
@@ -2044,8 +2051,8 @@ func TestTestDetailStatusMapping(t *testing.T) {
 	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 	job := createProwJobWithVC(t, dbc, "periodic-status-map", release, vc)
 
-	test := createTest(t, dbc, "openshift-tests:[sig-storage] status mapping test")
-	suite := createSuite(t, dbc, "openshift-tests-sm")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] status mapping test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-sm")
 	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:status-map", "Storage", []string{"PVC"})
 
 	passTS := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
@@ -2101,8 +2108,8 @@ func TestJobNameNormalizationMergesResults(t *testing.T) {
 	job416 := createProwJobWithVC(t, dbc, "periodic-ci-4.16-e2e-aws", release, vc)
 	job417 := createProwJobWithVC(t, dbc, "periodic-ci-4.17-e2e-aws", release, vc)
 
-	test := createTest(t, dbc, "openshift-tests:[sig-storage] normalization test")
-	suite := createSuite(t, dbc, "openshift-tests-norm")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] normalization test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-norm")
 	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:norm-test", "Storage", []string{"PVC"})
 
 	ts1 := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
@@ -2140,10 +2147,10 @@ func TestTestExistsInBaseButNotSample(t *testing.T) {
 	baseJob := createProwJobWithVC(t, dbc, "periodic-e2e-aws-base-only", baseRelease, vc)
 	sampleJob := createProwJobWithVC(t, dbc, "periodic-e2e-aws-sample-only", sampleRelease, vc)
 
-	baseOnlyTest := createTest(t, dbc, "openshift-tests:[sig-storage] base-only test")
-	sampleOnlyTest := createTest(t, dbc, "openshift-tests:[sig-storage] sample-only test")
-	sharedTest := createTest(t, dbc, "openshift-tests:[sig-storage] shared test")
-	suite := createSuite(t, dbc, "openshift-tests-missing")
+	baseOnlyTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] base-only test")
+	sampleOnlyTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] sample-only test")
+	sharedTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] shared test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-missing")
 
 	towBaseOnly := createTestOwnership(t, dbc, baseOnlyTest.ID, &suite.ID, "openshift-tests:base-only", "Storage", []string{"PVC"})
 	towSampleOnly := createTestOwnership(t, dbc, sampleOnlyTest.ID, &suite.ID, "openshift-tests:sample-only", "Storage", []string{"PVC"})
@@ -2233,8 +2240,8 @@ func TestSingleDayPeriod(t *testing.T) {
 	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-1day", release, vc)
 
-	test := createTest(t, dbc, "openshift-tests:[sig-storage] single day test")
-	suite := createSuite(t, dbc, "openshift-tests-1day")
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] single day test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-1day")
 	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:1day-test", "Storage", []string{"PVC"})
 
 	// Single-day range: [2024-06-10, 2024-06-11)
@@ -2274,10 +2281,10 @@ func TestMinimumFailureWithCapabilityFilter(t *testing.T) {
 	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
 	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-mfcap", release, vc)
 
-	testHigh := createTest(t, dbc, "openshift-tests:[sig-storage] high failure PVC test")
-	testLow := createTest(t, dbc, "openshift-tests:[sig-storage] low failure PVC test")
-	testOther := createTest(t, dbc, "openshift-tests:[sig-network] high failure network test")
-	suite := createSuite(t, dbc, "openshift-tests-mfcap")
+	testHigh := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] high failure PVC test")
+	testLow := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] low failure PVC test")
+	testOther := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] high failure network test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-mfcap")
 
 	// testHigh and testLow share PVC capability; testOther has Services capability
 	createTestOwnership(t, dbc, testHigh.ID, &suite.ID, "openshift-tests:high-pvc", "Storage", []string{"PVC"})
@@ -2331,12 +2338,12 @@ func TestDrillDownBySecondaryCapability(t *testing.T) {
 	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-cap2", release, vc)
 
 	// testShared has both PVC and IPv4 capabilities
-	testShared := createTest(t, dbc, "openshift-tests:[sig-storage] shared cap test")
+	testShared := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] shared cap test")
 	// testIPv4Only has only IPv4
-	testIPv4Only := createTest(t, dbc, "openshift-tests:[sig-network] ipv4 only test")
+	testIPv4Only := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] ipv4 only test")
 	// testPVCOnly has only PVC
-	testPVCOnly := createTest(t, dbc, "openshift-tests:[sig-storage] pvc only test")
-	suite := createSuite(t, dbc, "openshift-tests-cap2")
+	testPVCOnly := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] pvc only test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-cap2")
 
 	createTestOwnership(t, dbc, testShared.ID, &suite.ID, "openshift-tests:shared-cap", "Storage", []string{"PVC", "IPv4"})
 	createTestOwnership(t, dbc, testIPv4Only.ID, &suite.ID, "openshift-tests:ipv4-only", "Networking", []string{"IPv4"})
@@ -2371,6 +2378,303 @@ func TestDrillDownBySecondaryCapability(t *testing.T) {
 	for _, ts := range nonPlaceholders {
 		assert.NotEqual(t, "openshift-tests:pvc-only", ts.TestID,
 			"test with only PVC capability should not appear in IPv4 drill-down")
+	}
+}
+
+func TestMixedLifecycleRowsProduceCorrectCounts(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-lifecycle", release, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] PVC lifecycle test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:lifecycle", "Storage", []string{"PersistentVolumes"})
+
+	startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+	endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// Blocking: runs=10, successes=8, flakes=1
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job.ID, suite.ID, 100, 90, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job.ID, suite.ID, 110, 98, 6, withLifecycle("blocking"))
+
+	// Informing: runs=20, successes=15, flakes=2
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, job.ID, suite.ID, 50, 40, 3, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, job.ID, suite.ID, 70, 55, 5, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	includeVariants := map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+	require.NotEmpty(t, result)
+
+	key := crtest.KeyWithVariants{
+		TestID:   tow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	ts, ok := result[key.Encode()]
+	require.True(t, ok, "expected key %s in results", key.Encode())
+
+	// Correct: blocking (10) + informing (20) = 30 runs
+	// Without lifecycle join fix, cross-product would inflate to 40
+	assert.Equal(t, 30, ts.TotalCount)
+	assert.Equal(t, 23, ts.SuccessCount) // blocking 8 + informing 15
+	assert.Equal(t, 3, ts.FlakeCount)    // blocking 1 + informing 2
+}
+
+func TestLifecycleFilterExcludesInformingFromSample(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-lifecycle-filter", release, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] informing filter test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:lifecycle-filter", "Networking", []string{"Connectivity"})
+
+	// defaultReqOptions uses:
+	//   sample: 2024-06-01 to 2024-06-15 -> lookup dates: 2024-05-31 (start-1), 2024-06-14 (end-1)
+	//   base:   2024-05-15 to 2024-06-01 -> lookup dates: 2024-05-14 (start-1), 2024-06-01 (end+1-1)
+	// Create prefix-sum rows at all four lookup dates.
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// Blocking: base period adds 5 runs (3 success, 1 flake), sample period adds 10 runs (8 success, 1 flake)
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 70, 4, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 85, 73, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 85, 73, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 95, 81, 6, withLifecycle("blocking"))
+
+	// Informing: base period adds 8 runs (6 success, 1 flake), sample period adds 20 runs (15 success, 2 flakes)
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 30, 24, 2, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 38, 30, 3, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 38, 30, 3, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 58, 45, 5, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	includeVariants := map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	key := crtest.KeyWithVariants{
+		TestID:   tow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+
+	t.Run("sample with lifecycle=blocking excludes informing", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.Lifecycles = []string{"blocking"}
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Only blocking sample counts: 10 runs, 8 successes, 1 flake
+		assert.Equal(t, 10, ts.TotalCount)
+		assert.Equal(t, 8, ts.SuccessCount)
+		assert.Equal(t, 1, ts.FlakeCount)
+	})
+
+	t.Run("base query does not filter by lifecycle", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.Lifecycles = []string{"blocking"}
+
+		result, errs := provider.QueryBaseTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Base includes both blocking (5 runs) and informing (8 runs) = 13 runs
+		assert.Equal(t, 13, ts.TotalCount)
+		assert.Equal(t, 9, ts.SuccessCount) // blocking 3 + informing 6
+		assert.Equal(t, 2, ts.FlakeCount)   // blocking 1 + informing 1
+	})
+
+	t.Run("sample without lifecycle filter includes all", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Both blocking (10) + informing (20) = 30 runs
+		assert.Equal(t, 30, ts.TotalCount)
+		assert.Equal(t, 23, ts.SuccessCount) // blocking 8 + informing 15
+		assert.Equal(t, 3, ts.FlakeCount)    // blocking 1 + informing 2
+	})
+
+	t.Run("sample with lifecycle=informing returns only informing", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.Lifecycles = []string{"informing"}
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Only informing sample counts: 20 runs, 15 successes, 2 flakes
+		assert.Equal(t, 20, ts.TotalCount)
+		assert.Equal(t, 15, ts.SuccessCount)
+		assert.Equal(t, 2, ts.FlakeCount)
+	})
+
+	t.Run("sample with both lifecycles returns all", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.Lifecycles = []string{"blocking", "informing"}
+
+		result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.Empty(t, errs)
+		require.NotEmpty(t, result)
+
+		ts, ok := result[key.Encode()]
+		require.True(t, ok, "expected key %s in results", key.Encode())
+
+		// Both blocking (10) + informing (20) = 30 runs
+		assert.Equal(t, 30, ts.TotalCount)
+		assert.Equal(t, 23, ts.SuccessCount)
+		assert.Equal(t, 3, ts.FlakeCount)
+	})
+}
+
+func TestInformingOnlyTestExcludedFromSamplePlaceholders(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-placeholder-lifecycle", release, vc)
+
+	testBoth := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] test with both lifecycles")
+	testInformingOnly := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] informing-only test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests")
+
+	towBoth := createTestOwnership(t, dbc, testBoth.ID, &suite.ID, "openshift-tests:both-lifecycle", "Networking", []string{"Connectivity"})
+	createTestOwnership(t, dbc, testInformingOnly.ID, &suite.ID, "openshift-tests:informing-only", "Storage", []string{"PVC"})
+
+	startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+	endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// testBoth: blocking data in sample period (10 runs, 8 successes, 1 flake)
+	createCumulativeSummary(t, dbc, startMinus1, release, testBoth.ID, job.ID, suite.ID, 80, 70, 4, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, endMinus1, release, testBoth.ID, job.ID, suite.ID, 90, 78, 5, withLifecycle("blocking"))
+	// testBoth: informing data
+	createCumulativeSummary(t, dbc, startMinus1, release, testBoth.ID, job.ID, suite.ID, 30, 24, 2, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, testBoth.ID, job.ID, suite.ID, 50, 39, 4, withLifecycle("informing"))
+
+	// testInformingOnly: ONLY informing data in sample period (20 runs)
+	createCumulativeSummary(t, dbc, startMinus1, release, testInformingOnly.ID, job.ID, suite.ID, 30, 24, 2, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, testInformingOnly.ID, job.ID, suite.ID, 50, 39, 4, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	includeVariants := map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	opts := defaultReqOptions(release)
+	opts.Lifecycles = []string{"blocking"}
+
+	result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+
+	keyBoth := crtest.KeyWithVariants{
+		TestID:   towBoth.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	ts, ok := result[keyBoth.Encode()]
+	require.True(t, ok, "test with blocking data should be present")
+	assert.Equal(t, 10, ts.TotalCount)
+	assert.Equal(t, 8, ts.SuccessCount)
+	assert.Equal(t, 1, ts.FlakeCount)
+
+	// testInformingOnly should be absent entirely, including placeholders.
+	// With lifecycle=blocking, this test has no data, so its component (Storage)
+	// should not appear in the grid.
+	for encodedKey, ts := range result {
+		if ts.Component == "Storage" {
+			t.Errorf("informing-only test's component should not appear in results, found key %s with component Storage", encodedKey)
+		}
+	}
+}
+
+func TestCrossCompareWithLifecycleFilter(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vcHA := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:ha"})
+	vcSingle := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:single"})
+
+	jobHA := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha-lifecycle", release, vcHA)
+	jobSingle := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single-lifecycle", release, vcSingle)
+
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] cross-compare lifecycle test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-ccl")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:cc-lifecycle", "Storage", []string{"PVC"})
+
+	startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+	endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// HA job: blocking 10 runs, informing 5 runs in sample period
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, jobHA.ID, suite.ID, 100, 90, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, jobHA.ID, suite.ID, 110, 98, 6, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, jobHA.ID, suite.ID, 40, 35, 2, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, jobHA.ID, suite.ID, 45, 39, 3, withLifecycle("informing"))
+
+	// Single job: blocking 20 runs (15 successes, 2 flakes), informing 8 runs in sample period
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, jobSingle.ID, suite.ID, 50, 40, 3, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, jobSingle.ID, suite.ID, 70, 55, 5, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, startMinus1, release, test.ID, jobSingle.ID, suite.ID, 20, 18, 1, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, endMinus1, release, test.ID, jobSingle.ID, suite.ID, 28, 25, 2, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.Lifecycles = []string{"blocking"}
+	opts.VariantOption.DBGroupBy = sets.New[string]("Platform", "Topology")
+	opts.VariantOption.ColumnGroupBy = sets.New[string]("Platform")
+	opts.VariantOption.VariantCrossCompare = []string{"Topology"}
+	opts.VariantOption.CompareVariants = map[string][]string{"Topology": {"single"}}
+
+	includeVariants := map[string][]string{
+		"Platform": {"aws"},
+		"Topology": {"ha"},
+	}
+
+	result, errs := provider.QuerySampleTestStatus(context.Background(), opts, includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+
+	nonPlaceholders := filterPlaceholders(result)
+	require.NotEmpty(t, nonPlaceholders, "should return results for cross-compare with lifecycle filter")
+	for _, ts := range nonPlaceholders {
+		assert.Equal(t, "single", ts.Variants["Topology"],
+			"should return sample-side (single) data, not base-side (ha)")
+		// Only blocking counts from the single job: 20 runs, 15 successes, 2 flakes
+		assert.Equal(t, 20, ts.TotalCount)
+		assert.Equal(t, 15, ts.SuccessCount)
+		assert.Equal(t, 2, ts.FlakeCount)
 	}
 }
 
