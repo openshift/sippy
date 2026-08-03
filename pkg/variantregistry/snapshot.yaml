@@ -341090,8 +341090,8 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-interop-opp-aws:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -341114,8 +341114,8 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-interop-opp-vsphere:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -341141,8 +341141,8 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-upgrade-interop-opp-upgrad
     FromReleaseMajor: "4"
     FromReleaseMinor: "22"
     Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -341165,8 +341165,8 @@ periodic-ci-stolostron-policy-collection-main-ocp5.0-interop-opp-aws:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -341189,8 +341189,8 @@ periodic-ci-stolostron-policy-collection-main-ocp5.0-interop-opp-vsphere:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -341216,8 +341216,8 @@ periodic-ci-stolostron-policy-collection-main-ocp5.0-upgrade-interop-opp-upgrade
     FromReleaseMajor: "5"
     FromReleaseMinor: "0"
     Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4

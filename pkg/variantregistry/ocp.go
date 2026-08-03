@@ -1371,6 +1371,7 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-coo-", "lp-interop-coo"},
 		{"-acm-cnv-", "lp-interop--acm-virt"},
 		{"-acm-virt-", "lp-interop--acm-virt"},
+		{"-interop-opp-", "lp-interop--OPP"},
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},
