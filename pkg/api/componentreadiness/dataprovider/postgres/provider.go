@@ -458,7 +458,7 @@ WHERE pj.release = ?
 			TestKey:         key,
 			TestKeyStr:      key.Encode(),
 			TestName:        row.TestName,
-			ProwJob:         normalizedName,
+			ProwJob:         row.ProwJobName,
 			ProwJobRunID:    row.ProwJobRunID,
 			ProwJobURL:      row.ProwJobURL,
 			StartTime:       row.ProwJobStart,

@@ -2129,6 +2129,13 @@ func TestJobNameNormalizationMergesResults(t *testing.T) {
 	rows, ok := result[normalizedKey]
 	require.True(t, ok, "both job runs should merge under normalized name %q", normalizedKey)
 	assert.Len(t, rows, 2, "both runs should appear under the normalized key")
+
+	prowJobs := sets.New[string]()
+	for _, r := range rows {
+		prowJobs.Insert(r.ProwJob)
+	}
+	assert.True(t, prowJobs.Has("periodic-ci-4.16-e2e-aws"), "original job name 4.16 should be preserved")
+	assert.True(t, prowJobs.Has("periodic-ci-4.17-e2e-aws"), "original job name 4.17 should be preserved")
 }
 
 func TestTestExistsInBaseButNotSample(t *testing.T) {
