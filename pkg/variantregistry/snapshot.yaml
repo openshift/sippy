@@ -27214,6 +27214,30 @@ periodic-ci-openshift-eng-ocp-perfscale-main-metal-5.0-nightly-x86-daily-virt-6n
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-eng-ocp-perfscale-main-metal-5.0-nightly-x86-evpn:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: perfscale
+    Platform: metal
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-metal-5.0-nightly-x86-udn-bgp:
     Aggregation: none
     Architecture: amd64
@@ -37006,6 +37030,30 @@ periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-v2-aws-backuprestore:
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-v2-aws-techpreview-osimagestream:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: techpreview
     Installer: hypershift
     JobTier: candidate
     LayeredProduct: none
@@ -69589,6 +69637,30 @@ periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-e2e-ovn-serial-aws-multi-a-
     Scheduler: default
     SecurityMode: default
     Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-e2e-ovn-techpreview-remote-libvirt-multi-z-z:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-e2e-ovn-techpreview-remote-s2s-libvirt-multi-p-p:
@@ -310684,6 +310756,25 @@ periodic-ci-openshift-route-monitor-operator-master-osd-gcp-e2e-promotion-stage:
     OS: rhcos10
     Owner: service-delivery
     Platform: gcp
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-route-monitor-operator-master-rosa-sts-e2e-coverage:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
     Procedure: none
     Scheduler: default
     SecurityMode: default
