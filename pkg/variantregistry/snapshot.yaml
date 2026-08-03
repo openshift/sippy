@@ -41040,6 +41040,29 @@ periodic-ci-openshift-kni-eco-ci-cd-main-cnf-ran-sno-day2-worker-4.22-cnf-ran-zt
     Suite: unknown
     Topology: single
     Upgrade: none
+periodic-ci-openshift-kni-eco-ci-cd-main-cnf-ran-sno-day2-worker-5.00-cnf-ran-ztp-tests:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.00"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: single
+    Upgrade: none
 periodic-ci-openshift-kni-eco-ci-cd-main-cnf-ran-two-sno-4.14-cnf-ran-ztp-tests:
     Aggregation: none
     Architecture: amd64
