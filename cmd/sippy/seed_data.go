@@ -384,7 +384,7 @@ var syntheticTests = []syntheticTestSpec{
 		},
 	},
 	{
-		testID: "test-fg-aws-dual-stack-install", testName: "[sig-installer] [FeatureGate:AWSDualStackInstall] dual stack install should succeed",
+		testID: "test-fg-aws-dual-stack-install", testName: "[sig-installer] [FeatureGate:AWSDualStackInstall] specific test for the dual stack install feature",
 		component: "Installer / openshift-installer", capabilities: []string{"AWSDualStackInstall"},
 		jobCounts: map[string]map[string]testCount{
 			awsAmd64Parallel: {"4.22": {50, 48, 0}},
