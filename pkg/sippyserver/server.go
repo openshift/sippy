@@ -935,6 +935,31 @@ func (s *Server) jsonGetRecentTestFailures(w http.ResponseWriter, req *http.Requ
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
+func (s *Server) jsonBackendDisruptionByRun(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "backend disruption API requires BigQuery configuration")
+		return
+	}
+
+	jobRunNamesParam := param.SafeRead(req, "job_run_names")
+	if jobRunNamesParam == "" {
+		failureResponse(w, http.StatusBadRequest, "job_run_names parameter is required (comma-separated prow build IDs)")
+		return
+	}
+	jobRunNames := strings.Split(jobRunNamesParam, ",")
+
+	backendName := param.SafeRead(req, "backend_name")
+
+	result, err := api.GetBackendDisruptionByRun(req.Context(), s.bigQueryClient, jobRunNames, backendName)
+	if err != nil {
+		log.WithError(err).Error("error querying backend disruption")
+		failureResponse(w, http.StatusInternalServerError, "error querying backend disruption")
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func (s *Server) jsonTestRunsAndOutputsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
 		failureResponse(w, http.StatusBadRequest, "test runs API is only available when google-service-account-credential-file is configured")
@@ -2631,6 +2656,13 @@ func (s *Server) Serve() {
 			HandlerFunc:       s.jsonTestRunsAndOutputsFromBigQuery,
 			RateLimitRequests: 25,
 			RateLimitPeriod:   1 * time.Hour,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/disruption",
+			Description:  "Returns per-run backend disruption seconds from BigQuery",
+			Capabilities: []string{ComponentReadinessCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonBackendDisruptionByRun,
 		},
 		{
 			EndpointPath: "/api/tests/durations",

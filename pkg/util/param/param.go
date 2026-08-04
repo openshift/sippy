@@ -79,6 +79,9 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"includeOutputs": boolRegexp,
 	// pull request test results params
 	"limit": uintRegexp,
+	// disruption params
+	"job_run_names": regexp.MustCompile(`^\d+(,\d+)*$`),
+	"backend_name":  regexp.MustCompile(`^[\w-]+$`),
 }
 
 // SafeRead returns the value of a query parameter only if it matches the given regexp.
