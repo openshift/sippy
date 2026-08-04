@@ -957,6 +957,11 @@ func (s *Server) jsonBackendDisruptionByRun(w http.ResponseWriter, req *http.Req
 		return
 	}
 
+	baseURL := api.GetBaseURL(req)
+	result.Links = map[string]string{
+		"self": fmt.Sprintf("%s/api/jobs/runs/disruption?%s", baseURL, req.URL.Query().Encode()),
+	}
+
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 

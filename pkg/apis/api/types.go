@@ -1034,7 +1034,8 @@ type BackendDisruptionRunRow struct {
 }
 
 type BackendDisruptionRunsResult struct {
-	Rows []BackendDisruptionRunRow `json:"rows"`
+	Rows  []BackendDisruptionRunRow `json:"rows"`
+	Links map[string]string         `json:"links,omitempty"`
 }
 
 type SippyViews struct {

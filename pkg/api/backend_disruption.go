@@ -59,16 +59,16 @@ ORDER BY JobRunName, DisruptionSeconds DESC`
 	}
 
 	type bqRow struct {
-		BackendName        string               `bigquery:"BackendName"`
-		DisruptionSeconds  int                   `bigquery:"DisruptionSeconds"`
-		JobName            bigquery.NullString   `bigquery:"JobName"`
-		JobRunName         string                `bigquery:"JobRunName"`
-		JobRunStartTime    bigquery.NullString   `bigquery:"JobRunStartTime"`
-		JobRunEndTime      bigquery.NullString   `bigquery:"JobRunEndTime"`
-		Cluster            bigquery.NullString   `bigquery:"Cluster"`
-		ReleaseTag         bigquery.NullString   `bigquery:"ReleaseTag"`
-		MasterNodesUpdated bigquery.NullString   `bigquery:"MasterNodesUpdated"`
-		JobRunStatus       bigquery.NullString   `bigquery:"JobRunStatus"`
+		BackendName        string              `bigquery:"BackendName"`
+		DisruptionSeconds  int                 `bigquery:"DisruptionSeconds"`
+		JobName            bigquery.NullString `bigquery:"JobName"`
+		JobRunName         string              `bigquery:"JobRunName"`
+		JobRunStartTime    bigquery.NullString `bigquery:"JobRunStartTime"`
+		JobRunEndTime      bigquery.NullString `bigquery:"JobRunEndTime"`
+		Cluster            bigquery.NullString `bigquery:"Cluster"`
+		ReleaseTag         bigquery.NullString `bigquery:"ReleaseTag"`
+		MasterNodesUpdated bigquery.NullString `bigquery:"MasterNodesUpdated"`
+		JobRunStatus       bigquery.NullString `bigquery:"JobRunStatus"`
 	}
 
 	var rows []apitype.BackendDisruptionRunRow
@@ -79,8 +79,7 @@ ORDER BY JobRunName, DisruptionSeconds DESC`
 			break
 		}
 		if err != nil {
-			log.WithError(err).Error("error reading backend disruption row from bigquery")
-			continue
+			return apitype.BackendDisruptionRunsResult{}, fmt.Errorf("error reading backend disruption row from bigquery: %w", err)
 		}
 
 		apiRow := apitype.BackendDisruptionRunRow{
