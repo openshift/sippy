@@ -22,13 +22,13 @@ type TestStatusQuerier interface {
 		start, end time.Time) (map[string]crstatus.TestStatus, []error)
 }
 
-// TestDetailsQuerier fetches per-job-run test breakdowns used for test details reports.
+// TestDetailsQuerier fetches per-job test breakdowns used for test details reports.
 type TestDetailsQuerier interface {
-	QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestJobRunRows, []error)
+	QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error)
 
 	QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 		includeVariants map[string][]string,
-		start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error)
+		start, end time.Time) (map[string][]crstatus.TestDetailsSummary, []error)
 }
 
 // MetadataQuerier fetches reference data used to configure and parameterize reports.

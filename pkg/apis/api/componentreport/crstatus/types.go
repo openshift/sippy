@@ -37,18 +37,38 @@ type TestStatus struct {
 	LastFailure time.Time `json:"last_failure"`
 }
 
-// TestJobRunStatuses contains the rows returned from a test details query organized by base and sample,
-// essentially the actual job runs and their status that was used to calculate this
-// report.
-// Status fields map prowjob name to each row result we received for that job.
+// TestJobRunStatuses contains the rows returned from a test details query organized by base and sample.
+// Status fields map prowjob name to per-test summaries for that job.
 type TestJobRunStatuses struct {
-	BaseStatus map[string][]TestJobRunRows `json:"base_status"`
-	// TODO: This could be a little cleaner if we did status.BaseStatuses plural and tied them to a release,
-	// allowing the release fallback mechanism to stay a little cleaner. That would more clearly
-	// keep middleware details out of the main codebase.
-	BaseOverrideStatus map[string][]TestJobRunRows `json:"base_override_status"`
-	SampleStatus       map[string][]TestJobRunRows `json:"sample_status"`
-	GeneratedAt        *time.Time                  `json:"generated_at"`
+	BaseStatus         map[string][]TestDetailsSummary `json:"base_status"`
+	BaseOverrideStatus map[string][]TestDetailsSummary `json:"base_override_status"`
+	SampleStatus       map[string][]TestDetailsSummary `json:"sample_status"`
+	GeneratedAt        *time.Time                      `json:"generated_at"`
+}
+
+// TestDetailsSummary is a per-test, per-job summary with pre-computed counts
+// and optional individual run details.
+type TestDetailsSummary struct {
+	TestKey         crtest.KeyWithVariants
+	TestKeyStr      string
+	ProwJob         string
+	Stats           crtest.Stats
+	JobRuns         []JobRunDetail `json:",omitempty"`
+	JiraComponent   string
+	JiraComponentID *big.Rat
+	TestName        string
+	Lifecycle       string
+}
+
+// JobRunDetail holds the per-run information for an individual prow job run.
+type JobRunDetail struct {
+	ProwJobRunID string
+	ProwJobURL   string
+	StartTime    time.Time
+	crtest.Count
+	JobLabels    []string `json:",omitempty"`
+	JobSymptoms  []string `json:",omitempty"`
+	TestFailures int
 }
 
 // TestJobRunRows are the per job run rows from a test details report

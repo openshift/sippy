@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	componentreadiness "github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
@@ -47,7 +48,8 @@ func createProwJobWithVC(t *testing.T, dbc *db.DB, name, release string, vc mode
 
 func createTestOwnership(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, uniqueID, component string, caps []string) models.TestOwnership {
 	t.Helper()
-	return intutil.CreateTestOwnership(t, dbc, testID, suiteID, uniqueID, component, intutil.WithTestOwnershipCapabilities(caps))
+	return intutil.CreateTestOwnership(t, dbc, testID, suiteID, uniqueID, component,
+		intutil.WithTestOwnershipJiraComponent(component), intutil.WithTestOwnershipCapabilities(caps))
 }
 
 type cumulativeSummaryOpts struct {
@@ -94,7 +96,7 @@ func createCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release 
 	intutil.CreateCumulativeSummary(t, dbc, date, release, testID, prowJobID, suiteID, runs, successes, flakes, intutilOpts...)
 }
 
-func createGARawData(t *testing.T, dbc *db.DB, release string, windowDays int, testID, prowJobID, suiteID uint, runs, passes, flakes int64) {
+func createGARawData(t *testing.T, dbc *db.DB, release string, windowDays int, testID, prowJobID, suiteID uint, runs, passes, flakes int64) { //nolint:unparam
 	t.Helper()
 	ga := models.ProwGARawTestDatum{
 		Release:    release,
@@ -153,7 +155,7 @@ func setJobRunLabels(t *testing.T, dbc *db.DB, runID uint, labels []string) {
 func createTestOwnershipFull(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, uniqueID, component string, caps []string, jiraComponentID *uint) models.TestOwnership {
 	t.Helper()
 	return intutil.CreateTestOwnership(t, dbc, testID, suiteID, uniqueID, component,
-		intutil.WithTestOwnershipCapabilities(caps), intutil.WithTestOwnershipJiraComponentID(jiraComponentID))
+		intutil.WithTestOwnershipJiraComponent(component), intutil.WithTestOwnershipCapabilities(caps), intutil.WithTestOwnershipJiraComponentID(jiraComponentID))
 }
 
 func uintPtr(v uint) *uint { return &v }
@@ -1377,16 +1379,20 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 			opts.SampleRelease.Start, opts.SampleRelease.End)
 		require.Empty(t, errs)
 
-		totalRows := 0
-		for _, rows := range result {
-			totalRows += len(rows)
+		totalSummaries := 0
+		totalJobRuns := 0
+		for _, summaries := range result {
+			totalSummaries += len(summaries)
+			for _, s := range summaries {
+				totalJobRuns += len(s.JobRuns)
+			}
 		}
-		assert.Equal(t, 3, totalRows, "should have 3 job run test rows")
+		assert.Equal(t, 2, totalSummaries, "should have 2 summaries (one per job)")
+		assert.Equal(t, 3, totalJobRuns, "should have 3 individual job runs across summaries")
 
-		// Verify that all rows reference the correct test
-		for _, rows := range result {
-			for _, row := range rows {
-				assert.Equal(t, tow.UniqueID, row.TestKey.TestID)
+		for _, summaries := range result {
+			for _, s := range summaries {
+				assert.Equal(t, tow.UniqueID, s.TestKey.TestID)
 			}
 		}
 	})
@@ -1403,11 +1409,16 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 			opts.SampleRelease.Start, opts.SampleRelease.End)
 		require.Empty(t, errs)
 
-		totalRows := 0
-		for _, rows := range result {
-			totalRows += len(rows)
+		totalSummaries := 0
+		totalJobRuns := 0
+		for _, summaries := range result {
+			totalSummaries += len(summaries)
+			for _, s := range summaries {
+				totalJobRuns += len(s.JobRuns)
+			}
 		}
-		assert.Equal(t, 2, totalRows, "RequestedVariants=aws should exclude gcp run")
+		assert.Equal(t, 1, totalSummaries, "RequestedVariants=aws should produce 1 summary")
+		assert.Equal(t, 2, totalJobRuns, "RequestedVariants=aws should include 2 aws runs")
 	})
 
 	t.Run("IncludeVariants filtering", func(t *testing.T) {
@@ -1566,17 +1577,544 @@ func TestQueryBaseJobRunTestStatus(t *testing.T) {
 	result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
 	require.Empty(t, errs)
 
-	totalRows := 0
-	for _, rows := range result {
-		totalRows += len(rows)
-	}
-	assert.Equal(t, 2, totalRows, "should have 2 base job run test rows")
-
-	for _, rows := range result {
-		for _, row := range rows {
-			assert.Equal(t, tow.UniqueID, row.TestKey.TestID)
+	totalSummaries := 0
+	totalJobRuns := 0
+	for _, summaries := range result {
+		totalSummaries += len(summaries)
+		for _, s := range summaries {
+			totalJobRuns += len(s.JobRuns)
 		}
 	}
+	assert.Equal(t, 1, totalSummaries, "should have 1 summary for the single job")
+	assert.Equal(t, 2, totalJobRuns, "should have 2 individual job runs in the summary")
+
+	for _, summaries := range result {
+		for _, s := range summaries {
+			assert.Equal(t, tow.UniqueID, s.TestKey.TestID)
+		}
+	}
+}
+
+func TestQueryBaseJobRunTestStatus_AggregateFallback(t *testing.T) {
+	t.Run("prefix-sum fallback when per-run data is absent", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-agg-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] agg fallback test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-agg")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:agg-fallback", "Storage", []string{"PVC"})
+
+		// Base release: [2024-05-15, 2024-06-01)
+		// lookupStart = 2024-05-14, lookupEnd = 2024-06-01
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+		// expected: runs=20, successes=15, flakes=2
+
+		// No prow_job_run_tests rows created for this release
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalRows := 0
+		for _, rows := range result {
+			totalRows += len(rows)
+		}
+		require.Equal(t, 1, totalRows, "should have 1 aggregate entry for the one job")
+
+		for _, rows := range result {
+			for _, row := range rows {
+				assert.Equal(t, tow.UniqueID, row.TestKey.TestID)
+				assert.Equal(t, 20, row.Stats.Total(), "aggregate total should be prefix-sum delta")
+				assert.Equal(t, 15, row.Stats.SuccessCount, "aggregate successes should be prefix-sum delta")
+				assert.Equal(t, 2, row.Stats.FlakeCount, "aggregate flakes should be prefix-sum delta")
+			}
+		}
+	})
+
+	t.Run("GA fallback when per-run data is absent", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.15"
+
+		gaDate := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+		createReleaseDefinition(t, dbc, release, &gaDate)
+
+		gaCivil := civil.DateOf(gaDate)
+		gaEnd := utils.GAWindowEnd(gaCivil)
+		windowDays := 30
+		gaStart := gaCivil.AddDays(-windowDays)
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-ga-agg-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] GA agg fallback test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga-agg")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-agg-fallback", "Storage", []string{"PVC"})
+
+		createGARawData(t, dbc, release, windowDays, test.ID, job.ID, suite.ID, 50, 45, 2)
+
+		// No prow_job_run_tests rows
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.BaseRelease = reqopts.Release{
+			Name:  release,
+			Start: gaStart.In(time.UTC),
+			End:   gaEnd.AddDays(-1).In(time.UTC),
+		}
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalRows := 0
+		for _, rows := range result {
+			totalRows += len(rows)
+		}
+		require.Equal(t, 1, totalRows, "should have 1 aggregate entry from GA data")
+
+		for _, rows := range result {
+			for _, row := range rows {
+				assert.Equal(t, tow.UniqueID, row.TestKey.TestID)
+				assert.Equal(t, 50, row.Stats.Total())
+				assert.Equal(t, 45, row.Stats.SuccessCount)
+				assert.Equal(t, 2, row.Stats.FlakeCount)
+			}
+		}
+	})
+
+	t.Run("per-run data takes precedence over aggregate", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-prec-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] precedence test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-prec")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:precedence", "Storage", []string{"PVC"})
+
+		// Create cumulative summaries (aggregate data)
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+
+		// Also create per-run data (prow_job_run_tests)
+		ts1 := time.Date(2024, 5, 20, 12, 0, 0, 0, time.UTC)
+		ts2 := time.Date(2024, 5, 25, 12, 0, 0, 0, time.UTC)
+		run1 := createProwJobRunForCR(t, dbc, job.ID, release, ts1)
+		run2 := createProwJobRunForCR(t, dbc, job.ID, release, ts2)
+		createProwJobRunTest(t, dbc, run1.ID, job.ID, test.ID, &suite.ID, 1, release, ts1)
+		createProwJobRunTest(t, dbc, run2.ID, job.ID, test.ID, &suite.ID, 12, release, ts2)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{TestID: tow.UniqueID}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalSummaries := 0
+		for _, summaries := range result {
+			totalSummaries += len(summaries)
+		}
+		assert.Equal(t, 1, totalSummaries, "per-run data should produce 1 summary per test key")
+
+		for _, summaries := range result {
+			for _, summary := range summaries {
+				assert.Equal(t, 2, summary.Stats.Total(), "summary should aggregate both per-run rows")
+				assert.Len(t, summary.JobRuns, 2, "summary should contain 2 individual job runs")
+			}
+		}
+	})
+
+	t.Run("variant filtering applied in fallback", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vcAWS := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		vcGCP := createVariantCombination(t, dbc, []string{"Platform:gcp", "Network:sdn"})
+		jobAWS := createProwJobWithVC(t, dbc, "periodic-vf-aws", release, vcAWS)
+		jobGCP := createProwJobWithVC(t, dbc, "periodic-vf-gcp", release, vcGCP)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] variant filter test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-vf")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:variant-filter", "Storage", []string{"PVC"})
+
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, jobAWS.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, jobAWS.ID, suite.ID, 100, 90, 5)
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, jobGCP.ID, suite.ID, 40, 35, 1)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, jobGCP.ID, suite.ID, 60, 50, 3)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalRows := 0
+		for _, rows := range result {
+			totalRows += len(rows)
+		}
+		assert.Equal(t, 1, totalRows, "only aws+ovn job should be returned")
+
+		for _, rows := range result {
+			for _, row := range rows {
+				assert.Equal(t, 20, row.Stats.Total(), "should only contain aws job data")
+			}
+		}
+	})
+
+	t.Run("RequestedVariants filtering applied in fallback", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vcAWSOvn := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		vcAWSSdn := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:sdn"})
+		jobOvn := createProwJobWithVC(t, dbc, "periodic-rv-ovn", release, vcAWSOvn)
+		jobSdn := createProwJobWithVC(t, dbc, "periodic-rv-sdn", release, vcAWSSdn)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] requested variants test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-rv")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:req-variants", "Storage", []string{"PVC"})
+
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, jobOvn.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, jobOvn.ID, suite.ID, 100, 90, 5)
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, jobSdn.ID, suite.ID, 40, 35, 1)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, jobSdn.ID, suite.ID, 60, 50, 3)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn", "sdn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalRows := 0
+		for _, rows := range result {
+			totalRows += len(rows)
+		}
+		assert.Equal(t, 1, totalRows, "RequestedVariants should narrow to ovn only")
+
+		for _, rows := range result {
+			for _, row := range rows {
+				assert.Equal(t, "ovn", row.TestKey.Variants["Network"],
+					"only ovn variant should be returned")
+			}
+		}
+	})
+
+	t.Run("multiple jobs aggregated separately", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job1 := createProwJobWithVC(t, dbc, "periodic-multi-aws-1", release, vc)
+		job2 := createProwJobWithVC(t, dbc, "periodic-multi-aws-2", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] multi job test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-mj")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:multi-job", "Storage", []string{"PVC"})
+
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job1.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job1.ID, suite.ID, 100, 90, 5)
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job2.ID, suite.ID, 40, 35, 1)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job2.ID, suite.ID, 60, 50, 3)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		assert.Len(t, result, 2, "should have 2 separate job entries")
+
+		normalizedJob1 := utils.NormalizeProwJobName("periodic-multi-aws-1")
+		normalizedJob2 := utils.NormalizeProwJobName("periodic-multi-aws-2")
+
+		rows1, ok := result[normalizedJob1]
+		require.True(t, ok, "should have entry for job1")
+		assert.Len(t, rows1, 1)
+		assert.Equal(t, 20, rows1[0].Stats.Total())
+
+		rows2, ok := result[normalizedJob2]
+		require.True(t, ok, "should have entry for job2")
+		assert.Len(t, rows2, 1)
+		assert.Equal(t, 20, rows2[0].Stats.Total())
+	})
+
+	t.Run("aggregate fallback rows have no individual run data", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-flag-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] aggregate no-run-id test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-flag")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:flag-test", "Storage", []string{"PVC"})
+
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+		require.Len(t, result, 1, "should have 1 job entry")
+
+		for _, summaries := range result {
+			for _, summary := range summaries {
+				assert.Empty(t, summary.JobRuns, "aggregate rows should have no individual job runs")
+			}
+		}
+	})
+
+	t.Run("per-run rows have individual run data", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-notflag-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] per-run has-run-id test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-notflag")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:notflag-test", "Storage", []string{"PVC"})
+
+		ts := time.Date(2024, 5, 20, 12, 0, 0, 0, time.UTC)
+		run := createProwJobRunForCR(t, dbc, job.ID, release, ts)
+		createProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, &suite.ID, 1, release, ts)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{TestID: tow.UniqueID}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+		require.Len(t, result, 1)
+
+		for _, summaries := range result {
+			for _, summary := range summaries {
+				assert.NotEmpty(t, summary.JobRuns, "per-run summaries must have individual job runs")
+			}
+		}
+	})
+
+	t.Run("no-suite test ownership uses suite_id zero fallback", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-nosuite-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] no suite test")
+		tow := createTestOwnership(t, dbc, test.ID, nil, "openshift-tests:no-suite", "Storage", []string{"PVC"})
+
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, 0, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, 0, 100, 90, 5)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalRows := 0
+		for _, rows := range result {
+			totalRows += len(rows)
+		}
+		require.Equal(t, 1, totalRows, "should match cumulative summary with suite_id=0 when ownership has nil suite")
+
+		for _, rows := range result {
+			for _, row := range rows {
+				assert.Equal(t, 20, row.Stats.Total())
+				assert.Equal(t, 15, row.Stats.SuccessCount)
+				assert.Equal(t, 2, row.Stats.FlakeCount)
+			}
+		}
+	})
+
+	t.Run("zero-delta rows excluded by HAVING filter", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		jobActive := createProwJobWithVC(t, dbc, "periodic-having-active", release, vc)
+		jobIdle := createProwJobWithVC(t, dbc, "periodic-having-idle", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] having filter test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-having")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:having-filter", "Storage", []string{"PVC"})
+
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+
+		// Active job: has activity in the window (delta > 0)
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, jobActive.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, jobActive.ID, suite.ID, 100, 90, 5)
+
+		// Idle job: identical prefix sums at start and end (delta = 0, no runs in window)
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, jobIdle.ID, suite.ID, 50, 45, 2)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, jobIdle.ID, suite.ID, 50, 45, 2)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalRows := 0
+		for _, rows := range result {
+			totalRows += len(rows)
+		}
+		assert.Equal(t, 1, totalRows, "only the active job should be returned; idle job with zero delta should be filtered out")
+
+		for _, rows := range result {
+			for _, row := range rows {
+				assert.Equal(t, 20, row.Stats.Total(), "only the active job's delta should appear")
+			}
+		}
+	})
+
+	t.Run("test metadata populated in fallback results", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-meta-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] metadata fallback test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-meta")
+		tow := createTestOwnershipFull(t, dbc, test.ID, &suite.ID, "openshift-tests:meta-fallback", "Storage", []string{"PVC"}, uintPtr(42))
+
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform": {"aws"},
+			"Network":  {"ovn"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalRows := 0
+		for _, rows := range result {
+			totalRows += len(rows)
+		}
+		require.Equal(t, 1, totalRows, "should have 1 aggregate entry")
+
+		for _, rows := range result {
+			for _, row := range rows {
+				assert.Equal(t, test.Name, row.TestName, "TestName should be populated")
+				assert.Equal(t, "Storage", row.JiraComponent, "JiraComponent should be populated")
+				require.NotNil(t, row.JiraComponentID, "JiraComponentID should be populated")
+				expected := new(big.Rat).SetUint64(42)
+				assert.Equal(t, 0, row.JiraComponentID.Cmp(expected),
+					"JiraComponentID should be 42, got %s", row.JiraComponentID.RatString())
+			}
+		}
+	})
 }
 
 func TestQueryJobVariants(t *testing.T) {
@@ -2048,27 +2586,32 @@ func TestTestDetailStatusMapping(t *testing.T) {
 		opts.SampleRelease.Start, opts.SampleRelease.End)
 	require.Empty(t, errs)
 
-	var rows []crstatus.TestJobRunRows
-	for _, jobRows := range result {
-		rows = append(rows, jobRows...)
+	var summaries []crstatus.TestDetailsSummary
+	for _, jobSummaries := range result {
+		summaries = append(summaries, jobSummaries...)
 	}
-	require.Len(t, rows, 3)
+	require.Len(t, summaries, 1, "all runs for same test+job should summarize into 1 entry")
 
-	// Results are ordered by pjr.timestamp: pass (June 5), fail (June 6), flake (June 7)
-	passRow := rows[0]
-	assert.Equal(t, 1, passRow.TotalCount)
-	assert.Equal(t, 1, passRow.SuccessCount, "pass: SuccessCount should be 1")
-	assert.Equal(t, 0, passRow.FlakeCount, "pass: FlakeCount should be 0")
+	summary := summaries[0]
+	assert.Equal(t, 2, summary.Stats.SuccessCount, "pass + flake(success_val=1) = 2 successes")
+	assert.Equal(t, 1, summary.Stats.FailureCount, "1 failure run")
+	assert.Equal(t, 1, summary.Stats.FlakeCount, "1 flake run")
+	require.Len(t, summary.JobRuns, 3, "should have 3 individual job runs")
 
-	failRow := rows[1]
-	assert.Equal(t, 1, failRow.TotalCount)
-	assert.Equal(t, 0, failRow.SuccessCount, "fail: SuccessCount should be 0")
-	assert.Equal(t, 0, failRow.FlakeCount, "fail: FlakeCount should be 0")
+	passDetail := summary.JobRuns[0]
+	assert.Equal(t, 1, passDetail.TotalCount)
+	assert.Equal(t, 1, passDetail.SuccessCount, "pass: SuccessCount should be 1")
+	assert.Equal(t, 0, passDetail.FlakeCount, "pass: FlakeCount should be 0")
 
-	flakeRow := rows[2]
-	assert.Equal(t, 1, flakeRow.TotalCount)
-	assert.Equal(t, 1, flakeRow.SuccessCount, "flake: SuccessCount should be 1")
-	assert.Equal(t, 1, flakeRow.FlakeCount, "flake: FlakeCount should be 1")
+	failDetail := summary.JobRuns[1]
+	assert.Equal(t, 1, failDetail.TotalCount)
+	assert.Equal(t, 0, failDetail.SuccessCount, "fail: SuccessCount should be 0")
+	assert.Equal(t, 0, failDetail.FlakeCount, "fail: FlakeCount should be 0")
+
+	flakeDetail := summary.JobRuns[2]
+	assert.Equal(t, 1, flakeDetail.TotalCount)
+	assert.Equal(t, 1, flakeDetail.SuccessCount, "flake: SuccessCount should be 1")
+	assert.Equal(t, 1, flakeDetail.FlakeCount, "flake: FlakeCount should be 1")
 }
 
 func TestJobNameNormalizationMergesResults(t *testing.T) {
@@ -2105,16 +2648,10 @@ func TestJobNameNormalizationMergesResults(t *testing.T) {
 	// Both "periodic-ci-4.16-e2e-aws" and "periodic-ci-4.17-e2e-aws" should normalize
 	// to "periodic-ci-X.X-e2e-aws" and merge under that single key
 	normalizedKey := utils.NormalizeProwJobName("periodic-ci-4.16-e2e-aws")
-	rows, ok := result[normalizedKey]
+	summaries, ok := result[normalizedKey]
 	require.True(t, ok, "both job runs should merge under normalized name %q", normalizedKey)
-	assert.Len(t, rows, 2, "both runs should appear under the normalized key")
-
-	prowJobs := sets.New[string]()
-	for _, r := range rows {
-		prowJobs.Insert(r.ProwJob)
-	}
-	assert.True(t, prowJobs.Has("periodic-ci-4.16-e2e-aws"), "original job name 4.16 should be preserved")
-	assert.True(t, prowJobs.Has("periodic-ci-4.17-e2e-aws"), "original job name 4.17 should be preserved")
+	require.Len(t, summaries, 1, "both runs should summarize into 1 entry for the same test key")
+	assert.Len(t, summaries[0].JobRuns, 2, "both individual runs should appear in JobRuns")
 }
 
 func TestTestExistsInBaseButNotSample(t *testing.T) {
@@ -2655,6 +3192,256 @@ func TestCrossCompareWithLifecycleFilter(t *testing.T) {
 		assert.Equal(t, 15, ts.SuccessCount)
 		assert.Equal(t, 2, ts.FlakeCount)
 	}
+}
+
+// --- Test Details Report Tests ---
+
+func testDetailsReqOptions(testID string, variants map[string]string) reqopts.RequestOptions {
+	opts := defaultReqOptions("4.16")
+	opts.TestIDOptions = []reqopts.TestIdentification{{
+		TestID:            testID,
+		RequestedVariants: variants,
+	}}
+	opts.VariantOption.IncludeVariants = map[string][]string{}
+	for k, v := range variants {
+		opts.VariantOption.IncludeVariants[k] = []string{v}
+	}
+	return opts
+}
+
+func TestTestDetailsReport_AggregateBaseStats(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-td-agg-aws", release, vc)
+
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] aggregate base stats test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-td-agg")
+	tow := createTestOwnershipFull(t, dbc, test.ID, &suite.ID, "openshift-tests:td-agg", "Storage", []string{"PVC"}, uintPtr(42))
+
+	// Base: aggregate data only (cumulative summaries, no prow_job_run_tests)
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	// runs=20, successes=15, flakes=2
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+
+	// Sample: per-run data (3 passes + 1 failure)
+	sampleTS1 := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+	sampleTS2 := time.Date(2024, 6, 6, 12, 0, 0, 0, time.UTC)
+	sampleTS3 := time.Date(2024, 6, 7, 12, 0, 0, 0, time.UTC)
+	sampleTS4 := time.Date(2024, 6, 8, 12, 0, 0, 0, time.UTC)
+
+	run1 := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS1)
+	run2 := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS2)
+	run3 := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS3)
+	run4 := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS4)
+
+	createProwJobRunTest(t, dbc, run1.ID, job.ID, test.ID, &suite.ID, 1, release, sampleTS1)
+	createProwJobRunTest(t, dbc, run2.ID, job.ID, test.ID, &suite.ID, 1, release, sampleTS2)
+	createProwJobRunTest(t, dbc, run3.ID, job.ID, test.ID, &suite.ID, 1, release, sampleTS3)
+	createProwJobRunTest(t, dbc, run4.ID, job.ID, test.ID, &suite.ID, 12, release, sampleTS4)
+
+	variants := map[string]string{"Platform": "aws", "Network": "ovn"}
+	opts := testDetailsReqOptions(tow.UniqueID, variants)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateTestDetailsReport(context.Background())
+	require.Empty(t, errs)
+
+	require.Len(t, report.Analyses, 1)
+	analysis := report.Analyses[0]
+
+	require.NotNil(t, analysis.BaseStats, "base stats should be populated from aggregate data")
+	assert.Equal(t, 20, analysis.BaseStats.Total(), "base total should be prefix-sum delta")
+	assert.Equal(t, 15, analysis.BaseStats.SuccessCount)
+
+	assert.Equal(t, 4, analysis.SampleStats.Total(), "sample should have 4 runs")
+	assert.Equal(t, 3, analysis.SampleStats.SuccessCount)
+	assert.Equal(t, 1, analysis.SampleStats.FailureCount)
+
+	require.Len(t, analysis.JobStats, 1)
+	jobStat := analysis.JobStats[0]
+	assert.Empty(t, jobStat.BaseJobRunStats, "aggregate base should have no individual runs")
+	assert.Len(t, jobStat.SampleJobRunStats, 4, "sample should have 4 individual runs")
+
+	assert.Equal(t, "Storage", report.JiraComponent)
+	require.NotNil(t, report.JiraComponentID)
+	assert.Equal(t, 0, report.JiraComponentID.Cmp(new(big.Rat).SetUint64(42)))
+	assert.Equal(t, test.Name, report.TestName)
+}
+
+func TestTestDetailsReport_LastFailureTracking(t *testing.T) {
+	t.Run("last failure populated from sample failures", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-td-lf-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] last failure tracking test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-td-lf")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:td-lf", "Storage", []string{"PVC"})
+
+		// Base: aggregate data
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+
+		// Sample: 2 passes and 1 failure at known timestamps
+		passTS1 := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+		failTS := time.Date(2024, 6, 8, 14, 30, 0, 0, time.UTC)
+		passTS2 := time.Date(2024, 6, 10, 12, 0, 0, 0, time.UTC)
+
+		runPass1 := createProwJobRunForCR(t, dbc, job.ID, release, passTS1)
+		runFail := createProwJobRunForCR(t, dbc, job.ID, release, failTS)
+		runPass2 := createProwJobRunForCR(t, dbc, job.ID, release, passTS2)
+
+		createProwJobRunTest(t, dbc, runPass1.ID, job.ID, test.ID, &suite.ID, 1, release, passTS1)
+		createProwJobRunTest(t, dbc, runFail.ID, job.ID, test.ID, &suite.ID, 12, release, failTS)
+		createProwJobRunTest(t, dbc, runPass2.ID, job.ID, test.ID, &suite.ID, 1, release, passTS2)
+
+		variants := map[string]string{"Platform": "aws", "Network": "ovn"}
+		opts := testDetailsReqOptions(tow.UniqueID, variants)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+		report, errs := generator.GenerateTestDetailsReport(context.Background())
+		require.Empty(t, errs)
+
+		require.Len(t, report.Analyses, 1)
+		require.NotNil(t, report.Analyses[0].LastFailure, "LastFailure should be set when sample has failures")
+		assert.True(t, report.Analyses[0].LastFailure.Equal(failTS),
+			"LastFailure should equal the failing run's timestamp: got %v, want %v",
+			*report.Analyses[0].LastFailure, failTS)
+	})
+
+	t.Run("last failure nil when all sample runs pass", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-td-lf-pass-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] last failure nil test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-td-lf-pass")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:td-lf-pass", "Storage", []string{"PVC"})
+
+		// Base: aggregate data
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+
+		// Sample: all passes
+		passTS1 := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+		passTS2 := time.Date(2024, 6, 8, 12, 0, 0, 0, time.UTC)
+
+		runPass1 := createProwJobRunForCR(t, dbc, job.ID, release, passTS1)
+		runPass2 := createProwJobRunForCR(t, dbc, job.ID, release, passTS2)
+
+		createProwJobRunTest(t, dbc, runPass1.ID, job.ID, test.ID, &suite.ID, 1, release, passTS1)
+		createProwJobRunTest(t, dbc, runPass2.ID, job.ID, test.ID, &suite.ID, 1, release, passTS2)
+
+		variants := map[string]string{"Platform": "aws", "Network": "ovn"}
+		opts := testDetailsReqOptions(tow.UniqueID, variants)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+		report, errs := generator.GenerateTestDetailsReport(context.Background())
+		require.Empty(t, errs)
+
+		require.Len(t, report.Analyses, 1)
+		assert.Nil(t, report.Analyses[0].LastFailure, "LastFailure should be nil when all sample runs pass")
+	})
+}
+
+func TestTestDetailsReport_FlakeAsFailure(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-td-faf-aws", release, vc)
+
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] flake as failure test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-td-faf")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:td-faf", "Storage", []string{"PVC"})
+
+	// Base: per-run data with flakes (5 passes, 1 failure, 2 flakes)
+	baseTS1 := time.Date(2024, 5, 16, 12, 0, 0, 0, time.UTC)
+	baseTS2 := time.Date(2024, 5, 17, 12, 0, 0, 0, time.UTC)
+	baseTS3 := time.Date(2024, 5, 18, 12, 0, 0, 0, time.UTC)
+	baseTS4 := time.Date(2024, 5, 19, 12, 0, 0, 0, time.UTC)
+	baseTS5 := time.Date(2024, 5, 20, 12, 0, 0, 0, time.UTC)
+	baseTS6 := time.Date(2024, 5, 21, 12, 0, 0, 0, time.UTC)
+	baseTS7 := time.Date(2024, 5, 22, 12, 0, 0, 0, time.UTC)
+	baseTS8 := time.Date(2024, 5, 23, 12, 0, 0, 0, time.UTC)
+
+	for _, ts := range []time.Time{baseTS1, baseTS2, baseTS3, baseTS4, baseTS5} {
+		run := createProwJobRunForCR(t, dbc, job.ID, release, ts)
+		createProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, &suite.ID, 1, release, ts)
+	}
+	baseFailRun := createProwJobRunForCR(t, dbc, job.ID, release, baseTS6)
+	createProwJobRunTest(t, dbc, baseFailRun.ID, job.ID, test.ID, &suite.ID, 12, release, baseTS6)
+	for _, ts := range []time.Time{baseTS7, baseTS8} {
+		run := createProwJobRunForCR(t, dbc, job.ID, release, ts)
+		createProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, &suite.ID, 13, release, ts)
+	}
+
+	// Sample: per-run data with flakes (4 passes, 1 failure, 1 flake)
+	sampleTS1 := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+	sampleTS2 := time.Date(2024, 6, 6, 12, 0, 0, 0, time.UTC)
+	sampleTS3 := time.Date(2024, 6, 7, 12, 0, 0, 0, time.UTC)
+	sampleTS4 := time.Date(2024, 6, 8, 12, 0, 0, 0, time.UTC)
+	sampleTS5 := time.Date(2024, 6, 9, 12, 0, 0, 0, time.UTC)
+	sampleTS6 := time.Date(2024, 6, 10, 12, 0, 0, 0, time.UTC)
+
+	for _, ts := range []time.Time{sampleTS1, sampleTS2, sampleTS3, sampleTS4} {
+		run := createProwJobRunForCR(t, dbc, job.ID, release, ts)
+		createProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, &suite.ID, 1, release, ts)
+	}
+	sampleFailRun := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS5)
+	createProwJobRunTest(t, dbc, sampleFailRun.ID, job.ID, test.ID, &suite.ID, 12, release, sampleTS5)
+	sampleFlakeRun := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS6)
+	createProwJobRunTest(t, dbc, sampleFlakeRun.ID, job.ID, test.ID, &suite.ID, 13, release, sampleTS6)
+
+	variants := map[string]string{"Platform": "aws", "Network": "ovn"}
+
+	// Run with FlakeAsFailure=false
+	optsFalse := testDetailsReqOptions(tow.UniqueID, variants)
+	optsFalse.AdvancedOption.FlakeAsFailure = false
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	genFalse := componentreadiness.NewComponentReportGenerator(provider, optsFalse, dbc, nil, "")
+	reportFalse, errs := genFalse.GenerateTestDetailsReport(context.Background())
+	require.Empty(t, errs)
+
+	// Run with FlakeAsFailure=true
+	optsTrue := testDetailsReqOptions(tow.UniqueID, variants)
+	optsTrue.AdvancedOption.FlakeAsFailure = true
+
+	genTrue := componentreadiness.NewComponentReportGenerator(provider, optsTrue, dbc, nil, "")
+	reportTrue, errs := genTrue.GenerateTestDetailsReport(context.Background())
+	require.Empty(t, errs)
+
+	require.Len(t, reportFalse.Analyses, 1)
+	require.Len(t, reportTrue.Analyses, 1)
+
+	sampleFalse := reportFalse.Analyses[0].SampleStats
+	sampleTrue := reportTrue.Analyses[0].SampleStats
+
+	// Raw counts should be the same regardless of FlakeAsFailure
+	assert.Equal(t, sampleFalse.FailureCount, sampleTrue.FailureCount, "raw FailureCount should be the same")
+	assert.Equal(t, sampleFalse.FlakeCount, sampleTrue.FlakeCount, "raw FlakeCount should be the same")
+	assert.Equal(t, sampleFalse.SuccessCount, sampleTrue.SuccessCount, "raw SuccessCount should be the same")
+
+	// SuccessRate should differ: FlakeAsFailure=true counts flakes as failures, lowering the rate
+	assert.Greater(t, sampleFalse.SuccessRate, sampleTrue.SuccessRate,
+		"SuccessRate with FlakeAsFailure=false (%f) should be higher than with true (%f)",
+		sampleFalse.SuccessRate, sampleTrue.SuccessRate)
 }
 
 // --- Helpers ---

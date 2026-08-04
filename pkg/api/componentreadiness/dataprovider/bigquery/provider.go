@@ -88,7 +88,7 @@ func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 
 // --- TestDetailsQuerier ---
 
-func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestJobRunRows, []error) {
+func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {
 	allJobVariants, errs := p.QueryJobVariants(ctx, reqOptions)
 	if len(errs) > 0 {
 		return nil, errs
@@ -102,7 +102,7 @@ func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOpt
 
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.TestJobRunStatuses](
 		ctx, p.client.Cache, reqOptions.CacheOption,
-		apiPkg.NewCacheSpec(generator, "BaseJobRunTestStatusV2~", &reqOptions.BaseRelease.End),
+		apiPkg.NewCacheSpec(generator, "BaseJobRunTestStatusV3~", &reqOptions.BaseRelease.End),
 		generator.QueryTestStatus, crstatus.TestJobRunStatuses{})
 	if len(errs) > 0 {
 		return nil, errs
@@ -112,7 +112,7 @@ func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOpt
 
 func (p *BigQueryProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string,
-	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
+	start, end time.Time) (map[string][]crstatus.TestDetailsSummary, []error) {
 	allJobVariants, errs := p.QueryJobVariants(ctx, reqOptions)
 	if len(errs) > 0 {
 		return nil, errs
@@ -121,7 +121,7 @@ func (p *BigQueryProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqO
 	generator := NewSampleTestDetailsQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.TestJobRunStatuses](
 		ctx, p.client.Cache, reqOptions.CacheOption,
-		apiPkg.NewCacheSpec(generator, "SampleJobRunTestStatusV2~", &end),
+		apiPkg.NewCacheSpec(generator, "SampleJobRunTestStatusV3~", &end),
 		generator.QueryTestStatus, crstatus.TestJobRunStatuses{})
 	if len(errs) > 0 {
 		return nil, errs

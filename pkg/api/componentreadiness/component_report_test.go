@@ -1569,12 +1569,13 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
-		baseStats := map[string][]crstatus.TestJobRunRows{}
-		sampleStats := map[string][]crstatus.TestJobRunRows{}
+		rawBaseStats := map[string][]crstatus.TestJobRunRows{}
+		rawSampleStats := map[string][]crstatus.TestJobRunRows{}
 		for _, testStats := range tc.baseRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
+				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("base-%s-s-%d", testStats.job, i),
 					Count: crtest.Count{
 						TotalCount:   1,
 						SuccessCount: 1,
@@ -1582,14 +1583,16 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
-					Count:   crtest.Count{TotalCount: 1},
+				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("base-%s-f-%d", testStats.job, i),
+					Count:        crtest.Count{TotalCount: 1},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
+				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("base-%s-fl-%d", testStats.job, i),
 					Count: crtest.Count{
 						TotalCount: 1,
 						FlakeCount: 1,
@@ -1599,8 +1602,9 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		}
 		for _, testStats := range tc.sampleRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
+				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("sample-%s-s-%d", testStats.job, i),
 					Count: crtest.Count{
 						TotalCount:   1,
 						SuccessCount: 1,
@@ -1608,14 +1612,16 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
-					Count:   crtest.Count{TotalCount: 1},
+				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("sample-%s-f-%d", testStats.job, i),
+					Count:        crtest.Count{TotalCount: 1},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
+				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("sample-%s-fl-%d", testStats.job, i),
 					Count: crtest.Count{
 						TotalCount: 1,
 						FlakeCount: 1,
@@ -1623,6 +1629,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				})
 			}
 		}
+		baseStats := crstatus.SummarizeTestJobRuns(rawBaseStats)
+		sampleStats := crstatus.SummarizeTestJobRuns(rawSampleStats)
 
 		t.Run(tc.name, func(t *testing.T) {
 			report := tc.generator.internalGenerateTestDetailsReport("", nil, nil, baseStats, sampleStats, tc.generator.ReqOptions.TestIDOptions[0])

@@ -99,60 +99,31 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 	// Build out a new struct where these are split up by test ID.
 	// split the status on test ID, and pass only that tests data in for reporting:
 	testKeyTestJobRunStatuses := map[string]crstatus.TestJobRunStatuses{}
-	for jobName, rows := range allTestsJobRunStatuses.BaseStatus {
-		for _, row := range rows {
-			testKeyStr := row.TestKeyStr
-			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				testKeyTestJobRunStatuses[testKeyStr] = crstatus.TestJobRunStatuses{
-					BaseStatus:         map[string][]crstatus.TestJobRunRows{},
-					BaseOverrideStatus: map[string][]crstatus.TestJobRunRows{},
-					SampleStatus:       map[string][]crstatus.TestJobRunRows{},
-					GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
+	splitByTestKey := func(
+		source map[string][]crstatus.TestDetailsSummary,
+		getTarget func(crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary,
+	) {
+		for jobName, summaries := range source {
+			for _, summary := range summaries {
+				testKeyStr := summary.TestKeyStr
+				if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
+					testKeyTestJobRunStatuses[testKeyStr] = crstatus.TestJobRunStatuses{
+						BaseStatus:         map[string][]crstatus.TestDetailsSummary{},
+						BaseOverrideStatus: map[string][]crstatus.TestDetailsSummary{},
+						SampleStatus:       map[string][]crstatus.TestDetailsSummary{},
+						GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
+					}
 				}
+				target := getTarget(testKeyTestJobRunStatuses[testKeyStr])
+				target[jobName] = append(target[jobName], summary)
 			}
-			if testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName] == nil {
-				testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName] = []crstatus.TestJobRunRows{}
-			}
-			testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName] =
-				append(testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName], row)
 		}
 	}
-	for jobName, rows := range allTestsJobRunStatuses.BaseOverrideStatus {
-		for _, row := range rows {
-			testKeyStr := row.TestKeyStr
-			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				testKeyTestJobRunStatuses[testKeyStr] = crstatus.TestJobRunStatuses{
-					BaseStatus:         map[string][]crstatus.TestJobRunRows{},
-					BaseOverrideStatus: map[string][]crstatus.TestJobRunRows{},
-					SampleStatus:       map[string][]crstatus.TestJobRunRows{},
-					GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
-				}
-			}
-			if testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName] == nil {
-				testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName] = []crstatus.TestJobRunRows{}
-			}
-			testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName] =
-				append(testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName], row)
-		}
-	}
-	for jobName, rows := range allTestsJobRunStatuses.SampleStatus {
-		for _, row := range rows {
-			testKeyStr := row.TestKeyStr
-			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				testKeyTestJobRunStatuses[testKeyStr] = crstatus.TestJobRunStatuses{
-					BaseStatus:         map[string][]crstatus.TestJobRunRows{},
-					BaseOverrideStatus: map[string][]crstatus.TestJobRunRows{},
-					SampleStatus:       map[string][]crstatus.TestJobRunRows{},
-					GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
-				}
-			}
-			if testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName] == nil {
-				testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName] = []crstatus.TestJobRunRows{}
-			}
-			testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName] =
-				append(testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName], row)
-		}
-	}
+	splitByTestKey(allTestsJobRunStatuses.BaseStatus, func(s crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary { return s.BaseStatus })
+	splitByTestKey(allTestsJobRunStatuses.BaseOverrideStatus, func(s crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary {
+		return s.BaseOverrideStatus
+	})
+	splitByTestKey(allTestsJobRunStatuses.SampleStatus, func(s crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary { return s.SampleStatus })
 
 	reports := []testdetails.Report{}
 	for _, tOpt := range c.ReqOptions.TestIDOptions {
@@ -338,7 +309,7 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	ctx context.Context,
 	baseRelease string,
 	baseStart time.Time,
-	baseEnd time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
+	baseEnd time.Time) (map[string][]crstatus.TestDetailsSummary, []error) {
 
 	reqOpts := c.ReqOptions
 	reqOpts.BaseRelease.Name = baseRelease
@@ -350,14 +321,14 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 	ctx context.Context,
 	includeVariants map[string][]string,
-	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
+	start, end time.Time) (map[string][]crstatus.TestDetailsSummary, []error) {
 
 	return c.dataProvider.QuerySampleJobRunTestStatus(ctx, c.ReqOptions, includeVariants, start, end)
 }
 
 func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
 	fLog := logrus.WithField("func", "getJobRunTestStatus")
-	var baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows
+	var baseStatus, sampleStatus map[string][]crstatus.TestDetailsSummary
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
@@ -420,7 +391,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	baseRelease string,
 	baseStart, baseEnd *time.Time,
-	baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows,
+	baseStatus, sampleStatus map[string][]crstatus.TestDetailsSummary,
 	testIDOption reqopts.TestIdentification,
 ) testdetails.Report {
 	testKey := crtest.Identification{
@@ -436,14 +407,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 
 	totalBase, totalSample, report, result, lastFailure := c.summarizeRecordedTestStats(baseStatus, sampleStatus, testKey)
 
-	explanations := []string{}
-	if len(baseStatus) == 0 && c.ReqOptions.DataSource == reqopts.DataSourcePostgres {
-		explanations = append(explanations,
-			"Base test details are not available: individual test run data has not been backfilled for this release in the PostgreSQL data source. Aggregated base statistics from the grid view remain accurate.")
-	}
-
 	testStats := testdetails.TestComparison{
-		Explanations:       explanations,
+		Explanations:       []string{},
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
 		SampleStats: testdetails.ReleaseStats{
 			Release: c.ReqOptions.SampleRelease.Name,
@@ -475,34 +440,52 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	return result
 }
 
-// go through all the job runs that had a test and summarize the results
+// summarizeRecordedTestStats iterates pre-computed per-job summaries and produces
+// the overall base/sample stats, per-job breakdowns, and metadata for the report.
 func (c *ComponentReportGenerator) summarizeRecordedTestStats(
-	baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows, testKey crtest.Identification,
+	baseStatus, sampleStatus map[string][]crstatus.TestDetailsSummary, testKey crtest.Identification,
 ) (
 	totalBase, totalSample crtest.Stats,
 	report testdetails.Analysis,
 	result testdetails.Report,
-	lastFailure time.Time, // track the last failure we observe in the sample, used by triage middleware to adjust status
+	lastFailure time.Time,
 ) {
 	result = testdetails.Report{Identification: testKey}
 	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
 
-	// merge the job names from both base and sample status and assess each once
+	// Callers pass statuses already split by test key, so each job maps to at most
+	// one summary here; the job-name assignments below rely on that.
 	jobNames := sets.New(slices.Collect(maps.Keys(baseStatus))...)
 	jobNames.Insert(slices.Collect(maps.Keys(sampleStatus))...)
 	for job := range jobNames {
-		// tally up base job stats and matching sample job stats (if any); record job names, component, etc in the result
 		jobStats := testdetails.JobStats{}
-		if sampleStatsList, ok := sampleStatus[job]; ok {
-			c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
+		if sampleSummaries, ok := sampleStatus[job]; ok {
+			for _, summary := range sampleSummaries {
+				jobStats.SampleJobName = summary.ProwJob
+				jobStats.SampleStats = jobStats.SampleStats.Add(summary.Stats, faf)
+				c.extractMetadata(summary, &result)
+				for _, run := range summary.JobRuns {
+					start := run.StartTime.In(time.UTC)
+					if start.After(lastFailure) && run.Failures() > 0 {
+						lastFailure = start
+					}
+					jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.toJobRunStats(run))
+				}
+			}
 			totalSample = totalSample.Add(jobStats.SampleStats, faf)
 		}
-		if baseStatsList, ok := baseStatus[job]; ok {
-			c.assessTestStats(baseStatsList, &jobStats.BaseStats, &jobStats.BaseJobRunStats, &jobStats.BaseJobName, nil, &result, faf)
+		if baseSummaries, ok := baseStatus[job]; ok {
+			for _, summary := range baseSummaries {
+				jobStats.BaseJobName = summary.ProwJob
+				jobStats.BaseStats = jobStats.BaseStats.Add(summary.Stats, faf)
+				c.extractMetadata(summary, &result)
+				for _, run := range summary.JobRuns {
+					jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.toJobRunStats(run))
+				}
+			}
 			totalBase = totalBase.Add(jobStats.BaseStats, faf)
 		}
 
-		// determine the statistical significance to report in the job stats
 		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
 		bFail, bPass := jobStats.BaseStats.FailPassWithFlakes(faf)
 		_, _, r, _ := fet.FisherExactTest(sFail, sPass, bFail, bPass)
@@ -511,7 +494,6 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 		report.JobStats = append(report.JobStats, jobStats)
 	}
 
-	// sort stats by job name in the results
 	sort.Slice(report.JobStats, func(i, j int) bool {
 		return report.JobStats[i].SampleJobName+":"+report.JobStats[i].BaseJobName <
 			report.JobStats[j].SampleJobName+":"+report.JobStats[j].BaseJobName
@@ -519,60 +501,32 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 	return
 }
 
-// assessTestStats calculates the test stats for a given list of job rows
-// and updates by-reference parameters with information found in the job rows.
-func (c *ComponentReportGenerator) assessTestStats(
-	jobRowsList []crstatus.TestJobRunRows,
-	testStats *crtest.Stats,
-	jobRunStatsList *[]testdetails.JobRunStats,
-	jobName *string, lastFailure *time.Time,
-	result *testdetails.Report,
-	flakeAsFailure bool,
-) {
-	for _, jobRow := range jobRowsList {
-		*jobName = jobRow.ProwJob
-
-		start := jobRow.StartTime.In(time.UTC)
-		if lastFailure != nil && start.After(*lastFailure) && jobRow.Failures() > 0 {
-			*lastFailure = start
-		}
-
-		if result.JiraComponent == "" && jobRow.JiraComponent != "" {
-			result.JiraComponent = jobRow.JiraComponent
-		}
-		if result.JiraComponentID == nil && jobRow.JiraComponentID != nil {
-			result.JiraComponentID = jobRow.JiraComponentID
-		}
-		if result.TestName == "" && jobRow.TestName != "" {
-			result.TestName = jobRow.TestName
-		}
-		if result.Lifecycle != "informing" {
-			if jobRow.Lifecycle == "informing" {
-				result.Lifecycle = "informing"
-			} else if result.Lifecycle == "" && jobRow.Lifecycle != "" {
-				result.Lifecycle = jobRow.Lifecycle
-			}
-		}
-
-		*testStats = testStats.AddTestCount(jobRow.Count, flakeAsFailure)
-		*jobRunStatsList = append(*jobRunStatsList, c.getJobRunStats(jobRow))
+func (c *ComponentReportGenerator) extractMetadata(summary crstatus.TestDetailsSummary, result *testdetails.Report) {
+	if result.JiraComponent == "" && summary.JiraComponent != "" {
+		result.JiraComponent = summary.JiraComponent
 	}
+	if result.JiraComponentID == nil && summary.JiraComponentID != nil {
+		result.JiraComponentID = summary.JiraComponentID
+	}
+	if result.TestName == "" && summary.TestName != "" {
+		result.TestName = summary.TestName
+	}
+	result.Lifecycle = crstatus.PromoteLifecycle(result.Lifecycle, summary.Lifecycle)
 }
 
-func (c *ComponentReportGenerator) getJobRunStats(stats crstatus.TestJobRunRows) testdetails.JobRunStats {
-	jobRunStats := testdetails.JobRunStats{
+func (c *ComponentReportGenerator) toJobRunStats(run crstatus.JobRunDetail) testdetails.JobRunStats {
+	return testdetails.JobRunStats{
 		TestStats: crtest.NewTestStats(
-			stats.SuccessCount,
-			stats.Failures(),
-			stats.FlakeCount,
+			run.SuccessCount,
+			run.Failures(),
+			run.FlakeCount,
 			c.ReqOptions.AdvancedOption.FlakeAsFailure,
 		),
-		JobURL:       stats.ProwJobURL,
-		JobRunID:     stats.ProwJobRunID,
-		StartTime:    stats.StartTime,
-		JobLabels:    stats.JobLabels,
-		JobSymptoms:  stats.JobSymptoms,
-		TestFailures: stats.TestFailures,
+		JobURL:       run.ProwJobURL,
+		JobRunID:     run.ProwJobRunID,
+		StartTime:    run.StartTime,
+		JobLabels:    run.JobLabels,
+		JobSymptoms:  run.JobSymptoms,
+		TestFailures: run.TestFailures,
 	}
-	return jobRunStats
 }
