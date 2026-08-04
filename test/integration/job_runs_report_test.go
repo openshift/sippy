@@ -268,6 +268,30 @@ func TestJobRunsReport_BasicQuery(t *testing.T) {
 	assert.Equal(t, int(expectedTimestampMs), r.Timestamp, "timestamp should be epoch milliseconds")
 }
 
+func TestJobRunsReport_BriefNameWithMainBranch(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+
+	job := models.ProwJob{
+		Name:     "periodic-ci-openshift-release-main-nightly-4.16-e2e-azure-ovn",
+		Release:  "4.16",
+		Variants: pq.StringArray{"azure", "ovn"},
+	}
+	require.NoError(t, dbc.DB.Create(&job).Error)
+
+	run := createSingleRun(t, dbc, job.ID, "4.16", runSpec{
+		timestamp: time.Date(2024, 7, 10, 12, 0, 0, 0, time.UTC),
+		succeeded: true,
+		url:       "https://prow.ci/runMain",
+	})
+
+	result := callJobRunsReport(t, dbc, "4.16", defaultFilterOpts(), defaultPagination(), jrReportEnd)
+	runs := jobRunsFromResult(t, result)
+
+	r := findRunByID(runs, run.ID)
+	require.NotNil(t, r, "main-branch run should be in results")
+	assert.Equal(t, "e2e-azure-ovn", r.BriefName, "regexp_replace should strip the periodic prefix for main-branch jobs")
+}
+
 func TestJobRunsReport_Pagination(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	setupJobRunsTestData(t, dbc)
