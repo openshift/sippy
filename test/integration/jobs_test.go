@@ -461,6 +461,31 @@ func TestJobReports(t *testing.T) {
 	assert.Equal(t, 0.0, report.AverageRetestsToMerge)
 }
 
+func TestJobReports_BriefNameWithMainBranch(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+
+	start := time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
+	boundary := time.Date(2024, 6, 8, 12, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
+
+	job := models.ProwJob{
+		Name:     "periodic-ci-openshift-release-main-nightly-4.16-e2e-azure-ovn",
+		Release:  "4.16",
+		Variants: pq.StringArray{"azure", "ovn"},
+	}
+	require.NoError(t, dbc.DB.Create(&job).Error)
+
+	createRuns(t, dbc, job.ID, "4.16", []runSpec{
+		{timestamp: boundary, succeeded: true, duration: 30 * time.Minute},
+	})
+
+	reports, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
+	require.NoError(t, err)
+	require.Len(t, reports, 1)
+
+	assert.Equal(t, "e2e-azure-ovn", reports[0].BriefName, "regexp_replace should strip the periodic prefix for main-branch jobs")
+}
+
 func TestJobReports_WithBugs(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
