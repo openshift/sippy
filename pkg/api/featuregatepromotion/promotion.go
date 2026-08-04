@@ -22,6 +22,8 @@ const (
 	RequiredPassRateOfTestsPerVariant  = 0.95
 )
 
+var featureGateRegex = regexp.MustCompile(`\[OCPFeatureGate:([^\]]+)\]`)
+
 var (
 	RequiredSelfManagedJobVariants = []JobVariant{
 		{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
@@ -86,7 +88,36 @@ func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache
 		"test_count":   len(allTests),
 	}).Debug("promotion readiness query complete")
 
-	return buildPromotionStatus(featureGate, release, variantsToCheck, allTests), nil
+	status := buildPromotionStatus(featureGate, release, variantsToCheck, allTests)
+
+	capRegressionFilter := CapabilityRegressionsFilter(featureGate)
+	capRegressionTests, err := sippyapi.QueryTestResults(ctx, dbc, cacheClient, release, &capRegressionFilter)
+	if err != nil {
+		return nil, fmt.Errorf("querying capability regression test results: %w", err)
+	}
+
+	if len(capRegressionTests) > 0 {
+		promotedGates, err := getPromotedGateNames(dbc, release)
+		if err != nil {
+			return nil, fmt.Errorf("querying promoted gate names: %w", err)
+		}
+
+		failingCount := 0
+		for _, test := range capRegressionTests {
+			if isFailureDueToUnpromotedGate(test.Name, promotedGates) {
+				continue
+			}
+			failingCount++
+		}
+
+		if failingCount > 0 {
+			status.Sufficient = false
+			status.Errors = append(status.Errors,
+				fmt.Sprintf("%d tests in jobs owned by this feature gate have a pass rate below 92%%", failingCount))
+		}
+	}
+
+	return status, nil
 }
 
 // getGateTopologies returns the set of topologies where this feature gate is enabled.
@@ -100,6 +131,37 @@ func getGateTopologies(dbc *db.DB, release, featureGate string) (sets.Set[string
 		return nil, tx.Error
 	}
 	return sets.New(topologies...), nil
+}
+
+// getPromotedGateNames returns the set of feature gate names that are promoted
+// to the Default feature set in either SelfManagedHA or Hypershift topologies.
+func getPromotedGateNames(dbc *db.DB, release string) (sets.Set[string], error) {
+	var names []string
+	tx := dbc.DB.Table("feature_gates").
+		Select("DISTINCT feature_gate").
+		Where("release = ? AND status = 'enabled' AND feature_set = 'Default' AND topology IN ('SelfManagedHA', 'Hypershift')", release).
+		Pluck("feature_gate", &names)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	return sets.New(names...), nil
+}
+
+// isFailureDueToUnpromotedGate returns true if a test name contains an
+// [OCPFeatureGate:X] annotation where X is not yet promoted to Default.
+// Such failures are expected and should not count against promotion readiness.
+func isFailureDueToUnpromotedGate(testName string, promotedGates sets.Set[string]) bool {
+	matches := featureGateRegex.FindAllStringSubmatch(testName, -1)
+	if len(matches) == 0 {
+		return false
+	}
+	for _, match := range matches {
+		gateName := match[1]
+		if !promotedGates.Has(gateName) {
+			return true
+		}
+	}
+	return false
 }
 
 // determineVariantsToCheck selects which variant combos to check based on the

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/lib/pq"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 )
@@ -672,6 +673,51 @@ func TestMatchesParsedVariant(t *testing.T) {
 			got := matchesParsedVariant(tt.parsed, tt.variant)
 			if got != tt.want {
 				t.Errorf("matchesParsedVariant() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsFailureDueToUnpromotedGate(t *testing.T) {
+	promotedGates := sets.New("PromotedFeature", "AnotherPromoted")
+
+	tests := []struct {
+		name     string
+		testName string
+		want     bool
+	}{
+		{
+			name:     "test with unpromoted gate annotation is excluded",
+			testName: "[sig-auth] some test [OCPFeatureGate:UnpromotedFeature] should work",
+			want:     true,
+		},
+		{
+			name:     "test with promoted gate annotation is not excluded",
+			testName: "[sig-auth] some test [OCPFeatureGate:PromotedFeature] should work",
+			want:     false,
+		},
+		{
+			name:     "test with no gate annotation is not excluded",
+			testName: "[sig-network] some regular test should work",
+			want:     false,
+		},
+		{
+			name:     "test with multiple annotations where one is unpromoted",
+			testName: "[sig-auth] test [OCPFeatureGate:PromotedFeature] [OCPFeatureGate:UnpromotedFeature] should work",
+			want:     true,
+		},
+		{
+			name:     "test with multiple promoted annotations is not excluded",
+			testName: "[sig-auth] test [OCPFeatureGate:PromotedFeature] [OCPFeatureGate:AnotherPromoted] should work",
+			want:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isFailureDueToUnpromotedGate(tt.testName, promotedGates)
+			if got != tt.want {
+				t.Errorf("isFailureDueToUnpromotedGate(%q) = %v, want %v", tt.testName, got, tt.want)
 			}
 		})
 	}
