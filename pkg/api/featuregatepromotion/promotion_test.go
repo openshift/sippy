@@ -481,6 +481,31 @@ func TestFilterVariants(t *testing.T) {
 			},
 		},
 		{
+			name:        "AWS feature gate matches only aws self-managed variants",
+			featureGate: "AWSDualStackInstall",
+			variants:    [][]JobVariant{RequiredSelfManagedJobVariants},
+			want: []JobVariant{
+				{Cloud: "aws", Architecture: "amd64", Topology: "ha"},
+				{Cloud: "aws", Architecture: "amd64", Topology: "single"},
+			},
+		},
+		{
+			name:        "GCP feature gate matches only gcp self-managed variant",
+			featureGate: "GCPLabelsTags",
+			variants:    [][]JobVariant{RequiredSelfManagedJobVariants},
+			want: []JobVariant{
+				{Cloud: "gcp", Architecture: "amd64", Topology: "ha"},
+			},
+		},
+		{
+			name:        "Azure feature gate matches only azure self-managed variant",
+			featureGate: "AzureWorkloadIdentity",
+			variants:    [][]JobVariant{RequiredSelfManagedJobVariants},
+			want: []JobVariant{
+				{Cloud: "azure", Architecture: "amd64", Topology: "ha"},
+			},
+		},
+		{
 			name:        "amd64 in feature gate name matches amd64 variants only",
 			featureGate: "Amd64SpecificFeature",
 			variants: [][]JobVariant{{
