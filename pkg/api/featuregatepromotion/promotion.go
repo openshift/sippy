@@ -210,7 +210,7 @@ func getCapabilityRegressions(dbc *db.DB, release, featureGate string) ([]Capabi
 			AND ? = ANY(pj.variants)
 			AND NOT EXISTS (
 				SELECT 1 FROM variant_combinations
-				WHERE 'never-stable' = ANY(variants)
+				WHERE ('never-stable' = ANY(variants) OR 'aggregated' = ANY(variants))
 				AND id = pj.variant_combination_id
 			)
 			AND t.name NOT LIKE '%' || ? || '%'
