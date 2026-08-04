@@ -2663,11 +2663,13 @@ func (s *Server) Serve() {
 			RateLimitPeriod:   1 * time.Hour,
 		},
 		{
-			EndpointPath: "/api/jobs/runs/disruption",
-			Description:  "Returns per-run backend disruption seconds from BigQuery",
-			Capabilities: []string{ComponentReadinessCapability},
-			CacheTime:    1 * time.Hour,
-			HandlerFunc:  s.jsonBackendDisruptionByRun,
+			EndpointPath:     "/api/jobs/runs/disruption",
+			Description:      "Returns per-run backend disruption seconds from BigQuery",
+			Capabilities:     []string{ComponentReadinessCapability},
+			CacheTime:        1 * time.Hour,
+			HandlerFunc:      s.jsonBackendDisruptionByRun,
+			RateLimitRequests: 25,
+			RateLimitPeriod:   1 * time.Hour,
 		},
 		{
 			EndpointPath: "/api/tests/durations",
