@@ -6,20 +6,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/pgwriter"
 )
 
-func makeResults(n int) []*jobRunResult {
-	results := make([]*jobRunResult, n)
+func makeResults(n int) []*pgwriter.JobRunResult {
+	results := make([]*pgwriter.JobRunResult, n)
 	for i := range results {
-		results[i] = &jobRunResult{
-			Run: prowJobRunRow{ID: uint(i + 1)},
+		results[i] = &pgwriter.JobRunResult{
+			Run: pgwriter.RunRow{ID: uint(i + 1)},
 		}
 	}
 	return results
 }
 
-func sendResults(results []*jobRunResult) <-chan *jobRunResult {
-	ch := make(chan *jobRunResult, len(results))
+func sendResults(results []*pgwriter.JobRunResult) <-chan *pgwriter.JobRunResult {
+	ch := make(chan *pgwriter.JobRunResult, len(results))
 	for _, r := range results {
 		ch <- r
 	}
@@ -31,7 +33,7 @@ func TestAccumulateAndWriteJobRuns(t *testing.T) {
 	tests := []struct {
 		name           string
 		resultCount    int
-		writerFunc     func(calls *[][]jobRunResult) batchWriterFunc
+		writerFunc     func(calls *[][]pgwriter.JobRunResult) func(context.Context, []pgwriter.JobRunResult) error
 		cancelAfter    int
 		wantErrorCount int
 		wantErrorMsg   string
@@ -39,9 +41,9 @@ func TestAccumulateAndWriteJobRuns(t *testing.T) {
 		{
 			name:        "all batches succeed",
 			resultCount: 250,
-			writerFunc: func(calls *[][]jobRunResult) batchWriterFunc {
-				return func(ctx context.Context, batch []jobRunResult) error {
-					cp := make([]jobRunResult, len(batch))
+			writerFunc: func(calls *[][]pgwriter.JobRunResult) func(context.Context, []pgwriter.JobRunResult) error {
+				return func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+					cp := make([]pgwriter.JobRunResult, len(batch))
 					copy(cp, batch)
 					*calls = append(*calls, cp)
 					return nil
@@ -52,10 +54,10 @@ func TestAccumulateAndWriteJobRuns(t *testing.T) {
 		{
 			name:        "first batch fails second succeeds",
 			resultCount: 200,
-			writerFunc: func(calls *[][]jobRunResult) batchWriterFunc {
+			writerFunc: func(calls *[][]pgwriter.JobRunResult) func(context.Context, []pgwriter.JobRunResult) error {
 				callCount := 0
-				return func(ctx context.Context, batch []jobRunResult) error {
-					cp := make([]jobRunResult, len(batch))
+				return func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+					cp := make([]pgwriter.JobRunResult, len(batch))
 					copy(cp, batch)
 					*calls = append(*calls, cp)
 					callCount++
@@ -71,9 +73,9 @@ func TestAccumulateAndWriteJobRuns(t *testing.T) {
 		{
 			name:        "all batches fail",
 			resultCount: 300,
-			writerFunc: func(calls *[][]jobRunResult) batchWriterFunc {
-				return func(ctx context.Context, batch []jobRunResult) error {
-					cp := make([]jobRunResult, len(batch))
+			writerFunc: func(calls *[][]pgwriter.JobRunResult) func(context.Context, []pgwriter.JobRunResult) error {
+				return func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+					cp := make([]pgwriter.JobRunResult, len(batch))
 					copy(cp, batch)
 					*calls = append(*calls, cp)
 					return fmt.Errorf("database unavailable")
@@ -85,10 +87,10 @@ func TestAccumulateAndWriteJobRuns(t *testing.T) {
 		{
 			name:        "trailing batch fails",
 			resultCount: 150,
-			writerFunc: func(calls *[][]jobRunResult) batchWriterFunc {
+			writerFunc: func(calls *[][]pgwriter.JobRunResult) func(context.Context, []pgwriter.JobRunResult) error {
 				callCount := 0
-				return func(ctx context.Context, batch []jobRunResult) error {
-					cp := make([]jobRunResult, len(batch))
+				return func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+					cp := make([]pgwriter.JobRunResult, len(batch))
 					copy(cp, batch)
 					*calls = append(*calls, cp)
 					callCount++
@@ -105,9 +107,9 @@ func TestAccumulateAndWriteJobRuns(t *testing.T) {
 			name:        "context cancelled with pending batch",
 			resultCount: 50,
 			cancelAfter: 25,
-			writerFunc: func(calls *[][]jobRunResult) batchWriterFunc {
-				return func(ctx context.Context, batch []jobRunResult) error {
-					cp := make([]jobRunResult, len(batch))
+			writerFunc: func(calls *[][]pgwriter.JobRunResult) func(context.Context, []pgwriter.JobRunResult) error {
+				return func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+					cp := make([]pgwriter.JobRunResult, len(batch))
 					copy(cp, batch)
 					*calls = append(*calls, cp)
 					return nil
@@ -119,19 +121,17 @@ func TestAccumulateAndWriteJobRuns(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var calls [][]jobRunResult
-			pl := &ProwLoader{
-				batchWriter: tt.writerFunc(&calls),
-			}
+			var calls [][]pgwriter.JobRunResult
+			pl := &ProwLoader{}
 
 			allResults := makeResults(tt.resultCount)
 
 			var ctx context.Context
-			var ch <-chan *jobRunResult
+			var ch <-chan *pgwriter.JobRunResult
 			if tt.cancelAfter > 0 {
 				cancelCtx, cancel := context.WithCancel(context.Background())
 				defer cancel()
-				buf := make(chan *jobRunResult, tt.resultCount)
+				buf := make(chan *pgwriter.JobRunResult, tt.resultCount)
 				for i, r := range allResults {
 					if i == tt.cancelAfter {
 						cancel()
@@ -146,7 +146,7 @@ func TestAccumulateAndWriteJobRuns(t *testing.T) {
 				ch = sendResults(allResults)
 			}
 
-			pl.accumulateAndWriteJobRuns(ctx, ch)
+			pl.accumulateAndWrite(ctx, ch, tt.writerFunc(&calls))
 
 			assert.Len(t, pl.errors, tt.wantErrorCount, "unexpected error count")
 			for _, err := range pl.errors {
@@ -162,23 +162,22 @@ func TestAccumulateAndWriteJobRuns_PerBatchErrors(t *testing.T) {
 		3: "constraint violation on batch 3",
 	}
 	callCount := 0
-	var calls [][]jobRunResult
+	var calls [][]pgwriter.JobRunResult
 
-	pl := &ProwLoader{
-		batchWriter: func(ctx context.Context, batch []jobRunResult) error {
-			cp := make([]jobRunResult, len(batch))
-			copy(cp, batch)
-			calls = append(calls, cp)
-			callCount++
-			if msg, ok := failOnBatch[callCount]; ok {
-				return fmt.Errorf("%s", msg)
-			}
-			return nil
-		},
+	pl := &ProwLoader{}
+	writerFunc := func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+		cp := make([]pgwriter.JobRunResult, len(batch))
+		copy(cp, batch)
+		calls = append(calls, cp)
+		callCount++
+		if msg, ok := failOnBatch[callCount]; ok {
+			return fmt.Errorf("%s", msg)
+		}
+		return nil
 	}
 
 	results := sendResults(makeResults(400))
-	pl.accumulateAndWriteJobRuns(context.Background(), results)
+	pl.accumulateAndWrite(context.Background(), results, writerFunc)
 
 	assert.Len(t, calls, 4, "all 4 batches should be attempted")
 	assert.Len(t, pl.errors, 2, "each failed batch should produce its own error")
@@ -188,26 +187,25 @@ func TestAccumulateAndWriteJobRuns_PerBatchErrors(t *testing.T) {
 
 func TestAccumulateAndWriteJobRuns_CancelledContextDoesNotSilentlyDrop(t *testing.T) {
 	var writtenRuns int
-	pl := &ProwLoader{
-		batchWriter: func(ctx context.Context, batch []jobRunResult) error {
-			writtenRuns += len(batch)
-			return nil
-		},
+	pl := &ProwLoader{}
+	writerFunc := func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+		writtenRuns += len(batch)
+		return nil
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	results := make(chan *jobRunResult, 10)
+	results := make(chan *pgwriter.JobRunResult, 10)
 	for i := range 5 {
-		results <- &jobRunResult{Run: prowJobRunRow{ID: uint(i + 1)}}
+		results <- &pgwriter.JobRunResult{Run: pgwriter.RunRow{ID: uint(i + 1)}}
 	}
 	cancel()
 	for i := range 5 {
-		results <- &jobRunResult{Run: prowJobRunRow{ID: uint(i + 6)}}
+		results <- &pgwriter.JobRunResult{Run: pgwriter.RunRow{ID: uint(i + 6)}}
 	}
 	close(results)
 
-	pl.accumulateAndWriteJobRuns(ctx, results)
+	pl.accumulateAndWrite(ctx, results, writerFunc)
 
 	// The result received on the same iteration as ctx cancellation should
 	// not be silently dropped. It should appear in either the written runs

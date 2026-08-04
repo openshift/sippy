@@ -148,12 +148,6 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
 })
 
-var cumulativeSummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
-	Name:    "sippy_cumulative_summary_refresh_millis",
-	Help:    "Milliseconds to refresh the cumulative summary tables",
-	Buckets: []float64{100, 500, 1000, 5000, 10000, 30000, 60000, 300000, 600000},
-})
-
 var matViewUniqueNumberOfTests = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "sippy_matviews_unique_number_of_tests",
 	Help: "Total number of tests based on lookback days",
@@ -390,24 +384,11 @@ type RefreshOptions struct {
 	RefreshOnlyIfEmpty bool
 }
 
-// RefreshData runs the normal incremental refresh of all summary tables
-// and materialized views. Used by the load command and the serve loop.
+// RefreshData refreshes materialized views. Summary tables
+// (test_daily_totals, test_cumulative_summaries) are updated
+// incrementally by the prow loader; use "sippy backfill" to repair them.
 func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
-
-	totalsStart := time.Now()
-	earliestTotalsChanged, err := dailysummary.Refresh(dbc)
-	if err != nil {
-		return fmt.Errorf("failed to refresh daily totals: %w", err)
-	}
-	log.WithField("elapsed", time.Since(totalsStart)).Info("daily totals refresh complete")
-
-	cumulativeStart := time.Now()
-	if _, err := cumulativesummary.Refresh(dbc, earliestTotalsChanged); err != nil {
-		return fmt.Errorf("failed to refresh cumulative summaries: %w", err)
-	}
-	cumulativeSummaryRefreshMetric.Observe(float64(time.Since(cumulativeStart).Milliseconds()))
-
 	refreshMaterializedViews(dbc, cacheClient, opts.RefreshOnlyIfEmpty)
 	log.Info("Refresh complete")
 	return nil

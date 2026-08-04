@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/lib/pq"
@@ -38,6 +39,7 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/pgwriter"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/testconversion"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/types"
 	"github.com/openshift/sippy/pkg/db"
@@ -52,11 +54,6 @@ import (
 // gcsPathStrip is used to strip out everything but the path, i.e. match "/view/gs/origin-ci-test/"
 // from the path "/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-sdn/1737420379221135360"
 var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
-
-// batchWriterFunc writes a batch of job run results to the database.
-// It is a field on ProwLoader so tests can inject a stub without
-// needing a real database connection.
-type batchWriterFunc func(ctx context.Context, batch []jobRunResult) error
 
 type ProwLoader struct {
 	ctx                          context.Context
@@ -78,7 +75,7 @@ type ProwLoader struct {
 	promPusher                   *push.Pusher
 	loadSince                    *time.Time
 	labelsCache                  map[string]pq.StringArray
-	batchWriter                  batchWriterFunc
+	currentDate                  civil.Date
 }
 
 func New(
@@ -110,7 +107,7 @@ func New(
 		}
 	}
 
-	pl := &ProwLoader{
+	return &ProwLoader{
 		ctx:                          ctx,
 		dbc:                          dbc,
 		gcsClient:                    gcsClient,
@@ -127,9 +124,8 @@ func New(
 		ghCommenter:                  ghCommenter,
 		promPusher:                   promPusher,
 		loadSince:                    loadSince,
+		currentDate:                  civil.DateOf(time.Now().UTC()),
 	}
-	pl.batchWriter = pl.writeJobRunBatch
-	return pl
 }
 
 const DefaultLookbackDays = 14
@@ -269,9 +265,16 @@ func (pl *ProwLoader) Load() {
 	// Clean up old partitions (detach partitions older than 100 days, drop detached partitions older than 110 days)
 	if detached, dropped, err := pl.dbc.CleanupPartitions(false); err != nil {
 		log.WithError(err).Warning("failed to cleanup old partitions, continuing with load")
-		// Don't fail the entire load if partition cleanup fails
 	} else {
 		log.Infof("Partition cleanup complete: detached %d, dropped %d", detached, dropped)
+	}
+
+	// Carry forward cumulative summaries to tomorrow for any release that
+	// doesn't already have data for that date. This must run after
+	// ensurePartitions so the target partition exists.
+	if err := pgwriter.CarryForwardCumulativeSummaries(pl.ctx, pl.dbc, pl.currentDate, pl.releases); err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error in cumulative summary carry-forward"))
+		return
 	}
 
 	// Pre-fetch labels for all jobs in bulk instead of one BQ query per job.
@@ -296,7 +299,7 @@ func (pl *ProwLoader) Load() {
 	defer cancelFetch()
 
 	queue := make(chan *prow.ProwJob)
-	results := make(chan *jobRunResult, len(entries))
+	results := make(chan *pgwriter.JobRunResult, len(entries))
 	fetchErrsCh := make(chan error, len(entries))
 
 	go func() {
@@ -731,7 +734,7 @@ func mostRecentDateTimeName(one, two DateTimeName) DateTimeName {
 	return two
 }
 
-func (pl *ProwLoader) fetchJobRunResult(ctx context.Context, pj *prow.ProwJob) (*jobRunResult, error) {
+func (pl *ProwLoader) fetchJobRunResult(ctx context.Context, pj *prow.ProwJob) (*pgwriter.JobRunResult, error) {
 	pjLog := log.WithFields(log.Fields{
 		"job":     pj.Spec.Job,
 		"buildID": pj.Status.BuildID,
@@ -771,72 +774,7 @@ func (pl *ProwLoader) fetchJobRunResult(ctx context.Context, pj *prow.ProwJob) (
 	return result, nil
 }
 
-// prowJobRunTestRow holds raw JUnit test data before ID resolution.
-type prowJobRunTestRow struct {
-	ProwJobRunID        uint
-	ProwJobID           uint
-	ProwJobRunTimestamp time.Time
-	ProwJobRunRelease   string
-	TestName            string
-	SuiteName           string
-	Status              int
-	Duration            float64
-	Output              *string
-	Lifecycle           string
-}
-
-type prowJobRunRow struct {
-	ID             uint
-	Cluster        string
-	Duration       time.Duration
-	ProwJobID      uint
-	ProwJobRelease string
-	URL            string
-	GCSBucket      string
-	Timestamp      time.Time
-	OverallResult  sippyprocessingv1.JobOverallResult
-	TestFailures   int
-	TestFlakes     int
-	Succeeded      bool
-	Labels         []string
-}
-
-type annotationRow struct {
-	ProwJobRunID        uint
-	Key                 string
-	Value               string
-	ProwJobRunRelease   string
-	ProwJobRunTimestamp time.Time
-}
-
-type pullRequestRow struct {
-	Org      string
-	Repo     string
-	Link     string
-	SHA      string
-	Author   string
-	Title    string
-	Number   int
-	MergedAt *time.Time
-}
-
-type pullRequestAssocRow struct {
-	ProwJobRunID        uint
-	Link                string
-	SHA                 string
-	ProwJobRunRelease   string
-	ProwJobRunTimestamp time.Time
-}
-
-type jobRunResult struct {
-	Run              prowJobRunRow
-	Annotations      []annotationRow
-	PullRequests     []pullRequestRow
-	PullRequestAssoc []pullRequestAssocRow
-	Tests            []prowJobRunTestRow
-}
-
-func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, id uint64, path string, junitMatches []string, dbProwJob *models.ProwJob) (*jobRunResult, error) {
+func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, id uint64, path string, junitMatches []string, dbProwJob *models.ProwJob) (*pgwriter.JobRunResult, error) {
 	tests, failures, flakes, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), dbProwJob.ID, dbProwJob.Release, path, junitMatches)
 	if err != nil {
 		return nil, err
@@ -844,9 +782,9 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 
 	pulls := pl.fetchPullRequestData(pj.Spec.Refs, path)
 
-	var pullAssocs []pullRequestAssocRow
+	var pullAssocs []pgwriter.PullRequestAssocRow
 	for _, pull := range pulls {
-		pullAssocs = append(pullAssocs, pullRequestAssocRow{
+		pullAssocs = append(pullAssocs, pgwriter.PullRequestAssocRow{
 			ProwJobRunID:        uint(id),
 			Link:                pull.Link,
 			SHA:                 pull.SHA,
@@ -855,9 +793,9 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 		})
 	}
 
-	var annotations []annotationRow
+	var annotations []pgwriter.AnnotationRow
 	for k, v := range pj.Annotations {
-		annotations = append(annotations, annotationRow{
+		annotations = append(annotations, pgwriter.AnnotationRow{
 			ProwJobRunID:        uint(id),
 			Key:                 k,
 			Value:               v,
@@ -871,8 +809,8 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 		duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
 	}
 
-	return &jobRunResult{
-		Run: prowJobRunRow{
+	return &pgwriter.JobRunResult{
+		Run: pgwriter.RunRow{
 			ID:             uint(id),
 			Cluster:        pj.Spec.Cluster,
 			Duration:       duration,
@@ -894,70 +832,22 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 	}, nil
 }
 
-var (
-	runCols = []db.TempColumn[prowJobRunRow]{
-		{Name: "id", Type: "bigint NOT NULL", Value: func(r *prowJobRunRow) any { return r.ID }},
-		{Name: "cluster", Type: "text NOT NULL DEFAULT ''", Value: func(r *prowJobRunRow) any { return r.Cluster }},
-		{Name: "duration", Type: "bigint NOT NULL DEFAULT 0", Value: func(r *prowJobRunRow) any { return int64(r.Duration) }},
-		{Name: "prow_job_id", Type: "bigint NOT NULL", Value: func(r *prowJobRunRow) any { return r.ProwJobID }},
-		{Name: "prow_job_release", Type: "text NOT NULL", Value: func(r *prowJobRunRow) any { return r.ProwJobRelease }},
-		{Name: "url", Type: "text NOT NULL DEFAULT ''", Value: func(r *prowJobRunRow) any { return r.URL }},
-		{Name: "gcs_bucket", Type: "text NOT NULL DEFAULT ''", Value: func(r *prowJobRunRow) any { return r.GCSBucket }},
-		{Name: "timestamp", Type: "timestamptz NOT NULL", Value: func(r *prowJobRunRow) any { return r.Timestamp }},
-		{Name: "overall_result", Type: "text NOT NULL DEFAULT ''", Value: func(r *prowJobRunRow) any { return string(r.OverallResult) }},
-		{Name: "test_failures", Type: "integer NOT NULL DEFAULT 0", Value: func(r *prowJobRunRow) any { return r.TestFailures }},
-		{Name: "test_flakes", Type: "integer NOT NULL DEFAULT 0", Value: func(r *prowJobRunRow) any { return r.TestFlakes }},
-		{Name: "succeeded", Type: "boolean NOT NULL DEFAULT false", Value: func(r *prowJobRunRow) any { return r.Succeeded }},
-		{Name: "labels", Type: "text[]", Value: func(r *prowJobRunRow) any { return r.Labels }},
-	}
-	annCols = []db.TempColumn[annotationRow]{
-		{Name: "prow_job_run_id", Type: "bigint NOT NULL", Value: func(a *annotationRow) any { return a.ProwJobRunID }},
-		{Name: "key", Type: "text NOT NULL", Value: func(a *annotationRow) any { return a.Key }},
-		{Name: "value", Type: "text NOT NULL DEFAULT ''", Value: func(a *annotationRow) any { return a.Value }},
-		{Name: "prow_job_run_release", Type: "text NOT NULL", Value: func(a *annotationRow) any { return a.ProwJobRunRelease }},
-		{Name: "prow_job_run_timestamp", Type: "timestamptz NOT NULL", Value: func(a *annotationRow) any { return a.ProwJobRunTimestamp }},
-	}
-	prCols = []db.TempColumn[pullRequestRow]{
-		{Name: "org", Type: "text NOT NULL", Value: func(p *pullRequestRow) any { return p.Org }},
-		{Name: "repo", Type: "text NOT NULL", Value: func(p *pullRequestRow) any { return p.Repo }},
-		{Name: "link", Type: "text NOT NULL", Value: func(p *pullRequestRow) any { return p.Link }},
-		{Name: "sha", Type: "text NOT NULL", Value: func(p *pullRequestRow) any { return p.SHA }},
-		{Name: "author", Type: "text NOT NULL DEFAULT ''", Value: func(p *pullRequestRow) any { return p.Author }},
-		{Name: "title", Type: "text NOT NULL DEFAULT ''", Value: func(p *pullRequestRow) any { return p.Title }},
-		{Name: "number", Type: "integer NOT NULL DEFAULT 0", Value: func(p *pullRequestRow) any { return p.Number }},
-		{Name: "merged_at", Type: "timestamptz", Value: func(p *pullRequestRow) any { return p.MergedAt }},
-	}
-	prAssocCols = []db.TempColumn[pullRequestAssocRow]{
-		{Name: "prow_job_run_id", Type: "bigint NOT NULL", Value: func(p *pullRequestAssocRow) any { return p.ProwJobRunID }},
-		{Name: "link", Type: "text NOT NULL", Value: func(p *pullRequestAssocRow) any { return p.Link }},
-		{Name: "sha", Type: "text NOT NULL", Value: func(p *pullRequestAssocRow) any { return p.SHA }},
-		{Name: "prow_job_run_release", Type: "text NOT NULL", Value: func(p *pullRequestAssocRow) any { return p.ProwJobRunRelease }},
-		{Name: "prow_job_run_timestamp", Type: "timestamptz NOT NULL", Value: func(p *pullRequestAssocRow) any { return p.ProwJobRunTimestamp }},
-	}
-	testCols = []db.TempColumn[prowJobRunTestRow]{
-		{Name: "prow_job_run_id", Type: "bigint NOT NULL", Value: func(r *prowJobRunTestRow) any { return r.ProwJobRunID }},
-		{Name: "prow_job_id", Type: "bigint NOT NULL", Value: func(r *prowJobRunTestRow) any { return r.ProwJobID }},
-		{Name: "prow_job_run_timestamp", Type: "timestamptz NOT NULL", Value: func(r *prowJobRunTestRow) any { return r.ProwJobRunTimestamp }},
-		{Name: "prow_job_run_release", Type: "text NOT NULL", Value: func(r *prowJobRunTestRow) any { return r.ProwJobRunRelease }},
-		{Name: "test_name", Type: "text NOT NULL", Value: func(r *prowJobRunTestRow) any { return r.TestName }},
-		{Name: "suite_name", Type: "text NOT NULL DEFAULT ''", Value: func(r *prowJobRunTestRow) any { return r.SuiteName }},
-		{Name: "status", Type: "integer NOT NULL", Value: func(r *prowJobRunTestRow) any { return r.Status }},
-		{Name: "duration", Type: "double precision NOT NULL DEFAULT 0", Value: func(r *prowJobRunTestRow) any { return r.Duration }},
-		{Name: "output", Type: "text", Value: func(r *prowJobRunTestRow) any { return r.Output }},
-		{Name: "lifecycle", Type: "text NOT NULL DEFAULT 'blocking'", Value: func(r *prowJobRunTestRow) any { return r.Lifecycle }},
-	}
-)
+func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-chan *pgwriter.JobRunResult) {
+	pl.accumulateAndWrite(ctx, results, func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+		return pgwriter.Write(ctx, pl.dbc, pl.currentDate, batch)
+	})
+}
 
-func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-chan *jobRunResult) {
+func (pl *ProwLoader) accumulateAndWrite(ctx context.Context, results <-chan *pgwriter.JobRunResult, writeBatch func(context.Context, []pgwriter.JobRunResult) error) {
 	const flushThreshold = 100
 	var (
-		batch  []jobRunResult
+		batch  []pgwriter.JobRunResult
 		total  int
 		failed int
 	)
 
 	flush := func(msg string) {
-		if err := pl.batchWriter(ctx, batch); err != nil {
+		if err := writeBatch(ctx, batch); err != nil {
 			log.WithError(err).WithField("batchSize", len(batch)).Warning(msg)
 			failed += len(batch)
 			pl.errors = append(pl.errors, fmt.Errorf("error writing job run batch: %w", err))
@@ -991,187 +881,6 @@ func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-c
 	prowLoaderProcessedMetricGauge.Set(float64(total))
 }
 
-func (pl *ProwLoader) writeJobRunBatch(ctx context.Context, batch []jobRunResult) error {
-	if len(batch) == 0 {
-		return nil
-	}
-
-	sqlDB, err := pl.dbc.DB.DB()
-	if err != nil {
-		return fmt.Errorf("getting sql.DB: %w", err)
-	}
-	conn, err := stdlib.AcquireConn(sqlDB)
-	if err != nil {
-		return fmt.Errorf("acquiring pgx conn: %w", err)
-	}
-	defer func() {
-		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
-			log.WithError(err).Error("failed to release pgx conn")
-		}
-	}()
-
-	var runs []prowJobRunRow
-	var anns []annotationRow
-	var prs []pullRequestRow
-	var prAssocs []pullRequestAssocRow
-	var tests []prowJobRunTestRow
-	for i := range batch {
-		runs = append(runs, batch[i].Run)
-		anns = append(anns, batch[i].Annotations...)
-		prs = append(prs, batch[i].PullRequests...)
-		prAssocs = append(prAssocs, batch[i].PullRequestAssoc...)
-		tests = append(tests, batch[i].Tests...)
-	}
-
-	cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_prow_job_runs", runs, runCols)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	if len(anns) > 0 {
-		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_annotations", anns, annCols)
-		if err != nil {
-			return err
-		}
-		defer cleanup()
-	}
-	if len(prs) > 0 {
-		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_pull_requests", prs, prCols)
-		if err != nil {
-			return err
-		}
-		defer cleanup()
-	}
-	if len(prAssocs) > 0 {
-		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_pr_assocs", prAssocs, prAssocCols)
-		if err != nil {
-			return err
-		}
-		defer cleanup()
-	}
-	if len(tests) > 0 {
-		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_job_run_tests", tests, testCols)
-		if err != nil {
-			return err
-		}
-		defer cleanup()
-	}
-
-	tx, err := conn.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("beginning transaction: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO prow_job_runs (id, cluster, duration, prow_job_id, prow_job_release,
-			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
-			succeeded, failed, infrastructure_failure, known_failure, labels,
-			created_at, updated_at)
-		SELECT id, cluster, duration, prow_job_id, prow_job_release,
-			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
-			succeeded, false, false, false, labels,
-			NOW(), NOW()
-		FROM tmp_prow_job_runs
-	`); err != nil {
-		return fmt.Errorf("inserting prow_job_runs: %w", err)
-	}
-
-	if len(anns) > 0 {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO prow_job_run_annotations (prow_job_run_id, key, value,
-				prow_job_run_release, prow_job_run_timestamp, created_at, updated_at)
-			SELECT prow_job_run_id, key, value, prow_job_run_release, prow_job_run_timestamp, NOW(), NOW()
-			FROM tmp_annotations
-		`); err != nil {
-			return fmt.Errorf("inserting prow_job_run_annotations: %w", err)
-		}
-	}
-
-	if len(prs) > 0 {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO prow_pull_requests (org, repo, link, sha, author, title, number, merged_at, created_at, updated_at)
-			SELECT DISTINCT ON (link, sha) org, repo, link, sha, author, title, number, merged_at, NOW(), NOW()
-			FROM tmp_pull_requests ORDER BY link, sha, merged_at DESC NULLS LAST
-			ON CONFLICT (link, sha) DO UPDATE SET
-				merged_at = COALESCE(EXCLUDED.merged_at, prow_pull_requests.merged_at),
-				author = CASE WHEN prow_pull_requests.author = '' THEN EXCLUDED.author ELSE prow_pull_requests.author END,
-				title = CASE WHEN prow_pull_requests.title = '' THEN EXCLUDED.title ELSE prow_pull_requests.title END,
-				updated_at = NOW()
-		`); err != nil {
-			return fmt.Errorf("upserting prow_pull_requests: %w", err)
-		}
-	}
-
-	if len(prAssocs) > 0 {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO prow_job_run_prow_pull_requests (prow_job_run_id, prow_pull_request_id,
-				prow_job_run_release, prow_job_run_timestamp)
-			SELECT tmp.prow_job_run_id, pp.id, tmp.prow_job_run_release, tmp.prow_job_run_timestamp
-			FROM tmp_pr_assocs tmp
-			INNER JOIN prow_pull_requests pp ON pp.link = tmp.link AND pp.sha = tmp.sha
-		`); err != nil {
-			return fmt.Errorf("inserting prow_job_run_prow_pull_requests: %w", err)
-		}
-	}
-
-	if len(tests) > 0 {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO tests (name, created_at, updated_at)
-			SELECT DISTINCT test_name, NOW(), NOW() FROM tmp_job_run_tests
-			ON CONFLICT (name) DO UPDATE SET deleted_at = NULL, updated_at = NOW()
-			WHERE tests.deleted_at IS NOT NULL
-		`); err != nil {
-			return fmt.Errorf("ensuring tests exist: %w", err)
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO suites (name, created_at, updated_at)
-			SELECT DISTINCT suite_name, NOW(), NOW() FROM tmp_job_run_tests
-			WHERE suite_name != ''
-			ON CONFLICT (name) DO UPDATE SET deleted_at = NULL, updated_at = NOW()
-			WHERE suites.deleted_at IS NOT NULL
-		`); err != nil {
-			return fmt.Errorf("ensuring suites exist: %w", err)
-		}
-		if _, err := tx.Exec(ctx, `
-			WITH inserted AS (
-				INSERT INTO prow_job_run_tests (prow_job_run_id, prow_job_id, prow_job_run_timestamp,
-					prow_job_run_release, test_id, suite_id, status, duration, lifecycle, created_at, updated_at)
-				SELECT tmp.prow_job_run_id, tmp.prow_job_id, tmp.prow_job_run_timestamp,
-					tmp.prow_job_run_release, t.id, s.id, tmp.status, tmp.duration, tmp.lifecycle, NOW(), NOW()
-				FROM tmp_job_run_tests tmp
-				INNER JOIN tests t ON t.name = tmp.test_name AND t.deleted_at IS NULL
-				LEFT JOIN suites s ON s.name = tmp.suite_name AND s.deleted_at IS NULL
-				RETURNING id, test_id, suite_id,
-					prow_job_run_id, prow_job_run_timestamp, prow_job_run_release
-			)
-			INSERT INTO prow_job_run_test_outputs (prow_job_run_test_id, prow_job_run_test_timestamp,
-				prow_job_run_test_release, output, created_at, updated_at)
-			SELECT ins.id, ins.prow_job_run_timestamp, ins.prow_job_run_release, tmp.output, NOW(), NOW()
-			FROM inserted ins
-			JOIN tests t ON t.id = ins.test_id
-			JOIN tmp_job_run_tests tmp ON tmp.test_name = t.name AND tmp.prow_job_run_id = ins.prow_job_run_id
-			LEFT JOIN suites s2 ON s2.name = tmp.suite_name AND s2.deleted_at IS NULL
-			WHERE tmp.output IS NOT NULL
-				AND ins.suite_id IS NOT DISTINCT FROM s2.id
-		`); err != nil {
-			return fmt.Errorf("inserting prow_job_run_tests: %w", err)
-		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("committing job run batch: %w", err)
-	}
-
-	log.WithFields(log.Fields{
-		"runs":  len(batch),
-		"tests": len(tests),
-	}).Info("job run batch committed")
-
-	return nil
-}
-
 func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, error) {
 	// this err validation has moved up
 	// and will exit before we save / update the ProwJob
@@ -1191,12 +900,12 @@ func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, 
 	return path, nil
 }
 
-func (pl *ProwLoader) fetchPullRequestData(refs *prow.Refs, pjPath string) []pullRequestRow {
+func (pl *ProwLoader) fetchPullRequestData(refs *prow.Refs, pjPath string) []pgwriter.PullRequestRow {
 	if refs == nil || pl.githubClient == nil {
 		return nil
 	}
 
-	var pulls []pullRequestRow
+	var pulls []pgwriter.PullRequestRow
 	for _, pr := range refs.Pulls {
 		mergedAt, err := pl.githubClient.GetPRSHAMerged(refs.Org, refs.Repo, pr.Number, pr.SHA)
 		if err != nil {
@@ -1227,7 +936,7 @@ func (pl *ProwLoader) fetchPullRequestData(refs *prow.Refs, pjPath string) []pul
 
 		pl.ghCommenter.UpdatePendingCommentRecords(refs.Org, refs.Repo, pr.Number, pr.SHA, models.CommentTypeRiskAnalysis, mergedAt, pjPath)
 
-		pulls = append(pulls, pullRequestRow{
+		pulls = append(pulls, pgwriter.PullRequestRow{
 			Org:      refs.Org,
 			Repo:     refs.Repo,
 			Link:     pr.Link,
@@ -1352,7 +1061,7 @@ type testCaseKey struct {
 	TestName  string
 }
 
-func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]prowJobRunTestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
+func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]pgwriter.TestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
 	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
 	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 	gcsJobRun.SetGCSJunitPaths(junitPaths)
@@ -1382,12 +1091,12 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 
 	failures := 0
 	flakes := 0
-	results := make([]prowJobRunTestRow, 0, len(testCases))
+	results := make([]pgwriter.TestRow, 0, len(testCases))
 	for _, tc := range testCases {
 		if testidentification.IsIgnoredTest(tc.TestName) {
 			continue
 		}
-		results = append(results, prowJobRunTestRow{
+		results = append(results, pgwriter.TestRow{
 			ProwJobRunID:        id,
 			ProwJobID:           prowJobID,
 			ProwJobRunTimestamp: pj.Status.StartTime,
