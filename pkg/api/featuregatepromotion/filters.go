@@ -28,7 +28,7 @@ func InstallTestFilter(featureGate string) filter.Filter {
 	return filter.Filter{
 		Items: []filter.FilterItem{
 			{Field: "name", Operator: filter.OperatorContains, Value: "install should succeed"},
-			{Field: "variants", Operator: filter.OperatorContains, Value: fmt.Sprintf("Capability:%s", featureGate)},
+			{Field: "variants", Operator: filter.OperatorHasEntry, Value: fmt.Sprintf("Capability:%s", featureGate)},
 			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "never-stable"},
 			{Field: "variants", Not: true, Operator: filter.OperatorHasEntry, Value: "aggregated"},
 		},
