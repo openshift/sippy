@@ -14,7 +14,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -80,7 +80,7 @@ function buildTestAnalysisPath(release, variant, testName) {
 }
 
 export default function FeatureGatePromotionTab(props) {
-  const { release, featureGate, data } = props
+  const { release, featureGate, data, matchingJobs } = props
   const navigate = useNavigate()
 
   const [showWarnings, setShowWarnings] = React.useState(false)
@@ -359,6 +359,196 @@ export default function FeatureGatePromotionTab(props) {
           </Table>
         </TableContainer>
       )}
+
+      <CapabilityRegressionTable
+        regressions={data.capability_test_regressions}
+        release={release}
+        featureGate={featureGate}
+        matchingJobs={matchingJobs}
+      />
+    </Box>
+  )
+}
+
+function buildCapabilityTestAnalysisPath(release, featureGate, testName) {
+  const items = [
+    { columnField: 'name', operatorValue: 'equals', value: testName },
+    {
+      id: 1,
+      columnField: 'variants',
+      operatorValue: 'has entry',
+      value: `Capability:${featureGate}`,
+    },
+    {
+      id: 2,
+      columnField: 'variants',
+      not: true,
+      operatorValue: 'has entry',
+      value: 'never-stable',
+    },
+    {
+      id: 3,
+      columnField: 'variants',
+      not: true,
+      operatorValue: 'has entry',
+      value: 'aggregated',
+    },
+  ]
+  const filters = { items, linkOperator: 'and' }
+  return `/tests/${release}/analysis?test=${encodeURIComponent(testName)}&filters=${encodeURIComponent(JSON.stringify(filters))}`
+}
+
+function CapabilityRegressionTable({
+  regressions,
+  release,
+  featureGate,
+  matchingJobs,
+}) {
+  const navigate = useNavigate()
+
+  if (!regressions || regressions.length === 0) return null
+
+  const active = regressions.filter((r) => !r.ignored)
+  const ignored = regressions.filter((r) => r.ignored)
+
+  const analyzeAllPath =
+    matchingJobs && matchingJobs.length > 0
+      ? `/jobs/${release}/analysis?filters=${encodeURIComponent(
+          JSON.stringify({
+            items: matchingJobs.map((job, i) => ({
+              id: i,
+              columnField: 'name',
+              operatorValue: 'equals',
+              value: job,
+            })),
+            linkOperator: 'or',
+          })
+        )}`
+      : null
+
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Owned Job Test Regressions
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Tests in{' '}
+        {analyzeAllPath ? (
+          <Link to={analyzeAllPath} style={{ textDecoration: 'underline' }}>
+            jobs owned by this feature gate
+          </Link>
+        ) : (
+          'jobs owned by this feature gate'
+        )}{' '}
+        (via Capability variant) with a working percentage below 92%.
+      </Typography>
+      {active.length > 0 && (
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Test Name</TableCell>
+                <TableCell align="right" sx={{ minWidth: 120 }}>
+                  Working %
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {active.map((r) => (
+                <TableRow
+                  key={r.test_name}
+                  hover
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() =>
+                    navigate(
+                      buildCapabilityTestAnalysisPath(
+                        release,
+                        featureGate,
+                        r.test_name
+                      )
+                    )
+                  }
+                >
+                  <TableCell
+                    sx={{
+                      maxWidth: 600,
+                      wordBreak: 'break-word',
+                      fontSize: '0.85em',
+                    }}
+                  >
+                    {r.test_name}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      backgroundColor: FAIL_COLOR,
+                      color: FAIL_TEXT,
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    {r.working_percentage.toFixed(1)}%
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+      {ignored.length > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+            {ignored.length} test{ignored.length !== 1 ? 's' : ''} ignored
+            (belong to feature gates not yet promoted to Default)
+          </Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Test Name</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 120 }}>
+                    Working %
+                  </TableCell>
+                  <TableCell>Reason</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {ignored.map((r) => (
+                  <TableRow
+                    key={r.test_name}
+                    hover
+                    sx={{ cursor: 'pointer', opacity: 0.6 }}
+                    onClick={() =>
+                      navigate(
+                        buildCapabilityTestAnalysisPath(
+                          release,
+                          featureGate,
+                          r.test_name
+                        )
+                      )
+                    }
+                  >
+                    <TableCell
+                      sx={{
+                        maxWidth: 600,
+                        wordBreak: 'break-word',
+                        fontSize: '0.85em',
+                      }}
+                    >
+                      {r.test_name}
+                    </TableCell>
+                    <TableCell align="right">
+                      {r.working_percentage.toFixed(1)}%
+                    </TableCell>
+                    <TableCell sx={{ fontSize: '0.85em' }}>
+                      {r.ignored_reason}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
     </Box>
   )
 }
@@ -473,6 +663,14 @@ FeatureGatePromotionTab.propTypes = {
   release: PropTypes.string.isRequired,
   featureGate: PropTypes.string.isRequired,
   data: PropTypes.object,
+  matchingJobs: PropTypes.array,
+}
+
+CapabilityRegressionTable.propTypes = {
+  regressions: PropTypes.array,
+  release: PropTypes.string.isRequired,
+  featureGate: PropTypes.string.isRequired,
+  matchingJobs: PropTypes.array,
 }
 
 PromotionCell.propTypes = {

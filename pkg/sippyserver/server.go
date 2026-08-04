@@ -818,6 +818,14 @@ func convertPromotionStatus(status *featuregatepromotion.PromotionStatus) *apity
 		Warnings:   status.Warnings,
 		Errors:     status.Errors,
 	}
+	for _, r := range status.CapabilityTestRegessions {
+		promotion.CapabilityTestRegessions = append(promotion.CapabilityTestRegessions, apitype.FeatureGateCapabilityTestRegression{
+			TestName:          r.TestName,
+			WorkingPercentage: r.WorkingPercentage,
+			Ignored:           r.Ignored,
+			IgnoredReason:     r.IgnoredReason,
+		})
+	}
 	for _, vr := range status.ResultsByVariant {
 		variant := apitype.FeatureGateVariantResult{
 			Variants:   vr.Variants,

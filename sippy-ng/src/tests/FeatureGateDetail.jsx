@@ -320,6 +320,7 @@ export default function FeatureGateDetail(props) {
             release={release}
             featureGate={featureGate}
             data={gate?.promotion}
+            matchingJobs={gate?.matching_jobs}
           />
         )}
         {tabs[activeTab]?.key === 'gate_tests' && (

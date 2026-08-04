@@ -1040,10 +1040,20 @@ type FeatureGate struct {
 
 // FeatureGatePromotion represents promotion readiness data included in the detail response.
 type FeatureGatePromotion struct {
-	Sufficient       bool                       `json:"sufficient"`
-	ResultsByVariant []FeatureGateVariantResult `json:"results_by_variant"`
-	Warnings         []string                   `json:"warnings"`
-	Errors           []string                   `json:"errors"`
+	Sufficient               bool                                  `json:"sufficient"`
+	ResultsByVariant         []FeatureGateVariantResult            `json:"results_by_variant"`
+	CapabilityTestRegessions []FeatureGateCapabilityTestRegression `json:"capability_test_regressions,omitempty"`
+	Warnings                 []string                              `json:"warnings"`
+	Errors                   []string                              `json:"errors"`
+}
+
+// FeatureGateCapabilityTestRegression represents a test in a job owned by this
+// feature gate that has a pass rate below the required threshold.
+type FeatureGateCapabilityTestRegression struct {
+	TestName          string  `json:"test_name"`
+	WorkingPercentage float64 `json:"working_percentage"`
+	Ignored           bool    `json:"ignored"`
+	IgnoredReason     string  `json:"ignored_reason,omitempty"`
 }
 
 // FeatureGateVariantResult represents the promotion readiness for a single variant combination.

@@ -93,24 +93,27 @@ func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache
 
 	status := buildPromotionStatus(featureGate, release, variantsToCheck, allTests)
 
-	regressedTestNames, err := getCapabilityRegressionTestNames(dbc, release, featureGate)
+	regressions, err := getCapabilityRegressions(dbc, release, featureGate)
 	if err != nil {
-		return nil, fmt.Errorf("querying capability regression test names: %w", err)
+		return nil, fmt.Errorf("querying capability regressions: %w", err)
 	}
 
-	if len(regressedTestNames) > 0 {
+	if len(regressions) > 0 {
 		promotedGates, err := getPromotedGateNames(dbc, release)
 		if err != nil {
 			return nil, fmt.Errorf("querying promoted gate names: %w", err)
 		}
 
 		failingCount := 0
-		for _, name := range regressedTestNames {
-			if isFailureDueToUnpromotedGate(name, promotedGates) {
+		for i := range regressions {
+			if isFailureDueToUnpromotedGate(regressions[i].TestName, promotedGates) {
+				regressions[i].Ignored = true
+				regressions[i].IgnoredReason = "test belongs to a feature gate not yet promoted to Default"
 				continue
 			}
 			failingCount++
 		}
+		status.CapabilityTestRegessions = regressions
 
 		if failingCount > 0 {
 			status.Sufficient = false
@@ -166,10 +169,10 @@ func isFailureDueToUnpromotedGate(testName string, promotedGates sets.Set[string
 	return false
 }
 
-// getCapabilityRegressionTestNames returns test names with a working percentage
-// below 92% on jobs owned by this feature gate (via Capability variant).
-// This uses a lightweight query rather than the full /api/tests pipeline.
-func getCapabilityRegressionTestNames(dbc *db.DB, release, featureGate string) ([]string, error) {
+// getCapabilityRegressions returns tests with a working percentage below 92%
+// on jobs owned by this feature gate (via Capability variant). This uses a
+// lightweight query rather than the full /api/tests pipeline.
+func getCapabilityRegressions(dbc *db.DB, release, featureGate string) ([]CapabilityTestRegression, error) {
 	capabilityVariant := fmt.Sprintf("Capability:%s", featureGate)
 
 	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
@@ -182,14 +185,14 @@ func getCapabilityRegressionTestNames(dbc *db.DB, release, featureGate string) (
 
 	excludedNames := []string{"install should succeed", "openshift-tests should work", "infrastructure should work"}
 
-	type testPassRate struct {
-		Name              string
-		WorkingPercentage float64
+	type queryResult struct {
+		TestName          string  `gorm:"column:test_name"`
+		WorkingPercentage float64 `gorm:"column:working_percentage"`
 	}
 
-	var results []testPassRate
+	var rows []queryResult
 	tx := dbc.DB.Raw(`
-		SELECT t.name,
+		SELECT t.name AS test_name,
 			CASE WHEN SUM(COALESCE(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0), 0)) = 0 THEN 0
 			ELSE (SUM(COALESCE(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))
 				+ SUM(COALESCE(e.prefix_sum_flakes - COALESCE(s.prefix_sum_flakes, 0), 0)))
@@ -219,18 +222,22 @@ func getCapabilityRegressionTestNames(dbc *db.DB, release, featureGate string) (
 				+ SUM(COALESCE(e.prefix_sum_flakes - COALESCE(s.prefix_sum_flakes, 0), 0)))
 				* 100.0
 				/ SUM(COALESCE(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0), 0)) < 92
+		ORDER BY working_percentage ASC
 	`, start, end, release, capabilityVariant,
 		excludedNames[0], excludedNames[1], excludedNames[2]).
-		Scan(&results)
+		Scan(&rows)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
 
-	names := make([]string, len(results))
-	for i, r := range results {
-		names[i] = r.Name
+	regressions := make([]CapabilityTestRegression, len(rows))
+	for i, r := range rows {
+		regressions[i] = CapabilityTestRegression{
+			TestName:          r.TestName,
+			WorkingPercentage: r.WorkingPercentage,
+		}
 	}
-	return names, nil
+	return regressions, nil
 }
 
 // determineVariantsToCheck selects which variant combos to check based on the
