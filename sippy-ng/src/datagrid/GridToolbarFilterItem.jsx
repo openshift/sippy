@@ -53,6 +53,7 @@ export default function GridToolbarFilterItem(props) {
   let release = ''
   let disabled = false
   let valueGetter = null
+  let values = null
   props.columns.forEach((col) => {
     if (col.field === props.filterModel.columnField) {
       columnType = col.type || 'string'
@@ -60,8 +61,14 @@ export default function GridToolbarFilterItem(props) {
       release = col.release || ''
       disabled = col.disabled || false
       valueGetter = col.valueGetter || null
+      values = col.values || null
     }
   })
+
+  // Columns with a fixed set of "values" are rendered as a strict dropdown
+  // instead of a free-text/autocomplete field, and only support equals/not-equals
+  // since there's nothing meaningful to contain/start with/end with.
+  const operators = values ? ['equals', '!='] : operatorValues[columnType]
 
   const updateColumnField = (e) => {
     props.setFilterModel({
@@ -85,6 +92,40 @@ export default function GridToolbarFilterItem(props) {
       props.filterModel.operatorValue === 'is not empty'
     ) {
       return ''
+    }
+
+    if (values) {
+      return (
+        <Fragment>
+          <InputLabel id={`valueLabel-${props.id}`}>Value</InputLabel>
+          <Select
+            variant="standard"
+            disabled={disabled}
+            inputProps={{ 'data-testid': `value-${props.id}` }}
+            error={valueError}
+            value={props.filterModel.value}
+            onChange={(e) =>
+              props.setFilterModel({
+                columnField: props.filterModel.columnField,
+                not: props.filterModel.not,
+                operatorValue: props.filterModel.operatorValue,
+                value: e.target.value,
+              })
+            }
+            className={classes.selector}
+            labelId={`valueLabel-${props.id}`}
+            id={`value-${props.id}`}
+            autoWidth
+          >
+            {values.map((value) => (
+              <MenuItem key={value} value={value}>
+                {value}
+              </MenuItem>
+            ))}
+          </Select>
+          <FormHelperText error={valueError}>Required</FormHelperText>
+        </Fragment>
+      )
     }
 
     switch (columnType) {
@@ -275,7 +316,7 @@ export default function GridToolbarFilterItem(props) {
           id={`operatorValue-${props.id}`}
           autoWidth
         >
-          {operatorValues[columnType].map((operator, index) => (
+          {operators.map((operator, index) => (
             <MenuItem key={'operator-' + index} value={operator}>
               {operator}
             </MenuItem>
@@ -307,6 +348,7 @@ GridToolbarFilterItem.propTypes = {
       autocomplete: PropTypes.string,
       release: PropTypes.string,
       disabled: PropTypes.bool,
+      values: PropTypes.arrayOf(PropTypes.string),
     }).isRequired
   ),
   autocompleteData: PropTypes.array,

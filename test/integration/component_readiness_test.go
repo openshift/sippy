@@ -29,37 +29,25 @@ func crTestDB(t *testing.T) *db.DB {
 	return intutil.NewTestDB(t, pgContainer)
 }
 
+// createVariantCombination, createProwJobWithVC, createTestOwnership, and
+// createCumulativeSummary below are thin delegates to the shared intutil fixture helpers,
+// kept as file-local wrappers (same names/signatures as before) so the ~250 call sites in
+// this file didn't need to change. The actual row-creation logic lives once in
+// test/integration/util/fixtures.go, shared with test/integration/tests_report_test.go.
+
 func createVariantCombination(t *testing.T, dbc *db.DB, variants []string) models.VariantCombination {
 	t.Helper()
-	vc := models.VariantCombination{Variants: pq.StringArray(variants)}
-	require.NoError(t, dbc.DB.Create(&vc).Error)
-	return vc
+	return intutil.CreateVariantCombination(t, dbc, variants)
 }
 
 func createProwJobWithVC(t *testing.T, dbc *db.DB, name, release string, vc models.VariantCombination) models.ProwJob {
 	t.Helper()
-	job := models.ProwJob{
-		Name:                 name,
-		Release:              release,
-		Variants:             vc.Variants,
-		VariantCombinationID: &vc.ID,
-	}
-	require.NoError(t, dbc.DB.Create(&job).Error)
-	return job
+	return intutil.CreateProwJobWithOptions(t, dbc, name, release, nil, intutil.WithVariantCombination(vc))
 }
 
 func createTestOwnership(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, uniqueID, component string, caps []string) models.TestOwnership {
 	t.Helper()
-	tow := models.TestOwnership{
-		TestID:       testID,
-		SuiteID:      suiteID,
-		UniqueID:     uniqueID,
-		Name:         uniqueID,
-		Component:    component,
-		Capabilities: pq.StringArray(caps),
-	}
-	require.NoError(t, dbc.DB.Create(&tow).Error)
-	return tow
+	return intutil.CreateTestOwnership(t, dbc, testID, suiteID, uniqueID, component, intutil.WithTestOwnershipCapabilities(caps))
 }
 
 type cumulativeSummaryOpts struct {
@@ -93,24 +81,17 @@ func createCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release 
 	for _, fn := range options {
 		fn(&o)
 	}
-	tcs := models.TestCumulativeSummary{
-		Date:                 date,
-		Release:              release,
-		TestID:               testID,
-		ProwJobID:            prowJobID,
-		SuiteID:              suiteID,
-		Lifecycle:            o.lifecycle,
-		PrefixSumRuns:        runs,
-		PrefixSumSuccesses:   successes,
-		PrefixSumFailures:    o.prefixSumFailures,
-		PrefixSumFlakes:      flakes,
-		PrefixMaxLastFailure: o.prefixMaxLastFailure,
-		PrefixMaxLastSuccess: o.prefixMaxLastSuccess,
+	intutilOpts := []intutil.CumulativeSummaryOption{intutil.WithCumulativeSummaryFailures(o.prefixSumFailures)}
+	if o.lifecycle != "" {
+		intutilOpts = append(intutilOpts, intutil.WithCumulativeSummaryLifecycle(o.lifecycle))
 	}
-	if tcs.Lifecycle == "" {
-		tcs.Lifecycle = "blocking"
+	if o.prefixMaxLastFailure != nil {
+		intutilOpts = append(intutilOpts, intutil.WithCumulativeSummaryLastFailure(*o.prefixMaxLastFailure))
 	}
-	require.NoError(t, dbc.DB.Create(&tcs).Error)
+	if o.prefixMaxLastSuccess != nil {
+		intutilOpts = append(intutilOpts, intutil.WithCumulativeSummaryLastSuccess(*o.prefixMaxLastSuccess))
+	}
+	intutil.CreateCumulativeSummary(t, dbc, date, release, testID, prowJobID, suiteID, runs, successes, flakes, intutilOpts...)
 }
 
 func createGARawData(t *testing.T, dbc *db.DB, release string, windowDays int, testID, prowJobID, suiteID uint, runs, passes, flakes int64) {
@@ -171,17 +152,8 @@ func setJobRunLabels(t *testing.T, dbc *db.DB, runID uint, labels []string) {
 
 func createTestOwnershipFull(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, uniqueID, component string, caps []string, jiraComponentID *uint) models.TestOwnership {
 	t.Helper()
-	tow := models.TestOwnership{
-		TestID:          testID,
-		SuiteID:         suiteID,
-		UniqueID:        uniqueID,
-		Name:            uniqueID,
-		Component:       component,
-		Capabilities:    pq.StringArray(caps),
-		JiraComponentID: jiraComponentID,
-	}
-	require.NoError(t, dbc.DB.Create(&tow).Error)
-	return tow
+	return intutil.CreateTestOwnership(t, dbc, testID, suiteID, uniqueID, component,
+		intutil.WithTestOwnershipCapabilities(caps), intutil.WithTestOwnershipJiraComponentID(jiraComponentID))
 }
 
 func uintPtr(v uint) *uint { return &v }

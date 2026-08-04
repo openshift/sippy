@@ -466,6 +466,14 @@ Endpoint: `/api/tests`
 | sort     | asc / desc     | Sort type, ascending or descending                                                        | "asc" or "desc"                                     |
 | limit    | Integer        | The maximum amount of results to return                                                   | N/A                                                 |
 
+`filter` supports a `lifecycle` field (`equals` or `!=` operators only; other operators return a
+400) to restrict results to a test lifecycle (`blocking` or `informing`). It narrows which
+underlying test runs are aggregated; it is not returned as a field on results, and
+blocking/informing runs for the same test are combined into a single row when no lifecycle filter
+is applied. This filter is only supported against the Postgres-backed report (`/api/tests`); using
+it against `/api/tests/v2` (BigQuery) returns a 400, since the underlying BigQuery comparison
+tables don't carry a lifecycle column.
+
 <details>
 <summary>Example response</summary>
 

@@ -844,6 +844,11 @@ function TestTable(props) {
       },
     },
     // These are here just to allow filtering
+    lifecycle: {
+      field: 'lifecycle',
+      headerName: 'Lifecycle',
+      values: ['blocking', 'informing'],
+    },
     current_runs: {
       field: 'current_runs',
       headerName: 'Current runs',

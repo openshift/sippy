@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgconn"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/googleapi"
+
+	"github.com/openshift/sippy/pkg/filter"
 )
 
 func RespondWithJSON(statusCode int, w http.ResponseWriter, data interface{}) {
@@ -66,6 +68,9 @@ func IsBadRequestError(err error) bool {
 	var apiErr *googleapi.Error
 	if errors.As(err, &apiErr) && apiErr.Code == http.StatusBadRequest &&
 		len(apiErr.Errors) > 0 && apiErr.Errors[0].Reason == bqInvalidQuery {
+		return true
+	}
+	if errors.Is(err, filter.ErrUnsupportedOperator) {
 		return true
 	}
 	return false
