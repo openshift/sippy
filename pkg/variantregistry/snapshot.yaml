@@ -40242,6 +40242,42 @@ periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-llc-5.0-e2e-telcov10n-funct
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nrop-stage-nightly-e2e-telcov10n-nrop-tests-5-0-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nrop-stage-nightly-e2e-telcov10n-nrop-tls-scanner-5-0-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nto-nightly-e2e-telcov10n-nto-tests-v2-t0-bm-5-nightly:
     Aggregation: none
     Architecture: amd64
@@ -67972,29 +68008,6 @@ periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-e2e-ovn-serial-aws-multi-a
     Scheduler: default
     SecurityMode: default
     Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-e2e-ovn-techpreview-multi-z-z:
-    Aggregation: none
-    Architecture: s390x
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-e2e-ovn-techpreview-remote-s2s-libvirt-multi-p-p:
@@ -294000,7 +294013,7 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-aws-driver-toolkit:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: informing
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -336216,6 +336229,42 @@ periodic-ci-rhpit-interop-tests-main-retrigger-poc-failure-test:
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-rhpit-interop-tests-main-weekly_trigger-acm-virt-interop-trigger:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--acm-virt
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-rhpit-interop-tests-main-weekly_trigger-acm-virt-interop-watcher-bot-message:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--acm-virt
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
