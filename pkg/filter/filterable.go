@@ -2,6 +2,7 @@ package filter
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -47,6 +48,13 @@ const (
 	OperatorArithmeticLessThan            Operator = "<"
 	OperatorArithmeticLessThanOrEquals    Operator = "<="
 )
+
+// ErrUnsupportedOperator indicates a filter item used an operator that isn't valid for its
+// field. Callers building hand-rolled SQL for a specific field (rather than going through
+// Filter.ToSQL's Filterable-driven dispatch) can wrap this with field-specific context via
+// fmt.Errorf("%w: ...", ErrUnsupportedOperator) so API handlers can classify it as a client
+// error (400) rather than an internal failure.
+var ErrUnsupportedOperator = errors.New("unsupported filter operator")
 
 // Filter is a collection of FilterItem, with a link operator. It is used to chain
 // filters together, for example: where name contains aws and runs > 10.

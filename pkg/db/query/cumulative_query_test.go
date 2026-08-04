@@ -1,6 +1,8 @@
 package query
 
 import (
+	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -179,6 +181,146 @@ func TestNameFilterConditions(t *testing.T) {
 				if got, ok := args[0].(string); !ok || got != tc.wantFirstArg {
 					t.Errorf("args[0] = %v, want %q", args[0], tc.wantFirstArg)
 				}
+			}
+		})
+	}
+}
+
+func TestLifecycleWhereClause(t *testing.T) {
+	tests := []struct {
+		name       string
+		filter     *filter.Filter
+		wantClause string
+		wantArgs   []any
+		wantErr    bool
+	}{
+		{
+			name:       "nil filter",
+			filter:     nil,
+			wantClause: "",
+		},
+		{
+			name:       "empty items",
+			filter:     &filter.Filter{Items: []filter.FilterItem{}},
+			wantClause: "",
+		},
+		{
+			name: "equals",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "blocking"},
+			}},
+			wantClause: "e.lifecycle = ?",
+			wantArgs:   []any{"blocking"},
+		},
+		{
+			name: "arithmetic equals",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorArithmeticEquals, Value: "informing"},
+			}},
+			wantClause: "e.lifecycle = ?",
+			wantArgs:   []any{"informing"},
+		},
+		{
+			name: "negative equals",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "informing", Not: true},
+			}},
+			wantClause: "NOT(e.lifecycle = ?)",
+			wantArgs:   []any{"informing"},
+		},
+		{
+			name: "not equals",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorArithmeticNotEquals, Value: "blocking"},
+			}},
+			wantClause: "e.lifecycle <> ?",
+			wantArgs:   []any{"blocking"},
+		},
+		{
+			name: "negated not equals",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorArithmeticNotEquals, Value: "informing", Not: true},
+			}},
+			wantClause: "NOT(e.lifecycle <> ?)",
+			wantArgs:   []any{"informing"},
+		},
+		{
+			name: "multiple items default to AND",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "blocking"},
+				{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "informing"},
+			}},
+			wantClause: "(e.lifecycle = ? AND e.lifecycle = ?)",
+			wantArgs:   []any{"blocking", "informing"},
+		},
+		{
+			name: "multiple items with explicit AND",
+			filter: &filter.Filter{
+				LinkOperator: filter.LinkOperatorAnd,
+				Items: []filter.FilterItem{
+					{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "blocking"},
+					{Field: "lifecycle", Operator: filter.OperatorArithmeticNotEquals, Value: "informing"},
+				},
+			},
+			wantClause: "(e.lifecycle = ? AND e.lifecycle <> ?)",
+			wantArgs:   []any{"blocking", "informing"},
+		},
+		{
+			// This is the case the OR-linked bug affected: selecting both lifecycles via
+			// two "equals" items must produce a union, not an unsatisfiable AND.
+			name: "multiple items with OR",
+			filter: &filter.Filter{
+				LinkOperator: filter.LinkOperatorOr,
+				Items: []filter.FilterItem{
+					{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "blocking"},
+					{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "informing"},
+				},
+			},
+			wantClause: "(e.lifecycle = ? OR e.lifecycle = ?)",
+			wantArgs:   []any{"blocking", "informing"},
+		},
+		{
+			name: "starts with is rejected",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorStartsWith, Value: "block"},
+			}},
+			wantErr: true,
+		},
+		{
+			name: "contains is rejected",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorContains, Value: "lock"},
+			}},
+			wantErr: true,
+		},
+		{
+			name: "ends with is rejected",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "lifecycle", Operator: filter.OperatorEndsWith, Value: "ing"},
+			}},
+			wantErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			clause, args, err := lifecycleWhereClause(tc.filter, "e.lifecycle")
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected an error, got nil")
+				}
+				if !errors.Is(err, filter.ErrUnsupportedOperator) {
+					t.Errorf("err = %v, want wrapped filter.ErrUnsupportedOperator", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if clause != tc.wantClause {
+				t.Errorf("clause = %q, want %q", clause, tc.wantClause)
+			}
+			if !slices.Equal(args, tc.wantArgs) {
+				t.Errorf("args = %v, want %v", args, tc.wantArgs)
 			}
 		})
 	}

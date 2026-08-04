@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 
@@ -29,6 +30,27 @@ func WithKind(kind models.ProwKind) ProwJobOption {
 	return func(j *models.ProwJob) {
 		j.Kind = kind
 	}
+}
+
+// WithVariantCombination sets both Variants and VariantCombinationID from an existing
+// VariantCombination. In production, VariantCombinationID is populated by a database
+// trigger; the integration schema intentionally skips triggers (see SetupIntegrationSchema),
+// so tests must set it explicitly via this option.
+func WithVariantCombination(vc models.VariantCombination) ProwJobOption {
+	return func(j *models.ProwJob) {
+		j.Variants = vc.Variants
+		j.VariantCombinationID = &vc.ID
+	}
+}
+
+// CreateVariantCombination creates a variant_combinations row. Pass the result to
+// WithVariantCombination when creating a ProwJob so cumulative-summary-based reports
+// (which join through prow_jobs.variant_combination_id) can find it.
+func CreateVariantCombination(t *testing.T, dbc *db.DB, variants []string) models.VariantCombination {
+	t.Helper()
+	vc := models.VariantCombination{Variants: pq.StringArray(variants)}
+	require.NoError(t, dbc.DB.Create(&vc).Error, "creating VariantCombination %v", variants)
+	return vc
 }
 
 func CreateProwJobWithOptions(t *testing.T, dbc *db.DB, name, release string, variants []string, opts ...ProwJobOption) models.ProwJob {
@@ -71,6 +93,57 @@ func CreateSuite(t *testing.T, dbc *db.DB, name string) models.Suite {
 	suite := models.Suite{Name: name}
 	require.NoError(t, dbc.DB.Create(&suite).Error, "creating Suite %q", name)
 	return suite
+}
+
+// CreateJiraComponent creates a jira_components row. Test report queries resolve
+// TestOwnership.JiraComponent (a plain string) against JiraComponent.Name to populate
+// jira_component_id, so the two must match for that join to succeed.
+func CreateJiraComponent(t *testing.T, dbc *db.DB, name string) models.JiraComponent {
+	t.Helper()
+	jc := models.JiraComponent{Name: name}
+	require.NoError(t, dbc.DB.Create(&jc).Error, "creating JiraComponent %q", name)
+	return jc
+}
+
+type TestOwnershipOption func(*models.TestOwnership)
+
+// WithTestOwnershipJiraComponent sets the string joined against JiraComponent.Name.
+// Note this is distinct from TestOwnership.JiraComponentID, which test report queries
+// don't use for the jira_components join.
+func WithTestOwnershipJiraComponent(name string) TestOwnershipOption {
+	return func(to *models.TestOwnership) {
+		to.JiraComponent = name
+	}
+}
+
+func WithTestOwnershipJiraComponentID(id *uint) TestOwnershipOption {
+	return func(to *models.TestOwnership) {
+		to.JiraComponentID = id
+	}
+}
+
+func WithTestOwnershipCapabilities(caps []string) TestOwnershipOption {
+	return func(to *models.TestOwnership) {
+		to.Capabilities = pq.StringArray(caps)
+	}
+}
+
+// CreateTestOwnership creates a test_ownerships row scoped to a specific suite. Pass
+// suiteID as nil for a suite-agnostic ownership row.
+func CreateTestOwnership(t *testing.T, dbc *db.DB, testID uint, suiteID *uint, uniqueID, component string, opts ...TestOwnershipOption) models.TestOwnership {
+	t.Helper()
+	to := models.TestOwnership{
+		TestID:    testID,
+		SuiteID:   suiteID,
+		UniqueID:  uniqueID,
+		Name:      uniqueID,
+		Component: component,
+	}
+	for _, opt := range opts {
+		opt(&to)
+	}
+	require.NoError(t, dbc.DB.Create(&to).Error, "creating TestOwnership for test %d", testID)
+	return to
 }
 
 type ProwJobRunTestOption func(*models.ProwJobRunTest)
@@ -126,4 +199,71 @@ func CreateBug(t *testing.T, dbc *db.DB, key, status, summary string, lastChange
 	}
 	require.NoError(t, dbc.DB.Create(&bug).Error, "creating Bug %q", key)
 	return bug
+}
+
+// CreateBugForTests creates a bug associated with tests via the bug_tests join table
+// (as opposed to CreateBug, which associates via bug_jobs). Test report queries
+// (openBugsSubquery) count open bugs through this association.
+func CreateBugForTests(t *testing.T, dbc *db.DB, key, status, summary string, lastChangeTime time.Time, tests []models.Test) models.Bug {
+	t.Helper()
+	bug := models.Bug{
+		Key:            key,
+		Status:         status,
+		Summary:        summary,
+		LastChangeTime: lastChangeTime,
+		Tests:          tests,
+	}
+	require.NoError(t, dbc.DB.Create(&bug).Error, "creating Bug %q", key)
+	return bug
+}
+
+type CumulativeSummaryOption func(*models.TestCumulativeSummary)
+
+func WithCumulativeSummaryLifecycle(lifecycle string) CumulativeSummaryOption {
+	return func(tcs *models.TestCumulativeSummary) {
+		tcs.Lifecycle = lifecycle
+	}
+}
+
+func WithCumulativeSummaryFailures(failures int64) CumulativeSummaryOption {
+	return func(tcs *models.TestCumulativeSummary) {
+		tcs.PrefixSumFailures = failures
+	}
+}
+
+func WithCumulativeSummaryLastFailure(t time.Time) CumulativeSummaryOption {
+	return func(tcs *models.TestCumulativeSummary) {
+		tcs.PrefixMaxLastFailure = &t
+	}
+}
+
+func WithCumulativeSummaryLastSuccess(t time.Time) CumulativeSummaryOption {
+	return func(tcs *models.TestCumulativeSummary) {
+		tcs.PrefixMaxLastSuccess = &t
+	}
+}
+
+// CreateCumulativeSummary creates a test_cumulative_summaries row directly with the given
+// prefix sums, rather than deriving them from raw run data. Prefix sums are cumulative
+// totals as of Date: callers computing a period count from two rows (e.g. for dates end
+// and boundary) get period_count = end.PrefixSumX - boundary.PrefixSumX. Lifecycle
+// defaults to "blocking" (matching the column's DB default) unless overridden.
+func CreateCumulativeSummary(t *testing.T, dbc *db.DB, date civil.Date, release string, testID, prowJobID, suiteID uint, runs, successes, flakes int64, opts ...CumulativeSummaryOption) models.TestCumulativeSummary {
+	t.Helper()
+	tcs := models.TestCumulativeSummary{
+		Date:               date,
+		Release:            release,
+		TestID:             testID,
+		ProwJobID:          prowJobID,
+		SuiteID:            suiteID,
+		Lifecycle:          "blocking",
+		PrefixSumRuns:      runs,
+		PrefixSumSuccesses: successes,
+		PrefixSumFlakes:    flakes,
+	}
+	for _, opt := range opts {
+		opt(&tcs)
+	}
+	require.NoError(t, dbc.DB.Create(&tcs).Error, "creating TestCumulativeSummary for test %d on %s", testID, date)
+	return tcs
 }

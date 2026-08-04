@@ -439,11 +439,13 @@ func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, 
 func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, dbc *db.DB, sample, base query.DateRange) (result testResults, errs []error) {
 	now := time.Now()
 
-	var nameFilter, variantFilter, processedFilter *filter.Filter
+	var nameFilter, variantFilter, processedFilter, lifecycleFilter *filter.Filter
 	if spec.Filter != nil {
-		var rawFilter *filter.Filter
-		rawFilter, processedFilter = spec.Filter.Split([]string{"name", "variants"})
-		nameFilter, variantFilter = rawFilter.Split([]string{"name"})
+		var nameVariantsAndLifecycle *filter.Filter
+		nameVariantsAndLifecycle, processedFilter = spec.Filter.Split([]string{"name", "variants", "lifecycle"})
+		var variantsAndLifecycle *filter.Filter
+		nameFilter, variantsAndLifecycle = nameVariantsAndLifecycle.Split([]string{"name"})
+		variantFilter, lifecycleFilter = variantsAndLifecycle.Split([]string{"variants"})
 	}
 
 	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id"}
@@ -453,7 +455,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	if spec.Collapse {
 		workMem = "16MB"
 
-		collapsedQuery, err := query.TestReportQueryCollapsed(dbc, spec.Release, sample, base, variantFilter, nameFilter)
+		collapsedQuery, err := query.TestReportQueryCollapsed(dbc, spec.Release, sample, base, variantFilter, nameFilter, lifecycleFilter)
 		if err != nil {
 			errs = append(errs, err)
 			return
@@ -471,7 +473,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 			Where("current_runs > 0 or previous_runs > 0")
 		finalResults = dbc.DB.Table("(?) as final_results", processedResults)
 	} else {
-		rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(dbc, spec.Release, sample, base, nameFilter, variantFilter, processedFilter)
+		rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(dbc, spec.Release, sample, base, nameFilter, variantFilter, processedFilter, lifecycleFilter)
 		if err != nil {
 			errs = append(errs, err)
 			return
@@ -588,7 +590,17 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	// assembled our final temporary table.
 	var rawFilter, processedFilter *filter.Filter
 	if spec.Filter != nil {
-		rawFilter, processedFilter = spec.Filter.Split([]string{"name", "variants"})
+		var lifecycleFilter *filter.Filter
+		lifecycleFilter, processedFilter = spec.Filter.Split([]string{"lifecycle"})
+		if len(lifecycleFilter.Items) > 0 {
+			// junit_7day_comparison/junit_2day_comparison are materialized BigQuery tables
+			// populated outside this repo and have no lifecycle column, unlike the Postgres
+			// cumulative summary tables. Fail clearly rather than silently ignoring the filter.
+			return testResultsBQ{}, []error{&ValidationError{
+				Message: "lifecycle filter is not supported for the BigQuery-backed tests report",
+			}}
+		}
+		rawFilter, processedFilter = processedFilter.Split([]string{"name", "variants"})
 	}
 	table := "junit_7day_comparison"
 	if spec.Period == "twoDay" {
