@@ -916,6 +916,44 @@ func (s *Server) jsonGetRecentTestFailures(w http.ResponseWriter, req *http.Requ
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
+func (s *Server) jsonBackendDisruptionByRun(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "backend disruption API requires BigQuery configuration")
+		return
+	}
+
+	jobRunNamesParam := param.SafeRead(req, "job_run_names")
+	if jobRunNamesParam == "" {
+		failureResponse(w, http.StatusBadRequest, "job_run_names parameter is required (comma-separated prow build IDs)")
+		return
+	}
+	jobRunNames := strings.Split(jobRunNamesParam, ",")
+
+	backendName := param.SafeRead(req, "backend_name")
+
+	var minTime, maxTime time.Time
+	if s.db != nil {
+		row := s.db.DB.Raw("SELECT MIN(timestamp), MAX(timestamp) FROM prow_job_runs WHERE id IN ?", jobRunNames).Row()
+		if err := row.Scan(&minTime, &maxTime); err != nil {
+			log.WithError(err).Warn("could not look up job run timestamps from postgres, falling back to no time bound")
+		}
+	}
+
+	result, err := api.GetBackendDisruptionByRun(req.Context(), s.bigQueryClient, jobRunNames, backendName, minTime, maxTime)
+	if err != nil {
+		log.WithError(err).Error("error querying backend disruption")
+		failureResponse(w, http.StatusInternalServerError, "error querying backend disruption")
+		return
+	}
+
+	baseURL := api.GetBaseURL(req)
+	result.Links = map[string]string{
+		"self": fmt.Sprintf("%s/api/jobs/runs/disruption?%s", baseURL, req.URL.Query().Encode()),
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func (s *Server) jsonTestRunsAndOutputsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
 		failureResponse(w, http.StatusBadRequest, "test runs API is only available when google-service-account-credential-file is configured")
@@ -2610,6 +2648,15 @@ func (s *Server) Serve() {
 			Capabilities:      []string{ComponentReadinessCapability},
 			CacheTime:         1 * time.Hour,
 			HandlerFunc:       s.jsonTestRunsAndOutputsFromBigQuery,
+			RateLimitRequests: 25,
+			RateLimitPeriod:   1 * time.Hour,
+		},
+		{
+			EndpointPath:      "/api/jobs/runs/disruption",
+			Description:       "Returns per-run backend disruption seconds from BigQuery",
+			Capabilities:      []string{ComponentReadinessCapability},
+			CacheTime:         1 * time.Hour,
+			HandlerFunc:       s.jsonBackendDisruptionByRun,
 			RateLimitRequests: 25,
 			RateLimitPeriod:   1 * time.Hour,
 		},

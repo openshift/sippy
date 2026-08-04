@@ -1020,6 +1020,24 @@ type DisruptionReportRow struct {
 	OS                       string  `json:"os"`
 }
 
+type BackendDisruptionRunRow struct {
+	BackendName        string `json:"backend_name"`
+	DisruptionSeconds  int    `json:"disruption_seconds"`
+	JobName            string `json:"job_name"`
+	JobRunName         string `json:"job_run_name"`
+	JobRunStartTime    string `json:"job_run_start_time"`
+	JobRunEndTime      string `json:"job_run_end_time"`
+	Cluster            string `json:"cluster"`
+	ReleaseTag         string `json:"release_tag"`
+	MasterNodesUpdated string `json:"master_nodes_updated"`
+	JobRunStatus       string `json:"job_run_status"`
+}
+
+type BackendDisruptionRunsResult struct {
+	Rows  []BackendDisruptionRunRow `json:"rows"`
+	Links map[string]string         `json:"links,omitempty"`
+}
+
 type SippyViews struct {
 	ComponentReadiness []crview.View `json:"component_readiness" yaml:"component_readiness"`
 }

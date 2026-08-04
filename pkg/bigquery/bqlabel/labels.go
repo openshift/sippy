@@ -100,6 +100,7 @@ const (
 	PRTestResults                       QueryValue = "pr-test-results"
 	CacheLookup                         QueryValue = "cache-lookup"
 	GATestStatusLoader                  QueryValue = "ga-test-status-loader"
+	BackendDisruptionByRun              QueryValue = "backend-disruption-by-run"
 )
 
 // sanitizeLabelValue sanitizes a label value to meet BigQuery requirements:
