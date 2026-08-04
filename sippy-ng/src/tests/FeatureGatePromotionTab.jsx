@@ -164,6 +164,21 @@ export default function FeatureGatePromotionTab(props) {
   if (!isFinite(minRuns)) minRuns = 0
   if (!isFinite(minPassRate)) minPassRate = 0
 
+  const analyzeAllPath =
+    matchingJobs && matchingJobs.length > 0
+      ? `/jobs/${release}/analysis?filters=${encodeURIComponent(
+          JSON.stringify({
+            items: matchingJobs.map((job, i) => ({
+              id: i,
+              columnField: 'name',
+              operatorValue: 'equals',
+              value: job,
+            })),
+            linkOperator: 'or',
+          })
+        )}`
+      : null
+
   const warnings = data.warnings || []
   const errors = data.errors || []
 
@@ -281,91 +296,180 @@ export default function FeatureGatePromotionTab(props) {
           No variant data available for this feature gate.
         </Alert>
       ) : (
-        <TableContainer sx={{ mt: 2 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>
-                  <TableSortLabel
-                    active={orderBy === 'test_name'}
-                    direction={orderBy === 'test_name' ? order : 'asc'}
-                    onClick={() => handleSort('test_name')}
-                  >
-                    Test Name
-                  </TableSortLabel>
-                </TableCell>
-                {variants.map((v, i) => (
-                  <TableCell key={i} align="center" sx={{ minWidth: 80 }}>
-                    <TableSortLabel
-                      active={orderBy === String(i)}
-                      direction={orderBy === String(i) ? order : 'asc'}
-                      onClick={() => handleSort(String(i))}
+        <>
+          <PromotionTable
+            title="Feature Gate Tests"
+            description="Tests explicitly annotated with this feature gate ([FeatureGate] or [OCPFeatureGate] in the test name). Each test must pass at least 95% of the time with at least 14 runs on every required platform."
+            testNames={sortedTestNames.filter(
+              (n) => !n.includes('install should succeed')
+            )}
+            variants={variants}
+            variantTestMap={variantTestMap}
+            release={release}
+            featureGate={featureGate}
+            navigate={navigate}
+            thresholds={thresholds}
+            orderBy={orderBy}
+            order={order}
+            onSort={handleSort}
+          />
+          {featureGate.includes('Install') && (
+            <PromotionTable
+              title="Install Tests"
+              description={
+                <>
+                  Install tests for this installer feature gate in{' '}
+                  {analyzeAllPath ? (
+                    <Link
+                      to={analyzeAllPath}
+                      style={{ textDecoration: 'underline' }}
                     >
-                      <span style={{ whiteSpace: 'normal' }}>
-                        {variantColumnHeader(v).map((part, pi) => (
-                          <span key={pi}>
-                            {pi > 0 && <br />}
-                            {part}
-                          </span>
-                        ))}
-                      </span>
-                    </TableSortLabel>
-                    {v.optional && (
-                      <Chip
-                        label="Optional"
-                        size="small"
-                        color="info"
-                        sx={{ mt: 0.5, fontSize: '0.7rem', display: 'block' }}
-                      />
-                    )}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedTestNames.map((testName) => (
-                <TableRow key={testName}>
-                  <TableCell
-                    sx={{
-                      maxWidth: 500,
-                      wordBreak: 'break-word',
-                      fontSize: '0.85em',
-                      py: 1.5,
-                      pr: 2,
-                    }}
-                  >
-                    {testName}
-                  </TableCell>
-                  {variants.map((v, vi) => {
-                    const vKey = variantKey(v)
-                    const tr = variantTestMap[vKey]?.[testName]
-                    return (
-                      <PromotionCell
-                        key={vi}
-                        testResult={tr}
-                        variant={v}
-                        testName={testName}
-                        release={release}
-                        featureGate={featureGate}
-                        navigate={navigate}
-                        requiredRuns={thresholds.requiredRuns}
-                        requiredPassRate={thresholds.requiredPassRate}
-                      />
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                      jobs owned by this capability
+                    </Link>
+                  ) : (
+                    'jobs owned by this capability'
+                  )}
+                  . These verify that enabling this feature gate does not break
+                  cluster installation.
+                </>
+              }
+              testNames={sortedTestNames.filter((n) =>
+                n.includes('install should succeed')
+              )}
+              variants={variants}
+              variantTestMap={variantTestMap}
+              release={release}
+              featureGate={featureGate}
+              navigate={navigate}
+              thresholds={thresholds}
+              orderBy={orderBy}
+              order={order}
+              onSort={handleSort}
+            />
+          )}
+        </>
       )}
 
       <CapabilityRegressionTable
         regressions={data.capability_test_regressions}
         release={release}
         featureGate={featureGate}
-        matchingJobs={matchingJobs}
+        analyzeAllPath={analyzeAllPath}
       />
+    </Box>
+  )
+}
+
+function PromotionTable({
+  title,
+  description,
+  testNames,
+  variants,
+  variantTestMap,
+  release,
+  featureGate,
+  navigate,
+  thresholds,
+  orderBy,
+  order,
+  onSort,
+}) {
+  if (testNames.length === 0) return null
+
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        {title}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        {description}
+      </Typography>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>
+                <TableSortLabel
+                  active={orderBy === 'test_name'}
+                  direction={orderBy === 'test_name' ? order : 'asc'}
+                  onClick={() => onSort('test_name')}
+                >
+                  Test Name
+                </TableSortLabel>
+              </TableCell>
+              {variants.map((v, i) => (
+                <TableCell key={i} align="center" sx={{ minWidth: 80 }}>
+                  <TableSortLabel
+                    active={orderBy === String(i)}
+                    direction={orderBy === String(i) ? order : 'asc'}
+                    onClick={() => onSort(String(i))}
+                  >
+                    <span style={{ whiteSpace: 'normal' }}>
+                      {variantColumnHeader(v).map((part, pi) => (
+                        <span key={pi}>
+                          {pi > 0 && <br />}
+                          {part}
+                        </span>
+                      ))}
+                    </span>
+                  </TableSortLabel>
+                  {v.optional && (
+                    <Chip
+                      label="Optional"
+                      size="small"
+                      color="info"
+                      sx={{ mt: 0.5, fontSize: '0.7rem', display: 'block' }}
+                    />
+                  )}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {testNames.map((testName) => (
+              <TableRow key={testName}>
+                <TableCell
+                  sx={{
+                    maxWidth: 500,
+                    wordBreak: 'break-word',
+                    fontSize: '0.85em',
+                    py: 1.5,
+                    pr: 2,
+                  }}
+                >
+                  <Link
+                    to={buildCapabilityTestAnalysisPath(
+                      release,
+                      featureGate,
+                      testName
+                    )}
+                    style={{ textDecoration: 'underline' }}
+                  >
+                    {testName}
+                  </Link>
+                </TableCell>
+                {variants.map((v, vi) => {
+                  const vKey = variantKey(v)
+                  const tr = variantTestMap[vKey]?.[testName]
+                  return (
+                    <PromotionCell
+                      key={vi}
+                      testResult={tr}
+                      variant={v}
+                      testName={testName}
+                      release={release}
+                      featureGate={featureGate}
+                      navigate={navigate}
+                      requiredRuns={thresholds.requiredRuns}
+                      requiredPassRate={thresholds.requiredPassRate}
+                    />
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   )
 }
@@ -402,7 +506,7 @@ function CapabilityRegressionTable({
   regressions,
   release,
   featureGate,
-  matchingJobs,
+  analyzeAllPath,
 }) {
   const navigate = useNavigate()
 
@@ -410,21 +514,6 @@ function CapabilityRegressionTable({
 
   const active = regressions.filter((r) => !r.ignored)
   const ignored = regressions.filter((r) => r.ignored)
-
-  const analyzeAllPath =
-    matchingJobs && matchingJobs.length > 0
-      ? `/jobs/${release}/analysis?filters=${encodeURIComponent(
-          JSON.stringify({
-            items: matchingJobs.map((job, i) => ({
-              id: i,
-              columnField: 'name',
-              operatorValue: 'equals',
-              value: job,
-            })),
-            linkOperator: 'or',
-          })
-        )}`
-      : null
 
   return (
     <Box sx={{ mt: 3 }}>
@@ -666,11 +755,26 @@ FeatureGatePromotionTab.propTypes = {
   matchingJobs: PropTypes.array,
 }
 
+PromotionTable.propTypes = {
+  title: PropTypes.string.isRequired,
+  description: PropTypes.node.isRequired,
+  testNames: PropTypes.array.isRequired,
+  variants: PropTypes.array.isRequired,
+  variantTestMap: PropTypes.object.isRequired,
+  release: PropTypes.string.isRequired,
+  featureGate: PropTypes.string.isRequired,
+  navigate: PropTypes.func.isRequired,
+  thresholds: PropTypes.object.isRequired,
+  orderBy: PropTypes.string.isRequired,
+  order: PropTypes.string.isRequired,
+  onSort: PropTypes.func.isRequired,
+}
+
 CapabilityRegressionTable.propTypes = {
   regressions: PropTypes.array,
   release: PropTypes.string.isRequired,
   featureGate: PropTypes.string.isRequired,
-  matchingJobs: PropTypes.array,
+  analyzeAllPath: PropTypes.string,
 }
 
 PromotionCell.propTypes = {
