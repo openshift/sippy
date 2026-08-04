@@ -2,90 +2,117 @@ package bugloader
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"net/url"
-	"slices"
 	"strconv"
-	"strings"
 	"time"
 
-	bqgo "cloud.google.com/go/bigquery"
+	bq "cloud.google.com/go/bigquery"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/lib/pq"
-	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
-	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
-	"gorm.io/gorm/clause"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/models"
 )
 
-const (
-	// Unfortunate cross-project join
-	ComponentMappingProject = "openshift-gce-devel"
-	ComponentMappingDataset = "ci_analysis_us"
-	ComponentMappingTable   = "component_mapping_latest"
+const ticketRecencyFilter = `t.summary IS NOT NULL
+    AND (
+      last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
+      OR (UPPER(t.status.name) NOT IN ('CLOSED', 'VERIFIED')
+          AND last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY))
+    )`
 
-	TicketDataQuery = `WITH TicketData AS (
+const ticketCTE = `WITH TicketData AS (
   SELECT
     t.*,
     c.message AS comment
   FROM
     openshift-ci-data-analysis.jira_data.tickets_dedup t
   LEFT JOIN UNNEST(t.comments) AS c
-  WHERE t.summary IS NOT NULL 
-    AND (
-      (last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))
-      OR
-      (UPPER(t.status.name) NOT IN ('CLOSED', 'VERIFIED') AND last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY))
-    )
+  WHERE ` + ticketRecencyFilter + `
 )
+`
+
+const allBugsQuery = `
 SELECT
-  t.issue.key as key,
+  t.issue.key AS key,
   t.issue.id AS jira_id,
-  t.summary as summary,
-  j.name AS link_name,
-  t.last_changed_time as last_changed_time,
-  t.status.name as status,
-  ARRAY(SELECT name FROM UNNEST(affects_versions)) as affects_versions,
-  ARRAY(SELECT name FROM UNNEST(fix_versions)) as fix_versions,
-  ARRAY(SELECT name FROM UNNEST(target_versions)) as target_versions,
-  ARRAY(SELECT name FROM UNNEST(components)) as components,
-  t.labels as labels,
-  t.release_blocker.value as release_blocker
-FROM
-  TicketData t`
-)
+  t.summary AS summary,
+  t.last_changed_time AS last_changed_time,
+  t.status.name AS status,
+  ARRAY(SELECT name FROM UNNEST(affects_versions)) AS affects_versions,
+  ARRAY(SELECT name FROM UNNEST(fix_versions)) AS fix_versions,
+  ARRAY(SELECT name FROM UNNEST(target_versions)) AS target_versions,
+  ARRAY(SELECT name FROM UNNEST(components)) AS components,
+  t.labels AS labels,
+  t.release_blocker.value AS release_blocker
+FROM openshift-ci-data-analysis.jira_data.tickets_dedup t
+WHERE ` + ticketRecencyFilter + `
+`
+
+const testBugQuery = ticketCTE + `
+SELECT DISTINCT
+  t.issue.id AS jira_id,
+  j.name AS link_name
+FROM TicketData t
+JOIN openshift-gce-devel.ci_analysis_us.component_mapping_latest j
+  ON STRPOS(t.summary, j.name) > 0
+  OR STRPOS(t.description, j.name) > 0
+  OR STRPOS(t.comment, j.name) > 0
+WHERE j.name != "upgrade"
+`
+
+const jobBugQuery = ticketCTE + `
+SELECT DISTINCT
+  t.issue.id AS jira_id,
+  j.name AS link_name
+FROM TicketData t
+JOIN (
+  SELECT DISTINCT prowjob_job_name AS name
+  FROM openshift-gce-devel.ci_analysis_us.jobs
+  WHERE prowjob_job_name IS NOT NULL
+    AND prowjob_job_name != ""
+) j
+ON STRPOS(t.summary, j.name) > 0
+OR STRPOS(t.description, j.name) > 0
+OR STRPOS(t.comment, j.name) > 0
+`
 
 type BugLoader struct {
+	ctx    context.Context
 	dbc    *db.DB
 	bqc    *bigquery.Client
 	errors []error
 }
 
-type bigQueryBug struct {
-	ID              uint               `json:"id" bigquery:"id"`
-	Key             string             `json:"key" bigquery:"key"`
-	Status          string             `json:"status" bigquery:"status"`
-	LastChangedTime bqgo.NullTimestamp `json:"last_changed_time" bigquery:"last_changed_time"`
-	Summary         string             `json:"summary" bigquery:"summary"`
-	AffectsVersions []string           `json:"affects_versions" bigquery:"affects_versions"`
-	FixVersions     []string           `json:"fix_versions" bigquery:"fix_versions"`
-	TargetVersions  []string           `json:"target_versions" bigquery:"target_versions"`
-	Components      []string           `json:"components" bigquery:"components"`
-	Labels          []string           `json:"labels" bigquery:"labels"`
-	JiraID          string             `bigquery:"jira_id"`
-	LinkName        string             `bigquery:"link_name"`
-	ReleaseBlocker  string             `bigquery:"release_blocker"`
+type bugRow struct {
+	Key             string `bigquery:"key"`
+	JiraID          string `bigquery:"jira_id"`
+	ID              uint64
+	Summary         string           `bigquery:"summary"`
+	LastChangedTime bq.NullTimestamp `bigquery:"last_changed_time"`
+	Status          string           `bigquery:"status"`
+	AffectsVersions []string         `bigquery:"affects_versions"`
+	FixVersions     []string         `bigquery:"fix_versions"`
+	TargetVersions  []string         `bigquery:"target_versions"`
+	Components      []string         `bigquery:"components"`
+	Labels          []string         `bigquery:"labels"`
+	ReleaseBlocker  string           `bigquery:"release_blocker"`
 }
 
-func New(dbc *db.DB, bqc *bigquery.Client) *BugLoader {
+type assocRow struct {
+	JiraID   string `bigquery:"jira_id"`
+	ID       uint64
+	LinkName string `bigquery:"link_name"`
+}
+
+func New(ctx context.Context, dbc *db.DB, bqc *bigquery.Client) *BugLoader {
 	return &BugLoader{
+		ctx: ctx,
 		dbc: dbc,
 		bqc: bqc,
 	}
@@ -104,469 +131,374 @@ func (bl *BugLoader) addError(logger *log.Entry, err error, msg string) {
 	bl.errors = append(bl.errors, errors.Wrap(err, msg))
 }
 
-// load updated bugs from BQ and cross-reference with tests, jobs, and triage from postgres
-func (bl *BugLoader) loadLatestBugs() (bugsFromDb []*models.Bug, triages []models.Triage, ok bool) {
-	logger := log.WithField("func", "bugloader.loadLatestBugs")
-
-	// Fetch known tests and ownerships from postgres
-	testCache, err := query.LoadTestCache(bl.dbc, []string{"TestOwnerships"})
-	if err != nil {
-		bl.addError(logger, err, "error loading test cache")
-		return
-	}
-	// Fetch (from bigquery) bugs that mention known (postgres) tests, so we can update mappings later
-	testBugs, err := bl.getTestBugMappings(context.TODO(), testCache)
-	if err != nil {
-		bl.addError(logger, err, "error loading test bug mappings")
-		return
-	}
-	logger.WithField("bugs", len(testBugs)).Info("Loaded test bugs")
-
-	// Fetch known jobs from postgres
-	jobCache, err := query.LoadProwJobCache(bl.dbc)
-	if err != nil {
-		bl.addError(logger, err, "error loading prow job cache")
-		return
-	}
-	// Fetch (from bigquery) bugs that mention known (postgres) jobs, so we can update mappings later
-	jobBugs, err := bl.getJobBugMappings(context.TODO(), jobCache)
-	if err != nil {
-		bl.addError(logger, err, "error loading bug-job mappings")
-		return
-	}
-	logger.WithField("bugs", len(jobBugs)).Info("Loaded job bugs")
-
-	// Fetch bugs triaged to component readiness regressions if not already picked up above,
-	// sometimes the test name is forgotten in the bug, sometimes the mapping breaks due to
-	// weird whitespace issues:
-	triages, err = query.ListTriages(bl.dbc)
-	if err != nil {
-		bl.addError(logger, err, "error loading triages")
-		return
-	}
-	triageBugs, err := bl.getTriageBugMappings(context.TODO(), triages)
-	if err != nil {
-		bl.addError(logger, err, "error loading triage bug mappings")
-		return
-	}
-	logger.WithField("bugs", len(triageBugs)).Info("Loaded triage bugs")
-
-	// Merge all the bugs together (deduplicating by ID)
-	allBugs := testBugs
-	for _, b := range jobBugs {
-		if _, seen := allBugs[b.ID]; seen {
-			allBugs[b.ID].Jobs = b.Jobs // merge if both tests and jobs were mentioned
-			continue
-		}
-		allBugs[b.ID] = b
-	}
-	for _, b := range triageBugs {
-		if _, seen := allBugs[b.ID]; !seen {
-			allBugs[b.ID] = b
-		}
-	}
-	logger.WithField("bugs", len(allBugs)).Info("Loaded all job bugs")
-
-	// flatten the map into a slice for return
-	bugsFromDb = make([]*models.Bug, 0, len(allBugs))
-	for _, b := range allBugs {
-		bugsFromDb = append(bugsFromDb, b)
-	}
-
-	ok = true // nothing failed...
-	return
-}
-
-// Upsert latest bugs and mappings to tests/jobs in postgres
-func (bl *BugLoader) updateBugsInDb(latestBugs []*models.Bug) {
-	logger := log.WithField("func", "bugloader.updateBugsInDb")
-	updatedBugs := 0
-	for _, bug := range latestBugs {
-		res := bl.dbc.DB.Clauses(clause.OnConflict{
-			UpdateAll: true,
-		}).Create(bug)
-		if res.Error != nil {
-			bl.addError(logger, res.Error, fmt.Sprintf("error creating bug: %v", bug))
-			continue
-		}
-		updatedBugs++
-		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
-		err := bl.dbc.DB.Model(bug).Association("Tests").Replace(bug.Tests)
-		if err != nil {
-			bl.addError(logger, err, fmt.Sprintf("error updating bug test associations: %v", bug))
-			continue
-		}
-		err = bl.dbc.DB.Model(bug).Association("Jobs").Replace(bug.Jobs)
-		if err != nil {
-			bl.addError(logger, err, fmt.Sprintf("error updating bug job associations: %v", bug))
-			continue
-		}
-	}
-	logger.WithField("bugs", updatedBugs).Info("created or updated bugs")
-}
-
-var statusesForResolution = []string{
-	"ON_QA",
-	"Verified",
-	"Release Pending",
-	"Closed",
-}
-
-func triageBugLinked(t *models.Triage) bool {
-	return t.BugID != nil && t.Bug != nil && t.URL == t.Bug.URL
-}
-
-func skipTriageBugLoaderPass(resolved, bugLinked bool, triageDescription, bugSummary string) bool {
-	descriptionMatches := triageDescription == bugSummary
-	return resolved && bugLinked && descriptionMatches
-}
-
-func applyBugSummaryToTriageDescription(t *models.Triage, bugSummary string) bool {
-	if bugSummary == "" || t.Description == bugSummary {
-		return false
-	}
-	t.Description = bugSummary
-	return true
-}
-
-// updateTriages reconciles triage records with their associated bugs by:
-// 1. Linking triages to bug records and handling URL changes
-// 2. Auto-resolving triages when bugs reach "ON_QA" or higher status, only if the triage doesn't contain regressions from multiple releases
-func (bl *BugLoader) updateTriages(triages []models.Triage) {
-	logger := log.WithField("func", "bugloader.updateTriages")
-	logger.Infof("ensuring triages have correct refs to their bugs, and are resolved where appropriate")
-	for _, t := range triages {
-		if t.URL == "" {
-			continue // If we have no URL, we can't do anything
-		}
-
-		var bug models.Bug
-		res := bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
-		if res.Error != nil {
-			// Someone could have put in a bad url, we won't let that error out our reconcile job.
-			logger.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s. this is expected for cards that are restricted to 'Red Hat Only'", t.URL)
-			continue
-		}
-
-		resolved := t.Resolved.Valid
-		bugLinked := triageBugLinked(&t)
-		if skipTriageBugLoaderPass(resolved, bugLinked, t.Description, bug.Summary) {
-			continue // There is no action to take
-		}
-
-		updated := false
-		if applyBugSummaryToTriageDescription(&t, bug.Summary) {
-			updated = true
-			logger.Infof("updated triage %d description from linked bug %d", t.ID, bug.ID)
-		}
-
-		// If the triage is not resolved, and it only contains regressions from a single release,
-		// then we should resolve it if the bug is at least in the "ON_QA" status
-		if !resolved && slices.Contains(statusesForResolution, bug.Status) {
-			releases := sets.New[string]()
-			for _, regression := range t.Regressions {
-				releases.Insert(regression.Release)
-			}
-			if releases.Len() == 1 {
-				updated = true
-				now := time.Now()
-				t.Resolved = sql.NullTime{
-					Time:  now,
-					Valid: true,
-				}
-				t.ResolutionReason = models.JiraProgression
-				logger.Infof("resolving triage %q (%d) due to bug %q (%d) reaching status %q",
-					t.Description, t.ID, bug.Summary, bug.ID, bug.Status)
-			} else {
-				logger.Infof("not resolving triage %q (%d) because it contains regressions from multiple releases: %v",
-					t.Description, t.ID, releases.UnsortedList())
-			}
-		}
-
-		if !bugLinked {
-			// If the bug hasn't been linked yet, link it now
-			updated = true
-			logger.Infof("linking triage %q (%d) to bug %q (%d)", t.Description, t.ID, bug.Summary, bug.ID)
-			t.Bug = &bug
-			t.BugID = &bug.ID
-		}
-
-		if updated {
-			res = bl.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "bug-loader")).Save(&t)
-			if res.Error != nil {
-				bl.addError(logger, res.Error, fmt.Sprintf("error updating triage: %q (%d)", t.Description, t.ID))
-			}
-		}
-	}
-}
-
 func (bl *BugLoader) Load() {
-	// methods below record errors in bl.errors, so we don't need to return them
-	if latestBugs, triages, ok := bl.loadLatestBugs(); ok { // no errors preventing processing
-		bl.updateBugsInDb(latestBugs)
-		bl.updateTriages(triages)
+	logger := log.WithField("func", "bugloader.Load")
+
+	bugs, err := fetchFromBQ(bl.ctx, bl.bqc, bqlabel.BugLoaderFetchBugs, allBugsQuery, func(b *bugRow) error {
+		id, err := strconv.ParseUint(b.JiraID, 10, 64)
+		if err != nil {
+			bl.addError(logger, err, "skipping bug row: cannot parse jira_id")
+			return err
+		}
+		b.ID = id
+		return nil
+	})
+	if err != nil {
+		bl.addError(logger, err, "error fetching bugs from BigQuery")
+		return
+	}
+	logger.WithField("rows", len(bugs)).Info("fetched bugs from BigQuery")
+
+	testAssocs, err := fetchFromBQ(bl.ctx, bl.bqc, bqlabel.BugLoaderTestBugs, testBugQuery, bl.assocTransform(logger, "test-bug"))
+	if err != nil {
+		bl.addError(logger, err, "error fetching test-bug associations from BigQuery")
+		return
+	}
+	logger.WithField("rows", len(testAssocs)).Info("fetched test-bug associations from BigQuery")
+
+	jobAssocs, err := fetchFromBQ(bl.ctx, bl.bqc, bqlabel.BugLoaderJobBugs, jobBugQuery, bl.assocTransform(logger, "job-bug"))
+	if err != nil {
+		bl.addError(logger, err, "error fetching job-bug associations from BigQuery")
+		return
+	}
+	logger.WithField("rows", len(jobAssocs)).Info("fetched job-bug associations from BigQuery")
+
+	if err := bl.loadIntoDB(bugs, testAssocs, jobAssocs); err != nil {
+		bl.addError(logger, err, "error loading bugs into database")
 	}
 }
 
-// getTestBugMappings looks for jira cards that contain a test name from the ci-test-mapping database in bigquery.  We
-// search the Jira comments, description and summary for the test name.
-func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[string]*models.Test) (map[uint]*models.Bug, error) {
-	bugs := make(map[uint]*models.Bug)
-
-	// `WHERE j.name != upgrade` is because there's a test named just `upgrade` in some junits,
-	// and querying against Jira produces thousands of tickets that mention `upgrade`; so just ignore it.
-	querySQL := fmt.Sprintf(
-		`%s
-		JOIN %s.%s.%s j
-		  ON STRPOS(t.summary, j.name) > 0
-		  OR STRPOS(t.description, j.name) > 0
-		  OR STRPOS(t.comment, j.name ) > 0
-        WHERE j.name != "upgrade"`,
-		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
-	log.Debug(querySQL)
-	q := bl.bqc.Query(ctx, bqlabel.BugLoaderTestBugMappings, querySQL)
-
+func fetchFromBQ[T any](ctx context.Context, bqc *bigquery.Client, label bqlabel.QueryValue, query string, transform func(*T) error) ([]T, error) {
+	q := bqc.Query(ctx, label, query)
 	it, err := q.Read(ctx)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
 
-	// create a lookup of all the tests that are mapped to the same test id
-	testsForUID := MapTestCacheByUniqueID(testCache)
-	// and keep track of the tests we've seen for each bug id so we don't add duplicates
-	testsSeenForBug := make(map[uint]sets.Set[string])
-
+	var rows []T
 	for {
-		var bqb bigQueryBug
-		err := it.Next(&bqb)
+		var row T
+		err := it.Next(&row)
 		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
-			return nil, errors.WithMessage(err, "failed to iterate over bug results")
+			return nil, errors.WithMessage(err, "failed to iterate over results")
 		}
-
-		// Make sure data in BQ is sane
-		if bqb.JiraID == "" || bqb.LinkName == "" {
-			continue
-		}
-
-		jiraID, err := strconv.ParseUint(bqb.JiraID, 10, 64)
-		if err != nil {
-			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bqb.JiraID))
-			continue
-		}
-		bqb.ID = uint(jiraID)
-
-		// look up sippy DB's record for this test name
-		test, found := testCache[bqb.LinkName]
-		if !found {
-			// This is probably common since we're using ci-test-mapping test names, and sippy may not know all of them
-			log.Debugf("test name was in jira issue but not known by sippy: %s", bqb.LinkName)
-			continue
-		}
-
-		tests := []models.Test{*test}
-		// if we found test ownership, include all tests from the same ownership
-		for _, mapping := range test.TestOwnerships {
-			if mappedTests, found := testsForUID[mapping.UniqueID]; found {
-				tests = append(tests, mappedTests...)
+		if transform != nil {
+			if err := transform(&row); err != nil {
+				continue
 			}
 		}
+		rows = append(rows, row)
+	}
+	return rows, nil
+}
 
-		// map a bug for this jira id if we haven't already
-		if _, found := bugs[bqb.ID]; !found {
-			bugs[bqb.ID] = bigQueryBugToModel(bqb)
+func (bl *BugLoader) assocTransform(logger *log.Entry, kind string) func(*assocRow) error {
+	return func(a *assocRow) error {
+		if a.LinkName == "" {
+			err := fmt.Errorf("empty link name")
+			bl.addError(logger, err, fmt.Sprintf("skipping %s association row", kind))
+			return err
 		}
+		id, err := strconv.ParseUint(a.JiraID, 10, 64)
+		if err != nil {
+			bl.addError(logger, err, fmt.Sprintf("skipping %s association row: cannot parse jira_id", kind))
+			return err
+		}
+		a.ID = id
+		return nil
+	}
+}
 
-		// track the tests we've seen for this bug id and add non-duplicates
-		seen := testsSeenForBug[bqb.ID]
-		if seen == nil {
-			seen = sets.New[string]()
-			testsSeenForBug[bqb.ID] = seen
-		}
-		for _, test := range tests {
-			if !seen.Has(test.Name) {
-				seen.Insert(test.Name)
-				bugs[bqb.ID].Tests = append(bugs[bqb.ID].Tests, test)
+func bugTempColumns() []db.TempColumn[bugRow] {
+	return []db.TempColumn[bugRow]{
+		{Name: "id", Type: "bigint NOT NULL", Value: func(b *bugRow) any { return b.ID }},
+		{Name: "key", Type: "text NOT NULL", Value: func(b *bugRow) any { return b.Key }},
+		{Name: "status", Type: "text NOT NULL", Value: func(b *bugRow) any { return b.Status }},
+		{Name: "last_change_time", Type: "timestamptz NOT NULL", Value: func(b *bugRow) any {
+			if b.LastChangedTime.Valid {
+				return b.LastChangedTime.Timestamp
 			}
-		}
+			return time.Now()
+		}},
+		{Name: "summary", Type: "text NOT NULL", Value: func(b *bugRow) any { return b.Summary }},
+		{Name: "affects_versions", Type: "text[]", Value: func(b *bugRow) any { return pq.StringArray(b.AffectsVersions) }},
+		{Name: "fix_versions", Type: "text[]", Value: func(b *bugRow) any { return pq.StringArray(b.FixVersions) }},
+		{Name: "target_versions", Type: "text[]", Value: func(b *bugRow) any { return pq.StringArray(b.TargetVersions) }},
+		{Name: "components", Type: "text[]", Value: func(b *bugRow) any { return pq.StringArray(b.Components) }},
+		{Name: "labels", Type: "text[]", Value: func(b *bugRow) any { return pq.StringArray(b.Labels) }},
+		{Name: "url", Type: "text NOT NULL", Value: func(b *bugRow) any {
+			return fmt.Sprintf("https://redhat.atlassian.net/browse/%s", b.Key)
+		}},
+		{Name: "release_blocker", Type: "text NOT NULL", Value: func(b *bugRow) any { return b.ReleaseBlocker }},
 	}
-
-	return bugs, nil
 }
 
-// MapTestCacheByUniqueID takes a map of tests by name, with the TestOwnership preloaded, and returns a map of
-// all the tests that share the same unique ID (same TestOwnership).
-func MapTestCacheByUniqueID(testForID map[string]*models.Test) map[string][]models.Test {
-	testForUniqueID := make(map[string][]models.Test, len(testForID))
-	for _, test := range testForID {
-		for _, mapping := range test.TestOwnerships {
-			if mapping.UniqueID != "" {
-				testForUniqueID[mapping.UniqueID] = append(testForUniqueID[mapping.UniqueID], *test)
-			}
-		}
+func assocTempColumns() []db.TempColumn[assocRow] {
+	return []db.TempColumn[assocRow]{
+		{Name: "id", Type: "bigint NOT NULL", Value: func(a *assocRow) any { return a.ID }},
+		{Name: "link_name", Type: "text NOT NULL", Value: func(a *assocRow) any { return a.LinkName }},
 	}
-	return testForUniqueID
 }
 
-// getJobBugMappings looks for jira cards that contain a job name from the jobs table in bigquery.  We
-// search the Jira comments, description and summary for the job name.
-func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]*models.ProwJob) (map[uint]*models.Bug, error) {
-	bugs := make(map[uint]*models.Bug)
-
-	querySQL := TicketDataQuery + `
-		JOIN (
-            SELECT DISTINCT prowjob_job_name AS name
-            FROM openshift-gce-devel.ci_analysis_us.jobs
-            WHERE prowjob_job_name IS NOT NULL
-              AND prowjob_job_name != ""
-        ) j
-        ON STRPOS(t.summary, j.name) > 0
-        OR STRPOS(t.description, j.name) > 0
-        OR STRPOS(t.comment, j.name) > 0
-    `
-	log.Debug(querySQL)
-	q := bl.bqc.Query(ctx, bqlabel.BugLoaderJobBugMappings, querySQL)
-
-	it, err := q.Read(ctx)
+func (bl *BugLoader) loadIntoDB(bugs []bugRow, testAssocs, jobAssocs []assocRow) error {
+	sqlDB, err := bl.dbc.DB.DB()
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to execute query")
+		return fmt.Errorf("getting sql.DB: %w", err)
 	}
-
-	for {
-		var bwj bigQueryBug
-		err := it.Next(&bwj)
-		if errors.Is(err, iterator.Done) {
-			break
-		}
-		if err != nil {
-			return nil, errors.WithMessage(err, "failed to iterate over bug results")
-		}
-
-		// Make sure data in BQ is sane
-		if bwj.JiraID == "" || bwj.LinkName == "" {
-			continue
-		}
-
-		intID, err := strconv.Atoi(bwj.JiraID)
-		if err != nil {
-			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bwj.JiraID))
-			continue
-
-		}
-		bwj.ID = uint(intID) // nolint:gosec
-
-		if _, ok := jobCache[bwj.LinkName]; !ok {
-			// This is probably common because sippy probably doesn't know about *all* jobs like the BQ table does
-			log.Debugf("job name was in jira issue but not known by sippy: %s", bwj.LinkName)
-			continue
-		}
-
-		if _, ok := bugs[bwj.ID]; !ok {
-			bugs[bwj.ID] = bigQueryBugToModel(bwj)
-		}
-
-		bugs[bwj.ID].Jobs = append(bugs[bwj.ID].Jobs, *jobCache[bwj.LinkName])
-	}
-
-	return bugs, nil
-}
-
-// getTriageBugMappings looks for jira cards in bigquery that were triaged to a regression in bigquery.
-// Once found, we then associate them to their records in the triage table.
-func (bl *BugLoader) getTriageBugMappings(ctx context.Context, triages []models.Triage) (map[uint]*models.Bug, error) {
-	bugs := make(map[uint]*models.Bug)
-
-	jiraKeys := make([]string, len(triages))
-	for i, triage := range triages {
-		key, err := parseBugKeyFromURL(triage.URL)
-		if err != nil {
-			log.WithError(err).Errorf("failed to parse bug key from %s", triage.URL)
-			return bugs, err
-		}
-		jiraKeys[i] = key
-	}
-
-	// need to remove a problematic piece of the shared query for this case, but I'd like to keep
-	// the rest:
-	sharedQuery := strings.ReplaceAll(TicketDataQuery, "j.name AS link_name,", "")
-
-	querySQL := fmt.Sprintf(
-		`%s WHERE t.issue.key IN UNNEST(@keys)`,
-		sharedQuery)
-	log.Debug(querySQL)
-	q := bl.bqc.Query(ctx, bqlabel.BugLoaderTriageBugMappings, querySQL)
-	q.Parameters = append(q.Parameters, bqgo.QueryParameter{Name: "keys", Value: jiraKeys})
-
-	it, err := q.Read(ctx)
+	conn, err := stdlib.AcquireConn(sqlDB)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to execute query")
+		return fmt.Errorf("acquiring pgx conn: %w", err)
 	}
-
-	for {
-		var bwt bigQueryBug
-		err := it.Next(&bwt)
-		if errors.Is(err, iterator.Done) {
-			break
+	defer func() {
+		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
+			log.WithError(err).Error("failed to release pgx conn")
 		}
-		if err != nil {
-			return nil, errors.WithMessage(err, "failed to iterate over bug results")
-		}
+	}()
 
-		// Make sure data in BQ is sane
-		if bwt.JiraID == "" {
-			continue
-		}
-
-		intID, err := strconv.Atoi(bwt.JiraID)
-		if err != nil {
-			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bwt.JiraID))
-			continue
-		}
-		bwt.ID = uint(intID) // nolint:gosec
-
-		if _, ok := bugs[bwt.ID]; !ok {
-			bugs[bwt.ID] = bigQueryBugToModel(bwt)
-		}
-
-	}
-
-	return bugs, nil
-}
-
-// ConvertBigQueryBugToModel converts a BigQuery bug representation to the model's Bug struct.
-func bigQueryBugToModel(bqBug bigQueryBug) *models.Bug {
-	lastChange := time.Now()
-	if bqBug.LastChangedTime.Valid {
-		lastChange = bqBug.LastChangedTime.Timestamp
-	}
-	return &models.Bug{
-		ID:              bqBug.ID,
-		Key:             bqBug.Key,
-		Status:          bqBug.Status,
-		LastChangeTime:  lastChange,
-		Summary:         bqBug.Summary,
-		AffectsVersions: pq.StringArray(bqBug.AffectsVersions),
-		FixVersions:     pq.StringArray(bqBug.FixVersions),
-		TargetVersions:  pq.StringArray(bqBug.TargetVersions),
-		Components:      pq.StringArray(bqBug.Components),
-		Labels:          pq.StringArray(bqBug.Labels),
-		ReleaseBlocker:  bqBug.ReleaseBlocker,
-		URL:             fmt.Sprintf("https://redhat.atlassian.net/browse/%s", bqBug.Key),
-	}
-}
-
-func parseBugKeyFromURL(jiraURL string) (string, error) {
-	parsedURL, err := url.Parse(jiraURL)
+	tx, err := conn.Begin(bl.ctx)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(bl.ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			log.WithError(err).Error("failed to rollback transaction")
+		}
+	}()
+
+	cleanupBugs, err := db.CopyToTempTable(bl.ctx, tx, "tmp_bugs", bugs, bugTempColumns())
+	defer cleanupBugs()
+	if err != nil {
+		return err
 	}
 
-	pathSegments := strings.Split(parsedURL.Path, "/")
-	if len(pathSegments) < 3 || pathSegments[len(pathSegments)-2] != "browse" {
-		return "", errors.New("invalid Jira URL format")
+	cleanupTestAssocs, err := db.CopyToTempTable(bl.ctx, tx, "tmp_test_assocs", testAssocs, assocTempColumns())
+	defer cleanupTestAssocs()
+	if err != nil {
+		return err
 	}
 
-	return pathSegments[len(pathSegments)-1], nil
+	cleanupJobAssocs, err := db.CopyToTempTable(bl.ctx, tx, "tmp_job_assocs", jobAssocs, assocTempColumns())
+	defer cleanupJobAssocs()
+	if err != nil {
+		return err
+	}
+
+	if err := bl.upsertBugs(tx); err != nil {
+		return err
+	}
+	if err := bl.syncTestAssociations(tx); err != nil {
+		return err
+	}
+	if err := bl.syncJobAssociations(tx); err != nil {
+		return err
+	}
+	if err := bl.reconcileTriages(tx); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(bl.ctx); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
+	}
+	return nil
+}
+
+func (bl *BugLoader) upsertBugs(conn db.PgxSession) error {
+	st := time.Now()
+	tag, err := conn.Exec(bl.ctx, `
+		INSERT INTO bugs (
+			id, key, status, last_change_time, summary,
+			affects_versions, fix_versions, target_versions,
+			components, labels, url, release_blocker,
+			created_at, updated_at
+		)
+		SELECT
+			id, key, status, last_change_time, summary,
+			affects_versions, fix_versions, target_versions,
+			components, labels, url, release_blocker,
+			NOW(), NOW()
+		FROM tmp_bugs b
+		WHERE EXISTS (SELECT 1 FROM tmp_test_assocs ta WHERE ta.id = b.id)
+		   OR EXISTS (SELECT 1 FROM tmp_job_assocs ja WHERE ja.id = b.id)
+		   OR EXISTS (SELECT 1 FROM triages t WHERE t.url = b.url AND t.url != '')
+		ON CONFLICT (id) DO UPDATE SET
+			key              = EXCLUDED.key,
+			status           = EXCLUDED.status,
+			last_change_time = EXCLUDED.last_change_time,
+			summary          = EXCLUDED.summary,
+			affects_versions = EXCLUDED.affects_versions,
+			fix_versions     = EXCLUDED.fix_versions,
+			target_versions  = EXCLUDED.target_versions,
+			components       = EXCLUDED.components,
+			labels           = EXCLUDED.labels,
+			url              = EXCLUDED.url,
+			release_blocker  = EXCLUDED.release_blocker,
+			updated_at       = NOW()
+		WHERE bugs.key              IS DISTINCT FROM EXCLUDED.key
+		   OR bugs.status           IS DISTINCT FROM EXCLUDED.status
+		   OR bugs.last_change_time IS DISTINCT FROM EXCLUDED.last_change_time
+		   OR bugs.summary          IS DISTINCT FROM EXCLUDED.summary
+		   OR bugs.affects_versions IS DISTINCT FROM EXCLUDED.affects_versions
+		   OR bugs.fix_versions     IS DISTINCT FROM EXCLUDED.fix_versions
+		   OR bugs.target_versions  IS DISTINCT FROM EXCLUDED.target_versions
+		   OR bugs.components       IS DISTINCT FROM EXCLUDED.components
+		   OR bugs.labels           IS DISTINCT FROM EXCLUDED.labels
+		   OR bugs.url              IS DISTINCT FROM EXCLUDED.url
+		   OR bugs.release_blocker  IS DISTINCT FROM EXCLUDED.release_blocker
+	`)
+	if err != nil {
+		return fmt.Errorf("upserting bugs: %w", err)
+	}
+	log.WithFields(log.Fields{"rows": tag.RowsAffected(), "elapsed": time.Since(st)}).Info("upsert bugs complete")
+	return nil
+}
+
+const desiredBugTests = `
+	SELECT DISTINCT bug_id, test_id FROM (
+		SELECT ta.id AS bug_id, t.id AS test_id
+		FROM tmp_test_assocs ta
+		INNER JOIN bugs b ON b.id = ta.id AND b.deleted_at IS NULL
+		INNER JOIN tests t ON t.name = ta.link_name AND t.deleted_at IS NULL
+		UNION ALL
+		SELECT ta.id, t2.id
+		FROM tmp_test_assocs ta
+		INNER JOIN bugs b ON b.id = ta.id AND b.deleted_at IS NULL
+		INNER JOIN test_ownerships to1 ON to1.name = ta.link_name
+		INNER JOIN test_ownerships to2 ON to2.unique_id = to1.unique_id AND to2.unique_id != ''
+		INNER JOIN tests t2 ON t2.name = to2.name AND t2.deleted_at IS NULL
+	) matches
+`
+
+func (bl *BugLoader) syncTestAssociations(conn db.PgxSession) error {
+	st := time.Now()
+
+	deleteTag, err := conn.Exec(bl.ctx, `
+		DELETE FROM bug_tests bt
+		WHERE bt.bug_id IN (SELECT id FROM tmp_bugs)
+		  AND NOT EXISTS (
+			SELECT 1 FROM (`+desiredBugTests+`) d
+			WHERE d.bug_id = bt.bug_id AND d.test_id = bt.test_id
+		  )
+	`)
+	if err != nil {
+		return fmt.Errorf("deleting stale bug_tests: %w", err)
+	}
+
+	insertTag, err := conn.Exec(bl.ctx, `
+		INSERT INTO bug_tests (bug_id, test_id)`+desiredBugTests+`
+		ON CONFLICT DO NOTHING
+	`)
+	if err != nil {
+		return fmt.Errorf("inserting bug_tests: %w", err)
+	}
+
+	log.WithFields(log.Fields{
+		"deleted":  deleteTag.RowsAffected(),
+		"inserted": insertTag.RowsAffected(),
+		"elapsed":  time.Since(st),
+	}).Info("sync bug_tests complete")
+	return nil
+}
+
+const desiredBugJobs = `
+	SELECT DISTINCT ja.id AS bug_id, j.id AS prow_job_id
+	FROM tmp_job_assocs ja
+	INNER JOIN bugs b ON b.id = ja.id AND b.deleted_at IS NULL
+	INNER JOIN prow_jobs j ON j.name = ja.link_name AND j.deleted_at IS NULL
+`
+
+func (bl *BugLoader) syncJobAssociations(conn db.PgxSession) error {
+	st := time.Now()
+
+	deleteTag, err := conn.Exec(bl.ctx, `
+		DELETE FROM bug_jobs bj
+		WHERE bj.bug_id IN (SELECT id FROM tmp_bugs)
+		  AND NOT EXISTS (
+			SELECT 1 FROM (`+desiredBugJobs+`) d
+			WHERE d.bug_id = bj.bug_id AND d.prow_job_id = bj.prow_job_id
+		  )
+	`)
+	if err != nil {
+		return fmt.Errorf("deleting stale bug_jobs: %w", err)
+	}
+
+	insertTag, err := conn.Exec(bl.ctx, `
+		INSERT INTO bug_jobs (bug_id, prow_job_id)`+desiredBugJobs+`
+		ON CONFLICT DO NOTHING
+	`)
+	if err != nil {
+		return fmt.Errorf("inserting bug_jobs: %w", err)
+	}
+
+	log.WithFields(log.Fields{
+		"deleted":  deleteTag.RowsAffected(),
+		"inserted": insertTag.RowsAffected(),
+		"elapsed":  time.Since(st),
+	}).Info("sync bug_jobs complete")
+	return nil
+}
+
+func (bl *BugLoader) reconcileTriages(conn db.PgxSession) error {
+	st := time.Now()
+
+	// Update triage descriptions from their linked bug's summary
+	descTag, err := conn.Exec(bl.ctx, `
+		UPDATE triages t
+		SET description = b.summary, updated_at = NOW()
+		FROM bugs b
+		WHERE b.url = t.url
+		  AND b.deleted_at IS NULL
+		  AND t.url != ''
+		  AND b.summary != ''
+		  AND b.summary != t.description
+	`)
+	if err != nil {
+		return fmt.Errorf("updating triage descriptions: %w", err)
+	}
+
+	// Link triages to their bug records
+	linkTag, err := conn.Exec(bl.ctx, `
+		UPDATE triages t
+		SET bug_id = b.id, updated_at = NOW()
+		FROM bugs b
+		WHERE b.url = t.url
+		  AND b.deleted_at IS NULL
+		  AND t.url != ''
+		  AND (t.bug_id IS NULL OR t.bug_id != b.id)
+	`)
+	if err != nil {
+		return fmt.Errorf("linking triages to bugs: %w", err)
+	}
+
+	// Auto-resolve triages where the bug has progressed and the triage
+	// covers only a single release
+	resolveTag, err := conn.Exec(bl.ctx, `
+		UPDATE triages t
+		SET resolved = NOW(), resolution_reason = 'jira-progression', updated_at = NOW()
+		FROM bugs b
+		WHERE b.url = t.url
+		  AND b.deleted_at IS NULL
+		  AND t.url != ''
+		  AND t.resolved IS NULL
+		  AND b.status IN ('ON_QA', 'Verified', 'Release Pending', 'Closed')
+		  AND (
+			SELECT COUNT(DISTINCT r.release)
+			FROM triage_regressions tr
+			INNER JOIN test_regressions r ON r.id = tr.test_regression_id
+			WHERE tr.triage_id = t.id
+		  ) = 1
+	`)
+	if err != nil {
+		return fmt.Errorf("auto-resolving triages: %w", err)
+	}
+
+	log.WithFields(log.Fields{
+		"descriptions_updated": descTag.RowsAffected(),
+		"bugs_linked":          linkTag.RowsAffected(),
+		"auto_resolved":        resolveTag.RowsAffected(),
+		"elapsed":              time.Since(st),
+	}).Info("triage reconciliation complete")
+	return nil
 }

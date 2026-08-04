@@ -18,7 +18,7 @@ import (
 const TestFailureSummaryFilePrefix = "risk-analysis"
 
 const (
-	GlobJunitXML      = "**junit*.xml"
+	GlobJunitXML      = "**junit**.xml"
 	GlobEventsJSON    = "**/gather-extra/artifacts/events.json"
 	GlobIntervalsJSON = "**e2e-events*.json"
 	GlobTimelinesJSON = "**e2e-timelines*.json"

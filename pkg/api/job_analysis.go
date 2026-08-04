@@ -111,13 +111,15 @@ func PrintJobAnalysisJSONFromDB(
 	}
 	tr := make([]testResult, 0)
 
-	jr := dbc.DB.Table("prow_job_failed_tests_by_day_matview")
-	if period == PeriodHour {
-		jr = dbc.DB.Table("prow_job_failed_tests_by_hour_matview")
-	}
-
-	if err := jr.Select("period, test_name, count").
-		Where("prow_job_id IN ?", jobs).Scan(&tr).Error; err != nil {
+	if err := dbc.DB.Table("prow_job_run_tests pjrt").
+		Select("date_trunc(?, pjrt.prow_job_run_timestamp) AS period, tests.name AS test_name, count(tests.name) AS count", period).
+		Joins("JOIN tests ON pjrt.test_id = tests.id").
+		Where("pjrt.status = ?", v1sippyprocessing.TestStatusFailure).
+		Where("pjrt.prow_job_id IN ?", jobs).
+		Where("pjrt.prow_job_run_release = ?", release).
+		Where("pjrt.prow_job_run_timestamp BETWEEN ? AND ?", start, end).
+		Group("tests.name, period, pjrt.prow_job_id").
+		Scan(&tr).Error; err != nil {
 		return results, err
 	}
 

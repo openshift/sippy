@@ -66,11 +66,11 @@ func nameMatchConditions(matches TestNameMatches) (conditions []string, args []a
 	}
 	for _, prefix := range matches.Prefixes {
 		conditions = append(conditions, "tests.name LIKE ?")
-		args = append(args, escapeLikeMetachars(prefix)+"%")
+		args = append(args, filter.EscapeLikeMetachars(prefix)+"%")
 	}
 	for _, sub := range matches.Substrings {
 		conditions = append(conditions, "tests.name ILIKE ?")
-		args = append(args, "%"+escapeLikeMetachars(sub)+"%")
+		args = append(args, "%"+filter.EscapeLikeMetachars(sub)+"%")
 	}
 	return conditions, args
 }
@@ -93,13 +93,6 @@ func buildTestsJoinCondition(matches TestNameMatches) (string, []any) {
 		return testsJoinClause, nil
 	}
 	return testsJoinClause + " AND (" + strings.Join(conditions, " OR ") + ")", args
-}
-
-// escapeLikeMetachars escapes LIKE/ILIKE metacharacters (%, _, \) so they
-// match literally.
-func escapeLikeMetachars(s string) string {
-	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-	return r.Replace(s)
 }
 
 // DateRange defines a half-open date interval [Start, End) used to compute
@@ -139,12 +132,12 @@ func TestReportQuery(dbc *db.DB, release string, sample, base DateRange, nameMat
 	return testReportPreAgg(dbc, release, sample, base, nameMatches)
 }
 
-// resolveDateRanges clamps the Start and End of each DateRange to the latest
+// ResolveDateRanges clamps the Start and End of each DateRange to the latest
 // available date (+1, since DateRange uses half-open intervals) for the release
 // in test_cumulative_summaries. This ensures the planner sees literal dates it
 // can use for partition pruning, and handles cases where data hasn't been
 // backfilled up to the requested dates.
-func resolveDateRanges(dbc *db.DB, release string, ranges ...*DateRange) error {
+func ResolveDateRanges(dbc *db.DB, release string, ranges ...*DateRange) error {
 	var maxDate *civil.Date
 	row := dbc.DB.Table("test_cumulative_summaries").
 		Select("MAX(date)").
@@ -193,7 +186,7 @@ func variantFilterConditions(variantFilter *filter.Filter) (conditions []string,
 			}
 			args = append(args, item.Value)
 		case filter.OperatorHasEntryContaining, filter.OperatorContains:
-			pattern := "%" + escapeLikeMetachars(strings.ToLower(item.Value)) + "%"
+			pattern := "%" + filter.EscapeLikeMetachars(strings.ToLower(item.Value)) + "%"
 			if item.Not {
 				conditions = append(conditions, "NOT EXISTS (SELECT 1 FROM variant_combinations vc, LATERAL unnest(vc.variants) AS v(item) WHERE vc.id = variant_combination_id AND LOWER(v.item) LIKE ?)")
 			} else {
@@ -267,7 +260,7 @@ func processedFilterConditions(f *filter.Filter) (conditions []string, args []an
 // dates to the three prefix sum lookup dates used by the 3-way self-join
 // (each shifted by -1 day): end (e), boundary (m), and start (s).
 func resolvePrefixSumDates(dbc *db.DB, release string, sample, base *DateRange) (end, boundary, start civil.Date, err error) {
-	if err = resolveDateRanges(dbc, release, sample, base); err != nil {
+	if err = ResolveDateRanges(dbc, release, sample, base); err != nil {
 		return
 	}
 	if sample.Start != base.End {
@@ -303,8 +296,8 @@ func testReportCoreJoin(dbc *db.DB, release string, sample, base DateRange, name
 			SUM(COALESCE(e.prefix_sum_failures  - COALESCE(m.prefix_sum_failures,  0), 0))::bigint AS current_failures,
 			SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs`).
 		Joins("JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL").
-		Joins("LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?", boundary).
-		Joins("LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.release = e.release AND s.date = ?", start).
+		Joins("LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.lifecycle = e.lifecycle AND m.release = e.release AND m.date = ?", boundary).
+		Joins("LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.lifecycle = e.lifecycle AND s.release = e.release AND s.date = ?", start).
 		Where("e.date = ? AND e.release = ?", end, release).
 		Group("e.test_id, e.suite_id, pj.variant_combination_id, e.release")
 
@@ -329,7 +322,7 @@ func testReportPreAgg(dbc *db.DB, release string, sample, base DateRange, nameMa
 
 	return dbc.DB.
 		Table("(?) AS pre", core).
-		Select(`tests.id, tests.name, pre.suite_id, suites.name AS suite_name,
+		Select(`tests.name, pre.suite_id, suites.name AS suite_name,
 			jira_components.name AS jira_component, jira_components.id AS jira_component_id,
 			pre.current_successes, pre.current_failures, pre.current_flakes, pre.current_runs,
 			pre.previous_successes, pre.previous_failures, pre.previous_flakes, pre.previous_runs,
@@ -395,7 +388,7 @@ func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange
 		fmt.Fprintf(&buf, "\n  GROUP BY tcs.test_id, tcs.suite_id, tcs.release\n) AS %s", alias)
 	}
 
-	buf.WriteString(`SELECT t.id, t.name, su.name AS suite_name,
+	buf.WriteString(`SELECT t.name, su.name AS suite_name,
   jc.name AS jira_component, jc.id AS jira_component_id, e.release,
   COALESCE(e.ps_successes - COALESCE(m.ps_successes, 0), 0)::bigint AS current_successes,
   COALESCE(e.ps_failures  - COALESCE(m.ps_failures,  0), 0)::bigint AS current_failures,

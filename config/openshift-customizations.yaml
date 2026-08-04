@@ -96,12 +96,19 @@ releases:
       - "^periodic-ci-openshift-.*-master-rosa-sts-e2e-promotion-int$"
   rosa-production:
     synthetic: true
-    jobs: {}
+    jobs:
+      # ROSA CLI e2e tests targeting production (exact match takes priority over rosa-stage regex)
+      periodic-ci-openshift-rosa-master-e2e-rosa-hcp-advanced-prod-critical-high-f3: true
+      periodic-ci-openshift-rosa-master-e2e-rosa-sts-advanced-prod-critical-high-f3: true
+      periodic-ci-openshift-rosa-master-e2e-rosa-sts-upgrade-y-stream-prod-f3: true
+    regexp:
+      # OCM FVT production
+      - "^periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-.*-production-.*"
   rrp-integration:
     synthetic: true
     jobs:
-      periodic-ci-openshift-online-rosa-regional-platform-main-nightly-ephemeral: true
-      periodic-ci-openshift-online-rosa-regional-platform-main-nightly-integration: true
+      periodic-ci-openshift-online-rosa-hyperfleet-main-nightly-ephemeral: true
+      periodic-ci-openshift-online-rosa-hyperfleet-main-nightly-integration: true
   automation:
     synthetic: true
     jobs:

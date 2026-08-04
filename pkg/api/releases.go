@@ -75,6 +75,19 @@ func ListPayloadJobRuns(dbClient *db.DB, filterOpts *filter.FilterOptions, relea
 	return jobRuns, res.Error
 }
 
+// testFailureRow is the scan target for the flat-array payload test failure
+// query. Each row represents one test with parallel arrays of release tags,
+// job names, and job run URLs. The caller zips these arrays to build the
+// per-payload failure map.
+type testFailureRow struct {
+	TestID       uint
+	Name         string
+	FailureCount int
+	ReleaseTags  pq.StringArray `gorm:"type:text[]"`
+	JobNames     pq.StringArray `gorm:"type:text[]"`
+	JobRunURLs   pq.StringArray `gorm:"type:text[]"`
+}
+
 // GetPayloadStreamTestFailures loads the most recent payloads for a stream and attempts to search for most commonly
 // failing tests, possible perma-failing blockers, etc.
 func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filterOpts *filter.FilterOptions, reportEnd time.Time) ([]*apitype.TestFailureAnalysis, error) {
@@ -128,34 +141,51 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 	}
 	logger.WithField("failedPayloads", len(onlyFailedPayloads)).Debug("failed payloads")
 
-	// Query all test failures for the given payload stream in the last two weeks:
-	failedTests := []models.PayloadFailedTest{}
-	q := dbc.DB.Table(payloadFailedTests14dMatView).
-		Where("release = ?", release).
-		Where("architecture = ?", arch).
-		Where("stream = ?", stream).
-		Order("release_tag DESC")
+	subquery := query.GetTestFailuresForPayloadStream(
+		dbc.DB, release, stream, arch, reportEnd, testidentification.OpenShiftTestsName)
+	q := dbc.DB.Table("(?) as test_failures", subquery)
 	q, err = filter.FilterableDBResult(q, filterOpts, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := q.Find(&failedTests).Error; err != nil {
+
+	var rows []testFailureRow
+	if err := q.Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	logger.WithField("failedTestCount", len(failedTests)).Debug("found failed tests")
+	logger.WithField("testCount", len(rows)).Debug("found test failure rows")
 
-	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.
-	testNameToAnalysis := map[string]*apitype.TestFailureAnalysis{}
-	processFailedTests(failedTests, testNameToAnalysis)
-	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(testNameToAnalysis))
-
-	for _, v := range testNameToAnalysis {
-		testFailures = append(testFailures, v)
-		calculateBlockerScore(result.ConsecutiveFailedPayloads, v)
+	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(rows))
+	for _, row := range rows {
+		ta := &apitype.TestFailureAnalysis{
+			Name:                row.Name,
+			ID:                  row.TestID,
+			FailureCount:        row.FailureCount,
+			FailedPayloads:      make(map[string]*apitype.FailedPayload, len(row.ReleaseTags)),
+			BlockerScoreReasons: []string{},
+		}
+		for i, tag := range row.ReleaseTags {
+			fp, ok := ta.FailedPayloads[tag]
+			if !ok {
+				fp = &apitype.FailedPayload{}
+				ta.FailedPayloads[tag] = fp
+			}
+			fp.FailedJobs = append(fp.FailedJobs, row.JobNames[i])
+			fp.FailedJobRuns = append(fp.FailedJobRuns, row.JobRunURLs[i])
+		}
+		calculateBlockerScore(result.ConsecutiveFailedPayloads, ta)
+		testFailures = append(testFailures, ta)
 	}
 
-	// sort so the most likely blocker test failures are first in the slice:
-	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].BlockerScore >= testFailures[j].BlockerScore })
+	sort.Slice(testFailures, func(i, j int) bool {
+		if testFailures[i].BlockerScore != testFailures[j].BlockerScore {
+			return testFailures[i].BlockerScore > testFailures[j].BlockerScore
+		}
+		if testFailures[i].FailureCount != testFailures[j].FailureCount {
+			return testFailures[i].FailureCount > testFailures[j].FailureCount
+		}
+		return testFailures[i].Name < testFailures[j].Name
+	})
 	result.TestFailures = testFailures
 	return result.TestFailures, nil
 }
@@ -165,13 +195,13 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 // certainly a blocker) based on a number of criteria.
 //
 // consecutiveFailedPayloadTags is the list of our current streak of rejected payload tags. If most recent payload
-// was accepted, this list will be empty, and we don't have much processing to do.
+// was not rejected, this list will be empty, and we don't have much processing to do.
 func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.TestFailureAnalysis) {
 	if len(consecutiveFailedPayloadTags) == 0 {
-		// our most recent state is Accepted, could be intermittent, but for the purposes of a blocker
+		// our most recent state is not Rejected, could be intermittent, but for the purposes of a blocker
 		// we have to assume 0.
 		ta.BlockerScore = 0
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, "most recent payload was Accepted, test may be failing intermittently but cannot be fully blocking")
+		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, "most recent payload was not Rejected, test may be failing intermittently but cannot be fully blocking")
 		return
 	}
 
@@ -227,11 +257,8 @@ func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogge
 
 	result.PayloadsAnalyzed = 1
 
-	// Unfortunate, I wanted this to work for any payload, but it looks like we had to resort to using
-	// a matview for the failed tests in the last two weeks.
-
 	// Query all test failures for the given payload stream in the last two weeks:
-	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag)
+	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag, payload.Release, payload.ReleaseTime)
 	if err != nil {
 		logger.WithError(err).Error("unable to list test failures for payload")
 		return nil, err
@@ -254,7 +281,12 @@ func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogge
 	}
 
 	// sort so the most likely blocker test failures are first in the slice:
-	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].FailureCount >= testFailures[j].FailureCount })
+	sort.Slice(testFailures, func(i, j int) bool {
+		if testFailures[i].FailureCount != testFailures[j].FailureCount {
+			return testFailures[i].FailureCount > testFailures[j].FailureCount
+		}
+		return testFailures[i].Name < testFailures[j].Name
+	})
 	result.TestFailures = testFailures
 
 	return result.TestFailures, nil

@@ -66,41 +66,30 @@ const (
     GROUP BY bug_tests.test_id`
 
 	QueryTestAnalysis = `
-        select current_successes, current_runs,
+        SELECT current_successes, current_runs,
                current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage
-        from (
-            select sum(runs) as current_runs, sum(passes) as current_successes
-            from test_analysis_by_job_by_dates
-            where date >= ? AND test_name = ? AND job_name IN ? AND release = ?
+        FROM (
+            SELECT
+                SUM(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0)) AS current_successes,
+                SUM(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0)) AS current_runs
+            -- e = latest cumulative snapshot for the release
+            FROM test_cumulative_summaries e
+            JOIN tests t ON t.id = e.test_id
+            JOIN prow_jobs pj ON pj.id = e.prow_job_id
+            -- s = prior-day baseline; the difference e - s gives the windowed totals
+            LEFT JOIN test_cumulative_summaries s
+                ON s.test_id = e.test_id
+                AND s.prow_job_id = e.prow_job_id
+                AND s.suite_id = e.suite_id
+                AND s.lifecycle = e.lifecycle
+                AND s.release = e.release
+                AND s.date = (?::date - INTERVAL '1 day')::date
+            WHERE e.date = (SELECT MAX(date) FROM test_cumulative_summaries WHERE release = ?)
+                AND e.release = ?
+                AND t.name = ?
+                AND pj.name IN ?
         ) t`
 )
-
-func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
-	// Cache all tests by name to their ID, used for the join object.
-	testCache := map[string]*models.Test{}
-	q := dbc.DB.Model(&models.Test{})
-	for _, p := range preloads {
-		q = q.Preload(p)
-	}
-
-	// Kube exceeds 60000 tests, more than postgres can load at once:
-	testsBatch := []*models.Test{}
-	res := q.FindInBatches(&testsBatch, 5000, func(tx *gorm.DB, batch int) error {
-		for _, idn := range testsBatch {
-			if _, ok := testCache[idn.Name]; !ok {
-				testCache[idn.Name] = idn
-			}
-		}
-		return nil
-	})
-
-	if res.Error != nil {
-		return map[string]*models.Test{}, res.Error
-	}
-
-	log.Infof("test cache created with %d entries from database", len(testCache))
-	return testCache, nil
-}
 
 // TestReportsByVariant returns per-variant test report rows for every test matching
 // the given name criteria. When includeAll is true, an additional "All" aggregate row
@@ -288,7 +277,7 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
 
 	// === filtered CTE: per-variant test report with percentages ===
 	buf.WriteString(`WITH filtered AS MATERIALIZED (
-  SELECT tests.id, tests.name, pre.suite_id, suites.name AS suite_name,
+  SELECT pre.test_id, tests.name, pre.suite_id, suites.name AS suite_name,
     jira_components.name AS jira_component, jira_components.id AS jira_component_id,
     pre.current_successes, pre.current_failures, pre.current_flakes, pre.current_runs,
     pre.previous_successes, pre.previous_failures, pre.previous_flakes, pre.previous_runs,
@@ -308,8 +297,8 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
       SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs
     FROM test_cumulative_summaries e
     JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
-    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
-    LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.release = e.release AND s.date = ?
+    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.lifecycle = e.lifecycle AND m.release = e.release AND m.date = ?
+    LEFT JOIN test_cumulative_summaries s ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id AND s.suite_id = e.suite_id AND s.lifecycle = e.lifecycle AND s.release = e.release AND s.date = ?
 `)
 	args = append(args, boundary, start)
 
@@ -380,9 +369,9 @@ stats AS (
       SUM(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs, 0))::bigint      AS current_runs
     FROM test_cumulative_summaries e
     JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
-    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.release = e.release AND m.date = ?
+    LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.lifecycle = e.lifecycle AND m.release = e.release AND m.date = ?
     WHERE e.date = ? AND e.release = ?
-      AND e.test_id IN (SELECT DISTINCT id FROM %s)
+      AND e.test_id IN (SELECT DISTINCT test_id FROM %s)
       AND NOT EXISTS (SELECT 1 FROM variant_combinations WHERE 'never-stable' = any(variants) AND id = pj.variant_combination_id)
     GROUP BY e.test_id, e.suite_id, pj.variant_combination_id
   ) c
@@ -403,7 +392,7 @@ SELECT f.*,
   COALESCE(s.flake_standard_deviation, 0) AS flake_standard_deviation,
   f.current_flake_percentage - COALESCE(s.flake_average, 0) AS delta_from_flake_average
 FROM %s
-LEFT JOIN stats s ON f.id = s.test_id AND f.suite_id = s.suite_id`, resultSource)
+LEFT JOIN stats s ON f.test_id = s.test_id AND f.suite_id = s.suite_id`, resultSource)
 
 	return dbc.DB.Raw(buf.String(), args...), remainingFilter, nil
 }

@@ -5,6 +5,7 @@ This module provides client-side filtering utilities for DataGrid components tha
 ## Why This Exists
 
 MUI DataGrid's built-in client-side filtering only supports single filters. Sippy's filter system is more advanced, supporting:
+
 - **Multiple filters** with AND/OR operators
 - **NOT modifier** for negating filters
 - **Various filter operators** (contains, equals, startsWith, endsWith, comparison operators)
@@ -94,6 +95,7 @@ export default function MyFilterableComponent({ data }) {
 Applies a filter model to an array of rows.
 
 **Parameters:**
+
 - `rows` (Array): The data rows to filter
 - `filterModel` (Object): The filter model with `items` and `linkOperator`
   - `items` (Array): Array of filter items
@@ -106,6 +108,7 @@ Applies a filter model to an array of rows.
 Evaluates a single filter against a row.
 
 **Parameters:**
+
 - `row` (Object): The data row
 - `filter` (Object): The filter to apply
   - `columnField` (string): The field name to filter on
@@ -163,4 +166,3 @@ const filteredData = React.useMemo(
 ```
 
 This ensures filtering only happens when `data` or `filterModel` changes.
-

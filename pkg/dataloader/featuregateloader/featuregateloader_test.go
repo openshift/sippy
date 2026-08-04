@@ -2,6 +2,9 @@ package featuregateloader
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseFeatureGateFilename(t *testing.T) {
@@ -57,6 +60,21 @@ func TestParseFeatureGateFilename(t *testing.T) {
 			filename:  "featureGate.yaml",
 			wantValid: false,
 		},
+		{
+			name:      "wrong prefix",
+			filename:  "someOther-Hypershift-Default.yaml",
+			wantValid: false,
+		},
+		{
+			name:      "wrong suffix",
+			filename:  "featureGate-Hypershift-Default.json",
+			wantValid: false,
+		},
+		{
+			name:      "no extension",
+			filename:  "featureGate-something",
+			wantValid: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -76,4 +94,48 @@ func TestParseFeatureGateFilename(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConvertAPIToDB(t *testing.T) {
+	fg := FeatureGate{
+		Status: FeatureGateStatus{
+			FeatureGates: []FeatureGateEntry{
+				{
+					Enabled: []Feature{
+						{Name: "FeatureA"},
+						{Name: "FeatureB"},
+					},
+					Disabled: []Feature{
+						{Name: "FeatureC"},
+					},
+				},
+			},
+		},
+	}
+
+	result := convertAPIToDB(fg, "4.22", "Hypershift", "Default", "test.yaml")
+
+	require.Len(t, result, 3)
+
+	assert.Equal(t, "4.22", result[0].Release)
+	assert.Equal(t, "Hypershift", result[0].Topology)
+	assert.Equal(t, "Default", result[0].FeatureSet)
+	assert.Equal(t, "FeatureA", result[0].FeatureGate)
+	assert.Equal(t, "enabled", result[0].Status)
+
+	assert.Equal(t, "FeatureB", result[1].FeatureGate)
+	assert.Equal(t, "enabled", result[1].Status)
+
+	assert.Equal(t, "FeatureC", result[2].FeatureGate)
+	assert.Equal(t, "disabled", result[2].Status)
+}
+
+func TestConvertAPIToDBEmpty(t *testing.T) {
+	fg := FeatureGate{
+		Status: FeatureGateStatus{
+			FeatureGates: []FeatureGateEntry{},
+		},
+	}
+	result := convertAPIToDB(fg, "5.0", "SelfManagedHA", "TechPreviewNoUpgrade", "test.yaml")
+	assert.Empty(t, result)
 }

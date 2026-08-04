@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/junit"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/types"
 )
 
 func TestExtractTestCases(t *testing.T) {
@@ -15,7 +16,7 @@ func TestExtractTestCases(t *testing.T) {
 	tests := []struct {
 		name     string
 		suite    *junit.TestSuite
-		expected map[testCaseKey]*testCaseEntry
+		expected map[testCaseKey]*types.TestCaseEntry
 	}{
 		{
 			name: "passing test",
@@ -25,12 +26,13 @@ func TestExtractTestCases(t *testing.T) {
 					{Name: "test-a", Duration: 1.5},
 				},
 			},
-			expected: map[testCaseKey]*testCaseEntry{
+			expected: map[testCaseKey]*types.TestCaseEntry{
 				{SuiteName: "openshift-tests", TestName: "test-a"}: {
 					TestName:  "test-a",
 					SuiteName: "openshift-tests",
 					Status:    int(sippyprocessingv1.TestStatusSuccess),
 					Duration:  1.5,
+					Lifecycle: "blocking",
 				},
 			},
 		},
@@ -42,13 +44,14 @@ func TestExtractTestCases(t *testing.T) {
 					{Name: "test-a", Duration: 2.0, FailureOutput: &junit.FailureOutput{Output: failMsg}},
 				},
 			},
-			expected: map[testCaseKey]*testCaseEntry{
+			expected: map[testCaseKey]*types.TestCaseEntry{
 				{SuiteName: "openshift-tests", TestName: "test-a"}: {
 					TestName:  "test-a",
 					SuiteName: "openshift-tests",
 					Status:    int(sippyprocessingv1.TestStatusFailure),
 					Duration:  2.0,
 					Output:    &failMsg,
+					Lifecycle: "blocking",
 				},
 			},
 		},
@@ -60,7 +63,7 @@ func TestExtractTestCases(t *testing.T) {
 					{Name: "test-a", SkipMessage: &junit.SkipMessage{Message: "skipped"}},
 				},
 			},
-			expected: map[testCaseKey]*testCaseEntry{},
+			expected: map[testCaseKey]*types.TestCaseEntry{},
 		},
 		{
 			name: "flake from pass then fail",
@@ -71,13 +74,14 @@ func TestExtractTestCases(t *testing.T) {
 					{Name: "test-a", Duration: 2.0, FailureOutput: &junit.FailureOutput{Output: failMsg}},
 				},
 			},
-			expected: map[testCaseKey]*testCaseEntry{
+			expected: map[testCaseKey]*types.TestCaseEntry{
 				{SuiteName: "openshift-tests", TestName: "test-a"}: {
 					TestName:  "test-a",
 					SuiteName: "openshift-tests",
 					Status:    int(sippyprocessingv1.TestStatusFlake),
 					Duration:  1.0,
 					Output:    &failMsg,
+					Lifecycle: "blocking",
 				},
 			},
 		},
@@ -97,18 +101,20 @@ func TestExtractTestCases(t *testing.T) {
 					},
 				},
 			},
-			expected: map[testCaseKey]*testCaseEntry{
+			expected: map[testCaseKey]*types.TestCaseEntry{
 				{SuiteName: "a.b", TestName: "c"}: {
 					TestName:  "c",
 					SuiteName: "a.b",
 					Status:    int(sippyprocessingv1.TestStatusSuccess),
 					Duration:  1.0,
+					Lifecycle: "blocking",
 				},
 				{SuiteName: "a", TestName: "b.c"}: {
 					TestName:  "b.c",
 					SuiteName: "a",
 					Status:    int(sippyprocessingv1.TestStatusSuccess),
 					Duration:  2.0,
+					Lifecycle: "blocking",
 				},
 			},
 		},
@@ -128,18 +134,54 @@ func TestExtractTestCases(t *testing.T) {
 					},
 				},
 			},
-			expected: map[testCaseKey]*testCaseEntry{
+			expected: map[testCaseKey]*types.TestCaseEntry{
 				{SuiteName: "openshift-tests", TestName: "parent-test"}: {
 					TestName:  "parent-test",
 					SuiteName: "openshift-tests",
 					Status:    int(sippyprocessingv1.TestStatusSuccess),
 					Duration:  1.0,
+					Lifecycle: "blocking",
 				},
 				{SuiteName: "k8s.io", TestName: "child-test"}: {
 					TestName:  "child-test",
 					SuiteName: "k8s.io",
 					Status:    int(sippyprocessingv1.TestStatusSuccess),
 					Duration:  3.0,
+					Lifecycle: "blocking",
+				},
+			},
+		},
+		{
+			name: "informing lifecycle preserved from JUnit XML",
+			suite: &junit.TestSuite{
+				Name: "openshift-tests",
+				TestCases: []*junit.TestCase{
+					{Name: "test-informing", Duration: 1.0, Lifecycle: "informing"},
+					{Name: "test-blocking", Duration: 2.0, Lifecycle: "blocking"},
+					{Name: "test-empty", Duration: 3.0},
+				},
+			},
+			expected: map[testCaseKey]*types.TestCaseEntry{
+				{SuiteName: "openshift-tests", TestName: "test-informing"}: {
+					TestName:  "test-informing",
+					SuiteName: "openshift-tests",
+					Status:    int(sippyprocessingv1.TestStatusSuccess),
+					Duration:  1.0,
+					Lifecycle: "informing",
+				},
+				{SuiteName: "openshift-tests", TestName: "test-blocking"}: {
+					TestName:  "test-blocking",
+					SuiteName: "openshift-tests",
+					Status:    int(sippyprocessingv1.TestStatusSuccess),
+					Duration:  2.0,
+					Lifecycle: "blocking",
+				},
+				{SuiteName: "openshift-tests", TestName: "test-empty"}: {
+					TestName:  "test-empty",
+					SuiteName: "openshift-tests",
+					Status:    int(sippyprocessingv1.TestStatusSuccess),
+					Duration:  3.0,
+					Lifecycle: "blocking",
 				},
 			},
 		},
@@ -147,7 +189,7 @@ func TestExtractTestCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testCases := make(map[testCaseKey]*testCaseEntry)
+			testCases := make(map[testCaseKey]*types.TestCaseEntry)
 			extractTestCases(tt.suite, testCases)
 			assert.Equal(t, tt.expected, testCases)
 		})

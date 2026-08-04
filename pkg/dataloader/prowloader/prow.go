@@ -10,16 +10,14 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
-	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -29,12 +27,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/db/query"
 
 	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/apis/junit"
@@ -43,6 +39,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/testconversion"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/types"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
@@ -55,6 +52,11 @@ import (
 // gcsPathStrip is used to strip out everything but the path, i.e. match "/view/gs/origin-ci-test/"
 // from the path "/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-sdn/1737420379221135360"
 var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
+
+// batchWriterFunc writes a batch of job run results to the database.
+// It is a field on ProwLoader so tests can inject a stub without
+// needing a real database connection.
+type batchWriterFunc func(ctx context.Context, batch []jobRunResult) error
 
 type ProwLoader struct {
 	ctx                          context.Context
@@ -72,12 +74,11 @@ type ProwLoader struct {
 	releaseRegexps               map[string][]*regexp.Regexp
 	config                       *v1config.SippyConfig
 	ghCommenter                  *commenter.GitHubCommenter
-	jobsImportedCount            atomic.Int32
-	jobsProcessedCount           atomic.Int32
 	gcsClient                    *storage.Client
 	promPusher                   *push.Pusher
 	loadSince                    *time.Time
 	labelsCache                  map[string]pq.StringArray
+	batchWriter                  batchWriterFunc
 }
 
 func New(
@@ -109,7 +110,7 @@ func New(
 		}
 	}
 
-	return &ProwLoader{
+	pl := &ProwLoader{
 		ctx:                          ctx,
 		dbc:                          dbc,
 		gcsClient:                    gcsClient,
@@ -127,6 +128,8 @@ func New(
 		promPusher:                   promPusher,
 		loadSince:                    loadSince,
 	}
+	pl.batchWriter = pl.writeJobRunBatch
+	return pl
 }
 
 const DefaultLookbackDays = 14
@@ -181,12 +184,38 @@ func (pl *ProwLoader) Errors() []error {
 	return pl.errors
 }
 
+// partitionStartDate computes the start of the date range for which partitions must
+// exist to accommodate the given prowJobs. loadSince (minus a 1 day grace period, since
+// bq imports based on modified time which can include job_run_start_time a day earlier,
+// see https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473)
+// is the default start date, extended earlier if any job's StartTime precedes it.
+//
+// That grace period covers the common case, but some jobs (e.g. ones Prow eventually marks
+// as aborted after getting stuck) can report a StartTime days before their completion time,
+// which is what the BQ query actually filters on. So the start bound is extended to the
+// earliest job we're actually about to write, to guarantee a partition exists for every row.
+func partitionStartDate(loadSince time.Time, prowJobs []prow.ProwJob) time.Time {
+	startDate := loadSince.AddDate(0, 0, -1)
+	for i := range prowJobs {
+		if st := prowJobs[i].Status.StartTime; !st.IsZero() && st.Before(startDate) {
+			startDate = st
+		}
+	}
+	return startDate
+}
+
 // ensurePartitions creates necessary partitions for partitioned tables.
 // It uses the release list from pl.releases and determines the date range based on:
-//   - pl.loadSince if available, otherwise looks back one week
+//   - pl.loadSince if available, otherwise looks back DefaultLookbackDays days, plus a 1 day grace period
+//   - the earliest prowJobs StartTime, in case it falls outside the above window
 //   - Creates partitions 2 days forward from now
-func (pl *ProwLoader) ensurePartitions() error {
-	startDate := pl.resolveLoadSince()
+func (pl *ProwLoader) ensurePartitions(prowJobs []prow.ProwJob) error {
+	defaultStartDate := pl.resolveLoadSince().AddDate(0, 0, -1)
+	startDate := partitionStartDate(pl.resolveLoadSince(), prowJobs)
+	if startDate.Before(defaultStartDate) {
+		log.Warnf("extending partition start date to %s to cover outlier job StartTime (default was %s)",
+			startDate.Format("2006-01-02"), defaultStartDate.Format("2006-01-02"))
+	}
 
 	// Create partitions 2 days forward from now
 	endDate := time.Now().AddDate(0, 0, 2)
@@ -194,9 +223,7 @@ func (pl *ProwLoader) ensurePartitions() error {
 	log.Infof("Ensuring partitions for releases %v from %s to %s",
 		pl.releases, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	// https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473 bq imports based on modified time which can include job_run_start_time a day earlier
-	// add grace to ensure we have a valid partition for new dbs.
-	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate.AddDate(0, 0, -1), endDate, false)
+	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate, endDate, false)
 	if err != nil {
 		return fmt.Errorf("failed to ensure partitions: %w", err)
 	}
@@ -209,11 +236,6 @@ func (pl *ProwLoader) Load() {
 	start := time.Now()
 
 	log.Infof("started loading prow jobs to DB...")
-
-	// Update unmerged PR statuses in case any have merged
-	if err := pl.syncPRStatus(); err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error in syncPRStatus"))
-	}
 
 	// Grab the ProwJob definitions from prow or CI bigquery. Note that these are the Kube
 	// ProwJob CRDs, not our sippy db model ProwJob.
@@ -239,7 +261,7 @@ func (pl *ProwLoader) Load() {
 	}
 
 	// Ensure we have partitions for the new data
-	if err := pl.ensurePartitions(); err != nil {
+	if err := pl.ensurePartitions(prowJobs); err != nil {
 		pl.errors = append(pl.errors, errors.Wrap(err, "failed to ensure partitions"))
 		return
 	}
@@ -259,6 +281,8 @@ func (pl *ProwLoader) Load() {
 		pl.errors = append(pl.errors, errors.Wrap(err, "error pre-fetching labels from BigQuery"))
 	}
 
+	prowLoaderQueriedMetricGauge.Set(float64(len(prowJobs)))
+
 	// Match jobs to releases and bulk-upsert ProwJob definitions before
 	// the concurrent processing loop. The prowJobCache is read-only after
 	// this point.
@@ -274,7 +298,6 @@ func (pl *ProwLoader) Load() {
 	queue := make(chan *prow.ProwJob)
 	results := make(chan *jobRunResult, len(entries))
 	fetchErrsCh := make(chan error, len(entries))
-	total := len(entries)
 
 	go func() {
 		defer close(queue)
@@ -306,8 +329,6 @@ func (pl *ProwLoader) Load() {
 				if result != nil {
 					results <- result
 				}
-				pl.jobsImportedCount.Add(1)
-				log.Infof("%d of %d job runs processed", pl.jobsImportedCount.Load(), total)
 			}
 		}(fetchCtx)
 	}
@@ -317,20 +338,10 @@ func (pl *ProwLoader) Load() {
 		close(fetchErrsCh)
 	}()
 
-	if err := pl.accumulateAndWriteJobRuns(pl.ctx, results); err != nil {
-		cancelFetch()
-		pl.errors = append(pl.errors, errors.Wrap(err, "error writing job runs"))
-	}
+	pl.accumulateAndWriteJobRuns(pl.ctx, results)
 
 	for err := range fetchErrsCh {
 		pl.errors = append(pl.errors, err)
-	}
-
-	// load the test analysis by job data into tables partitioned by day, letting bigquery do the
-	// heavy lifting for us.
-	err = pl.loadDailyTestAnalysisByJob(pl.ctx)
-	if err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
 	}
 
 	if len(pl.errors) > 0 {
@@ -339,271 +350,24 @@ func (pl *ProwLoader) Load() {
 	log.Infof("finished importing new job runs in %+v", time.Since(start))
 
 	if pl.promPusher != nil {
-		prowLoaderQueriedMetricGauge.Set(float64(pl.jobsImportedCount.Load()))
 		pl.promPusher.Collector(prowLoaderQueriedMetricGauge)
-		prowLoaderProcessedMetricGauge.Set(float64(pl.jobsProcessedCount.Load()))
 		pl.promPusher.Collector(prowLoaderProcessedMetricGauge)
 	}
 }
 
-// tempBQTestAnalysisByJobForDate is a dupe type to work around date parsing issues.
-type tempBQTestAnalysisByJobForDate struct {
-	Date     civil.Date
-	TestID   uint
-	Release  string
-	TestName string `bigquery:"test_name"`
-	JobName  string `bigquery:"job_name"`
-	Runs     int
-	Passes   int
-	Flakes   int
-	Failures int
-}
-
-// getTestAnalysisByJobFromToDates uses the last daily report date to calculate the
-// date range we should request from bigquery for import. We don't want to import
-// the prior day if jobs are still running, so if we're not at least 8 hours into
-// the current day (UTC), we will keep waiting to import yesterday. Once we cross
-// that threshold we will import. (assume hourly imports)
-// If our most recent import is yesterday, we're done for the day.
-// If the lastDailySummary is empty, this implies a new database, and we'll do an initial
-// bulk load.
-//
-// Returns a slice of day strings YYYY-MM-DD in ascending order. We'll import a day at
-// a time, with a separate transaction for each. If something goes wrong we can fail and
-// pick up at that date the next time.
-//
-// At present in prod, each day takes about 20 minutes
-func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time, loadSince *time.Time) []string {
-	to := now.UTC().Add(-32 * time.Hour)
-
-	// If this is a new db, do an initial larger import:
-	if lastDailySummary.IsZero() {
-		return DaysBetween(resolveFrom(loadSince, to), to)
-	}
-
-	ldsStr := lastDailySummary.UTC().Format("2006-01-02")
-	if ldsStr == to.Format("2006-01-02") {
-		return []string{}
-	}
-	from := lastDailySummary.UTC().Add(24 * time.Hour)
-	return DaysBetween(from, to)
-}
-
-// DaysBetween returns a slice of strings representing each day in YYYY-MM-DD format between two dates
-func DaysBetween(start, end time.Time) []string {
-	var days []string
-
-	// Normalize times to midnight to count full days
-	start = start.Truncate(24 * time.Hour)
-	end = end.Truncate(24 * time.Hour)
-
-	// Ensure start is before or equal to end
-	if end.Before(start) {
-		start, end = end, start
-	}
-
-	// Iterate from start to end date
-	for d := start; !d.After(end); d = d.Add(24 * time.Hour) {
-		days = append(days, d.Format("2006-01-02"))
-	}
-
-	return days
-}
-
-// NextDay takes a date string in YYYY-MM-DD format and returns the date string for the following day.
-func NextDay(dateStr string) (string, error) {
-	// Parse the input date string
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return "", fmt.Errorf("invalid date format: %v", err)
-	}
-
-	// Add one day to the parsed date
-	nextDay := date.Add(24 * time.Hour)
-
-	// Format the next day back to YYYY-MM-DD
-	return nextDay.Format("2006-01-02"), nil
-}
-
-// loadDailyTestAnalysisByJob loads test analysis data into partitioned tables in postgres, one per
-// day. The data is calculated by querying bigquery to do the heavy lifting for us. Each day is committed
-// transactionally so the process is safe to interrupt and resume later. The process takes about 20 minutes
-// per day at the time of writing, so an initial load for all releases can be quite time consuming.
-func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
-
-	// Figure out our last imported daily summary.
-	var lastDailySummary time.Time
-	row := pl.dbc.DB.Table("test_analysis_by_job_by_dates").Select("MAX(date)").Row()
-
-	// Ignoring error, the function below handles the zero time if needed: (new db)
-	_ = row.Scan(&lastDailySummary)
-
-	importDates := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now(), pl.loadSince)
-	if len(importDates) == 0 {
-		log.Info("test analysis summary already completed today")
-		return nil
-	}
-	log.Infof("importing test analysis by job for dates: %v", importDates)
-
-	jobCache, err := query.LoadProwJobCache(pl.dbc)
-	if err != nil {
-		log.WithError(err).Error("error loading job cache")
-		return err
-	}
-
-	testCache, err := query.LoadTestCache(pl.dbc, []string{})
-	if err != nil {
-		log.WithError(err).Error("error loading test cache")
-		return err
-	}
-
-	for _, dateToImport := range importDates {
-		dLog := log.WithField("date", dateToImport)
-
-		dLog.Infof("Loading test analysis by job daily summaries")
-
-		q := pl.bigQueryClient.Query(ctx, bqlabel.ProwLoaderTestAnalysis, fmt.Sprintf(`WITH
-  deduped_testcases AS (
-  SELECT
-    junit.*,
-    ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY CASE WHEN flake_count > 0 THEN 0 WHEN success_val > 0 THEN 1 ELSE 2 END ) AS row_num,
-    jobs. prowjob_job_name AS variant_registry_job_name,
-    jobs.org,
-    jobs.repo,
-    jobs.pr_number,
-    jobs.pr_sha,
-    CASE
-      WHEN flake_count > 0 THEN 0
-      ELSE success_val
-  END
-    AS adjusted_success_val,
-    CASE
-      WHEN flake_count > 0 THEN 1
-      ELSE 0
-  END
-    AS adjusted_flake_count
-  FROM
-    %s.junit
-  INNER JOIN
-    %s.jobs jobs
-  ON
-    junit.prowjob_build_id = jobs.prowjob_build_id
-    AND DATE(jobs.prowjob_start) <= DATE(@DateToImport)
-  WHERE
-    DATE(junit.modified_time) = DATE(@DateToImport)
-    AND skipped = FALSE )
-SELECT
-  test_name,
-  DATE(modified_time) AS date,
-  prowjob_name AS job_name,
-  branch AS release,
-  COUNT(*) AS runs,
-  SUM(adjusted_success_val) AS passes,
-  SUM(adjusted_flake_count) AS flakes,
-FROM
-  deduped_testcases
-WHERE
-  row_num = 1
-  AND branch IN UNNEST(@Releases)
-GROUP BY
-  test_name,
-  date,
-  release,
-  prowjob_name
-ORDER BY
-  date,
-  test_name,
-  prowjob_name
-`, pl.bigQueryClient.Dataset, pl.bigQueryClient.Dataset))
-		q.Parameters = []bigquery.QueryParameter{
-			{
-				Name:  "DateToImport",
-				Value: dateToImport,
-			},
-			{
-				Name:  "Releases",
-				Value: pl.releases,
-			},
-		}
-		it, err := q.Read(ctx)
-		if err != nil {
-			dLog.WithError(err).Error("error querying test analysis from bigquery")
-			return err
-		}
-
-		insertRows := []models.TestAnalysisByJobByDate{}
-		for {
-			row := tempBQTestAnalysisByJobForDate{}
-			err := it.Next(&row)
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				log.WithError(err).Error("error parsing prowjob from bigquery")
-				return err
-			}
-			psqlDate := pgtype.Date{}
-			err = psqlDate.Set(row.Date.String())
-			if err != nil {
-				return err
-			}
-
-			// Skip jobs and tests we don't know about in our postgres db:
-			test, ok := testCache[row.TestName]
-			if !ok {
-				continue
-			}
-
-			if _, ok := jobCache[row.JobName]; !ok {
-				continue
-			}
-			// we have to infer failures due to the bigquery query we leveraged:
-			failures := row.Runs - row.Passes - row.Flakes
-
-			// convert to a db row for postgres insertion:
-			psqlRow := models.TestAnalysisByJobByDate{
-				Date:     row.Date.In(time.UTC),
-				TestID:   test.ID,
-				Release:  row.Release,
-				TestName: row.TestName,
-				JobName:  row.JobName,
-				Runs:     row.Runs,
-				Passes:   row.Passes,
-				Flakes:   row.Flakes,
-				Failures: failures,
-			}
-			insertRows = append(insertRows, psqlRow)
-		}
-		st := time.Now()
-		dLog.Infof("inserting %d rows", len(insertRows))
-		n, err := pl.dbc.CopyFrom(ctx, "test_analysis_by_job_by_dates",
-			[]string{"date", "test_id", "release", "job_name", "test_name", "runs", "passes", "flakes", "failures"},
-			pgx.CopyFromSlice(len(insertRows), func(i int) ([]any, error) {
-				r := &insertRows[i]
-				return []any{
-					r.Date,
-					r.TestID,
-					r.Release,
-					r.JobName,
-					r.TestName,
-					r.Runs,
-					r.Passes,
-					r.Flakes,
-					r.Failures,
-				}, nil
-			}),
-		)
-		if err != nil {
-			return fmt.Errorf("COPY test_analysis_by_job_by_dates: %w", err)
-		}
-		dLog.Infof("inserted %d rows in %s", n, time.Since(st))
-	}
-	return nil
-}
-
 // matchRelease returns the release a prow job belongs to, or "" if it
-// doesn't match any configured release.
-func (pl *ProwLoader) matchRelease(jobName string) string {
+// doesn't match any configured release. For /payload sub-jobs (identified
+// by releaseJobName annotation + PR refs), it returns the Presubmits
+// pseudo-release.
+func (pl *ProwLoader) matchRelease(pj *prow.ProwJob) string {
+	if _, ok := pj.Annotations["releaseJobName"]; ok && pj.Spec.Refs != nil {
+		if pl.releaseSet.Has(models.ReleasePresubmits) {
+			return models.ReleasePresubmits
+		}
+		return ""
+	}
+
+	jobName := pj.Spec.Job
 	if release, ok := pl.syntheticReleaseJobOverrides.Lookup(jobName); ok {
 		if pl.releaseSet.Has(release) {
 			return release
@@ -628,6 +392,12 @@ func (pl *ProwLoader) matchRelease(jobName string) string {
 	return ""
 }
 
+// isPayloadPresubmit returns true if the prow job is a /payload sub-job.
+func isPayloadPresubmit(pj *prow.ProwJob) bool {
+	_, hasAnnotation := pj.Annotations["releaseJobName"]
+	return hasAnnotation && pj.Spec.Refs != nil
+}
+
 // preprocessProwJobs matches each BigQuery prow job to a release, filters out
 // already-processed runs and non-terminal states, bulk-upserts ProwJob
 // definitions, and returns only entries that need GCS fetching.
@@ -650,7 +420,7 @@ func (pl *ProwLoader) preprocessProwJobs(ctx context.Context, prowJobs []prow.Pr
 			continue
 		}
 
-		release := pl.matchRelease(pj.Spec.Job)
+		release := pl.matchRelease(pj)
 		if release == "" {
 			continue
 		}
@@ -668,12 +438,36 @@ func (pl *ProwLoader) preprocessProwJobs(ctx context.Context, prowJobs []prow.Pr
 		}
 		seenJobs.Insert(pj.Spec.Job)
 
+		variantJobName := pj.Spec.Job
+		isPayload := isPayloadPresubmit(pj)
+		if isPayload {
+			variantJobName = pj.Annotations["releaseJobName"]
+		}
+
+		variants := pl.variantManager.IdentifyVariants(variantJobName)
+		if isPayload {
+			for vi, v := range variants {
+				parts := strings.SplitN(v, ":", 2)
+				if len(parts) == 2 {
+					if _, isRel := pl.config.Releases[parts[1]]; isRel {
+						variants[vi] = parts[0] + ":" + models.ReleasePresubmits
+						break
+					}
+				}
+			}
+		}
+
+		testGridURL := ""
+		if !isPayload {
+			testGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
+		}
+
 		jobDefs = append(jobDefs, models.ProwJob{
 			Name:        pj.Spec.Job,
 			Kind:        models.ProwKind(pj.Spec.Type),
 			Release:     release,
-			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job),
-			TestGridURL: pl.generateTestGridURL(release, pj.Spec.Job).String(),
+			Variants:    variants,
+			TestGridURL: testGridURL,
 		})
 	}
 
@@ -769,69 +563,6 @@ func (pl *ProwLoader) findNewJobRunIDs(ctx context.Context, candidateIDs []uint)
 	}
 
 	return sets.New(newIDs...), nil
-}
-
-func (pl *ProwLoader) syncPRStatus() error {
-	if pl.githubClient == nil {
-		log.Infof("No GitHub client, skipping PR sync")
-		return nil
-	}
-
-	pulls := make([]models.ProwPullRequest, 0)
-	if res := pl.dbc.DB.
-		Table("prow_pull_requests").
-		Where("merged_at IS NULL").Scan(&pulls); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return errors.Wrap(res.Error, "could not fetch prow_pull_requests")
-	}
-
-	for _, pr := range pulls {
-		logger := log.WithField("org", pr.Org).
-			WithField("repo", pr.Repo).
-			WithField("number", pr.Number).
-			WithField("sha", pr.SHA)
-
-		// first check to see if this pr has recently closed (indicating it may have merged)
-		recentMergedAt, mergeCommitSha, err := pl.githubClient.IsPrRecentlyMerged(pr.Org, pr.Repo, pr.Number)
-
-		// the client should have logged the error, we want
-		// to see if we are rate limited or not, if so return
-		// otherwise keep processing
-		if err != nil {
-			if pl.githubClient.IsWithinRateLimitThreshold() {
-				return err
-			}
-		}
-
-		if recentMergedAt != nil {
-			// we have the recentMergedAt but, we don't know if it is associated with this SHA so do
-			// the SHA specific verification
-			if mergeCommitSha != nil && *mergeCommitSha == pr.SHA {
-				if pr.MergedAt != recentMergedAt {
-					pr.MergedAt = recentMergedAt
-					if res := pl.dbc.DB.Save(pr); res.Error != nil {
-						logger.WithError(res.Error).Errorf("unexpected error updating pull request %s (%s)", pr.Link, pr.SHA)
-						continue
-					}
-				}
-			}
-
-			// if we see that any sha has merged for this pr then we should clear out any risk analysis pending comment records
-			// if we don't get them here we will catch them before writing the risk analysis comment
-			// but, we should clean up here if possible
-			pendingComments, err := pl.ghCommenter.QueryPRPendingComments(pr.Org, pr.Repo, pr.Number, models.CommentTypeRiskAnalysis)
-
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				logger.WithError(err).Error("Unable to fetch pending comments ")
-			}
-
-			for _, pc := range pendingComments {
-				pcp := pc
-				pl.ghCommenter.ClearPendingRecord(pcp.Org, pcp.Repo, pcp.PullNumber, pcp.SHA, models.CommentTypeRiskAnalysis, &pcp)
-			}
-		}
-	}
-
-	return nil
 }
 
 func fetchJobsJSON(prowURL string) ([]byte, error) {
@@ -1037,7 +768,6 @@ func (pl *ProwLoader) fetchJobRunResult(ctx context.Context, pj *prow.ProwJob) (
 		return nil, err
 	}
 
-	pl.jobsProcessedCount.Add(1)
 	return result, nil
 }
 
@@ -1052,6 +782,7 @@ type prowJobRunTestRow struct {
 	Status              int
 	Duration            float64
 	Output              *string
+	Lifecycle           string
 }
 
 type prowJobRunRow struct {
@@ -1065,6 +796,7 @@ type prowJobRunRow struct {
 	Timestamp      time.Time
 	OverallResult  sippyprocessingv1.JobOverallResult
 	TestFailures   int
+	TestFlakes     int
 	Succeeded      bool
 	Labels         []string
 }
@@ -1105,7 +837,7 @@ type jobRunResult struct {
 }
 
 func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, id uint64, path string, junitMatches []string, dbProwJob *models.ProwJob) (*jobRunResult, error) {
-	tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), dbProwJob.ID, dbProwJob.Release, path, junitMatches)
+	tests, failures, flakes, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), dbProwJob.ID, dbProwJob.Release, path, junitMatches)
 	if err != nil {
 		return nil, err
 	}
@@ -1151,6 +883,7 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 			Timestamp:      pj.Status.StartTime,
 			OverallResult:  overallResult,
 			TestFailures:   failures,
+			TestFlakes:     flakes,
 			Succeeded:      overallResult == sippyprocessingv1.JobSucceeded,
 			Labels:         []string(pl.labelsCache[pj.Status.BuildID]),
 		},
@@ -1173,6 +906,7 @@ var (
 		{Name: "timestamp", Type: "timestamptz NOT NULL", Value: func(r *prowJobRunRow) any { return r.Timestamp }},
 		{Name: "overall_result", Type: "text NOT NULL DEFAULT ''", Value: func(r *prowJobRunRow) any { return string(r.OverallResult) }},
 		{Name: "test_failures", Type: "integer NOT NULL DEFAULT 0", Value: func(r *prowJobRunRow) any { return r.TestFailures }},
+		{Name: "test_flakes", Type: "integer NOT NULL DEFAULT 0", Value: func(r *prowJobRunRow) any { return r.TestFlakes }},
 		{Name: "succeeded", Type: "boolean NOT NULL DEFAULT false", Value: func(r *prowJobRunRow) any { return r.Succeeded }},
 		{Name: "labels", Type: "text[]", Value: func(r *prowJobRunRow) any { return r.Labels }},
 	}
@@ -1210,37 +944,51 @@ var (
 		{Name: "status", Type: "integer NOT NULL", Value: func(r *prowJobRunTestRow) any { return r.Status }},
 		{Name: "duration", Type: "double precision NOT NULL DEFAULT 0", Value: func(r *prowJobRunTestRow) any { return r.Duration }},
 		{Name: "output", Type: "text", Value: func(r *prowJobRunTestRow) any { return r.Output }},
+		{Name: "lifecycle", Type: "text NOT NULL DEFAULT 'blocking'", Value: func(r *prowJobRunTestRow) any { return r.Lifecycle }},
 	}
 )
 
-func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-chan *jobRunResult) error {
+func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-chan *jobRunResult) {
 	const flushThreshold = 100
 	var (
-		batch []jobRunResult
-		total int
+		batch  []jobRunResult
+		total  int
+		failed int
 	)
+
+	flush := func(msg string) {
+		if err := pl.batchWriter(ctx, batch); err != nil {
+			log.WithError(err).WithField("batchSize", len(batch)).Warning(msg)
+			failed += len(batch)
+			pl.errors = append(pl.errors, fmt.Errorf("error writing job run batch: %w", err))
+		} else {
+			total += len(batch)
+		}
+		batch = batch[:0]
+	}
 
 	for result := range results {
 		batch = append(batch, *result)
+		if ctx.Err() != nil {
+			break
+		}
 		if len(batch) >= flushThreshold {
-			if err := pl.writeJobRunBatch(ctx, batch); err != nil {
-				return err
-			}
-			total += len(batch)
-			batch = batch[:0]
+			flush("batch write failed, continuing with remaining batches")
 		}
 	}
 	if len(batch) > 0 {
-		if err := pl.writeJobRunBatch(ctx, batch); err != nil {
-			return err
-		}
-		total += len(batch)
+		flush("final batch write failed")
 	}
 
-	if total > 0 {
-		log.WithField("runs", total).Info("all job run batches committed")
+	if total > 0 || failed > 0 {
+		entry := log.WithField("succeeded", total).WithField("failed", failed)
+		if failed > 0 {
+			entry.Warning("job run batch processing completed with errors")
+		} else {
+			entry.Info("all job run batches committed")
+		}
 	}
-	return nil
+	prowLoaderProcessedMetricGauge.Set(float64(total))
 }
 
 func (pl *ProwLoader) writeJobRunBatch(ctx context.Context, batch []jobRunResult) error {
@@ -1318,11 +1066,13 @@ func (pl *ProwLoader) writeJobRunBatch(ctx context.Context, batch []jobRunResult
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO prow_job_runs (id, cluster, duration, prow_job_id, prow_job_release,
-			url, gcs_bucket, timestamp, overall_result, test_failures, succeeded,
-			failed, infrastructure_failure, known_failure, labels, created_at, updated_at)
+			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
+			succeeded, failed, infrastructure_failure, known_failure, labels,
+			created_at, updated_at)
 		SELECT id, cluster, duration, prow_job_id, prow_job_release,
-			url, gcs_bucket, timestamp, overall_result, test_failures, succeeded,
-			false, false, false, labels, NOW(), NOW()
+			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
+			succeeded, false, false, false, labels,
+			NOW(), NOW()
 		FROM tmp_prow_job_runs
 	`); err != nil {
 		return fmt.Errorf("inserting prow_job_runs: %w", err)
@@ -1387,9 +1137,9 @@ func (pl *ProwLoader) writeJobRunBatch(ctx context.Context, batch []jobRunResult
 		if _, err := tx.Exec(ctx, `
 			WITH inserted AS (
 				INSERT INTO prow_job_run_tests (prow_job_run_id, prow_job_id, prow_job_run_timestamp,
-					prow_job_run_release, test_id, suite_id, status, duration, created_at, updated_at)
+					prow_job_run_release, test_id, suite_id, status, duration, lifecycle, created_at, updated_at)
 				SELECT tmp.prow_job_run_id, tmp.prow_job_id, tmp.prow_job_run_timestamp,
-					tmp.prow_job_run_release, t.id, s.id, tmp.status, tmp.duration, NOW(), NOW()
+					tmp.prow_job_run_release, t.id, s.id, tmp.status, tmp.duration, tmp.lifecycle, NOW(), NOW()
 				FROM tmp_job_run_tests tmp
 				INNER JOIN tests t ON t.name = tmp.test_name AND t.deleted_at IS NULL
 				LEFT JOIN suites s ON s.name = tmp.suite_name AND s.deleted_at IS NULL
@@ -1602,26 +1352,17 @@ type testCaseKey struct {
 	TestName  string
 }
 
-// testCaseEntry holds raw test case data with string names before ID resolution.
-type testCaseEntry struct {
-	TestName  string
-	SuiteName string
-	Status    int
-	Duration  float64
-	Output    *string
-}
-
-func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]prowJobRunTestRow, int, sippyprocessingv1.JobOverallResult, error) {
+func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]prowJobRunTestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
 	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
 	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 	gcsJobRun.SetGCSJunitPaths(junitPaths)
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(ctx)
 	if err != nil {
 		log.Warningf("failed to get junit test suites: %s", err.Error())
-		return nil, 0, "", err
+		return nil, 0, 0, "", err
 	}
 
-	testCases := make(map[testCaseKey]*testCaseEntry)
+	testCases := make(map[testCaseKey]*types.TestCaseEntry)
 	for _, suite := range suites.Suites {
 		if !db.IsSuiteImportable(suite.Name) {
 			log.Infof("skipping suite %q as it's not listed for import", suite.Name)
@@ -1630,21 +1371,17 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		extractTestCases(suite, testCases)
 	}
 
-	oldTestCases := make(map[string]*models.ProwJobRunTest, len(testCases))
-	for _, tc := range testCases {
-		oldTestCases[tc.TestName] = &models.ProwJobRunTest{
-			Status: tc.Status,
-		}
-	}
+	oldTestCases := slices.Collect(maps.Values(testCases))
 	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, oldTestCases, pl.syntheticTestManager)
 
 	if !db.IsSuiteImportable(syntheticSuite.Name) {
-		return nil, 0, "", fmt.Errorf("synthetic suite %q is missing from the importable list", syntheticSuite.Name)
+		return nil, 0, 0, "", fmt.Errorf("synthetic suite %q is missing from the importable list", syntheticSuite.Name)
 	}
 	extractTestCases(syntheticSuite, testCases)
 	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
 
 	failures := 0
+	flakes := 0
 	results := make([]prowJobRunTestRow, 0, len(testCases))
 	for _, tc := range testCases {
 		if testidentification.IsIgnoredTest(tc.TestName) {
@@ -1660,16 +1397,20 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 			Status:              tc.Status,
 			Duration:            tc.Duration,
 			Output:              tc.Output,
+			Lifecycle:           tc.Lifecycle,
 		})
-		if tc.Status == int(sippyprocessingv1.TestStatusFailure) {
+		switch tc.Status {
+		case int(sippyprocessingv1.TestStatusFailure):
 			failures++
+		case int(sippyprocessingv1.TestStatusFlake):
+			flakes++
 		}
 	}
 
-	return results, failures, jobResult, nil
+	return results, failures, flakes, jobResult, nil
 }
 
-func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*testCaseEntry) {
+func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.TestCaseEntry) {
 	for _, tc := range suite.TestCases {
 		if testidentification.IsIgnoredTest(tc.Name) {
 			continue
@@ -1688,12 +1429,13 @@ func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*testCas
 		key := testCaseKey{SuiteName: suite.Name, TestName: tc.Name}
 
 		if existing, ok := testCases[key]; !ok {
-			testCases[key] = &testCaseEntry{
+			testCases[key] = &types.TestCaseEntry{
 				TestName:  tc.Name,
 				SuiteName: suite.Name,
 				Status:    int(status),
 				Duration:  tc.Duration,
 				Output:    output,
+				Lifecycle: normalizeLifecycle(tc.Lifecycle),
 			}
 		} else if (existing.Status == int(sippyprocessingv1.TestStatusFailure) && status == sippyprocessingv1.TestStatusSuccess) ||
 			(existing.Status == int(sippyprocessingv1.TestStatusSuccess) && status == sippyprocessingv1.TestStatusFailure) {
@@ -1707,4 +1449,13 @@ func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*testCas
 	for _, c := range suite.Children {
 		extractTestCases(c, testCases)
 	}
+}
+
+// normalizeLifecycle returns the lifecycle value from JUnit XML, defaulting
+// empty/missing values to "blocking" (matches BQ COALESCE behavior).
+func normalizeLifecycle(raw string) string {
+	if raw == "" {
+		return "blocking"
+	}
+	return strings.ToLower(raw)
 }

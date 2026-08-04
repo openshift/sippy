@@ -41,7 +41,7 @@ else
 	@echo "ARTIFACT_DIR is defined. Using $(ARTIFACT_DIR)/junit.xml."
 	gotestsum --junitfile $(ARTIFACT_DIR)/junit.xml ./pkg/...
 endif
-	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
+	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage
 	@which python3 > /dev/null 2>&1 || { echo "ERROR: python3 not found in PATH"; exit 1; }
 	cd mcp && \
 		if [ ! -x .venv/bin/python ]; then \
@@ -55,7 +55,7 @@ lint: builddir npm
 	cd sippy-ng; npx eslint .
 	# See https://github.com/facebook/create-react-app/issues/11174 about
 	# why we only audit production deps:
-	cd sippy-ng; npm audit --omit=dev
+	cd sippy-ng; npx audit-ci --config ./audit-ci.jsonc --skip-dev
 
 npm: sippy-ng/node_modules/.package-lock.json
 
@@ -94,6 +94,14 @@ devcontainer-claude:
 
 e2e:
 	./scripts/e2e.sh
+
+.PHONY: integration
+integration:
+ifeq ($(ARTIFACT_DIR),)
+	gotestsum --junitfile ./integration-junit.xml ./test/integration/... -count 1 -p 1
+else
+	gotestsum --junitfile $(ARTIFACT_DIR)/integration-junit.xml ./test/integration/... -count 1 -p 1
+endif
 
 images:
 	$(DOCKER) build .

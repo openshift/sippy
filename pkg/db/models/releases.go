@@ -26,6 +26,8 @@ type ReleaseDefinition struct {
 }
 
 const (
+	ReleasePresubmits = "Presubmits"
+
 	CapComponentReadiness = "componentReadiness"
 	CapSippyClassic       = "sippyClassic"
 	CapMetrics            = "metrics"

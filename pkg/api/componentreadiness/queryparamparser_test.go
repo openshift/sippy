@@ -584,6 +584,7 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 		"TestCapability",
 		[]string{"Architecture:amd64", "Platform:aws"},
 		"",
+		"",
 	)
 	require.NoError(t, err)
 

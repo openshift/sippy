@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	gosort "sort"
 	"strconv"
@@ -28,10 +27,6 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/html/installhtml"
 	"github.com/openshift/sippy/pkg/util/param"
-)
-
-const (
-	payloadFailedTests14dMatView = "payload_test_failures_14d_matview"
 )
 
 func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubstrings []string, dbc *db.DB) {
@@ -481,16 +476,14 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 			errs = append(errs, err)
 			return
 		}
-		collapsedColumns := append([]string{"id"}, append(testMetadataColumns, query.QueryTestFields)...)
+		collapsedColumns := append(testMetadataColumns, query.QueryTestFields)
 		rawQuery := dbc.DB.WithContext(ctx).
 			Table("(?) AS r", collapsedQuery).
 			Select(strings.Join(collapsedColumns, ","))
 
 		// Collapsed path: inner query only has counts, so the outer layer computes
 		// percentages and net improvements via QueryTestSummarizer.
-		selectColumns := []string{"id"}
-		selectColumns = append(selectColumns, testMetadataColumns...)
-		selectColumns = append(selectColumns, query.QueryTestSummarizer)
+		selectColumns := append(testMetadataColumns, query.QueryTestSummarizer)
 		processedResults := dbc.DB.Table("(?) as results", rawQuery).
 			Select(strings.Join(selectColumns, ",")).
 			Where("current_runs > 0 or previous_runs > 0")
@@ -556,7 +549,6 @@ func safePercent(numerator, denominator int) float64 {
 
 func computeOverallTest(testReports []apitype.Test) *apitype.Test {
 	overall := &apitype.Test{
-		ID:   math.MaxInt32,
 		Name: "Overall",
 	}
 	for _, t := range testReports {
@@ -655,7 +647,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	),
 	candidate_query AS (
 		SELECT
-			ROW_NUMBER() OVER() as id,
 			test_id,
 			name,
 			jira_component,
@@ -686,7 +677,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 		GROUP BY test_id, testsuite),
 	unfiltered_candidate_query AS (
 		SELECT
-			ROW_NUMBER() OVER() as id,
 			cm.cm_id as test_id,
 			name,
 			jira_component,
@@ -747,7 +737,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 		}
 
 		overallTest = &overallReports[0]
-		overallTest.ID = math.MaxInt32
 		overallTest.Name = "Overall"
 	}
 

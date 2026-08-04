@@ -28,6 +28,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -146,12 +147,6 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Name:    "sippy_all_matviews_refresh_millis",
 	Help:    "Milliseconds to refresh our postgresql materialized views",
 	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
-})
-
-var dailySummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
-	Name:    "sippy_daily_summary_refresh_millis",
-	Help:    "Milliseconds to refresh the daily summary table",
-	Buckets: []float64{1000, 5000, 10000, 30000, 60000, 300000, 600000, 1200000},
 })
 
 var cumulativeSummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
@@ -401,14 +396,8 @@ type RefreshOptions struct {
 func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
 
-	summaryStart := time.Now()
-	if _, err := dailysummary.Refresh(dbc); err != nil {
-		return fmt.Errorf("failed to refresh daily summaries: %w", err)
-	}
-	dailySummaryRefreshMetric.Observe(float64(time.Since(summaryStart).Milliseconds()))
-
 	totalsStart := time.Now()
-	earliestTotalsChanged, err := dailysummary.RefreshTotals(dbc)
+	earliestTotalsChanged, err := dailysummary.Refresh(dbc)
 	if err != nil {
 		return fmt.Errorf("failed to refresh daily totals: %w", err)
 	}
@@ -435,10 +424,8 @@ func BackfillData(dbc *db.DB, table string, startDate, endDate civil.Date) error
 	}).Info("Backfilling table")
 
 	switch table {
-	case "daily-summaries":
-		return dailysummary.Backfill(dbc, startDate, endDate)
 	case "daily-totals":
-		return dailysummary.BackfillTotals(dbc, startDate, endDate)
+		return dailysummary.Backfill(dbc, startDate, endDate)
 	case "cumulative-summaries":
 		return cumulativesummary.Backfill(dbc, startDate, endDate)
 	default:
@@ -632,9 +619,17 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "", "")
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if filterOpts.SortField != "" || filterOpts.Sort != "" {
+		failureResponse(w, http.StatusBadRequest, "sorting is not supported for this endpoint")
+		return
+	}
+	if filterOpts.Limit > 0 {
+		failureResponse(w, http.StatusBadRequest, "limit is not supported for this endpoint")
 		return
 	}
 
@@ -1103,12 +1098,13 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonJobVariants(w http.ResponseWriter, req *http.Request) {
 	if s.crDataProvider == nil {
 		failureResponse(w, http.StatusBadRequest, "job variants API is only available when a data provider is configured")
 		return
 	}
-	outputs, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
+	reqOptions := reqopts.RequestOptions{DataSource: param.SafeRead(req, "dataSource")}
+	outputs, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying job variants:", len(errs))
 		for _, err := range errs {
@@ -1172,31 +1168,41 @@ func (s *Server) getRegressedTestsForRegressions(req *http.Request, regressions 
 	return result, nil
 }
 
-// getComponentReportFromRequest creates a component report based on the HTTP request parameters
-func (s *Server) getComponentReportFromRequest(req *http.Request) (componentreport.ComponentReport, error) {
+// parseCRRequest validates the data provider, resolves variants and releases,
+// and parses query parameters into RequestOptions. Shared by all CR handlers.
+func (s *Server) parseCRRequest(req *http.Request) (reqopts.RequestOptions, []sippyv1.Release, []string, error) {
 	if s.crDataProvider == nil {
-		return componentreport.ComponentReport{}, &api.ValidationError{
+		return reqopts.RequestOptions{}, nil, nil, &api.ValidationError{
 			Message: "component report API is only available when a data provider is configured",
 		}
 	}
 
-	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
+	variantReqOptions := reqopts.RequestOptions{DataSource: param.SafeRead(req, "dataSource")}
+	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, variantReqOptions)
 	if len(errs) > 0 {
-		return componentreport.ComponentReport{}, fmt.Errorf("failed to get job variants")
+		return reqopts.RequestOptions{}, nil, nil, fmt.Errorf("failed to get job variants: %v", errs)
 	}
 
 	allReleases, err := s.getReleases(req.Context())
 	if err != nil {
-		return componentreport.ComponentReport{}, err
+		return reqopts.RequestOptions{}, nil, nil, err
 	}
 
 	options, warnings, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
+	if err != nil {
+		return reqopts.RequestOptions{}, nil, nil, err
+	}
 
+	return options, allReleases, warnings, nil
+}
+
+// getComponentReportFromRequest creates a component report based on the HTTP request parameters
+func (s *Server) getComponentReportFromRequest(req *http.Request) (componentreport.ComponentReport, error) {
+	options, _, warnings, err := s.parseCRRequest(req)
 	if err != nil {
 		return componentreport.ComponentReport{}, err
 	}
 
-	// This baseURL is used to generate links to test_details reports, which are frontend links
 	baseURL := api.GetBaseFrontendURL(req)
 
 	outputs, errs := componentreadiness.GetComponentReport(
@@ -1210,13 +1216,12 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		return componentreport.ComponentReport{}, fmt.Errorf("error querying component: %v", errs)
 	}
 
-	// Add any warnings from parsing to the report
 	outputs.Warnings = warnings
 
 	return outputs, nil
 }
 
-func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonComponentReport(w http.ResponseWriter, req *http.Request) {
 	outputs, err := s.getComponentReportFromRequest(req)
 	if err != nil {
 		failureResponseWithError(w, "error generating component report", err)
@@ -1226,29 +1231,13 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	if s.crDataProvider == nil {
-		failureResponseWithError(w, "error querying component test details",
-			&api.ValidationError{Message: "component report API is only available when a data provider is configured"})
-		return
-	}
-	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider)
-	if len(errs) > 0 {
-		failureResponseWithError(w, "error querying component test details", fmt.Errorf("failed to get job variants"))
-		return
-	}
-	allReleases, err := s.getReleases(req.Context())
+func (s *Server) jsonComponentReportTestDetails(w http.ResponseWriter, req *http.Request) {
+	reqOptions, allReleases, _, err := s.parseCRRequest(req)
 	if err != nil {
 		failureResponseWithError(w, "error querying component test details", err)
 		return
 	}
 
-	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor, s.crTimeRoundingOffset)
-
-	if err != nil {
-		failureResponseWithError(w, "error querying component test details", err)
-		return
-	}
 	baseURL := api.GetBaseFrontendURL(req)
 	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.crDataProvider, s.db, reqOptions, allReleases, baseURL)
 	if len(errs) > 0 {
@@ -1489,11 +1478,7 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonPullRequestTestResults(w http.ResponseWriter, req *http.Request) {
-	if s.bigQueryClient == nil {
-		failureResponse(w, http.StatusBadRequest, "pull request test results API is only available when google-service-account-credential-file is configured")
-		return
-	}
-	api.PrintPRTestResultsJSON(w, req, s.bigQueryClient)
+	api.PrintPRTestResultsJSON(w, req, s.db)
 }
 
 func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
@@ -2630,9 +2615,9 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/job_variants",
-			Description:  "Reports all job variants defined in BigQuery",
+			Description:  "Reports all job variants",
 			Capabilities: []string{ComponentReadinessCapability},
-			HandlerFunc:  s.jsonJobVariantsFromBigQuery,
+			HandlerFunc:  s.jsonJobVariants,
 		},
 		{
 			EndpointPath: "/api/pull_requests",
@@ -2642,13 +2627,11 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonPullRequestsReportFromDB,
 		},
 		{
-			EndpointPath:      "/api/pull_requests/test_results",
-			Description:       "Fetches test failures for a specific pull request from BigQuery (presubmits and /payload jobs). Optional: include_successes param to also return successes for matching test names",
-			Capabilities:      []string{ComponentReadinessCapability},
-			HandlerFunc:       s.jsonPullRequestTestResults,
-			CacheTime:         1 * time.Hour,
-			RateLimitRequests: 20,
-			RateLimitPeriod:   1 * time.Hour,
+			EndpointPath: "/api/pull_requests/test_results",
+			Description:  "Fetches test results for a specific pull request from PostgreSQL (presubmit and /payload jobs)",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonPullRequestTestResults,
+			CacheTime:    1 * time.Minute,
 		},
 		{
 			EndpointPath: "/api/repositories",
@@ -2799,15 +2782,15 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/component_readiness",
-			Description:  "Reports component readiness from BigQuery",
+			Description:  "Reports component readiness",
 			Capabilities: []string{ComponentReadinessCapability},
-			HandlerFunc:  s.jsonComponentReportFromBigQuery,
+			HandlerFunc:  s.jsonComponentReport,
 		},
 		{
 			EndpointPath: "/api/component_readiness/test_details",
-			Description:  "Reports test details for component readiness from BigQuery",
+			Description:  "Reports test details for component readiness",
 			Capabilities: []string{ComponentReadinessCapability},
-			HandlerFunc:  s.jsonComponentReportTestDetailsFromBigQuery,
+			HandlerFunc:  s.jsonComponentReportTestDetails,
 		},
 		{
 			EndpointPath: "/api/component_readiness/variants",

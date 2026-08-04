@@ -60,6 +60,7 @@ type ProwJobRun struct {
 	GCSBucket    string
 	URL          string
 	TestFailures int
+	TestFlakes   int `gorm:"not null;default:0"`
 	Tests        []ProwJobRunTest
 	PullRequests []ProwPullRequest      `gorm:"many2many:prow_job_run_prow_pull_requests;constraint:OnDelete:CASCADE;"`
 	Annotations  []ProwJobRunAnnotation `gorm:"constraint:OnDelete:CASCADE;"`
@@ -85,7 +86,7 @@ type ProwJobRun struct {
 // ProwJobRun for query optimization.
 type ProwJobRunProwPullRequest struct {
 	ProwJobRunID        uint      `gorm:"primaryKey"`
-	ProwPullRequestID   uint      `gorm:"primaryKey"`
+	ProwPullRequestID   uint      `gorm:"primaryKey;index:idx_prow_job_run_prow_pull_requests_pr_id"`
 	ProwJobRunRelease   string    `gorm:"index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
 	ProwJobRunTimestamp time.Time `gorm:"index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
 }
@@ -128,6 +129,7 @@ type ProwJobRunTest struct {
 	Suite     Suite
 	Status    int
 	Duration  float64
+	Lifecycle string `gorm:"default:blocking"`
 	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt
 
@@ -158,49 +160,27 @@ type Suite struct {
 	Name string `gorm:"uniqueIndex"`
 }
 
-type TestAnalysisByJobByDate struct {
-	Date     time.Time `gorm:"index:test_release_date,unique"`
-	TestID   uint      `gorm:"index:test_release_date,unique"`
-	Release  string    `gorm:"index:test_release_date,unique"`
-	JobName  string    `gorm:"index:test_release_date,unique"`
-	TestName string
-	Runs     int
-	Passes   int
-	Flakes   int
-	Failures int
-}
-
-// TestDailySummary stores pre-aggregated daily test results used to
-// accelerate matview refreshes. Table managed by migration 000002.
-type TestDailySummary struct {
-	TestID      uint      `gorm:"column:test_id;not null"`
-	ProwJobID   uint      `gorm:"column:prow_job_id;not null"`
-	SuiteID     uint      `gorm:"column:suite_id;not null;default:0"`
-	Release     string    `gorm:"column:release;not null"`
-	SummaryDate time.Time `gorm:"column:summary_date;type:date;not null"`
-	Successes   int32     `gorm:"column:successes;not null;default:0"`
-	Failures    int32     `gorm:"column:failures;not null;default:0"`
-	Flakes      int32     `gorm:"column:flakes;not null;default:0"`
-	Runs        int32     `gorm:"column:runs;not null;default:0"`
-}
-
-// TestDailyTotal is the partitioned replacement for TestDailySummary.
-// Same schema, but partitioned by LIST(release) then RANGE(date).
+// TestDailyTotal stores pre-aggregated daily test results.
 // Table is partitioned (LIST by release, RANGE by date) -
 // schema managed by migration 000006, not AutoMigrate.
 type TestDailyTotal struct {
-	TestID    uint       `gorm:"column:test_id;not null"`
-	ProwJobID uint       `gorm:"column:prow_job_id;not null"`
-	SuiteID   uint       `gorm:"column:suite_id;not null;default:0"`
-	Release   string     `gorm:"column:release;not null"`
-	Date      civil.Date `gorm:"column:date;type:date;not null"`
-	Successes int32      `gorm:"column:successes;not null;default:0"`
-	Failures  int32      `gorm:"column:failures;not null;default:0"`
-	Flakes    int32      `gorm:"column:flakes;not null;default:0"`
-	Runs      int32      `gorm:"column:runs;not null;default:0"`
+	Release               string     `gorm:"column:release;not null;uniqueIndex:idx_test_daily_totals_key,priority:1"`
+	Date                  civil.Date `gorm:"column:date;type:date;not null;uniqueIndex:idx_test_daily_totals_key,priority:2"`
+	TestID                uint       `gorm:"column:test_id;not null;uniqueIndex:idx_test_daily_totals_key,priority:3"`
+	SuiteID               uint       `gorm:"column:suite_id;not null;default:0;uniqueIndex:idx_test_daily_totals_key,priority:4"`
+	Lifecycle             string     `gorm:"column:lifecycle;not null;default:blocking;uniqueIndex:idx_test_daily_totals_key,priority:5"`
+	ProwJobID             uint       `gorm:"column:prow_job_id;not null;uniqueIndex:idx_test_daily_totals_key,priority:6"`
+	Successes             int32      `gorm:"column:successes;not null;default:0"`
+	Failures              int32      `gorm:"column:failures;not null;default:0"`
+	Flakes                int32      `gorm:"column:flakes;not null;default:0"`
+	Runs                  int32      `gorm:"column:runs;not null;default:0"`
+	FirstFailureTimestamp *time.Time `gorm:"column:first_failure_timestamp"`
+	LastFailureTimestamp  *time.Time `gorm:"column:last_failure_timestamp"`
+	FirstSuccessTimestamp *time.Time `gorm:"column:first_success_timestamp"`
+	LastSuccessTimestamp  *time.Time `gorm:"column:last_success_timestamp"`
 }
 
-// TestCumulativeSummary stores running totals of test_daily_summaries values,
+// TestCumulativeSummary stores running totals of test_daily_totals values,
 // ordered by date. Any date range [start, end] can be computed as
 // cumulative(end) - cumulative(start-1). Keyed by immutable fields only
 // (no variant_combination_id) so variant changes do not invalidate the data.
@@ -208,20 +188,22 @@ type TestDailyTotal struct {
 // Table is partitioned (LIST by release, RANGE by date) -
 // schema managed by migration 000006, not AutoMigrate.
 type TestCumulativeSummary struct {
-	Date               civil.Date `gorm:"column:date;type:date;not null;primaryKey;priority:1"`
-	Release            string     `gorm:"column:release;not null;primaryKey;priority:2"`
-	TestID             uint       `gorm:"column:test_id;not null;primaryKey;priority:3"`
-	ProwJobID          uint       `gorm:"column:prow_job_id;not null;primaryKey;priority:4;index:idx_test_cumulative_summaries_prow_job_id"`
-	SuiteID            uint       `gorm:"column:suite_id;not null;default:0;primaryKey;priority:5"`
-	PrefixSumSuccesses int64      `gorm:"column:prefix_sum_successes;not null;default:0"`
-	PrefixSumFailures  int64      `gorm:"column:prefix_sum_failures;not null;default:0"`
-	PrefixSumFlakes    int64      `gorm:"column:prefix_sum_flakes;not null;default:0"`
-	PrefixSumRuns      int64      `gorm:"column:prefix_sum_runs;not null;default:0"`
+	Release              string     `gorm:"column:release;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:1"`
+	Date                 civil.Date `gorm:"column:date;type:date;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:2"`
+	TestID               uint       `gorm:"column:test_id;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:3"`
+	SuiteID              uint       `gorm:"column:suite_id;not null;default:0;uniqueIndex:idx_test_cumulative_summaries_key,priority:4"`
+	Lifecycle            string     `gorm:"column:lifecycle;not null;default:blocking;uniqueIndex:idx_test_cumulative_summaries_key,priority:5"`
+	ProwJobID            uint       `gorm:"column:prow_job_id;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:6;index:idx_test_cumulative_summaries_prow_job_id"`
+	PrefixSumSuccesses   int64      `gorm:"column:prefix_sum_successes;not null;default:0"`
+	PrefixSumFailures    int64      `gorm:"column:prefix_sum_failures;not null;default:0"`
+	PrefixSumFlakes      int64      `gorm:"column:prefix_sum_flakes;not null;default:0"`
+	PrefixSumRuns        int64      `gorm:"column:prefix_sum_runs;not null;default:0"`
+	PrefixMaxLastFailure *time.Time `gorm:"column:prefix_max_last_failure"`
+	PrefixMaxLastSuccess *time.Time `gorm:"column:prefix_max_last_success"`
 }
 
 // ProwGARawTestDatum stores raw BigQuery test results for GA release windows.
-// Fetched once per GA date and persisted so that the aggregation into
-// prow_ga_test_statuses_matview can be re-run cheaply when dimension tables change.
+// Fetched once per GA date and persisted for query-time aggregation.
 // Each (release, window_days) pair holds results aggregated over a different lookback
 // period (e.g. 1, 30, or 90 days before GA).
 type ProwGARawTestDatum struct {
@@ -265,11 +247,11 @@ type ProwPullRequest struct {
 	Model
 
 	// Org is something like kubernetes or k8s.io
-	Org string `json:"org"`
+	Org string `json:"org" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 	// Repo is something like test-infra
-	Repo string `json:"repo"`
+	Repo string `json:"repo" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 
-	Number int    `json:"number"`
+	Number int    `json:"number" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 	Author string `json:"author"`
 	Title  string `json:"title,omitempty"`
 

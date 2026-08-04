@@ -35,6 +35,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/gateststatus"
 	"github.com/openshift/sippy/pkg/dataloader/jiraloader"
 	"github.com/openshift/sippy/pkg/dataloader/loaderwithmetrics"
+	"github.com/openshift/sippy/pkg/dataloader/prmergesyncloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
@@ -102,7 +103,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.JiraFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
-	fs.StringArrayVar(&f.Loaders, "loader", []string{"release-definitions", "prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "ga-test-status"}, "Which data sources to use for data loading")
+	fs.StringArrayVar(&f.Loaders, "loader", []string{"release-definitions", "pr-merge-sync", "prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "ga-test-status"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
 	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
@@ -280,6 +281,14 @@ func NewLoadCommand() *cobra.Command {
 					loaders = append(loaders, releaseloader.New(ctx, dbc, bqc, f.Releases, f.Architectures, releaseConfigs))
 				}
 
+				if l == "pr-merge-sync" {
+					if dbErr != nil {
+						return dbErr
+					}
+					ghClient := github.New(ctx, github.OpenshiftOrg)
+					loaders = append(loaders, prmergesyncloader.New(ctx, dbc, ghClient))
+				}
+
 				// Prow Loader
 				if l == "prow" {
 					refreshMatviews = true
@@ -325,9 +334,9 @@ func NewLoadCommand() *cobra.Command {
 						return dbErr
 					}
 					if bigqueryErr != nil {
-						return errors.WithMessage(err, "could not get bigquery client")
+						return errors.WithMessage(bigqueryErr, "could not get bigquery client")
 					}
-					loaders = append(loaders, bugloader.New(dbc, bqc))
+					loaders = append(loaders, bugloader.New(ctx, dbc, bqc))
 				}
 
 				// Load Job Variants into BigQuery
@@ -344,7 +353,7 @@ func NewLoadCommand() *cobra.Command {
 				if l == "sync-variants" {
 					refreshMatviews = true
 					if bigqueryErr != nil {
-						return errors.WithMessage(err, "could not get bigquery client")
+						return errors.WithMessage(bigqueryErr, "could not get bigquery client")
 					}
 					vs, err := variantsyncer.New(dbc, bqc)
 					if err != nil {
@@ -356,7 +365,11 @@ func NewLoadCommand() *cobra.Command {
 				// Feature gates
 				if l == "feature-gates" {
 					refreshMatviews = true
-					fgLoader := featuregateloader.New(dbc, releaseConfigs)
+					if dbErr != nil {
+						return dbErr
+					}
+					ghc := github.New(ctx, github.OpenshiftOrg)
+					fgLoader := featuregateloader.New(ctx, dbc, ghc.APIClient(), releaseConfigs)
 					loaders = append(loaders, fgLoader)
 				}
 

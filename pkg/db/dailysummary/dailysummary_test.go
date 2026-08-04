@@ -47,6 +47,13 @@ func (f *fakeStore) AggregateRangeForRelease(start, end civil.Date, release stri
 	return f.aggregateErr
 }
 
+func (f *fakeStore) ReplaceRangeForRelease(start, end civil.Date, release string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, aggregateCall{start: start, end: end, release: release})
+	return f.aggregateErr
+}
+
 func (f *fakeStore) getCalls() []aggregateCall {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -176,7 +183,7 @@ func TestRefresh_AggregateError(t *testing.T) {
 	_, err := refreshSummaries(store)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "aggregating release")
+	assert.Contains(t, err.Error(), "disk full")
 }
 
 func TestRefresh_NoReleases(t *testing.T) {

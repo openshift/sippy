@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/db"
 )
@@ -130,35 +131,39 @@ func (s *pgStore) Releases() ([]string, error) {
 	return releases, err
 }
 
+// Delete+insert (not upsert) so that rows whose daily-total key changed
+// (e.g. lifecycle reclassification) are dropped instead of persisting forever.
+const deleteSQL = `DELETE FROM test_cumulative_summaries WHERE release = ? AND date = ?`
+
+const insertSQL = `
+	INSERT INTO test_cumulative_summaries (date, test_id, prow_job_id, suite_id, lifecycle, release,
+	                         prefix_sum_successes, prefix_sum_failures, prefix_sum_flakes, prefix_sum_runs,
+	                         prefix_max_last_failure, prefix_max_last_success)
+	SELECT
+		?,
+		COALESCE(prev.test_id, tds.test_id),
+		COALESCE(prev.prow_job_id, tds.prow_job_id),
+		COALESCE(prev.suite_id, tds.suite_id),
+		COALESCE(prev.lifecycle, tds.lifecycle),
+		COALESCE(prev.release, tds.release),
+		COALESCE(prev.prefix_sum_successes, 0) + COALESCE(tds.successes, 0),
+		COALESCE(prev.prefix_sum_failures, 0) + COALESCE(tds.failures, 0),
+		COALESCE(prev.prefix_sum_flakes, 0) + COALESCE(tds.flakes, 0),
+		COALESCE(prev.prefix_sum_runs, 0) + COALESCE(tds.runs, 0),
+		GREATEST(prev.prefix_max_last_failure, tds.last_failure_timestamp),
+		GREATEST(prev.prefix_max_last_success, tds.last_success_timestamp)
+	FROM (SELECT * FROM test_cumulative_summaries WHERE date = ?::date - 1 AND release = ?) prev
+	FULL OUTER JOIN (SELECT * FROM test_daily_totals WHERE date = ? AND release = ?) tds
+		ON prev.test_id = tds.test_id
+		AND prev.prow_job_id = tds.prow_job_id
+		AND prev.suite_id = tds.suite_id
+		AND prev.lifecycle = tds.lifecycle`
+
 func (s *pgStore) UpdateDateForRelease(date civil.Date, release string) error {
-	return s.dbc.DB.Exec(`
-		INSERT INTO test_cumulative_summaries (date, test_id, prow_job_id, suite_id, release,
-		                         prefix_sum_successes, prefix_sum_failures, prefix_sum_flakes, prefix_sum_runs)
-		SELECT
-			?,
-			COALESCE(prev.test_id, tds.test_id),
-			COALESCE(prev.prow_job_id, tds.prow_job_id),
-			COALESCE(prev.suite_id, tds.suite_id),
-			COALESCE(prev.release, tds.release),
-			COALESCE(prev.prefix_sum_successes, 0) + COALESCE(tds.successes, 0),
-			COALESCE(prev.prefix_sum_failures, 0) + COALESCE(tds.failures, 0),
-			COALESCE(prev.prefix_sum_flakes, 0) + COALESCE(tds.flakes, 0),
-			COALESCE(prev.prefix_sum_runs, 0) + COALESCE(tds.runs, 0)
-		FROM (SELECT * FROM test_cumulative_summaries WHERE date = ?::date - 1 AND release = ?) prev
-		FULL OUTER JOIN (SELECT * FROM test_daily_totals WHERE date = ? AND release = ?) tds
-			ON prev.test_id = tds.test_id
-			AND prev.prow_job_id = tds.prow_job_id
-			AND prev.suite_id = tds.suite_id
-		ON CONFLICT (date, release, test_id, prow_job_id, suite_id)
-		DO UPDATE SET
-			prefix_sum_successes = EXCLUDED.prefix_sum_successes,
-			prefix_sum_failures = EXCLUDED.prefix_sum_failures,
-			prefix_sum_flakes = EXCLUDED.prefix_sum_flakes,
-			prefix_sum_runs = EXCLUDED.prefix_sum_runs
-		WHERE (test_cumulative_summaries.prefix_sum_successes, test_cumulative_summaries.prefix_sum_failures,
-		       test_cumulative_summaries.prefix_sum_flakes, test_cumulative_summaries.prefix_sum_runs)
-		   IS DISTINCT FROM
-		      (EXCLUDED.prefix_sum_successes, EXCLUDED.prefix_sum_failures,
-		       EXCLUDED.prefix_sum_flakes, EXCLUDED.prefix_sum_runs)
-	`, date, date, release, date, release).Error
+	return s.dbc.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(deleteSQL, release, date).Error; err != nil {
+			return err
+		}
+		return tx.Exec(insertSQL, date, date, release, date, release).Error
+	})
 }

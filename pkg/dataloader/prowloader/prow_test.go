@@ -1,11 +1,37 @@
 package prowloader
 
 import (
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/sets"
+
+	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/apis/prow"
+	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/releaseoverride"
 )
+
+func TestNormalizeLifecycle(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "empty defaults to blocking", input: "", expected: "blocking"},
+		{name: "blocking passes through", input: "blocking", expected: "blocking"},
+		{name: "informing passes through", input: "informing", expected: "informing"},
+		{name: "unknown value passes through lowercased", input: "experimental", expected: "experimental"},
+		{name: "mixed case is lowercased", input: "Informing", expected: "informing"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, normalizeLifecycle(tt.input))
+		})
+	}
+}
 
 func TestDateTimeNameComparisons(t *testing.T) {
 	tests := []struct {
@@ -88,93 +114,181 @@ func TestParseVariantDataFile(t *testing.T) {
 	assert.Equal(t, "foo", clusterData["AddonProp1"])
 }
 
-func TestGetTestAnalysisByJobFromToDates(t *testing.T) {
+func TestIsPayloadPresubmit(t *testing.T) {
 	tests := []struct {
-		name          string
-		lastSummary   time.Time
-		now           time.Time
-		expectedDates []string
+		name     string
+		pj       *prow.ProwJob
+		expected bool
 	}{
 		{
-			name:        "empty db to yesterday",
-			lastSummary: time.Time{},
-			now:         time.Date(2024, time.October, 31, 9, 0, 0, 0, time.UTC),
-			expectedDates: []string{
-				"2024-10-16",
-				"2024-10-17",
-				"2024-10-18",
-				"2024-10-19",
-				"2024-10-20",
-				"2024-10-21",
-				"2024-10-22",
-				"2024-10-23",
-				"2024-10-24",
-				"2024-10-25",
-				"2024-10-26",
-				"2024-10-27",
-				"2024-10-28",
-				"2024-10-29",
-				"2024-10-30",
+			name: "has annotation and refs",
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{"releaseJobName": "periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn"},
+				Spec:        prow.ProwJobSpec{Refs: &prow.Refs{Org: "openshift", Repo: "origin"}},
 			},
+			expected: true,
 		},
 		{
-			name:        "empty db to two days ago if early",
-			lastSummary: time.Time{},
-			now:         time.Date(2024, time.October, 31, 3, 0, 0, 0, time.UTC),
-			expectedDates: []string{
-				"2024-10-15",
-				"2024-10-16",
-				"2024-10-17",
-				"2024-10-18",
-				"2024-10-19",
-				"2024-10-20",
-				"2024-10-21",
-				"2024-10-22",
-				"2024-10-23",
-				"2024-10-24",
-				"2024-10-25",
-				"2024-10-26",
-				"2024-10-27",
-				"2024-10-28",
-				"2024-10-29",
+			name: "has annotation but nil refs",
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{"releaseJobName": "some-job"},
+				Spec:        prow.ProwJobSpec{},
 			},
+			expected: false,
 		},
 		{
-			name:          "yesterday",
-			lastSummary:   time.Date(2024, time.October, 29, 0, 0, 0, 0, time.UTC),
-			now:           time.Date(2024, time.October, 31, 9, 0, 0, 0, time.UTC),
-			expectedDates: []string{"2024-10-30"},
-		},
-		{
-			name:          "too early",
-			lastSummary:   time.Date(2024, time.October, 29, 0, 0, 0, 0, time.UTC),
-			now:           time.Date(2024, time.October, 31, 2, 0, 0, 0, time.UTC),
-			expectedDates: []string{},
-		},
-		{
-			name:          "already updated today",
-			lastSummary:   time.Date(2024, time.October, 30, 0, 0, 0, 0, time.UTC),
-			now:           time.Date(2024, time.October, 31, 9, 0, 0, 0, time.UTC),
-			expectedDates: []string{},
-		},
-		{
-			name:        "last 5 days",
-			lastSummary: time.Date(2024, time.October, 24, 0, 0, 0, 0, time.UTC),
-			now:         time.Date(2024, time.October, 31, 9, 0, 0, 0, time.UTC),
-			expectedDates: []string{
-				"2024-10-25",
-				"2024-10-26",
-				"2024-10-27",
-				"2024-10-28",
-				"2024-10-29",
-				"2024-10-30",
+			name: "no annotation but has refs",
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{},
+				Spec:        prow.ProwJobSpec{Refs: &prow.Refs{Org: "openshift", Repo: "origin"}},
 			},
+			expected: false,
+		},
+		{
+			name: "no annotation and nil refs",
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{},
+				Spec:        prow.ProwJobSpec{},
+			},
+			expected: false,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dates := getTestAnalysisByJobFromToDates(tt.lastSummary, tt.now, nil)
-			assert.Equal(t, tt.expectedDates, dates)
+			assert.Equal(t, tt.expected, isPayloadPresubmit(tt.pj))
+		})
+	}
+}
+
+func TestMatchRelease(t *testing.T) {
+	tests := []struct {
+		name     string
+		pl       *ProwLoader
+		pj       *prow.ProwJob
+		expected string
+	}{
+		{
+			name: "payload presubmit with Presubmits in release set",
+			pl: &ProwLoader{
+				releaseSet:                   sets.New[string](models.ReleasePresubmits),
+				releases:                     []string{models.ReleasePresubmits},
+				config:                       &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{}},
+				releaseRegexps:               map[string][]*regexp.Regexp{},
+				syntheticReleaseJobOverrides: releaseoverride.New(),
+			},
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{"releaseJobName": "periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn"},
+				Spec:        prow.ProwJobSpec{Refs: &prow.Refs{Org: "openshift", Repo: "origin"}},
+			},
+			expected: models.ReleasePresubmits,
+		},
+		{
+			name: "payload presubmit without Presubmits in release set",
+			pl: &ProwLoader{
+				releaseSet:                   sets.New[string]("4.18"),
+				releases:                     []string{"4.18"},
+				config:                       &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{}},
+				releaseRegexps:               map[string][]*regexp.Regexp{},
+				syntheticReleaseJobOverrides: releaseoverride.New(),
+			},
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{"releaseJobName": "some-job"},
+				Spec:        prow.ProwJobSpec{Refs: &prow.Refs{Org: "openshift", Repo: "origin"}},
+			},
+			expected: "",
+		},
+		{
+			name: "regular job matching configured release by regex",
+			pl: &ProwLoader{
+				releaseSet: sets.New[string]("4.18"),
+				releases:   []string{"4.18"},
+				config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+					"4.18": {},
+				}},
+				releaseRegexps:               map[string][]*regexp.Regexp{"4.18": {regexp.MustCompile(`-4\.18-`)}},
+				syntheticReleaseJobOverrides: releaseoverride.New(),
+			},
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{},
+				Spec:        prow.ProwJobSpec{Job: "periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn"},
+			},
+			expected: "4.18",
+		},
+		{
+			name: "regular job matching no release",
+			pl: &ProwLoader{
+				releaseSet: sets.New[string]("4.18"),
+				releases:   []string{"4.18"},
+				config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+					"4.18": {},
+				}},
+				releaseRegexps:               map[string][]*regexp.Regexp{"4.18": {regexp.MustCompile(`-4\.18-`)}},
+				syntheticReleaseJobOverrides: releaseoverride.New(),
+			},
+			pj: &prow.ProwJob{
+				Annotations: map[string]string{},
+				Spec:        prow.ProwJobSpec{Job: "periodic-ci-openshift-release-master-nightly-4.17-e2e-gcp"},
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.pl.matchRelease(tt.pj))
+		})
+	}
+}
+
+func TestPartitionStartDate(t *testing.T) {
+	loadSince := time.Date(2026, 7, 14, 0, 0, 0, 0, time.UTC)
+	graceAdjusted := loadSince.AddDate(0, 0, -1)
+
+	prowJobWithStart := func(start time.Time) prow.ProwJob {
+		return prow.ProwJob{Status: prow.ProwJobStatus{StartTime: start}}
+	}
+
+	tests := []struct {
+		name     string
+		prowJobs []prow.ProwJob
+		expected time.Time
+	}{
+		{
+			name:     "no jobs falls back to loadSince with grace period",
+			prowJobs: nil,
+			expected: graceAdjusted,
+		},
+		{
+			name: "all jobs within the grace window leave the bound unchanged",
+			prowJobs: []prow.ProwJob{
+				prowJobWithStart(graceAdjusted.AddDate(0, 0, 1)),
+				prowJobWithStart(graceAdjusted),
+			},
+			expected: graceAdjusted,
+		},
+		{
+			name: "zero-value start times are ignored",
+			prowJobs: []prow.ProwJob{
+				{},
+				prowJobWithStart(graceAdjusted),
+			},
+			expected: graceAdjusted,
+		},
+		{
+			name: "outlier job start time extends the bound",
+			prowJobs: []prow.ProwJob{
+				prowJobWithStart(graceAdjusted),
+				// e.g. a job Prow marked aborted days after it actually started
+				prowJobWithStart(loadSince.AddDate(0, 0, -5)),
+			},
+			expected: loadSince.AddDate(0, 0, -5),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.True(t, tt.expected.Equal(partitionStartDate(loadSince, tt.prowJobs)))
 		})
 	}
 }

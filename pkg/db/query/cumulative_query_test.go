@@ -49,9 +49,9 @@ func TestEscapeLikeMetachars(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := escapeLikeMetachars(tc.input)
+			got := filter.EscapeLikeMetachars(tc.input)
 			if got != tc.expected {
-				t.Errorf("escapeLikeMetachars(%q) = %q, want %q", tc.input, got, tc.expected)
+				t.Errorf("filter.EscapeLikeMetachars(%q) = %q, want %q", tc.input, got, tc.expected)
 			}
 		})
 	}

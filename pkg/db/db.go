@@ -22,15 +22,14 @@ import (
 type SchemaHashType string
 
 const (
-	hashTypeMatView                          SchemaHashType = "matview"
-	hashTypeView                             SchemaHashType = "view"
-	hashTypeMatViewIndex                     SchemaHashType = "matview_index"
-	hashTypeFunction                         SchemaHashType = "function"
-	partitionedTableProwJobRunTests                         = "prow_job_run_tests"
-	partitionedTableProwJobRunTestsOutputs                  = "prow_job_run_test_outputs"
-	partitionedTableTestAnalysisByJobByDates                = "test_analysis_by_job_by_dates"
-	partitionedTableTestDailyTotals                         = "test_daily_totals"
-	partitionedTableTestCumulativeSummaries                 = "test_cumulative_summaries"
+	hashTypeMatView                         SchemaHashType = "matview"
+	hashTypeView                            SchemaHashType = "view"
+	hashTypeMatViewIndex                    SchemaHashType = "matview_index"
+	hashTypeFunction                        SchemaHashType = "function"
+	partitionedTableProwJobRunTests                        = "prow_job_run_tests"
+	partitionedTableProwJobRunTestsOutputs                 = "prow_job_run_test_outputs"
+	partitionedTableTestDailyTotals                        = "test_daily_totals"
+	partitionedTableTestCumulativeSummaries                = "test_cumulative_summaries"
 )
 
 type DB struct {
@@ -86,9 +85,10 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 		return nil, err
 	}
 	// Prevent PostgreSQL from generating generic plans for prepared statements.
-	// With 10k+ partitions on tables like test_analysis_by_job_by_dates, generic
-	// plan generation alone can take 17+ minutes as the planner enumerates all
-	// partitions. Custom plans use actual parameter values for partition pruning.
+	// After 5 executions PostgreSQL normally switches to a generic plan that
+	// cannot use parameter values for partition pruning. GORM generates
+	// parameterized queries, so without this setting the planner would scan
+	// all partitions instead of pruning to the relevant ones.
 	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
 	pgxConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60s"
@@ -173,7 +173,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ChatConversation{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
-		&models.TestDailySummary{},
 	}
 
 	// Currently we need RunMigrations to run prior
@@ -220,7 +219,6 @@ func (d *DB) PartitionedTables() []string {
 	return []string{
 		partitionedTableProwJobRunTests,
 		partitionedTableProwJobRunTestsOutputs,
-		partitionedTableTestAnalysisByJobByDates,
 		partitionedTableTestDailyTotals,
 		partitionedTableTestCumulativeSummaries,
 	}
@@ -248,7 +246,7 @@ func (d *DB) EnsurePartitions(releases []string, startDate, endDate time.Time, d
 			dateColumn = "prow_job_run_timestamp"
 		case partitionedTableProwJobRunTestsOutputs:
 			dateColumn = "prow_job_run_test_timestamp"
-		case partitionedTableTestAnalysisByJobByDates, partitionedTableTestDailyTotals, partitionedTableTestCumulativeSummaries:
+		case partitionedTableTestDailyTotals, partitionedTableTestCumulativeSummaries:
 			dateColumn = "date"
 		default:
 			log.Warnf("unknown partitioned table: %s", tableName)

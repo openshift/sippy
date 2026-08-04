@@ -39,10 +39,10 @@ CREATE FUNCTION public.test_results(start timestamp without time zone, boundary 
 WITH results AS (
   SELECT
     tests.id AS id,
-    coalesce(count(case when status = 1 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_successes,
-    coalesce(count(case when status = 13 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_flakes,
-    coalesce(count(case when status = 12 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $2 then 1 end), 0) AS previous_failures,
-    coalesce(count(case when prow_job_run_tests.prow_job_run_timestamp BETWEEN $1 AND $2 then 1 end), 0) as previous_runs,
+    coalesce(count(case when status = 1 AND prow_job_run_tests.prow_job_run_timestamp >= $1 AND prow_job_run_tests.prow_job_run_timestamp < $2 then 1 end), 0) AS previous_successes,
+    coalesce(count(case when status = 13 AND prow_job_run_tests.prow_job_run_timestamp >= $1 AND prow_job_run_tests.prow_job_run_timestamp < $2 then 1 end), 0) AS previous_flakes,
+    coalesce(count(case when status = 12 AND prow_job_run_tests.prow_job_run_timestamp >= $1 AND prow_job_run_tests.prow_job_run_timestamp < $2 then 1 end), 0) AS previous_failures,
+    coalesce(count(case when prow_job_run_tests.prow_job_run_timestamp >= $1 AND prow_job_run_tests.prow_job_run_timestamp < $2 then 1 end), 0) as previous_runs,
     coalesce(count(case when status = 1 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_successes,
     coalesce(count(case when status = 13 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_flakes,
     coalesce(count(case when status = 12 AND prow_job_run_tests.prow_job_run_timestamp BETWEEN $2 AND $3 then 1 end), 0) AS current_failures,
@@ -75,7 +75,7 @@ $_$;
 `
 
 const jobResultFunction = `
-CREATE FUNCTION public.job_results(release text, start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_failures bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamp without time zone, updated_at timestamp without time zone, deleted_at timestamp without time zone, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamp, current_average_duration_minutes int, previous_average_duration_minutes int)
+CREATE FUNCTION public.job_results(release text, start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_fails bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamp without time zone, updated_at timestamp without time zone, deleted_at timestamp without time zone, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamp, current_average_duration_minutes int, previous_average_duration_minutes int)
     LANGUAGE sql
     AS $_$
 WITH repo_org_jobs AS (
@@ -106,31 +106,37 @@ merged_prs AS
     GROUP BY prow_jobs.id, prow_pull_requests.id, prow_pull_requests.link),
 retests AS
     (SELECT prow_job_id, AVG(total_runs) as average_retests_to_merge FROM merged_prs GROUP BY prow_job_id),
+job_bugs AS (
+        SELECT prow_jobs.id AS prow_job_id,
+               COUNT(DISTINCT bugs.id) AS open_bugs
+        FROM prow_jobs
+        LEFT JOIN bug_jobs ON prow_jobs.id = bug_jobs.prow_job_id
+        LEFT JOIN bugs ON bugs.id = bug_jobs.bug_id AND lower(bugs.status) NOT IN ('verified', 'modified', 'closed', 'on_qa')
+        WHERE prow_jobs.release = $1
+        GROUP BY prow_jobs.id
+),
 results AS (
         select prow_jobs.name as pj_name, prow_jobs.variants as pj_variants,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN $2 AND $3 then 1 end), 0) as previous_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN $2 AND $3 then 1 end), 0) as previous_failures,
-                coalesce(count(case when timestamp BETWEEN $2 AND $3 then 1 end), 0) as previous_runs,
-                coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN $2 AND $3 then 1 end), 0) as previous_infra_fails,
+                coalesce(count(case when succeeded = true AND timestamp >= $2 AND timestamp < $3 then 1 end), 0) as previous_passes,
+                coalesce(count(case when succeeded = false AND timestamp >= $2 AND timestamp < $3 then 1 end), 0) as previous_fails,
+                coalesce(count(case when timestamp >= $2 AND timestamp < $3 then 1 end), 0) as previous_runs,
+                coalesce(count(case when infrastructure_failure = true AND timestamp >= $2 AND timestamp < $3 then 1 end), 0) as previous_infra_fails,
                 coalesce(count(case when succeeded = true AND timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_passes,
                 coalesce(count(case when succeeded = false AND timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_fails,
                 coalesce(count(case when timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_runs,
                 coalesce(count(case when infrastructure_failure = true AND timestamp BETWEEN $3 AND $4 then 1 end), 0) as current_infra_fails,
-       			COUNT(DISTINCT bug_jobs.bug_id) AS open_bugs,
                 ROUND(coalesce(AVG(case when timestamp BETWEEN $3 AND $4 then prow_job_runs.duration end) / 60000000000.0, 0))::int as current_average_duration_minutes,
-                ROUND(coalesce(AVG(case when timestamp BETWEEN $2 AND $3 then prow_job_runs.duration end) / 60000000000.0, 0))::int as previous_average_duration_minutes
+                ROUND(coalesce(AVG(case when timestamp >= $2 AND timestamp < $3 then prow_job_runs.duration end) / 60000000000.0, 0))::int as previous_average_duration_minutes
         FROM prow_job_runs
         JOIN prow_jobs
                 ON prow_jobs.id = prow_job_runs.prow_job_id
                                 AND prow_jobs.release = $1
                 AND timestamp BETWEEN $2 AND $4
-   		LEFT JOIN bug_jobs on prow_jobs.id = bug_jobs.prow_job_id
-        LEFT JOIN bugs on bugs.id = bug_jobs.bug_id AND lower(bugs.status) NOT IN ('verified', 'modified', 'closed', 'on_qa')
         WHERE prow_job_runs.prow_job_release = $1
         group by prow_jobs.name, prow_jobs.variants
 ),
 last_pass AS (
-	SELECT prow_job_id, max(timestamp) as last_pass from prow_job_runs where overall_result = 'S' group by prow_job_id
+	SELECT prow_job_id, max(timestamp) as last_pass from prow_job_runs where overall_result = 'S' AND prow_job_release = $1 group by prow_job_id
 )
 SELECT pj_name,
        pj_variants,
@@ -138,7 +144,7 @@ SELECT pj_name,
        repo_org_jobs.repo,
 	   average_retests_to_merge,
        previous_passes,
-       previous_failures,
+       previous_fails,
        previous_runs,
        previous_infra_fails,
        current_passes,
@@ -154,15 +160,15 @@ SELECT pj_name,
        variants,
        test_grid_url,
        kind,
-       REGEXP_REPLACE(results.pj_name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-', '') as brief_name,
+       REGEXP_REPLACE(results.pj_name, 'periodic-ci-openshift-(multiarch|release)-(master|main)-(ci|nightly)-[0-9]+.[0-9]+-', '') as brief_name,
        current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
        (current_passes + current_infra_fails) * 100.0 / NULLIF(current_runs, 0) AS current_projected_pass_percentage,
        current_fails * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
        previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
        (previous_passes + previous_infra_fails) * 100.0 / NULLIF(previous_runs, 0) AS previous_projected_pass_percentage,
-       previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
+       previous_fails * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement,
-       open_bugs,
+       COALESCE(job_bugs.open_bugs, 0) AS open_bugs,
        last_pass.last_pass,
        current_average_duration_minutes,
        previous_average_duration_minutes
@@ -171,5 +177,6 @@ FROM results
          LEFT JOIN repo_org_jobs ON prow_jobs.id = repo_org_jobs.id
 		 LEFT JOIN retests ON prow_jobs.id = retests.prow_job_id
 		 LEFT JOIN last_pass ON prow_jobs.id = last_pass.prow_job_id
+		 LEFT JOIN job_bugs ON prow_jobs.id = job_bugs.prow_job_id
     $_$;
 `

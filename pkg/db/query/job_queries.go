@@ -2,33 +2,15 @@ package query
 
 import (
 	"database/sql"
-	"errors"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/filter"
 )
-
-func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
-	prowJobCache := map[string]*models.ProwJob{}
-	var allJobs []*models.ProwJob
-	res := dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
-	if res.Error != nil {
-		return map[string]*models.ProwJob{}, res.Error
-	}
-	for _, j := range allJobs {
-		if _, ok := prowJobCache[j.Name]; !ok {
-			prowJobCache[j.Name] = j
-		}
-	}
-	log.Infof("job cache created with %d entries from database", len(prowJobCache))
-	return prowJobCache, nil
-}
 
 func JobRunTestCount(dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {
 	var prowJobRunTestCount int64
@@ -81,7 +63,7 @@ func ProwJobRunIDs(dbc *db.DB, prowJobID uint) ([]uint, error) {
 func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (int, error) {
 
 	var historicalProwJobRunTestCount float64
-	q := dbc.DB.Raw(`SELECT avg(count)
+	q := dbc.DB.Raw(`SELECT COALESCE(avg(count), 0)
 	FROM (SELECT count(*)
 	FROM prow_job_run_tests
 	WHERE prow_job_run_tests.prow_job_id = ?
@@ -94,9 +76,6 @@ func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (in
 	}
 
 	if err := q.First(&historicalProwJobRunTestCount).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, nil
-		}
 		return 0, err
 	}
 
@@ -131,9 +110,9 @@ func VariantReports(dbc *db.DB, release string, start, boundary, end time.Time) 
 	q := dbc.DB.Raw(`
 WITH results AS (
         select unnest(prow_jobs.variants) as variant,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_fails,
-                coalesce(count(case when timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_runs,
+                coalesce(count(case when succeeded = true AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_passes,
+                coalesce(count(case when succeeded = false AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_fails,
+                coalesce(count(case when timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_runs,
                 coalesce(count(case when succeeded = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_passes,
                 coalesce(count(case when succeeded = false AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_fails,        
                 coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs
@@ -197,7 +176,7 @@ func LoadBugsForJobs(dbc *db.DB,
 	timeLimit := "(UPPER(status) IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '14 days') OR " +
 		"(UPPER(status) NOT IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '90 days')"
 	if filterClosed {
-		q = q.Preload("Bugs", timeLimit+" and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
+		q = q.Preload("Bugs", "("+timeLimit+") and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
 	} else {
 		q = q.Preload("Bugs", timeLimit)
 	}

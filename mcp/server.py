@@ -336,12 +336,12 @@ def _pids_sippy_serve() -> list[int]:
 
 def _pids_sippy_ng_dev() -> list[int]:
     def _match(cmd: str) -> bool:
-        return "react-scripts" in cmd or "npm start" in cmd
+        return "vite" in cmd or "npm start" in cmd
 
     return _find_pids(
         (REPO_ROOT / "sippy-ng").resolve(),
         _match,
-        ["react-scripts/scripts/start.js"],
+        ["vite"],
     )
 
 
@@ -512,9 +512,10 @@ async def sippy_ng_start(
 ) -> str:
     """Start the React dev server (``npm start`` in ``sippy-ng``) in the background.
 
-    CRA defaults to port 3000. ``log_file`` is resolved relative to the repo root;
+    Vite dev server defaults to port 3000 (configured in vite.config.js).
+    ``log_file`` is resolved relative to the repo root;
     absolute paths outside the repo are rejected. Skips starting if a matching
-    ``npm start`` / react-scripts process is already running, unless ``restart`` is True.
+    ``npm start`` / vite process is already running, unless ``restart`` is True.
 
     Always verifies HTTP readiness by polling the listen address before reporting ready,
     even when a process is already running.
@@ -532,16 +533,16 @@ async def sippy_ng_start(
     if existing:
         if not restart:
             pids = ", ".join(str(p) for p in existing)
-            err = await _wait_for_url("http://127.0.0.1:3000/sippy-ng", 120, existing)
+            err = await _wait_for_url("http://127.0.0.1:3000/sippy-ng/", 120, existing)
             if err:
                 return (
                     f"sippy_ng_start already running (pid(s) {pids}) but {err}. "
-                    f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
+                    f"Typical URL: http://127.0.0.1:3000/sippy-ng/ log: {log_path}. "
                     f"Call with restart=True to restart."
                 )
             return (
                 f"sippy_ng_start already running and ready (pid(s) {pids}). "
-                f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
+                f"Typical URL: http://127.0.0.1:3000/sippy-ng/ log: {log_path}. "
                 f"Call with restart=True to restart."
             )
         await _stop_pids(existing)
@@ -556,12 +557,12 @@ async def sippy_ng_start(
         cwd=ng_dir,
         log_path=log_path,
         env=env,
-        ready_url="http://127.0.0.1:3000/sippy-ng",
+        ready_url="http://127.0.0.1:3000/sippy-ng/",
     )
     if isinstance(pid_or_err, str):
         return pid_or_err
     return (
-        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000/sippy-ng "
+        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000/sippy-ng/ "
         f"log: {log_path}"
     )
 

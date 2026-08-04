@@ -24,6 +24,11 @@ See [the API documentation](pkg/api/README.md)
 
 See [the front end documentation](sippy-ng/README.md)
 
+## Database
+
+See [database tuning](docs/database-tuning.md) for required PostgreSQL
+parameter group settings.
+
 ## Chat
 
 See [the chat documentation](chat/README.md)
