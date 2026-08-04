@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"regexp"
 	gosort "sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,8 +16,11 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/hashicorp/go-version"
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -33,7 +34,6 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
-	"github.com/openshift/sippy/pkg/util/param"
 )
 
 const (
@@ -45,87 +45,63 @@ const (
 // nonDeterministicRiskLevels indicate incomplete analysis and allow for fallback to other analysis methodologies name -> variant
 var nonDeterministicRiskLevels = []int{apitype.FailureRiskLevelUnknown.Level, apitype.FailureRiskLevelIncompleteTests.Level, apitype.FailureRiskLevelMissingData.Level}
 
-func (runs apiRunResults) sort(req *http.Request) apiRunResults {
-	sortField := param.SafeRead(req, "sortField")
-	sort := apitype.Sort(param.SafeRead(req, "sort"))
-
-	if sortField == "" {
-		sortField = "test_failures"
-	}
-
-	if sort == "" {
-		sort = apitype.SortDescending
-	}
-
-	gosort.Slice(runs, func(i, j int) bool {
-		if sort == apitype.SortAscending {
-			return filter.Compare(runs[i], runs[j], sortField)
-		}
-		return filter.Compare(runs[j], runs[i], sortField)
-	})
-
-	return runs
-}
-
-func (runs apiRunResults) limit(req *http.Request) apiRunResults {
-	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
-	if limit > 0 && len(runs) >= limit {
-		return runs[:limit]
-	}
-
-	return runs
-}
-
-type apiRunResults []apitype.JobRun
-
-// JobsRunsReportFromDB renders a filtered summary of matching jobs.
+// JobsRunsReportFromDB renders a filtered summary of matching jobs using a
+// two-phase approach: Phase 1 paginates from base tables (prow_job_runs +
+// prow_jobs), Phase 2 enriches the page with test counts, test name arrays,
+// pull request data, and annotations.
 func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release string, pagination *apitype.Pagination, reportEnd time.Time) (*apitype.PaginationResult, error) {
-	jobsResult := make([]apitype.JobRun, 0)
-	table := "prow_job_runs_report_matview"
-
-	dbQuery := dbc.DB.Table(table)
-
-	// Split out ran_test_names filters — these are handled via a subquery
-	// against prow_job_run_tests rather than a column on the matview.
-	if filterOpts.Filter != nil {
-		ranTestFilter, remainingFilter := filterOpts.Filter.Split([]string{"ran_test_names"})
-		filterOpts.Filter = remainingFilter
-		for _, item := range ranTestFilter.Items {
-			baseSubquery := "EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs_report_matview.id AND prow_job_run_tests.prow_job_run_release = prow_job_runs_report_matview.release AND tests.name %s ?)"
-			var pattern string
-			switch item.Operator {
-			case filter.OperatorHasEntry, filter.OperatorEquals:
-				baseSubquery = fmt.Sprintf(baseSubquery, "=")
-				pattern = item.Value
-			default:
-				baseSubquery = fmt.Sprintf(baseSubquery, "ILIKE")
-				pattern = fmt.Sprintf("%%%s%%", item.Value)
-			}
-			if item.Not {
-				baseSubquery = "NOT " + baseSubquery
-			}
-			dbQuery = dbQuery.Where(baseSubquery, pattern)
-		}
+	if filterOpts.SortField != "" && isTestNameField(filterOpts.SortField) {
+		return nil, &ValidationError{Message: fmt.Sprintf("sorting by %s is not supported", filterOpts.SortField)}
 	}
 
-	q, err := filter.FilterableDBResult(dbQuery, filterOpts, apitype.JobRun{})
+	jobsResult := make([]apitype.JobRun, 0)
+	lookback := reportEnd.Add(-90 * 24 * time.Hour)
+
+	prColumns := sets.New[string]("pull_request_link", "pull_request_sha", "pull_request_org", "pull_request_repo", "pull_request_author")
+	needs := analyzeJobRunFilters(filterOpts, prColumns)
+
+	// Phase 1: build SELECT from base tables.
+	selectSQL := jobRunsBaseSelect
+	if needs.needsPRJoin() {
+		selectSQL += `, pp.link AS pull_request_link, pp.sha AS pull_request_sha, pp.org AS pull_request_org, pp.repo AS pull_request_repo, pp.author AS pull_request_author`
+	}
+
+	dbQuery := dbc.DB.Table("prow_job_runs").
+		Select(selectSQL).
+		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id")
+
+	addPRJoin := func(q *gorm.DB) *gorm.DB {
+		return q.
+			Joins(`LEFT JOIN (SELECT DISTINCT ON(prow_job_run_id) prow_job_run_id, prow_pull_request_id FROM prow_job_run_prow_pull_requests ORDER BY prow_job_run_id, prow_pull_request_id DESC) jrpp ON jrpp.prow_job_run_id = prow_job_runs.id`).
+			Joins("LEFT JOIN prow_pull_requests pp ON pp.id = jrpp.prow_pull_request_id")
+	}
+
+	if needs.prJoinForFilter {
+		dbQuery = addPRJoin(dbQuery)
+	}
+
+	q, err := applyJobRunFilters(dbQuery, filterOpts, lookback)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(release) > 0 {
-		q = q.Where("release = ?", release)
+		q = q.Where("prow_jobs.release = ?", release)
 	}
+	q = q.Where(`prow_job_runs."timestamp" < ?`, reportEnd)
+	q = q.Where(`prow_job_runs."timestamp" >= ?`, lookback)
 
-	q = q.Where("timestamp < ?", reportEnd.UnixMilli())
-
-	// Get the row count before pagination
 	var rowCount int64
 	if err := q.Count(&rowCount).Error; err != nil {
 		return nil, err
 	}
 
-	// Paginate the results:
+	if needs.prJoinForSort && !needs.prJoinForFilter {
+		q = addPRJoin(q)
+	}
+
+	q = q.Order("prow_job_runs.id DESC")
+
 	if pagination == nil {
 		pagination = &apitype.Pagination{
 			PerPage: int(rowCount),
@@ -135,37 +111,37 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 		q = q.Limit(pagination.PerPage).Offset(pagination.Page * pagination.PerPage)
 	}
 
-	res := q.Scan(&jobsResult)
-	if res.Error != nil {
-		return nil, res.Error
+	if err := q.Scan(&jobsResult).Error; err != nil {
+		return nil, err
 	}
 
-	// Fetch annotations separately to avoid bloating the materialized view.
+	// Phase 2: enrich paginated results in parallel. Each enrichment
+	// function writes to disjoint fields of jobsResult, so no locking
+	// is needed.
 	if len(jobsResult) > 0 {
 		ids := make([]int, len(jobsResult))
 		for i, jr := range jobsResult {
 			ids[i] = jr.ID
 		}
-		var annotations []models.ProwJobRunAnnotation
-		annotationQuery := dbc.DB.Where("prow_job_run_id IN ?", ids)
-		if len(release) > 0 {
-			annotationQuery = annotationQuery.Where("prow_job_run_release = ?", release)
+
+		var g errgroup.Group
+
+		g.Go(func() error {
+			return enrichJobRunsWithTestNames(dbc, jobsResult, ids, release, lookback)
+		})
+
+		if !needs.needsPRJoin() {
+			g.Go(func() error {
+				return enrichJobRunsWithPRData(dbc, jobsResult, ids)
+			})
 		}
-		if err := annotationQuery.Find(&annotations).Error; err != nil {
+
+		g.Go(func() error {
+			return enrichJobRunsWithAnnotations(dbc, jobsResult, ids, release)
+		})
+
+		if err := g.Wait(); err != nil {
 			return nil, err
-		}
-		annotationsByRun := make(map[string]apitype.AnnotationMap)
-		for _, a := range annotations {
-			annotationID := strconv.FormatUint(uint64(a.ProwJobRunID), 10)
-			if annotationsByRun[annotationID] == nil {
-				annotationsByRun[annotationID] = make(apitype.AnnotationMap)
-			}
-			annotationsByRun[annotationID][a.Key] = a.Value
-		}
-		for i := range jobsResult {
-			if am, ok := annotationsByRun[strconv.Itoa(jobsResult[i].ID)]; ok {
-				jobsResult[i].Annotations = am
-			}
 		}
 	}
 
@@ -175,6 +151,278 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 		PageSize:  pagination.PerPage,
 		Page:      pagination.Page,
 	}, nil
+}
+
+const jobRunsBaseSelect = `prow_job_runs.id,
+	prow_jobs.release,
+	prow_jobs.name,
+	prow_jobs.name AS job,
+	prow_jobs.variants,
+	regexp_replace(prow_jobs.name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-', '') AS brief_name,
+	prow_job_runs.overall_result,
+	prow_job_runs.url AS test_grid_url,
+	prow_job_runs.url,
+	prow_job_runs.succeeded,
+	prow_job_runs.infrastructure_failure,
+	prow_job_runs.known_failure,
+	(EXTRACT(epoch FROM (prow_job_runs."timestamp" AT TIME ZONE 'utc')) * 1000)::bigint AS "timestamp",
+	prow_job_runs.id AS prow_id,
+	prow_job_runs.cluster,
+	prow_job_runs.labels,
+	prow_job_runs.test_failures,
+	prow_job_runs.test_flakes`
+
+type jobRunFilterNeeds struct {
+	prJoinForSort   bool
+	prJoinForFilter bool
+}
+
+func (n jobRunFilterNeeds) needsPRJoin() bool { return n.prJoinForSort || n.prJoinForFilter }
+
+func analyzeJobRunFilters(filterOpts *filter.FilterOptions, prColumns sets.Set[string]) jobRunFilterNeeds {
+	needs := jobRunFilterNeeds{
+		prJoinForSort: prColumns.Has(filterOpts.SortField),
+	}
+	if filterOpts.Filter == nil {
+		return needs
+	}
+	for _, item := range filterOpts.Filter.Items {
+		if prColumns.Has(item.Field) {
+			needs.prJoinForFilter = true
+		}
+	}
+	return needs
+}
+
+// columnAliases maps filter field names that are SELECT aliases (not base
+// table columns) to their table-qualified column expressions. PostgreSQL
+// WHERE clauses cannot reference SELECT aliases, so these fields must be
+// rewritten before they reach the generic filter system.
+var columnAliases = map[string]string{
+	"id":                  "prow_job_runs.id",
+	"job":                 "prow_jobs.name",
+	"brief_name":          "regexp_replace(prow_jobs.name, 'periodic-ci-openshift-(multiarch|release)-master-(ci|nightly)-[0-9]+.[0-9]+-', '')",
+	"prow_id":             "prow_job_runs.id",
+	"test_grid_url":       "prow_job_runs.url",
+	"timestamp":           `(EXTRACT(epoch FROM (prow_job_runs."timestamp" AT TIME ZONE 'utc')) * 1000)::bigint`,
+	"pull_request_link":   "pp.link",
+	"pull_request_sha":    "pp.sha",
+	"pull_request_org":    "pp.org",
+	"pull_request_repo":   "pp.repo",
+	"pull_request_author": "pp.author",
+}
+
+// testNameStatuses maps test name filter fields to the prow_job_run_tests
+// status code used in EXISTS subqueries. ran_test_names uses 0 to mean
+// "no status constraint" (matches any test outcome). This is safe because
+// TestStatusAbsent (0) is never stored in prow_job_run_tests rows.
+var testNameStatuses = map[string]int{
+	"ran_test_names":    0,
+	"failed_test_names": int(sippyprocessingv1.TestStatusFailure),
+	"flaked_test_names": int(sippyprocessingv1.TestStatusFlake),
+}
+
+func isTestNameField(field string) bool {
+	_, ok := testNameStatuses[field]
+	return ok
+}
+
+// applyJobRunFilters processes all filter items in a single pass, dispatching
+// each to the appropriate handler based on field name. Fields that need
+// special SQL (test name EXISTS or table-qualified column aliases) are handled
+// directly; the rest use the generic filter SQL generator. All clauses are
+// collected and combined with AND or OR based on linkOperator.
+func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback time.Time) (*gorm.DB, error) {
+	if filterOpts.Filter == nil || len(filterOpts.Filter.Items) == 0 {
+		return filter.FilterableDBResult(q, filterOpts, apitype.JobRun{})
+	}
+
+	var clauses []string
+	var allArgs []any
+	for _, item := range filterOpts.Filter.Items {
+		var sql string
+		var param any
+		switch {
+		case isTestNameField(item.Field):
+			sqlFrag, args, err := testNameFilterSQL(item, lookback)
+			if err != nil {
+				return nil, &ValidationError{Message: err.Error()}
+			}
+			clauses = append(clauses, sqlFrag)
+			allArgs = append(allArgs, args...)
+			continue
+		default:
+			if col, ok := columnAliases[item.Field]; ok {
+				var err error
+				sql, param, err = item.FilterItemToSQL(col)
+				if err != nil {
+					return nil, &ValidationError{Message: err.Error()}
+				}
+			} else {
+				sql, param = item.FilterFieldToSQL(apitype.JobRun{})
+			}
+		}
+		if sql != "" {
+			clauses = append(clauses, sql)
+			if param != nil {
+				allArgs = append(allArgs, param)
+			}
+		}
+	}
+	if len(clauses) > 0 {
+		joiner := " AND "
+		if filterOpts.Filter.LinkOperator == filter.LinkOperatorOr {
+			joiner = " OR "
+		}
+		q = q.Where("("+strings.Join(clauses, joiner)+")", allArgs...)
+	}
+
+	sortOpts := *filterOpts
+	sortOpts.Filter = &filter.Filter{}
+	return filter.FilterableDBResult(q, &sortOpts, apitype.JobRun{})
+}
+
+func testNameFilterSQL(item filter.FilterItem, lookback time.Time) (string, []any, error) {
+	statusClause := ""
+	if status := testNameStatuses[item.Field]; status != 0 {
+		statusClause = fmt.Sprintf(" AND prow_job_run_tests.status = %d", status)
+	}
+
+	existsBase := fmt.Sprintf(
+		"EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_run_tests.prow_job_run_release = prow_jobs.release AND prow_job_run_tests.prow_job_run_timestamp >= ?%s",
+		statusClause,
+	)
+
+	var sql string
+	var args []any
+	switch item.Operator {
+	case filter.OperatorIsEmpty:
+		sql = "NOT " + existsBase + ")"
+		args = []any{lookback}
+	case filter.OperatorIsNotEmpty:
+		sql = existsBase + ")"
+		args = []any{lookback}
+	case filter.OperatorHasEntry, filter.OperatorEquals:
+		sql = existsBase + " AND tests.name = ?)"
+		args = []any{lookback, item.Value}
+	case filter.OperatorStartsWith:
+		sql = existsBase + " AND tests.name ILIKE ?)"
+		args = []any{lookback, fmt.Sprintf("%s%%", filter.EscapeLikeMetachars(item.Value))}
+	case filter.OperatorEndsWith:
+		sql = existsBase + " AND tests.name ILIKE ?)"
+		args = []any{lookback, fmt.Sprintf("%%%s", filter.EscapeLikeMetachars(item.Value))}
+	case filter.OperatorContains, filter.OperatorHasEntryContaining:
+		sql = existsBase + " AND tests.name ILIKE ?)"
+		args = []any{lookback, fmt.Sprintf("%%%s%%", filter.EscapeLikeMetachars(item.Value))}
+	default:
+		return "", nil, fmt.Errorf("unsupported operator %q for field %q", item.Operator, item.Field)
+	}
+	return filter.WrapNot(sql, item.Not), args, nil
+}
+
+func enrichJobRunsWithTestNames(dbc *db.DB, results []apitype.JobRun, ids []int, release string, lookback time.Time) error {
+	type testNameResult struct {
+		ProwJobRunID    int            `gorm:"column:prow_job_run_id"`
+		FailedTestNames pq.StringArray `gorm:"column:failed_test_names;type:text[]"`
+		FlakedTestNames pq.StringArray `gorm:"column:flaked_test_names;type:text[]"`
+	}
+	var nameResults []testNameResult
+	nameSQL := fmt.Sprintf(`SELECT pjrt.prow_job_run_id,
+			array_agg(t.name) FILTER (WHERE pjrt.status = %d) AS failed_test_names,
+			array_agg(t.name) FILTER (WHERE pjrt.status = %d) AS flaked_test_names
+		FROM prow_job_run_tests pjrt
+			JOIN tests t ON t.id = pjrt.test_id
+		WHERE pjrt.prow_job_run_id IN ?
+			AND pjrt.status IN (%d, %d)
+			AND pjrt.prow_job_run_timestamp >= ?`,
+		sippyprocessingv1.TestStatusFailure, sippyprocessingv1.TestStatusFlake, sippyprocessingv1.TestStatusFailure, sippyprocessingv1.TestStatusFlake)
+	nameArgs := []any{ids, lookback}
+	if len(release) > 0 {
+		nameSQL += ` AND pjrt.prow_job_run_release = ?`
+		nameArgs = append(nameArgs, release)
+	}
+	nameSQL += ` GROUP BY pjrt.prow_job_run_id`
+	if err := dbc.DB.Raw(nameSQL, nameArgs...).Scan(&nameResults).Error; err != nil {
+		return err
+	}
+	nameMap := make(map[int]*testNameResult, len(nameResults))
+	for i := range nameResults {
+		nameMap[nameResults[i].ProwJobRunID] = &nameResults[i]
+	}
+	for i := range results {
+		if names, ok := nameMap[results[i].ID]; ok {
+			results[i].FailedTestNames = names.FailedTestNames
+			results[i].FlakedTestNames = names.FlakedTestNames
+		}
+	}
+	return nil
+}
+
+func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, ids []int) error {
+	type prResult struct {
+		ID                int    `gorm:"column:id"`
+		PullRequestLink   string `gorm:"column:pull_request_link"`
+		PullRequestSHA    string `gorm:"column:pull_request_sha"`
+		PullRequestOrg    string `gorm:"column:pull_request_org"`
+		PullRequestRepo   string `gorm:"column:pull_request_repo"`
+		PullRequestAuthor string `gorm:"column:pull_request_author"`
+	}
+	var prResults []prResult
+	if err := dbc.DB.Raw(`
+		SELECT DISTINCT ON(jrpp.prow_job_run_id)
+			jrpp.prow_job_run_id AS id,
+			pp.link AS pull_request_link,
+			pp.sha AS pull_request_sha,
+			pp.org AS pull_request_org,
+			pp.author AS pull_request_author,
+			pp.repo AS pull_request_repo
+		FROM prow_job_run_prow_pull_requests jrpp
+			INNER JOIN prow_pull_requests pp ON pp.id = jrpp.prow_pull_request_id
+		WHERE jrpp.prow_job_run_id IN ?
+		ORDER BY jrpp.prow_job_run_id, jrpp.prow_pull_request_id DESC`, ids).Scan(&prResults).Error; err != nil {
+		return err
+	}
+	prMap := make(map[int]*prResult, len(prResults))
+	for i := range prResults {
+		prMap[prResults[i].ID] = &prResults[i]
+	}
+	for i := range results {
+		pr, ok := prMap[results[i].ID]
+		if !ok {
+			continue
+		}
+		results[i].PullRequestLink = pr.PullRequestLink
+		results[i].PullRequestSHA = pr.PullRequestSHA
+		results[i].PullRequestOrg = pr.PullRequestOrg
+		results[i].PullRequestRepo = pr.PullRequestRepo
+		results[i].PullRequestAuthor = pr.PullRequestAuthor
+	}
+	return nil
+}
+
+func enrichJobRunsWithAnnotations(dbc *db.DB, results []apitype.JobRun, ids []int, release string) error {
+	var annotations []models.ProwJobRunAnnotation
+	annotationQuery := dbc.DB.Where("prow_job_run_id IN ?", ids)
+	if len(release) > 0 {
+		annotationQuery = annotationQuery.Where("prow_job_run_release = ?", release)
+	}
+	if err := annotationQuery.Find(&annotations).Error; err != nil {
+		return err
+	}
+	annotationsByRun := make(map[int]apitype.AnnotationMap)
+	for _, a := range annotations {
+		runID := int(a.ProwJobRunID) //nolint:gosec // DB IDs are well within int range
+		if annotationsByRun[runID] == nil {
+			annotationsByRun[runID] = make(apitype.AnnotationMap)
+		}
+		annotationsByRun[runID][a.Key] = a.Value
+	}
+	for i := range results {
+		if am, ok := annotationsByRun[results[i].ID]; ok {
+			results[i].Annotations = am
+		}
+	}
+	return nil
 }
 
 // FetchJobRun returns a single job run loaded from postgres and populated with the ProwJob and test results.

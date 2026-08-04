@@ -66,11 +66,11 @@ func nameMatchConditions(matches TestNameMatches) (conditions []string, args []a
 	}
 	for _, prefix := range matches.Prefixes {
 		conditions = append(conditions, "tests.name LIKE ?")
-		args = append(args, escapeLikeMetachars(prefix)+"%")
+		args = append(args, filter.EscapeLikeMetachars(prefix)+"%")
 	}
 	for _, sub := range matches.Substrings {
 		conditions = append(conditions, "tests.name ILIKE ?")
-		args = append(args, "%"+escapeLikeMetachars(sub)+"%")
+		args = append(args, "%"+filter.EscapeLikeMetachars(sub)+"%")
 	}
 	return conditions, args
 }
@@ -93,13 +93,6 @@ func buildTestsJoinCondition(matches TestNameMatches) (string, []any) {
 		return testsJoinClause, nil
 	}
 	return testsJoinClause + " AND (" + strings.Join(conditions, " OR ") + ")", args
-}
-
-// escapeLikeMetachars escapes LIKE/ILIKE metacharacters (%, _, \) so they
-// match literally.
-func escapeLikeMetachars(s string) string {
-	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-	return r.Replace(s)
 }
 
 // DateRange defines a half-open date interval [Start, End) used to compute
@@ -193,7 +186,7 @@ func variantFilterConditions(variantFilter *filter.Filter) (conditions []string,
 			}
 			args = append(args, item.Value)
 		case filter.OperatorHasEntryContaining, filter.OperatorContains:
-			pattern := "%" + escapeLikeMetachars(strings.ToLower(item.Value)) + "%"
+			pattern := "%" + filter.EscapeLikeMetachars(strings.ToLower(item.Value)) + "%"
 			if item.Not {
 				conditions = append(conditions, "NOT EXISTS (SELECT 1 FROM variant_combinations vc, LATERAL unnest(vc.variants) AS v(item) WHERE vc.id = variant_combination_id AND LOWER(v.item) LIKE ?)")
 			} else {

@@ -731,7 +731,10 @@ type runSpec struct {
 	succeeded    bool
 	infraFailure bool
 	duration     time.Duration
+	testFailures int
+	testFlakes   int
 	cluster      string
+	url          string
 }
 
 // createRuns inserts ProwJobRun records for the given job using the provided specs.
@@ -753,7 +756,10 @@ func createSingleRun(t *testing.T, dbc *db.DB, jobID uint, release string, spec 
 		Failed:                !spec.succeeded,
 		InfrastructureFailure: spec.infraFailure,
 		Duration:              spec.duration,
+		TestFailures:          spec.testFailures,
+		TestFlakes:            spec.testFlakes,
 		Cluster:               spec.cluster,
+		URL:                   spec.url,
 		OverallResult:         v1.JobSucceeded,
 	}
 	if spec.infraFailure {
@@ -986,6 +992,46 @@ func TestListFilteredJobIDs(t *testing.T) {
 			},
 			wantIDs:  []int{int(gcpJob.ID)}, //nolint:gosec
 			checkIDs: true,
+		},
+		{
+			name: "hasEntry on variants matches shared variant",
+			filter: &filter.Filter{
+				Items: []filter.FilterItem{
+					{Field: "variants", Operator: filter.OperatorHasEntry, Value: "ovn"},
+				},
+			},
+			wantLen:  2,
+			checkIDs: false,
+		},
+		{
+			name: "hasEntry on variants matches unique variant",
+			filter: &filter.Filter{
+				Items: []filter.FilterItem{
+					{Field: "variants", Operator: filter.OperatorHasEntry, Value: "aws"},
+				},
+			},
+			wantIDs:  []int{int(awsJob.ID)}, //nolint:gosec
+			checkIDs: true,
+		},
+		{
+			name: "NOT hasEntry excludes jobs with that variant",
+			filter: &filter.Filter{
+				Items: []filter.FilterItem{
+					{Field: "variants", Operator: filter.OperatorHasEntry, Value: "aws", Not: true},
+				},
+			},
+			wantIDs:  []int{int(gcpJob.ID)}, //nolint:gosec
+			checkIDs: true,
+		},
+		{
+			name: "NOT hasEntry on shared variant excludes all jobs",
+			filter: &filter.Filter{
+				Items: []filter.FilterItem{
+					{Field: "variants", Operator: filter.OperatorHasEntry, Value: "ovn", Not: true},
+				},
+			},
+			wantLen:  0,
+			checkIDs: false,
 		},
 	}
 
