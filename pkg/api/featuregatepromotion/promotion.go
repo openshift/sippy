@@ -40,14 +40,14 @@ var (
 	}
 
 	OptionalSelfManagedPlatformVariants = []JobVariant{
-		{Cloud: "nutanix", Architecture: "amd64", Topology: "ha"},
-		{Cloud: "openstack", Architecture: "amd64", Topology: "ha"},
-		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "ipv4"},
-		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "ipv6"},
-		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "dual"},
-		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv4", JobTiers: "candidate,standard,informing,blocking"},
-		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv6", JobTiers: "candidate,standard,informing,blocking"},
-		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "dual", JobTiers: "candidate,standard,informing,blocking"},
+		{Cloud: "nutanix", Architecture: "amd64", Topology: "ha", Optional: true},
+		{Cloud: "openstack", Architecture: "amd64", Topology: "ha", Optional: true},
+		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "ipv4", Optional: true},
+		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "ipv6", Optional: true},
+		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "dual", Optional: true},
+		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv4", JobTiers: "candidate,standard,informing,blocking", Optional: true},
+		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv6", JobTiers: "candidate,standard,informing,blocking", Optional: true},
+		{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "dual", JobTiers: "candidate,standard,informing,blocking", Optional: true},
 	}
 
 	NonHypershiftPlatforms = regexp.MustCompile("(?i)nutanix|metal|vsphere|openstack|azure|gcp")

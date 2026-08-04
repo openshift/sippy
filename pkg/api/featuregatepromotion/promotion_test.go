@@ -426,7 +426,7 @@ func TestFilterVariants(t *testing.T) {
 			name:        "Nutanix feature gate matches optional nutanix variant",
 			featureGate: "NutanixGate",
 			variants:    [][]JobVariant{OptionalSelfManagedPlatformVariants},
-			want:        []JobVariant{{Cloud: "nutanix", Architecture: "amd64", Topology: "ha"}},
+			want:        []JobVariant{{Cloud: "nutanix", Architecture: "amd64", Topology: "ha", Optional: true}},
 		},
 		{
 			name:        "Metal feature gate matches metal variants with network stacks",
@@ -443,12 +443,12 @@ func TestFilterVariants(t *testing.T) {
 			featureGate: "MetalFeature",
 			variants:    [][]JobVariant{OptionalSelfManagedPlatformVariants, RequiredSelfManagedJobVariants},
 			want: []JobVariant{
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "ipv4"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "ipv6"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "dual"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv4", JobTiers: "candidate,standard,informing,blocking"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv6", JobTiers: "candidate,standard,informing,blocking"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "dual", JobTiers: "candidate,standard,informing,blocking"},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "ipv4", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "ipv6", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-arbiter", NetworkStack: "dual", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv4", JobTiers: "candidate,standard,informing,blocking", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv6", JobTiers: "candidate,standard,informing,blocking", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "dual", JobTiers: "candidate,standard,informing,blocking", Optional: true},
 				{Cloud: "metal", Architecture: "amd64", Topology: "ha", NetworkStack: "ipv4"},
 				{Cloud: "metal", Architecture: "amd64", Topology: "ha", NetworkStack: "ipv6"},
 				{Cloud: "metal", Architecture: "amd64", Topology: "ha", NetworkStack: "dual"},
@@ -459,9 +459,9 @@ func TestFilterVariants(t *testing.T) {
 			featureGate: "DualReplicaFeature",
 			variants:    [][]JobVariant{OptionalSelfManagedPlatformVariants},
 			want: []JobVariant{
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv4", JobTiers: "candidate,standard,informing,blocking"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv6", JobTiers: "candidate,standard,informing,blocking"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "dual", JobTiers: "candidate,standard,informing,blocking"},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv4", JobTiers: "candidate,standard,informing,blocking", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv6", JobTiers: "candidate,standard,informing,blocking", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "dual", JobTiers: "candidate,standard,informing,blocking", Optional: true},
 			},
 		},
 		{
@@ -469,9 +469,9 @@ func TestFilterVariants(t *testing.T) {
 			featureGate: "FencingFeature",
 			variants:    [][]JobVariant{OptionalSelfManagedPlatformVariants},
 			want: []JobVariant{
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv4", JobTiers: "candidate,standard,informing,blocking"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv6", JobTiers: "candidate,standard,informing,blocking"},
-				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "dual", JobTiers: "candidate,standard,informing,blocking"},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv4", JobTiers: "candidate,standard,informing,blocking", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "ipv6", JobTiers: "candidate,standard,informing,blocking", Optional: true},
+				{Cloud: "metal", Architecture: "amd64", Topology: "two-node-fencing", NetworkStack: "dual", JobTiers: "candidate,standard,informing,blocking", Optional: true},
 			},
 		},
 		{
