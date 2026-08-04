@@ -155,7 +155,8 @@ export default function FeatureGatePromotionTab(props) {
   for (const v of requiredVariants) {
     for (const tr of v.test_results || []) {
       if (tr.total_runs < minRuns) minRuns = tr.total_runs
-      if (tr.pass_percent < minPassRate) minPassRate = tr.pass_percent
+      if (tr.total_runs > 0 && tr.pass_percent < minPassRate)
+        minPassRate = tr.pass_percent
     }
   }
   if (!isFinite(minRuns)) minRuns = 0
