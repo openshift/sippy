@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	log "github.com/sirupsen/logrus"
@@ -13,11 +14,17 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 )
 
-func GetBackendDisruptionByRun(ctx context.Context, bigQueryClient *bq.Client, jobRunNames []string, backendName string) (apitype.BackendDisruptionRunsResult, error) {
+func GetBackendDisruptionByRun(ctx context.Context, bigQueryClient *bq.Client, jobRunNames []string, backendName string, minTime, maxTime time.Time) (apitype.BackendDisruptionRunsResult, error) {
 	filterStr := ""
 	if backendName != "" {
 		filterStr = `
   AND BackendName LIKE CONCAT('%', @BackendName, '%')`
+	}
+
+	timeFilter := ""
+	if !minTime.IsZero() && !maxTime.IsZero() {
+		timeFilter = `
+  AND JobRunStartTime BETWEEN @MinTime AND @MaxTime`
 	}
 
 	queryStr := `SELECT
@@ -32,7 +39,7 @@ func GetBackendDisruptionByRun(ctx context.Context, bigQueryClient *bq.Client, j
     MasterNodesUpdated,
     JobRunStatus
 FROM ` + "`openshift-ci-data-analysis.ci_data.BackendDisruption`" + `
-WHERE JobRunName IN UNNEST(@JobRunNames)` + filterStr + `
+WHERE JobRunName IN UNNEST(@JobRunNames)` + timeFilter + filterStr + `
 ORDER BY JobRunName, DisruptionSeconds DESC`
 
 	q := bigQueryClient.Query(ctx, bqlabel.BackendDisruptionByRun, queryStr)
@@ -41,6 +48,16 @@ ORDER BY JobRunName, DisruptionSeconds DESC`
 			Name:  "JobRunNames",
 			Value: jobRunNames,
 		},
+	}
+
+	if !minTime.IsZero() && !maxTime.IsZero() {
+		q.Parameters = append(q.Parameters, bigquery.QueryParameter{
+			Name:  "MinTime",
+			Value: minTime,
+		}, bigquery.QueryParameter{
+			Name:  "MaxTime",
+			Value: maxTime,
+		})
 	}
 
 	if backendName != "" {
