@@ -6,7 +6,9 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
+	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -14,6 +16,7 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/query"
 )
 
 const (
@@ -90,21 +93,20 @@ func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache
 
 	status := buildPromotionStatus(featureGate, release, variantsToCheck, allTests)
 
-	capRegressionFilter := CapabilityRegressionsFilter(featureGate)
-	capRegressionTests, err := sippyapi.QueryTestResults(ctx, dbc, cacheClient, release, &capRegressionFilter)
+	regressedTestNames, err := getCapabilityRegressionTestNames(dbc, release, featureGate)
 	if err != nil {
-		return nil, fmt.Errorf("querying capability regression test results: %w", err)
+		return nil, fmt.Errorf("querying capability regression test names: %w", err)
 	}
 
-	if len(capRegressionTests) > 0 {
+	if len(regressedTestNames) > 0 {
 		promotedGates, err := getPromotedGateNames(dbc, release)
 		if err != nil {
 			return nil, fmt.Errorf("querying promoted gate names: %w", err)
 		}
 
 		failingCount := 0
-		for _, test := range capRegressionTests {
-			if isFailureDueToUnpromotedGate(test.Name, promotedGates) {
+		for _, name := range regressedTestNames {
+			if isFailureDueToUnpromotedGate(name, promotedGates) {
 				continue
 			}
 			failingCount++
@@ -162,6 +164,73 @@ func isFailureDueToUnpromotedGate(testName string, promotedGates sets.Set[string
 		}
 	}
 	return false
+}
+
+// getCapabilityRegressionTestNames returns test names with a working percentage
+// below 92% on jobs owned by this feature gate (via Capability variant).
+// This uses a lightweight query rather than the full /api/tests pipeline.
+func getCapabilityRegressionTestNames(dbc *db.DB, release, featureGate string) ([]string, error) {
+	capabilityVariant := fmt.Sprintf("Capability:%s", featureGate)
+
+	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
+	dr := query.DateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
+	if err := query.ResolveDateRanges(dbc, release, &dr); err != nil {
+		return nil, err
+	}
+	end := dr.End.AddDays(-1)
+	start := dr.Start.AddDays(-1)
+
+	excludedNames := []string{"install should succeed", "openshift-tests should work", "infrastructure should work"}
+
+	type testPassRate struct {
+		Name              string
+		WorkingPercentage float64
+	}
+
+	var results []testPassRate
+	tx := dbc.DB.Raw(`
+		SELECT t.name,
+			CASE WHEN SUM(COALESCE(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0), 0)) = 0 THEN 0
+			ELSE (SUM(COALESCE(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))
+				+ SUM(COALESCE(e.prefix_sum_flakes - COALESCE(s.prefix_sum_flakes, 0), 0)))
+				* 100.0
+				/ SUM(COALESCE(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0), 0))
+			END AS working_percentage
+		FROM test_cumulative_summaries e
+		JOIN prow_jobs pj ON e.prow_job_id = pj.id
+		JOIN tests t ON e.test_id = t.id
+		LEFT JOIN test_cumulative_summaries s
+			ON s.test_id = e.test_id AND s.prow_job_id = e.prow_job_id
+			AND s.suite_id = e.suite_id AND s.lifecycle = e.lifecycle
+			AND s.release = e.release AND s.date = ?
+		WHERE e.date = ? AND e.release = ?
+			AND ? = ANY(pj.variants)
+			AND NOT EXISTS (
+				SELECT 1 FROM variant_combinations
+				WHERE 'never-stable' = ANY(variants)
+				AND id = pj.variant_combination_id
+			)
+			AND t.name NOT LIKE '%' || ? || '%'
+			AND t.name NOT LIKE '%' || ? || '%'
+			AND t.name NOT LIKE '%' || ? || '%'
+		GROUP BY t.name
+		HAVING SUM(COALESCE(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0), 0)) >= 1
+			AND (SUM(COALESCE(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))
+				+ SUM(COALESCE(e.prefix_sum_flakes - COALESCE(s.prefix_sum_flakes, 0), 0)))
+				* 100.0
+				/ SUM(COALESCE(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0), 0)) < 92
+	`, start, end, release, capabilityVariant,
+		excludedNames[0], excludedNames[1], excludedNames[2]).
+		Scan(&results)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	names := make([]string, len(results))
+	for i, r := range results {
+		names[i] = r.Name
+	}
+	return names, nil
 }
 
 // determineVariantsToCheck selects which variant combos to check based on the
