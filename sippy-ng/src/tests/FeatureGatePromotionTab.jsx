@@ -24,9 +24,6 @@ const PASS_TEXT = '#155724'
 const FAIL_COLOR = '#f8d7da'
 const FAIL_TEXT = '#721c24'
 
-// Variant keys that are included in navigation filters but not displayed in column headers
-const HIDDEN_VARIANT_KEYS = new Set(['Capability'])
-
 function topologyDisplayName(topology) {
   if (topology === 'external') return 'hypershift'
   return topology
@@ -458,7 +455,6 @@ function PromotionTable({
                       variant={v}
                       testName={testName}
                       release={release}
-                      featureGate={featureGate}
                       navigate={navigate}
                       requiredRuns={thresholds.requiredRuns}
                       requiredPassRate={thresholds.requiredPassRate}
@@ -671,7 +667,6 @@ function PromotionCell({
   variant,
   testName,
   release,
-  featureGate,
   navigate,
   requiredRuns,
   requiredPassRate,
@@ -782,7 +777,6 @@ PromotionCell.propTypes = {
   variant: PropTypes.object.isRequired,
   testName: PropTypes.string.isRequired,
   release: PropTypes.string.isRequired,
-  featureGate: PropTypes.string.isRequired,
   navigate: PropTypes.func.isRequired,
   requiredRuns: PropTypes.number.isRequired,
   requiredPassRate: PropTypes.number.isRequired,

@@ -46,9 +46,9 @@ export default function FeatureGateDetail(props) {
 
     fetch(
       import.meta.env.VITE_API_URL +
-      `/api/feature_gates/${encodeURIComponent(
-        featureGate
-      )}?release=${encodeURIComponent(release)}`
+        `/api/feature_gates/${encodeURIComponent(
+          featureGate
+        )}?release=${encodeURIComponent(release)}`
     )
       .then((response) => {
         if (response.status !== 200) {

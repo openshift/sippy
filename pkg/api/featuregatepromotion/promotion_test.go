@@ -13,14 +13,11 @@ import (
 )
 
 // makeTest creates an apitype.Test with the given variant dimensions and run counts.
-func makeTest(name, platform, arch, topology, networkStack, os, jobTier string, currentRuns, currentSuccesses, currentFailures, currentFlakes, previousRuns, previousSuccesses, previousFailures, previousFlakes int) apitype.Test {
+func makeTest(name, platform, os, jobTier string, currentRuns, currentSuccesses, currentFailures, previousRuns, previousSuccesses int) apitype.Test {
 	variants := pq.StringArray{
 		"Platform:" + platform,
-		"Architecture:" + arch,
-		"Topology:" + topology,
-	}
-	if networkStack != "" {
-		variants = append(variants, "NetworkStack:"+networkStack)
+		"Architecture:amd64",
+		"Topology:ha",
 	}
 	if os != "" {
 		variants = append(variants, "OS:"+os)
@@ -34,11 +31,8 @@ func makeTest(name, platform, arch, topology, networkStack, os, jobTier string, 
 		CurrentRuns:       currentRuns,
 		CurrentSuccesses:  currentSuccesses,
 		CurrentFailures:   currentFailures,
-		CurrentFlakes:     currentFlakes,
 		PreviousRuns:      previousRuns,
 		PreviousSuccesses: previousSuccesses,
-		PreviousFailures:  previousFailures,
-		PreviousFlakes:    previousFlakes,
 	}
 }
 
@@ -151,7 +145,7 @@ func TestBuildVariantResult_CandidateVariants(t *testing.T) {
 		}
 		var tests []apitype.Test
 		for i := 1; i <= 5; i++ {
-			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), "aws", "amd64", "ha", "", "", tier, 15, 15, 0, 0, 0, 0, 0, 0))
+			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), "aws", "", tier, 15, 15, 0, 0, 0))
 		}
 		return tests
 	}
@@ -163,7 +157,7 @@ func TestBuildVariantResult_CandidateVariants(t *testing.T) {
 		}
 		var tests []apitype.Test
 		for i := 1; i <= 2; i++ {
-			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), "aws", "amd64", "ha", "", "", tier, 15, 15, 0, 0, 0, 0, 0, 0))
+			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), "aws", "", tier, 15, 15, 0, 0, 0))
 		}
 		return tests
 	}
@@ -227,7 +221,7 @@ func TestBuildVariantResult_OptionalVariants(t *testing.T) {
 	makeTests := func(platform, os string, numTests int, runs, successes int) []apitype.Test {
 		var tests []apitype.Test
 		for i := 1; i <= numTests; i++ {
-			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), platform, "amd64", "ha", "", os, "standard", runs, successes, runs-successes, 0, 0, 0, 0, 0))
+			tests = append(tests, makeTest(fmt.Sprintf("test%d", i), platform, os, "standard", runs, successes, runs-successes, 0, 0))
 		}
 		return tests
 	}
@@ -285,13 +279,13 @@ func TestBuildVariantResult_OptionalVariants(t *testing.T) {
 func TestBuildPromotionStatus_OptionalDoNotBlock(t *testing.T) {
 	tests := []apitype.Test{
 		// Required variant with sufficient data
-		makeTest("test1", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
-		makeTest("test2", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
-		makeTest("test3", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
-		makeTest("test4", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
-		makeTest("test5", "aws", "amd64", "ha", "", "", "standard", 15, 15, 0, 0, 0, 0, 0, 0),
+		makeTest("test1", "aws", "", "standard", 15, 15, 0, 0, 0),
+		makeTest("test2", "aws", "", "standard", 15, 15, 0, 0, 0),
+		makeTest("test3", "aws", "", "standard", 15, 15, 0, 0, 0),
+		makeTest("test4", "aws", "", "standard", 15, 15, 0, 0, 0),
+		makeTest("test5", "aws", "", "standard", 15, 15, 0, 0, 0),
 		// Optional variant with insufficient data
-		makeTest("test1", "aws", "amd64", "ha", "", "rhel10", "standard", 2, 2, 0, 0, 0, 0, 0, 0),
+		makeTest("test1", "aws", "rhel10", "standard", 2, 2, 0, 0, 0),
 	}
 
 	variants := []JobVariant{
@@ -616,14 +610,14 @@ func TestLookbackLogic(t *testing.T) {
 		{
 			name: "sufficient current runs uses only current window",
 			testData: []apitype.Test{
-				makeTest("test1", "aws", "amd64", "ha", "", "", "standard", 20, 20, 0, 0, 10, 10, 0, 0),
+				makeTest("test1", "aws", "", "standard", 20, 20, 0, 10, 10),
 			},
 			wantTotalRuns: 20,
 		},
 		{
 			name: "insufficient current runs extends to previous window",
 			testData: []apitype.Test{
-				makeTest("test1", "aws", "amd64", "ha", "", "", "standard", 10, 10, 0, 0, 10, 10, 0, 0),
+				makeTest("test1", "aws", "", "standard", 10, 10, 0, 10, 10),
 			},
 			wantTotalRuns: 20,
 		},
