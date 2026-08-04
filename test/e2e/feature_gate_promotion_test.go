@@ -25,6 +25,7 @@ func TestFeatureGatePromotionVariantResults(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, fg.Promotion)
 
+	require.NotEmpty(t, fg.Promotion.ResultsByVariant, "expected at least one variant result")
 	for _, v := range fg.Promotion.ResultsByVariant {
 		assert.NotEmpty(t, v.Variants["Platform"], "variant should have a platform")
 		assert.NotEmpty(t, v.Variants["Architecture"], "variant should have an architecture")
