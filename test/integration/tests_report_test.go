@@ -54,7 +54,7 @@ func runCollapsedReport(t *testing.T, dbc *db.DB, release string, sample, base q
 	if err != nil {
 		return nil, err
 	}
-	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id"}
+	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id", "lifecycles"}
 	collapsedColumns := slices.Concat(testMetadataColumns, []string{query.QueryTestFields})
 	rawQuery := dbc.DB.Table("(?) AS r", collapsedQuery).Select(strings.Join(collapsedColumns, ","))
 	selectColumns := slices.Concat(testMetadataColumns, []string{query.QueryTestSummarizer})
@@ -539,6 +539,60 @@ func TestTestReportQueryCollapsed_NewTestWithNoPriorHistoryReportsZeroPrevious(t
 	assert.Equal(t, 0, results[0].PreviousRuns, "previous runs should be zero when there's no earlier data at all")
 }
 
+func TestTestReportQueryCollapsed_LifecyclesFieldReflectsDistinctLifecycles(t *testing.T) {
+	dbc := testsReportDB(t)
+	release := "4.16"
+	sample, base, _, _, end := testsReportPeriods()
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests")
+
+	// blockingOnly: one variant combination with only blocking data.
+	vcA := intutil.CreateVariantCombination(t, dbc, []string{"Platform:aws"})
+	jobA := intutil.CreateProwJobWithOptions(t, dbc, "periodic-e2e-aws", release, nil, intutil.WithVariantCombination(vcA))
+	blockingOnly := intutil.CreateTest(t, dbc, "sig-network blocking-only-test")
+	intutil.CreateCumulativeSummary(t, dbc, end, release, blockingOnly.ID, jobA.ID, suite.ID, 10, 10, 0)
+
+	// mixed: two variant combinations, one blocking and one informing, that collapse into
+	// a single row with both lifecycles.
+	vcB := intutil.CreateVariantCombination(t, dbc, []string{"Platform:gcp"})
+	jobB := intutil.CreateProwJobWithOptions(t, dbc, "periodic-e2e-gcp", release, nil, intutil.WithVariantCombination(vcB))
+	mixed := intutil.CreateTest(t, dbc, "sig-network mixed-lifecycle-test")
+	intutil.CreateCumulativeSummary(t, dbc, end, release, mixed.ID, jobA.ID, suite.ID, 10, 10, 0)
+	intutil.CreateCumulativeSummary(t, dbc, end, release, mixed.ID, jobB.ID, suite.ID, 5, 5, 0, intutil.WithCumulativeSummaryLifecycle("informing"))
+
+	t.Run("blocking-only test reports single lifecycle", func(t *testing.T) {
+		nameFilter := &filter.Filter{Items: []filter.FilterItem{
+			{Field: "name", Operator: filter.OperatorEquals, Value: "sig-network blocking-only-test"},
+		}}
+		results, err := runCollapsedReport(t, dbc, release, sample, base, nil, nameFilter, nil)
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.ElementsMatch(t, []string{"blocking"}, results[0].Lifecycles)
+	})
+
+	t.Run("mixed-lifecycle test reports both lifecycles", func(t *testing.T) {
+		nameFilter := &filter.Filter{Items: []filter.FilterItem{
+			{Field: "name", Operator: filter.OperatorEquals, Value: "sig-network mixed-lifecycle-test"},
+		}}
+		results, err := runCollapsedReport(t, dbc, release, sample, base, nil, nameFilter, nil)
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.ElementsMatch(t, []string{"blocking", "informing"}, results[0].Lifecycles)
+	})
+
+	t.Run("lifecycle filter narrows the reported lifecycles", func(t *testing.T) {
+		nameFilter := &filter.Filter{Items: []filter.FilterItem{
+			{Field: "name", Operator: filter.OperatorEquals, Value: "sig-network mixed-lifecycle-test"},
+		}}
+		lifecycleFilter := &filter.Filter{Items: []filter.FilterItem{
+			{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "informing"},
+		}}
+		results, err := runCollapsedReport(t, dbc, release, sample, base, nil, nameFilter, lifecycleFilter)
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.ElementsMatch(t, []string{"informing"}, results[0].Lifecycles)
+	})
+}
+
 // --- UncollapsedTestReportWithStats ---
 
 func TestUncollapsedTestReportWithStats_OneRowPerVariantCombination(t *testing.T) {
@@ -864,4 +918,49 @@ func TestUncollapsedTestReportWithStats_NewVariantWithNoPriorHistoryReportsZeroP
 	require.Len(t, results, 1)
 	assert.Equal(t, 6, results[0].CurrentRuns)
 	assert.Equal(t, 0, results[0].PreviousRuns)
+}
+
+func TestUncollapsedTestReportWithStats_LifecyclesFieldReflectsDistinctLifecycles(t *testing.T) {
+	dbc := testsReportDB(t)
+	release := "4.16"
+	sample, base, _, _, end := testsReportPeriods()
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests")
+
+	test := intutil.CreateTest(t, dbc, "sig-network uncollapsed-lifecycle-field-test")
+
+	// VC-A: only blocking data.
+	vcA := intutil.CreateVariantCombination(t, dbc, []string{"Platform:aws"})
+	jobA := intutil.CreateProwJobWithOptions(t, dbc, "periodic-e2e-aws", release, nil, intutil.WithVariantCombination(vcA))
+	intutil.CreateCumulativeSummary(t, dbc, end, release, test.ID, jobA.ID, suite.ID, 10, 10, 0)
+
+	// VC-B: both blocking and informing data (two prow jobs sharing a variant combination).
+	vcB := intutil.CreateVariantCombination(t, dbc, []string{"Platform:gcp"})
+	jobB1 := intutil.CreateProwJobWithOptions(t, dbc, "periodic-e2e-gcp-blocking", release, nil, intutil.WithVariantCombination(vcB))
+	jobB2 := intutil.CreateProwJobWithOptions(t, dbc, "periodic-e2e-gcp-informing", release, nil, intutil.WithVariantCombination(vcB))
+	intutil.CreateCumulativeSummary(t, dbc, end, release, test.ID, jobB1.ID, suite.ID, 10, 10, 0)
+	intutil.CreateCumulativeSummary(t, dbc, end, release, test.ID, jobB2.ID, suite.ID, 5, 5, 0, intutil.WithCumulativeSummaryLifecycle("informing"))
+
+	t.Run("blocking-only variant reports single lifecycle", func(t *testing.T) {
+		results, _, err := runUncollapsedReport(t, dbc, release, sample, base, nil, nil, nil, nil)
+		require.NoError(t, err)
+		rowA := findVariantRow(t, results, test.Name, []string{"Platform:aws"})
+		assert.ElementsMatch(t, []string{"blocking"}, rowA.Lifecycles)
+	})
+
+	t.Run("mixed-lifecycle variant reports both lifecycles", func(t *testing.T) {
+		results, _, err := runUncollapsedReport(t, dbc, release, sample, base, nil, nil, nil, nil)
+		require.NoError(t, err)
+		rowB := findVariantRow(t, results, test.Name, []string{"Platform:gcp"})
+		assert.ElementsMatch(t, []string{"blocking", "informing"}, rowB.Lifecycles)
+	})
+
+	t.Run("lifecycle filter narrows the reported lifecycles", func(t *testing.T) {
+		lifecycleFilter := &filter.Filter{Items: []filter.FilterItem{
+			{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "blocking"},
+		}}
+		results, _, err := runUncollapsedReport(t, dbc, release, sample, base, nil, nil, nil, lifecycleFilter)
+		require.NoError(t, err)
+		rowB := findVariantRow(t, results, test.Name, []string{"Platform:gcp"})
+		assert.ElementsMatch(t, []string{"blocking"}, rowB.Lifecycles)
+	})
 }
