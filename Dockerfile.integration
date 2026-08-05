@@ -18,5 +18,9 @@ RUN chmod +rx /nested-podman-entrypoint.sh && \
     chown 0:0 /etc/subgid /etc/subuid && \
     chmod -R g=u /etc/subuid /etc/subgid
 
+# ci-operator nested_podman runs as runAsUser:1000 without a home directory,
+# so HOME defaults to '/' (not writable). The entrypoint script needs a
+# writable HOME to create .config/containers/ for podman configuration.
+ENV HOME=/tmp
 ENTRYPOINT ["/usr/libexec/podman/catatonit", "--", "/nested-podman-entrypoint.sh"]
 CMD ["make", "integration"]
