@@ -1852,6 +1852,58 @@ func TestQueryBaseJobRunTestStatus_AggregateFallback(t *testing.T) {
 		}
 	})
 
+	t.Run("non-dbGroupBy includeVariants keys do not exclude valid jobs", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		// Job variant_combination only has dbGroupBy keys (Platform, Network).
+		// It does NOT have JobTier, Owner, or CGroupMode.
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-non-dbg-aws", release, vc)
+
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] non-dbGroupBy filter test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-ndbg")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:non-dbg-filter", "Storage", []string{"PVC"})
+
+		baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+		baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+		createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			TestID:            tow.UniqueID,
+			RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}}
+		// includeVariants has keys NOT in dbGroupBy (JobTier, Owner, CGroupMode).
+		// The job's variant_combination lacks these keys. Before the fix, the SQL
+		// variant filter AND-ed all keys, returning zero rows.
+		opts.VariantOption.IncludeVariants = map[string][]string{
+			"Platform":   {"aws"},
+			"Network":    {"ovn"},
+			"JobTier":    {"blocking", "informing"},
+			"Owner":      {"eng"},
+			"CGroupMode": {"v2"},
+		}
+
+		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		totalRows := 0
+		for _, rows := range result {
+			totalRows += len(rows)
+		}
+		require.Equal(t, 1, totalRows, "non-dbGroupBy variant keys should not exclude valid jobs")
+
+		for _, rows := range result {
+			for _, row := range rows {
+				assert.Equal(t, tow.UniqueID, row.TestKey.TestID)
+				assert.Equal(t, 20, row.Stats.Total(), "aggregate total should be prefix-sum delta")
+			}
+		}
+	})
+
 	t.Run("multiple jobs aggregated separately", func(t *testing.T) {
 		dbc := crTestDB(t)
 		release := "4.16"

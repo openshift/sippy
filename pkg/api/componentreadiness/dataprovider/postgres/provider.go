@@ -529,6 +529,7 @@ func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, re
 		includeVariants = map[string][]string{}
 	}
 	includeVariants = mergeRequestedVariants(includeVariants, reqOptions)
+	includeVariants = filterVariantsByDBGroupBy(includeVariants, reqOptions.VariantOption.DBGroupBy)
 
 	testIDs := make([]string, 0, len(reqOptions.TestIDOptions))
 	for _, tid := range reqOptions.TestIDOptions {

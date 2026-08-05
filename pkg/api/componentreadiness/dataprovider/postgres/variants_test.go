@@ -168,6 +168,82 @@ func TestMergeRequestedVariants(t *testing.T) {
 	}
 }
 
+func TestFilterVariantsByDBGroupBy(t *testing.T) {
+	tests := []struct {
+		name            string
+		includeVariants map[string][]string
+		dbGroupBy       sets.Set[string]
+		want            map[string][]string
+	}{
+		{
+			name:            "empty inputs",
+			includeVariants: map[string][]string{},
+			dbGroupBy:       sets.New[string](),
+			want:            map[string][]string{},
+		},
+		{
+			name: "keeps only dbGroupBy keys",
+			includeVariants: map[string][]string{
+				"Architecture": {"amd64"},
+				"JobTier":      {"blocking", "informing"},
+				"Platform":     {"aws"},
+				"Owner":        {"eng"},
+			},
+			dbGroupBy: sets.New[string]("Architecture", "Platform"),
+			want: map[string][]string{
+				"Architecture": {"amd64"},
+				"Platform":     {"aws"},
+			},
+		},
+		{
+			name: "all keys in dbGroupBy preserved",
+			includeVariants: map[string][]string{
+				"Architecture": {"amd64"},
+				"Network":      {"ovn"},
+			},
+			dbGroupBy: sets.New[string]("Architecture", "Network", "Platform"),
+			want: map[string][]string{
+				"Architecture": {"amd64"},
+				"Network":      {"ovn"},
+			},
+		},
+		{
+			name: "no keys in dbGroupBy",
+			includeVariants: map[string][]string{
+				"JobTier": {"blocking"},
+				"Owner":   {"eng"},
+			},
+			dbGroupBy: sets.New[string]("Architecture", "Platform"),
+			want:      map[string][]string{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := filterVariantsByDBGroupBy(tc.includeVariants, tc.dbGroupBy)
+			if len(result) != len(tc.want) {
+				t.Fatalf("got %d keys, want %d", len(result), len(tc.want))
+			}
+			for k, wantVals := range tc.want {
+				gotVals, ok := result[k]
+				if !ok {
+					t.Errorf("missing key %q", k)
+					continue
+				}
+				if len(gotVals) != len(wantVals) {
+					t.Errorf("key %q: got %v, want %v", k, gotVals, wantVals)
+					continue
+				}
+				for i, wantVal := range wantVals {
+					if gotVals[i] != wantVal {
+						t.Errorf("key %q[%d] = %q, want %q", k, i, gotVals[i], wantVal)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestBuildVariantGroupMapping(t *testing.T) {
 	tests := []struct {
 		name              string

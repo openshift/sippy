@@ -168,6 +168,20 @@ func mergeRequestedVariants(includeVariants map[string][]string, reqOptions reqo
 	return merged
 }
 
+// filterVariantsByDBGroupBy returns a copy of includeVariants keeping only keys
+// present in dbGroupBy. View-level variant filters (JobTier, CGroupMode, etc.)
+// that are not in dbGroupBy can over-constrain the SQL when querying older
+// releases whose variant_combinations lack those keys.
+func filterVariantsByDBGroupBy(includeVariants map[string][]string, dbGroupBy sets.Set[string]) map[string][]string {
+	filtered := make(map[string][]string, dbGroupBy.Len())
+	for k, v := range includeVariants {
+		if dbGroupBy.Has(k) {
+			filtered[k] = v
+		}
+	}
+	return filtered
+}
+
 // columnGroupMapping maps each real group_id to a synthetic col_group_id that
 // has only columnGroupBy dimensions. Multiple group_ids that share the same
 // column-level projection get the same col_group_id. The synthetic IDs start
