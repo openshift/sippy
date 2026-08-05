@@ -26893,7 +26893,7 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-cudn-density-si
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-cudn-incremental-700-24nodes:
+periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-cudn-incremental-1000-24nodes:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
