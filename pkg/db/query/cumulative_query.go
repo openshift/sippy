@@ -421,7 +421,8 @@ func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange
     SUM(tcs.prefix_sum_successes) AS ps_successes,
     SUM(tcs.prefix_sum_failures)  AS ps_failures,
     SUM(tcs.prefix_sum_flakes)    AS ps_flakes,
-    SUM(tcs.prefix_sum_runs)      AS ps_runs
+    SUM(tcs.prefix_sum_runs)      AS ps_runs,
+    array_agg(DISTINCT tcs.lifecycle) AS lifecycles
   FROM test_cumulative_summaries tcs
   JOIN prow_jobs pj ON tcs.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
 `)
@@ -450,7 +451,7 @@ func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange
 	}
 
 	buf.WriteString(`SELECT t.name, su.name AS suite_name,
-  jc.name AS jira_component, jc.id AS jira_component_id, e.release,
+  jc.name AS jira_component, jc.id AS jira_component_id, e.release, e.lifecycles,
   COALESCE(e.ps_successes - COALESCE(m.ps_successes, 0), 0)::bigint AS current_successes,
   COALESCE(e.ps_failures  - COALESCE(m.ps_failures,  0), 0)::bigint AS current_failures,
   COALESCE(e.ps_flakes    - COALESCE(m.ps_flakes,    0), 0)::bigint AS current_flakes,

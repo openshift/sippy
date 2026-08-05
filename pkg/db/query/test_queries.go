@@ -285,7 +285,7 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
     jira_components.name AS jira_component, jira_components.id AS jira_component_id,
     pre.current_successes, pre.current_failures, pre.current_flakes, pre.current_runs,
     pre.previous_successes, pre.previous_failures, pre.previous_flakes, pre.previous_runs,
-    ob.open_bugs, vc.variants, pre.variant_combination_id, pre.release,
+    ob.open_bugs, vc.variants, pre.variant_combination_id, pre.release, pre.lifecycles,
     `)
 	buf.WriteString(QueryTestPercentages)
 	buf.WriteString(`
@@ -298,7 +298,8 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
       SUM(COALESCE(e.prefix_sum_successes - COALESCE(m.prefix_sum_successes, 0), 0))::bigint AS current_successes,
       SUM(COALESCE(e.prefix_sum_flakes    - COALESCE(m.prefix_sum_flakes,    0), 0))::bigint AS current_flakes,
       SUM(COALESCE(e.prefix_sum_failures  - COALESCE(m.prefix_sum_failures,  0), 0))::bigint AS current_failures,
-      SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs
+      SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs,
+      array_agg(DISTINCT e.lifecycle) AS lifecycles
     FROM test_cumulative_summaries e
     JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
     LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.lifecycle = e.lifecycle AND m.release = e.release AND m.date = ?

@@ -249,6 +249,29 @@ export function TestAnalysis(props) {
                       variant="outlined"
                     />
                   )}
+                  {test.lifecycles && test.lifecycles.includes('informing') && (
+                    <Tooltip
+                      title={
+                        test.lifecycles.length === 1
+                          ? 'Informing'
+                          : 'Contains informing'
+                      }
+                    >
+                      <Chip
+                        label={
+                          test.lifecycles.length === 1
+                            ? 'Informing'
+                            : 'Contains informing'
+                        }
+                        size="small"
+                        color="info"
+                        variant={
+                          test.lifecycles.length === 1 ? 'filled' : 'outlined'
+                        }
+                        sx={{ ml: test.jira_component ? 1 : 0 }}
+                      />
+                    </Tooltip>
+                  )}
                 </div>
                 <GridToolbarFilterMenu
                   linkOperatorDisabled={true}

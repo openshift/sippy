@@ -448,7 +448,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		variantFilter, lifecycleFilter = variantsAndLifecycle.Split([]string{"variants"})
 	}
 
-	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id"}
+	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id", "lifecycles"}
 
 	var finalResults *gorm.DB
 	workMem := "4MB"
