@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"maps"
 	"math/big"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	componentreadiness "github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -3442,6 +3444,591 @@ func TestTestDetailsReport_FlakeAsFailure(t *testing.T) {
 	assert.Greater(t, sampleFalse.SuccessRate, sampleTrue.SuccessRate,
 		"SuccessRate with FlakeAsFailure=false (%f) should be higher than with true (%f)",
 		sampleFalse.SuccessRate, sampleTrue.SuccessRate)
+}
+
+// --- GenerateReport Tests ---
+//
+// These tests exercise the full GenerateReport pipeline, which uses the combined
+// query path (QueryCombinedTestStatus) when the postgres provider is used. Each
+// test seeds both base and sample data, calls GenerateReport, and asserts on the
+// resulting ComponentReport structure.
+
+func TestGenerateReport_NoRegression(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-noreg", release, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] no regression test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-noreg")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:noreg", "Storage", []string{"PVC"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// Base: 100 runs, 90 success, 0 flakes → 90% pass rate
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 90, 0)
+	// Sample: 100 runs, 90 success, 0 flakes → same pass rate as base
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 100, 90, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 200, 180, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.Confidence = 95
+	opts.IncludeAllTests = true
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	row := findReportRow(t, report, "Storage")
+	col := findReportColumn(t, row, map[string]string{"Platform": "aws"})
+	assert.GreaterOrEqual(t, int(col.Status), int(crtest.NotSignificant), "same pass rate should not be a regression")
+	assert.Empty(t, col.RegressedTests)
+	tests := filterReportPlaceholders(col.AllTests)
+	require.Len(t, tests, 1)
+	assert.Equal(t, 100, tests[0].SampleStats.Total())
+	assert.Equal(t, 90, tests[0].SampleStats.SuccessCount)
+	require.NotNil(t, tests[0].BaseStats)
+	assert.Equal(t, 100, tests[0].BaseStats.Total())
+	assert.Equal(t, 90, tests[0].BaseStats.SuccessCount)
+}
+
+func TestGenerateReport_RegressionDetected(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-reg", release, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] regression test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-reg")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:reg-test", "Storage", []string{"PVC"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// Base: 200 runs, 190 success → 95% pass rate
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 200, 190, 0)
+	// Sample: 200 runs, 140 success → 70% pass rate (25% drop, >15% threshold for extreme)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 200, 190, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 400, 330, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.Confidence = 95
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	row := findReportRow(t, report, "Storage")
+	col := findReportColumn(t, row, map[string]string{"Platform": "aws"})
+	assert.Equal(t, crtest.ExtremeRegression, col.Status, "95%→70% should be extreme regression")
+	require.Len(t, col.RegressedTests, 1)
+	assert.Equal(t, crtest.ExtremeRegression, col.RegressedTests[0].ReportStatus)
+	assert.Equal(t, 200, col.RegressedTests[0].SampleStats.Total())
+	require.NotNil(t, col.RegressedTests[0].BaseStats)
+	assert.Equal(t, 200, col.RegressedTests[0].BaseStats.Total())
+}
+
+func TestGenerateReport_DifferentReleases(t *testing.T) {
+	dbc := crTestDB(t)
+	baseRelease := "4.16"
+	sampleRelease := "4.17"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	baseJob := createProwJobWithVC(t, dbc, "periodic-e2e-aws-base-xr-report", baseRelease, vc)
+	sampleJob := createProwJobWithVC(t, dbc, "periodic-e2e-aws-sample-xr-report", sampleRelease, vc)
+
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] cross-release report test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-xr-report")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:xr-report", "Storage", []string{"PVC"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// Base: 100 runs, 90 success (baseRelease)
+	createCumulativeSummary(t, dbc, baseLookupStart, baseRelease, test.ID, baseJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, baseRelease, test.ID, baseJob.ID, suite.ID, 100, 90, 0)
+
+	// Sample: 100 runs, 88 success (sampleRelease)
+	createCumulativeSummary(t, dbc, sampleLookupStart, sampleRelease, test.ID, sampleJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, sampleRelease, test.ID, sampleJob.ID, suite.ID, 100, 88, 0)
+
+	// Distractor data in baseRelease at sample dates should not leak into sample results
+	createCumulativeSummary(t, dbc, sampleLookupStart, baseRelease, test.ID, baseJob.ID, suite.ID, 100, 90, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, baseRelease, test.ID, baseJob.ID, suite.ID, 1000, 900, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := reqopts.RequestOptions{
+		BaseRelease: reqopts.Release{
+			Name:  baseRelease,
+			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		},
+		SampleRelease: reqopts.Release{
+			Name:  sampleRelease,
+			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+		},
+		VariantOption: reqopts.Variants{
+			DBGroupBy:       sets.New[string]("Platform", "Network"),
+			ColumnGroupBy:   sets.New[string]("Platform"),
+			IncludeVariants: map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
+		},
+		AdvancedOption: reqopts.Advanced{
+			MinimumFailure: 1,
+			Confidence:     95,
+		},
+		IncludeAllTests: true,
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	row := findReportRow(t, report, "Storage")
+	col := findReportColumn(t, row, map[string]string{"Platform": "aws"})
+	tests := filterReportPlaceholders(col.AllTests)
+	require.Len(t, tests, 1)
+	assert.Equal(t, 100, tests[0].SampleStats.Total(), "sample should use sampleRelease data only")
+	assert.Equal(t, 88, tests[0].SampleStats.SuccessCount)
+	require.NotNil(t, tests[0].BaseStats)
+	assert.Equal(t, 100, tests[0].BaseStats.Total(), "base should use baseRelease data only")
+	assert.Equal(t, 90, tests[0].BaseStats.SuccessCount)
+}
+
+func TestGenerateReport_MissingSampleAndBasis(t *testing.T) {
+	dbc := crTestDB(t)
+	baseRelease := "4.16"
+	sampleRelease := "4.17"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	baseJob := createProwJobWithVC(t, dbc, "periodic-base-missing-report", baseRelease, vc)
+	sampleJob := createProwJobWithVC(t, dbc, "periodic-sample-missing-report", sampleRelease, vc)
+
+	baseOnlyTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] base-only report test")
+	sampleOnlyTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] sample-only report test")
+	sharedTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-auth] shared report test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-missing-report")
+
+	createTestOwnership(t, dbc, baseOnlyTest.ID, &suite.ID, "openshift-tests:base-only-rep", "OldComponent", []string{"Legacy"})
+	createTestOwnership(t, dbc, sampleOnlyTest.ID, &suite.ID, "openshift-tests:sample-only-rep", "NewComponent", []string{"Fresh"})
+	createTestOwnership(t, dbc, sharedTest.ID, &suite.ID, "openshift-tests:shared-rep", "SharedComponent", []string{"Common"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// baseOnlyTest: data only in base release
+	createCumulativeSummary(t, dbc, baseLookupStart, baseRelease, baseOnlyTest.ID, baseJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, baseRelease, baseOnlyTest.ID, baseJob.ID, suite.ID, 100, 90, 0)
+
+	// sampleOnlyTest: data only in sample release
+	createCumulativeSummary(t, dbc, sampleLookupStart, sampleRelease, sampleOnlyTest.ID, sampleJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, sampleRelease, sampleOnlyTest.ID, sampleJob.ID, suite.ID, 100, 90, 0)
+
+	// sharedTest: data in both releases
+	createCumulativeSummary(t, dbc, baseLookupStart, baseRelease, sharedTest.ID, baseJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, baseRelease, sharedTest.ID, baseJob.ID, suite.ID, 100, 90, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, sampleRelease, sharedTest.ID, sampleJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, sampleRelease, sharedTest.ID, sampleJob.ID, suite.ID, 100, 90, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := reqopts.RequestOptions{
+		BaseRelease: reqopts.Release{
+			Name:  baseRelease,
+			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		},
+		SampleRelease: reqopts.Release{
+			Name:  sampleRelease,
+			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+		},
+		VariantOption: reqopts.Variants{
+			DBGroupBy:       sets.New[string]("Platform", "Network"),
+			ColumnGroupBy:   sets.New[string]("Platform"),
+			IncludeVariants: map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
+		},
+		AdvancedOption: reqopts.Advanced{
+			MinimumFailure: 1,
+			Confidence:     95,
+		},
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	// Test that exists in base but not sample should show MissingSample
+	oldRow := findReportRow(t, report, "OldComponent")
+	oldCol := findReportColumn(t, oldRow, map[string]string{"Platform": "aws"})
+	assert.Equal(t, crtest.MissingSample, oldCol.Status)
+	assert.Empty(t, oldCol.RegressedTests, "MissingSample should not appear in regressed tests")
+
+	// Test that exists in sample but not base should show MissingBasis
+	newRow := findReportRow(t, report, "NewComponent")
+	newCol := findReportColumn(t, newRow, map[string]string{"Platform": "aws"})
+	assert.Equal(t, crtest.MissingBasis, newCol.Status)
+
+	// Test that exists in both should be assessed normally
+	sharedRow := findReportRow(t, report, "SharedComponent")
+	sharedCol := findReportColumn(t, sharedRow, map[string]string{"Platform": "aws"})
+	assert.GreaterOrEqual(t, int(sharedCol.Status), int(crtest.NotSignificant))
+}
+
+func TestGenerateReport_VariantGroupingCollapse(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc1 := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:ha"})
+	vc2 := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:single"})
+	job1 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha-grp", release, vc1)
+	job2 := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single-grp", release, vc2)
+
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] grouping report test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-grp-report")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:grp-report", "Storage", []string{"PVC"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// job1 (ha): base 60 runs/55 success, sample 50 runs/45 success
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job1.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job1.ID, suite.ID, 60, 55, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job1.ID, suite.ID, 60, 55, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job1.ID, suite.ID, 110, 100, 0)
+
+	// job2 (single): base 40 runs/35 success, sample 50 runs/46 success
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job2.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job2.ID, suite.ID, 40, 35, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job2.ID, suite.ID, 40, 35, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job2.ID, suite.ID, 90, 81, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.Confidence = 95
+	opts.IncludeAllTests = true
+	opts.VariantOption.DBGroupBy = sets.New[string]("Platform")
+	opts.VariantOption.ColumnGroupBy = sets.New[string]("Platform")
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	row := findReportRow(t, report, "Storage")
+	col := findReportColumn(t, row, map[string]string{"Platform": "aws"})
+	tests := filterReportPlaceholders(col.AllTests)
+	require.Len(t, tests, 1, "both VCs should collapse into one test entry")
+
+	// Sample: 50+50=100 runs, 45+46=91 success
+	assert.Equal(t, 100, tests[0].SampleStats.Total(), "sample runs should aggregate across VCs")
+	assert.Equal(t, 91, tests[0].SampleStats.SuccessCount)
+	// Base: 60+40=100 runs, 55+35=90 success
+	require.NotNil(t, tests[0].BaseStats)
+	assert.Equal(t, 100, tests[0].BaseStats.Total(), "base runs should aggregate across VCs")
+	assert.Equal(t, 90, tests[0].BaseStats.SuccessCount)
+}
+
+func TestGenerateReport_CrossVariantCompare(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vcHA := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:ha"})
+	vcSingle := createVariantCombination(t, dbc, []string{"Platform:aws", "Topology:single"})
+	jobHA := createProwJobWithVC(t, dbc, "periodic-e2e-aws-ha-xv-report", release, vcHA)
+	jobSingle := createProwJobWithVC(t, dbc, "periodic-e2e-aws-single-xv-report", release, vcSingle)
+
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] cross-variant report test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-xv-report")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:xv-report", "Storage", []string{"PVC"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// HA job (used for base side): 100 runs, 90 success in base period
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, jobHA.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, jobHA.ID, suite.ID, 100, 90, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, jobHA.ID, suite.ID, 100, 90, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, jobHA.ID, suite.ID, 200, 180, 0)
+
+	// Single job (used for sample side): 80 runs, 72 success in sample period
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, jobSingle.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, jobSingle.ID, suite.ID, 80, 72, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, jobSingle.ID, suite.ID, 80, 72, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, jobSingle.ID, suite.ID, 160, 144, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.Confidence = 95
+	opts.IncludeAllTests = true
+	// Production cross-compare config: cross-compared variant NOT in DBGroupBy
+	opts.VariantOption.DBGroupBy = sets.New[string]("Platform")
+	opts.VariantOption.ColumnGroupBy = sets.New[string]("Platform")
+	opts.VariantOption.VariantCrossCompare = []string{"Topology"}
+	opts.VariantOption.CompareVariants = map[string][]string{"Topology": {"single"}}
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Topology": {"ha"},
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	row := findReportRow(t, report, "Storage")
+	col := findReportColumn(t, row, map[string]string{"Platform": "aws"})
+	tests := filterReportPlaceholders(col.AllTests)
+	require.Len(t, tests, 1)
+
+	// Sample uses single variant: 80 runs, 72 success from sample period
+	assert.Equal(t, 80, tests[0].SampleStats.Total())
+	assert.Equal(t, 72, tests[0].SampleStats.SuccessCount)
+	// Base uses ha variant: 100 runs, 90 success from base period
+	require.NotNil(t, tests[0].BaseStats)
+	assert.Equal(t, 100, tests[0].BaseStats.Total())
+	assert.Equal(t, 90, tests[0].BaseStats.SuccessCount)
+}
+
+func TestGenerateReport_GABasePath(t *testing.T) {
+	dbc := crTestDB(t)
+	baseRelease := "4.15"
+	sampleRelease := "4.16"
+
+	gaDate := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	createReleaseDefinition(t, dbc, baseRelease, &gaDate)
+
+	gaCivil := civil.DateOf(gaDate)
+	gaEnd := utils.GAWindowEnd(gaCivil)
+	windowDays := 30
+	gaStart := gaCivil.AddDays(-windowDays)
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	baseJob := createProwJobWithVC(t, dbc, "periodic-ga-base-report", baseRelease, vc)
+	sampleJob := createProwJobWithVC(t, dbc, "periodic-ga-sample-report", sampleRelease, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] GA report test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga-report")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-report", "Storage", []string{"PVC"})
+
+	// GA raw data for base: 100 runs, 90 passes, 0 flakes
+	createGARawData(t, dbc, baseRelease, windowDays, test.ID, baseJob.ID, suite.ID, 100, 90, 0)
+
+	// Sample: cumulative data, 100 runs, 90 success
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+	createCumulativeSummary(t, dbc, sampleLookupStart, sampleRelease, test.ID, sampleJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, sampleRelease, test.ID, sampleJob.ID, suite.ID, 100, 90, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := reqopts.RequestOptions{
+		BaseRelease: reqopts.Release{
+			Name:  baseRelease,
+			Start: gaStart.In(time.UTC),
+			End:   gaEnd.AddDays(-1).In(time.UTC),
+		},
+		SampleRelease: reqopts.Release{
+			Name:  sampleRelease,
+			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+		},
+		VariantOption: reqopts.Variants{
+			DBGroupBy:       sets.New[string]("Platform", "Network"),
+			ColumnGroupBy:   sets.New[string]("Platform"),
+			IncludeVariants: map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
+		},
+		AdvancedOption: reqopts.Advanced{
+			MinimumFailure: 1,
+			Confidence:     95,
+		},
+		IncludeAllTests: true,
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	row := findReportRow(t, report, "Storage")
+	col := findReportColumn(t, row, map[string]string{"Platform": "aws"})
+	tests := filterReportPlaceholders(col.AllTests)
+	require.Len(t, tests, 1)
+
+	// Base: GA raw data = 100 runs, 90 success
+	require.NotNil(t, tests[0].BaseStats)
+	assert.Equal(t, 100, tests[0].BaseStats.Total())
+	assert.Equal(t, 90, tests[0].BaseStats.SuccessCount)
+	// Sample: cumulative data = 100 runs, 90 success
+	assert.Equal(t, 100, tests[0].SampleStats.Total())
+	assert.Equal(t, 90, tests[0].SampleStats.SuccessCount)
+}
+
+func TestGenerateReport_LifecycleFilter(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-lc-report", release, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] lifecycle report test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-lc-report")
+	createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:lc-report", "Storage", []string{"PVC"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// Blocking: base 60 runs/55 success, sample 50 runs/45 success
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 0, 0, 0, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 60, 55, 0, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 60, 55, 0, withLifecycle("blocking"))
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 110, 100, 0, withLifecycle("blocking"))
+
+	// Informing: base 40 runs/35 success, sample 30 runs/25 success
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 0, 0, 0, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 40, 35, 0, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 40, 35, 0, withLifecycle("informing"))
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 70, 60, 0, withLifecycle("informing"))
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.Confidence = 95
+	opts.IncludeAllTests = true
+	opts.Lifecycles = []string{"blocking"}
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	row := findReportRow(t, report, "Storage")
+	col := findReportColumn(t, row, map[string]string{"Platform": "aws"})
+	tests := filterReportPlaceholders(col.AllTests)
+	require.Len(t, tests, 1)
+
+	// Sample: only blocking data = 50 runs, 45 success
+	assert.Equal(t, 50, tests[0].SampleStats.Total())
+	assert.Equal(t, 45, tests[0].SampleStats.SuccessCount)
+	// Base: includes all lifecycles = blocking (60) + informing (40) = 100 runs, 90 success
+	require.NotNil(t, tests[0].BaseStats)
+	assert.Equal(t, 100, tests[0].BaseStats.Total())
+	assert.Equal(t, 90, tests[0].BaseStats.SuccessCount)
+}
+
+func TestGenerateReport_MinimumFailureThreshold(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-mf-report", release, vc)
+
+	testHigh := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] high failure report test")
+	testLow := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] low failure report test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-mf-report")
+
+	createTestOwnership(t, dbc, testHigh.ID, &suite.ID, "openshift-tests:high-fail", "Storage", []string{"PVC"})
+	createTestOwnership(t, dbc, testLow.ID, &suite.ID, "openshift-tests:low-fail", "Networking", []string{"Services"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// testHigh: base 200 runs/190 success (95%), sample 200 runs/140 success (70%)
+	createCumulativeSummary(t, dbc, baseLookupStart, release, testHigh.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, testHigh.ID, job.ID, suite.ID, 200, 190, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, testHigh.ID, job.ID, suite.ID, 200, 190, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, testHigh.ID, job.ID, suite.ID, 400, 330, 0)
+
+	// testLow: base 100 runs/95 success (95%), sample 100 runs/98 success → 2 failures < MinimumFailure
+	createCumulativeSummary(t, dbc, baseLookupStart, release, testLow.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, testLow.ID, job.ID, suite.ID, 100, 95, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, testLow.ID, job.ID, suite.ID, 100, 95, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, testLow.ID, job.ID, suite.ID, 200, 193, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.Confidence = 95
+	opts.AdvancedOption.MinimumFailure = 3
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs)
+
+	// testHigh: 60 failures >= MinimumFailure=3, should be flagged as regression
+	storageRow := findReportRow(t, report, "Storage")
+	storageCol := findReportColumn(t, storageRow, map[string]string{"Platform": "aws"})
+	assert.Equal(t, crtest.ExtremeRegression, storageCol.Status, "test with 60 failures should be extreme regression")
+	require.NotEmpty(t, storageCol.RegressedTests)
+
+	// testLow: 2 failures < MinimumFailure=3, should not be flagged as a regression
+	networkRow := findReportRow(t, report, "Networking")
+	networkCol := findReportColumn(t, networkRow, map[string]string{"Platform": "aws"})
+	assert.Empty(t, networkCol.RegressedTests, "test below MinimumFailure should not appear as regression")
+}
+
+// --- Report helpers ---
+
+func findReportRow(t *testing.T, report crtype.ComponentReport, component string) crtype.ReportRow {
+	t.Helper()
+	for _, row := range report.Rows {
+		if row.Component == component {
+			return row
+		}
+	}
+	t.Fatalf("no row found for component %q in report with %d rows", component, len(report.Rows))
+	return crtype.ReportRow{}
+}
+
+func findReportColumn(t *testing.T, row crtype.ReportRow, variants map[string]string) crtype.ReportColumn {
+	t.Helper()
+	for _, col := range row.Columns {
+		if maps.Equal(col.Variants, variants) {
+			return col
+		}
+	}
+	t.Fatalf("no column found for variants %v in row %q with %d columns", variants, row.Component, len(row.Columns))
+	return crtype.ReportColumn{}
+}
+
+func filterReportPlaceholders(allTests []crtype.ReportTestSummary) []crtype.ReportTestSummary {
+	var real []crtype.ReportTestSummary
+	for _, ts := range allTests {
+		if !isPlaceholderKey(ts.TestID) {
+			real = append(real, ts)
+		}
+	}
+	return real
 }
 
 // --- Helpers ---
