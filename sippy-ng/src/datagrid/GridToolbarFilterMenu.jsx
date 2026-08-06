@@ -192,10 +192,14 @@ export default function GridToolbarFilterMenu(props) {
   }
 
   const currentItems = props.filterModel.items || []
-  let filterItems =
-    currentItems.length === 1 && currentItems[0].value === ''
-      ? 0
-      : currentItems.length
+  const filterItems = currentItems.filter(
+    (item) =>
+      !(
+        item.columnField === '' &&
+        item.operatorValue === '' &&
+        item.value === ''
+      )
+  ).length
 
   const linkOperatorForm = (
     <FormControl variant="standard">
