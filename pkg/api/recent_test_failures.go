@@ -176,10 +176,10 @@ type testSuiteKey struct {
 	suiteID uint // 0 represents NULL suite_id
 }
 
-// findLastPass finds the most recent successful run for each (test_id, suite_id)
-// pair by sliding backwards one day at a time from reportEnd. This approach
-// ensures each query hits a single partition for fast execution while
-// guaranteeing the actual last pass is found (up to 90 days back).
+// findLastPass retrieves the most recent successful run timestamp for each
+// (test_id, suite_id) pair from test_cumulative_summaries using the
+// prefix_max_last_success column. This replaces the previous approach of
+// scanning prow_job_run_tests one day at a time in a loop (up to 90 iterations).
 func findLastPass(
 	dbc *db.DB,
 	keys []testSuiteKey,
@@ -190,52 +190,37 @@ func findLastPass(
 		return nil, nil
 	}
 
-	remaining := sets.New(keys...)
-	result := make(map[testSuiteKey]*time.Time, len(keys))
+	end := civil.DateOf(reportEnd.UTC())
+	testIDs := testIDsFromKeys(keys)
 
-	endDate := civil.DateOf(reportEnd.UTC())
-	limitDate := endDate.AddDays(-90)
+	var rows []struct {
+		TestID   uint       `gorm:"column:test_id"`
+		SuiteID  uint       `gorm:"column:suite_id"`
+		LastPass *time.Time `gorm:"column:last_pass"`
+	}
 
-	for date := endDate; remaining.Len() > 0 && !date.Before(limitDate); date = date.AddDays(-1) {
-		testIDs := testIDsFromKeys(remaining)
+	if err := dbc.DB.Table("test_cumulative_summaries e").
+		Where("e.release = ? AND e.date = ?", release, end).
+		Where("e.test_id IN ?", testIDs).
+		Group("e.test_id, e.suite_id").
+		Having("MAX(e.prefix_max_last_success) IS NOT NULL").
+		Select("e.test_id AS test_id, e.suite_id AS suite_id, MAX(e.prefix_max_last_success) AS last_pass").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
 
-		var passes []struct {
-			TestID   uint      `gorm:"column:test_id"`
-			SuiteID  *uint     `gorm:"column:suite_id"`
-			LastPass time.Time `gorm:"column:last_pass"`
-		}
-
-		if err := dbc.DB.Table("prow_job_run_tests pjrt").
-			Where("pjrt.test_id IN ?", testIDs).
-			Where("pjrt.status = ?", int(sippyprocessingv1.TestStatusSuccess)).
-			Where("pjrt.prow_job_run_release = ?", release).
-			Where("pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?", date, date.AddDays(1)).
-			Where("pjrt.deleted_at IS NULL").
-			Group("pjrt.test_id, pjrt.suite_id").
-			Select("pjrt.test_id AS test_id, pjrt.suite_id AS suite_id, MAX(pjrt.prow_job_run_timestamp) AS last_pass").
-			Scan(&passes).Error; err != nil {
-			return nil, err
-		}
-
-		for i := range passes {
-			key := testSuiteKey{testID: passes[i].TestID}
-			if passes[i].SuiteID != nil {
-				key.suiteID = *passes[i].SuiteID
-			}
-			if remaining.Has(key) {
-				t := passes[i].LastPass
-				result[key] = &t
-				remaining.Delete(key)
-			}
-		}
+	result := make(map[testSuiteKey]*time.Time, len(rows))
+	for i := range rows {
+		key := testSuiteKey{testID: rows[i].TestID, suiteID: rows[i].SuiteID}
+		result[key] = rows[i].LastPass
 	}
 
 	return result, nil
 }
 
-func testIDsFromKeys(keys sets.Set[testSuiteKey]) []uint {
+func testIDsFromKeys(keys []testSuiteKey) []uint {
 	ids := sets.New[uint]()
-	for key := range keys {
+	for _, key := range keys {
 		ids.Insert(key.testID)
 	}
 	return ids.UnsortedList()
@@ -249,7 +234,7 @@ func fetchOutputs(
 	release string,
 	periodStart, reportEnd time.Time,
 ) (map[testSuiteKey][]apitype.RecentTestFailureOutput, error) {
-	testIDs := testIDsFromKeys(sets.New(keys...))
+	testIDs := testIDsFromKeys(keys)
 
 	var outputs []struct {
 		TestID       uint      `gorm:"column:test_id"`

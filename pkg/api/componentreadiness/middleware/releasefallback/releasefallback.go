@@ -58,10 +58,10 @@ type ReleaseFallback struct {
 	log                        log.FieldLogger
 	reqOptions                 reqopts.RequestOptions
 
-	// baseOverrideStatus maps test key, to job name, to the result rows for that job.
+	// baseOverrideStatus maps test key, to job name, to the result summaries for that job.
 	// This is used in test details reports, and in the typical API case will only contain one
 	// test ID, but when cache priming for a view, we may have multiple.
-	baseOverrideStatus map[string]map[string][]crstatus.TestJobRunRows
+	baseOverrideStatus map[string]map[string][]crstatus.TestDetailsSummary
 	baseOverrideMutex  sync.Mutex // Mutex to protect the map
 	releaseConfigs     []v1.Release
 }
@@ -212,7 +212,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 		}
 		releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = append(releaseToTestIDOptions[testIDOpts.BaseOverrideRelease], testIDOpts)
 	}
-	r.baseOverrideStatus = map[string]map[string][]crstatus.TestJobRunRows{}
+	r.baseOverrideStatus = map[string]map[string][]crstatus.TestDetailsSummary{}
 
 	// Now we'll do one concurrent query for each release that has some fallback tests:
 	for release, testIDOpts := range releaseToTestIDOptions {
@@ -244,26 +244,16 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 					errCh <- bsErr
 				}
 
-				// Now that we've queried all the results for a fallback release, we need to chop them up into
-				// per test -> job -> result rows.
-
-				// We have a struct where the statuses are mapped by prowjob to all rows results for that prowjob,
-				// with multiple tests intermingled in that layer.
-				// Build out a new struct where these are split up by test ID.
-				// split the status on test ID, and pass only that tests data in for reporting:
 				r.baseOverrideMutex.Lock()
-				for jobName, rows := range baseStatus {
-					for _, row := range rows {
-						testKeyStr := row.TestKeyStr
+				for jobName, summaries := range baseStatus {
+					for _, summary := range summaries {
+						testKeyStr := summary.TestKeyStr
 						if _, ok := r.baseOverrideStatus[testKeyStr]; !ok {
-							r.log.Infof("added test key: " + testKeyStr)
-							r.baseOverrideStatus[testKeyStr] = map[string][]crstatus.TestJobRunRows{}
-						}
-						if r.baseOverrideStatus[testKeyStr][jobName] == nil {
-							r.baseOverrideStatus[testKeyStr][jobName] = []crstatus.TestJobRunRows{}
+							r.log.WithField("testKey", testKeyStr).Debug("added test key")
+							r.baseOverrideStatus[testKeyStr] = map[string][]crstatus.TestDetailsSummary{}
 						}
 						r.baseOverrideStatus[testKeyStr][jobName] =
-							append(r.baseOverrideStatus[testKeyStr][jobName], row)
+							append(r.baseOverrideStatus[testKeyStr][jobName], summary)
 					}
 				}
 

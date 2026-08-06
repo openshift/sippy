@@ -467,10 +467,11 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 // Test contains the full accounting of a test's history. The format
 // of this struct is suitable for use in a data table.
 type Test struct {
-	Name      string         `json:"name"`
-	SuiteName string         `json:"suite_name"`
-	Variant   string         `json:"variant,omitempty"`
-	Variants  pq.StringArray `json:"variants" gorm:"type:text[]"`
+	Name       string         `json:"name"`
+	SuiteName  string         `json:"suite_name"`
+	Variant    string         `json:"variant,omitempty"`
+	Variants   pq.StringArray `json:"variants" gorm:"type:text[]"`
+	Lifecycles pq.StringArray `json:"lifecycles,omitempty" gorm:"type:text[]"`
 
 	JiraComponent   string `json:"jira_component"`
 	JiraComponentID int    `json:"jira_component_id"`
@@ -521,6 +522,8 @@ func (test Test) GetFieldType(param string) ColumnType {
 	case "variant":
 		return ColumnTypeString
 	case "variants":
+		return ColumnTypeArray
+	case "lifecycles":
 		return ColumnTypeArray
 	default:
 		return ColumnTypeNumerical
@@ -612,6 +615,8 @@ func (test Test) GetArrayValue(param string) ([]string, error) {
 		return test.Tags, nil
 	case "variants":
 		return test.Variants, nil
+	case "lifecycles":
+		return test.Lifecycles, nil
 	default:
 		return nil, fmt.Errorf("unknown array value field %s", param)
 	}
@@ -620,11 +625,12 @@ func (test Test) GetArrayValue(param string) ([]string, error) {
 // TestBQ contains the full accounting of a test's history. The format
 // of this struct is suitable for use in a data table.
 type TestBQ struct {
-	TestID    string         `json:"test_id" bigquery:"test_id"`
-	Name      string         `json:"name" bigquery:"name"`
-	SuiteName string         `json:"suite_name" bigquery:"suite_name"`
-	Variant   string         `json:"variant,omitempty" bigquery:"variant"`
-	Variants  pq.StringArray `json:"variants" gorm:"type:text[]" bigquery:"variants"`
+	TestID     string         `json:"test_id" bigquery:"test_id"`
+	Name       string         `json:"name" bigquery:"name"`
+	SuiteName  string         `json:"suite_name" bigquery:"suite_name"`
+	Variant    string         `json:"variant,omitempty" bigquery:"variant"`
+	Variants   pq.StringArray `json:"variants" gorm:"type:text[]" bigquery:"variants"`
+	Lifecycles pq.StringArray `json:"lifecycles,omitempty" gorm:"type:text[]" bigquery:"lifecycles"`
 
 	JiraComponent   string   `json:"jira_component" bigquery:"jira_component"`
 	JiraComponentID *big.Rat `json:"jira_component_id" bigquery:"jira_component_id"`
@@ -675,6 +681,8 @@ func (test TestBQ) GetFieldType(param string) ColumnType {
 	case "variant":
 		return ColumnTypeString
 	case "variants":
+		return ColumnTypeArray
+	case "lifecycles":
 		return ColumnTypeArray
 	default:
 		return ColumnTypeNumerical
@@ -766,6 +774,8 @@ func (test TestBQ) GetArrayValue(param string) ([]string, error) {
 		return test.Tags, nil
 	case "variants":
 		return test.Variants, nil
+	case "lifecycles":
+		return test.Lifecycles, nil
 	default:
 		return nil, fmt.Errorf("unknown array value field %s", param)
 	}
@@ -1018,6 +1028,24 @@ type DisruptionReportRow struct {
 	Relevance                int     `json:"relevance"`
 	FeatureSet               string  `json:"feature_set"`
 	OS                       string  `json:"os"`
+}
+
+type BackendDisruptionRunRow struct {
+	BackendName        string `json:"backend_name"`
+	DisruptionSeconds  int    `json:"disruption_seconds"`
+	JobName            string `json:"job_name"`
+	JobRunName         string `json:"job_run_name"`
+	JobRunStartTime    string `json:"job_run_start_time"`
+	JobRunEndTime      string `json:"job_run_end_time"`
+	Cluster            string `json:"cluster"`
+	ReleaseTag         string `json:"release_tag"`
+	MasterNodesUpdated string `json:"master_nodes_updated"`
+	JobRunStatus       string `json:"job_run_status"`
+}
+
+type BackendDisruptionRunsResult struct {
+	Rows  []BackendDisruptionRunRow `json:"rows"`
+	Links map[string]string         `json:"links,omitempty"`
 }
 
 type SippyViews struct {

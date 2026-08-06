@@ -252,7 +252,7 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 //
 // Any processedFilter items with unsupported operators (ILIKE, array membership) are
 // returned as remainingFilter for the caller to apply via GORM on the outer query.
-func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base DateRange, nameFilter, variantFilter, processedFilter *filter.Filter) (*gorm.DB, *filter.Filter, error) {
+func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base DateRange, nameFilter, variantFilter, processedFilter, lifecycleFilter *filter.Filter) (*gorm.DB, *filter.Filter, error) {
 	end, boundary, start, err := resolvePrefixSumDates(dbc, release, &sample, &base)
 	if err != nil {
 		return nil, nil, err
@@ -273,6 +273,10 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
 	}
 
 	variantConds, variantArgs := variantFilterConditions(variantFilter)
+	lifecycleClause, lifecycleArgs, err := lifecycleWhereClause(lifecycleFilter, "e.lifecycle")
+	if err != nil {
+		return nil, nil, err
+	}
 	pfConds, pfArgs, remainingFilter := processedFilterConditions(processedFilter)
 
 	// === filtered CTE: per-variant test report with percentages ===
@@ -281,7 +285,7 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
     jira_components.name AS jira_component, jira_components.id AS jira_component_id,
     pre.current_successes, pre.current_failures, pre.current_flakes, pre.current_runs,
     pre.previous_successes, pre.previous_failures, pre.previous_flakes, pre.previous_runs,
-    ob.open_bugs, vc.variants, pre.variant_combination_id, pre.release,
+    ob.open_bugs, vc.variants, pre.variant_combination_id, pre.release, pre.lifecycles,
     `)
 	buf.WriteString(QueryTestPercentages)
 	buf.WriteString(`
@@ -294,7 +298,8 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
       SUM(COALESCE(e.prefix_sum_successes - COALESCE(m.prefix_sum_successes, 0), 0))::bigint AS current_successes,
       SUM(COALESCE(e.prefix_sum_flakes    - COALESCE(m.prefix_sum_flakes,    0), 0))::bigint AS current_flakes,
       SUM(COALESCE(e.prefix_sum_failures  - COALESCE(m.prefix_sum_failures,  0), 0))::bigint AS current_failures,
-      SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs
+      SUM(COALESCE(e.prefix_sum_runs      - COALESCE(m.prefix_sum_runs,      0), 0))::bigint AS current_runs,
+      array_agg(DISTINCT e.lifecycle) AS lifecycles
     FROM test_cumulative_summaries e
     JOIN prow_jobs pj ON e.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
     LEFT JOIN test_cumulative_summaries m ON m.test_id = e.test_id AND m.prow_job_id = e.prow_job_id AND m.suite_id = e.suite_id AND m.lifecycle = e.lifecycle AND m.release = e.release AND m.date = ?
@@ -309,7 +314,16 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
 		args = append(args, nameJoinArgs...)
 	}
 
-	buf.WriteString(`    WHERE e.date = ? AND e.release = ?
+	buf.WriteString(`    WHERE e.date = ? AND e.release = ?`)
+	args = append(args, end, release)
+
+	if lifecycleClause != "" {
+		buf.WriteString("\n    AND ")
+		buf.WriteString(lifecycleClause)
+	}
+	args = append(args, lifecycleArgs...)
+
+	buf.WriteString(`
     GROUP BY e.test_id, e.suite_id, pj.variant_combination_id, e.release
   ) AS pre
   JOIN tests ON tests.id = pre.test_id
@@ -322,7 +336,6 @@ func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base Dat
   ) AS ob ON tests.id = ob.test_id
   WHERE NOT EXISTS (SELECT 1 FROM variant_combinations WHERE 'never-stable' = any(variants) AND id = variant_combination_id)
     AND (current_runs > 0 OR previous_runs > 0)`)
-	args = append(args, end, release)
 
 	for _, cond := range variantConds {
 		buf.WriteString("\n    AND ")
@@ -349,6 +362,18 @@ post_filtered AS MATERIALIZED (
 		args = append(args, pfArgs...)
 	}
 
+	// Re-apply the lifecycle filter here: without it, stats would average in
+	// rows from lifecycles the caller excluded from the filtered/post_filtered CTE,
+	// since only test_id (not lifecycle) scopes this subquery to that CTE's contents.
+	// Reusing lifecycleClause verbatim (built above against "e.lifecycle") is only valid
+	// because this stats subquery also aliases test_cumulative_summaries as "e" (see the
+	// FROM clause a few lines down) -- if that alias ever changes independently of the
+	// "pre" subquery's, this reused clause must be rebuilt against the new alias too.
+	statsLifecycleClause := ""
+	if lifecycleClause != "" {
+		statsLifecycleClause = "AND " + lifecycleClause
+	}
+
 	// === stats CTE: AVG/STDDEV across all variant combinations per (test_id, suite_id),
 	// scoped to test_ids from the filtered/post_filtered CTE. Uses a 2-way prefix sum
 	// join (current period only) since base-period counts are not needed for
@@ -373,11 +398,13 @@ stats AS (
     WHERE e.date = ? AND e.release = ?
       AND e.test_id IN (SELECT DISTINCT test_id FROM %s)
       AND NOT EXISTS (SELECT 1 FROM variant_combinations WHERE 'never-stable' = any(variants) AND id = pj.variant_combination_id)
+      %s
     GROUP BY e.test_id, e.suite_id, pj.variant_combination_id
   ) c
   GROUP BY c.test_id, c.suite_id
-)`, statsSource)
+)`, statsSource, statsLifecycleClause)
 	args = append(args, boundary, end, release)
+	args = append(args, lifecycleArgs...)
 
 	// === Final SELECT: join filtered/post_filtered rows with their cross-variant statistics ===
 	fmt.Fprintf(&buf, `

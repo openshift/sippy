@@ -149,12 +149,6 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
 })
 
-var cumulativeSummaryRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
-	Name:    "sippy_cumulative_summary_refresh_millis",
-	Help:    "Milliseconds to refresh the cumulative summary tables",
-	Buckets: []float64{100, 500, 1000, 5000, 10000, 30000, 60000, 300000, 600000},
-})
-
 var matViewUniqueNumberOfTests = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "sippy_matviews_unique_number_of_tests",
 	Help: "Total number of tests based on lookback days",
@@ -391,24 +385,11 @@ type RefreshOptions struct {
 	RefreshOnlyIfEmpty bool
 }
 
-// RefreshData runs the normal incremental refresh of all summary tables
-// and materialized views. Used by the load command and the serve loop.
+// RefreshData refreshes materialized views. Summary tables
+// (test_daily_totals, test_cumulative_summaries) are updated
+// incrementally by the prow loader; use "sippy backfill" to repair them.
 func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
-
-	totalsStart := time.Now()
-	earliestTotalsChanged, err := dailysummary.Refresh(dbc)
-	if err != nil {
-		return fmt.Errorf("failed to refresh daily totals: %w", err)
-	}
-	log.WithField("elapsed", time.Since(totalsStart)).Info("daily totals refresh complete")
-
-	cumulativeStart := time.Now()
-	if _, err := cumulativesummary.Refresh(dbc, earliestTotalsChanged); err != nil {
-		return fmt.Errorf("failed to refresh cumulative summaries: %w", err)
-	}
-	cumulativeSummaryRefreshMetric.Observe(float64(time.Since(cumulativeStart).Milliseconds()))
-
 	refreshMaterializedViews(dbc, cacheClient, opts.RefreshOnlyIfEmpty)
 	log.Info("Refresh complete")
 	return nil
@@ -1016,6 +997,44 @@ func (s *Server) jsonGetRecentTestFailures(w http.ResponseWriter, req *http.Requ
 	if err != nil {
 		failureResponseWithError(w, "error querying recent test failures", err)
 		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
+func (s *Server) jsonBackendDisruptionByRun(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "backend disruption API requires BigQuery configuration")
+		return
+	}
+
+	jobRunNamesParam := param.SafeRead(req, "job_run_names")
+	if jobRunNamesParam == "" {
+		failureResponse(w, http.StatusBadRequest, "job_run_names parameter is required (comma-separated prow build IDs)")
+		return
+	}
+	jobRunNames := strings.Split(jobRunNamesParam, ",")
+
+	backendName := param.SafeRead(req, "backend_name")
+
+	var minTime, maxTime time.Time
+	if s.db != nil {
+		row := s.db.DB.Raw("SELECT MIN(timestamp), MAX(timestamp) FROM prow_job_runs WHERE id IN ?", jobRunNames).Row()
+		if err := row.Scan(&minTime, &maxTime); err != nil {
+			log.WithError(err).Warn("could not look up job run timestamps from postgres, falling back to no time bound")
+		}
+	}
+
+	result, err := api.GetBackendDisruptionByRun(req.Context(), s.bigQueryClient, jobRunNames, backendName, minTime, maxTime)
+	if err != nil {
+		log.WithError(err).Error("error querying backend disruption")
+		failureResponse(w, http.StatusInternalServerError, "error querying backend disruption")
+		return
+	}
+
+	baseURL := api.GetBaseURL(req)
+	result.Links = map[string]string{
+		"self": fmt.Sprintf("%s/api/jobs/runs/disruption?%s", baseURL, req.URL.Query().Encode()),
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, result)
@@ -2715,6 +2734,15 @@ func (s *Server) Serve() {
 			Capabilities:      []string{ComponentReadinessCapability},
 			CacheTime:         1 * time.Hour,
 			HandlerFunc:       s.jsonTestRunsAndOutputsFromBigQuery,
+			RateLimitRequests: 25,
+			RateLimitPeriod:   1 * time.Hour,
+		},
+		{
+			EndpointPath:      "/api/jobs/runs/disruption",
+			Description:       "Returns per-run backend disruption seconds from BigQuery",
+			Capabilities:      []string{ComponentReadinessCapability},
+			CacheTime:         1 * time.Hour,
+			HandlerFunc:       s.jsonBackendDisruptionByRun,
 			RateLimitRequests: 25,
 			RateLimitPeriod:   1 * time.Hour,
 		},

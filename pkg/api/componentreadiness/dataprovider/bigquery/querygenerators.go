@@ -917,7 +917,8 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		},
 	}...)
 
-	baseStatus, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery)
+	rawRows, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery)
+	baseStatus := crstatus.SummarizeTestJobRuns(rawRows)
 	return crstatus.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
@@ -1012,7 +1013,8 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		}...)
 	}
 
-	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery)
+	rawRows, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery)
+	sampleStatus := crstatus.SummarizeTestJobRuns(rawRows)
 
 	return crstatus.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }

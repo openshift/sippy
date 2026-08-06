@@ -1,5 +1,11 @@
 import './TestTable.css'
-import { AcUnit, Error as ErrorIcon, Search } from '@mui/icons-material'
+import {
+  AcUnit,
+  Error as ErrorIcon,
+  Info,
+  InfoOutlined,
+  Search,
+} from '@mui/icons-material'
 import {
   Backdrop,
   Badge,
@@ -490,6 +496,28 @@ function TestTable(props) {
     return {}
   }
 
+  const lifecycleIcon = (lifecycles) => {
+    if (!lifecycles || lifecycles.length === 0) {
+      return null
+    }
+    const hasInforming = lifecycles.includes('informing')
+    if (!hasInforming) {
+      return null
+    }
+    const allInforming = lifecycles.length === 1
+    const label = allInforming ? 'Informing' : 'Contains informing'
+    const IconComponent = allInforming ? Info : InfoOutlined
+    return (
+      <Tooltip title={label}>
+        <IconComponent
+          fontSize="small"
+          color="info"
+          sx={{ ml: 0.5, verticalAlign: 'middle' }}
+        />
+      </Tooltip>
+    )
+  }
+
   const columns = {
     name: {
       field: 'name',
@@ -499,19 +527,22 @@ function TestTable(props) {
           return params.value
         }
         return (
-          <div align="left" className="test-name">
-            <Tooltip title={params.value}>
-              <Link
-                to={pathForExactTestAnalysisWithFilter(
-                  props.release,
-                  params.row.name,
-                  filterModel,
-                  period
-                )}
-              >
-                {params.value}
-              </Link>
-            </Tooltip>
+          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+            <div align="left" className="test-name">
+              <Tooltip title={params.value}>
+                <Link
+                  to={pathForExactTestAnalysisWithFilter(
+                    props.release,
+                    params.row.name,
+                    filterModel,
+                    period
+                  )}
+                >
+                  {params.value}
+                </Link>
+              </Tooltip>
+            </div>
+            {lifecycleIcon(params.row.lifecycles)}
           </div>
         )
       },
@@ -844,6 +875,11 @@ function TestTable(props) {
       },
     },
     // These are here just to allow filtering
+    lifecycle: {
+      field: 'lifecycle',
+      headerName: 'Lifecycle',
+      values: ['blocking', 'informing'],
+    },
     current_runs: {
       field: 'current_runs',
       headerName: 'Current runs',

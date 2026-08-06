@@ -198,6 +198,57 @@ func variantFilterConditions(variantFilter *filter.Filter) (conditions []string,
 	return conditions, args
 }
 
+// lifecycleWhereClause returns a single ready-to-AND-in SQL fragment (e.g. "e.lifecycle = ?",
+// or for multiple items a parenthesized "(e.lifecycle = ? OR e.lifecycle <> ?)") applying
+// lifecycleFilter against columnRef (a qualified reference to the "lifecycle" column on
+// test_cumulative_summaries, e.g. "e.lifecycle" or "tcs.lifecycle"). A qualifier is required
+// because test_cumulative_summaries is self-joined (aliased e/m/s) in the uncollapsed path,
+// where an unqualified "lifecycle" would be ambiguous. Unlike variant filters, this clause
+// must be applied before aggregation: lifecycle is not part of the GROUP BY in
+// TestReportQueryCollapsed/UncollapsedTestReportWithStats, so it is summed away once rows
+// reach the outer query. Returns an empty string when there's nothing to filter.
+//
+// Multiple items are joined per lifecycleFilter.LinkOperator (OR when explicitly "or", AND
+// otherwise): naively ANDing regardless of LinkOperator would make an OR-linked filter like
+// "blocking OR informing" into an unsatisfiable "lifecycle = 'blocking' AND lifecycle =
+// 'informing'", since a row has exactly one lifecycle value, silently returning zero rows.
+//
+// Only equals/not-equals are supported, matching the fixed dropdown of known values
+// (blocking/informing) the frontend restricts this filter to. Any other operator is
+// rejected rather than silently ignored, since a filter that appears to apply but
+// doesn't would return unfiltered results without any indication of the problem.
+func lifecycleWhereClause(lifecycleFilter *filter.Filter, columnRef string) (clause string, args []any, err error) {
+	if lifecycleFilter == nil || len(lifecycleFilter.Items) == 0 {
+		return "", nil, nil
+	}
+	var conditions []string
+	for _, item := range lifecycleFilter.Items {
+		var op string
+		switch item.Operator {
+		case filter.OperatorEquals, filter.OperatorArithmeticEquals:
+			op = "="
+		case filter.OperatorArithmeticNotEquals:
+			op = "<>"
+		default:
+			return "", nil, fmt.Errorf("%w: lifecycle filter only supports equals/not-equals, got %q", filter.ErrUnsupportedOperator, item.Operator)
+		}
+		cond := fmt.Sprintf("%s %s ?", columnRef, op)
+		if item.Not {
+			cond = negateConditions([]string{cond})[0]
+		}
+		conditions = append(conditions, cond)
+		args = append(args, item.Value)
+	}
+	if len(conditions) == 1 {
+		return conditions[0], args, nil
+	}
+	joiner := " AND "
+	if lifecycleFilter.LinkOperator == filter.LinkOperatorOr {
+		joiner = " OR "
+	}
+	return "(" + strings.Join(conditions, joiner) + ")", args, nil
+}
+
 // pushdownSafeFields lists columns available in the filtered CTE (before the
 // stats join). Only these fields can be pushed into post_filtered; stats-derived
 // fields like working_average and delta_from_* exist only after the final SELECT
@@ -339,13 +390,17 @@ func testReportPreAgg(dbc *db.DB, release string, sample, base DateRange, nameMa
 // It aggregates prefix sums per date partition separately (~16K groups each), then joins
 // the three small results to compute period counts. This avoids the expensive 3-way
 // self-join on all ~1.8M per-prow_job rows that the uncollapsed path requires.
-func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange, variantFilter, nameFilter *filter.Filter) (*gorm.DB, error) {
+func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange, variantFilter, nameFilter, lifecycleFilter *filter.Filter) (*gorm.DB, error) {
 	end, boundary, start, err := resolvePrefixSumDates(dbc, release, &sample, &base)
 	if err != nil {
 		return nil, err
 	}
 	nameConds, nameArgs := nameFilterConditions(nameFilter)
 	variantConds, variantArgs := variantFilterConditions(variantFilter)
+	lifecycleClause, lifecycleArgs, err := lifecycleWhereClause(lifecycleFilter, "tcs.lifecycle")
+	if err != nil {
+		return nil, err
+	}
 
 	var nameJoinClause string
 	var nameJoinArgs []any
@@ -366,7 +421,8 @@ func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange
     SUM(tcs.prefix_sum_successes) AS ps_successes,
     SUM(tcs.prefix_sum_failures)  AS ps_failures,
     SUM(tcs.prefix_sum_flakes)    AS ps_flakes,
-    SUM(tcs.prefix_sum_runs)      AS ps_runs
+    SUM(tcs.prefix_sum_runs)      AS ps_runs,
+    array_agg(DISTINCT tcs.lifecycle) AS lifecycles
   FROM test_cumulative_summaries tcs
   JOIN prow_jobs pj ON tcs.prow_job_id = pj.id AND pj.variant_combination_id IS NOT NULL
 `)
@@ -385,11 +441,17 @@ func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange
 		}
 		args = append(args, variantArgs...)
 
+		if lifecycleClause != "" {
+			buf.WriteString("\n    AND ")
+			buf.WriteString(lifecycleClause)
+		}
+		args = append(args, lifecycleArgs...)
+
 		fmt.Fprintf(&buf, "\n  GROUP BY tcs.test_id, tcs.suite_id, tcs.release\n) AS %s", alias)
 	}
 
 	buf.WriteString(`SELECT t.name, su.name AS suite_name,
-  jc.name AS jira_component, jc.id AS jira_component_id, e.release,
+  jc.name AS jira_component, jc.id AS jira_component_id, e.release, e.lifecycles,
   COALESCE(e.ps_successes - COALESCE(m.ps_successes, 0), 0)::bigint AS current_successes,
   COALESCE(e.ps_failures  - COALESCE(m.ps_failures,  0), 0)::bigint AS current_failures,
   COALESCE(e.ps_flakes    - COALESCE(m.ps_flakes,    0), 0)::bigint AS current_flakes,

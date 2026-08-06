@@ -1,9 +1,13 @@
 package api
 
 import (
+	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/filter"
 )
 
 func TestComputeOverallTest(t *testing.T) {
@@ -148,5 +152,50 @@ func assertFloat(t *testing.T, name string, got, want float64) {
 	t.Helper()
 	if got != want {
 		t.Errorf("%s = %f, want %f", name, got, want)
+	}
+}
+
+// TestBuildTestsResultsBQGenerator_RejectsLifecycleFilter guards the /api/tests/v2
+// (BigQuery-backed) 400 response: the underlying junit_7day_comparison/
+// junit_2day_comparison tables have no lifecycle column, so a lifecycle filter must be
+// rejected explicitly rather than silently ignored. This never reaches bqc, so passing
+// nil is safe.
+func TestBuildTestsResultsBQGenerator_RejectsLifecycleFilter(t *testing.T) {
+	spec := &TestResultsSpec{
+		Release: "4.16",
+		Filter: &filter.Filter{Items: []filter.FilterItem{
+			{Field: "lifecycle", Operator: filter.OperatorEquals, Value: "blocking"},
+		}},
+	}
+
+	_, errs := spec.buildTestsResultsBQGenerator(context.Background(), nil)
+	if len(errs) != 1 {
+		t.Fatalf("errs = %v, want exactly one error", errs)
+	}
+	var validationErr *ValidationError
+	if !errors.As(errs[0], &validationErr) {
+		t.Fatalf("errs[0] = %v (%T), want *ValidationError so it surfaces as HTTP 400", errs[0], errs[0])
+	}
+	if !strings.Contains(validationErr.Message, "lifecycle") {
+		t.Errorf("validation message = %q, want it to mention lifecycle", validationErr.Message)
+	}
+}
+
+func TestBuildTestsResultsBQGenerator_RejectsLifecycleFilterAlongsideOtherFilters(t *testing.T) {
+	spec := &TestResultsSpec{
+		Release: "4.16",
+		Filter: &filter.Filter{Items: []filter.FilterItem{
+			{Field: "name", Operator: filter.OperatorContains, Value: "network"},
+			{Field: "lifecycle", Operator: filter.OperatorArithmeticNotEquals, Value: "informing"},
+		}},
+	}
+
+	_, errs := spec.buildTestsResultsBQGenerator(context.Background(), nil)
+	if len(errs) != 1 {
+		t.Fatalf("errs = %v, want exactly one error", errs)
+	}
+	var validationErr *ValidationError
+	if !errors.As(errs[0], &validationErr) {
+		t.Fatalf("errs[0] = %v (%T), want *ValidationError", errs[0], errs[0])
 	}
 }
