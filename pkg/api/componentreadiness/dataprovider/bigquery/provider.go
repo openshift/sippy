@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -67,15 +68,15 @@ func (p *BigQueryProvider) QueryBaseTestStatus(ctx context.Context, reqOptions r
 	return result.BaseStatus, nil
 }
 
-func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	includeVariants map[string][]string,
-	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
+func (p *BigQueryProvider) querySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error) {
 	allJobVariants, errs := p.QueryJobVariants(ctx, reqOptions)
 	if len(errs) > 0 {
 		return nil, errs
 	}
 
-	generator := NewSampleQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end)
+	generator := NewSampleQueryGenerator(p.client, reqOptions, allJobVariants,
+		reqOptions.VariantOption.IncludeVariants,
+		reqOptions.SampleRelease.Start, reqOptions.SampleRelease.End)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.ReportTestStatus](
 		ctx, p.client.Cache, reqOptions.CacheOption,
 		apiPkg.NewCacheSpec(generator, "SampleTestStatus~", &reqOptions.SampleRelease.End),
@@ -84,6 +85,24 @@ func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 		return nil, errs
 	}
 	return result.SampleStatus, nil
+}
+
+func (p *BigQueryProvider) QueryTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (baseStatus, sampleStatus map[string]crstatus.TestStatus, errs []error) {
+	var baseErrs, sampleErrs []error
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		baseStatus, baseErrs = p.QueryBaseTestStatus(ctx, reqOptions)
+	})
+	wg.Go(func() {
+		sampleStatus, sampleErrs = p.querySampleTestStatus(ctx, reqOptions)
+	})
+	wg.Wait()
+	errs = append(errs, baseErrs...)
+	errs = append(errs, sampleErrs...)
+	if len(errs) > 0 {
+		return nil, nil, errs
+	}
+	return baseStatus, sampleStatus, nil
 }
 
 // --- TestDetailsQuerier ---

@@ -13,11 +13,8 @@ import (
 // being added to component readiness. It's important to note that the interface covers
 // both major code paths through, component reports, and test details reports.
 type Middleware interface {
-	// Query phase allows middleware to inject additional TestStatus beyond the normal base/sample queries.
-	// Base and sample status can be submitted using the provided channels for a map of ALL test keys
-	// (ID plus variant info serialized) to TestStatus.
-	Query(ctx context.Context, wg *sync.WaitGroup,
-		baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error)
+	// Query phase allows middleware to load data needed for the test status report.
+	Query(ctx context.Context, wg *sync.WaitGroup, errCh chan error)
 
 	// QueryTestDetails phase allow middleware to load data that will later be used.
 	QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error)

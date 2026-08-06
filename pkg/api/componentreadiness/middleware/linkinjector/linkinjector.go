@@ -32,7 +32,7 @@ type LinkInjector struct {
 	baseURL    string
 }
 
-func (l *LinkInjector) Query(_ context.Context, _ *sync.WaitGroup, _, _ chan map[string]crstatus.TestStatus, _ chan error) {
+func (l *LinkInjector) Query(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 	// unused
 }
 
