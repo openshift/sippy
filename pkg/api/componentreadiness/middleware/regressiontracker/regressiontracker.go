@@ -66,7 +66,7 @@ type RegressionTracker struct {
 	hasLoadedRegressions bool
 }
 
-func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
+func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
 	err := r.ensureRegressionsLoaded()
 	if err != nil {
 		utils.EnqueueAsync(wg, errCh, err)

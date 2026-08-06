@@ -327,102 +327,47 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		return crtype.ComponentReport{}, errs
 	}
 	report.GeneratedAt = componentReportTestStatus.GeneratedAt
-	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), sampleLen, len(componentReportTestStatus.BaseStatus))
+	log.WithField("duration", time.Since(before).String()).
+		WithField("sampleResults", sampleLen).
+		WithField("baseResults", len(componentReportTestStatus.BaseStatus)).
+		Info("GenerateReport completed")
 
 	return report, nil
 }
 
-// getTestStatus orchestrates the actual fetching of junit test run data for both basis and sample.
-// goroutines are used to concurrently request the data for basis, sample, and various other edge cases.
 func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.ReportTestStatus, []error) {
 	before := time.Now()
-	fLog := log.WithField("func", "getTestStatus")
+
+	wg := &sync.WaitGroup{}
+	errCh := make(chan error)
 
 	var baseStatus, sampleStatus map[string]crstatus.TestStatus
-	baseStatusCh := make(chan map[string]crstatus.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
-	var baseErrs, sampleErrs []error
-	wg := &sync.WaitGroup{}
-
-	// channels for status as we may collect status from multiple queries run in separate goroutines
-	sampleStatusCh := make(chan map[string]crstatus.TestStatus)
-	errCh := make(chan error)
-	statusDoneCh := make(chan struct{})     // To signal when all processing is done
-	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
-
-	// generate inputs to the channels
-	c.middlewares.Query(ctx, wg, baseStatusCh, sampleStatusCh, errCh)
-	goInterruptible(ctx, wg, func() { baseStatus, baseErrs = c.dataProvider.QueryBaseTestStatus(ctx, c.ReqOptions) })
-	goInterruptible(ctx, wg, func() {
-		fLog.Infof("running sample query with includeVariants: %+v", c.ReqOptions.VariantOption.IncludeVariants)
-		status, errs := c.dataProvider.QuerySampleTestStatus(ctx, c.ReqOptions, c.ReqOptions.VariantOption.IncludeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
-		fLog.Infof("received %d test statuses and %d errors from sample query", len(status), len(errs))
-		sampleStatusCh <- status
-		for _, err := range errs {
+	wg.Go(func() {
+		var queryErrs []error
+		baseStatus, sampleStatus, queryErrs = c.dataProvider.QueryTestStatus(ctx, c.ReqOptions)
+		for _, err := range queryErrs {
 			errCh <- err
 		}
 	})
 
-	// clean up channels after all queries are done
+	c.middlewares.Query(ctx, wg, errCh)
+
 	go func() {
 		wg.Wait()
-		close(baseStatusCh)
-		close(sampleStatusCh)
 		close(errCh)
 	}()
 
-	// manage output from the channels
-	go func() {
-		for status := range sampleStatusCh {
-			fLog.Infof("received %d test statuses over channel", len(status))
-			for k, v := range status {
-				if sampleStatus == nil {
-					fLog.Warnf("initializing sampleStatus map")
-					sampleStatus = make(map[string]crstatus.TestStatus)
-				}
-				if v2, ok := sampleStatus[k]; ok {
-					fLog.Warnf("sampleStatus already had key: %+v", k)
-					fLog.Warnf("sampleStatus new value: %+v", v)
-					fLog.Warnf("sampleStatus old value: %+v", v2)
-				}
-				sampleStatus[k] = v
-			}
-		}
-		close(statusDoneCh)
-	}()
-
-	go func() {
-		for err := range errCh {
-			sampleErrs = append(sampleErrs, err)
-		}
-		close(statusErrsDoneCh)
-	}()
-
-	<-statusDoneCh
-	<-statusErrsDoneCh
-	fLog.Infof("total test statuses: %d", len(sampleStatus))
-
 	var errs []error
-	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
-		errs = append(errs, baseErrs...)
-		errs = append(errs, sampleErrs...)
+	for err := range errCh {
+		errs = append(errs, err)
 	}
-	log.Infof("getTestStatus completed in %s with %d sample results and %d base results",
-		time.Since(before), len(sampleStatus), len(baseStatus))
+
+	log.WithField("duration", time.Since(before)).
+		WithField("sampleResults", len(sampleStatus)).
+		WithField("baseResults", len(baseStatus)).
+		Info("getTestStatus completed")
 	now := time.Now()
 	return crstatus.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
-}
-
-func goInterruptible(ctx context.Context, wg *sync.WaitGroup, closure func()) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			closure()
-		}
-	}()
 }
 
 var componentAndCapabilityGetter func(stats crstatus.TestStatus) (string, []string)
