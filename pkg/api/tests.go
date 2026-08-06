@@ -12,10 +12,13 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -374,37 +377,102 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 }
 
 func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, error) {
+	return GetJobRunTestsCountByLookbackAt(dbc, lookbackDays, civil.DateOf(time.Now().UTC()))
+}
+
+func GetJobRunTestsCountByLookbackAt(dbc *db.DB, lookbackDays int, today civil.Date) (int64, int64, error) {
+	if dbc == nil {
+		return -1, -1, errors.New("database connection is required")
+	}
 	if lookbackDays < 1 {
 		return -1, -1, errors.New("lookback days must be greater than zero")
 	}
-	// Calculate the truncated time
-	now := time.Now().UTC()
-	truncatedTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -lookbackDays)
 
-	type counts = struct {
-		JobRunsCount int64 `json:"job_runs_count"`
-		TestIDsCount int64 `json:"test_ids_count"`
+	startMinusOne := today.AddDays(-lookbackDays - 1)
+
+	timeStart := time.Now()
+	log.WithField("lookbackDays", lookbackDays).Info("starting lookback count queries")
+
+	// Count job runs from prow_job_runs (one row per run, much smaller than prow_job_run_tests).
+	var jobRunsCount int64
+	err := dbc.DB.Table("prow_job_runs").
+		Where("timestamp > ? AND deleted_at IS NULL", today.AddDays(-lookbackDays).In(time.UTC)).
+		Count(&jobRunsCount).
+		Error
+	if err != nil {
+		return -1, -1, fmt.Errorf("counting job runs: %w", err)
 	}
 
-	queryCounts := counts{}
-	timeStart := time.Now()
+	// Count distinct tests using cumulative summaries. Query per-release so
+	// Postgres can prune to a single date sub-partition per release for each
+	// side of the join, avoiding the full cross-partition scan that makes a
+	// global self-join slow.
 
-	log.Infof("Starting tests count query for lookback: %d", lookbackDays)
-
-	err := dbc.DB.Table("prow_job_run_tests").
-		Select("count(distinct prow_job_run_id) as job_runs_count, count(distinct test_id) as test_ids_count").
-		Where("prow_job_run_timestamp > ?", truncatedTime).
-		Scan(&queryCounts).
+	var releases []string
+	err = dbc.DB.Table("release_definitions").
+		Pluck("release", &releases).
 		Error
-
-	timeFinish := time.Now()
-	log.Infof("Finished tests count query for lookback: %d, duration: %s", lookbackDays, timeFinish.Sub(timeStart).String())
-
 	if err != nil {
+		return -1, -1, fmt.Errorf("listing releases: %w", err)
+	}
+
+	ch := make(chan []int64, len(releases))
+	testIDs := sets.New[int64]()
+	done := make(chan struct{})
+	go func() {
+		for ids := range ch {
+			testIDs.Insert(ids...)
+		}
+		close(done)
+	}()
+
+	g := new(errgroup.Group)
+	g.SetLimit(4)
+	for _, release := range releases {
+		g.Go(func() error {
+			var releaseTestIDs []int64
+			queryErr := dbc.DB.Raw(`
+				WITH end_sums AS (
+				  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
+				  FROM test_cumulative_summaries
+				  WHERE release = ? AND date = ?
+				  GROUP BY test_id
+				),
+				start_sums AS (
+				  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
+				  FROM test_cumulative_summaries
+				  WHERE release = ? AND date = ?
+				  GROUP BY test_id
+				)
+				SELECT e.test_id
+				FROM end_sums e
+				LEFT JOIN start_sums s ON s.test_id = e.test_id
+				WHERE (e.total_runs - COALESCE(s.total_runs, 0)) > 0`,
+				release, today, release, startMinusOne).
+				Scan(&releaseTestIDs).
+				Error
+			if queryErr != nil {
+				return fmt.Errorf("counting test IDs for release %s: %w", release, queryErr)
+			}
+			ch <- releaseTestIDs
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
 		return -1, -1, err
 	}
+	close(ch)
+	<-done
+	testIDsCount := int64(testIDs.Len())
 
-	return queryCounts.JobRunsCount, queryCounts.TestIDsCount, nil
+	log.WithFields(log.Fields{
+		"lookbackDays": lookbackDays,
+		"jobRunsCount": jobRunsCount,
+		"testIDsCount": testIDsCount,
+		"duration":     time.Since(timeStart),
+	}).Info("finished lookback count queries")
+
+	return jobRunsCount, testIDsCount, nil
 }
 
 type TestResultsSpec struct {
