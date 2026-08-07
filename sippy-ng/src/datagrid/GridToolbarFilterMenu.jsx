@@ -53,14 +53,21 @@ export default function GridToolbarFilterMenu(props) {
   )
 
   useEffect(() => {
-    if (props.filterModel.items !== models.items) {
-      setModels(props.filterModel.items)
+    const parentItems = props.filterModel.items || []
+    if (parentItems.length > 0) {
+      setModels([...parentItems])
+    } else {
+      setModels([
+        {
+          id: 1,
+          columnField: '',
+          operatorValue: '',
+          value: '',
+        },
+      ])
     }
-
-    if (models.length === 0) {
-      addFilter()
-    }
-  }, [props, models])
+    setLinkOperator(props.filterModel.linkOperator || 'and')
+  }, [props.filterModel])
 
   // Ensure columns are ordered alphabetically
   const orderedColumns = [...props.columns]
@@ -111,7 +118,11 @@ export default function GridToolbarFilterMenu(props) {
       }
       // else: both empty, no change needed
 
-      setModels(newModels)
+      setModels(
+        newModels.length > 0
+          ? newModels
+          : [{ id: 1, columnField: '', operatorValue: '', value: '' }]
+      )
       setAnchorEl(null)
     }
   }
@@ -120,32 +131,30 @@ export default function GridToolbarFilterMenu(props) {
   const id = open ? 'filter-popover' : undefined
 
   const addFilter = () => {
-    let currentFilters = models
-
-    currentFilters.push({
-      id: models.length + 1,
-      columnField: '',
-      operatorValue: '',
-      value: '',
-    })
-
-    setModels([...currentFilters])
-  }
-
-  const removeFilter = (index) => {
-    let currentFilters = models
-
-    if (currentFilters.length === 1) {
-      currentFilters[index] = {
+    setModels([
+      ...models,
+      {
+        id: models.length + 1,
         columnField: '',
         operatorValue: '',
         value: '',
-      }
-    } else {
-      currentFilters.splice(index, 1)
-    }
+      },
+    ])
+  }
 
-    setModels([...currentFilters])
+  const removeFilter = (index) => {
+    if (models.length === 1) {
+      setModels([
+        {
+          id: 1,
+          columnField: '',
+          operatorValue: '',
+          value: '',
+        },
+      ])
+    } else {
+      setModels(models.filter((_, i) => i !== index))
+    }
   }
 
   const updateModel = (index, v) => {
@@ -179,16 +188,18 @@ export default function GridToolbarFilterMenu(props) {
       v.errors.includes('value') || v.errors.push('value')
     }
 
-    let currentModels = models
-    currentModels[index] = v
-    setModels([...currentModels])
+    setModels(models.map((m, i) => (i === index ? v : m)))
   }
 
-  let filterItems =
-    props.filterModel.items.length === 1 &&
-    props.filterModel.items[0].value === ''
-      ? 0
-      : props.filterModel.items.length
+  const currentItems = props.filterModel.items || []
+  const filterItems = currentItems.filter(
+    (item) =>
+      !(
+        item.columnField === '' &&
+        item.operatorValue === '' &&
+        item.value === ''
+      )
+  ).length
 
   const linkOperatorForm = (
     <FormControl variant="standard">
