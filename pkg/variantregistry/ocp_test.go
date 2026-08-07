@@ -2247,7 +2247,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantInstaller:        "ipi",
 				VariantPlatform:         "aws",
 				VariantProcedure:        "none",
-				VariantJobTier:          "candidate",
+				VariantJobTier:          "standard",
 				VariantNetwork:          "ovn",
 				VariantNetworkStack:     "ipv4",
 				VariantOwner:            "eng",
