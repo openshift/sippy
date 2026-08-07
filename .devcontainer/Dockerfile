@@ -21,9 +21,6 @@ RUN dnf install -y \
     postgresql \
     chromium-headless \
     which \
-    podman \
-    fuse-overlayfs \
-    shadow-utils \
     && dnf clean all
 
 RUN ARCH=$(uname -m) && \
@@ -59,18 +56,6 @@ ENV PATH="/home/vscode/.local/bin:${GOPATH}/bin:/usr/local/go/bin:${PATH}"
 ENV CHROME_PATH=/usr/lib64/chromium-browser/headless_shell
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | env INSTALLER_NO_MODIFY_PATH=1 UV_INSTALL_DIR=/usr/local/bin sh
-
-# Rootless podman setup for CI integration tests (nested-podman in ci-operator)
-COPY scripts/nested-podman-entrypoint.sh /nested-podman-entrypoint.sh
-ENV BUILDAH_ISOLATION=chroot
-RUN chmod +rx /nested-podman-entrypoint.sh && \
-    chown 0:0 /etc/passwd /etc/group && \
-    chmod g=u /etc/passwd /etc/group && \
-    setcap cap_setuid+ep /usr/bin/newuidmap && \
-    setcap cap_setgid+ep /usr/bin/newgidmap && \
-    touch /etc/subgid /etc/subuid && \
-    chown 0:0 /etc/subgid /etc/subuid && \
-    chmod -R g=u /etc/subuid /etc/subgid
 
 USER vscode
 
