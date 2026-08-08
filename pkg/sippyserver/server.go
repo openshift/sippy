@@ -49,6 +49,7 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/api/featuregatepromotion"
 	"github.com/openshift/sippy/pkg/api/jobrunevents"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -709,42 +710,127 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 		baseAPIURL := api.GetBaseURL(req)
 		baseFrontendURL := api.GetBaseFrontendURL(req)
 		for i := range gates {
-			injectFeatureGateHATEOASLinks(&gates[i], release, baseAPIURL, baseFrontendURL)
+			injectFeatureGateListLinks(&gates[i], release, baseAPIURL, baseFrontendURL)
 		}
 		api.RespondWithJSON(http.StatusOK, w, gates)
 	}
 }
 
-func injectFeatureGateHATEOASLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
-	fg.Links = make(map[string]string, 3)
+func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request) {
+	release := s.getParamOrFail(w, req, "release")
+	if release == "" {
+		return
+	}
+	featureGate := mux.Vars(req)["feature_gate"]
 
-	// Trailing "]" anchors the match so a shorter gate name can't prefix-match a longer one.
-	annotationFilter := filter.Filter{
-		Items: []filter.FilterItem{
-			{Field: "name", Operator: filter.OperatorContains, Value: fmt.Sprintf("FeatureGate:%s]", fg.FeatureGate)},
+	filterOpts := &filter.FilterOptions{
+		Filter: &filter.Filter{
+			Items: []filter.FilterItem{
+				{Field: "feature_gate", Operator: filter.OperatorEquals, Value: featureGate},
+			},
 		},
 	}
-	fg.Links["tests_by_annotation"] = buildFilteredTestsURL(baseAPIURL, release, annotationFilter)
+	gates, err := query.GetFeatureGatesFromDB(s.db, release, filterOpts)
+	if err != nil {
+		failureResponseWithError(w, "couldn't query feature gate", err)
+		return
+	}
+	if len(gates) == 0 {
+		failureResponse(w, http.StatusNotFound, fmt.Sprintf("feature gate %q not found in release %s", featureGate, release))
+		return
+	}
 
-	// Installer gates currently run a broad conformance suite where full passes aren't
-	// required, so "install should succeed" is the meaningful signal. Switch to
-	// "openshift-tests should work" once installer jobs run a minimal conformance suite.
-	capabilityTestName := "openshift-tests should work"
+	matchingJobs, err := query.GetMatchingJobsForCapability(s.db, release, featureGate)
+	if err != nil {
+		failureResponseWithError(w, "couldn't query matching jobs for capability", err)
+		return
+	}
+	gates[0].MatchingJobs = matchingJobs
+
+	promotionStatus, err := featuregatepromotion.GetPromotionStatus(req.Context(), s.db, s.cache, release, featureGate)
+	if err != nil {
+		failureResponseWithError(w, "couldn't compute feature gate promotion status", err)
+		return
+	}
+	gates[0].Promotion = convertPromotionStatus(promotionStatus)
+
+	baseAPIURL := api.GetBaseURL(req)
+	baseFrontendURL := api.GetBaseFrontendURL(req)
+	injectFeatureGateDetailLinks(&gates[0], release, baseAPIURL, baseFrontendURL)
+	api.RespondWithJSON(http.StatusOK, w, gates[0])
+}
+
+func injectFeatureGateListLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
+	fg.Links = map[string]string{
+		"ui_detail": fmt.Sprintf(
+			"%s/sippy-ng/feature_gates/%s/%s",
+			baseFrontendURL, release, url.PathEscape(fg.FeatureGate)),
+		"api_detail": fmt.Sprintf(
+			"%s/api/feature_gates/%s?release=%s",
+			baseAPIURL, url.PathEscape(fg.FeatureGate), url.QueryEscape(release)),
+	}
+}
+
+func injectFeatureGateDetailLinks(fg *apitype.FeatureGate, release, baseAPIURL, baseFrontendURL string) {
+	fg.Links = make(map[string]string, 6)
+
+	gateFilter := featuregatepromotion.GateTestFilter(fg.FeatureGate)
+	fg.Links["gate_tests"] = buildFilteredTestsURL(baseAPIURL, release, gateFilter)
+
 	if strings.Contains(fg.FeatureGate, "Install") {
-		capabilityTestName = "install should succeed"
+		installFilter := featuregatepromotion.InstallTestFilter(fg.FeatureGate)
+		fg.Links["install_tests"] = buildFilteredTestsURL(baseAPIURL, release, installFilter)
 	}
-	capabilityFilter := filter.Filter{
-		Items: []filter.FilterItem{
-			{Field: "name", Operator: filter.OperatorContains, Value: capabilityTestName},
-			{Field: "variants", Operator: filter.OperatorContains, Value: fmt.Sprintf("Capability:%s", fg.FeatureGate)},
-		},
-		LinkOperator: filter.LinkOperatorAnd,
-	}
-	fg.Links["tests_by_capability"] = buildFilteredTestsURL(baseAPIURL, release, capabilityFilter)
+
+	capabilityRegressionFilter := featuregatepromotion.CapabilityRegressionsFilter(fg.FeatureGate)
+	fg.Links["gate_job_tests"] = buildFilteredTestsURL(baseAPIURL, release, capabilityRegressionFilter)
 
 	fg.Links["ui_detail"] = fmt.Sprintf(
 		"%s/sippy-ng/feature_gates/%s/%s",
 		baseFrontendURL, release, url.PathEscape(fg.FeatureGate))
+}
+
+func convertPromotionStatus(status *featuregatepromotion.PromotionStatus) *apitype.FeatureGatePromotion {
+	if status == nil {
+		return nil
+	}
+	promotion := &apitype.FeatureGatePromotion{
+		Sufficient: status.Sufficient,
+		Warnings:   status.Warnings,
+		Errors:     status.Errors,
+	}
+	for _, r := range status.CapabilityTestRegessions {
+		promotion.CapabilityTestRegessions = append(promotion.CapabilityTestRegessions, apitype.FeatureGateCapabilityTestRegression{
+			TestName:          r.TestName,
+			WorkingPercentage: r.WorkingPercentage,
+			Ignored:           r.Ignored,
+			IgnoredReason:     r.IgnoredReason,
+		})
+	}
+	for _, vr := range status.ResultsByVariant {
+		variant := apitype.FeatureGateVariantResult{
+			Variants:    vr.Variants,
+			Optional:    vr.Optional,
+			Sufficient:  vr.Sufficient,
+			TestResults: []apitype.FeatureGateTestResult{},
+			Warnings:    vr.Warnings,
+			Errors:      vr.Errors,
+		}
+		for _, tr := range vr.TestResults {
+			variant.TestResults = append(variant.TestResults, apitype.FeatureGateTestResult{
+				TestName:       tr.TestName,
+				TotalRuns:      tr.TotalRuns,
+				SuccessfulRuns: tr.SuccessfulRuns,
+				FailedRuns:     tr.FailedRuns,
+				FlakedRuns:     tr.FlakedRuns,
+				PassPercent:    tr.PassPercent,
+				Sufficient:     tr.Sufficient,
+				Links:          tr.Links,
+			})
+		}
+		promotion.ResultsByVariant = append(promotion.ResultsByVariant, variant)
+	}
+	return promotion
 }
 
 func buildFilteredTestsURL(baseAPIURL, release string, f filter.Filter) string {
@@ -2896,6 +2982,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    4 * time.Hour,
 			HandlerFunc:  s.jsonFeatureGates,
+		},
+		{
+			EndpointPath: "/api/feature_gates/{feature_gate}",
+			Description:  "Reports details and test links for a specific feature gate",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    4 * time.Hour,
+			HandlerFunc:  s.jsonFeatureGateDetail,
 		},
 		{
 			EndpointPath: "/api/chat",
