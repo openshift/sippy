@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/civil"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
 
@@ -102,8 +103,8 @@ func URLForJob(dashboard, jobName string) *gourl.URL {
 	return url
 }
 
-func DatePtr(year int, month time.Month, day, hour, minute, sec, nsec int, loc *time.Location) *time.Time {
-	d := time.Date(year, month, day, hour, minute, sec, nsec, loc)
+func CivilDatePtr(year int, month time.Month, day int) *civil.Date {
+	d := civil.Date{Year: year, Month: month, Day: day}
 	return &d
 }
 
@@ -132,7 +133,7 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 	gaDateMap := map[string]time.Time{}
 	for _, r := range allReleases {
 		if r.GADate != nil {
-			gaDateMap[r.Release] = *r.GADate
+			gaDateMap[r.Release] = r.GADate.In(time.UTC)
 		}
 	}
 
@@ -169,7 +170,7 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 
 	// Apply the rounding factor:
 	now := time.Now().UTC()
-	if crTimeRoundingFactor > 0 && now.Format("2006-01-02") == relTime.Format("2006-01-02") {
+	if crTimeRoundingFactor > 0 && civil.DateOf(now) == civil.DateOf(relTime) {
 		relTime = TruncateAligned(now, crTimeRoundingFactor, crTimeRoundingOffset)
 	}
 	return relTime, nil
@@ -188,7 +189,7 @@ func AdjustReleaseTime(relTime time.Time, isStart bool, daysAdjustment string, c
 	} else {
 		// Apply the rounding factor if using today:
 		now := time.Now().UTC()
-		if crTimeRoundingFactor > 0 && now.Format("2006-01-02") == relTime.Format("2006-01-02") {
+		if crTimeRoundingFactor > 0 && civil.DateOf(now) == civil.DateOf(relTime) {
 			relTime = TruncateAligned(now, crTimeRoundingFactor, crTimeRoundingOffset)
 		} else {
 			// otherwise round up to end of day

@@ -138,7 +138,7 @@ func resolveFrom(since *time.Time, to time.Time) time.Time {
 }
 
 func (pl *ProwLoader) resolveLoadSince() time.Time {
-	return resolveFrom(pl.loadSince, time.Now())
+	return resolveFrom(pl.loadSince, time.Now().UTC())
 }
 
 var clusterDataDateTimeName = regexp.MustCompile(`cluster-data_(?P<DATE>.*)-(?P<TIME>.*).json`)
@@ -214,7 +214,7 @@ func (pl *ProwLoader) ensurePartitions(prowJobs []prow.ProwJob) error {
 	}
 
 	// Create partitions 2 days forward from now
-	endDate := time.Now().AddDate(0, 0, 2)
+	endDate := time.Now().UTC().AddDate(0, 0, 2)
 
 	log.Infof("Ensuring partitions for releases %v from %s to %s",
 		pl.releases, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))

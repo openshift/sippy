@@ -305,53 +305,60 @@ export default function TriagedRegressions({
     },
     {
       field: 'last_change',
+      type: 'date',
       valueGetter: (value) => {
-        return value.row.bug?.last_change_time || ''
+        const ts = value.row.bug?.last_change_time
+        return ts ? new Date(ts) : null
       },
       headerName: 'Jira updated',
       flex: 4,
       filterable: false,
-      renderCell: (param) => (
-        <Tooltip title={param.value}>
-          <div className="test-name">
-            {relativeTime(new Date(param.value), new Date())}
-          </div>
-        </Tooltip>
-      ),
+      renderCell: (param) =>
+        param.value ? (
+          <Tooltip title={param.value.toISOString()}>
+            <div className="test-name">
+              {relativeTime(param.value, new Date())}
+            </div>
+          </Tooltip>
+        ) : null,
     },
     {
       field: 'created_at',
+      type: 'date',
       hide: true,
       filterable: false,
       valueGetter: (value) => {
-        return value.row.created_at
+        return value.row.created_at ? new Date(value.row.created_at) : null
       },
       headerName: 'Created at',
       flex: 5,
-      renderCell: (param) => (
-        <Tooltip title={param.value}>
-          <div className="test-name">
-            {relativeTime(new Date(param.value), new Date())}
-          </div>
-        </Tooltip>
-      ),
+      renderCell: (param) =>
+        param.value ? (
+          <Tooltip title={param.value.toISOString()}>
+            <div className="test-name">
+              {relativeTime(param.value, new Date())}
+            </div>
+          </Tooltip>
+        ) : null,
     },
     {
       field: 'updated_at',
+      type: 'date',
       hide: true,
       filterable: false,
       valueGetter: (value) => {
-        return value.row.updated_at
+        return value.row.updated_at ? new Date(value.row.updated_at) : null
       },
       headerName: 'Updated At',
       flex: 5,
-      renderCell: (param) => (
-        <div className="test-name">
-          <Tooltip title={param.value}>
-            <span>{relativeTime(new Date(param.value), new Date())}</span>
-          </Tooltip>
-        </div>
-      ),
+      renderCell: (param) =>
+        param.value ? (
+          <div className="test-name">
+            <Tooltip title={param.value.toISOString()}>
+              <span>{relativeTime(param.value, new Date())}</span>
+            </Tooltip>
+          </div>
+        ) : null,
     },
     {
       field: 'details',

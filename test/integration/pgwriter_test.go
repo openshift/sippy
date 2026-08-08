@@ -966,14 +966,14 @@ func TestDailyTotalsTrackFirstAndLastTimestamps(t *testing.T) {
 	require.NoError(t, dbc.DB.Where("test_id = ? AND prow_job_id = ? AND release = ?", test.ID, jobID, "4.18").First(&dt).Error)
 
 	require.NotNil(t, dt.FirstFailureTimestamp, "first failure timestamp should be set")
-	assert.True(t, dt.FirstFailureTimestamp.Equal(earlyTS), "first failure should be the early timestamp")
+	assert.Equal(t, earlyTS, *dt.FirstFailureTimestamp, "first failure should be the early timestamp")
 	require.NotNil(t, dt.LastFailureTimestamp, "last failure timestamp should be set")
-	assert.True(t, dt.LastFailureTimestamp.Equal(earlyTS), "last failure should also be early (only one failure)")
+	assert.Equal(t, earlyTS, *dt.LastFailureTimestamp, "last failure should also be early (only one failure)")
 
 	require.NotNil(t, dt.FirstSuccessTimestamp, "first success timestamp should be set")
-	assert.True(t, dt.FirstSuccessTimestamp.Equal(lateTS), "first success should be the late timestamp")
+	assert.Equal(t, lateTS, *dt.FirstSuccessTimestamp, "first success should be the late timestamp")
 	require.NotNil(t, dt.LastSuccessTimestamp, "last success timestamp should be set")
-	assert.True(t, dt.LastSuccessTimestamp.Equal(lateTS), "last success should also be late (only one success)")
+	assert.Equal(t, lateTS, *dt.LastSuccessTimestamp, "last success should also be late (only one success)")
 
 	// Second batch: add an earlier success and a later failure
 	earlierSuccessTS := time.Date(2026, 7, 15, 6, 0, 0, 0, time.UTC)
@@ -997,14 +997,14 @@ func TestDailyTotalsTrackFirstAndLastTimestamps(t *testing.T) {
 	require.NoError(t, dbc.DB.Where("test_id = ? AND prow_job_id = ? AND release = ?", test.ID, jobID, "4.18").First(&dt).Error)
 
 	require.NotNil(t, dt.FirstFailureTimestamp)
-	assert.True(t, dt.FirstFailureTimestamp.Equal(earlyTS), "first failure should remain the earlier one")
+	assert.Equal(t, earlyTS, *dt.FirstFailureTimestamp, "first failure should remain the earlier one")
 	require.NotNil(t, dt.LastFailureTimestamp)
-	assert.True(t, dt.LastFailureTimestamp.Equal(laterFailureTS), "last failure should be updated to the later one")
+	assert.Equal(t, laterFailureTS, *dt.LastFailureTimestamp, "last failure should be updated to the later one")
 
 	require.NotNil(t, dt.FirstSuccessTimestamp)
-	assert.True(t, dt.FirstSuccessTimestamp.Equal(earlierSuccessTS), "first success should be updated to the earlier one")
+	assert.Equal(t, earlierSuccessTS, *dt.FirstSuccessTimestamp, "first success should be updated to the earlier one")
 	require.NotNil(t, dt.LastSuccessTimestamp)
-	assert.True(t, dt.LastSuccessTimestamp.Equal(lateTS), "last success should remain the later one")
+	assert.Equal(t, lateTS, *dt.LastSuccessTimestamp, "last success should remain the later one")
 }
 
 func TestAllPassingBatchPreservesExistingFailureTimestamps(t *testing.T) {
@@ -1034,12 +1034,12 @@ func TestAllPassingBatchPreservesExistingFailureTimestamps(t *testing.T) {
 	require.NoError(t, dbc.DB.Where("test_id = ? AND prow_job_id = ? AND release = ?", test.ID, jobID, "4.18").First(&dt).Error)
 
 	require.NotNil(t, dt.FirstFailureTimestamp, "failure timestamp should be preserved after all-passing batch")
-	assert.True(t, dt.FirstFailureTimestamp.Equal(failTS))
+	assert.Equal(t, failTS, *dt.FirstFailureTimestamp)
 	require.NotNil(t, dt.LastFailureTimestamp, "failure timestamp should be preserved after all-passing batch")
-	assert.True(t, dt.LastFailureTimestamp.Equal(failTS))
+	assert.Equal(t, failTS, *dt.LastFailureTimestamp)
 
 	require.NotNil(t, dt.FirstSuccessTimestamp, "success timestamp should be set by passing batch")
-	assert.True(t, dt.FirstSuccessTimestamp.Equal(passTS))
+	assert.Equal(t, passTS, *dt.FirstSuccessTimestamp)
 }
 
 func TestCumulativeSummariesTrackLatestTimestamps(t *testing.T) {
@@ -1073,9 +1073,9 @@ func TestCumulativeSummariesTrackLatestTimestamps(t *testing.T) {
 	require.NoError(t, dbc.DB.Where("test_id = ? AND date = ? AND release = ?", test.ID, tomorrow, "4.18").First(&summary).Error)
 
 	require.NotNil(t, summary.PrefixMaxLastFailure, "prefix_max_last_failure should be set")
-	assert.True(t, summary.PrefixMaxLastFailure.Equal(failTS))
+	assert.Equal(t, failTS, *summary.PrefixMaxLastFailure)
 	require.NotNil(t, summary.PrefixMaxLastSuccess, "prefix_max_last_success should be set")
-	assert.True(t, summary.PrefixMaxLastSuccess.Equal(successTS))
+	assert.Equal(t, successTS, *summary.PrefixMaxLastSuccess)
 }
 
 func TestCarryForwardPreservesTimestamps(t *testing.T) {
@@ -1112,9 +1112,9 @@ func TestCarryForwardPreservesTimestamps(t *testing.T) {
 	require.NoError(t, dbc.DB.Where("test_id = ? AND date = ? AND release = ?", test.ID, laterTomorrow, "4.18").First(&summary).Error)
 
 	require.NotNil(t, summary.PrefixMaxLastFailure, "failure timestamp should survive carry-forward")
-	assert.True(t, summary.PrefixMaxLastFailure.Equal(failTS))
+	assert.Equal(t, failTS, *summary.PrefixMaxLastFailure)
 	require.NotNil(t, summary.PrefixMaxLastSuccess, "success timestamp should survive carry-forward")
-	assert.True(t, summary.PrefixMaxLastSuccess.Equal(successTS))
+	assert.Equal(t, successTS, *summary.PrefixMaxLastSuccess)
 }
 
 func TestMultipleRunsForSameTestInOneBatchAggregateCounts(t *testing.T) {
@@ -1245,7 +1245,7 @@ func TestDuplicatePullRequestsInSameBatchDeduplicated(t *testing.T) {
 
 	pr := prs[0]
 	require.NotNil(t, pr.MergedAt, "merged_at should be set")
-	assert.True(t, pr.MergedAt.Equal(mergedLate), "DISTINCT ON should pick the row with latest merged_at")
+	assert.Equal(t, mergedLate, *pr.MergedAt, "DISTINCT ON should pick the row with latest merged_at")
 }
 
 func TestDailyTotalsScopedBySuite(t *testing.T) {

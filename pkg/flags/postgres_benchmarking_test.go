@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/civil"
+
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -180,8 +182,9 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "JobDetails",
 			fn: func(dbc *db.DB) error {
+				asOfDate := civil.DateOf(asOf.UTC())
 				jobRuns, err := api.JobDetailsReport(dbc, benchmarkRelease,
-					benchmarkJobName, asOf)
+					benchmarkJobName, asOfDate.AddDays(-14), asOfDate.AddDays(1))
 
 				if err == nil {
 					log.Printf("Found %d job runs", len(jobRuns))

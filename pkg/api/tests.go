@@ -207,7 +207,7 @@ LIMIT 500`
 	return outputs, nil
 }
 
-func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[string]float64, error) {
+func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[civil.Date]float64, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {
 		for _, f := range filters.Items {

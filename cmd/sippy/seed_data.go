@@ -84,8 +84,8 @@ Drop and recreate the database to re-seed (e.g. docker compose down -v).
 
 				// Create partitions for synthetic releases
 				log.Info("Creating partitions for synthetic test data...")
-				startDate := time.Now().AddDate(0, 0, -190) // Cover all seed data date ranges
-				endDate := time.Now().AddDate(0, 0, 2)      // Small buffer into future
+				startDate := time.Now().UTC().AddDate(0, 0, -190) // Cover all seed data date ranges
+				endDate := time.Now().UTC().AddDate(0, 0, 2)      // Small buffer into future
 				count, err := dbc.EnsurePartitions(syntheticReleases, startDate, endDate, false)
 				if err != nil {
 					return errors.WithMessage(err, "could not create partitions")
@@ -556,7 +556,7 @@ func seedSyntheticData(dbc *db.DB) error {
 }
 
 func seedReleaseDefinitions(dbc *db.DB) error {
-	now := time.Now().UTC()
+	today := civil.DateOf(time.Now().UTC())
 	allCaps := pq.StringArray{models.CapComponentReadiness, models.CapFeatureGates, models.CapMetrics, models.CapPayloadTags, models.CapSippyClassic}
 
 	type relMeta struct {
@@ -589,7 +589,7 @@ func seedReleaseDefinitions(dbc *db.DB) error {
 				_, _ = fmt.Sscanf(parts[1], "%d", &minor)
 			}
 
-			develStart := now.AddDate(0, 0, m.gaDays-180)
+			develStart := today.AddDays(m.gaDays - 180)
 			def = models.ReleaseDefinition{
 				Release:              release,
 				Major:                major,
@@ -601,7 +601,7 @@ func seedReleaseDefinitions(dbc *db.DB) error {
 				Capabilities:         allCaps,
 			}
 			if m.gaDays != 0 {
-				ga := now.AddDate(0, 0, m.gaDays)
+				ga := today.AddDays(m.gaDays)
 				def.GADate = &ga
 			}
 		}
@@ -1430,7 +1430,10 @@ func seedGARawTestData(dbc *db.DB) error {
 			log.WithField("release", rel.Release).Warn("No GA seed data generated, skipping ga_data_loaded_date")
 			continue
 		}
-		gaDate := civil.DateOf(rel.GADate.UTC())
+		if rel.GADate == nil {
+			return fmt.Errorf("release %s has nil GA date", rel.Release)
+		}
+		gaDate := *rel.GADate
 		if err := dbc.DB.Model(&models.ReleaseDefinition{}).
 			Where("release = ?", rel.Release).
 			Update("ga_data_loaded_date", gaDate).Error; err != nil {

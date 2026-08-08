@@ -279,7 +279,7 @@ func (p *PostgresProvider) baseMatchesGAWindow(ctx context.Context, release stri
 		return false
 	}
 
-	gaDate := civil.DateOf(*rd.GADate)
+	gaDate := *rd.GADate
 	if gaDate.After(civil.DateOf(time.Now().UTC())) {
 		return false
 	}

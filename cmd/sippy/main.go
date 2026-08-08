@@ -1,9 +1,19 @@
 package main
 
 import (
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	// Sippy operates exclusively in UTC. This must be set before any time
+	// function runs so that libraries like pgx, which internally call
+	// time.Unix() (returning time.Local), produce time.Time values with
+	// the UTC location instead of the host's local timezone.
+	time.Local = time.UTC
+}
 
 var logLevel = "info"
 
