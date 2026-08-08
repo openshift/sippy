@@ -70,8 +70,7 @@ func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, rep
 	return nil
 }
 
-func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup,
-	_, _ chan map[string]crstatus.TestStatus, errCh chan error) {
+func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
