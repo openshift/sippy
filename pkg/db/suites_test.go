@@ -105,3 +105,18 @@ func TestDynamicSuitePatternMatching(t *testing.T) {
 		})
 	}
 }
+
+func TestIsSuiteImportableMcpchecker(t *testing.T) {
+	if !IsSuiteImportable("mcpchecker") {
+		t.Fatal("expected mcpchecker suite to be importable for OCPMCP-308 JUnit ingestion")
+	}
+}
+
+func TestIsSuiteImportableKnownAndUnknown(t *testing.T) {
+	if !IsSuiteImportable("openshift-tests") {
+		t.Fatal("expected openshift-tests to remain importable")
+	}
+	if IsSuiteImportable("not-a-real-suite") {
+		t.Fatal("expected unknown suite to be rejected")
+	}
+}

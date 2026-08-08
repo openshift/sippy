@@ -60,6 +60,7 @@ var testSuites = []string{
 	"telco-verification",
 	"github.com/openshift/console-operator/test/e2e",
 	"prowjob-junit",
+	"mcpchecker",
 	"OLM-Catalog-Validation",
 	"insights-operator-tests",
 	"CNV-lp-interop",
