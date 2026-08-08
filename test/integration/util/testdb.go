@@ -126,9 +126,26 @@ func StartPostgresContainer(ctx context.Context) (*PostgresContainer, error) {
 	}, nil
 }
 
-// Terminate stops and removes the container.
+// ConnectToExternalPostgres connects to an existing Postgres instance and
+// creates a template database with the integration schema applied. Use this
+// in CI environments where a Postgres service is provided externally and
+// testcontainers cannot be used (no container runtime available).
+func ConnectToExternalPostgres(ctx context.Context, dsn string) (*PostgresContainer, error) {
+	if err := createTemplateDB(dsn); err != nil {
+		return nil, fmt.Errorf("creating template database: %w", err)
+	}
+	return &PostgresContainer{
+		baseDSN: dsn,
+	}, nil
+}
+
+// Terminate stops and removes the container. When using an external
+// Postgres (container is nil), this is a no-op.
 func (pc *PostgresContainer) Terminate(ctx context.Context) error {
-	return pc.container.Terminate(ctx)
+	if pc.container != nil {
+		return pc.container.Terminate(ctx)
+	}
+	return nil
 }
 
 // createTemplateDB creates a fresh database, applies the integration schema,
@@ -140,6 +157,10 @@ func createTemplateDB(baseDSN string) error {
 	}
 	defer adminDB.Close()
 
+	// Unmark as template first (required before dropping a template database),
+	// then drop if it exists. Ignore errors here because the database may not
+	// exist yet on a fresh Postgres instance.
+	_, _ = adminDB.Exec(fmt.Sprintf("ALTER DATABASE %s IS_TEMPLATE = false", templateDB))
 	if _, err := adminDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", templateDB)); err != nil {
 		return fmt.Errorf("dropping old template: %w", err)
 	}
