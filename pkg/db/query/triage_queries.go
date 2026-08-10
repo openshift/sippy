@@ -15,12 +15,10 @@ func ListTriages(dbc *db.DB, release string) ([]models.Triage, error) {
 	q := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions")
 
 	if release != "" {
-		q = q.Where("id IN (?)",
-			dbc.DB.Table("triage_regressions").
-				Select("triage_id").
-				Joins("JOIN test_regressions ON test_regressions.id = triage_regressions.test_regression_id").
-				Where("test_regressions.release = ?", release),
-		)
+		q = q.Distinct().
+			Joins("JOIN triage_regressions ON triage_regressions.triage_id = triages.id").
+			Joins("JOIN test_regressions ON test_regressions.id = triage_regressions.test_regression_id").
+			Where("test_regressions.release = ?", release)
 	}
 
 	res := q.Find(&triages)
