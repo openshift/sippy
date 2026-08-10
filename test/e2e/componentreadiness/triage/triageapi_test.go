@@ -227,6 +227,31 @@ func Test_TriageAPI(t *testing.T) {
 				triage.Links["audit_logs"])
 		}
 	})
+	t.Run("list filtered by release", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+
+		// Filtering by the regression's release should return the triage
+		var filteredTriages []models.Triage
+		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/triages?release=%s", util.Release), &filteredTriages)
+		require.NoError(t, err)
+		var foundTriage *models.Triage
+		for i, triage := range filteredTriages {
+			if triage.ID == triageResponse.ID {
+				foundTriage = &filteredTriages[i]
+				break
+			}
+		}
+		require.NotNil(t, foundTriage, "expected triage was not found in release-filtered list")
+
+		// Filtering by a non-existent release should return no results
+		var emptyTriages []models.Triage
+		err = util.SippyGet("/api/component_readiness/triages?release=99.99", &emptyTriages)
+		require.NoError(t, err)
+		for _, triage := range emptyTriages {
+			assert.NotEqual(t, triageResponse.ID, triage.ID, "triage should not appear when filtering by wrong release")
+		}
+	})
 	t.Run("update to add regression", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)

@@ -72,7 +72,7 @@ export default function ComponentReadinessToolBar(props) {
     // triage entries will only be available when there is a postgres connection
     let triageFetch
     if (localDBEnabled) {
-      triageFetch = fetch(getTriagesAPIUrl(), {
+      triageFetch = fetch(getTriagesAPIUrl(null, varsContext.sampleRelease), {
         method: 'GET',
       }).then((response) => {
         if (response.status !== 200) {
