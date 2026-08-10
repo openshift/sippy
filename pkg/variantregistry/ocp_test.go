@@ -366,7 +366,7 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job: "periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-azure-v2-self-managed",
+			job: "periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-v2-azure-self-managed",
 			expected: map[string]string{
 				VariantRelease:          "5.0",
 				VariantReleaseMajor:     "5",

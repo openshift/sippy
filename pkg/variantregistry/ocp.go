@@ -909,7 +909,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// serial-techpreview variant is not yet stable enough for standard tier
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-serial-techpreview"}, "candidate"},
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance"}, "standard"},
-		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-v2-self-managed"}, "standard"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-v2-azure-self-managed"}, "standard"},
 
 		// All other Hypershift jobs will default to candidate.
 		{[]string{"periodic-ci-openshift-hypershift-"}, "candidate"},
