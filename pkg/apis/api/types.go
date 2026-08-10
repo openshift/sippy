@@ -1070,7 +1070,7 @@ type FeatureGate struct {
 type FeatureGatePromotion struct {
 	Sufficient               bool                                  `json:"sufficient"`
 	ResultsByVariant         []FeatureGateVariantResult            `json:"results_by_variant"`
-	CapabilityTestRegessions []FeatureGateCapabilityTestRegression `json:"capability_test_regressions,omitempty"`
+	CapabilityTestRegressions []FeatureGateCapabilityTestRegression `json:"capability_test_regressions,omitempty"`
 	Warnings                 []string                              `json:"warnings"`
 	Errors                   []string                              `json:"errors"`
 }

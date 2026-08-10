@@ -6,7 +6,7 @@ type PromotionStatus struct {
 	Release                  string                     `json:"release"`
 	Sufficient               bool                       `json:"sufficient"`
 	ResultsByVariant         []VariantResult            `json:"results_by_variant"`
-	CapabilityTestRegessions []CapabilityTestRegression `json:"capability_test_regressions,omitempty"`
+	CapabilityTestRegressions []CapabilityTestRegression `json:"capability_test_regressions,omitempty"`
 	Warnings                 []string                   `json:"warnings"`
 	Errors                   []string                   `json:"errors"`
 	Links                    map[string]string          `json:"links,omitempty"`

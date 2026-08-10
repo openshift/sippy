@@ -113,7 +113,7 @@ func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache
 			}
 			failingCount++
 		}
-		status.CapabilityTestRegessions = regressions
+		status.CapabilityTestRegressions = regressions
 
 		if failingCount > 0 {
 			status.Sufficient = false

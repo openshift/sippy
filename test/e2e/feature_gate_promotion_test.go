@@ -48,7 +48,7 @@ func TestFeatureGatePromotionCapabilityRegressions_NonInstallGate(t *testing.T) 
 	require.NoError(t, err, "error fetching feature gate detail")
 	require.NotNil(t, fg.Promotion)
 
-	regressions := fg.Promotion.CapabilityTestRegessions
+	regressions := fg.Promotion.CapabilityTestRegressions
 	require.NotEmpty(t, regressions, "expected capability test regressions for NetworkSegmentation")
 
 	activeCount := 0
@@ -75,7 +75,7 @@ func TestFeatureGatePromotionCapabilityRegressions_InstallGate(t *testing.T) {
 	require.NoError(t, err, "error fetching Install gate detail")
 	require.NotNil(t, fg.Promotion)
 
-	regressions := fg.Promotion.CapabilityTestRegessions
+	regressions := fg.Promotion.CapabilityTestRegressions
 	require.NotEmpty(t, regressions, "expected capability test regressions for AWSDualStackInstall")
 
 	for _, r := range regressions {
@@ -90,7 +90,7 @@ func TestFeatureGatePromotionCapabilityRegressions_UnpromotedGateFiltered(t *tes
 	require.NoError(t, err, "error fetching feature gate detail")
 	require.NotNil(t, fg.Promotion)
 
-	regressions := fg.Promotion.CapabilityTestRegessions
+	regressions := fg.Promotion.CapabilityTestRegressions
 
 	for _, r := range regressions {
 		if r.TestName == "[sig-network] [OCPFeatureGate:UnpromotedTestGate] should handle traffic correctly" {
