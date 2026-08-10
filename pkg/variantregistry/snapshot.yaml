@@ -8599,6 +8599,25 @@ periodic-ci-openshift-aws-karpenter-provider-aws-release-5.1-periodics-e2e-aws:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-aws-vpce-operator-main-rosa-hcp-mc-e2e:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-aws-vpce-operator-main-rosa-sts-e2e-promotion-int:
     Aggregation: none
     Architecture: amd64
@@ -29469,174 +29488,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-control-plane-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-control-plane-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-control-plane-fips-6nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-control-plane-fips-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-control-plane-ipsec-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: ipsec
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-cudn-density-single-ns-250-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-cudn-density-single-ns-500-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-data-path-9nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-loaded-upgrade-from-4.21-loaded-upgrade-24nodes:
     Aggregation: none
     Architecture: amd64
@@ -29718,55 +29569,7 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-loaded-upgrade
     Suite: unknown
     Topology: ha
     Upgrade: minor
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-netpol-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-payload-control-plane-6nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-udn-density-l3-24nodes:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -31233,7 +31036,7 @@ periodic-ci-openshift-eng-ocp-perfscale-main-rosa-5.1-nightly-x86-build-farm-114
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-rosa_hcp-4.22-nightly-x86-control-plane-24nodes-onperfsector:
+periodic-ci-openshift-eng-ocp-perfscale-main-rosa_hcp-5.0-nightly-x86-control-plane-24nodes-onperfsector:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -31245,13 +31048,13 @@ periodic-ci-openshift-eng-ocp-perfscale-main-rosa_hcp-4.22-nightly-x86-control-p
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
-    OS: rhcos9
+    OS: rhcos10
     Owner: service-delivery
     Platform: rosa
     Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -347196,6 +346999,25 @@ periodic-ci-openshift-route-monitor-operator-master-osd-gcp-e2e-promotion-stage:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-route-monitor-operator-master-rosa-hcp-mc-e2e:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-route-monitor-operator-master-rosa-sts-e2e-coverage:
     Aggregation: none
     Architecture: amd64
@@ -370060,7 +369882,7 @@ periodic-ci-quay-quay-tests-master-ocp-4.21-quay-cr-quay-e2e-tests-quay316-ocp42
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lp-interop-aws-fips:
+periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lpGA-lp-ocp-compat-aws-fips:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -370073,7 +369895,7 @@ periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lp-interop-aws-fips:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos9
-    Owner: mpiit
+    Owner: lp
     Platform: aws
     Procedure: none
     Release: "4.22"
@@ -370084,7 +369906,7 @@ periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lp-interop-aws-fips:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lp-interop-cr-quay-e2e-tests-aws:
+periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lpGA-lp-ocp-compat-cr--quay--e2e-tests-aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -370092,12 +369914,12 @@ periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lp-interop-cr-quay-e2e-tests-aw
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: none
+    LayeredProduct: lp-ocp-compat--quay--lpGA
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos9
-    Owner: mpiit
+    Owner: lp
     Platform: aws
     Procedure: none
     Release: "4.22"
@@ -370108,7 +369930,7 @@ periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lp-interop-cr-quay-e2e-tests-aw
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lp-interop-quay-e2e-tests-quay316-ocp422-aws-s3:
+periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lpGA-lp-ocp-compat-quay-e2e-tests-quay316-ocp422-aws-s3:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -370121,7 +369943,7 @@ periodic-ci-quay-quay-tests-master-ocp-4.22-quay-lp-interop-quay-e2e-tests-quay3
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos9
-    Owner: mpiit
+    Owner: lp
     Platform: aws
     Procedure: none
     Release: "4.22"
