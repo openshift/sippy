@@ -1142,6 +1142,7 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-azure", "azure"},
 		{"-aks", "azure"},
 		{"-osd-ccs-gcp", "osd-gcp"},
+		{"-gcd-", "gcd"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
 		// iso-no-registry agent baremetal jobs deploy on bare metal
