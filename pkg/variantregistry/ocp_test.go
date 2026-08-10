@@ -1799,7 +1799,7 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job:          "periodic-ci-stolostron-policy-collection-main-ocp4.22-lp-interop-opp-aws",
+			job:          "periodic-ci-stolostron-policy-collection-main-ocp4.22-interop-opp-aws",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
 				VariantRelease:          "4.22",
@@ -1828,7 +1828,7 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job:          "periodic-ci-stolostron-policy-collection-main-ocp4.22-lp-interop-opp-vsphere",
+			job:          "periodic-ci-stolostron-policy-collection-main-ocp4.22-interop-opp-vsphere",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
 				VariantRelease:          "4.22",

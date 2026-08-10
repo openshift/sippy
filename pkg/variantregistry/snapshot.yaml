@@ -380490,7 +380490,7 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-interop-opp-aws:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos9
-    Owner: eng
+    Owner: mpiit
     Platform: aws
     Procedure: none
     Release: "4.22"
@@ -380514,7 +380514,7 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-interop-opp-vsphere:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos9
-    Owner: eng
+    Owner: mpiit
     Platform: vsphere
     Procedure: none
     Release: "4.22"
@@ -380541,7 +380541,7 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-upgrade-interop-opp-upgrad
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos9
-    Owner: eng
+    Owner: mpiit
     Platform: aws
     Procedure: none
     Release: "4.22"
@@ -380565,7 +380565,7 @@ periodic-ci-stolostron-policy-collection-main-ocp5.0-interop-opp-aws:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
-    Owner: eng
+    Owner: mpiit
     Platform: aws
     Procedure: none
     Release: "5.0"
@@ -380589,7 +380589,7 @@ periodic-ci-stolostron-policy-collection-main-ocp5.0-interop-opp-vsphere:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
-    Owner: eng
+    Owner: mpiit
     Platform: vsphere
     Procedure: none
     Release: "5.0"
@@ -380616,7 +380616,7 @@ periodic-ci-stolostron-policy-collection-main-ocp5.0-upgrade-interop-opp-upgrade
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
-    Owner: eng
+    Owner: mpiit
     Platform: aws
     Procedure: none
     Release: "5.0"
@@ -380640,7 +380640,7 @@ periodic-ci-stolostron-policy-collection-main-ocp5.1-interop-opp-aws:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
-    Owner: eng
+    Owner: mpiit
     Platform: aws
     Procedure: none
     Release: "5.1"
@@ -380664,7 +380664,7 @@ periodic-ci-stolostron-policy-collection-main-ocp5.1-interop-opp-vsphere:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
-    Owner: eng
+    Owner: mpiit
     Platform: vsphere
     Procedure: none
     Release: "5.1"
@@ -380691,7 +380691,7 @@ periodic-ci-stolostron-policy-collection-main-ocp5.1-upgrade-interop-opp-upgrade
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
-    Owner: eng
+    Owner: mpiit
     Platform: aws
     Procedure: none
     Release: "5.1"
