@@ -106,7 +106,7 @@ export default function ComponentReadinessToolBar(props) {
       setTriageEntries(triagesAssociatedWithActiveRegressions)
       setIsLoaded(true)
     })
-  }, [])
+  }, [localDBEnabled, varsContext.sampleRelease, data])
 
   // Update page context when regression data is loaded
   useEffect(() => {

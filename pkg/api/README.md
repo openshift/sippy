@@ -614,3 +614,33 @@ logic use canonical filter definitions from
 |---------------|--------|----------------------------------------------------------|
 | release*      | String | The OpenShift release to return results from (e.g., 5.0) |
 | feature_gate  | Path   | The feature gate name (in the URL path)                  |
+
+## Component Readiness Triages
+
+Endpoint: `GET /api/component_readiness/triages`
+
+Lists triage records. Supports an optional `view` query parameter to filter triages
+to those associated with regressions active in the specified component readiness view.
+When `view` is omitted, all triages are returned (original behavior).
+
+### Parameters
+
+| Option | Type   | Description                                                                 | Acceptable values |
+|--------|--------|-----------------------------------------------------------------------------|-------------------|
+| view   | String | Filter triages to those linked to regressions active in this view (e.g., 4.18-main). Optional; omit to return all triages. | N/A               |
+
+Endpoint: `GET /api/component_readiness/triages/{id}`
+
+Returns a single triage record by ID.
+
+Endpoint: `POST /api/component_readiness/triages`
+
+Creates a new triage record.
+
+Endpoint: `PUT /api/component_readiness/triages/{id}`
+
+Updates an existing triage record.
+
+Endpoint: `DELETE /api/component_readiness/triages/{id}`
+
+Deletes a triage record.
