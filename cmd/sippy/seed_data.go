@@ -214,6 +214,7 @@ const awsAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn
 const awsArm64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-arm64"
 const gcpAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-gcp-ovn-amd64"
 const awsAmd64CapabilityAWSDualStackInstall = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-awsdualstackinstall"
+const awsAmd64CapabilityNetworkSegmentation = "periodic-ci-openshift-release-master-ci-%s-e2e-aws-ovn-amd64-capability-networksegmentation"
 const azureAmd64Parallel = "periodic-ci-openshift-release-master-ci-%s-e2e-azure-ovn-amd64"
 
 // allJobTemplates returns name templates from syntheticJobs for use in test specs
@@ -383,7 +384,7 @@ var syntheticTests = []syntheticTestSpec{
 		},
 	},
 	{
-		testID: "test-fg-aws-dual-stack-install", testName: "[sig-installer] [FeatureGate:AWSDualStackInstall] dual stack install should succeed",
+		testID: "test-fg-aws-dual-stack-install", testName: "[sig-installer] [FeatureGate:AWSDualStackInstall] specific test for the dual stack install feature",
 		component: "Installer / openshift-installer", capabilities: []string{"AWSDualStackInstall"},
 		jobCounts: map[string]map[string]testCount{
 			awsAmd64Parallel: {"4.22": {50, 48, 0}},
@@ -403,6 +404,29 @@ var syntheticTests = []syntheticTestSpec{
 		component: "comp-AzureNetworking", capabilities: []string{"networking"},
 		jobCounts: map[string]map[string]testCount{
 			azureAmd64Parallel: {"4.21": {100, 95, 0}, "4.22": {100, 80, 0}},
+		},
+	},
+
+	// --- Capability regression tests: tests on capability jobs with low pass rates ---
+	{
+		testID: "test-cap-regression-netseg", testName: "[sig-network] network connectivity should be reliable across nodes",
+		component: "Networking / ovn-kubernetes", capabilities: []string{"networking"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64CapabilityNetworkSegmentation: {"4.22": {100, 85, 0}},
+		},
+	},
+	{
+		testID: "test-cap-regression-unpromoted-gate", testName: "[sig-network] [OCPFeatureGate:UnpromotedTestGate] should handle traffic correctly",
+		component: "Networking / ovn-kubernetes", capabilities: []string{"networking"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64CapabilityNetworkSegmentation: {"4.22": {100, 80, 0}},
+		},
+	},
+	{
+		testID: "test-cap-regression-awsdualstack", testName: "[sig-network] dual stack services should route correctly",
+		component: "Networking / ovn-kubernetes", capabilities: []string{"networking"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64CapabilityAWSDualStackInstall: {"4.22": {100, 88, 0}},
 		},
 	},
 
@@ -1319,6 +1343,8 @@ func seedFeatureGates(dbc *db.DB) error {
 	featureGates := []models.FeatureGate{
 		{Release: "4.22", Topology: "SelfManagedHA", FeatureSet: "TechPreviewNoUpgrade", FeatureGate: "NetworkSegmentation", Status: "enabled"},
 		{Release: "4.22", Topology: "SelfManagedHA", FeatureSet: "TechPreviewNoUpgrade", FeatureGate: "AWSDualStackInstall", Status: "enabled"},
+		{Release: "4.22", Topology: "SelfManagedHA", FeatureSet: "TechPreviewNoUpgrade", FeatureGate: "UnpromotedTestGate", Status: "enabled"},
+		{Release: "4.22", Topology: "SelfManagedHA", FeatureSet: "Default", FeatureGate: "PromotedTestGate", Status: "enabled"},
 	}
 
 	for _, fg := range featureGates {

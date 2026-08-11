@@ -580,3 +580,37 @@ tables don't carry a lifecycle column.
 ```
 
 </details>
+
+## Feature Gates
+
+### List Feature Gates
+
+Endpoint: `/api/feature_gates`
+
+Returns all feature gates and their test counts for a release. Each gate includes
+lightweight HATEOAS links (`ui_detail` and `api_detail`) for navigation.
+
+| Option   | Type   | Description                                              |
+|----------|--------|----------------------------------------------------------|
+| release* | String | The OpenShift release to return results from (e.g., 5.0) |
+| filter   | Filter | Filters the results. See filtering above.                |
+
+### Feature Gate Detail
+
+Endpoint: `/api/feature_gates/{feature_gate}`
+
+Returns a single feature gate with full HATEOAS links for test queries
+(`gate_tests`, `install_tests`, `gate_job_tests`, `ui_detail`).
+The `install_tests` link is only present for gates whose name contains "Install".
+
+The response includes a `promotion` object with promotion readiness data:
+per-variant test pass rates, overall sufficiency, warnings, and errors.
+The promotion evaluation is computed from the same data that the `gate_tests`
+and `install_tests` HATEOAS links point to. Both the links and the promotion
+logic use canonical filter definitions from
+`pkg/api/featuregatepromotion/filters.go`, ensuring they always stay in sync.
+
+| Option        | Type   | Description                                              |
+|---------------|--------|----------------------------------------------------------|
+| release*      | String | The OpenShift release to return results from (e.g., 5.0) |
+| feature_gate  | Path   | The feature gate name (in the URL path)                  |

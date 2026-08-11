@@ -1,0 +1,55 @@
+package featuregatepromotion
+
+// PromotionStatus represents the overall promotion readiness of a feature gate.
+type PromotionStatus struct {
+	FeatureGate               string                     `json:"feature_gate"`
+	Release                   string                     `json:"release"`
+	Sufficient                bool                       `json:"sufficient"`
+	ResultsByVariant          []VariantResult            `json:"results_by_variant"`
+	CapabilityTestRegressions []CapabilityTestRegression `json:"capability_test_regressions,omitempty"`
+	Warnings                  []string                   `json:"warnings"`
+	Errors                    []string                   `json:"errors"`
+	Links                     map[string]string          `json:"links,omitempty"`
+}
+
+// CapabilityTestRegression represents a test in a job owned by this feature gate
+// that has a pass rate below the required threshold.
+type CapabilityTestRegression struct {
+	TestName          string  `json:"test_name"`
+	WorkingPercentage float64 `json:"working_percentage"`
+	Ignored           bool    `json:"ignored"`
+	IgnoredReason     string  `json:"ignored_reason,omitempty"`
+}
+
+// VariantResult represents the promotion readiness for a single variant combination.
+type VariantResult struct {
+	Variants    map[string]string `json:"variants"`
+	Optional    bool              `json:"optional"`
+	Sufficient  bool              `json:"sufficient"`
+	TestResults []TestResult      `json:"test_results"`
+	Warnings    []string          `json:"warnings,omitempty"`
+	Errors      []string          `json:"errors,omitempty"`
+}
+
+// TestResult represents the test run statistics for a single test on a single variant.
+type TestResult struct {
+	TestName       string            `json:"test_name"`
+	TotalRuns      int               `json:"total_runs"`
+	SuccessfulRuns int               `json:"successful_runs"`
+	FailedRuns     int               `json:"failed_runs"`
+	FlakedRuns     int               `json:"flaked_runs"`
+	PassPercent    float32           `json:"pass_percent"`
+	Sufficient     bool              `json:"sufficient"`
+	Links          map[string]string `json:"links,omitempty"`
+}
+
+// JobVariant defines a required combination of platform variants to check for promotion.
+type JobVariant struct {
+	Cloud        string
+	Architecture string
+	Topology     string
+	NetworkStack string
+	OS           string
+	JobTiers     string
+	Optional     bool
+}
