@@ -115,25 +115,25 @@ describe('convertApiUrlToUiUrl', () => {
 })
 
 describe('getTriagesAPIUrl', () => {
-  test('returns collection URL without release when no arguments', () => {
+  test('returns collection URL without view when no arguments', () => {
     const result = getTriagesAPIUrl()
     expect(result).toMatch(/\/api\/component_readiness\/triages$/)
   })
 
-  test('returns collection URL with release query parameter', () => {
-    const result = getTriagesAPIUrl(null, '4.18')
+  test('returns collection URL with view query parameter', () => {
+    const result = getTriagesAPIUrl(null, '4.18-main')
     expect(result).toMatch(
-      /\/api\/component_readiness\/triages\?release=4\.18$/
+      /\/api\/component_readiness\/triages\?view=4\.18-main$/
     )
   })
 
-  test('encodes release value in query parameter', () => {
+  test('encodes view value in query parameter', () => {
     const result = getTriagesAPIUrl(null, '4.18 beta')
-    expect(result).toContain('release=4.18%20beta')
+    expect(result).toContain('view=4.18%20beta')
   })
 
-  test('returns ID-specific URL without release query parameter', () => {
-    const result = getTriagesAPIUrl(42, '4.18')
+  test('returns ID-specific URL without view query parameter', () => {
+    const result = getTriagesAPIUrl(42, '4.18-main')
     expect(result).toMatch(/\/api\/component_readiness\/triages\/42$/)
   })
 

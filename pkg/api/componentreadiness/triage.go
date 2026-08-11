@@ -43,8 +43,8 @@ func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 }
 
 func ListTriages(dbc *db.DB, req *http.Request) ([]models.Triage, error) {
-	release := req.URL.Query().Get("release")
-	triages, err := query.ListTriages(dbc, release)
+	view := req.URL.Query().Get("view")
+	triages, err := query.ListTriages(dbc, view)
 	for i := range triages {
 		injectHATEOASLinks(&triages[i], sippyapi.GetBaseURL(req))
 	}

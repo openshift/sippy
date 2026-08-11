@@ -79,7 +79,7 @@ export default function ComponentReadinessIndicator({ release }) {
       })
       .catch(() => null)
 
-    const triagesPromise = fetch(getTriagesAPIUrl(null, release))
+    const triagesPromise = fetch(getTriagesAPIUrl(null, viewName))
       .then((response) => {
         if (response.status !== 200) {
           return []

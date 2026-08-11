@@ -227,13 +227,16 @@ func Test_TriageAPI(t *testing.T) {
 				triage.Links["audit_logs"])
 		}
 	})
-	t.Run("list filtered by release", func(t *testing.T) {
+	t.Run("list filtered by view", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
-		// Filtering by the regression's release should return the triage
+		// Associate the regression with a view so it can be found by view filter
+		require.NoError(t, tracker.UpsertRegressionView(testRegression1.ID, view.Name))
+
+		// Filtering by the regression's view should return the triage
 		var filteredTriages []models.Triage
-		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/triages?release=%s", util.Release), &filteredTriages)
+		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/triages?view=%s", view.Name), &filteredTriages)
 		require.NoError(t, err)
 		var foundTriage *models.Triage
 		for i, triage := range filteredTriages {
@@ -242,14 +245,14 @@ func Test_TriageAPI(t *testing.T) {
 				break
 			}
 		}
-		require.NotNil(t, foundTriage, "expected triage was not found in release-filtered list")
+		require.NotNil(t, foundTriage, "expected triage was not found in view-filtered list")
 
-		// Filtering by a non-existent release should return no results
+		// Filtering by a non-existent view should return no results
 		var emptyTriages []models.Triage
-		err = util.SippyGet("/api/component_readiness/triages?release=99.99", &emptyTriages)
+		err = util.SippyGet("/api/component_readiness/triages?view=99.99-nonexistent", &emptyTriages)
 		require.NoError(t, err)
 		for _, triage := range emptyTriages {
-			assert.NotEqual(t, triageResponse.ID, triage.ID, "triage should not appear when filtering by wrong release")
+			assert.NotEqual(t, triageResponse.ID, triage.ID, "triage should not appear when filtering by wrong view")
 		}
 	})
 	t.Run("update to add regression", func(t *testing.T) {

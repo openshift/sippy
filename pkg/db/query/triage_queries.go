@@ -10,20 +10,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ListTriages(dbc *db.DB, release string) ([]models.Triage, error) {
+func ListTriages(dbc *db.DB, view string) ([]models.Triage, error) {
 	var triages []models.Triage
 	q := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions")
 
-	if release != "" {
+	if view != "" {
 		q = q.Distinct().
 			Joins("JOIN triage_regressions ON triage_regressions.triage_id = triages.id").
-			Joins("JOIN test_regressions ON test_regressions.id = triage_regressions.test_regression_id").
-			Where("test_regressions.release = ?", release)
+			Joins("JOIN regression_views ON regression_views.test_regression_id = triage_regressions.test_regression_id").
+			Where("regression_views.view_name = ? AND regression_views.active = true", view)
 	}
 
 	res := q.Find(&triages)
 	if res.Error != nil {
-		log.WithField("release", release).WithError(res.Error).Error("error listing triages")
+		log.WithField("view", view).WithError(res.Error).Error("error listing triages")
 	}
 	return triages, res.Error
 }
