@@ -71,6 +71,11 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id")
 
 	addPRJoin := func(q *gorm.DB) *gorm.DB {
+		if len(release) > 0 {
+			return q.
+				Joins(`LEFT JOIN (SELECT DISTINCT ON(prow_job_run_id) prow_job_run_id, prow_pull_request_id FROM prow_job_run_prow_pull_requests WHERE prow_job_run_release = ? ORDER BY prow_job_run_id, prow_pull_request_id DESC) jrpp ON jrpp.prow_job_run_id = prow_job_runs.id`, release).
+				Joins("LEFT JOIN prow_pull_requests pp ON pp.id = jrpp.prow_pull_request_id")
+		}
 		return q.
 			Joins(`LEFT JOIN (SELECT DISTINCT ON(prow_job_run_id) prow_job_run_id, prow_pull_request_id FROM prow_job_run_prow_pull_requests ORDER BY prow_job_run_id, prow_pull_request_id DESC) jrpp ON jrpp.prow_job_run_id = prow_job_runs.id`).
 			Joins("LEFT JOIN prow_pull_requests pp ON pp.id = jrpp.prow_pull_request_id")
@@ -87,6 +92,7 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 
 	if len(release) > 0 {
 		q = q.Where("prow_jobs.release = ?", release)
+		q = q.Where("prow_job_runs.prow_job_release = ?", release)
 	}
 	q = q.Where(`prow_job_runs."timestamp" < ?`, reportEnd)
 	q = q.Where(`prow_job_runs."timestamp" >= ?`, lookback)
@@ -132,7 +138,7 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 
 		if !needs.needsPRJoin() {
 			g.Go(func() error {
-				return enrichJobRunsWithPRData(dbc, jobsResult, ids)
+				return enrichJobRunsWithPRData(dbc, jobsResult, ids, release)
 			})
 		}
 
@@ -358,7 +364,7 @@ func enrichJobRunsWithTestNames(dbc *db.DB, results []apitype.JobRun, ids []int,
 	return nil
 }
 
-func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, ids []int) error {
+func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, ids []int, release string) error {
 	type prResult struct {
 		ID                int    `gorm:"column:id"`
 		PullRequestLink   string `gorm:"column:pull_request_link"`
@@ -368,18 +374,21 @@ func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, ids []int) er
 		PullRequestAuthor string `gorm:"column:pull_request_author"`
 	}
 	var prResults []prResult
-	if err := dbc.DB.Raw(`
-		SELECT DISTINCT ON(jrpp.prow_job_run_id)
+	q := dbc.DB.Table("prow_job_run_prow_pull_requests jrpp").
+		Select(`DISTINCT ON(jrpp.prow_job_run_id)
 			jrpp.prow_job_run_id AS id,
 			pp.link AS pull_request_link,
 			pp.sha AS pull_request_sha,
 			pp.org AS pull_request_org,
 			pp.author AS pull_request_author,
-			pp.repo AS pull_request_repo
-		FROM prow_job_run_prow_pull_requests jrpp
-			INNER JOIN prow_pull_requests pp ON pp.id = jrpp.prow_pull_request_id
-		WHERE jrpp.prow_job_run_id IN ?
-		ORDER BY jrpp.prow_job_run_id, jrpp.prow_pull_request_id DESC`, ids).Scan(&prResults).Error; err != nil {
+			pp.repo AS pull_request_repo`).
+		Joins("INNER JOIN prow_pull_requests pp ON pp.id = jrpp.prow_pull_request_id").
+		Where("jrpp.prow_job_run_id IN ?", ids).
+		Order("jrpp.prow_job_run_id, jrpp.prow_pull_request_id DESC")
+	if len(release) > 0 {
+		q = q.Where("jrpp.prow_job_run_release = ?", release)
+	}
+	if err := q.Scan(&prResults).Error; err != nil {
 		return err
 	}
 	prMap := make(map[int]*prResult, len(prResults))
@@ -463,7 +472,7 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []strin
 			Where("NOT EXISTS (SELECT 1 FROM test_ownerships tow WHERE tow.test_id = prow_job_run_tests.test_id)").
 			Where(`NOT EXISTS (
 				SELECT 1 FROM prow_job_run_tests t2
-				INNER JOIN prow_job_run_prow_pull_requests prmap ON prmap.prow_job_run_id = t2.prow_job_run_id
+				INNER JOIN prow_job_run_prow_pull_requests prmap ON prmap.prow_job_run_id = t2.prow_job_run_id AND prmap.prow_job_run_release = t2.prow_job_run_release
 				INNER JOIN prow_pull_requests prs ON prs.id = prmap.prow_pull_request_id
 				WHERE t2.test_id = prow_job_run_tests.test_id
 				  AND t2.prow_job_run_release = prow_job_run_tests.prow_job_run_release

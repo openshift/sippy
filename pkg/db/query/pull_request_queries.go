@@ -43,23 +43,31 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 	return results, nil
 }
 
-func PullRequestAveragePremergeFailures(dbc *db.DB, start, end *time.Time) *gorm.DB {
+func PullRequestAveragePremergeFailures(dbc *db.DB, release string, start, end *time.Time) *gorm.DB {
 	premergeFailures := dbc.DB.Table("prow_job_runs").
 		Select("prow_jobs.id as prow_job_id, prow_jobs.name as prow_job_name, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.link, COUNT(*) as total_runs").
-		Joins("INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id").
+		Joins("INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id AND prow_job_run_prow_pull_requests.prow_job_run_release = prow_job_runs.prow_job_release").
 		Joins("INNER JOIN prow_pull_requests on prow_pull_requests.id = prow_job_run_prow_pull_requests.prow_pull_request_id").
 		Joins("INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
+		Where("prow_job_runs.prow_job_release = ?", release).
+		Where("prow_job_run_prow_pull_requests.prow_job_run_release = ?", release).
 		Where("prow_job_runs.overall_result != 'S'").
 		Where("prow_job_runs.overall_result != 'A'").
 		Where("prow_pull_requests.merged_at IS NOT NULL").
 		Group("prow_jobs.id, prow_jobs.name, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.id, prow_pull_requests.link")
 
 	if start != nil {
-		premergeFailures = premergeFailures.Where("prow_pull_requests.merged_at >= ?", start)
+		premergeFailures = premergeFailures.
+			Where("prow_pull_requests.merged_at >= ?", start).
+			Where("prow_job_runs.timestamp >= ?", start).
+			Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp >= ?", start)
 	}
 
 	if end != nil {
-		premergeFailures = premergeFailures.Where("prow_pull_requests.merged_at <= ?", end)
+		premergeFailures = premergeFailures.
+			Where("prow_pull_requests.merged_at <= ?", end).
+			Where("prow_job_runs.timestamp <= ?", end).
+			Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp <= ?", end)
 	}
 
 	return dbc.DB.Table("(?) as premerge_failures", premergeFailures).

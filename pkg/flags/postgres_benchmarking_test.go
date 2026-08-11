@@ -574,6 +574,7 @@ func getQueryCases() []queryCase {
 				res := dbc.DB.Table("prow_job_runs").
 					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
 					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
+					Where("prow_job_runs.prow_job_release = ?", benchmarkRelease).
 					Order("prow_job_runs.timestamp DESC").
 					Limit(1).
 					Select("prow_job_runs.id, prow_job_runs.timestamp").
@@ -609,7 +610,7 @@ func getQueryCases() []queryCase {
 				}
 				res = dbc.DB.
 					Table("prow_job_run_tests as t").
-					Joins("INNER JOIN prow_job_run_prow_pull_requests as prmap on prmap.prow_job_run_id = t.prow_job_run_id").
+					Joins("INNER JOIN prow_job_run_prow_pull_requests as prmap on prmap.prow_job_run_id = t.prow_job_run_id AND prmap.prow_job_run_release = t.prow_job_run_release").
 					Joins("INNER JOIN prow_pull_requests as prs on prs.id = prmap.prow_pull_request_id").
 					Where("t.test_id = ?", testID).
 					Where("t.prow_job_run_release = ?", benchmarkRelease).

@@ -14,7 +14,7 @@ func RepositoryReport(dbc *db.DB, filterOpts *filter.FilterOptions, release stri
 	end := reportEnd
 
 	premergeFailureStart := reportEnd.Add(-14 * 24 * time.Hour)
-	averageByJob := PullRequestAveragePremergeFailures(dbc, &premergeFailureStart, &end)
+	averageByJob := PullRequestAveragePremergeFailures(dbc, release, &premergeFailureStart, &end)
 
 	revertCountStart := reportEnd.Add(-90 * 24 * time.Hour)
 	revertCount := RepositoryRevertCount(dbc, &revertCountStart, &end)
