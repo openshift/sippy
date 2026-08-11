@@ -1068,11 +1068,11 @@ type FeatureGate struct {
 
 // FeatureGatePromotion represents promotion readiness data included in the detail response.
 type FeatureGatePromotion struct {
-	Sufficient               bool                                  `json:"sufficient"`
-	ResultsByVariant         []FeatureGateVariantResult            `json:"results_by_variant"`
+	Sufficient                bool                                  `json:"sufficient"`
+	ResultsByVariant          []FeatureGateVariantResult            `json:"results_by_variant"`
 	CapabilityTestRegressions []FeatureGateCapabilityTestRegression `json:"capability_test_regressions,omitempty"`
-	Warnings                 []string                              `json:"warnings"`
-	Errors                   []string                              `json:"errors"`
+	Warnings                  []string                              `json:"warnings"`
+	Errors                    []string                              `json:"errors"`
 }
 
 // FeatureGateCapabilityTestRegression represents a test in a job owned by this

@@ -2,14 +2,14 @@ package featuregatepromotion
 
 // PromotionStatus represents the overall promotion readiness of a feature gate.
 type PromotionStatus struct {
-	FeatureGate              string                     `json:"feature_gate"`
-	Release                  string                     `json:"release"`
-	Sufficient               bool                       `json:"sufficient"`
-	ResultsByVariant         []VariantResult            `json:"results_by_variant"`
+	FeatureGate               string                     `json:"feature_gate"`
+	Release                   string                     `json:"release"`
+	Sufficient                bool                       `json:"sufficient"`
+	ResultsByVariant          []VariantResult            `json:"results_by_variant"`
 	CapabilityTestRegressions []CapabilityTestRegression `json:"capability_test_regressions,omitempty"`
-	Warnings                 []string                   `json:"warnings"`
-	Errors                   []string                   `json:"errors"`
-	Links                    map[string]string          `json:"links,omitempty"`
+	Warnings                  []string                   `json:"warnings"`
+	Errors                    []string                   `json:"errors"`
+	Links                     map[string]string          `json:"links,omitempty"`
 }
 
 // CapabilityTestRegression represents a test in a job owned by this feature gate
