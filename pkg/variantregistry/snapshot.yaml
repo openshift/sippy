@@ -29515,60 +29515,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-loaded-upgrade
     Suite: unknown
     Topology: ha
     Upgrade: minor
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-loaded-upgrade-from-4.21-loaded-upgrade-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.21"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "21"
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-loaded-upgrade-from-4.21-loaded-upgrade-252nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.21"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "21"
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.22-nightly-x86-payload-control-plane-6nodes:
     Aggregation: none
     Architecture: amd64
@@ -29690,60 +29636,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.23-nightly-x86-cudn-density-s
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.23-nightly-x86-loaded-upgrade-from-4.22-loaded-upgrade-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.22"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "22"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.23-nightly-x86-loaded-upgrade-from-4.22-loaded-upgrade-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.22"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "22"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-4.23-nightly-x86-loaded-upgrade-from-4.22-loaded-upgrade-252nodes:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -29986,30 +29878,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-control-plane-i
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-cudn-churn-250-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-cudn-density-single-ns-250-24nodes:
     Aggregation: none
     Architecture: amd64
@@ -30059,30 +29927,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-cudn-density-si
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-cudn-incremental-1000-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.0-nightly-x86-cudn-pod-churn-250-24nodes:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -30331,54 +30175,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-control-plane-2
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-control-plane-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-control-plane-252nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-control-plane-etcdencrypt-24nodes:
     Aggregation: none
     Architecture: amd64
@@ -30448,54 +30244,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-control-plane-f
     ReleaseMinor: "1"
     Scheduler: default
     SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-control-plane-ipsec-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: perfscale
-    Platform: aws
-    Procedure: ipsec
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-control-plane-ipsec-252nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: perfscale
-    Platform: aws
-    Procedure: ipsec
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
     Suite: unknown
     Topology: ha
     Upgrade: none
@@ -30619,30 +30367,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-cudn-pod-churn-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-data-path-9nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-data-path-ipsec-9nodes:
     Aggregation: none
     Architecture: amd64
@@ -30668,60 +30392,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-data-path-ipsec
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-loaded-upgrade-from-4.22-loaded-upgrade-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.22"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "22"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: major
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-loaded-upgrade-from-4.22-loaded-upgrade-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.22"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "22"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: major
-periodic-ci-openshift-eng-ocp-perfscale-main-aws-5.1-nightly-x86-loaded-upgrade-from-4.22-loaded-upgrade-252nodes:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -300377,6 +300047,30 @@ periodic-ci-openshift-release-main-nightly-4.19-e2e-aws-csi:
     FeatureSet: default
     Installer: ipi
     JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.19"
+    ReleaseMajor: "4"
+    ReleaseMinor: "19"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.19-e2e-aws-disruptive-longrunning:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
