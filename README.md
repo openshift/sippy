@@ -2,11 +2,10 @@
 
 <img src=https://raw.github.com/openshift/sippy/main/sippy.svg height=100 width=100>
 
-CIPI (Continuous Integration Private Investigator) aka Sippy -- a tool
-to analyze prow job results.
-
-Reports on job and test statistics, sliced by various filters including
-name, suite, or NURP+ variants (network, upgrade, release, platform, etc).
+Sippy (Continuous Integration Private Investigator) analyzes OpenShift Prow CI job and test results.
+It surfaces release health and regressions through reports such as Component Readiness.
+Users can filter results by job, test, and configuration variants such as network, upgrade, release, and platform.
+Sippy also exposes REST APIs for programmatic access to its data and reports.
 
 ## Typical usage
 
