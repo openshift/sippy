@@ -6,6 +6,7 @@ import {
   formatLongDate,
   generateTestDetailsReportLink,
   getTestDetailsLink,
+  getTriagesAPIUrl,
 } from './CompReadyUtils'
 
 test('parses a query param start time without timezone', () => {
@@ -110,6 +111,35 @@ describe('convertApiUrlToUiUrl', () => {
     expect(
       convertApiUrlToUiUrl('/api/component_readiness/test_details?a=b')
     ).toBe('/sippy-ng/component_readiness/test_details?a=b')
+  })
+})
+
+describe('getTriagesAPIUrl', () => {
+  test('returns collection URL without view when no arguments', () => {
+    const result = getTriagesAPIUrl()
+    expect(result).toMatch(/\/api\/component_readiness\/triages$/)
+  })
+
+  test('returns collection URL with view query parameter', () => {
+    const result = getTriagesAPIUrl(null, '4.18-main')
+    expect(result).toMatch(
+      /\/api\/component_readiness\/triages\?view=4\.18-main$/
+    )
+  })
+
+  test('encodes view value in query parameter', () => {
+    const result = getTriagesAPIUrl(null, '4.18 beta')
+    expect(result).toContain('view=4.18%20beta')
+  })
+
+  test('returns ID-specific URL without view query parameter', () => {
+    const result = getTriagesAPIUrl(42, '4.18-main')
+    expect(result).toMatch(/\/api\/component_readiness\/triages\/42$/)
+  })
+
+  test('returns ID-specific URL when only ID is provided', () => {
+    const result = getTriagesAPIUrl(7)
+    expect(result).toMatch(/\/api\/component_readiness\/triages\/7$/)
   })
 })
 

@@ -10,11 +10,22 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ListTriages(dbc *db.DB) ([]models.Triage, error) {
+func ListTriages(dbc *db.DB, view string) ([]models.Triage, error) {
 	var triages []models.Triage
-	res := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions").Find(&triages)
+	q := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions")
+
+	if view != "" {
+		// Join through triage_regressions to regression_views to find triages with active regressions in the requested view.
+		// Distinct avoids duplicates when a triage links to multiple matching regressions.
+		q = q.Distinct().
+			Joins("JOIN triage_regressions ON triage_regressions.triage_id = triages.id").
+			Joins("JOIN regression_views ON regression_views.test_regression_id = triage_regressions.test_regression_id").
+			Where("regression_views.view_name = ? AND regression_views.active = true", view)
+	}
+
+	res := q.Find(&triages)
 	if res.Error != nil {
-		log.WithError(res.Error).Error("error listing all triages")
+		log.WithField("view", view).WithError(res.Error).Error("error listing triages")
 	}
 	return triages, res.Error
 }

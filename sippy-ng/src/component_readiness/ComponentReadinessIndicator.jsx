@@ -11,7 +11,11 @@ import {
   useTheme,
 } from '@mui/material'
 import { COMPONENT_READINESS_THRESHOLDS } from '../constants'
-import { convertApiUrlToUiUrl, getTestDetailsLink } from './CompReadyUtils'
+import {
+  convertApiUrlToUiUrl,
+  getTestDetailsLink,
+  getTriagesAPIUrl,
+} from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { relativeTime } from '../helpers'
@@ -75,9 +79,7 @@ export default function ComponentReadinessIndicator({ release }) {
       })
       .catch(() => null)
 
-    const triagesPromise = fetch(
-      import.meta.env.VITE_API_URL + '/api/component_readiness/triages'
-    )
+    const triagesPromise = fetch(getTriagesAPIUrl(null, viewName))
       .then((response) => {
         if (response.status !== 200) {
           return []

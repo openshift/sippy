@@ -72,7 +72,7 @@ export default function ComponentReadinessToolBar(props) {
     // triage entries will only be available when there is a postgres connection
     let triageFetch
     if (localDBEnabled) {
-      triageFetch = fetch(getTriagesAPIUrl(), {
+      triageFetch = fetch(getTriagesAPIUrl(null, varsContext.view), {
         method: 'GET',
       }).then((response) => {
         if (response.status !== 200) {
@@ -106,7 +106,7 @@ export default function ComponentReadinessToolBar(props) {
       setTriageEntries(triagesAssociatedWithActiveRegressions)
       setIsLoaded(true)
     })
-  }, [])
+  }, [localDBEnabled, varsContext.view, data])
 
   // Update page context when regression data is loaded
   useEffect(() => {

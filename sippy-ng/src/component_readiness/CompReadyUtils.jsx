@@ -95,10 +95,15 @@ export function getComponentReadinessViewsAPIUrl() {
   return getAPIUrl('component_readiness/views')
 }
 
-export function getTriagesAPIUrl(id = null) {
-  return getAPIUrl(
-    id ? `component_readiness/triages/${id}` : 'component_readiness/triages'
-  )
+export function getTriagesAPIUrl(id = null, view = null) {
+  const base = id
+    ? `component_readiness/triages/${id}`
+    : 'component_readiness/triages'
+  const url = getAPIUrl(base)
+  if (view && !id) {
+    return `${url}?view=${encodeURIComponent(view)}`
+  }
+  return url
 }
 
 export function getBugsAPIUrl() {
