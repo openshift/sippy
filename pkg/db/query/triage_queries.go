@@ -15,6 +15,8 @@ func ListTriages(dbc *db.DB, view string) ([]models.Triage, error) {
 	q := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions")
 
 	if view != "" {
+		// Join through triage_regressions to regression_views to find triages with active regressions in the requested view.
+		// Distinct avoids duplicates when a triage links to multiple matching regressions.
 		q = q.Distinct().
 			Joins("JOIN triage_regressions ON triage_regressions.triage_id = triages.id").
 			Joins("JOIN regression_views ON regression_views.test_regression_id = triage_regressions.test_regression_id").

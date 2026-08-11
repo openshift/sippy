@@ -232,12 +232,13 @@ func Test_TriageAPI(t *testing.T) {
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		// Associate the regression with a view so it can be found by view filter
-		require.NoError(t, tracker.UpsertRegressionView(testRegression1.ID, view.Name))
+		require.NoError(t, tracker.UpsertRegressionView(testRegression1.ID, view.Name), "failed to upsert regression view")
+		defer dbc.DB.Where("test_regression_id = ? AND view_name = ?", testRegression1.ID, view.Name).Delete(&models.RegressionView{})
 
 		// Filtering by the regression's view should return the triage
 		var filteredTriages []models.Triage
 		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/triages?view=%s", view.Name), &filteredTriages)
-		require.NoError(t, err)
+		require.NoError(t, err, "failed to list triages filtered by view")
 		var foundTriage *models.Triage
 		for i, triage := range filteredTriages {
 			if triage.ID == triageResponse.ID {
@@ -250,7 +251,7 @@ func Test_TriageAPI(t *testing.T) {
 		// Filtering by a non-existent view should return no results
 		var emptyTriages []models.Triage
 		err = util.SippyGet("/api/component_readiness/triages?view=99.99-nonexistent", &emptyTriages)
-		require.NoError(t, err)
+		require.NoError(t, err, "failed to list triages with non-existent view filter")
 		for _, triage := range emptyTriages {
 			assert.NotEqual(t, triageResponse.ID, triage.ID, "triage should not appear when filtering by wrong view")
 		}
