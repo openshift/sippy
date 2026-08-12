@@ -82026,6 +82026,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-ad-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-ad-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -328981,14 +329001,14 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-compact-fips:
     Suite: unknown
     Topology: compact
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-compact-iso-no-registry-techpreview:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-compact-iso-no-registry:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: NoRegistryClusterInstall
     Component: Installer / Agent based installation
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: agent
     JobTier: candidate
     LayeredProduct: none
@@ -329030,14 +329050,14 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-ha-dualstack-conformanc
     Suite: parallel
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-ha-dualstack-iso-no-registry-techpreview:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-ha-dualstack-iso-no-registry:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: NoRegistryClusterInstall
     Component: Installer / Agent based installation
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: agent
     JobTier: candidate
     LayeredProduct: none
@@ -329056,14 +329076,14 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-ha-dualstack-iso-no-reg
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-ha5-dualstack-iso-no-registry-techpreview:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-ha5-dualstack-iso-no-registry:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: NoRegistryClusterInstall
     Component: Installer / Agent based installation
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: agent
     JobTier: candidate
     LayeredProduct: none
@@ -329243,14 +329263,14 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-single-node-ipv6-confor
     Suite: parallel
     Topology: single
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-sno-ipv4-iso-no-registry-techpreview:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-agent-sno-ipv4-iso-no-registry:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: NoRegistryClusterInstall
     Component: Installer / Agent based installation
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: agent
     JobTier: candidate
     LayeredProduct: none
@@ -329729,6 +329749,30 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-fips:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-fips-haproxy28:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-fips-serial:
     Aggregation: none
     Architecture: amd64
@@ -329754,6 +329798,30 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-fips-serial:
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-ha-cert-rotation-suspend-30d:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-haproxy28:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -329981,6 +330049,54 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-serial-2of2:
     FeatureSet: default
     Installer: ipi
     JobTier: blocking
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: serial
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-serial-haproxy28-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: serial
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-serial-haproxy28-2of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -330609,6 +330725,33 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-upgrade-fips-rhcos9-t
     ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-upgrade-haproxy28:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
     Suite: unknown
     Topology: ha
     Upgrade: micro
@@ -335898,6 +336041,33 @@ periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.21-e2e-aws-
     Suite: unknown
     Topology: ha
     Upgrade: major
+periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-aws-ovn-upgrade-from-stable-haproxy28:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.22"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "22"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
 periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-aws-upgrade-ovn-single-node:
     Aggregation: none
     Architecture: amd64
@@ -336398,14 +336568,14 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-compact-fips:
     Suite: unknown
     Topology: compact
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-compact-iso-no-registry-techpreview:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-compact-iso-no-registry:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: NoRegistryClusterInstall
     Component: Installer / Agent based installation
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: agent
     JobTier: candidate
     LayeredProduct: none
@@ -336447,14 +336617,14 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-ha-dualstack-conformanc
     Suite: parallel
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-ha-dualstack-iso-no-registry-techpreview:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-ha-dualstack-iso-no-registry:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: NoRegistryClusterInstall
     Component: Installer / Agent based installation
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: agent
     JobTier: candidate
     LayeredProduct: none
@@ -336473,14 +336643,14 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-ha-dualstack-iso-no-reg
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-ha5-dualstack-iso-no-registry-techpreview:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-ha5-dualstack-iso-no-registry:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: NoRegistryClusterInstall
     Component: Installer / Agent based installation
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: agent
     JobTier: candidate
     LayeredProduct: none
@@ -336660,14 +336830,14 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-single-node-ipv6-confor
     Suite: parallel
     Topology: single
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-sno-ipv4-iso-no-registry-techpreview:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-agent-sno-ipv4-iso-no-registry:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: NoRegistryClusterInstall
     Component: Installer / Agent based installation
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: agent
     JobTier: candidate
     LayeredProduct: none
