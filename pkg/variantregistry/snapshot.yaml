@@ -40204,7 +40204,7 @@ periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-aws-ovn-conformance-t
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: hypershift
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -41143,7 +41143,7 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-aws-ovn-conformance-t
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: hypershift
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
