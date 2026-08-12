@@ -908,6 +908,8 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-aks-ovn-conformance"}, "standard"},
 		// serial-techpreview variant is not yet stable enough for standard tier
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-serial-techpreview"}, "candidate"},
+		// techpreview variant is not yet stable enough for standard tier
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-techpreview"}, "candidate"},
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance"}, "standard"},
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-v2-azure-self-managed"}, "standard"},
 		// Right now, only the e2e-v2-aws job is being promoted, so ensure other jobs sharing
