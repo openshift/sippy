@@ -20437,10 +20437,12 @@ periodic-ci-openshift-csi-operator-release-5.0-periodics-periodic-e2e-gcd-csi:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: GCPSovereignCloudInstall
+    Component: Installer
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
