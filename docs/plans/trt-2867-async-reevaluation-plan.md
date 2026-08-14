@@ -120,9 +120,15 @@ method that:
    sets status to `running`.
 5. Returns a `SubmitResult` with the batch ID and new/dedup counts.
 
-All writes (batch row, River jobs, batch items, batch update) should be within a single
-database transaction for atomicity. River's `InsertManyTx` accepts an external transaction
-for this purpose.
+**Transaction boundaries:** The batch/batch-item writes use gorm (pgx/v4) while River's
+`InsertManyTx` requires a pgx/v5 transaction. Because these are different driver versions,
+they cannot share a single database transaction. Use two separate transactions: one gorm
+transaction for the batch and batch-item rows, and one pgx/v5 transaction for River job
+insertion. If the gorm transaction succeeds but the River insert fails, the batch row will
+exist with no corresponding River jobs. If the River insert succeeds but the gorm transaction
+fails, the River jobs will run without a tracking batch. In either failure case, the user can
+submit a new batch with the same entries (deduplication prevents duplicate work) and poll that
+batch for progress.
 
 ### 1.3: Batch status query (`pkg/sippyserver/workqueue/status.go`)
 
@@ -194,6 +200,7 @@ const (
 
 type ReevaluateJobRunArgs struct {
     ProwJobBuildID string `json:"prow_job_build_id" river:"unique"`
+    SymptomHash    string `json:"symptom_hash"      river:"unique"`
 }
 ```
 
@@ -205,8 +212,9 @@ The `InsertOpts` method on `ReevaluateJobRunArgs` should return:
 
 Key design decisions:
 
-- `ProwJobBuildID` is the only field tagged `river:"unique"`, so deduplication is scoped to
-  the job run identity regardless of which batch requested it.
+- Both `ProwJobBuildID` and `SymptomHash` are tagged `river:"unique"`, so deduplication is
+  scoped to the combination of job run identity and symptom state. The same job run will be
+  re-evaluated if symptoms have changed since the last evaluation.
 - `ByPeriod: 90 * time.Minute` prevents re-evaluating the same job run within the BigQuery
   streaming buffer window, avoiding the "rows not deletable within 90m" constraint.
 - No `BatchID` in the args — batch association is tracked via `workqueue_batch_items`, not
@@ -220,20 +228,28 @@ and holds a reference to a `ReEvaluator`. The `Work` method calls the existing
 `reEvaluateOne()` for the given `ProwJobBuildID` against the evaluator's cached symptoms,
 returning an error if the evaluation fails (which triggers River's retry logic).
 
-### 2.3: Symptom caching
+### 2.3: Symptom caching and hash-based uniqueness
 
 The `ReEvaluator` should maintain a concurrency-safe cache of active symptoms to avoid
 reloading them from the database for every individual work item.
 
 Add a `RefreshSymptomCache()` method to `ReEvaluator` that loads all active symptoms via the
 existing `loadActiveSymptoms()` and stores them in a field guarded by a `sync.RWMutex`. The
-`reEvaluateOne()` method reads from the cache under an `RLock`.
+method also computes a hash (e.g. SHA-256) of the sorted symptom IDs/versions and stores it
+alongside the cached symptoms. The `reEvaluateOne()` method reads from the cache under an
+`RLock`.
 
 **Refresh trigger:** The symptom cache is refreshed when a new batch is created. The API
-handler (or `Submitter`) calls `RefreshSymptomCache()` during batch submission. Since batch
-creation is infrequent relative to individual item processing, this is sufficient to keep the
-cache reasonably current without background polling. The `sync.RWMutex` ensures that a cache
-refresh does not race with concurrent workers reading from it.
+handler (or `Submitter`) calls `RefreshSymptomCache()` during batch submission. The resulting
+symptom hash is included in the `ReevaluateJobRunArgs` (see below) so that it participates
+in River's deduplication. This means that if a user modifies symptoms and submits a new batch
+for the same job runs, the changed hash defeats deduplication and the jobs run again with the
+updated symptoms.
+
+We are not interested in tracking symptom changes that occur while a batch is processing.
+The expectation is that the user submits a batch after making the symptom changes they care
+about. If they make further changes, they submit another batch, and the new symptom hash
+ensures those jobs are not deduplicated against the earlier run.
 
 ### 2.4: Retry policy
 
@@ -362,7 +378,10 @@ registering any workers or queues and without calling `Start()`. The client can 
 jobs via `InsertMany()`.
 
 Add `workqueueSubmitter` and `workqueueStatusQuerier` fields to the `Server` struct. Initialize
-them during server construction, gated on a capability flag.
+them during server construction, gated on `LocalDBCapability` (required for both endpoints).
+The existing `POST /api/jobs/runs/reevaluate` already requires both `LocalDBCapability` and
+`WriteEndpointsCapability`; the new `GET /api/jobs/runs/reevaluate/{batch_id}` status endpoint
+requires only `LocalDBCapability` (it is read-only).
 
 ## Step 6: Batch Lifecycle and Cleanup
 
@@ -374,29 +393,37 @@ that deletes `workqueue_batches` rows where `completed_at` is older than 7 days.
 
 ### 6.2: River job retention
 
-Configure River's `CompletedJobRetention` and `DiscardedJobRetention` to 7 days, matching
+Configure River's `CompletedJobRetention` and `DiscardedJobRetention` to 8 days, matching
 the batch retention period. This ensures `river_job` rows don't grow unbounded while keeping
 enough history for status queries on recent batches.
 
 ## Step 7: Testing
 
-- **Unit tests** for `pkg/sippyserver/workqueue/` — test `Submitter.Submit()` with a mock
-  River client (verify dedup counting, batch item creation, error handling) and
-  `StatusQuerier.Query()` with pre-populated rows (verify completion detection and status
-  transitions).
-- **Unit tests** for `ReevaluateWorker.Work()` with a mock `ReEvaluator` — verify success
-  and error paths.
-- **Integration tests** using River's `rivertest` package for worker testing in isolation.
-- **End-to-end test** of the full flow: POST to the API → verify 202 → poll status → verify
-  items transition through `available` → `running` → `completed`. Use a test PostgreSQL
-  database with River migrations applied.
+Avoid mocking any substantial part of these packages (River client, ReEvaluator, storage
+clients). Instead, follow the project's functional test pattern (see
+`pkg/api/jobrunscan/reevaluate_functional_test.go`): tests that require external dependencies
+(PostgreSQL, GCS, BigQuery) are gated behind environment variables and skipped when those
+variables are not set. A human runs them by providing the necessary credentials.
+
+- **Unit tests** for pure logic functions only: dedup counting, symptom hash computation,
+  batch status aggregation from pre-populated row structs. No mocking of River or database
+  clients.
+- **Functional tests** for `pkg/sippyserver/workqueue/` — test `Submitter.Submit()` and
+  `StatusQuerier.Query()` against a real PostgreSQL instance with River migrations applied.
+  Verify dedup counting, batch item creation, completion detection, and status transitions.
+  Skip unless `SIPPY_FUNCTIONAL_TEST_DSN` (or similar) is set.
+- **Functional tests** for `ReevaluateWorker.Work()` using River's `rivertest` package
+  against a real PostgreSQL instance. Verify success and error/retry paths.
+- **End-to-end functional test** of the full flow: POST to the API, verify 202, poll status,
+  verify items transition through `available` to `running` to `completed`. Requires
+  PostgreSQL with River migrations, and optionally GCS/BigQuery credentials for full coverage.
 
 ## Step 8: Implementation Order
 
 1. Add `pgx/v5` and River dependencies to `go.mod`.
 2. Create `pkg/sippyserver/workqueue/` — models, submitter, status querier.
 3. Create `ReevaluateJobRunArgs` and `ReevaluateWorker` in `pkg/api/jobrunscan/`.
-4. Add symptom cache with `sync.RWMutex` to `ReEvaluator`.
+4. Add symptom cache with `sync.RWMutex` and symptom hash computation to `ReEvaluator`.
 5. Write database migration for `workqueue_batches` and `workqueue_batch_items`.
 6. Integrate River into `cmd/sippy-daemon/main.go` — pgx/v5 pool, migrations, worker
    registration, daemon process adapter, GCS/BQ client initialization.
@@ -405,6 +432,19 @@ enough history for status queries on recent batches.
 9. Tests (unit, integration, end-to-end).
 10. Update `docs/features/job-analysis-symptoms.md` — document the async API behavior,
     new status endpoint, deduplication semantics, and polling pattern.
+
+## Known Limitations
+
+1. **No batch cancellation** — There is no API to cancel an in-flight batch. Once River jobs
+   are enqueued, they will run to completion (or exhaust retries). A future enhancement could
+   add `DELETE /api/jobs/runs/reevaluate/{batch_id}` to cancel pending River jobs associated
+   with a batch.
+
+2. **Lazy batch completion** — The batch status is only updated to "complete" or "failed" when
+   the status endpoint is polled and detects that all items have reached a terminal state. If
+   no one polls after the last item completes, the batch row stays in "running" status
+   indefinitely. This is cosmetic; the cleanup job (Step 6.1) will eventually delete it
+   regardless of status.
 
 ## Open Questions
 
