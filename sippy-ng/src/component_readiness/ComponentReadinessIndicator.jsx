@@ -270,8 +270,8 @@ export default function ComponentReadinessIndicator({ release }) {
                       <React.Fragment key={index}>
                         <ListItemButton
                           alignItems="flex-start"
-                          component={testDetailsUrl ? Link : 'div'}
-                          to={testDetailsUrl || undefined}
+                          component={testDetailsUrl ? 'a' : 'div'}
+                          href={testDetailsUrl || undefined}
                           disabled={!testDetailsUrl}
                         >
                           <ListItemText
