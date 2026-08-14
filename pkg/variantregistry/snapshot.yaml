@@ -30773,6 +30773,30 @@ periodic-ci-openshift-eng-ocp-perfscale-main-metal-4.22-nightly-x86-weekly-telco
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-eng-ocp-perfscale-main-metal-5.0-nightly-x86-daily-telco-core-6nodes:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: perfscale
+    Platform: metal
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-metal-5.0-nightly-x86-daily-virt-6nodes:
     Aggregation: none
     Architecture: amd64
