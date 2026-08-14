@@ -7,9 +7,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api/jobartifacts"
+	"github.com/openshift/sippy/pkg/api/jobrunscan"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/riverqueue/river"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -20,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
 	"github.com/openshift/sippy/pkg/version"
 )
 
@@ -122,6 +126,14 @@ func NewSippyDaemonCommand() *cobra.Command {
 				processes = append(processes, sippyserver.NewWorkProcessor(dbc, bigQueryClient, gcsClient.Bucket(f.GoogleCloudFlags.StorageBucket), cacheClient, ghCommenter, 10, 5*time.Minute, 5*time.Second, f.GithubCommenterFlags.CommentProcessingDryRun))
 			}
 
+			// Set up River work queue for async job processing
+			riverProcess, err := setupRiverProcess(cmd.Context(), f)
+			if err != nil {
+				log.WithError(err).Error("failed to set up River work queue, async re-evaluation will not be available")
+			} else if riverProcess != nil {
+				processes = append(processes, riverProcess)
+			}
+
 			daemonServer := sippyserver.NewDaemonServer(processes)
 
 			// Serve our metrics endpoint for prometheus to scrape
@@ -144,6 +156,68 @@ func NewSippyDaemonCommand() *cobra.Command {
 
 	f.BindFlags(cmd.Flags())
 	return cmd
+}
+
+const (
+	reevaluateWorkerCount = 8
+	jobRetentionPeriod    = 8 * 24 * time.Hour // 8 days
+)
+
+func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags) (sippyserver.DaemonProcess, error) {
+	dsn := f.DBFlags.DSN
+	if dsn == "" {
+		log.Info("no database DSN configured, skipping River work queue setup")
+		return nil, nil
+	}
+
+	dbc, err := f.DBFlags.GetDBClient()
+	if err != nil {
+		return nil, fmt.Errorf("getting DB client for River: %w", err)
+	}
+
+	cacheClient, err := f.CacheFlags.GetCacheClient()
+	if err != nil {
+		return nil, fmt.Errorf("getting cache client for River: %w", err)
+	}
+
+	opCtx := bqlabel.OperationalContext{
+		App:         bqlabel.AppSippy,
+		Command:     "sippy-daemon",
+		Environment: bqlabel.EnvDaemon,
+	}
+	bqClient, err := f.BigQueryFlags.GetBigQueryClient(ctx, opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+	if err != nil {
+		return nil, fmt.Errorf("getting BigQuery client for River: %w", err)
+	}
+
+	gcsClient, err := gcs.NewGCSClient(ctx,
+		f.GoogleCloudFlags.ServiceAccountCredentialFile,
+		f.GoogleCloudFlags.OAuthClientCredentialFile,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("getting GCS client for River: %w", err)
+	}
+
+	artifactMgr := jobartifacts.NewManager(ctx)
+	evaluator := jobrunscan.NewReEvaluator(bqClient, gcsClient, f.GoogleCloudFlags.StorageBucket, dbc, cacheClient, artifactMgr, false)
+
+	workers := river.NewWorkers()
+	river.AddWorker(workers, jobrunscan.NewReevaluateWorker(evaluator))
+
+	riverSetup, err := workqueue.Setup(ctx, workqueue.SetupConfig{
+		DatabaseDSN: dsn,
+		Queues: map[string]river.QueueConfig{
+			jobrunscan.ReevaluateQueue: {MaxWorkers: reevaluateWorkerCount},
+		},
+		Workers:               workers,
+		CompletedJobRetention: jobRetentionPeriod,
+		DiscardedJobRetention: jobRetentionPeriod,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("setting up River: %w", err)
+	}
+
+	return workqueue.NewRiverProcess(riverSetup.Client), nil
 }
 
 func main() {

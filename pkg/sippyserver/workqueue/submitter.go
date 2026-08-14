@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	log "github.com/sirupsen/logrus"
@@ -23,11 +23,11 @@ type SubmitResult struct {
 // Submitter creates batches and enqueues River jobs for async processing.
 type Submitter struct {
 	db          *gorm.DB
-	riverClient *river.Client[*pgxpool.Pool]
+	riverClient *river.Client[pgx.Tx]
 }
 
 // NewSubmitter creates a Submitter.
-func NewSubmitter(db *gorm.DB, riverClient *river.Client[*pgxpool.Pool]) *Submitter {
+func NewSubmitter(db *gorm.DB, riverClient *river.Client[pgx.Tx]) *Submitter {
 	return &Submitter{
 		db:          db,
 		riverClient: riverClient,
