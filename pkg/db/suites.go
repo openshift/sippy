@@ -59,6 +59,7 @@ var testSuites = []string{
 	"step graph",
 	"telco-verification",
 	"github.com/openshift/console-operator/test/e2e",
+	"github.com/openshift/cluster-monitoring-operator/test/e2e",
 	"prowjob-junit",
 	"OLM-Catalog-Validation",
 	"insights-operator-tests",
