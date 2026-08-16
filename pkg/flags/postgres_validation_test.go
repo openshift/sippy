@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ type goldenFile struct {
 
 func allQueryCases() []queryCase {
 	cases := getQueryCases()
+	cases = append(cases, getReportQueryCases()...)
 	for _, qc := range getIndividualQueryCases() {
 		cases = append(cases, qc)
 	}
@@ -28,8 +30,8 @@ func allQueryCases() []queryCase {
 
 func Test_GenerateGoldenFile(t *testing.T) {
 	dbc, _ := getBenchmarkDBClient(t)
-	goldenPath := os.Getenv("golden_file_path")
-	if goldenPath == "" {
+	goldenPath := filepath.Clean(os.Getenv("golden_file_path"))
+	if goldenPath == "." {
 		t.Fatal("golden_file_path env var is required")
 	}
 
@@ -43,15 +45,21 @@ func Test_GenerateGoldenFile(t *testing.T) {
 	gf.Metadata.Release = benchmarkRelease
 	gf.Metadata.Generated = time.Now().UTC()
 
+	failed := false
 	for _, vc := range cases {
 		t.Run(vc.name, func(t *testing.T) {
 			snap, err := vc.fn(dbc, asOf)
 			if err != nil {
+				failed = true
 				t.Fatalf("%s failed: %v", vc.name, err)
 			}
 			gf.Results[vc.name] = snap
 			t.Logf("%s: row_count=%d", vc.name, snap.RowCount)
 		})
+	}
+
+	if failed {
+		t.Fatalf("%d/%d cases succeeded; refusing to write an incomplete golden file", len(gf.Results), len(cases))
 	}
 
 	data, err := json.MarshalIndent(gf, "", "  ")
@@ -66,8 +74,8 @@ func Test_GenerateGoldenFile(t *testing.T) {
 
 func Test_ValidateGoldenFile(t *testing.T) {
 	dbc, _ := getBenchmarkDBClient(t)
-	goldenPath := os.Getenv("golden_file_path")
-	if goldenPath == "" {
+	goldenPath := filepath.Clean(os.Getenv("golden_file_path"))
+	if goldenPath == "." {
 		t.Fatal("golden_file_path env var is required")
 	}
 

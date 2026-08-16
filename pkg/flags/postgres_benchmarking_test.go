@@ -62,7 +62,6 @@ func sortedMapKeys[V any](m map[string]V) []string {
 func toBenchmarkCases(cases []queryCase, asOf time.Time) []benchmarkCase {
 	out := make([]benchmarkCase, len(cases))
 	for i, qc := range cases {
-		qc := qc
 		out[i] = benchmarkCase{
 			name: qc.name,
 			fn: func(dbc *db.DB) error {
@@ -77,7 +76,6 @@ func toBenchmarkCases(cases []queryCase, asOf time.Time) []benchmarkCase {
 func toBenchmarkCaseMap(cases map[string]queryCase, asOf time.Time) map[string]benchmarkCase {
 	out := make(map[string]benchmarkCase, len(cases))
 	for name, qc := range cases {
-		qc := qc
 		out[name] = benchmarkCase{
 			name: qc.name,
 			fn: func(dbc *db.DB) error {
@@ -314,11 +312,10 @@ func getQueryCases() []queryCase {
 					CurrentPassPercent float64
 				}
 				var result testResult
-				res := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, benchmarkRelease, benchmarkRelease, benchmarkTestName, []string{benchmarkJobName})
+				res := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, benchmarkRelease, benchmarkRelease, benchmarkTestName, []string{benchmarkJobName}).Scan(&result)
 				if res.Error != nil {
 					return validationSnapshot{}, res.Error
 				}
-				res.Scan(&result)
 				log.Printf("QueryTestAnalysis: runs=%d successes=%d", result.CurrentRuns, result.CurrentSuccesses)
 				return validationSnapshot{
 					RowCount: result.CurrentRuns,
@@ -416,6 +413,11 @@ func getQueryCases() []queryCase {
 				}, nil
 			},
 		},
+	}
+}
+
+func getReportQueryCases() []queryCase {
+	return []queryCase{
 		{
 			name: "VariantReports",
 			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
@@ -581,6 +583,9 @@ func getQueryCases() []queryCase {
 					Scan(&result)
 				if res.Error != nil {
 					return validationSnapshot{}, res.Error
+				}
+				if result.ID == 0 {
+					return validationSnapshot{}, fmt.Errorf("no job run found for %s/%s", benchmarkRelease, benchmarkJobName)
 				}
 				count, err := query.JobRunTestCount(dbc, result.ID, benchmarkRelease, result.Timestamp)
 				if err != nil {
