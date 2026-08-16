@@ -412,8 +412,13 @@ func GetJobRunTestsCountByLookbackAt(dbc *db.DB, lookbackDays int, today civil.D
 	log.WithField("lookbackDays", lookbackDays).Info("starting lookback count queries")
 
 	// Count job runs from prow_job_runs (one row per run, much smaller than prow_job_run_tests).
+	release, err := query.CurrentActiveRelease(dbc)
+	if err != nil {
+		return -1, -1, fmt.Errorf("determining current release: %w", err)
+	}
 	var jobRunsCount int64
-	err := dbc.DB.Table("prow_job_runs").
+	err = dbc.DB.Table("prow_job_runs").
+		Where("prow_job_release = ?", release).
 		Where("timestamp > ? AND deleted_at IS NULL", today.AddDays(-lookbackDays).In(time.UTC)).
 		Count(&jobRunsCount).
 		Error

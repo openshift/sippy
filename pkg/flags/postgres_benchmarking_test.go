@@ -444,7 +444,7 @@ func getQueryCases() []queryCase {
 			name: "BuildClusterHealth",
 			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				start, boundary, end := util.PeriodToDates("default", asOf)
-				results, err := query.BuildClusterHealth(dbc, start, boundary, end)
+				results, err := query.BuildClusterHealth(dbc, benchmarkRelease, start, boundary, end)
 				if err != nil {
 					return validationSnapshot{}, err
 				}

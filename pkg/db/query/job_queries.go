@@ -12,6 +12,26 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 )
 
+// ProwJobRunPartitionKeys holds the partition key columns for prow_job_runs.
+// Used for two-step lookups: fetch these lightweight keys first, then load the
+// full row with partition pruning.
+type ProwJobRunPartitionKeys struct {
+	ProwJobRelease string    `gorm:"column:prow_job_release"`
+	Timestamp      time.Time `gorm:"column:timestamp"`
+}
+
+// LookupProwJobRunPartitionKeys fetches the partition keys for a prow_job_run
+// by ID. This is intended as the first step of a two-step lookup pattern where
+// the caller then uses these keys to load the full row with partition pruning.
+func LookupProwJobRunPartitionKeys(dbc *db.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
+	var keys ProwJobRunPartitionKeys
+	err := dbc.DB.Table("prow_job_runs").
+		Select("prow_job_release, timestamp").
+		Where("id = ?", jobRunID).
+		Scan(&keys).Error
+	return keys, err
+}
+
 func JobRunTestCount(dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {
 	var prowJobRunTestCount int64
 
@@ -50,7 +70,8 @@ func ProwJobRunCount(dbc *db.DB, prowJobID uint, release string) (int, error) {
 	var count int64
 	q := dbc.DB.Table("prow_job_runs").
 		Where("prow_job_id = ?", prowJobID).
-		Where("prow_job_release = ?", release)
+		Where("prow_job_release = ?", release).
+		Where("timestamp > NOW() - INTERVAL '14 days'")
 	if err := q.Count(&count).Error; err != nil {
 		return 0, err
 	}

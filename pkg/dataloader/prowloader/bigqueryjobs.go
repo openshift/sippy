@@ -13,6 +13,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/openshift/sippy/pkg/apis/prow"
+	"github.com/openshift/sippy/pkg/db/query"
 )
 
 func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []error) {
@@ -24,7 +25,10 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		lastProwJobRun = *pl.loadSince
 		log.Infof("Using manually specified load-since time: %s", lastProwJobRun.UTC().Format(time.RFC3339))
 	} else {
-		row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").Row()
+		release, _ := query.CurrentActiveRelease(pl.dbc)
+		row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").
+			Where("prow_job_release = ?", release).
+			Where("timestamp > NOW() - INTERVAL '14 days'").Row()
 		err := row.Scan(&lastProwJobRun)
 		if err != nil || lastProwJobRun.IsZero() {
 			log.WithError(err).Warnf("no last prow job run found (new database?), importing previous %d days", DefaultLookbackDays)
