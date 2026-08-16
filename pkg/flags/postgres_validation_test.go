@@ -66,7 +66,7 @@ func Test_GenerateGoldenFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to marshal golden file: %v", err)
 	}
-	if err := os.WriteFile(goldenPath, data, 0o600); err != nil {
+	if err := os.WriteFile(goldenPath, data, 0o600); err != nil { // #nosec G703
 		t.Fatalf("failed to write golden file: %v", err)
 	}
 	t.Logf("golden file written to %s with %d cases", goldenPath, len(gf.Results))
@@ -79,7 +79,7 @@ func Test_ValidateGoldenFile(t *testing.T) {
 		t.Fatal("golden_file_path env var is required")
 	}
 
-	data, err := os.ReadFile(goldenPath) // #nosec G304
+	data, err := os.ReadFile(goldenPath) // #nosec G304,G703
 	if err != nil {
 		t.Fatalf("failed to read golden file: %v", err)
 	}
@@ -100,7 +100,8 @@ func Test_ValidateGoldenFile(t *testing.T) {
 		t.Run(vc.name, func(t *testing.T) {
 			expected, ok := gf.Results[vc.name]
 			if !ok {
-				t.Logf("SKIP: case %s not found in golden file", vc.name)
+				t.Errorf("case %s not found in golden file", vc.name)
+				mismatches = append(mismatches, vc.name)
 				return
 			}
 

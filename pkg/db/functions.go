@@ -162,6 +162,7 @@ SELECT results.pj_name,
        results.previous_average_duration_minutes
 FROM results
          JOIN prow_jobs ON prow_jobs.name = results.pj_name
+                      AND prow_jobs.release = p_release
          LEFT JOIN (
              SELECT prow_pull_requests.org, prow_pull_requests.repo, prow_jobs.id
              FROM prow_job_runs
