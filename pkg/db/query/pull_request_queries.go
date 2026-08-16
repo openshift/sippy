@@ -19,6 +19,7 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 		Joins("INNER JOIN release_tags ON release_tags.id = release_tag_pull_requests.release_tag_id").
 		Group("url, release_tags.stream, release_tags.architecture, release_tags.release_tag, release_tags.phase, release_tags.release")
 
+	lookback14d := time.Now().UTC().Add(-14 * 24 * time.Hour)
 	prs := dbc.DB.Table("prow_pull_requests").
 		Joins("LEFT JOIN (?) ci ON ci.url = prow_pull_requests.link",
 			dbc.DB.Table("(?) as ci", firstPayloadsByStreamAndArch).Where("ci.stream = 'ci' AND architecture = 'amd64'")).
@@ -29,7 +30,9 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 		Joins("INNER JOIN prow_jobs on prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_jobs.release = ?", release).
 		Where("prow_job_runs.prow_job_release = ?", release).
+		Where("prow_job_runs.timestamp > ?", lookback14d).
 		Where("prow_job_run_prow_pull_requests.prow_job_run_release = ?", release).
+		Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp > ?", lookback14d).
 		Select("DISTINCT ON(prow_pull_requests.link) prow_pull_requests.*, ci.release_tag AS first_ci_payload, ci.phase AS first_ci_payload_phase, ci.release as first_ci_payload_release, nightly.release_tag as first_nightly_payload, nightly.phase as first_nightly_payload_phase, nightly.release as first_nightly_payload_release")
 
 	results := make([]api.PullRequest, 0)
