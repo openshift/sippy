@@ -16,6 +16,7 @@ func CurrentActiveRelease(dbc *db.DB) (string, error) {
 	err := dbc.DB.Table("release_definitions").
 		Where("ga_date IS NULL").
 		Where("product = ?", "OCP").
+		Where("release ~ ?", `^\d+\.\d+$`).
 		Order("development_start_date ASC").
 		Limit(1).
 		Pluck("release", &release).Error
@@ -26,7 +27,9 @@ func CurrentActiveRelease(dbc *db.DB) (string, error) {
 		return release, nil
 	}
 	err = dbc.DB.Table("release_definitions").
+		Where("ga_date IS NOT NULL").
 		Where("product = ?", "OCP").
+		Where("release ~ ?", `^\d+\.\d+$`).
 		Order("ga_date DESC").
 		Limit(1).
 		Pluck("release", &release).Error
