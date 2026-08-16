@@ -142,14 +142,14 @@ func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]*storage.ObjectA
 	truncated := false
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
-	query := &storage.Query{
+	gcsQuery := &storage.Query{
 		Prefix:     jobRunPath,
 		Projection: storage.ProjectionNoACL,
 	}
 	if q.PathGlob != "" {
-		query.MatchGlob = jobRunPath + q.PathGlob
+		gcsQuery.MatchGlob = jobRunPath + q.PathGlob
 	}
-	iter := q.GcsBucket.Objects(ctx, query)
+	iter := q.GcsBucket.Objects(ctx, gcsQuery)
 	for {
 		attrs, err := iter.Next()
 		if err != nil {

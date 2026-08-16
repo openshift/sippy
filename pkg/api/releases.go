@@ -673,12 +673,14 @@ func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) ap
 func GetLastUpdateTime(dbc *db.DB) (time.Time, error) {
 	rel, err := query.CurrentActiveRelease(dbc)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, fmt.Errorf("get current active release: %w", err)
 	}
 	var lastUpdated time.Time
-	err = dbc.DB.Raw("SELECT COALESCE(MAX(created_at), '0001-01-01') FROM prow_job_runs WHERE prow_job_release = ? AND timestamp > NOW() - INTERVAL '14 days'", rel).
-		Scan(&lastUpdated).Error
-	return lastUpdated, err
+	if err := dbc.DB.Raw("SELECT COALESCE(MAX(created_at), '0001-01-01') FROM prow_job_runs WHERE prow_job_release = ? AND timestamp > NOW() - INTERVAL '14 days'", rel).
+		Scan(&lastUpdated).Error; err != nil {
+		return time.Time{}, fmt.Errorf("query last update time: %w", err)
+	}
+	return lastUpdated, nil
 }
 
 // PayloadForJobRun returns the payload release tag that was used for a given job run.
