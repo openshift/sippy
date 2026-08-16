@@ -137,7 +137,9 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 		if err != nil {
 			return errors.Wrapf(err, "could not fetch last updated time")
 		}
-		hoursSinceLastUpdate.WithLabelValues().Set(time.Since(lastUpdated).Hours())
+		if !lastUpdated.IsZero() {
+			hoursSinceLastUpdate.WithLabelValues().Set(time.Since(lastUpdated).Hours())
+		}
 
 		for _, pType := range promReportTypes {
 			// start, boundary and end will just be defaults

@@ -621,6 +621,7 @@ func getReportQueryCases() []queryCase {
 					Where("t.prow_job_run_release = ?", benchmarkRelease).
 					Where("merged_at is not null").
 					Select("org, repo, number, sha, merged_at").
+					Order("t.prow_job_run_id, prs.id").
 					Limit(1).Scan(&result)
 				if res.Error != nil {
 					return validationSnapshot{}, res.Error

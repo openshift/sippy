@@ -1,6 +1,10 @@
 package query
 
-import "github.com/openshift/sippy/pkg/db"
+import (
+	"fmt"
+
+	"github.com/openshift/sippy/pkg/db"
+)
 
 // CurrentActiveRelease returns the most relevant active release. It prefers the
 // in-development release with the oldest development_start_date (most mature).
@@ -15,7 +19,7 @@ func CurrentActiveRelease(dbc *db.DB) (string, error) {
 		Limit(1).
 		Pluck("release", &release).Error
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("query in-development release: %w", err)
 	}
 	if release != "" {
 		return release, nil
@@ -24,5 +28,8 @@ func CurrentActiveRelease(dbc *db.DB) (string, error) {
 		Order("ga_date DESC").
 		Limit(1).
 		Pluck("release", &release).Error
-	return release, err
+	if err != nil {
+		return "", fmt.Errorf("query latest GA release: %w", err)
+	}
+	return release, nil
 }
