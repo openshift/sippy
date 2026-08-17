@@ -22,14 +22,17 @@ import (
 type SchemaHashType string
 
 const (
-	hashTypeMatView                         SchemaHashType = "matview"
-	hashTypeView                            SchemaHashType = "view"
-	hashTypeMatViewIndex                    SchemaHashType = "matview_index"
-	hashTypeFunction                        SchemaHashType = "function"
-	partitionedTableProwJobRunTests                        = "prow_job_run_tests"
-	partitionedTableProwJobRunTestsOutputs                 = "prow_job_run_test_outputs"
-	partitionedTableTestDailyTotals                        = "test_daily_totals"
-	partitionedTableTestCumulativeSummaries                = "test_cumulative_summaries"
+	hashTypeMatView                            SchemaHashType = "matview"
+	hashTypeView                               SchemaHashType = "view"
+	hashTypeMatViewIndex                       SchemaHashType = "matview_index"
+	hashTypeFunction                           SchemaHashType = "function"
+	partitionedTableProwJobRuns                               = "prow_job_runs"
+	partitionedTableProwJobRunAnnotations                     = "prow_job_run_annotations"
+	partitionedTableProwJobRunProwPullRequests                = "prow_job_run_prow_pull_requests"
+	partitionedTableProwJobRunTests                           = "prow_job_run_tests"
+	partitionedTableProwJobRunTestsOutputs                    = "prow_job_run_test_outputs"
+	partitionedTableTestDailyTotals                           = "test_daily_totals"
+	partitionedTableTestCumulativeSummaries                   = "test_cumulative_summaries"
 )
 
 type DB struct {
@@ -130,10 +133,9 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 
 	// Run versioned migrations (golang-migrate) BEFORE AutoMigrate.
-	// This ensures tables like prow_job_run_tests exist before
-	// prow_job_runs trys to create it via AutoMigrate
-	// when we move prow_job_runs to be managed via RunMigrations
-	// we may need GORM AutoMigrate to run first
+	// Partitioned tables (prow_job_runs, prow_job_run_tests, etc.) are
+	// created by migration DDL, not AutoMigrate. AutoMigrate handles
+	// the remaining non-partitioned models.
 	if err := sippymigrate.RunMigrations(d.DB); err != nil {
 		return err
 	}
@@ -144,7 +146,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return fmt.Errorf("setup join table ProwJobRun.PullRequests: %w", err)
 	}
 
-	// List of all models to migrate
+	// Models to AutoMigrate. Partitioned tables (ProwJobRun,
+	// ProwJobRunAnnotation, ProwJobRunProwPullRequest, ProwJobRunTest,
+	// ProwJobRunTestOutput, TestDailyTotal, TestCumulativeSummary) are
+	// excluded; their schemas are managed by migration 000001/000006.
 	modelsToMigrate := []any{
 		&models.ReleaseDefinition{},
 		&models.ReleaseTag{},
@@ -178,11 +183,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&jobrunscan.Symptom{},
 	}
 
-	// Currently we need RunMigrations to run prior
-	// to AutoMigrate so that tables GORM depends on exist
-	// prior to AutoMigrate
-	// As we migrate more of the JobRuns based tables the
-	// Dependencies change, and we likely need to run this first
 	for _, model := range modelsToMigrate {
 		if err := d.DB.AutoMigrate(model); err != nil {
 			return err
@@ -235,6 +235,9 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 // and managed by gopar partition lifecycle management.
 func (d *DB) PartitionedTables() []string {
 	return []string{
+		partitionedTableProwJobRuns,
+		partitionedTableProwJobRunAnnotations,
+		partitionedTableProwJobRunProwPullRequests,
 		partitionedTableProwJobRunTests,
 		partitionedTableProwJobRunTestsOutputs,
 		partitionedTableTestDailyTotals,
@@ -260,6 +263,10 @@ func (d *DB) EnsurePartitions(releases []string, startDate, endDate time.Time, d
 	for _, tableName := range d.PartitionedTables() {
 		var dateColumn string
 		switch tableName {
+		case partitionedTableProwJobRuns:
+			dateColumn = "timestamp"
+		case partitionedTableProwJobRunAnnotations, partitionedTableProwJobRunProwPullRequests:
+			dateColumn = "prow_job_run_timestamp"
 		case partitionedTableProwJobRunTests:
 			dateColumn = "prow_job_run_timestamp"
 		case partitionedTableProwJobRunTestsOutputs:
@@ -388,19 +395,24 @@ func (d *DB) DropDetachedPartitions(detachedDays int, dryRun bool) (int, error) 
 func (d *DB) CleanupPartitions(dryRun bool) (detached, dropped int, err error) {
 	log.Info("Starting partition cleanup...")
 
-	// First, drop old detached partitions (110 days)
-	dropped, err = d.DropDetachedPartitions(110, dryRun)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to drop detached partitions: %w", err)
-	}
-	log.Infof("Dropped %d detached partitions", dropped)
-
-	// Then, detach old attached partitions (100 days)
+	// First, detach old attached partitions (100 days)
 	detached, err = d.DetachOldPartitions(100, dryRun)
 	if err != nil {
 		return detached, dropped, fmt.Errorf("failed to detach old partitions: %w", err)
 	}
 	log.Infof("Detached %d old partitions", detached)
+
+	// Then, drop old detached partitions (100 days)
+	// We initially held detached partitions for 10 days.
+	// Detaching removes the association with the parent table and leaves them as individual tables
+	// Which clutters the table list
+	// We plan to keep partitions longer and
+	// no longer need the multiphase, detach, wait then drop.
+	dropped, err = d.DropDetachedPartitions(100, dryRun)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to drop detached partitions: %w", err)
+	}
+	log.Infof("Dropped %d detached partitions", dropped)
 
 	log.Infof("Partition cleanup complete: detached=%d, dropped=%d", detached, dropped)
 	return detached, dropped, nil
