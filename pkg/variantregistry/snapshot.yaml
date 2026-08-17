@@ -322381,6 +322381,54 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-zones:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-zones-techpreview:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-zones-techpreview-serial:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-static-ovn:
     Aggregation: none
     Architecture: amd64
