@@ -19,15 +19,6 @@ type goldenFile struct {
 	Results map[string]validationSnapshot `json:"results"`
 }
 
-func allQueryCases() []queryCase {
-	cases := getQueryCases()
-	cases = append(cases, getReportQueryCases()...)
-	for _, qc := range getIndividualQueryCases() {
-		cases = append(cases, qc)
-	}
-	return cases
-}
-
 func Test_GenerateGoldenFile(t *testing.T) {
 	dbc, _ := getBenchmarkDBClient(t)
 	goldenPath := filepath.Clean(os.Getenv("golden_file_path"))

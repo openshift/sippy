@@ -203,6 +203,15 @@ func getIndividualQueryCases() map[string]queryCase {
 	}
 }
 
+func allQueryCases() []queryCase {
+	cases := getQueryCases()
+	cases = append(cases, getReportQueryCases()...)
+	for _, qc := range getIndividualQueryCases() {
+		cases = append(cases, qc)
+	}
+	return cases
+}
+
 func getQueryCases() []queryCase {
 	return []queryCase{
 		{
@@ -413,6 +422,40 @@ func getQueryCases() []queryCase {
 				}, nil
 			},
 		},
+		{
+			name: "FetchJobRunByID",
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
+				var jobRunID uint
+				res := dbc.DB.Table("prow_job_runs").
+					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
+					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
+					Order("prow_job_runs.timestamp DESC").
+					Limit(1).
+					Select("prow_job_runs.id").
+					Scan(&jobRunID)
+				if res.Error != nil {
+					return validationSnapshot{}, res.Error
+				}
+
+				var jobRun models.ProwJobRun
+				res = dbc.DB.Joins("ProwJob").
+					Preload("PullRequests").
+					Order("timestamp DESC").
+					First(&jobRun, jobRunID)
+				if res.Error != nil {
+					return validationSnapshot{}, res.Error
+				}
+				log.Printf("FetchJobRunByID for run %d: release=%s job=%s",
+					jobRun.ID, jobRun.ProwJobRelease, jobRun.ProwJob.Name)
+				return validationSnapshot{
+					RowCount: 1,
+					SpotChecks: map[string]string{
+						"release":  jobRun.ProwJobRelease,
+						"job_name": jobRun.ProwJob.Name,
+					},
+				}, nil
+			},
+		},
 	}
 }
 
@@ -530,40 +573,6 @@ func getReportQueryCases() []queryCase {
 				}
 				log.Printf("ProwJobRunCount for %s: %d", benchmarkJobName, count)
 				return validationSnapshot{RowCount: count}, nil
-			},
-		},
-		{
-			name: "FetchJobRunByID",
-			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
-				var jobRunID uint
-				res := dbc.DB.Table("prow_job_runs").
-					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
-					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
-					Order("prow_job_runs.timestamp DESC").
-					Limit(1).
-					Select("prow_job_runs.id").
-					Scan(&jobRunID)
-				if res.Error != nil {
-					return validationSnapshot{}, res.Error
-				}
-
-				var jobRun models.ProwJobRun
-				res = dbc.DB.Joins("ProwJob").
-					Preload("PullRequests").
-					Order("timestamp DESC").
-					First(&jobRun, jobRunID)
-				if res.Error != nil {
-					return validationSnapshot{}, res.Error
-				}
-				log.Printf("FetchJobRunByID for run %d: release=%s job=%s",
-					jobRun.ID, jobRun.ProwJobRelease, jobRun.ProwJob.Name)
-				return validationSnapshot{
-					RowCount: 1,
-					SpotChecks: map[string]string{
-						"release":  jobRun.ProwJobRelease,
-						"job_name": jobRun.ProwJob.Name,
-					},
-				}, nil
 			},
 		},
 		{
@@ -738,14 +747,8 @@ func Test_BenchmarkCombined(t *testing.T) {
 	iterations := 3
 
 	var results []benchmarkResult
-	for _, bc := range toBenchmarkCases(getQueryCases(), asOf) {
+	for _, bc := range toBenchmarkCases(allQueryCases(), asOf) {
 		t.Run(bc.name, func(t *testing.T) {
-			r := runBenchmarkCase(t, dbc, bc, iterations)
-			results = append(results, r)
-		})
-	}
-	for name, bc := range toBenchmarkCaseMap(getIndividualQueryCases(), asOf) {
-		t.Run(name, func(t *testing.T) {
 			r := runBenchmarkCase(t, dbc, bc, iterations)
 			results = append(results, r)
 		})
