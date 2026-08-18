@@ -16,15 +16,15 @@ import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 import Typography from '@mui/material/Typography'
 
+const useStyles = makeStyles((theme) => ({
+  formControl: {
+    margin: theme.spacing(1),
+    minWidth: '20px',
+  },
+}))
+
 export default function GroupByCheckboxList(props) {
   const varsContext = useContext(CompReadyVarsContext)
-  const useStyles = makeStyles((theme) => ({
-    formControl: {
-      margin: theme.spacing(1),
-      minWidth: '20px',
-    },
-  }))
-
   const classes = useStyles()
   const handleChange = (event) => {
     const item = event.target.name

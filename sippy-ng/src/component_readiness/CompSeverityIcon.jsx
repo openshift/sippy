@@ -6,6 +6,17 @@ import { withStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 
+const StyledBadge = withStyles((_theme) => ({
+  badge: {
+    height: 12,
+    maxHeight: 12,
+    minHeight: 12,
+    width: 12,
+    maxWidth: 12,
+    minWidth: 12,
+  },
+}))(Badge)
+
 export default function CompSeverityIcon(props) {
   const { accessibilityModeOn } = useContext(AccessibilityModeContext)
   const { explanations, status, grayFactor, count } = props
@@ -21,16 +32,6 @@ export default function CompSeverityIcon(props) {
     toolTip = explanations.join(' ')
   }
 
-  const StyledBadge = withStyles((_theme) => ({
-    badge: {
-      height: 12,
-      maxHeight: 12,
-      minHeight: 12,
-      width: 12,
-      maxWidth: 12,
-      minWidth: 12,
-    },
-  }))(Badge)
   return (
     <div>
       {status < -100 && count > 1 ? (

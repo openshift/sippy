@@ -17,6 +17,26 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
+const useStyles = makeStyles((theme) => ({
+  formControl: {
+    margin: theme.spacing(1),
+    minWidth: '20px',
+  },
+  selectEmpty: {
+    marginTop: theme.spacing(2),
+  },
+  headerName: {
+    width: '220px',
+    padding: '0px',
+    margin: '0px',
+  },
+  summary: {
+    backgroundColor: 'rgb(0, 153, 255)',
+    margin: '0px !important',
+    padding: '0px',
+  },
+}))
+
 export default function AdvancedOptions(props) {
   const {
     headerName: _headerName,
@@ -39,26 +59,6 @@ export default function AdvancedOptions(props) {
     setFlakeAsFailure,
     setIncludeMultiReleaseAnalysis,
   } = props
-
-  const useStyles = makeStyles((theme) => ({
-    formControl: {
-      margin: theme.spacing(1),
-      minWidth: '20px',
-    },
-    selectEmpty: {
-      marginTop: theme.spacing(2),
-    },
-    headerName: {
-      width: '220px',
-      padding: '0px',
-      margin: '0px',
-    },
-    summary: {
-      backgroundColor: 'rgb(0, 153, 255)',
-      margin: '0px !important',
-      padding: '0px',
-    },
-  }))
 
   const classes = useStyles()
 
@@ -185,16 +185,18 @@ export default function AdvancedOptions(props) {
               color="primary"
             />
             <Tooltip title="Enable analysis across multiple prior releases">
-              <p>
-                Historical release analysis:{' '}
-                {includeMultiReleaseAnalysis ? 'include' : 'exclude'}
-              </p>
-              <Switch
-                checked={includeMultiReleaseAnalysis}
-                onChange={handleChangeIncludeMultiReleaseAnalysis}
-                name="includeMultiReleaseAnalysis"
-                color="primary"
-              />
+              <div>
+                <p>
+                  Historical release analysis:{' '}
+                  {includeMultiReleaseAnalysis ? 'include' : 'exclude'}
+                </p>
+                <Switch
+                  checked={includeMultiReleaseAnalysis}
+                  onChange={handleChangeIncludeMultiReleaseAnalysis}
+                  name="includeMultiReleaseAnalysis"
+                  color="primary"
+                />
+              </div>
             </Tooltip>
           </FormGroup>
         </AccordionDetails>
