@@ -410,7 +410,7 @@ func (d *DB) CleanupPartitions(dryRun bool) (detached, dropped int, err error) {
 	// no longer need the multiphase, detach, wait then drop.
 	dropped, err = d.DropDetachedPartitions(100, dryRun)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to drop detached partitions: %w", err)
+		return detached, dropped, fmt.Errorf("failed to drop detached partitions: %w", err)
 	}
 	log.Infof("Dropped %d detached partitions", dropped)
 
