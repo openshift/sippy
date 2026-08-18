@@ -445,7 +445,7 @@ func (s *Server) determineCapabilities() {
 		buildClusterRelease, err := query.CurrentActiveRelease(s.db)
 		if err != nil {
 			log.WithError(err).Warningf("could not determine active release for build cluster check")
-		} else if hasBuildCluster, err := query.HasBuildClusterData(s.db, buildClusterRelease); hasBuildCluster {
+		} else if hasBuildCluster, err := query.HasBuildClusterData(s.db, buildClusterRelease, time.Now().Add(-14*24*time.Hour)); hasBuildCluster {
 			capabilities = append(capabilities, BuildClusterCapability)
 		} else if err != nil {
 			log.WithError(err).Warningf("could not fetch build cluster data")

@@ -40,7 +40,8 @@ func TestHasBuildClusterData(t *testing.T) {
 				cluster:   tt.cluster,
 			})
 
-			has, err := query.HasBuildClusterData(dbc, "4.16")
+			since := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+			has, err := query.HasBuildClusterData(dbc, "4.16", since)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, has)
 		})
@@ -50,7 +51,8 @@ func TestHasBuildClusterData(t *testing.T) {
 func TestHasBuildClusterDataEmpty(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
-	has, err := query.HasBuildClusterData(dbc, "4.16")
+	since := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	has, err := query.HasBuildClusterData(dbc, "4.16", since)
 	require.NoError(t, err)
 	assert.False(t, has)
 }

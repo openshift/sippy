@@ -862,13 +862,13 @@ func TestProwJobRunCount(t *testing.T) {
 	job := intutil.CreateProwJob(t, dbc, "periodic-ci-e2e-aws-4.16", "4.16", []string{"aws"})
 	otherJob := intutil.CreateProwJob(t, dbc, "periodic-ci-e2e-gcp-4.16", "4.16", []string{"gcp"})
 
-	now := time.Now().UTC()
-	intutil.CreateProwJobRun(t, dbc, job.ID, "4.16", now.Add(-2*24*time.Hour), true, v1.JobSucceeded)
-	intutil.CreateProwJobRun(t, dbc, job.ID, "4.16", now.Add(-1*24*time.Hour), false, v1.JobTestFailure)
+	intutil.CreateProwJobRun(t, dbc, job.ID, "4.16", time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC), true, v1.JobSucceeded)
+	intutil.CreateProwJobRun(t, dbc, job.ID, "4.16", time.Date(2024, 6, 2, 12, 0, 0, 0, time.UTC), false, v1.JobTestFailure)
 	// Run for the other job should not appear
-	intutil.CreateProwJobRun(t, dbc, otherJob.ID, "4.16", now.Add(-3*24*time.Hour), true, v1.JobSucceeded)
+	intutil.CreateProwJobRun(t, dbc, otherJob.ID, "4.16", time.Date(2024, 6, 3, 12, 0, 0, 0, time.UTC), true, v1.JobSucceeded)
 
-	count, err := query.ProwJobRunCount(dbc, job.ID, "4.16")
+	since := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	count, err := query.ProwJobRunCount(dbc, job.ID, "4.16", since)
 	require.NoError(t, err)
 	assert.Equal(t, 2, count)
 }

@@ -372,6 +372,7 @@ func TestJobRunsReport_NoPagination(t *testing.T) {
 
 func TestJobRunsReport_ReleaseFilter(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
+	intutil.CreateReleaseDefinition(t, dbc, "4.16", 4, 16)
 	td := setupJobRunsTestData(t, dbc)
 
 	t.Run("release 4.16", func(t *testing.T) {
@@ -388,9 +389,12 @@ func TestJobRunsReport_ReleaseFilter(t *testing.T) {
 		assert.Equal(t, idInt(td.runOther.ID), runs[0].ID) //nolint:gosec // DB IDs are well within int range
 	})
 
-	t.Run("empty release returns all", func(t *testing.T) {
+	t.Run("empty release falls back to active release", func(t *testing.T) {
 		result := callJobRunsReport(t, dbc, "", defaultFilterOpts(), defaultPagination(), jrReportEnd)
-		assert.True(t, result.TotalRows >= 5, "empty release should include runs from all releases within window")
+		runs := jobRunsFromResult(t, result)
+		ids := runIDs(runs)
+		assert.NotContains(t, ids, idInt(td.runOther.ID), "4.15 runs should be excluded when falling back to active release") //nolint:gosec // DB IDs are well within int range
+		assert.True(t, result.TotalRows >= 3, "empty release should return runs for the active release")
 	})
 }
 

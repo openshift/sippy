@@ -9,12 +9,12 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-func HasBuildClusterData(dbc *db.DB, release string) (bool, error) {
+func HasBuildClusterData(dbc *db.DB, release string, since time.Time) (bool, error) {
 	count := int64(0)
 	res := dbc.DB.Table("prow_job_runs").
 		Where(`cluster != '' AND cluster IS NOT NULL`).
 		Where("prow_job_release = ?", release).
-		Where("timestamp > NOW() - INTERVAL '14 days'").
+		Where("timestamp > ?", since).
 		Count(&count)
 	return count > 0, res.Error
 }

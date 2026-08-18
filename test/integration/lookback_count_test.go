@@ -160,12 +160,12 @@ func TestLookbackCount_MultipleJobsPerTestAggregated(t *testing.T) {
 	assert.Equal(t, int64(1), testIDsCount, "test with positive aggregate delta across jobs should be counted")
 }
 
-func TestLookbackCount_NoReleasesReturnsZeroTests(t *testing.T) {
+func TestLookbackCount_NoReleasesReturnsError(t *testing.T) {
 	dbc := lookbackCountDB(t)
 
-	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), testIDsCount)
+	_, _, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no OCP release found")
 }
 
 func TestLookbackCount_InvalidLookbackDays(t *testing.T) {

@@ -519,12 +519,12 @@ func getReportQueryCases() []queryCase {
 		},
 		{
 			name: "ProwJobRunCount",
-			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				var prowJob models.ProwJob
 				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
 					return validationSnapshot{}, err
 				}
-				count, err := query.ProwJobRunCount(dbc, prowJob.ID, benchmarkRelease)
+				count, err := query.ProwJobRunCount(dbc, prowJob.ID, benchmarkRelease, asOf.Add(-14*24*time.Hour))
 				if err != nil {
 					return validationSnapshot{}, err
 				}

@@ -73,12 +73,12 @@ func ProwJobSimilarName(dbc *db.DB, rootName, release string) ([]models.ProwJob,
 	return jobs, nil
 }
 
-func ProwJobRunCount(dbc *db.DB, prowJobID uint, release string) (int, error) {
+func ProwJobRunCount(dbc *db.DB, prowJobID uint, release string, since time.Time) (int, error) {
 	var count int64
 	q := dbc.DB.Table("prow_job_runs").
 		Where("prow_job_id = ?", prowJobID).
 		Where("prow_job_release = ?", release).
-		Where("timestamp > NOW() - INTERVAL '14 days'")
+		Where("timestamp > ?", since)
 	if err := q.Count(&count).Error; err != nil {
 		return 0, err
 	}
