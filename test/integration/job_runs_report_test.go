@@ -389,12 +389,10 @@ func TestJobRunsReport_ReleaseFilter(t *testing.T) {
 		assert.Equal(t, idInt(td.runOther.ID), runs[0].ID) //nolint:gosec // DB IDs are well within int range
 	})
 
-	t.Run("empty release falls back to active release", func(t *testing.T) {
-		result := callJobRunsReport(t, dbc, "", defaultFilterOpts(), defaultPagination(), jrReportEnd)
-		runs := jobRunsFromResult(t, result)
-		ids := runIDs(runs)
-		assert.NotContains(t, ids, idInt(td.runOther.ID), "4.15 runs should be excluded when falling back to active release") //nolint:gosec // DB IDs are well within int range
-		assert.True(t, result.TotalRows >= 3, "empty release should return runs for the active release")
+	t.Run("empty release returns error", func(t *testing.T) {
+		_, err := api.JobsRunsReportFromDB(dbc, defaultFilterOpts(), "", defaultPagination(), jrReportEnd)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "release is required")
 	})
 }
 
