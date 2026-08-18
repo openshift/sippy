@@ -928,7 +928,15 @@ func syncRegressions(dbc *db.DB) error {
 	backend := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 	rLog := log.WithField("source", "seed-regression-sync")
 
+	// Aggregate active IDs per release across all enabled views before closing.
+	releaseActiveIDs := map[string]sets.Set[uint]{}
+
 	for _, view := range views.ComponentReadiness {
+		if !view.RegressionTracking.Enabled {
+			rLog.WithField("view", view.Name).Info("skipping view with regression tracking disabled")
+			continue
+		}
+
 		baseRelease, err := utils.GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
 		if err != nil {
 			return fmt.Errorf("error getting base release for view %s: %w", view.Name, err)
@@ -963,26 +971,32 @@ func syncRegressions(dbc *db.DB) error {
 			}
 		}
 
-		// Close regressions no longer in the report
-		allRegs, err := backend.ListCurrentRegressionsForRelease(view.SampleRelease.Name)
-		if err != nil {
-			return fmt.Errorf("error listing regressions: %w", err)
+		release := view.SampleRelease.Name
+		if _, ok := releaseActiveIDs[release]; !ok {
+			releaseActiveIDs[release] = sets.New[uint]()
 		}
-		activeIDs := map[uint]bool{}
 		for _, r := range activeRegs {
-			activeIDs[r.ID] = true
+			releaseActiveIDs[release].Insert(r.ID)
 		}
-		now := time.Now()
+
+		rLog.Infof("synced regressions for view %s: %d active", view.Name, len(activeRegs))
+	}
+
+	// Close regressions no longer active in any enabled view for each release.
+	closeTime := time.Now()
+	for release, activeIDs := range releaseActiveIDs {
+		allRegs, err := backend.ListCurrentRegressionsForRelease(release)
+		if err != nil {
+			return fmt.Errorf("error listing regressions for release %s: %w", release, err)
+		}
 		for _, reg := range allRegs {
-			if !activeIDs[reg.ID] && !reg.Closed.Valid {
-				reg.Closed = sql.NullTime{Valid: true, Time: now}
+			if !activeIDs.Has(reg.ID) && !reg.Closed.Valid {
+				reg.Closed = sql.NullTime{Valid: true, Time: closeTime}
 				if err := backend.UpdateRegression(reg); err != nil {
 					return fmt.Errorf("error closing regression %d: %w", reg.ID, err)
 				}
 			}
 		}
-
-		rLog.Infof("synced regressions for view %s: %d active", view.Name, len(activeRegs))
 	}
 
 	if err := backend.ResolveTriages(); err != nil {
@@ -1401,17 +1415,17 @@ func seedReleasePayloads(dbc *db.DB) error {
 	now := time.Now().UTC().Truncate(time.Hour)
 	var tagCount int
 
-	var prev *payloadDef
+	// Process oldest-first so we build a correct previous-accepted chain per stream.
+	sort.SliceStable(payloads, func(a, b int) bool {
+		return payloads[a].daysBefore > payloads[b].daysBefore
+	})
+	lastAccepted := map[string]string{} // "release/stream" -> tag name
 	for i := range payloads {
 		pd := payloads[i]
 		releaseTime := now.AddDate(0, 0, -pd.daysBefore)
 		tagName := fmt.Sprintf("%s.0-0.%s-%s", pd.release, pd.stream, releaseTime.Format("2006-01-02-150405"))
-		prevTagName := ""
-		if prev != nil && prev.release == pd.release {
-			prevTime := now.AddDate(0, 0, -prev.daysBefore)
-			prevTagName = fmt.Sprintf("%s.0-0.%s-%s", pd.release, prev.stream, prevTime.Format("2006-01-02-150405"))
-		}
-		prev = &payloads[i]
+		streamKey := pd.release + "/" + pd.stream
+		prevTagName := lastAccepted[streamKey]
 
 		tag := models.ReleaseTag{
 			ReleaseTag:         tagName,
@@ -1432,6 +1446,9 @@ func seedReleasePayloads(dbc *db.DB) error {
 
 		if err := dbc.DB.Create(&tag).Error; err != nil {
 			return fmt.Errorf("failed to create release tag %s: %w", tagName, err)
+		}
+		if pd.phase == "Accepted" {
+			lastAccepted[streamKey] = tagName
 		}
 
 		prDefs := []models.ReleasePullRequest{
@@ -1602,7 +1619,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 	log.WithField("count", len(bugs)).Info("Created bug records")
 
 	var regressions []models.TestRegression
-	if err := dbc.DB.Limit(2).Find(&regressions).Error; err != nil {
+	if err := dbc.DB.Where("release = ?", "4.22").Order("id").Limit(2).Find(&regressions).Error; err != nil {
 		return fmt.Errorf("failed to find regressions: %w", err)
 	}
 
@@ -1647,32 +1664,33 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 		return fmt.Errorf("failed to find failed job runs: %w", err)
 	}
 
-	labelAssignments := map[int]pq.StringArray{
-		0: {"ClusterDNSFlake", "InfraFailure"},
-		1: {"ClusterInstallTimeout"},
-		2: {"APIServerTimeout"},
+	labelAssignments := []pq.StringArray{
+		{"ClusterDNSFlake", "InfraFailure"},
+		{"ClusterInstallTimeout"},
+		{"APIServerTimeout"},
 	}
+	labeled := 0
 	for idx, labels := range labelAssignments {
 		if idx >= len(jobRuns) {
 			break
 		}
-		existing := jobRuns[idx].Labels
-		merged := append(existing, labels...)
+		merged := sets.New[string](jobRuns[idx].Labels...).Insert(labels...)
 		if err := dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", jobRuns[idx].ID).
-			Update("labels", merged).Error; err != nil {
+			Update("labels", pq.StringArray(sets.List(merged))).Error; err != nil {
 			return fmt.Errorf("failed to update job run labels: %w", err)
 		}
+		labeled++
 	}
-	log.WithField("count", len(labelAssignments)).Info("Applied labels to failed job runs")
+	log.WithField("count", labeled).Info("Applied labels to failed job runs")
 
 	var regressions []models.TestRegression
-	if err := dbc.DB.Where("release = ?", "4.22").Preload("JobRuns").Limit(3).Find(&regressions).Error; err != nil {
+	if err := dbc.DB.Where("release = ?", "4.22").Preload("JobRuns").Order("id").Limit(3).Find(&regressions).Error; err != nil {
 		return fmt.Errorf("failed to find regressions: %w", err)
 	}
 
-	symptomAssignments := map[int]pq.StringArray{
-		0: {"DNSTimeoutSymptom"},
-		1: {"InstallTimeoutSymptom", "APITimeoutSymptom"},
+	symptomAssignments := []pq.StringArray{
+		{"DNSTimeoutSymptom"},
+		{"InstallTimeoutSymptom", "APITimeoutSymptom"},
 	}
 	updatedCount := 0
 	for regIdx, symptoms := range symptomAssignments {
@@ -1690,7 +1708,7 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 	log.WithField("count", updatedCount).Info("Populated job_symptoms on regression job runs")
 
 	var triages []models.Triage
-	if err := dbc.DB.Preload("Regressions").Limit(2).Find(&triages).Error; err != nil {
+	if err := dbc.DB.Preload("Regressions").Order("id").Limit(2).Find(&triages).Error; err != nil {
 		return fmt.Errorf("failed to find triages: %w", err)
 	}
 
@@ -1748,9 +1766,14 @@ func seedTestOutputsForPeriodicJobs(dbc *db.DB) error {
 			Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_run_tests.prow_job_id").
 			Where("prow_job_run_tests.status = ? AND prow_job_run_tests.test_id = (SELECT id FROM tests WHERE name = ?) AND prow_jobs.release = ? AND prow_jobs.kind = ?",
 				int(v1.TestStatusFailure), spec.testName, spec.release, "periodic").
+			Order("prow_job_run_tests.id").
 			Limit(2).
 			Find(&testResults).Error; err != nil {
-			log.WithField("test", spec.testName).WithError(err).Warn("Could not find failed test results for output seeding")
+			return fmt.Errorf("querying failed results for %q: %w", spec.testName, err)
+		}
+		if len(testResults) == 0 {
+			log.WithField("test", spec.testName).WithField("release", spec.release).
+				Warn("No failed periodic test results found, skipping output seeding")
 			continue
 		}
 
