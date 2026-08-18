@@ -1,5 +1,1169 @@
 ---
 component_readiness:
+- name: 5.1-main
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+      Upgrade:
+      - micro
+      - minor
+      - none
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: true
+  automate_jira:
+    enabled: true
+- name: 5.1-rosa
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - rosa
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+      Upgrade:
+      - micro
+      - minor
+      - none
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+  automate_jira:
+    enabled: false
+- name: 5.1-main-mass-failure
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+      Upgrade:
+      - micro
+      - minor
+      - none
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+    key_test_names:
+    - "install should succeed: overall"
+    - "[sig-cluster-lifecycle] Cluster completes upgrade"
+    - "[Jira:\"Test Framework\"] there should not be mass test failures"
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: true
+  automate_jira:
+    enabled: false
+- name: 5.1-hypershift-candidates
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - external
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+- name: 5.1-x86-vs-multi-arm
+  base_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+    db_group_by:
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Architecture:
+      - arm64
+      - multi
+    variant_cross_compare:
+    - Architecture
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+- name: 5.1-rhcos10-vs-rhcos9
+  base_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      Network:
+      - ovn
+      OS:
+      - rhcos10
+      Owner:
+      - eng
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - single
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      OS:
+      - rhcos9
+    variant_cross_compare:
+    - OS
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 4
+    confidence: 95
+    pity_factor: 10
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+- name: 5.1-ha-vs-single
+  base_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Owner:
+      - eng
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Topology:
+      - single
+    variant_cross_compare:
+    - Topology
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+- name: 5.1-LP-Chaos--lpMainline
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct: []
+      Network:
+      - ovn
+      Owner:
+      - mpict
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 5.1-LP-Interop--lpMainline
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct: []
+      Network:
+      - ovn
+      Owner:
+      - mpiit
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 5.1-LP-OCP-Compat--lpMainline
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct:
+      - lp-ocp-compat--acs--lpMainline
+      Network:
+      - ovn
+      Owner:
+      - lp
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 5.1-LP-OCP-Compat--lpGA
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct:
+      - lp-ocp-compat--virt--lpGA
+      - lp-ocp-compat--openshift-pipelines--lpGA
+      - lp-ocp-compat--acs--lpGA
+      - lp-ocp-compat--mta--lpGA
+      - lp-ocp-compat--quay--lpGA
+      - lp-ocp-compat--odf--lpGA
+      - lp-ocp-compat--oadp--lpGA
+      - lp-ocp-compat--gitops--lpGA
+      - lp-ocp-compat--serverless--lpGA
+      - lp-ocp-compat--servicemesh--lpGA
+      Network:
+      - ovn
+      Owner:
+      - lp
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 5.1-lp-Interop-coo
+  base_release:
+    release: "5.1"
+    relative_start: now-60d
+    relative_end: now-30d
+  sample_release:
+    release: "5.1"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      Platform: { }
+      Suite: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      LayeredProduct:
+      - lp-interop-coo
+      Owner:
+      - eng
+      - qe
+      Platform:
+      - azure
+      - gcp
+      - aws
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: false
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+- name: 5.1-rarely-run-jobs
+  base_release:
+    release: "5.0"
+    relative_start: now-90d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+      # need to look much further back for rarely run jobs
+    relative_start: now-90d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+      Procedure: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      Procedure: { }
+      JobTier: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      Installer:
+      - ipi
+      - upi
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      JobTier:
+      - rare
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_all_tests: 90
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+- name: 5.1-s390x
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - s390x
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - libvirt
+      - none
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+  automate_jira:
+    enabled: false
+- name: 5.1-ppc64le
+  base_release:
+    release: "5.0"
+    relative_start: now-30d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - ppc64le
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - libvirt
+      - none
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+  automate_jira:
+    enabled: false
+- name: 5.1-ha-vs-two-node-arbiter
+  base_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Owner:
+      - eng
+      Platform:
+      - metal
+      Topology:
+      - ha
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Topology:
+      - two-node-arbiter
+    variant_cross_compare:
+    - Topology
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+- name: 5.1-ha-vs-two-node-fencing
+  base_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "5.1"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Owner:
+      - eng
+      Platform:
+      - metal
+      Topology:
+      - ha
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Topology:
+      - two-node-fencing
+    variant_cross_compare:
+    - Topology
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
 - name: 5.0-main
   base_release:
     release: "4.22"
@@ -1102,6 +2266,1170 @@ component_readiness:
     relative_end: now
   sample_release:
     release: "5.0"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Owner:
+      - eng
+      Platform:
+      - metal
+      Topology:
+      - ha
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Topology:
+      - two-node-fencing
+    variant_cross_compare:
+    - Topology
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+- name: 4.23-main
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+      Upgrade:
+      - micro
+      - minor
+      - none
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: true
+  automate_jira:
+    enabled: true
+- name: 4.23-rosa
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - rosa
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+      Upgrade:
+      - micro
+      - minor
+      - none
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+  automate_jira:
+    enabled: false
+- name: 4.23-main-mass-failure
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+      Upgrade:
+      - micro
+      - minor
+      - none
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+    key_test_names:
+    - "install should succeed: overall"
+    - "[sig-cluster-lifecycle] Cluster completes upgrade"
+    - "[Jira:\"Test Framework\"] there should not be mass test failures"
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: true
+  automate_jira:
+    enabled: false
+- name: 4.23-hypershift-candidates
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - external
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+- name: 4.23-x86-vs-multi-arm
+  base_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+    db_group_by:
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Architecture:
+      - arm64
+      - multi
+    variant_cross_compare:
+    - Architecture
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+- name: 4.23-rhcos10-vs-rhcos9
+  base_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      Network:
+      - ovn
+      OS:
+      - rhcos10
+      Owner:
+      - eng
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - single
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      OS:
+      - rhcos9
+    variant_cross_compare:
+    - OS
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 4
+    confidence: 95
+    pity_factor: 10
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+- name: 4.23-ha-vs-single
+  base_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Owner:
+      - eng
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Topology:
+      - single
+    variant_cross_compare:
+    - Topology
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+- name: 4.23-LP-Chaos--lpMainline
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct: []
+      Network:
+      - ovn
+      Owner:
+      - mpict
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 4.23-LP-Interop--lpMainline
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct: []
+      Network:
+      - ovn
+      Owner:
+      - mpiit
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 4.23-LP-OCP-Compat--lpMainline
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct:
+      - lp-ocp-compat--acs--lpMainline
+      Network:
+      - ovn
+      Owner:
+      - lp
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 4.23-LP-OCP-Compat--lpGA
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      LayeredProduct:
+      - lp-ocp-compat--virt--lpGA
+      - lp-ocp-compat--openshift-pipelines--lpGA
+      - lp-ocp-compat--acs--lpGA
+      - lp-ocp-compat--mta--lpGA
+      - lp-ocp-compat--quay--lpGA
+      - lp-ocp-compat--odf--lpGA
+      - lp-ocp-compat--oadp--lpGA
+      - lp-ocp-compat--gitops--lpGA
+      - lp-ocp-compat--serverless--lpGA
+      - lp-ocp-compat--servicemesh--lpGA
+      Network:
+      - ovn
+      Owner:
+      - lp
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
+- name: 4.23-lp-Interop-coo
+  base_release:
+    release: "4.23"
+    relative_start: now-60d
+    relative_end: now-30d
+  sample_release:
+    release: "4.23"
+    relative_start: now-30d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      Platform: { }
+      Suite: { }
+    include_variants:
+      Architecture:
+      - amd64
+      - arm64
+      LayeredProduct:
+      - lp-interop-coo
+      Owner:
+      - eng
+      - qe
+      Platform:
+      - azure
+      - gcp
+      - aws
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: false
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+- name: 4.23-rarely-run-jobs
+  base_release:
+    release: "4.22"
+    relative_start: ga-90d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+      # need to look much further back for rarely run jobs
+    relative_start: now-90d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+      Topology: { }
+      Procedure: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      Procedure: { }
+      JobTier: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      Installer:
+      - ipi
+      - upi
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      JobTier:
+      - rare
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_all_tests: 90
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+- name: 4.23-s390x
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - s390x
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - libvirt
+      - none
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+  automate_jira:
+    enabled: false
+- name: 4.23-ppc64le
+  base_release:
+    release: "4.22"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Network: { }
+      Platform: { }
+      Topology: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - ppc64le
+      - multi
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - libvirt
+      - none
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: false
+  prime_cache:
+    enabled: false
+  automate_jira:
+    enabled: false
+- name: 4.23-ha-vs-two-node-arbiter
+  base_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Owner:
+      - eng
+      Platform:
+      - metal
+      Topology:
+      - ha
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Topology:
+      - two-node-arbiter
+    variant_cross_compare:
+    - Topology
+  test_filters:
+    lifecycles:
+    - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
+- name: 4.23-ha-vs-two-node-fencing
+  base_release:
+    release: "4.23"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "4.23"
     relative_start: now-7d
     relative_end: now
   variant_options:
