@@ -10,7 +10,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
@@ -20,7 +20,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	apiv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
@@ -45,7 +44,7 @@ type RegressionCacheLoader struct {
 	logger *log.Entry
 
 	// Cache priming deps
-	bqClient             *bigquery.Client
+	dataProvider         dataprovider.DataProvider
 	config               *configv1.SippyConfig
 	releases             []apiv1.Release
 	crTimeRoundingFactor time.Duration
@@ -57,7 +56,7 @@ type RegressionCacheLoader struct {
 
 func New(
 	dbc *db.DB,
-	bqClient *bigquery.Client,
+	dataProvider dataprovider.DataProvider,
 	config *configv1.SippyConfig,
 	views []crview.View,
 	releases []apiv1.Release,
@@ -71,7 +70,7 @@ func New(
 
 	return &RegressionCacheLoader{
 		dbc:                  dbc,
-		bqClient:             bqClient,
+		dataProvider:         dataProvider,
 		config:               config,
 		views:                views,
 		releases:             releases,
@@ -93,6 +92,11 @@ func (l *RegressionCacheLoader) Errors() []error {
 func (l *RegressionCacheLoader) Load() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 	defer cancel()
+
+	start := time.Now()
+	defer func() {
+		l.logger.WithField("duration", time.Since(start)).Info("regression cache load cycle complete")
+	}()
 
 	cacheOpts := cache.RequestOptions{
 		CRTimeRoundingFactor: l.crTimeRoundingFactor,
@@ -214,6 +218,11 @@ func (l *RegressionCacheLoader) processView(
 	vLog *log.Entry,
 ) ([]*models.TestRegression, error) {
 
+	start := time.Now()
+	defer func() {
+		vLog.WithField("duration", time.Since(start)).Info("processed view")
+	}()
+
 	generator, err := l.buildGenerator(view, cacheOpts, []reqopts.TestIdentification{{}})
 	if err != nil {
 		return nil, err
@@ -312,7 +321,7 @@ func (l *RegressionCacheLoader) generateAndCacheReport(
 
 	report, errs := api.GetDataFromCacheOrGenerate(
 		ctx,
-		l.bqClient.Cache, generator.ReqOptions.CacheOption,
+		l.dataProvider.Cache(), generator.ReqOptions.CacheOption,
 		api.NewCacheSpec(generator.GetCacheKey(), componentreadiness.ComponentReportCacheKeyPrefix, nil),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
@@ -396,7 +405,7 @@ func (l *RegressionCacheLoader) cacheTestDetailsReports(
 			continue
 		}
 		cacheDuration := api.CalculateRoundedCacheDuration(cacheOpts)
-		api.CacheSet(ctx, l.bqClient.Cache, report, cacheKey, cacheDuration)
+		api.CacheSet(ctx, l.dataProvider.Cache(), report, cacheKey, cacheDuration)
 	}
 }
 
@@ -506,7 +515,7 @@ func (l *RegressionCacheLoader) buildGenerator(
 	}
 
 	generator := componentreadiness.NewComponentReportGenerator(
-		bqprovider.NewBigQueryProvider(l.bqClient),
+		l.dataProvider,
 		reqOpts, l.dbc,
 		l.releases, "")
 	return &generator, nil

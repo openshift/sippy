@@ -165,7 +165,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Warn("unable to connect to postgres, will use BigQuery for release metadata")
 			}
-			provider, err := newDataProvider(f.DataProvider, bigQueryClient, dbc, cacheClient)
+			provider, err := flags.NewDataProvider(f.DataProvider, bigQueryClient, dbc, cacheClient)
 			if err != nil {
 				return err
 			}

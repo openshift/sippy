@@ -188,7 +188,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 	}
 
-	crDataProvider, err := newDataProvider(f.DataProvider, bigQueryClient, dbc, cacheClient)
+	crDataProvider, err := flags.NewDataProvider(f.DataProvider, bigQueryClient, dbc, cacheClient)
 	if err != nil {
 		return err
 	}

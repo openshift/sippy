@@ -69,6 +69,7 @@ type LoadFlags struct {
 	ProwLoadSince           string
 	SkipMatviewRefresh      bool
 	ForceGARefresh          bool
+	DataProvider            string
 }
 
 // want a single total load and refresh time
@@ -111,6 +112,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.ProwLoadSince, "prow-load-since", "", "Override how far back to load prow jobs (e.g. 2024-01-15T00:00:00Z or 72h for 72 hours ago)")
 	fs.BoolVar(&f.SkipMatviewRefresh, "skip-matview-refresh", false, "Skip refreshing materialized views after loading")
 	fs.BoolVar(&f.ForceGARefresh, "force-ga-refresh", false, "Force re-population of GA test status data from BigQuery")
+	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider: default, bigquery, or postgres")
 }
 
 // nolint:gocyclo
@@ -262,8 +264,13 @@ func NewLoadCommand() *cobra.Command {
 					}
 					regressionStore := componentreadiness.NewPostgresRegressionStore(dbc, jiraClient)
 
+					crDataProvider, err := flags.NewDataProvider(f.DataProvider, bqc, dbc, cacheClient)
+					if err != nil {
+						return errors.Wrap(err, "error creating data provider for regression cache loader")
+					}
+
 					rcl, err := regressioncacheloader.New(
-						dbc, bqc, config, views.ComponentReadiness, releaseConfigs,
+						dbc, crDataProvider, config, views.ComponentReadiness, releaseConfigs,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor,
 						f.ComponentReadinessFlags.CRTimeRoundingOffset,
 						regressionStore,

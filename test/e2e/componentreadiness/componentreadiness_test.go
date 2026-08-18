@@ -69,9 +69,13 @@ func TestRegressionCacheLoader(t *testing.T) {
 	// Build a regression store
 	regressionStore := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
+	// Build the data provider (BigQuery-backed, matching the loader's prior behavior)
+	dataProvider, err := flags.NewDataProvider("bigquery", bqClient, dbc, cacheClient)
+	require.NoError(t, err, "error creating data provider")
+
 	// Create and run the loader
 	loader, err := regressioncacheloader.New(
-		dbc, bqClient,
+		dbc, dataProvider,
 		&configv1.SippyConfig{},
 		sippyViews.ComponentReadiness,
 		releaseConfigs,
