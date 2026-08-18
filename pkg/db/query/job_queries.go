@@ -5,7 +5,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -26,17 +25,11 @@ type ProwJobRunPartitionKeys struct {
 // the caller then uses these keys to load the full row with partition pruning.
 func LookupProwJobRunPartitionKeys(dbc *db.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
 	var keys ProwJobRunPartitionKeys
-	res := dbc.DB.Table("prow_job_runs").
+	err := dbc.DB.Table("prow_job_runs").
 		Select("prow_job_release, timestamp").
 		Where("id = ?", jobRunID).
-		Scan(&keys)
-	if res.Error != nil {
-		return keys, res.Error
-	}
-	if res.RowsAffected == 0 {
-		return keys, gorm.ErrRecordNotFound
-	}
-	return keys, nil
+		Take(&keys).Error
+	return keys, err
 }
 
 func JobRunTestCount(dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {

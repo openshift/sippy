@@ -15,10 +15,8 @@ import (
 	"cloud.google.com/go/civil"
 	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -426,67 +424,32 @@ func GetJobRunTestsCountByLookbackAt(dbc *db.DB, lookbackDays int, today civil.D
 		return -1, -1, fmt.Errorf("counting job runs: %w", err)
 	}
 
-	// Count distinct tests using cumulative summaries. Query per-release so
-	// Postgres can prune to a single date sub-partition per release for each
-	// side of the join, avoiding the full cross-partition scan that makes a
-	// global self-join slow.
-
-	var releases []string
-	err = dbc.DB.Table("release_definitions").
-		Pluck("release", &releases).
+	// Count distinct tests using cumulative summaries for the active release.
+	var testIDs []int64
+	err = dbc.DB.Raw(`
+		WITH end_sums AS (
+		  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
+		  FROM test_cumulative_summaries
+		  WHERE release = ? AND date = ?
+		  GROUP BY test_id
+		),
+		start_sums AS (
+		  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
+		  FROM test_cumulative_summaries
+		  WHERE release = ? AND date = ?
+		  GROUP BY test_id
+		)
+		SELECT e.test_id
+		FROM end_sums e
+		LEFT JOIN start_sums s ON s.test_id = e.test_id
+		WHERE (e.total_runs - COALESCE(s.total_runs, 0)) > 0`,
+		release, today, release, startMinusOne).
+		Scan(&testIDs).
 		Error
 	if err != nil {
-		return -1, -1, fmt.Errorf("listing releases: %w", err)
+		return -1, -1, fmt.Errorf("counting test IDs for release %s: %w", release, err)
 	}
-
-	ch := make(chan []int64, len(releases))
-	testIDs := sets.New[int64]()
-	done := make(chan struct{})
-	go func() {
-		for ids := range ch {
-			testIDs.Insert(ids...)
-		}
-		close(done)
-	}()
-
-	g := new(errgroup.Group)
-	g.SetLimit(4)
-	for _, release := range releases {
-		g.Go(func() error {
-			var releaseTestIDs []int64
-			queryErr := dbc.DB.Raw(`
-				WITH end_sums AS (
-				  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
-				  FROM test_cumulative_summaries
-				  WHERE release = ? AND date = ?
-				  GROUP BY test_id
-				),
-				start_sums AS (
-				  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
-				  FROM test_cumulative_summaries
-				  WHERE release = ? AND date = ?
-				  GROUP BY test_id
-				)
-				SELECT e.test_id
-				FROM end_sums e
-				LEFT JOIN start_sums s ON s.test_id = e.test_id
-				WHERE (e.total_runs - COALESCE(s.total_runs, 0)) > 0`,
-				release, today, release, startMinusOne).
-				Scan(&releaseTestIDs).
-				Error
-			if queryErr != nil {
-				return fmt.Errorf("counting test IDs for release %s: %w", release, queryErr)
-			}
-			ch <- releaseTestIDs
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return -1, -1, err
-	}
-	close(ch)
-	<-done
-	testIDsCount := int64(testIDs.Len())
+	testIDsCount := int64(len(testIDs))
 
 	log.WithFields(log.Fields{
 		"lookbackDays": lookbackDays,

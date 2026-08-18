@@ -13,11 +13,9 @@ import (
 func RepositoryReport(dbc *db.DB, filterOpts *filter.FilterOptions, release string, reportEnd time.Time) ([]api.Repository, error) {
 	end := reportEnd
 
-	premergeFailureStart := reportEnd.Add(-14 * 24 * time.Hour)
-	averageByJob := PullRequestAveragePremergeFailures(dbc, release, &premergeFailureStart, &end)
-
-	revertCountStart := reportEnd.Add(-90 * 24 * time.Hour)
-	revertCount := RepositoryRevertCount(dbc, &revertCountStart, &end)
+	lookback90d := reportEnd.Add(-90 * 24 * time.Hour)
+	averageByJob := PullRequestAveragePremergeFailures(dbc, release, &lookback90d, &end)
+	revertCount := RepositoryRevertCount(dbc, &lookback90d, &end)
 
 	repos := dbc.DB.Table("prow_pull_requests").
 		Joins("INNER JOIN prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id").
@@ -27,9 +25,9 @@ func RepositoryReport(dbc *db.DB, filterOpts *filter.FilterOptions, release stri
 		Joins("LEFT JOIN (?) premerge_failures ON premerge_failures.prow_job_ID = prow_jobs.id", averageByJob).
 		Where("prow_jobs.release = ?", release).
 		Where("prow_job_runs.prow_job_release = ?", release).
-		Where("prow_job_runs.timestamp >= ? AND prow_job_runs.timestamp < ?", premergeFailureStart, reportEnd).
+		Where("prow_job_runs.timestamp >= ? AND prow_job_runs.timestamp < ?", lookback90d, reportEnd).
 		Where("prow_job_run_prow_pull_requests.prow_job_run_release = ?", release).
-		Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp >= ? AND prow_job_run_prow_pull_requests.prow_job_run_timestamp < ?", premergeFailureStart, reportEnd).
+		Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp >= ? AND prow_job_run_prow_pull_requests.prow_job_run_timestamp < ?", lookback90d, reportEnd).
 		Group("prow_pull_requests.org, prow_pull_requests.repo").
 		Select("ROW_NUMBER() OVER() as id, prow_pull_requests.org, prow_pull_requests.repo, max(revert_count) as revert_count, coalesce(max(average_premerge_job_failures), 0) as worst_premerge_job_failures, count(distinct(prow_jobs.id)) as job_count")
 
