@@ -55,11 +55,7 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 	}
 
 	if len(release) == 0 {
-		var err error
-		release, err = query.CurrentActiveRelease(dbc)
-		if err != nil {
-			return nil, fmt.Errorf("determining current release: %w", err)
-		}
+		return nil, &ValidationError{Message: "release is required; use useCurrentRelease=true to resolve automatically"}
 	}
 
 	jobsResult := make([]apitype.JobRun, 0)
@@ -453,7 +449,13 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []strin
 		q = q.Preload(preload)
 	}
 
-	res := q.Order("timestamp DESC").First(jobRun, jobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(dbc, jobRunID)
+	if err != nil {
+		return nil, fmt.Errorf("looking up partition keys for job run %d: %w", jobRunID, err)
+	}
+
+	res := q.Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
+		Take(jobRun, jobRunID)
 	if res.Error != nil {
 		return nil, res.Error
 	}

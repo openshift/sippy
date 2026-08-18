@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -176,8 +177,16 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 		return result
 	}
 
+	partKeys, err := query.LookupProwJobRunPartitionKeys(r.db, jobRunID)
+	if err != nil {
+		result.Status = ReEvalEvalError
+		result.Error = fmt.Sprintf("looking up partition keys for job run %s: %v", buildID, err)
+		return result
+	}
+
 	jobRunModel := new(models.ProwJobRun)
-	res := r.db.DB.Order("timestamp DESC").First(jobRunModel, jobRunID)
+	res := r.db.DB.Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
+		Take(jobRunModel, jobRunID)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			result.Status = ReEvalMissingError

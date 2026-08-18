@@ -12,6 +12,27 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 )
 
+// ProwJobRunPartitionKeys holds the partition key columns for prow_job_runs.
+// Used for two-step lookups: fetch these lightweight keys first, then load the
+// full row with partition pruning. This will be replaced by a mapping table in
+// a future iteration.
+type ProwJobRunPartitionKeys struct {
+	ProwJobRelease string    `gorm:"column:prow_job_release"`
+	Timestamp      time.Time `gorm:"column:timestamp"`
+}
+
+// LookupProwJobRunPartitionKeys fetches the partition keys for a prow_job_run
+// by ID. This is intended as the first step of a two-step lookup pattern where
+// the caller then uses these keys to load the full row with partition pruning.
+func LookupProwJobRunPartitionKeys(dbc *db.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
+	var keys ProwJobRunPartitionKeys
+	err := dbc.DB.Table("prow_job_runs").
+		Select("prow_job_release, timestamp").
+		Where("id = ?", jobRunID).
+		Take(&keys).Error
+	return keys, err
+}
+
 func JobRunTestCount(dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {
 	var prowJobRunTestCount int64
 

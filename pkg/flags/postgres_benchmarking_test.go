@@ -425,7 +425,7 @@ func getQueryCases() []queryCase {
 		{
 			name: "FetchJobRunByID",
 			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
-				var jobRunID uint
+				var jobRunID int64
 				res := dbc.DB.Table("prow_job_runs").
 					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
 					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
@@ -437,11 +437,16 @@ func getQueryCases() []queryCase {
 					return validationSnapshot{}, res.Error
 				}
 
+				partKeys, err := query.LookupProwJobRunPartitionKeys(dbc, jobRunID)
+				if err != nil {
+					return validationSnapshot{}, err
+				}
+
 				var jobRun models.ProwJobRun
 				res = dbc.DB.Joins("ProwJob").
 					Preload("PullRequests").
-					Order("timestamp DESC").
-					First(&jobRun, jobRunID)
+					Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
+					Take(&jobRun, jobRunID)
 				if res.Error != nil {
 					return validationSnapshot{}, res.Error
 				}

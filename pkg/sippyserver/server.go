@@ -1572,6 +1572,20 @@ func (s *Server) jsonJobRunPayload(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := param.SafeRead(req, "release")
+	useCurrentRelease := param.SafeRead(req, "useCurrentRelease") == "true"
+
+	if release != "" && useCurrentRelease {
+		failureResponse(w, http.StatusBadRequest, "release and useCurrentRelease are mutually exclusive")
+		return
+	}
+	if useCurrentRelease {
+		var err error
+		release, err = query.CurrentActiveRelease(s.db)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, "determining current release: "+err.Error())
+			return
+		}
+	}
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "timestamp", "desc")
 	if err != nil {

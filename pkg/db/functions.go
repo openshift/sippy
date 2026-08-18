@@ -123,7 +123,8 @@ lp AS (
     SELECT prow_job_runs.prow_job_id, max(prow_job_runs.timestamp)::timestamp without time zone as last_pass
     FROM prow_job_runs
     WHERE overall_result = 'S' AND prow_job_release = p_release
-      AND prow_job_runs.timestamp BETWEEN p_start AND p_endstamp
+      AND prow_job_runs.timestamp >= p_endstamp - INTERVAL '90 days'
+      AND prow_job_runs.timestamp <= p_endstamp
     GROUP BY prow_job_runs.prow_job_id
 )
 SELECT results.pj_name,

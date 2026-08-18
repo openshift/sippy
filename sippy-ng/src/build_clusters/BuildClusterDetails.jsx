@@ -16,6 +16,7 @@ export default function BuildClusterDetails(props) {
               Periodic Job Runs On {props.cluster}
             </Typography>
             <JobRunsTable
+              useCurrentRelease
               pageSize={10}
               filterModel={{
                 items: [
