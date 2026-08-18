@@ -64,6 +64,9 @@ func New(
 	crTimeRoundingOffset time.Duration,
 	regressionStore componentreadiness.RegressionStore,
 ) (*RegressionCacheLoader, error) {
+	if dataProvider == nil {
+		return nil, fmt.Errorf("dataProvider must not be nil")
+	}
 	if regressionStore == nil {
 		return nil, fmt.Errorf("regressionStore must not be nil")
 	}
