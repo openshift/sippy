@@ -15,7 +15,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -102,15 +101,9 @@ func (q *JobArtifactQuery) getJobRun(jobRunID int64) (JobRun, error) {
 		ID:      strconv.FormatInt(jobRunID, 10),
 		IsFinal: true, // even errors are final - only if we timed out getting answers might a retry get more
 	}
-	// Two-step load: first fetch partition keys for pruning, then load full row.
-	partKeys, err := query.LookupProwJobRunPartitionKeys(q.DbClient, jobRunID)
-	if err != nil {
-		return jobRunResponse, fmt.Errorf("looking up partition keys for job run %d: %w", jobRunID, err)
-	}
-
 	jobRunModel := new(models.ProwJobRun)
 	res := q.DbClient.DB.Preload("ProwJob").
-		Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
+		Order("timestamp DESC").
 		First(jobRunModel, jobRunID)
 	if res.Error != nil {
 		return jobRunResponse, res.Error

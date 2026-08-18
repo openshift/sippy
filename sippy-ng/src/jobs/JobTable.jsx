@@ -94,7 +94,7 @@ export const getColumns = (config, _openBugzillaDialog) => {
       renderCell: (params) => {
         if (params.value === undefined || params.value === '') {
           return (
-            <Tooltip title="Job has never passed, or pass predates Sippy's history (typically about 90 days)">
+            <Tooltip title="Job has not passed within the report window">
               <Fragment>-</Fragment>
             </Tooltip>
           )

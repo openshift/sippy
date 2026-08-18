@@ -453,15 +453,7 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []strin
 		q = q.Preload(preload)
 	}
 
-	// Two-step load: first fetch partition keys (lightweight cross-partition
-	// scan), then load the full row with partition pruning.
-	partKeys, err := query.LookupProwJobRunPartitionKeys(dbc, jobRunID)
-	if err != nil {
-		return nil, fmt.Errorf("looking up partition keys for job run %d: %w", jobRunID, err)
-	}
-
-	res := q.Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
-		First(jobRun, jobRunID)
+	res := q.Order("timestamp DESC").First(jobRun, jobRunID)
 	if res.Error != nil {
 		return nil, res.Error
 	}
