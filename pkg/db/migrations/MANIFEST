@@ -19,3 +19,4 @@
 000010_drop_test_analysis_by_job_by_dates
 000011_add_lifecycle_to_summaries
 000012_drop_test_daily_totals_date_index
+000013_add_force_close_to_regressions
