@@ -69,7 +69,7 @@ component_readiness:
         enabled: false
       prime_cache:
         enabled: true
-    - name: 4.21-cross-compare
+    - name: 4.21-main
       base_release:
         release: "4.20"
         relative_start: now-120d
@@ -133,7 +133,7 @@ component_readiness:
       metrics:
         enabled: false
       regression_tracking:
-        enabled: false
+        enabled: true
       automate_jira:
         enabled: false
       prime_cache:
@@ -203,7 +203,7 @@ component_readiness:
       metrics:
         enabled: false
       regression_tracking:
-        enabled: false
+        enabled: true
       automate_jira:
         enabled: false
       prime_cache:
