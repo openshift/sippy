@@ -36,5 +36,8 @@ func CurrentActiveRelease(dbc *db.DB) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("query latest GA release: %w", err)
 	}
+	if release == "" {
+		return "", fmt.Errorf("no OCP release found in release_definitions")
+	}
 	return release, nil
 }
