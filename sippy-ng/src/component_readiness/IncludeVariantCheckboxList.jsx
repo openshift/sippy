@@ -18,6 +18,21 @@ import PropTypes from 'prop-types'
 import React, { useContext, useState } from 'react'
 import Typography from '@mui/material/Typography'
 
+const useIncludeVariantStyles = makeStyles((theme) => ({
+  formControl: {
+    margin: theme.spacing(1),
+    minWidth: '20px',
+  },
+  gridCenter: {
+    marginTop: theme.spacing(1),
+    textAlign: 'center',
+  },
+  gridRight: {
+    justifyContent: 'flex-end',
+    display: 'flex',
+  },
+}))
+
 export default function IncludeVariantCheckBoxList(props) {
   const variantGroupName = props.variantGroupName
   const varsContext = useContext(CompReadyVarsContext)
@@ -79,20 +94,7 @@ export default function IncludeVariantCheckBoxList(props) {
     setIsCompareMode(!isCompareMode)
   }
 
-  const classes = makeStyles((theme) => ({
-    formControl: {
-      margin: theme.spacing(1),
-      minWidth: '20px',
-    },
-    gridCenter: {
-      marginTop: theme.spacing(1),
-      textAlign: 'center',
-    },
-    gridRight: {
-      justifyContent: 'flex-end',
-      display: 'flex',
-    },
-  }))()
+  const classes = useIncludeVariantStyles()
 
   let params = {
     variantGroupName,

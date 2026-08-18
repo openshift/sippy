@@ -20,35 +20,34 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import Typography from '@mui/material/Typography'
 
+const useStyles = makeStyles((theme) => ({
+  formControl: {
+    margin: theme.spacing(1),
+  },
+  autocomplete: {
+    width: '100%',
+    '& .MuiAutocomplete-inputRoot': {
+      paddingRight: '9px !important',
+    },
+  },
+  chip: {
+    maxWidth: 'none',
+    flex: '1 1 auto',
+  },
+}))
+
 export default function SidebarTestFilters(props) {
+  const varsContext = useContext(CompReadyVarsContext)
+  const testCapabilities = useContext(TestCapabilitiesContext)
+  const testLifecycles = useContext(TestLifecyclesContext)
+  const classes = useStyles()
+
   if (
     !props.controlsOpts?.filterByCapabilities &&
     !props.controlsOpts?.filterByLifecycles
   ) {
-    // if we have no filters to show, omit the whole component
     return <Fragment />
   }
-  const varsContext = useContext(CompReadyVarsContext)
-  const testCapabilities = useContext(TestCapabilitiesContext)
-  const testLifecycles = useContext(TestLifecyclesContext)
-  const useStyles = makeStyles((theme) => ({
-    formControl: {
-      margin: theme.spacing(1),
-    },
-    autocomplete: {
-      width: '100%',
-      // Override Material-UI Autocomplete padding that would make space for the dropdown triangle we disabled
-      '& .MuiAutocomplete-inputRoot': {
-        paddingRight: '9px !important',
-      },
-    },
-    chip: {
-      maxWidth: 'none',
-      flex: '1 1 auto',
-    },
-  }))
-
-  const classes = useStyles()
 
   const handleCapabilitiesChange = (event, newValue) => {
     varsContext.setTestCapabilities(newValue || [])
