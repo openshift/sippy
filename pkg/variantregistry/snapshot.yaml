@@ -75377,29 +75377,6 @@ periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-e2e-ovn-serial-aws-multi-a
     Suite: serial
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-e2e-ovn-techpreview-multi-z-z:
-    Aggregation: none
-    Architecture: s390x
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-e2e-ovn-techpreview-remote-s2s-libvirt-multi-p-p:
     Aggregation: none
     Architecture: ppc64le
@@ -75771,6 +75748,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-fips-ovn-remote-s2s-libvir
     OS: rhcos9
     Owner: eng
     Platform: libvirt
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-fips-ovn-techpreview-multi-z-z:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
     Procedure: none
     Release: "4.23"
     ReleaseMajor: "4"
@@ -77042,30 +77042,6 @@ periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-e2e-ovn-serial-aws-multi-a-
     Suite: serial
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-e2e-ovn-techpreview-remote-libvirt-multi-z-z:
-    Aggregation: none
-    Architecture: s390x
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: libvirt
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-e2e-ovn-techpreview-remote-s2s-libvirt-multi-p-p:
     Aggregation: none
     Architecture: ppc64le
@@ -77452,6 +77428,30 @@ periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-fips-ovn-remote-s2s-libvirt
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-fips-ovn-techpreview-remote-libvirt-multi-z-z:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: techpreview
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -78755,30 +78755,6 @@ periodic-ci-openshift-multiarch-main-nightly-5.1-ocp-e2e-ovn-serial-aws-multi-a-
     Suite: serial
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-multiarch-main-nightly-5.1-ocp-e2e-ovn-techpreview-remote-libvirt-multi-z-z:
-    Aggregation: none
-    Architecture: s390x
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: libvirt
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-5.1-ocp-e2e-ovn-techpreview-remote-s2s-libvirt-multi-p-p:
     Aggregation: none
     Architecture: ppc64le
@@ -79165,6 +79141,30 @@ periodic-ci-openshift-multiarch-main-nightly-5.1-ocp-fips-ovn-remote-s2s-libvirt
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-multiarch-main-nightly-5.1-ocp-fips-ovn-techpreview-remote-libvirt-multi-z-z:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: techpreview
     Installer: ipi
     JobTier: informing
     LayeredProduct: none
@@ -323852,14 +323852,14 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-aws-ovn-ha-cert-rotation-sus
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-aws-ovn-installer-dualstack-ipv4-primary-techpreview:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-aws-ovn-installer-dualstack-ipv4-primary:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: AWSDualStackInstall
     Component: Installer
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -323878,14 +323878,14 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-aws-ovn-installer-dualstack-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-aws-ovn-installer-dualstack-ipv6-primary-techpreview:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-aws-ovn-installer-dualstack-ipv6-primary:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: AWSDualStackInstall
     Component: Installer
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -330822,14 +330822,14 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-haproxy28:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-installer-dualstack-ipv4-primary-techpreview:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-installer-dualstack-ipv4-primary:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: AWSDualStackInstall
     Component: Installer
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -330848,14 +330848,14 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-installer-dualstack-i
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-installer-dualstack-ipv6-primary-techpreview:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-ovn-installer-dualstack-ipv6-primary:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: AWSDualStackInstall
     Component: Installer
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -338341,14 +338341,14 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-aws-ovn-ha-cert-rotation-susp
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-aws-ovn-installer-dualstack-ipv4-primary-techpreview:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-aws-ovn-installer-dualstack-ipv4-primary:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: AWSDualStackInstall
     Component: Installer
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -338367,14 +338367,14 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-aws-ovn-installer-dualstack-i
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-aws-ovn-installer-dualstack-ipv6-primary-techpreview:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-aws-ovn-installer-dualstack-ipv6-primary:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     Capability: AWSDualStackInstall
     Component: Installer
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
