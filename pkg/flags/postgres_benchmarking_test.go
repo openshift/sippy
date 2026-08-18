@@ -531,6 +531,40 @@ func getQueryCases() []queryCase {
 			},
 		},
 		{
+			name: "FetchJobRunByID",
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
+				var jobRunID uint
+				res := dbc.DB.Table("prow_job_runs").
+					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
+					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
+					Order("prow_job_runs.timestamp DESC").
+					Limit(1).
+					Select("prow_job_runs.id").
+					Scan(&jobRunID)
+				if res.Error != nil {
+					return validationSnapshot{}, res.Error
+				}
+
+				var jobRun models.ProwJobRun
+				res = dbc.DB.Joins("ProwJob").
+					Preload("PullRequests").
+					Order("timestamp DESC").
+					First(&jobRun, jobRunID)
+				if res.Error != nil {
+					return validationSnapshot{}, res.Error
+				}
+				log.Printf("FetchJobRunByID for run %d: release=%s job=%s",
+					jobRun.ID, jobRun.ProwJobRelease, jobRun.ProwJob.Name)
+				return validationSnapshot{
+					RowCount: 1,
+					SpotChecks: map[string]string{
+						"release":  jobRun.ProwJobRelease,
+						"job_name": jobRun.ProwJob.Name,
+					},
+				}, nil
+			},
+		},
+		{
 			name: "JobRunTestCount",
 			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
 				var result struct {
