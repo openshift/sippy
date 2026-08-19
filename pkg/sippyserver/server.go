@@ -1994,7 +1994,7 @@ func (s *Server) jsonForceCloseRegressions(w http.ResponseWriter, req *http.Requ
 	var forceCloseReq forceCloseRegressionsRequest
 	if err := json.NewDecoder(req.Body).Decode(&forceCloseReq); err != nil {
 		log.WithError(err).Error("error parsing force close regressions request")
-		failureResponse(w, http.StatusBadRequest, err.Error())
+		failureResponse(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if strings.TrimSpace(forceCloseReq.Reason) == "" {
@@ -2014,7 +2014,7 @@ func (s *Server) jsonForceCloseRegressions(w http.ResponseWriter, req *http.Requ
 			return
 		}
 		log.WithError(err).Error("error force closing regressions")
-		failureResponse(w, http.StatusInternalServerError, err.Error())
+		failureResponse(w, http.StatusInternalServerError, "failed to force close regressions")
 		return
 	}
 	componentreadiness.InjectForceCloseHATEOASLinks(result, api.GetBaseURL(req), uint(triageID)) // nolint:gosec
@@ -2043,7 +2043,7 @@ func (s *Server) jsonForceClosePreview(w http.ResponseWriter, req *http.Request)
 			return
 		}
 		log.WithError(err).Error("error building force close preview")
-		failureResponse(w, http.StatusInternalServerError, err.Error())
+		failureResponse(w, http.StatusInternalServerError, "failed to build force close preview")
 		return
 	}
 	componentreadiness.InjectForceClosePreviewHATEOASLinks(preview, api.GetBaseURL(req))
