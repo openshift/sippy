@@ -52,28 +52,27 @@ func seedLookbackFixtures(t *testing.T, dbc *db.DB) lookbackFixtures {
 	}
 }
 
-func TestLookbackCount_DeduplicatesTestIDsAcrossReleases(t *testing.T) {
+func TestLookbackCount_OnlyCountsActiveRelease(t *testing.T) {
 	dbc := lookbackCountDB(t)
 	f := seedLookbackFixtures(t, dbc)
 
 	today := lookbackDate
 	startMinusOne := today.AddDays(-15)
 
-	// testAlpha appears in both releases with runs in the window.
-	// It should be counted once, not twice.
+	// testAlpha and testBeta in the active release (4.18).
 	intutil.CreateCumulativeSummary(t, dbc, today, "4.18", f.testAlpha, f.jobA, f.suiteA, 100, 90, 5)
 	intutil.CreateCumulativeSummary(t, dbc, startMinusOne, "4.18", f.testAlpha, f.jobA, f.suiteA, 80, 70, 3)
 
-	intutil.CreateCumulativeSummary(t, dbc, today, "4.19", f.testAlpha, f.jobB, f.suiteA, 50, 45, 2)
-	intutil.CreateCumulativeSummary(t, dbc, startMinusOne, "4.19", f.testAlpha, f.jobB, f.suiteA, 30, 25, 1)
-
-	// testBeta only in 4.18.
 	intutil.CreateCumulativeSummary(t, dbc, today, "4.18", f.testBeta, f.jobA, f.suiteA, 60, 55, 3)
 	intutil.CreateCumulativeSummary(t, dbc, startMinusOne, "4.18", f.testBeta, f.jobA, f.suiteA, 40, 35, 2)
 
+	// testGamma only in 4.19 (not the active release, should be ignored).
+	intutil.CreateCumulativeSummary(t, dbc, today, "4.19", f.testGamma, f.jobB, f.suiteA, 50, 45, 2)
+	intutil.CreateCumulativeSummary(t, dbc, startMinusOne, "4.19", f.testGamma, f.jobB, f.suiteA, 30, 25, 1)
+
 	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
 	require.NoError(t, err)
-	assert.Equal(t, int64(2), testIDsCount, "testAlpha should be deduplicated across releases")
+	assert.Equal(t, int64(2), testIDsCount, "should only count tests from the active release")
 }
 
 func TestLookbackCount_ZeroAndNegativeDeltaExcluded(t *testing.T) {
@@ -160,12 +159,12 @@ func TestLookbackCount_MultipleJobsPerTestAggregated(t *testing.T) {
 	assert.Equal(t, int64(1), testIDsCount, "test with positive aggregate delta across jobs should be counted")
 }
 
-func TestLookbackCount_NoReleasesReturnsZeroTests(t *testing.T) {
+func TestLookbackCount_NoReleasesReturnsError(t *testing.T) {
 	dbc := lookbackCountDB(t)
 
-	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), testIDsCount)
+	_, _, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no OCP release found")
 }
 
 func TestLookbackCount_InvalidLookbackDays(t *testing.T) {

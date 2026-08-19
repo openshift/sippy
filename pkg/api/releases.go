@@ -666,6 +666,23 @@ func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) ap
 	return response
 }
 
+// GetLastUpdateTime returns the most recent prow_job_runs created_at for the
+// current active release. It uses query.CurrentActiveRelease to identify the
+// release, then queries the most recent created_at scoped to the last 14 days
+// for partition pruning.
+func GetLastUpdateTime(dbc *db.DB) (time.Time, error) {
+	rel, err := query.CurrentActiveRelease(dbc)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("get current active release: %w", err)
+	}
+	var lastUpdated time.Time
+	if err := dbc.DB.Raw("SELECT COALESCE(MAX(created_at), '0001-01-01') FROM prow_job_runs WHERE prow_job_release = ? AND timestamp > NOW() - INTERVAL '14 days'", rel).
+		Scan(&lastUpdated).Error; err != nil {
+		return time.Time{}, fmt.Errorf("query last update time: %w", err)
+	}
+	return lastUpdated, nil
+}
+
 // PayloadForJobRun returns the payload release tag that was used for a given job run.
 func PayloadForJobRun(dbClient *db.DB, jobRunID string) ([]apitype.JobPayload, error) {
 	var results []apitype.JobPayload

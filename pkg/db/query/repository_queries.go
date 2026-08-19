@@ -14,7 +14,7 @@ func RepositoryReport(dbc *db.DB, filterOpts *filter.FilterOptions, release stri
 	end := reportEnd
 
 	premergeFailureStart := reportEnd.Add(-14 * 24 * time.Hour)
-	averageByJob := PullRequestAveragePremergeFailures(dbc, &premergeFailureStart, &end)
+	averageByJob := PullRequestAveragePremergeFailures(dbc, release, &premergeFailureStart, &end)
 
 	revertCountStart := reportEnd.Add(-90 * 24 * time.Hour)
 	revertCount := RepositoryRevertCount(dbc, &revertCountStart, &end)
@@ -27,7 +27,9 @@ func RepositoryReport(dbc *db.DB, filterOpts *filter.FilterOptions, release stri
 		Joins("LEFT JOIN (?) premerge_failures ON premerge_failures.prow_job_ID = prow_jobs.id", averageByJob).
 		Where("prow_jobs.release = ?", release).
 		Where("prow_job_runs.prow_job_release = ?", release).
+		Where("prow_job_runs.timestamp >= ? AND prow_job_runs.timestamp < ?", revertCountStart, reportEnd).
 		Where("prow_job_run_prow_pull_requests.prow_job_run_release = ?", release).
+		Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp >= ? AND prow_job_run_prow_pull_requests.prow_job_run_timestamp < ?", revertCountStart, reportEnd).
 		Group("prow_pull_requests.org, prow_pull_requests.repo").
 		Select("ROW_NUMBER() OVER() as id, prow_pull_requests.org, prow_pull_requests.repo, max(revert_count) as revert_count, coalesce(max(average_premerge_job_failures), 0) as worst_premerge_job_failures, count(distinct(prow_jobs.id)) as job_count")
 

@@ -27,12 +27,14 @@ func init() {
 // configurePodmanIfNeeded detects Podman and sets the environment
 // variables that testcontainers-go needs to use it.
 func configurePodmanIfNeeded() {
-	if os.Getenv("DOCKER_HOST") != "" {
+	podmanPath, err := exec.LookPath("podman")
+	if err != nil || podmanPath == "" {
 		return
 	}
 
-	podmanPath, err := exec.LookPath("podman")
-	if err != nil || podmanPath == "" {
+	os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
+	if os.Getenv("DOCKER_HOST") != "" {
 		return
 	}
 
@@ -45,7 +47,6 @@ func configurePodmanIfNeeded() {
 		socketPath = "unix://" + socketPath
 	}
 	os.Setenv("DOCKER_HOST", socketPath)
-	os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 }
 
 // podmanSocketPath returns the host-side Podman socket path.

@@ -70,7 +70,7 @@ func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly 
 			pjrt.status,
 			COALESCE(pjrto.output, '') AS output`).
 		Joins("JOIN prow_job_run_prow_pull_requests jrpr ON jrpr.prow_pull_request_id = pp.id AND jrpr.prow_job_run_release = ? AND jrpr.prow_job_run_timestamp >= ? AND jrpr.prow_job_run_timestamp < ?", models.ReleasePresubmits, startDate, endDate).
-		Joins("JOIN prow_job_runs pjr ON pjr.id = jrpr.prow_job_run_id").
+		Joins("JOIN prow_job_runs pjr ON pjr.id = jrpr.prow_job_run_id AND pjr.prow_job_release = ?", models.ReleasePresubmits).
 		Joins("JOIN prow_jobs pj ON pj.id = pjr.prow_job_id AND pj.release = ?", models.ReleasePresubmits).
 		Joins("JOIN prow_job_run_tests pjrt ON pjrt.prow_job_run_id = pjr.id AND pjrt.prow_job_run_release = ? AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?", models.ReleasePresubmits, startDate, endDate).
 		Joins("JOIN tests t ON t.id = pjrt.test_id").
@@ -81,7 +81,7 @@ func GetPRTestResults(dbc *db.DB, org, repo string, prNumber int, latestSHAOnly 
 		Where("pjr.timestamp >= ? AND pjr.timestamp < ?", startDate, endDate)
 
 	if latestSHAOnly {
-		query = query.Where("pp.sha = (SELECT pp2.sha FROM prow_pull_requests pp2 JOIN prow_job_run_prow_pull_requests jrpr2 ON jrpr2.prow_pull_request_id = pp2.id JOIN prow_job_runs pjr2 ON pjr2.id = jrpr2.prow_job_run_id WHERE pp2.org = ? AND pp2.repo = ? AND pp2.number = ? ORDER BY pjr2.timestamp DESC LIMIT 1)", org, repo, prNumber)
+		query = query.Where("pp.sha = (SELECT pp2.sha FROM prow_pull_requests pp2 JOIN prow_job_run_prow_pull_requests jrpr2 ON jrpr2.prow_pull_request_id = pp2.id AND jrpr2.prow_job_run_release = ? JOIN prow_job_runs pjr2 ON pjr2.id = jrpr2.prow_job_run_id AND pjr2.prow_job_release = ? WHERE pp2.org = ? AND pp2.repo = ? AND pp2.number = ? ORDER BY pjr2.timestamp DESC LIMIT 1)", models.ReleasePresubmits, models.ReleasePresubmits, org, repo, prNumber)
 	}
 
 	// By default only return failures (no flakes, no successes).

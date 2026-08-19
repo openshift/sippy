@@ -52,13 +52,8 @@ func (rt *ReleasesTool) GetHandler() func(ctx context.Context, request mcp.CallT
 		// Get last updated time from database if available
 		var lastUpdated time.Time
 		if rt.deps.DBClient != nil && rt.deps.DBClient.DB != nil {
-			type LastUpdatedQuery struct {
-				Max time.Time
-			}
-			var result LastUpdatedQuery
-			// Assume our last update is the last time we inserted a prow job run.
-			if err := rt.deps.DBClient.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&result).Error; err == nil {
-				lastUpdated = result.Max
+			if t, err := api.GetLastUpdateTime(rt.deps.DBClient); err == nil {
+				lastUpdated = t
 			}
 		}
 
