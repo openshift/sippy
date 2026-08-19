@@ -481,7 +481,15 @@ export default function JobRunsTable(props) {
 
   useEffect(() => {
     fetchData()
-  }, [filterModel, sort, sortField, page, pageSize, props.release, props.useCurrentRelease])
+  }, [
+    filterModel,
+    sort,
+    sortField,
+    page,
+    pageSize,
+    props.release,
+    props.useCurrentRelease,
+  ])
 
   // Fetch label definitions
   useEffect(() => {

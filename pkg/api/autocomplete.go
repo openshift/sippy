@@ -83,6 +83,9 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 			clusterRelease, err = query.CurrentActiveRelease(dbc)
 			if err != nil {
 				log.WithError(err).Warn("could not determine current development release for cluster autocomplete")
+				// do not return error for autocomplete, default to empty results
+				RespondWithJSON(200, w, result)
+				return
 			}
 		}
 		q = q.Table("prow_job_runs").
