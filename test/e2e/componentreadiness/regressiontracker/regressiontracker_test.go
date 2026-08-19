@@ -317,18 +317,18 @@ func Test_ForceCloseRegressions(t *testing.T) {
 
 	createTriageForRegressions := func(t *testing.T, url string, regs ...*models.TestRegression) models.Triage {
 		t.Helper()
-		regressions := make([]models.TestRegression, len(regs))
-		for i, r := range regs {
-			regressions[i] = models.TestRegression{ID: r.ID}
-		}
 		triage := models.Triage{
 			URL:         url,
 			Description: "force close triage",
 			Type:        models.TriageTypeProduct,
-			Regressions: regressions,
 		}
 		dbWithContext := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "e2e-test"))
+		// Create the triage first without regressions, then link the existing
+		// regressions via the association API. Embedding the regressions in the
+		// Create() call makes GORM upsert them, which writes the partial objects
+		// (nil Variants) and violates the NOT NULL constraint on variants.
 		require.NoError(t, dbWithContext.Create(&triage).Error)
+		require.NoError(t, dbWithContext.Model(&triage).Association("Regressions").Append(regs))
 		return triage
 	}
 
