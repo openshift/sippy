@@ -41,8 +41,11 @@ var view = crview.View{
 }
 
 func cleanupAllTriages(dbc *db.DB) {
-	// Delete all triage and test regressions in the e2e postgres db.
-	dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1")
+	// Delete the triage_regressions join rows before the triages so no association outlives a
+	// referenced row. Errors are logged rather than swallowed so cleanup failures are visible.
+	if err := dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1").Error; err != nil {
+		log.Errorf("error deleting triage_regressions: %v", err)
+	}
 	res := dbc.DB.Where("1 = 1").Delete(&models.Triage{})
 	if res.Error != nil {
 		log.Errorf("error deleting triage records: %v", res.Error)
@@ -732,9 +735,33 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
 	jiraBug := createBug(t, dbc.DB)
-	defer dbc.DB.Delete(jiraBug)
+	defer func() {
+		if err := dbc.DB.Delete(jiraBug).Error; err != nil {
+			log.Errorf("error deleting jira bug: %v", err)
+		}
+	}()
 
 	release := view.SampleRelease.Name
+
+	// cleanupForceClose removes triage associations before the given regressions so the
+	// triage_regressions -> test_regressions FK ordering is respected (deleting a regression while a
+	// join row still references it would fail). It checks each delete so cleanup failures surface
+	// instead of silently leaking rows into later subtests. Defer it once per subtest; do not also
+	// defer a bare regression delete, which would run first (LIFO) and hit the FK.
+	cleanupForceClose := func(regs ...*models.TestRegression) {
+		cleanupAllTriages(dbc)
+		for _, reg := range regs {
+			if reg == nil {
+				continue
+			}
+			if err := dbc.DB.Where("test_regression_id = ?", reg.ID).Delete(&models.RegressionView{}).Error; err != nil {
+				log.Errorf("error deleting regression views for %d: %v", reg.ID, err)
+			}
+			if err := dbc.DB.Delete(reg).Error; err != nil {
+				log.Errorf("error deleting test regression %d: %v", reg.ID, err)
+			}
+		}
+	}
 
 	// createRawRegression creates a regression with a caller-controlled opened time so tests can exercise
 	// the resolution-time scoping.
@@ -760,9 +787,8 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 	}
 
 	t.Run("force close requires a reason", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		reg := createTestRegression(t, tracker, view, "fc-api-reason")
-		defer dbc.DB.Delete(reg)
+		defer cleanupForceClose(reg)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
 		resolveTriage(t, triageResponse, time.Now().Add(time.Minute))
 
@@ -774,9 +800,8 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 	})
 
 	t.Run("force close on an unresolved triage is rejected", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		reg := createTestRegression(t, tracker, view, "fc-api-unresolved")
-		defer dbc.DB.Delete(reg)
+		defer cleanupForceClose(reg)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
 
 		// Force closing an unresolved triage must be rejected.
@@ -792,9 +817,8 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 	})
 
 	t.Run("force close closes regressions and excludes them from reuse", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		reg := createTestRegression(t, tracker, view, "fc-api-close")
-		defer dbc.DB.Delete(reg)
+		defer cleanupForceClose(reg)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
 		resolveTriage(t, triageResponse, time.Now().Add(time.Minute))
 
@@ -823,12 +847,10 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 	})
 
 	t.Run("regression detail exposes force close info", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		reg := createTestRegression(t, tracker, view, "fc-api-detail")
-		defer dbc.DB.Delete(reg)
+		defer cleanupForceClose(reg)
 		// Associate with a view so the regression detail endpoint can build HATEOAS links.
 		require.NoError(t, tracker.UpsertRegressionView(reg.ID, view.Name))
-		defer dbc.DB.Where("test_regression_id = ?", reg.ID).Delete(&models.RegressionView{})
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
 		resolveTriage(t, triageResponse, time.Now().Add(time.Minute))
 
@@ -850,9 +872,8 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 	})
 
 	t.Run("force close is idempotent over the API", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		reg := createTestRegression(t, tracker, view, "fc-api-idempotent")
-		defer dbc.DB.Delete(reg)
+		defer cleanupForceClose(reg)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
 		resolveTriage(t, triageResponse, time.Now().Add(time.Minute))
 
@@ -870,13 +891,11 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 	})
 
 	t.Run("preview lists would-close and would-not-close regressions with gap data", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		resolved := time.Now().Add(-5 * 24 * time.Hour).Truncate(time.Second)
 
 		wouldClose := createRawRegression(t, "fc-prev-close", resolved.Add(-10*24*time.Hour))
-		defer dbc.DB.Delete(wouldClose)
 		wouldNotClose := createRawRegression(t, "fc-prev-open", resolved.Add(24*time.Hour))
-		defer dbc.DB.Delete(wouldNotClose)
+		defer cleanupForceClose(wouldClose, wouldNotClose)
 
 		// Failures before and after the resolution time drive the gap indicator.
 		require.NoError(t, tracker.MergeJobRuns(wouldClose.ID, []models.RegressionJobRun{

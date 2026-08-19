@@ -1975,7 +1975,8 @@ type forceCloseRegressionsRequest struct {
 func (s *Server) jsonForceCloseRegressions(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	idStr := vars["id"]
-	triageID, err := strconv.Atoi(idStr)
+	// ParseUint rejects negative and non-numeric IDs before we touch the database.
+	triageID, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
 		return
@@ -1983,12 +1984,12 @@ func (s *Server) jsonForceCloseRegressions(w http.ResponseWriter, req *http.Requ
 
 	user := getUserForRequest(req)
 	// Force closing records who closed each regression for attribution and audit, so we refuse to
-	// proceed when we cannot determine the user rather than recording an empty ForceClosedBy.
+	// proceed when we cannot determine the user rather than recording an empty ForceClosedBy. The
+	// user identity is intentionally not logged.
 	if strings.TrimSpace(user) == "" {
 		failureResponse(w, http.StatusUnauthorized, "cannot determine user for force close request; authentication is required")
 		return
 	}
-	log.Infof("triage force_close_regressions POST made by user: %s", user)
 
 	var forceCloseReq forceCloseRegressionsRequest
 	if err := json.NewDecoder(req.Body).Decode(&forceCloseReq); err != nil {
@@ -2008,17 +2009,23 @@ func (s *Server) jsonForceCloseRegressions(w http.ResponseWriter, req *http.Requ
 			failureResponse(w, http.StatusBadRequest, "Cannot force-close regressions for an unresolved triage. Resolve the triage first.")
 			return
 		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			failureResponse(w, http.StatusNotFound, fmt.Sprintf("triage %d not found", triageID))
+			return
+		}
 		log.WithError(err).Error("error force closing regressions")
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	componentreadiness.InjectForceCloseHATEOASLinks(result, api.GetBaseURL(req), uint(triageID)) // nolint:gosec
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
 func (s *Server) jsonForceClosePreview(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	idStr := vars["id"]
-	triageID, err := strconv.Atoi(idStr)
+	// ParseUint rejects negative and non-numeric IDs before we touch the database.
+	triageID, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
 		return
@@ -2031,10 +2038,15 @@ func (s *Server) jsonForceClosePreview(w http.ResponseWriter, req *http.Request)
 			failureResponse(w, http.StatusBadRequest, "Cannot force-close regressions for an unresolved triage. Resolve the triage first.")
 			return
 		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			failureResponse(w, http.StatusNotFound, fmt.Sprintf("triage %d not found", triageID))
+			return
+		}
 		log.WithError(err).Error("error building force close preview")
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	componentreadiness.InjectForceClosePreviewHATEOASLinks(preview, api.GetBaseURL(req))
 	api.RespondWithJSON(http.StatusOK, w, preview)
 }
 

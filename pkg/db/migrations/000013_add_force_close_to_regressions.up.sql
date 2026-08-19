@@ -17,3 +17,18 @@ ALTER TABLE test_regressions
     ADD COLUMN IF NOT EXISTS force_closed_by TEXT,
     ADD COLUMN IF NOT EXISTS force_closed_reason TEXT,
     ADD COLUMN IF NOT EXISTS force_closed_by_triage_id BIGINT;
+
+-- Tie force_closed_by_triage_id back to the driving triage. ON DELETE SET NULL keeps the historical
+-- force close flag/by/reason on the regression while clearing the dangling reference if that triage
+-- is later deleted. Guarded by a NOT EXISTS check because Postgres has no ADD CONSTRAINT IF NOT
+-- EXISTS, keeping this migration idempotent alongside the ADD COLUMN IF NOT EXISTS above.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_test_regressions_force_closed_by_triage'
+    ) THEN
+        ALTER TABLE test_regressions
+            ADD CONSTRAINT fk_test_regressions_force_closed_by_triage
+            FOREIGN KEY (force_closed_by_triage_id) REFERENCES triages(id) ON DELETE SET NULL;
+    END IF;
+END$$;

@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm/clause"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -288,6 +289,8 @@ type ForceCloseResult struct {
 	ClosedRegressionIDs []uint `json:"closed_regression_ids"`
 	// Timestamp is the closed time applied to the regressions (the triage's resolution time).
 	Timestamp time.Time `json:"timestamp"`
+	// Links holds HATEOAS links for discoverability (for example self and the owning triage).
+	Links map[string]string `json:"links,omitempty"`
 }
 
 // RegressionFailureGap describes the failure timing around a triage's resolution for a single regression.
@@ -311,20 +314,24 @@ type ForceClosePreviewRegression struct {
 	Closed *time.Time `json:"closed,omitempty"`
 	// RegressionFailureGap is embedded so its fields are promoted into this object's JSON.
 	RegressionFailureGap
+	// Links holds HATEOAS links for this regression (for example self, the regression detail endpoint).
+	Links map[string]string `json:"links,omitempty"`
 }
 
 // ForceClosePreview is the dry-run result for force closing a triage's regressions. WouldClose lists the
-// open regressions that existed at the resolution time and would be closed; WouldNotClose lists regressions
-// that opened after the resolution time and would be left untouched.
+// open regressions that opened strictly before the resolution time and would be closed; WouldNotClose lists
+// regressions that opened at or after the resolution time and would be left untouched.
 type ForceClosePreview struct {
 	TriageID      uint                          `json:"triage_id"`
 	Resolved      time.Time                     `json:"resolved"`
 	WouldClose    []ForceClosePreviewRegression `json:"would_close"`
 	WouldNotClose []ForceClosePreviewRegression `json:"would_not_close"`
+	// Links holds HATEOAS links for discoverability (for example self and the owning triage).
+	Links map[string]string `json:"links,omitempty"`
 }
 
 // ForceCloseRegressions closes the open regressions associated with the given resolved triage that existed
-// at its resolution time (opened at or before triage.Resolved), marking them force closed so they are
+// at its resolution time (opened strictly before triage.Resolved), marking them force closed so they are
 // excluded from the regression reuse window (regressionHysteresisDays) and never reopened for unrelated
 // failures (TRT-2895). Each regression is closed at the triage's resolution time and records who force
 // closed it and why, directly on the regression row. The triage must be resolved; otherwise
@@ -332,10 +339,6 @@ type ForceClosePreview struct {
 func (prs *PostgresRegressionStore) ForceCloseRegressions(triageID uint, closedBy, reason string) (*ForceCloseResult, error) {
 	result := &ForceCloseResult{}
 
-	// No transaction wrapper here: Postgres READ COMMITTED does not take row locks on SELECT, so
-	// wrapping the select-then-update below in a transaction would not prevent a concurrent writer
-	// from changing rows between the two statements. The single UPDATE ... WHERE id IN (...) is
-	// atomic on its own, which is all the consistency this operation needs.
 	var triage models.Triage
 	if err := prs.dbc.DB.First(&triage, triageID).Error; err != nil {
 		return nil, fmt.Errorf("error loading triage %d for force close: %w", triageID, err)
@@ -346,46 +349,43 @@ func (prs *PostgresRegressionStore) ForceCloseRegressions(triageID uint, closedB
 	closeTime := triage.Resolved.Time
 	result.Timestamp = closeTime
 
-	// Select only the regressions this triage actually resolved: those that existed at the
-	// resolution time (opened <= closeTime) and are still open (closed IS NULL). Filtering in the
-	// query rather than loading every regression ever associated with the triage keeps the action
-	// scoped, keeps it idempotent, and preserves the closed time of already-closed regressions.
-	var regIDsToClose []uint
-	if err := prs.dbc.DB.Table(testRegressionsTable).
-		Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
-		Where("triage_regressions.triage_id = ?", triageID).
+	// Force close in a single atomic UPDATE. The eligible regressions are selected inside the
+	// statement via a subquery on the triage_regressions join table, so there is no window between
+	// finding the IDs and updating them in which a concurrent force close could see the same rows
+	// and overwrite each other's metadata. Eligibility: associated with this triage, still open
+	// (closed IS NULL), and opened strictly before the resolution time (opened < closeTime) so a
+	// regression opened at the exact resolution instant is left untouched. RETURNING id reports
+	// exactly which rows this call closed, keeping the operation idempotent (a repeat call matches
+	// nothing and returns an empty list).
+	//
+	// Updates() with a column map (not Save()) is deliberate: TestRegression has a many2many with
+	// Triage via triage_regressions, and Save() would rewrite that association join table. A column
+	// map only emits UPDATE SET for the named columns and never touches the join table.
+	var closed []models.TestRegression
+	res := prs.dbc.DB.Model(&closed).
+		Clauses(clause.Returning{Columns: []clause.Column{{Name: "id"}}}).
+		Where("test_regressions.id IN (?)",
+			prs.dbc.DB.Table("triage_regressions").
+				Select("test_regression_id").
+				Where("triage_id = ?", triageID)).
 		Where("test_regressions.closed IS NULL").
-		Where("test_regressions.opened <= ?", closeTime).
-		Pluck("test_regressions.id", &regIDsToClose).Error; err != nil {
-		return nil, fmt.Errorf("error finding regressions to force close for triage %d: %w", triageID, err)
-	}
-
-	if len(regIDsToClose) > 0 {
-		// Use Updates() with explicit column names instead of Save().
-		//
-		// TestRegression has a many2many relationship with Triage via the
-		// triage_regressions join table (the Triages []Triage field with
-		// gorm:"many2many:triage_regressions"). GORM's Save() method
-		// processes all fields including associations — if the Triages
-		// slice is empty (because we didn't Preload it), Save() would
-		// delete all existing rows in triage_regressions for this
-		// regression, severing the triage links. Updates() with a column
-		// map only generates UPDATE SET for the named columns and never
-		// touches association join tables.
-		updates := map[string]any{
+		Where("test_regressions.opened < ?", closeTime).
+		Updates(map[string]any{
 			"closed":                    sql.NullTime{Valid: true, Time: closeTime},
 			"force_closed":              true,
 			"force_closed_by":           closedBy,
 			"force_closed_reason":       reason,
 			"force_closed_by_triage_id": triageID,
-		}
-		if err := prs.dbc.DB.Model(&models.TestRegression{}).Where("id IN ?", regIDsToClose).Updates(updates).Error; err != nil {
-			return nil, fmt.Errorf("error force closing regressions for triage %d: %w", triageID, err)
-		}
-		result.ClosedRegressionIDs = regIDsToClose
+		})
+	if res.Error != nil {
+		return nil, fmt.Errorf("error force closing regressions for triage %d: %w", triageID, res.Error)
+	}
+	for i := range closed {
+		result.ClosedRegressionIDs = append(result.ClosedRegressionIDs, closed[i].ID)
 	}
 
-	log.WithField("triageID", triageID).WithField("closedBy", closedBy).
+	// Do not log the user identity: log only the triage ID and how many regressions were closed.
+	log.WithField("triageID", triageID).
 		WithField("closedRegressions", len(result.ClosedRegressionIDs)).Info("force closed regressions for triage")
 	return result, nil
 }
@@ -414,7 +414,7 @@ func (prs *PostgresRegressionStore) queryRegressionFailureGaps(regressionIDs []u
 		Where("regression_id IN ? AND start_time <= ? AND test_failed = true", regressionIDs, resolutionTime).
 		Group("regression_id").
 		Scan(&lastRows).Error; err != nil {
-		return nil, fmt.Errorf("error querying last failures before resolution: %w", err)
+		return nil, fmt.Errorf("error querying last failures before resolution for regressions %v: %w", regressionIDs, err)
 	}
 	for _, row := range lastRows {
 		if row.FailureTime.Valid {
@@ -432,7 +432,7 @@ func (prs *PostgresRegressionStore) queryRegressionFailureGaps(regressionIDs []u
 		Where("regression_id IN ? AND start_time > ? AND test_failed = true", regressionIDs, resolutionTime).
 		Group("regression_id").
 		Scan(&firstRows).Error; err != nil {
-		return nil, fmt.Errorf("error querying first failures after resolution: %w", err)
+		return nil, fmt.Errorf("error querying first failures after resolution for regressions %v: %w", regressionIDs, err)
 	}
 	for _, row := range firstRows {
 		if row.FailureTime.Valid {
@@ -461,7 +461,7 @@ func (prs *PostgresRegressionStore) ForceClosePreview(triageID uint) (*ForceClos
 	preview := &ForceClosePreview{TriageID: triageID, Resolved: resolved}
 
 	// Load only the regressions the preview reports on: those still open (would close / would not close
-	// depending on when they opened) or those opened after the resolution time. Already-closed
+	// depending on when they opened) or those opened at or after the resolution time. Already-closed
 	// regressions that opened before resolution are omitted (force closing would not change them), so we
 	// filter them out in the query rather than loading every regression ever associated with the triage.
 	var regs []models.TestRegression
@@ -469,7 +469,7 @@ func (prs *PostgresRegressionStore) ForceClosePreview(triageID uint) (*ForceClos
 		Select("test_regressions.*").
 		Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
 		Where("triage_regressions.triage_id = ?", triageID).
-		Where("test_regressions.closed IS NULL OR test_regressions.opened > ?", resolved).
+		Where("test_regressions.closed IS NULL OR test_regressions.opened >= ?", resolved).
 		Find(&regs).Error; err != nil {
 		return nil, fmt.Errorf("error loading regressions for triage %d force close preview: %w", triageID, err)
 	}
@@ -497,15 +497,59 @@ func (prs *PostgresRegressionStore) ForceClosePreview(triageID uint) (*ForceClos
 			entry.Closed = &c
 		}
 		switch {
-		case !reg.Closed.Valid && !reg.Opened.After(resolved):
-			// Open and existed at the resolution time: this is what force close would close.
+		case !reg.Closed.Valid && reg.Opened.Before(resolved):
+			// Open and opened strictly before the resolution time: this is what force close would close.
 			preview.WouldClose = append(preview.WouldClose, entry)
-		case reg.Opened.After(resolved):
-			// Opened after the resolution time: force close would leave it untouched.
+		case !reg.Opened.Before(resolved):
+			// Opened at or after the resolution time: force close would leave it untouched. A regression
+			// opened at the exact resolution instant is intentionally excluded from closing (strict <).
 			preview.WouldNotClose = append(preview.WouldNotClose, entry)
 		}
 	}
 	return preview, nil
+}
+
+// forceCloseTriageLinks builds the HATEOAS links common to force close responses: the owning triage
+// and the two force close endpoints for the triage.
+func forceCloseTriageLinks(baseURL string, triageID uint) map[string]string {
+	return map[string]string{
+		"triage":              fmt.Sprintf("%s/api/component_readiness/triages/%d", baseURL, triageID),
+		"force_close":         fmt.Sprintf("%s/api/component_readiness/triages/%d/force_close_regressions", baseURL, triageID),
+		"force_close_preview": fmt.Sprintf("%s/api/component_readiness/triages/%d/force_close_preview", baseURL, triageID),
+	}
+}
+
+// regressionDetailLink builds the HATEOAS link to a single regression's detail endpoint.
+func regressionDetailLink(baseURL string, regressionID uint) map[string]string {
+	return map[string]string{
+		"self": fmt.Sprintf("%s/api/component_readiness/regressions/%d", baseURL, regressionID),
+	}
+}
+
+// InjectForceCloseHATEOASLinks populates HATEOAS links on a force close result so clients can
+// discover the owning triage and the related force close endpoints.
+func InjectForceCloseHATEOASLinks(result *ForceCloseResult, baseURL string, triageID uint) {
+	if result == nil {
+		return
+	}
+	result.Links = forceCloseTriageLinks(baseURL, triageID)
+	result.Links["self"] = result.Links["force_close"]
+}
+
+// InjectForceClosePreviewHATEOASLinks populates HATEOAS links on a force close preview and on each
+// previewed regression (linking to its detail endpoint) for discoverability.
+func InjectForceClosePreviewHATEOASLinks(preview *ForceClosePreview, baseURL string) {
+	if preview == nil {
+		return
+	}
+	preview.Links = forceCloseTriageLinks(baseURL, preview.TriageID)
+	preview.Links["self"] = preview.Links["force_close_preview"]
+	for i := range preview.WouldClose {
+		preview.WouldClose[i].Links = regressionDetailLink(baseURL, preview.WouldClose[i].RegressionID)
+	}
+	for i := range preview.WouldNotClose {
+		preview.WouldNotClose[i].Links = regressionDetailLink(baseURL, preview.WouldNotClose[i].RegressionID)
+	}
 }
 
 // SyncRegressionsForReport compares regressed tests from a component report against known

@@ -500,11 +500,49 @@ func Test_ForceCloseRegressions(t *testing.T) {
 		assert.True(t, original.Closed.Valid, "force closed regression should remain closed")
 		assert.True(t, original.ForceClosed, "force closed regression should remain force closed")
 	})
+
+	t.Run("does not close a regression opened exactly at the resolution time", func(t *testing.T) {
+		defer cleanup()
+
+		resolved := time.Now().Truncate(time.Second)
+		// Opened at the exact resolution instant: strict opened < resolved means this must not close.
+		reg, err := rawCreateRegression(dbc, "4.19", "fc-boundary", "force close test fc-boundary",
+			[]string{"a:b"}, resolved, time.Time{})
+		require.NoError(t, err)
+		triage := createResolvedTriageForRegressions(t, "https://redhat.atlassian.net/browse/TEST-FC-BOUNDARY", resolved, reg)
+
+		result, err := tracker.ForceCloseRegressions(triage.ID, "developer", "boundary")
+		require.NoError(t, err)
+		assert.Empty(t, result.ClosedRegressionIDs,
+			"a regression opened exactly at the resolution time should not be force closed")
+
+		var checkReg models.TestRegression
+		require.NoError(t, dbc.DB.First(&checkReg, reg.ID).Error)
+		assert.False(t, checkReg.Closed.Valid, "boundary regression should remain open")
+		assert.False(t, checkReg.ForceClosed, "boundary regression should not be force closed")
+
+		// The preview must categorize the boundary regression under would_not_close, never would_close.
+		preview, err := tracker.ForceClosePreview(triage.ID)
+		require.NoError(t, err)
+		assert.True(t, containsPreviewRegression(preview.WouldNotClose, reg.ID),
+			"boundary regression should appear in would_not_close")
+		assert.False(t, containsPreviewRegression(preview.WouldClose, reg.ID),
+			"boundary regression should not appear in would_close")
+	})
 }
 
 func containsRegression(regressions []*models.TestRegression, id uint) bool {
 	for _, r := range regressions {
 		if r.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func containsPreviewRegression(regressions []componentreadiness.ForceClosePreviewRegression, id uint) bool {
+	for _, r := range regressions {
+		if r.RegressionID == id {
 			return true
 		}
 	}
@@ -755,8 +793,14 @@ func Test_RegressionJobRuns(t *testing.T) {
 }
 
 func cleanupTriages(dbc *db.DB) {
-	dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1")
-	dbc.DB.Where("1 = 1").Delete(&models.Triage{})
+	// Delete the triage_regressions join rows before the triages so no association outlives a
+	// referenced row, and surface any error rather than silently leaking rows into later tests.
+	if err := dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1").Error; err != nil {
+		log.Errorf("error deleting triage_regressions: %v", err)
+	}
+	if err := dbc.DB.Where("1 = 1").Delete(&models.Triage{}).Error; err != nil {
+		log.Errorf("error deleting triage records: %v", err)
+	}
 }
 
 func Test_SyncTriageSymptoms(t *testing.T) {
