@@ -69,6 +69,11 @@ type LoadFlags struct {
 	ProwLoadSince           string
 	SkipMatviewRefresh      bool
 	ForceGARefresh          bool
+	// DataProvider selects the component readiness data backend used by the
+	// regression cache loader: "default" (auto-select from the configured
+	// clients), "bigquery", or "postgres" (PostgreSQL-only, requires no BigQuery
+	// credentials). See flags.NewDataProvider for the selection logic.
+	DataProvider string
 }
 
 // want a single total load and refresh time
@@ -111,6 +116,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.ProwLoadSince, "prow-load-since", "", "Override how far back to load prow jobs (e.g. 2024-01-15T00:00:00Z or 72h for 72 hours ago)")
 	fs.BoolVar(&f.SkipMatviewRefresh, "skip-matview-refresh", false, "Skip refreshing materialized views after loading")
 	fs.BoolVar(&f.ForceGARefresh, "force-ga-refresh", false, "Force re-population of GA test status data from BigQuery")
+	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider for component readiness regression cache loading: default (auto-select from the configured clients), bigquery, or postgres (PostgreSQL-only, requires no BigQuery credentials)")
 }
 
 // nolint:gocyclo
@@ -235,8 +241,17 @@ func NewLoadCommand() *cobra.Command {
 					}
 					regressionCacheAdded = true
 
+					// A BigQuery client error is only fatal here when credentials were
+					// actually provided (i.e. the supplied credentials are broken). When no
+					// BigQuery credentials are configured, allow PG-only mode by passing a nil
+					// BigQuery client to flags.NewDataProvider below and letting its cascade
+					// select an available provider (or return a clear, provider-specific error).
+					bqClient := bqc
 					if bigqueryErr != nil {
-						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents regression-cache loading")
+						if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
+							return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents regression-cache loading")
+						}
+						bqClient = nil
 					}
 					if dbErr != nil {
 						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents regression-cache loading")
@@ -262,8 +277,13 @@ func NewLoadCommand() *cobra.Command {
 					}
 					regressionStore := componentreadiness.NewPostgresRegressionStore(dbc, jiraClient)
 
+					crDataProvider, err := flags.NewDataProvider(f.DataProvider, bqClient, dbc, cacheClient)
+					if err != nil {
+						return errors.Wrap(err, "error creating data provider for regression cache loader")
+					}
+
 					rcl, err := regressioncacheloader.New(
-						dbc, bqc, config, views.ComponentReadiness, releaseConfigs,
+						dbc, crDataProvider, config, views.ComponentReadiness, releaseConfigs,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor,
 						f.ComponentReadinessFlags.CRTimeRoundingOffset,
 						regressionStore,
