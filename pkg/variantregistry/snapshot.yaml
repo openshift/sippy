@@ -45648,29 +45648,6 @@ periodic-ci-openshift-knative-serverless-operator-release-1.37-ocp-4.22-lpGA-lp-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-llc-4.22-e2e-telcov10n-functional-cnf-compute-llc-nightly:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-llc-4.23-e2e-telcov10n-functional-cnf-compute-llc-nightly:
     Aggregation: none
     Architecture: amd64
