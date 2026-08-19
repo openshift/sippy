@@ -1710,8 +1710,17 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 	}
 	log.WithField("count", updatedCount).Info("Populated job_symptoms on regression job runs")
 
+	var regressionIDs []uint
+	for id := range regressionSymptom {
+		regressionIDs = append(regressionIDs, id)
+	}
+
 	var triages []models.Triage
-	if err := dbc.DB.Preload("Regressions").Order("id").Limit(2).Find(&triages).Error; err != nil {
+	if err := dbc.DB.Preload("Regressions").
+		Joins("JOIN triage_regressions ON triage_regressions.triage_id = triages.id").
+		Where("triage_regressions.test_regression_id IN ?", regressionIDs).
+		Order("triages.id").
+		Find(&triages).Error; err != nil {
 		return fmt.Errorf("failed to find triages: %w", err)
 	}
 
