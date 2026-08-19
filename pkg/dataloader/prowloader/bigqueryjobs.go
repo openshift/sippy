@@ -13,7 +13,6 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/openshift/sippy/pkg/apis/prow"
-	"github.com/openshift/sippy/pkg/db/query"
 )
 
 func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []error) {
@@ -25,25 +24,17 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		lastProwJobRun = *pl.loadSince
 		log.Infof("Using manually specified load-since time: %s", lastProwJobRun.UTC().Format(time.RFC3339))
 	} else {
-		release, err := query.CurrentActiveRelease(pl.dbc)
-		if err != nil {
-			log.WithError(err).Warnf("could not determine active release, importing previous %d days", DefaultLookbackDays)
+		row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").Row()
+		err := row.Scan(&lastProwJobRun)
+		if err != nil || lastProwJobRun.IsZero() {
+			log.WithError(err).Warnf("no last prow job run found (new database?), importing previous %d days", DefaultLookbackDays)
 			lastProwJobRun = time.Now().AddDate(0, 0, -DefaultLookbackDays)
 		} else {
-			row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").
-				Where("prow_job_release = ?", release).
-				Where("timestamp > NOW() - INTERVAL '14 days'").Row()
-			err = row.Scan(&lastProwJobRun)
-			if err != nil || lastProwJobRun.IsZero() {
-				log.WithError(err).Warnf("no last prow job run found (new database?), importing previous %d days", DefaultLookbackDays)
-				lastProwJobRun = time.Now().AddDate(0, 0, -DefaultLookbackDays)
-			} else {
-				// adjust the last job run time, we're querying all jobs that have completed since our last recorded
-				// job START time, but we need to subtract our max job runtime in-case a job ended early and was our last
-				// imported start time, while others that started before it hadn't completed yet.
-				// 12 hours should safely cover our max timeout.
-				lastProwJobRun = lastProwJobRun.Add(-12 * time.Hour)
-			}
+			// adjust the last job run time, we're querying all jobs that have completed since our last recorded
+			// job START time, but we need to subtract our max job runtime in-case a job ended early and was our last
+			// imported start time, while others that started before it hadn't completed yet.
+			// 12 hours should safely cover our max timeout.
+			lastProwJobRun = lastProwJobRun.Add(-12 * time.Hour)
 		}
 
 		// we need to know how far back we are looking for partitioning
@@ -54,7 +45,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 	// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
 	// as the default UTC correctly.
 	// Annotations and labels can be queried here if we need them.
-	bqQuery := pl.bigQueryClient.Query(pl.ctx, bqlabel.ProwLoaderProwJobs, `
+	query := pl.bigQueryClient.Query(pl.ctx, bqlabel.ProwLoaderProwJobs, `
         SELECT
 			prowjob_job_name,
 			prowjob_state,
@@ -76,13 +67,13 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 	       AND prowjob_url IS NOT NULL
 	       AND prowjob_state NOT IN ('pending', 'triggered')
 	       ORDER BY prowjob_start_ts`)
-	bqQuery.Parameters = []bigquery.QueryParameter{
+	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "queryFrom",
 			Value: lastProwJobRun,
 		},
 	}
-	it, err := bqQuery.Read(pl.ctx)
+	it, err := query.Read(pl.ctx)
 	if err != nil {
 		errs = append(errs, err)
 		log.WithError(err).Error("error querying jobs from bigquery")

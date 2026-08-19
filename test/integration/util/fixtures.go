@@ -194,7 +194,6 @@ func CreateReleaseDefinition(t *testing.T, dbc *db.DB, release string, major, mi
 		Release: release,
 		Major:   major,
 		Minor:   minor,
-		Product: "OCP",
 	}
 	require.NoError(t, dbc.DB.Create(&rd).Error, "creating ReleaseDefinition %q", release)
 	return rd

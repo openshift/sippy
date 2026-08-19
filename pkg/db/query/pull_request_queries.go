@@ -19,7 +19,6 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 		Joins("INNER JOIN release_tags ON release_tags.id = release_tag_pull_requests.release_tag_id").
 		Group("url, release_tags.stream, release_tags.architecture, release_tags.release_tag, release_tags.phase, release_tags.release")
 
-	lookback90d := time.Now().UTC().Add(-90 * 24 * time.Hour)
 	prs := dbc.DB.Table("prow_pull_requests").
 		Joins("LEFT JOIN (?) ci ON ci.url = prow_pull_requests.link",
 			dbc.DB.Table("(?) as ci", firstPayloadsByStreamAndArch).Where("ci.stream = 'ci' AND architecture = 'amd64'")).
@@ -30,9 +29,7 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 		Joins("INNER JOIN prow_jobs on prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_jobs.release = ?", release).
 		Where("prow_job_runs.prow_job_release = ?", release).
-		Where("prow_job_runs.timestamp > ?", lookback90d).
 		Where("prow_job_run_prow_pull_requests.prow_job_run_release = ?", release).
-		Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp > ?", lookback90d).
 		Select("DISTINCT ON(prow_pull_requests.link) prow_pull_requests.*, ci.release_tag AS first_ci_payload, ci.phase AS first_ci_payload_phase, ci.release as first_ci_payload_release, nightly.release_tag as first_nightly_payload, nightly.phase as first_nightly_payload_phase, nightly.release as first_nightly_payload_release")
 
 	results := make([]api.PullRequest, 0)
@@ -46,31 +43,23 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 	return results, nil
 }
 
-func PullRequestAveragePremergeFailures(dbc *db.DB, release string, start, end *time.Time) *gorm.DB {
+func PullRequestAveragePremergeFailures(dbc *db.DB, start, end *time.Time) *gorm.DB {
 	premergeFailures := dbc.DB.Table("prow_job_runs").
 		Select("prow_jobs.id as prow_job_id, prow_jobs.name as prow_job_name, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.link, COUNT(*) as total_runs").
-		Joins("INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id AND prow_job_run_prow_pull_requests.prow_job_run_release = prow_job_runs.prow_job_release").
+		Joins("INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id").
 		Joins("INNER JOIN prow_pull_requests on prow_pull_requests.id = prow_job_run_prow_pull_requests.prow_pull_request_id").
 		Joins("INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
-		Where("prow_job_runs.prow_job_release = ?", release).
-		Where("prow_job_run_prow_pull_requests.prow_job_run_release = ?", release).
 		Where("prow_job_runs.overall_result != 'S'").
 		Where("prow_job_runs.overall_result != 'A'").
 		Where("prow_pull_requests.merged_at IS NOT NULL").
 		Group("prow_jobs.id, prow_jobs.name, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.id, prow_pull_requests.link")
 
 	if start != nil {
-		premergeFailures = premergeFailures.
-			Where("prow_pull_requests.merged_at >= ?", start).
-			Where("prow_job_runs.timestamp >= ?", start).
-			Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp >= ?", start)
+		premergeFailures = premergeFailures.Where("prow_pull_requests.merged_at >= ?", start)
 	}
 
 	if end != nil {
-		premergeFailures = premergeFailures.
-			Where("prow_pull_requests.merged_at <= ?", end).
-			Where("prow_job_runs.timestamp <= ?", end).
-			Where("prow_job_run_prow_pull_requests.prow_job_run_timestamp <= ?", end)
+		premergeFailures = premergeFailures.Where("prow_pull_requests.merged_at <= ?", end)
 	}
 
 	return dbc.DB.Table("(?) as premerge_failures", premergeFailures).

@@ -430,16 +430,14 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 	testQuery := dbc.DB.Table("tests").Where("name = ?", test).Select("id")
 	q := dbc.DB.Table("prow_job_run_tests").
 		Joins("JOIN prow_job_run_test_outputs ON prow_job_run_test_outputs.prow_job_run_test_id = prow_job_run_tests.id AND prow_job_run_test_outputs.prow_job_run_test_timestamp = prow_job_run_tests.prow_job_run_timestamp").
-		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_runs.prow_job_release = prow_job_run_tests.prow_job_run_release").
+		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id").
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_job_run_tests.test_id = (?)", testQuery).
 		Where("prow_job_run_tests.status IN ?", []int{int(v1.TestStatusFailure), int(v1.TestStatusFlake)}).
 		Where("prow_job_run_tests.prow_job_run_timestamp > current_date - interval '14' day").
 		Where("prow_job_run_tests.prow_job_run_release = ?", release).
 		Where("prow_job_run_test_outputs.prow_job_run_test_timestamp > current_date - interval '14' day").
-		Where("prow_job_run_test_outputs.prow_job_run_test_release = ?", release).
-		Where("prow_job_runs.prow_job_release = ?", release).
-		Where("prow_job_runs.timestamp > current_date - interval '14' day")
+		Where("prow_job_run_test_outputs.prow_job_run_test_release = ?", release)
 
 	for _, variant := range includedVariants {
 		q = q.Where("prow_jobs.variant_combination_id IN (SELECT id FROM variant_combinations WHERE ? = any(variants))", variant)

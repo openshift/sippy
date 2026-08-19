@@ -426,8 +426,6 @@ export default function JobRunsTable(props) {
     let queryString = ''
     if (props.release !== '') {
       queryString += '&release=' + props.release
-    } else if (props.useCurrentRelease) {
-      queryString += '&useCurrentRelease=true'
     }
 
     if (filterModel && filterModel.items.length > 0) {
@@ -481,15 +479,7 @@ export default function JobRunsTable(props) {
 
   useEffect(() => {
     fetchData()
-  }, [
-    filterModel,
-    sort,
-    sortField,
-    page,
-    pageSize,
-    props.release,
-    props.useCurrentRelease,
-  ])
+  }, [filterModel, sort, sortField, page, pageSize, props.release])
 
   // Fetch label definitions
   useEffect(() => {
@@ -794,7 +784,6 @@ JobRunsTable.defaultProps = {
   hideControls: false,
   pageSize: 25,
   release: '',
-  useCurrentRelease: false,
   filterModel: {
     items: [],
   },
@@ -808,7 +797,6 @@ JobRunsTable.propTypes = {
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   release: PropTypes.string,
-  useCurrentRelease: PropTypes.bool,
   title: PropTypes.string,
   hideControls: PropTypes.bool,
   period: PropTypes.string,

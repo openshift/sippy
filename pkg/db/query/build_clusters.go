@@ -9,17 +9,13 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-func HasBuildClusterData(dbc *db.DB, release string, since time.Time) (bool, error) {
+func HasBuildClusterData(dbc *db.DB) (bool, error) {
 	count := int64(0)
-	res := dbc.DB.Table("prow_job_runs").
-		Where(`cluster != '' AND cluster IS NOT NULL`).
-		Where("prow_job_release = ?", release).
-		Where("timestamp > ?", since).
-		Count(&count)
+	res := dbc.DB.Table("prow_job_runs").Where(`cluster != '' AND cluster IS NOT NULL`).Count(&count)
 	return count > 0, res.Error
 }
 
-func BuildClusterHealth(dbc *db.DB, release string, start, boundary, end time.Time) ([]models.BuildClusterHealthReport, error) {
+func BuildClusterHealth(dbc *db.DB, start, boundary, end time.Time) ([]models.BuildClusterHealthReport, error) {
 	results := make([]models.BuildClusterHealthReport, 0)
 
 	rawResults := dbc.DB.Select(`
@@ -36,7 +32,6 @@ func BuildClusterHealth(dbc *db.DB, release string, start, boundary, end time.Ti
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where(`cluster != '' AND cluster IS NOT NULL`).
 		Where("prow_jobs.kind = 'periodic'").
-		Where("prow_job_runs.prow_job_release = ?", release).
 		Where("prow_job_runs.timestamp BETWEEN @start AND @end", sql.Named("start", start), sql.Named("end", end)).
 		Group("cluster")
 
@@ -50,7 +45,7 @@ func BuildClusterHealth(dbc *db.DB, release string, start, boundary, end time.Ti
 	return results, q.Error
 }
 
-func BuildClusterAnalysis(dbc *db.DB, release, period string) ([]models.BuildClusterHealth, error) {
+func BuildClusterAnalysis(dbc *db.DB, period string) ([]models.BuildClusterHealth, error) {
 	results := make([]models.BuildClusterHealth, 0)
 
 	q := dbc.DB.Raw(fmt.Sprintf(`
@@ -70,12 +65,10 @@ WHERE
 AND
 	prow_jobs.kind = 'periodic'
 AND
-    prow_job_runs.prow_job_release = @release
-AND
     cluster != ''
 AND
     timestamp > NOW() - INTERVAL '14 DAY'
 GROUP BY cluster, period
-`, period), sql.Named("release", release)).Scan(&results)
+`, period)).Scan(&results)
 	return results, q.Error
 }

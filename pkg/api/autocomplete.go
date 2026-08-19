@@ -5,10 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/query"
 )
 
 // LabelOption represents a label with ID and title for autocomplete
@@ -77,22 +74,9 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 			Select("DISTINCT(author) as name").
 			Order("name")
 	case "cluster":
-		clusterRelease := release
-		if clusterRelease == "" {
-			var err error
-			clusterRelease, err = query.CurrentActiveRelease(dbc)
-			if err != nil {
-				log.WithError(err).Warn("could not determine current development release for cluster autocomplete")
-				// do not return error for autocomplete, default to empty results
-				RespondWithJSON(200, w, result)
-				return
-			}
-		}
 		q = q.Table("prow_job_runs").
 			Select("DISTINCT(cluster) as name").
 			Where("cluster IS NOT NULL").
-			Where("prow_job_release = ?", clusterRelease).
-			Where("timestamp > NOW() - INTERVAL '14 days'").
 			Order("name")
 	case "suites":
 		q = q.Table("suites").
@@ -114,7 +98,7 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 		RespondWithJSON(404, w, map[string]string{"message": "Autocomplete field not found."})
 	}
 
-	if release != "" && field != "cluster" {
+	if release != "" {
 		q = q.Where("release = ?", release)
 	}
 

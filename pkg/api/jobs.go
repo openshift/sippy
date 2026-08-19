@@ -258,7 +258,6 @@ func JobDetailsReport(dbc *db.DB, release, jobSearchStr string, reportEnd time.T
 	prowJobRuns := make([]*models.ProwJobRun, 0)
 	res := dbc.DB.Joins("ProwJob").
 		Where("name LIKE ?", "%"+jobSearchStr+"%").
-		Where("prow_job_release = ?", release).
 		Where("timestamp > ?", since).
 		Where("release = ?", release).
 		Preload("Tests", "status = ? AND prow_job_run_release = ? AND prow_job_run_timestamp > ?", 12, release, since).

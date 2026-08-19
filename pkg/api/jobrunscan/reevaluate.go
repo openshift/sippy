@@ -23,7 +23,6 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
-	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -177,16 +176,9 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 		return result
 	}
 
-	partKeys, err := query.LookupProwJobRunPartitionKeys(r.db, jobRunID)
-	if err != nil {
-		result.Status = ReEvalEvalError
-		result.Error = fmt.Sprintf("looking up partition keys for job run %s: %v", buildID, err)
-		return result
-	}
-
+	// Look up the job run to get metadata
 	jobRunModel := new(models.ProwJobRun)
-	res := r.db.DB.Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
-		Take(jobRunModel, jobRunID)
+	res := r.db.DB.First(jobRunModel, jobRunID)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			result.Status = ReEvalMissingError
@@ -504,8 +496,7 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 	merged := pq.StringArray(mergeLabels(manualLabels, newBQLabels))
 
 	// Update prow_job_runs
-	if err := r.db.DB.Model(&models.ProwJobRun{}).
-		Where("id = ? AND prow_job_release = ? AND timestamp = ?", jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp).
+	if err := r.db.DB.Model(&models.ProwJobRun{}).Where("id = ?", jobRun.ID).
 		Update("labels", merged).Error; err != nil {
 		return fmt.Errorf("updating prow_job_runs.labels: %w", err)
 	}

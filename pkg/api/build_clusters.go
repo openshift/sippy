@@ -8,15 +8,15 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 )
 
-func GetBuildClusterHealthReport(dbc *db.DB, release string, start, boundary, end time.Time) ([]apitype.BuildClusterHealth, error) {
-	results, err := query.BuildClusterHealth(dbc, release, start, boundary, end)
+func GetBuildClusterHealthReport(dbc *db.DB, start, boundary, end time.Time) ([]apitype.BuildClusterHealth, error) {
+	results, err := query.BuildClusterHealth(dbc, start, boundary, end)
 	return results, err
 }
 
-func GetBuildClusterHealthAnalysis(dbc *db.DB, release, period string) (map[string]apitype.BuildClusterHealthAnalysis, error) {
+func GetBuildClusterHealthAnalysis(dbc *db.DB, period string) (map[string]apitype.BuildClusterHealthAnalysis, error) {
 	results := make(map[string]apitype.BuildClusterHealthAnalysis)
 
-	health, err := query.BuildClusterAnalysis(dbc, release, period)
+	health, err := query.BuildClusterAnalysis(dbc, period)
 	if err != nil {
 		return nil, err
 	}
