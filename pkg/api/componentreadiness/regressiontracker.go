@@ -335,7 +335,7 @@ func (prs *PostgresRegressionStore) ForceCloseRegressions(triageID uint, closedB
 
 	err := prs.dbc.DB.Transaction(func(tx *gorm.DB) error {
 		var triage models.Triage
-		if err := tx.Preload("Regressions").First(&triage, triageID).Error; err != nil {
+		if err := tx.First(&triage, triageID).Error; err != nil {
 			return fmt.Errorf("error loading triage %d for force close: %w", triageID, err)
 		}
 		if !triage.Resolved.Valid {
@@ -344,27 +344,36 @@ func (prs *PostgresRegressionStore) ForceCloseRegressions(triageID uint, closedB
 		closeTime := triage.Resolved.Time
 		result.Timestamp = closeTime
 
-		for i := range triage.Regressions {
-			reg := &triage.Regressions[i]
-			// Only close regressions that existed at the resolution time and are still open. This scopes the
-			// action to what the triage actually resolved, keeps it idempotent, and preserves the original
-			// closed time of any already-closed regression.
-			if reg.Closed.Valid || reg.Opened.After(closeTime) {
-				continue
-			}
-			// Update only the affected columns to avoid rewriting the many2many triage associations.
-			updates := map[string]interface{}{
-				"closed":                    sql.NullTime{Valid: true, Time: closeTime},
-				"force_closed":              true,
-				"force_closed_by":           closedBy,
-				"force_closed_reason":       reason,
-				"force_closed_by_triage_id": triageID,
-			}
-			if err := tx.Model(&models.TestRegression{}).Where("id = ?", reg.ID).Updates(updates).Error; err != nil {
-				return fmt.Errorf("error force closing regression %d: %w", reg.ID, err)
-			}
-			result.ClosedRegressionIDs = append(result.ClosedRegressionIDs, reg.ID)
+		// Select only the regressions this triage actually resolved: those that existed at the
+		// resolution time (opened <= closeTime) and are still open (closed IS NULL). Filtering in the
+		// query rather than loading every regression ever associated with the triage keeps the action
+		// scoped, keeps it idempotent, and preserves the closed time of already-closed regressions.
+		var regIDsToClose []uint
+		if err := tx.Table(testRegressionsTable).
+			Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
+			Where("triage_regressions.triage_id = ?", triageID).
+			Where("test_regressions.closed IS NULL").
+			Where("test_regressions.opened <= ?", closeTime).
+			Pluck("test_regressions.id", &regIDsToClose).Error; err != nil {
+			return fmt.Errorf("error finding regressions to force close for triage %d: %w", triageID, err)
 		}
+		if len(regIDsToClose) == 0 {
+			return nil
+		}
+
+		// Update only the affected columns in a single statement to avoid rewriting the many2many
+		// triage associations.
+		updates := map[string]interface{}{
+			"closed":                    sql.NullTime{Valid: true, Time: closeTime},
+			"force_closed":              true,
+			"force_closed_by":           closedBy,
+			"force_closed_reason":       reason,
+			"force_closed_by_triage_id": triageID,
+		}
+		if err := tx.Model(&models.TestRegression{}).Where("id IN ?", regIDsToClose).Updates(updates).Error; err != nil {
+			return fmt.Errorf("error force closing regressions for triage %d: %w", triageID, err)
+		}
+		result.ClosedRegressionIDs = regIDsToClose
 		return nil
 	})
 	if err != nil {
@@ -376,37 +385,60 @@ func (prs *PostgresRegressionStore) ForceCloseRegressions(triageID uint, closedB
 	return result, nil
 }
 
-// queryRegressionFailureGap computes, for a single regression, the last failing job run at or before
-// resolutionTime and the first failing job run after resolutionTime using the regression_job_runs table.
-// Either bound may be nil when no matching failing run exists.
-func (prs *PostgresRegressionStore) queryRegressionFailureGap(regressionID uint, resolutionTime time.Time) (RegressionFailureGap, error) {
-	gap := RegressionFailureGap{}
-
-	var lastBefore sql.NullTime
-	lastRow := prs.dbc.DB.Table("regression_job_runs").
-		Where("regression_id = ? AND start_time <= ? AND test_failed = true", regressionID, resolutionTime).
-		Select("MAX(start_time)").Row()
-	if err := lastRow.Scan(&lastBefore); err != nil {
-		return gap, fmt.Errorf("error querying last failure before resolution for regression %d: %w", regressionID, err)
-	}
-	if lastBefore.Valid {
-		t := lastBefore.Time
-		gap.LastFailureBeforeResolution = &t
+// queryRegressionFailureGaps computes, for each of the given regressions, the last failing job run at
+// or before resolutionTime and the first failing job run after resolutionTime using the
+// regression_job_runs table. It runs a single grouped query per direction (rather than a query per
+// regression) to avoid an N+1 pattern. Regressions with no matching failing run are absent from the
+// corresponding map entry / field.
+func (prs *PostgresRegressionStore) queryRegressionFailureGaps(regressionIDs []uint, resolutionTime time.Time) (map[uint]RegressionFailureGap, error) {
+	gaps := make(map[uint]RegressionFailureGap, len(regressionIDs))
+	if len(regressionIDs) == 0 {
+		return gaps, nil
 	}
 
-	var firstAfter sql.NullTime
-	firstRow := prs.dbc.DB.Table("regression_job_runs").
-		Where("regression_id = ? AND start_time > ? AND test_failed = true", regressionID, resolutionTime).
-		Select("MIN(start_time)").Row()
-	if err := firstRow.Scan(&firstAfter); err != nil {
-		return gap, fmt.Errorf("error querying first failure after resolution for regression %d: %w", regressionID, err)
-	}
-	if firstAfter.Valid {
-		t := firstAfter.Time
-		gap.FirstFailureAfterResolution = &t
+	// gapRow captures the grouped aggregate (MAX/MIN start_time) per regression_id.
+	type gapRow struct {
+		RegressionID uint
+		FailureTime  sql.NullTime
 	}
 
-	return gap, nil
+	// Last failing run at or before the resolution time, one row per regression.
+	var lastRows []gapRow
+	if err := prs.dbc.DB.Table("regression_job_runs").
+		Select("regression_id, MAX(start_time) AS failure_time").
+		Where("regression_id IN ? AND start_time <= ? AND test_failed = true", regressionIDs, resolutionTime).
+		Group("regression_id").
+		Scan(&lastRows).Error; err != nil {
+		return nil, fmt.Errorf("error querying last failures before resolution: %w", err)
+	}
+	for _, row := range lastRows {
+		if row.FailureTime.Valid {
+			t := row.FailureTime.Time
+			gap := gaps[row.RegressionID]
+			gap.LastFailureBeforeResolution = &t
+			gaps[row.RegressionID] = gap
+		}
+	}
+
+	// First failing run after the resolution time, one row per regression.
+	var firstRows []gapRow
+	if err := prs.dbc.DB.Table("regression_job_runs").
+		Select("regression_id, MIN(start_time) AS failure_time").
+		Where("regression_id IN ? AND start_time > ? AND test_failed = true", regressionIDs, resolutionTime).
+		Group("regression_id").
+		Scan(&firstRows).Error; err != nil {
+		return nil, fmt.Errorf("error querying first failures after resolution: %w", err)
+	}
+	for _, row := range firstRows {
+		if row.FailureTime.Valid {
+			t := row.FailureTime.Time
+			gap := gaps[row.RegressionID]
+			gap.FirstFailureAfterResolution = &t
+			gaps[row.RegressionID] = gap
+		}
+	}
+
+	return gaps, nil
 }
 
 // ForceClosePreview returns a dry-run of what ForceCloseRegressions would do for the given triage without
@@ -414,7 +446,7 @@ func (prs *PostgresRegressionStore) queryRegressionFailureGap(regressionID uint,
 // includes the failure gap around the resolution time so callers can spot regressions that kept failing.
 func (prs *PostgresRegressionStore) ForceClosePreview(triageID uint) (*ForceClosePreview, error) {
 	var triage models.Triage
-	if err := prs.dbc.DB.Preload("Regressions").First(&triage, triageID).Error; err != nil {
+	if err := prs.dbc.DB.First(&triage, triageID).Error; err != nil {
 		return nil, fmt.Errorf("error loading triage %d for force close preview: %w", triageID, err)
 	}
 	if !triage.Resolved.Valid {
@@ -423,18 +455,37 @@ func (prs *PostgresRegressionStore) ForceClosePreview(triageID uint) (*ForceClos
 	resolved := triage.Resolved.Time
 	preview := &ForceClosePreview{TriageID: triageID, Resolved: resolved}
 
-	for i := range triage.Regressions {
-		reg := &triage.Regressions[i]
-		gap, err := prs.queryRegressionFailureGap(reg.ID, resolved)
-		if err != nil {
-			return nil, err
-		}
+	// Load only the regressions the preview reports on: those still open (would close / would not close
+	// depending on when they opened) or those opened after the resolution time. Already-closed
+	// regressions that opened before resolution are omitted (force closing would not change them), so we
+	// filter them out in the query rather than loading every regression ever associated with the triage.
+	var regs []models.TestRegression
+	if err := prs.dbc.DB.Table(testRegressionsTable).
+		Select("test_regressions.*").
+		Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
+		Where("triage_regressions.triage_id = ?", triageID).
+		Where("test_regressions.closed IS NULL OR test_regressions.opened > ?", resolved).
+		Find(&regs).Error; err != nil {
+		return nil, fmt.Errorf("error loading regressions for triage %d force close preview: %w", triageID, err)
+	}
+
+	regIDs := make([]uint, len(regs))
+	for i := range regs {
+		regIDs[i] = regs[i].ID
+	}
+	gaps, err := prs.queryRegressionFailureGaps(regIDs, resolved)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range regs {
+		reg := &regs[i]
 		entry := ForceClosePreviewRegression{
 			RegressionID:         reg.ID,
 			TestName:             reg.TestName,
 			Variants:             reg.Variants,
 			Opened:               reg.Opened,
-			RegressionFailureGap: gap,
+			RegressionFailureGap: gaps[reg.ID],
 		}
 		if reg.Closed.Valid {
 			c := reg.Closed.Time
@@ -448,8 +499,6 @@ func (prs *PostgresRegressionStore) ForceClosePreview(triageID uint) (*ForceClos
 			// Opened after the resolution time: force close would leave it untouched.
 			preview.WouldNotClose = append(preview.WouldNotClose, entry)
 		}
-		// Already-closed regressions that opened before resolution are omitted: force closing would not
-		// change them.
 	}
 	return preview, nil
 }

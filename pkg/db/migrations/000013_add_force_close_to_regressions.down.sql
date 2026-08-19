@@ -1,3 +1,4 @@
+DROP INDEX IF EXISTS idx_test_regressions_force_closed;
 DROP INDEX IF EXISTS idx_test_regressions_force_closed_by_triage_id;
 
 ALTER TABLE test_regressions

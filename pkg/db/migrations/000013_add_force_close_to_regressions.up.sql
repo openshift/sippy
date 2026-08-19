@@ -18,3 +18,8 @@ ALTER TABLE test_regressions
 
 CREATE INDEX IF NOT EXISTS idx_test_regressions_force_closed_by_triage_id
     ON test_regressions (force_closed_by_triage_id);
+
+-- Partial index so the reuse-window queries that exclude force closed regressions
+-- (ListCurrentRegressionsForRelease, ResolveTriages) can skip the force closed rows
+-- cheaply. Only the force closed rows are indexed.
+CREATE INDEX idx_test_regressions_force_closed ON test_regressions (force_closed) WHERE force_closed = true;
