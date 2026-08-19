@@ -442,7 +442,10 @@ func (s *Server) determineCapabilities() {
 	if s.db != nil {
 		capabilities = append(capabilities, LocalDBCapability)
 
-		if hasBuildCluster, err := query.HasBuildClusterData(s.db); hasBuildCluster {
+		buildClusterRelease, err := query.CurrentActiveRelease(s.db)
+		if err != nil {
+			log.WithError(err).Warningf("could not determine active release for build cluster check")
+		} else if hasBuildCluster, err := query.HasBuildClusterData(s.db, buildClusterRelease); hasBuildCluster {
 			capabilities = append(capabilities, BuildClusterCapability)
 		} else if err != nil {
 			log.WithError(err).Warningf("could not fetch build cluster data")
@@ -1350,18 +1353,13 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 	// Get last updated time if available
 	var lastUpdated time.Time
 	if s.db != nil {
-		type LastUpdatedQuery struct {
-			Max time.Time
-		}
-		var result LastUpdatedQuery
-		// Assume our last update is the last time we inserted a prow job run.
-		res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&result)
-		if res.Error != nil {
-			log.WithError(res.Error).Error("error querying last updated from db")
+		var err error
+		lastUpdated, err = api.GetLastUpdateTime(s.db)
+		if err != nil {
+			log.WithError(err).Error("error querying last updated from db")
 			failureResponse(w, http.StatusInternalServerError, "error querying last updated from db")
 			return
 		}
-		lastUpdated = result.Max
 	}
 
 	// Build response using shared function
@@ -1401,7 +1399,18 @@ func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request
 func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {
 	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 
-	results, err := api.GetBuildClusterHealthReport(s.db, start, boundary, end)
+	release := param.SafeRead(req, "release")
+	if release == "" {
+		var err error
+		release, err = query.CurrentActiveRelease(s.db)
+		if err != nil {
+			log.WithError(err).Error("error determining release for build cluster health")
+			failureResponse(w, http.StatusInternalServerError, "error determining release: "+err.Error())
+			return
+		}
+	}
+
+	results, err := api.GetBuildClusterHealthReport(s.db, release, start, boundary, end)
 	if err != nil {
 		log.WithError(err).Error("error querying build cluster health from db")
 		failureResponse(w, http.StatusInternalServerError, "error querying build cluster health from db: "+err.Error())
@@ -1414,7 +1423,18 @@ func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request
 func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http.Request) {
 	period := getPeriod(req, api.PeriodDay)
 
-	results, err := api.GetBuildClusterHealthAnalysis(s.db, period)
+	release := param.SafeRead(req, "release")
+	if release == "" {
+		var err error
+		release, err = query.CurrentActiveRelease(s.db)
+		if err != nil {
+			log.WithError(err).Error("error determining release for build cluster analysis")
+			failureResponse(w, http.StatusInternalServerError, "error determining release: "+err.Error())
+			return
+		}
+	}
+
+	results, err := api.GetBuildClusterHealthAnalysis(s.db, release, period)
 	if err != nil {
 		log.WithError(err).Error("error querying build cluster health from db")
 		failureResponse(w, http.StatusInternalServerError, "error querying build cluster health from db: "+err.Error())

@@ -5,12 +5,39 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/filter"
 )
+
+// ProwJobRunPartitionKeys holds the partition key columns for prow_job_runs.
+// Used for two-step lookups: fetch these lightweight keys first, then load the
+// full row with partition pruning.
+type ProwJobRunPartitionKeys struct {
+	ProwJobRelease string    `gorm:"column:prow_job_release"`
+	Timestamp      time.Time `gorm:"column:timestamp"`
+}
+
+// LookupProwJobRunPartitionKeys fetches the partition keys for a prow_job_run
+// by ID. This is intended as the first step of a two-step lookup pattern where
+// the caller then uses these keys to load the full row with partition pruning.
+func LookupProwJobRunPartitionKeys(dbc *db.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
+	var keys ProwJobRunPartitionKeys
+	res := dbc.DB.Table("prow_job_runs").
+		Select("prow_job_release, timestamp").
+		Where("id = ?", jobRunID).
+		Scan(&keys)
+	if res.Error != nil {
+		return keys, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return keys, gorm.ErrRecordNotFound
+	}
+	return keys, nil
+}
 
 func JobRunTestCount(dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {
 	var prowJobRunTestCount int64
@@ -46,18 +73,16 @@ func ProwJobSimilarName(dbc *db.DB, rootName, release string) ([]models.ProwJob,
 	return jobs, nil
 }
 
-func ProwJobRunIDs(dbc *db.DB, prowJobID uint) ([]uint, error) {
-	jobIDs := make([]uint, 0)
-	q := dbc.DB.Raw(`SELECT id 
-	FROM prow_job_runs WHERE prow_job_id = ?`, prowJobID)
-	if q.Error != nil {
-		return nil, q.Error
+func ProwJobRunCount(dbc *db.DB, prowJobID uint, release string) (int, error) {
+	var count int64
+	q := dbc.DB.Table("prow_job_runs").
+		Where("prow_job_id = ?", prowJobID).
+		Where("prow_job_release = ?", release).
+		Where("timestamp > NOW() - INTERVAL '14 days'")
+	if err := q.Count(&count).Error; err != nil {
+		return 0, err
 	}
-	if err := q.Scan(&jobIDs).Error; err != nil {
-		return nil, err
-	}
-
-	return jobIDs, nil
+	return int(count), nil
 }
 
 func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (int, error) {

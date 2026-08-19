@@ -862,7 +862,8 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 			updates["labels"] = pq.StringArray{"InfraFailure"}
 		}
 
-		if err := dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", runID).
+		if err := dbc.DB.Model(&models.ProwJobRun{}).
+			Where("id = ? AND prow_job_release = ?", runID, prowJob.Release).
 			Updates(updates).Error; err != nil {
 			return 0, 0, fmt.Errorf("failed to update ProwJobRun result: %w", err)
 		}
@@ -873,14 +874,18 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 		UPDATE prow_job_runs SET
 			test_failures = COALESCE((
 				SELECT COUNT(*) FROM prow_job_run_tests
-				WHERE prow_job_run_id = prow_job_runs.id AND status = ?
+				WHERE prow_job_run_id = prow_job_runs.id
+				AND prow_job_run_release = prow_job_runs.prow_job_release
+				AND status = ?
 			), 0),
 			test_flakes = COALESCE((
 				SELECT COUNT(*) FROM prow_job_run_tests
-				WHERE prow_job_run_id = prow_job_runs.id AND status = ?
+				WHERE prow_job_run_id = prow_job_runs.id
+				AND prow_job_run_release = prow_job_runs.prow_job_release
+				AND status = ?
 			), 0)
-		WHERE prow_job_id = ?`,
-		int(v1.TestStatusFailure), int(v1.TestStatusFlake), prowJob.ID).Error; err != nil {
+		WHERE prow_job_id = ? AND prow_job_release = ?`,
+		int(v1.TestStatusFailure), int(v1.TestStatusFlake), prowJob.ID, prowJob.Release).Error; err != nil {
 		return 0, 0, fmt.Errorf("updating test counts for prow job %s: %w", prowJob.Name, err)
 	}
 
