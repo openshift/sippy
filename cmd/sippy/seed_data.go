@@ -1659,6 +1659,7 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 	if err := dbc.DB.
 		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
 		Where("prow_jobs.release = ? AND prow_job_runs.failed = true", "4.22").
+		Order("prow_job_runs.id").
 		Limit(4).
 		Find(&jobRuns).Error; err != nil {
 		return fmt.Errorf("failed to find failed job runs: %w", err)
@@ -1692,11 +1693,13 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 		{"DNSTimeoutSymptom"},
 		{"InstallTimeoutSymptom", "APITimeoutSymptom"},
 	}
+	regressionSymptom := make(map[uint]string)
 	updatedCount := 0
 	for regIdx, symptoms := range symptomAssignments {
 		if regIdx >= len(regressions) {
 			break
 		}
+		regressionSymptom[regressions[regIdx].ID] = symptoms[0]
 		for _, jr := range regressions[regIdx].JobRuns {
 			if err := dbc.DB.Model(&models.RegressionJobRun{}).Where("id = ?", jr.ID).
 				Update("job_symptoms", symptoms).Error; err != nil {
@@ -1714,9 +1717,13 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 
 	for _, t := range triages {
 		for _, reg := range t.Regressions {
+			symptom, ok := regressionSymptom[reg.ID]
+			if !ok {
+				continue
+			}
 			ts := models.TriageSymptom{
 				TriageID:     t.ID,
-				SymptomID:    "DNSTimeoutSymptom",
+				SymptomID:    symptom,
 				RegressionID: reg.ID,
 				JobRunCount:  2,
 			}
