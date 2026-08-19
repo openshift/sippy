@@ -33,8 +33,17 @@ func TestComponentReadinessViews(t *testing.T) {
 
 func TestRegressionCacheLoader(t *testing.T) {
 	credFile := os.Getenv("GCS_SA_JSON_PATH")
+	if credFile == "" {
+		t.Skip("GCS_SA_JSON_PATH not set, skipping regression cache loader test")
+	}
 
 	dbc := util.CreateE2EPostgresConnection(t)
+
+	// PostgreSQL is required: the test body reads releases from Postgres, builds a
+	// Postgres regression store, and queries dbc.DB directly.
+	if dbc == nil {
+		t.Skip("PostgreSQL is required for this regression cache loader test")
+	}
 
 	// Set up Redis cache client
 	redisURL := os.Getenv("REDIS_URL")
@@ -44,26 +53,13 @@ func TestRegressionCacheLoader(t *testing.T) {
 	cacheClient, err := redis.NewRedisCache(redisURL)
 	require.NoError(t, err, "error connecting to redis")
 
-	// Set up the BigQuery client only when credentials are available. When
-	// GCS_SA_JSON_PATH is unset, bqClient stays nil and the "default" data
-	// provider cascades to whichever backend is available (Postgres here).
+	// Set up BigQuery client
 	ctx := context.Background()
-	var bqClient *bqcachedclient.Client
-	if credFile != "" {
-		opCtx, bqCtx := bqcachedclient.OpCtxForCronEnv(ctx, "e2e")
-		ctx = bqCtx
-		bqClient, err = bqcachedclient.New(ctx, opCtx, cacheClient,
-			credFile, "openshift-gce-devel", "ci_analysis_us",
-			"openshift-ci-data-analysis.ci_data.Releases")
-		require.NoError(t, err, "error creating bigquery client")
-	}
-
-	// PostgreSQL is required: the test body reads releases from Postgres, builds a
-	// Postgres regression store, and queries dbc.DB directly. BigQuery is optional;
-	// when bqClient is nil, NewDataProvider cascades to the Postgres provider.
-	if dbc == nil {
-		t.Skip("PostgreSQL is required for this regression cache loader test")
-	}
+	opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "e2e")
+	bqClient, err := bqcachedclient.New(ctx, opCtx, cacheClient,
+		credFile, "openshift-gce-devel", "ci_analysis_us",
+		"openshift-ci-data-analysis.ci_data.Releases")
+	require.NoError(t, err, "error creating bigquery client")
 
 	// Parse the e2e views
 	crFlags := flags.NewComponentReadinessFlags()
