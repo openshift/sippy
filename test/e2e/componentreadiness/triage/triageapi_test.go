@@ -816,8 +816,10 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 		var checkReg models.TestRegression
 		require.NoError(t, dbc.DB.First(&checkReg, reg.ID).Error)
 		assert.True(t, checkReg.ForceClosed)
-		assert.Equal(t, "developer", checkReg.ForceClosedBy)
-		assert.Equal(t, "generic test, unrelated failures", checkReg.ForceClosedReason)
+		require.NotNil(t, checkReg.ForceClosedBy)
+		assert.Equal(t, "developer", *checkReg.ForceClosedBy)
+		require.NotNil(t, checkReg.ForceClosedReason)
+		assert.Equal(t, "generic test, unrelated failures", *checkReg.ForceClosedReason)
 	})
 
 	t.Run("regression detail exposes force close info", func(t *testing.T) {
@@ -841,8 +843,10 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 		assert.True(t, detail.ForceClosed, "regression detail should report force_closed")
 		require.NotNil(t, detail.ForceClosedByTriageID)
 		assert.Equal(t, triageResponse.ID, *detail.ForceClosedByTriageID)
-		assert.Equal(t, "developer", detail.ForceClosedBy, "detail should include force_closed_by directly from the regression")
-		assert.Equal(t, "detail exposure reason", detail.ForceClosedReason, "detail should include force_closed_reason directly from the regression")
+		require.NotNil(t, detail.ForceClosedBy, "detail should include force_closed_by directly from the regression")
+		assert.Equal(t, "developer", *detail.ForceClosedBy, "detail should include force_closed_by directly from the regression")
+		require.NotNil(t, detail.ForceClosedReason, "detail should include force_closed_reason directly from the regression")
+		assert.Equal(t, "detail exposure reason", *detail.ForceClosedReason, "detail should include force_closed_reason directly from the regression")
 	})
 
 	t.Run("force close is idempotent over the API", func(t *testing.T) {

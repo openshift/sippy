@@ -17,7 +17,6 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -333,51 +332,57 @@ type ForceClosePreview struct {
 func (prs *PostgresRegressionStore) ForceCloseRegressions(triageID uint, closedBy, reason string) (*ForceCloseResult, error) {
 	result := &ForceCloseResult{}
 
-	err := prs.dbc.DB.Transaction(func(tx *gorm.DB) error {
-		var triage models.Triage
-		if err := tx.First(&triage, triageID).Error; err != nil {
-			return fmt.Errorf("error loading triage %d for force close: %w", triageID, err)
-		}
-		if !triage.Resolved.Valid {
-			return ErrTriageNotResolved
-		}
-		closeTime := triage.Resolved.Time
-		result.Timestamp = closeTime
+	// No transaction wrapper here: Postgres READ COMMITTED does not take row locks on SELECT, so
+	// wrapping the select-then-update below in a transaction would not prevent a concurrent writer
+	// from changing rows between the two statements. The single UPDATE ... WHERE id IN (...) is
+	// atomic on its own, which is all the consistency this operation needs.
+	var triage models.Triage
+	if err := prs.dbc.DB.First(&triage, triageID).Error; err != nil {
+		return nil, fmt.Errorf("error loading triage %d for force close: %w", triageID, err)
+	}
+	if !triage.Resolved.Valid {
+		return nil, ErrTriageNotResolved
+	}
+	closeTime := triage.Resolved.Time
+	result.Timestamp = closeTime
 
-		// Select only the regressions this triage actually resolved: those that existed at the
-		// resolution time (opened <= closeTime) and are still open (closed IS NULL). Filtering in the
-		// query rather than loading every regression ever associated with the triage keeps the action
-		// scoped, keeps it idempotent, and preserves the closed time of already-closed regressions.
-		var regIDsToClose []uint
-		if err := tx.Table(testRegressionsTable).
-			Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
-			Where("triage_regressions.triage_id = ?", triageID).
-			Where("test_regressions.closed IS NULL").
-			Where("test_regressions.opened <= ?", closeTime).
-			Pluck("test_regressions.id", &regIDsToClose).Error; err != nil {
-			return fmt.Errorf("error finding regressions to force close for triage %d: %w", triageID, err)
-		}
-		if len(regIDsToClose) == 0 {
-			return nil
-		}
+	// Select only the regressions this triage actually resolved: those that existed at the
+	// resolution time (opened <= closeTime) and are still open (closed IS NULL). Filtering in the
+	// query rather than loading every regression ever associated with the triage keeps the action
+	// scoped, keeps it idempotent, and preserves the closed time of already-closed regressions.
+	var regIDsToClose []uint
+	if err := prs.dbc.DB.Table(testRegressionsTable).
+		Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
+		Where("triage_regressions.triage_id = ?", triageID).
+		Where("test_regressions.closed IS NULL").
+		Where("test_regressions.opened <= ?", closeTime).
+		Pluck("test_regressions.id", &regIDsToClose).Error; err != nil {
+		return nil, fmt.Errorf("error finding regressions to force close for triage %d: %w", triageID, err)
+	}
 
-		// Update only the affected columns in a single statement to avoid rewriting the many2many
-		// triage associations.
-		updates := map[string]interface{}{
+	if len(regIDsToClose) > 0 {
+		// Use Updates() with explicit column names instead of Save().
+		//
+		// TestRegression has a many2many relationship with Triage via the
+		// triage_regressions join table (the Triages []Triage field with
+		// gorm:"many2many:triage_regressions"). GORM's Save() method
+		// processes all fields including associations — if the Triages
+		// slice is empty (because we didn't Preload it), Save() would
+		// delete all existing rows in triage_regressions for this
+		// regression, severing the triage links. Updates() with a column
+		// map only generates UPDATE SET for the named columns and never
+		// touches association join tables.
+		updates := map[string]any{
 			"closed":                    sql.NullTime{Valid: true, Time: closeTime},
 			"force_closed":              true,
 			"force_closed_by":           closedBy,
 			"force_closed_reason":       reason,
 			"force_closed_by_triage_id": triageID,
 		}
-		if err := tx.Model(&models.TestRegression{}).Where("id IN ?", regIDsToClose).Updates(updates).Error; err != nil {
-			return fmt.Errorf("error force closing regressions for triage %d: %w", triageID, err)
+		if err := prs.dbc.DB.Model(&models.TestRegression{}).Where("id IN ?", regIDsToClose).Updates(updates).Error; err != nil {
+			return nil, fmt.Errorf("error force closing regressions for triage %d: %w", triageID, err)
 		}
 		result.ClosedRegressionIDs = regIDsToClose
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	log.WithField("triageID", triageID).WithField("closedBy", closedBy).

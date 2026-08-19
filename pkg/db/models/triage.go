@@ -235,14 +235,16 @@ type TestRegression struct {
 	// record is self-contained and needs no join back to the triage.
 	ForceClosed bool `json:"force_closed" gorm:"not null;default:false"`
 
-	// ForceClosedBy records the user who force closed this regression.
-	ForceClosedBy string `json:"force_closed_by" gorm:"default:''"`
+	// ForceClosedBy records the user who force closed this regression. It is nil when the regression
+	// was not force closed (NULL means not applicable).
+	ForceClosedBy *string `json:"force_closed_by"`
 
-	// ForceClosedReason records the user supplied reason for force closing this regression.
-	ForceClosedReason string `json:"force_closed_reason" gorm:"default:''"`
+	// ForceClosedReason records the user supplied reason for force closing this regression. It is nil
+	// when the regression was not force closed (NULL means not applicable).
+	ForceClosedReason *string `json:"force_closed_reason"`
 
 	// ForceClosedByTriageID references the triage whose resolution drove the force close, if any.
-	ForceClosedByTriageID *uint `json:"force_closed_by_triage_id" gorm:"index"`
+	ForceClosedByTriageID *uint `json:"force_closed_by_triage_id"`
 
 	// JobRuns accumulates the unique set of all job runs ever observed while this regression was open.
 	// As the 7-day sample window slides, old runs roll off and new ones appear, but this list retains all of them.

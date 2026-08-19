@@ -10,16 +10,10 @@
 -- self-contained: it records that it was force closed, by whom, why, and which
 -- triage drove the action. Existing rows default to not force closed.
 
+-- force_closed_by and force_closed_reason are nullable: NULL means "not applicable" (the regression
+-- was not force closed), while a non-NULL value records who force closed it and why.
 ALTER TABLE test_regressions
     ADD COLUMN IF NOT EXISTS force_closed BOOLEAN NOT NULL DEFAULT false,
-    ADD COLUMN IF NOT EXISTS force_closed_by TEXT NOT NULL DEFAULT '',
-    ADD COLUMN IF NOT EXISTS force_closed_reason TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS force_closed_by TEXT,
+    ADD COLUMN IF NOT EXISTS force_closed_reason TEXT,
     ADD COLUMN IF NOT EXISTS force_closed_by_triage_id BIGINT;
-
-CREATE INDEX IF NOT EXISTS idx_test_regressions_force_closed_by_triage_id
-    ON test_regressions (force_closed_by_triage_id);
-
--- Partial index so the reuse-window queries that exclude force closed regressions
--- (ListCurrentRegressionsForRelease, ResolveTriages) can skip the force closed rows
--- cheaply. Only the force closed rows are indexed.
-CREATE INDEX idx_test_regressions_force_closed ON test_regressions (force_closed) WHERE force_closed = true;
