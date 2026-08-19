@@ -120,6 +120,10 @@ releases:
       periodic-ci-openshift-hypershift-main-periodic-review-agent: true
       periodic-ci-openshift-release-main-claude-payload-agent: true
       periodic-prow-auto-sippy-config-generator: true
+  mcp-0.5:
+    synthetic: true
+    regexp:
+      - "^periodic-ci-openshift-openshift-mcp-server-release-0\\.5-.*"
   ocp-hypershift:
     synthetic: true
     regexp:
