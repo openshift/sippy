@@ -33,9 +33,6 @@ func TestComponentReadinessViews(t *testing.T) {
 
 func TestRegressionCacheLoader(t *testing.T) {
 	credFile := os.Getenv("GCS_SA_JSON_PATH")
-	if credFile == "" {
-		t.Skip("GCS_SA_JSON_PATH not set, skipping regression cache loader test")
-	}
 
 	dbc := util.CreateE2EPostgresConnection(t)
 
@@ -47,13 +44,25 @@ func TestRegressionCacheLoader(t *testing.T) {
 	cacheClient, err := redis.NewRedisCache(redisURL)
 	require.NoError(t, err, "error connecting to redis")
 
-	// Set up BigQuery client
+	// Set up the BigQuery client only when credentials are available. When
+	// GCS_SA_JSON_PATH is unset, bqClient stays nil and the "default" data
+	// provider cascades to whichever backend is available (Postgres here).
 	ctx := context.Background()
-	opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "e2e")
-	bqClient, err := bqcachedclient.New(ctx, opCtx, cacheClient,
-		credFile, "openshift-gce-devel", "ci_analysis_us",
-		"openshift-ci-data-analysis.ci_data.Releases")
-	require.NoError(t, err, "error creating bigquery client")
+	var bqClient *bqcachedclient.Client
+	if credFile != "" {
+		opCtx, bqCtx := bqcachedclient.OpCtxForCronEnv(ctx, "e2e")
+		ctx = bqCtx
+		bqClient, err = bqcachedclient.New(ctx, opCtx, cacheClient,
+			credFile, "openshift-gce-devel", "ci_analysis_us",
+			"openshift-ci-data-analysis.ci_data.Releases")
+		require.NoError(t, err, "error creating bigquery client")
+	}
+
+	// Skip only when neither backend is available. Postgres is unconditional in
+	// the e2e environment, so in practice this guards the pure-BigQuery case.
+	if bqClient == nil && dbc == nil {
+		t.Skip("neither BigQuery (GCS_SA_JSON_PATH) nor Postgres (SIPPY_E2E_DSN) available, skipping regression cache loader test")
+	}
 
 	// Parse the e2e views
 	crFlags := flags.NewComponentReadinessFlags()
@@ -69,8 +78,9 @@ func TestRegressionCacheLoader(t *testing.T) {
 	// Build a regression store
 	regressionStore := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
-	// Build the data provider (BigQuery-backed, matching the loader's prior behavior)
-	dataProvider, err := flags.NewDataProvider("bigquery", bqClient, dbc, cacheClient)
+	// Build the data provider using the default provider selection, which
+	// cascades to whichever backend is configured (BigQuery, Postgres, or both).
+	dataProvider, err := flags.NewDataProvider("default", bqClient, dbc, cacheClient)
 	require.NoError(t, err, "error creating data provider")
 
 	// Create and run the loader
