@@ -58,10 +58,11 @@ func TestRegressionCacheLoader(t *testing.T) {
 		require.NoError(t, err, "error creating bigquery client")
 	}
 
-	// Skip only when neither backend is available. Postgres is unconditional in
-	// the e2e environment, so in practice this guards the pure-BigQuery case.
-	if bqClient == nil && dbc == nil {
-		t.Skip("neither BigQuery (GCS_SA_JSON_PATH) nor Postgres (SIPPY_E2E_DSN) available, skipping regression cache loader test")
+	// PostgreSQL is required: the test body reads releases from Postgres, builds a
+	// Postgres regression store, and queries dbc.DB directly. BigQuery is optional;
+	// when bqClient is nil, NewDataProvider cascades to the Postgres provider.
+	if dbc == nil {
+		t.Skip("PostgreSQL is required for this regression cache loader test")
 	}
 
 	// Parse the e2e views
