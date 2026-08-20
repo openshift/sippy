@@ -3,6 +3,7 @@ package regressiontracker
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -21,6 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -603,10 +605,12 @@ func Test_RegressionJobRuns(t *testing.T) {
 // referenced row. It returns an error rather than only logging so a deferred cleanup can assert on it and
 // surface leaks instead of silently letting rows bleed into later tests.
 func cleanupTriages(dbc *db.DB) error {
-	if err := dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1").Error; err != nil {
+	// gorm.ErrRecordNotFound simply means there was nothing to delete, which is a valid
+	// cleanup state rather than a failure, so it is filtered out on each step.
+	if err := dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1").Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("error deleting triage_regressions: %w", err)
 	}
-	if err := dbc.DB.Where("1 = 1").Delete(&models.Triage{}).Error; err != nil {
+	if err := dbc.DB.Where("1 = 1").Delete(&models.Triage{}).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("error deleting triage records: %w", err)
 	}
 	return nil
