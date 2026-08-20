@@ -985,6 +985,9 @@ func syncRegressions(dbc *db.DB) error {
 			VariantOption:  view.VariantOptions,
 			AdvancedOption: view.AdvancedOptions,
 		}
+		if !view.PrimeCache.Enabled {
+			reportOpts.CacheOption.SkipCacheWrites = true
+		}
 
 		report, reportErrs := componentreadiness.GetComponentReport(ctx, provider, dbc, reportOpts, "")
 		if len(reportErrs) > 0 {
