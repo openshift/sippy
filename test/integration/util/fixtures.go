@@ -1,6 +1,8 @@
 package util
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -364,4 +366,102 @@ func LinkReleaseTagPullRequests(t *testing.T, dbc *db.DB, tag *models.ReleaseTag
 		prPtrs[i] = &prs[i]
 	}
 	require.NoError(t, dbc.DB.Model(tag).Association("PullRequests").Append(prPtrs), "linking PRs to ReleaseTag %q", tag.ReleaseTag)
+}
+
+// TestRegressionOption customizes a TestRegression before creation.
+type TestRegressionOption func(*models.TestRegression)
+
+// WithOpened sets the regression's opened time. Force close scopes on this, closing only regressions
+// that opened strictly before the triage's resolution time.
+func WithOpened(opened time.Time) TestRegressionOption {
+	return func(r *models.TestRegression) { r.Opened = opened }
+}
+
+// WithClosed marks the regression closed at the given time.
+func WithClosed(closed time.Time) TestRegressionOption {
+	return func(r *models.TestRegression) { r.Closed = sql.NullTime{Valid: true, Time: closed} }
+}
+
+// WithForceClosed sets the force_closed flag directly, for seeding already-force-closed regressions.
+func WithForceClosed(forceClosed bool) TestRegressionOption {
+	return func(r *models.TestRegression) { r.ForceClosed = forceClosed }
+}
+
+// WithForceClosedBy sets who force closed the regression.
+func WithForceClosedBy(by *string) TestRegressionOption {
+	return func(r *models.TestRegression) { r.ForceClosedBy = by }
+}
+
+// WithForceClosedReason sets the recorded force close reason.
+func WithForceClosedReason(reason *string) TestRegressionOption {
+	return func(r *models.TestRegression) { r.ForceClosedReason = reason }
+}
+
+// CreateTestRegression creates a test_regressions row with the required non-null fields populated
+// (TestName, TestID, Release, and a non-null Variants array), defaulting Opened to now. Callers
+// override any field with the With* options.
+func CreateTestRegression(t *testing.T, dbc *db.DB, testName, release string, opts ...TestRegressionOption) *models.TestRegression {
+	t.Helper()
+	reg := &models.TestRegression{
+		TestName: testName,
+		TestID:   testName + "-id",
+		Release:  release,
+		Variants: pq.StringArray{"variant:integration"},
+		Opened:   time.Now(),
+	}
+	for _, opt := range opts {
+		opt(reg)
+	}
+	require.NoError(t, dbc.DB.Create(reg).Error, "creating TestRegression %q", testName)
+	return reg
+}
+
+// triageConfig collects the desired triage state plus the regressions to associate after creation.
+type triageConfig struct {
+	triage      models.Triage
+	regressions []*models.TestRegression
+}
+
+// TriageOption customizes a Triage before creation.
+type TriageOption func(*triageConfig)
+
+// WithResolved marks the triage resolved at the given time, giving force close a resolution time to
+// scope against.
+func WithResolved(resolved time.Time) TriageOption {
+	return func(c *triageConfig) { c.triage.Resolved = sql.NullTime{Valid: true, Time: resolved} }
+}
+
+// WithTriageType overrides the triage type (defaults to product).
+func WithTriageType(triageType string) TriageOption {
+	return func(c *triageConfig) { c.triage.Type = models.TriageType(triageType) }
+}
+
+// WithRegressions links the given existing regressions to the triage. The link is made via the GORM
+// Association API after the triage is created, never by embedding the regressions in the Create call:
+// embedding makes GORM upsert them, rewriting partial in-memory objects (for example nil Variants) and
+// violating the NOT NULL constraint on variants.
+func WithRegressions(regs ...*models.TestRegression) TriageOption {
+	return func(c *triageConfig) { c.regressions = append(c.regressions, regs...) }
+}
+
+// CreateTriage creates a triage row and links any requested regressions via the Association API. The
+// triage is created under a user context so the audit-log AfterCreate hook has a user to attribute.
+func CreateTriage(t *testing.T, dbc *db.DB, url string, opts ...TriageOption) models.Triage {
+	t.Helper()
+	cfg := &triageConfig{
+		triage: models.Triage{
+			URL:  url,
+			Type: models.TriageTypeProduct,
+		},
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	dbCtx := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "integration-test"))
+	require.NoError(t, dbCtx.Create(&cfg.triage).Error, "creating Triage %q", url)
+	if len(cfg.regressions) > 0 {
+		require.NoError(t, dbCtx.Model(&cfg.triage).Association("Regressions").Append(cfg.regressions),
+			"linking regressions to Triage %q", url)
+	}
+	return cfg.triage
 }

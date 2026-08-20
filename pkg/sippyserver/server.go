@@ -1992,9 +1992,17 @@ func (s *Server) jsonForceCloseRegressions(w http.ResponseWriter, req *http.Requ
 	}
 
 	var forceCloseReq forceCloseRegressionsRequest
-	if err := json.NewDecoder(req.Body).Decode(&forceCloseReq); err != nil {
+	decoder := json.NewDecoder(req.Body)
+	if err := decoder.Decode(&forceCloseReq); err != nil {
 		log.WithError(err).Error("error parsing force close regressions request")
 		failureResponse(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	// Reject any trailing data after the JSON object so bodies like {"reason":"first"}{"reason":"second"}
+	// are not silently accepted with only the first object honored. A well formed body decodes to exactly
+	// one value, after which the next decode must report io.EOF.
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		failureResponse(w, http.StatusBadRequest, "request body must contain a single JSON object")
 		return
 	}
 	if strings.TrimSpace(forceCloseReq.Reason) == "" {

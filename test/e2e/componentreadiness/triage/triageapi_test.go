@@ -786,19 +786,6 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 		require.NoError(t, util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResp.ID), &triageResp, &updated))
 	}
 
-	t.Run("force close requires a reason", func(t *testing.T) {
-		reg := createTestRegression(t, tracker, view, "fc-api-reason")
-		defer cleanupForceClose(reg)
-		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
-		resolveTriage(t, triageResponse, time.Now().Add(time.Minute))
-
-		// Empty reason should be rejected.
-		var result componentreadiness.ForceCloseResult
-		err := util.SippyPost(fmt.Sprintf("/api/component_readiness/triages/%d/force_close_regressions", triageResponse.ID),
-			&map[string]string{"reason": ""}, &result)
-		require.Error(t, err, "force close with empty reason should fail")
-	})
-
 	t.Run("force close on an unresolved triage is rejected", func(t *testing.T) {
 		reg := createTestRegression(t, tracker, view, "fc-api-unresolved")
 		defer cleanupForceClose(reg)
@@ -816,93 +803,24 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 		require.Error(t, err, "previewing an unresolved triage should fail")
 	})
 
-	t.Run("force close closes regressions and excludes them from reuse", func(t *testing.T) {
-		reg := createTestRegression(t, tracker, view, "fc-api-close")
-		defer cleanupForceClose(reg)
-		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
-		resolveTriage(t, triageResponse, time.Now().Add(time.Minute))
-
-		var result componentreadiness.ForceCloseResult
-		err := util.SippyPost(fmt.Sprintf("/api/component_readiness/triages/%d/force_close_regressions", triageResponse.ID),
-			&map[string]string{"reason": "generic test, unrelated failures"}, &result)
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []uint{reg.ID}, result.ClosedRegressionIDs)
-		assert.False(t, result.Timestamp.IsZero())
-
-		// Regression should be closed and excluded from the reuse list.
-		regressions, err := tracker.ListCurrentRegressionsForRelease(release)
-		require.NoError(t, err)
-		for _, r := range regressions {
-			assert.NotEqual(t, reg.ID, r.ID, "force closed regression should not appear in reuse list")
-		}
-
-		// The regression records who force closed it and why, directly on the regression row.
-		var checkReg models.TestRegression
-		require.NoError(t, dbc.DB.First(&checkReg, reg.ID).Error)
-		assert.True(t, checkReg.ForceClosed)
-		require.NotNil(t, checkReg.ForceClosedBy)
-		assert.Equal(t, "developer", *checkReg.ForceClosedBy)
-		require.NotNil(t, checkReg.ForceClosedReason)
-		assert.Equal(t, "generic test, unrelated failures", *checkReg.ForceClosedReason)
-	})
-
-	t.Run("regression detail exposes force close info", func(t *testing.T) {
-		reg := createTestRegression(t, tracker, view, "fc-api-detail")
-		defer cleanupForceClose(reg)
-		// Associate with a view so the regression detail endpoint can build HATEOAS links.
-		require.NoError(t, tracker.UpsertRegressionView(reg.ID, view.Name))
-		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
-		resolveTriage(t, triageResponse, time.Now().Add(time.Minute))
-
-		var result componentreadiness.ForceCloseResult
-		err := util.SippyPost(fmt.Sprintf("/api/component_readiness/triages/%d/force_close_regressions", triageResponse.ID),
-			&map[string]string{"reason": "detail exposure reason"}, &result)
-		require.NoError(t, err)
-
-		var detail models.TestRegression
-		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions/%d", reg.ID), &detail)
-		require.NoError(t, err)
-		assert.True(t, detail.ForceClosed, "regression detail should report force_closed")
-		require.NotNil(t, detail.ForceClosedByTriageID)
-		assert.Equal(t, triageResponse.ID, *detail.ForceClosedByTriageID)
-		require.NotNil(t, detail.ForceClosedBy, "detail should include force_closed_by directly from the regression")
-		assert.Equal(t, "developer", *detail.ForceClosedBy, "detail should include force_closed_by directly from the regression")
-		require.NotNil(t, detail.ForceClosedReason, "detail should include force_closed_reason directly from the regression")
-		assert.Equal(t, "detail exposure reason", *detail.ForceClosedReason, "detail should include force_closed_reason directly from the regression")
-	})
-
-	t.Run("force close is idempotent over the API", func(t *testing.T) {
-		reg := createTestRegression(t, tracker, view, "fc-api-idempotent")
-		defer cleanupForceClose(reg)
-		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, reg)
-		resolveTriage(t, triageResponse, time.Now().Add(time.Minute))
-
-		var result1 componentreadiness.ForceCloseResult
-		err := util.SippyPost(fmt.Sprintf("/api/component_readiness/triages/%d/force_close_regressions", triageResponse.ID),
-			&map[string]string{"reason": "idempotent"}, &result1)
-		require.NoError(t, err)
-		require.Len(t, result1.ClosedRegressionIDs, 1)
-
-		var result2 componentreadiness.ForceCloseResult
-		err = util.SippyPost(fmt.Sprintf("/api/component_readiness/triages/%d/force_close_regressions", triageResponse.ID),
-			&map[string]string{"reason": "idempotent"}, &result2)
-		require.NoError(t, err)
-		assert.Empty(t, result2.ClosedRegressionIDs, "repeat force close should close no additional regressions")
-	})
-
-	t.Run("preview lists would-close and would-not-close regressions with gap data", func(t *testing.T) {
+	t.Run("create, resolve, preview, force close, and verify over the API", func(t *testing.T) {
 		resolved := time.Now().Add(-5 * 24 * time.Hour).Truncate(time.Second)
 
-		wouldClose := createRawRegression(t, "fc-prev-close", resolved.Add(-10*24*time.Hour))
-		wouldNotClose := createRawRegression(t, "fc-prev-open", resolved.Add(24*time.Hour))
+		// One regression opened before the resolution time (force close should close it) and one opened
+		// after (force close should leave it open), so the happy path exercises resolution-time scoping.
+		wouldClose := createRawRegression(t, "fc-api-close", resolved.Add(-10*24*time.Hour))
+		wouldNotClose := createRawRegression(t, "fc-api-open", resolved.Add(24*time.Hour))
 		defer cleanupForceClose(wouldClose, wouldNotClose)
+		// Associate the closing regression with a view so the regression detail endpoint can build links.
+		require.NoError(t, tracker.UpsertRegressionView(wouldClose.ID, view.Name))
 
-		// Failures before and after the resolution time drive the gap indicator.
+		// Failures before and after the resolution time drive the preview gap indicator.
 		require.NoError(t, tracker.MergeJobRuns(wouldClose.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "prev-before", ProwJobName: "job-1", StartTime: resolved.Add(-2 * 24 * time.Hour), TestFailed: true},
-			{ProwJobRunID: "prev-after", ProwJobName: "job-1", StartTime: resolved.Add(2 * 24 * time.Hour), TestFailed: true},
+			{ProwJobRunID: "api-before", ProwJobName: "job-1", StartTime: resolved.Add(-2 * 24 * time.Hour), TestFailed: true},
+			{ProwJobRunID: "api-after", ProwJobName: "job-1", StartTime: resolved.Add(2 * 24 * time.Hour), TestFailed: true},
 		}))
 
+		// Create the triage over both regressions, then resolve it via the API.
 		triage := models.Triage{
 			URL:  jiraBug.URL,
 			Type: models.TriageTypeProduct,
@@ -915,18 +833,48 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 		require.NoError(t, util.SippyPost("/api/component_readiness/triages", &triage, &triageResp))
 		resolveTriage(t, triageResp, resolved)
 
+		// Preview classifies the regressions and reports the failure gap around the resolution time.
 		var preview componentreadiness.ForceClosePreview
 		require.NoError(t, util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d/force_close_preview", triageResp.ID), &preview))
-
 		require.Len(t, preview.WouldClose, 1, "regression opened before resolution should be in would_close")
 		assert.Equal(t, wouldClose.ID, preview.WouldClose[0].RegressionID)
 		require.NotNil(t, preview.WouldClose[0].LastFailureBeforeResolution, "should report last failure before resolution")
 		assert.WithinDuration(t, resolved.Add(-2*24*time.Hour), *preview.WouldClose[0].LastFailureBeforeResolution, time.Second)
 		require.NotNil(t, preview.WouldClose[0].FirstFailureAfterResolution, "should report first failure after resolution")
 		assert.WithinDuration(t, resolved.Add(2*24*time.Hour), *preview.WouldClose[0].FirstFailureAfterResolution, time.Second)
-
 		require.Len(t, preview.WouldNotClose, 1, "regression opened after resolution should be in would_not_close")
 		assert.Equal(t, wouldNotClose.ID, preview.WouldNotClose[0].RegressionID)
+
+		// Force close over the API and confirm exactly the eligible regression closed.
+		var result componentreadiness.ForceCloseResult
+		require.NoError(t, util.SippyPost(fmt.Sprintf("/api/component_readiness/triages/%d/force_close_regressions", triageResp.ID),
+			&map[string]string{"reason": "generic test, unrelated failures"}, &result))
+		assert.ElementsMatch(t, []uint{wouldClose.ID}, result.ClosedRegressionIDs)
+		assert.False(t, result.Timestamp.IsZero())
+
+		// The force closed regression is excluded from the reuse list.
+		regressions, err := tracker.ListCurrentRegressionsForRelease(release)
+		require.NoError(t, err)
+		for _, r := range regressions {
+			assert.NotEqual(t, wouldClose.ID, r.ID, "force closed regression should not appear in reuse list")
+		}
+
+		// Force close metadata is recorded on the regression row and surfaced by the detail endpoint.
+		var detail models.TestRegression
+		require.NoError(t, util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions/%d", wouldClose.ID), &detail))
+		assert.True(t, detail.ForceClosed, "regression detail should report force_closed")
+		require.NotNil(t, detail.ForceClosedByTriageID)
+		assert.Equal(t, triageResp.ID, *detail.ForceClosedByTriageID)
+		require.NotNil(t, detail.ForceClosedBy, "detail should include force_closed_by directly from the regression")
+		assert.Equal(t, "developer", *detail.ForceClosedBy)
+		require.NotNil(t, detail.ForceClosedReason, "detail should include force_closed_reason directly from the regression")
+		assert.Equal(t, "generic test, unrelated failures", *detail.ForceClosedReason)
+
+		// The regression opened after the resolution time was left open.
+		var openReg models.TestRegression
+		require.NoError(t, dbc.DB.First(&openReg, wouldNotClose.ID).Error)
+		assert.False(t, openReg.Closed.Valid, "regression opened after resolution should remain open")
+		assert.False(t, openReg.ForceClosed, "regression opened after resolution should not be force closed")
 	})
 }
 

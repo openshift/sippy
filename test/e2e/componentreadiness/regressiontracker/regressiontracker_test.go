@@ -3,6 +3,7 @@ package regressiontracker
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -276,44 +277,6 @@ func Test_RegressionTracker(t *testing.T) {
 func Test_ForceCloseRegressions(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
-	rLog := log.WithField("test", "force-close-regressions")
-
-	forceView := crview.View{
-		Name: "4.19-main",
-		SampleRelease: reqopts.RelativeRelease{
-			Release: reqopts.Release{Name: "4.19"},
-		},
-		BaseRelease: reqopts.RelativeRelease{
-			Release: reqopts.Release{Name: "4.18"},
-		},
-	}
-
-	newRegSummary := func(testID string) componentreport.ReportTestSummary {
-		return componentreport.ReportTestSummary{
-			TestComparison: testdetails.TestComparison{
-				BaseStats: &testdetails.ReleaseStats{Release: "4.18"},
-			},
-			Identification: crtest.Identification{
-				RowIdentification: crtest.RowIdentification{
-					Component:  "comp",
-					Capability: "cap",
-					TestName:   "force close test " + testID,
-					TestID:     testID,
-				},
-				ColumnIdentification: crtest.ColumnIdentification{
-					Variants: map[string]string{"a": "b"},
-				},
-			},
-		}
-	}
-
-	makeReport := func(tests ...componentreport.ReportTestSummary) *componentreport.ComponentReport {
-		return &componentreport.ComponentReport{
-			Rows: []componentreport.ReportRow{
-				{Columns: []componentreport.ReportColumn{{RegressedTests: tests}}},
-			},
-		}
-	}
 
 	createTriageForRegressions := func(t *testing.T, url string, regs ...*models.TestRegression) models.Triage {
 		t.Helper()
@@ -341,7 +304,7 @@ func Test_ForceCloseRegressions(t *testing.T) {
 	}
 
 	cleanup := func() {
-		cleanupTriages(dbc)
+		assert.NoError(t, cleanupTriages(dbc))
 		cleanupAllRegressions(dbc)
 	}
 
@@ -391,162 +354,6 @@ func Test_ForceCloseRegressions(t *testing.T) {
 		assert.False(t, checkReg.Closed.Valid, "regression should remain open")
 		assert.False(t, checkReg.ForceClosed, "regression should not be force closed")
 	})
-
-	t.Run("only closes regressions that existed at the resolution time", func(t *testing.T) {
-		defer cleanup()
-
-		resolved := time.Now().Add(-5 * 24 * time.Hour).Truncate(time.Second)
-		before, err := rawCreateRegression(dbc, "4.19", "fc-before", "force close test fc-before",
-			[]string{"a:b"}, resolved.Add(-5*24*time.Hour), time.Time{})
-		require.NoError(t, err)
-		after, err := rawCreateRegression(dbc, "4.19", "fc-after", "force close test fc-after",
-			[]string{"a:b"}, resolved.Add(24*time.Hour), time.Time{})
-		require.NoError(t, err)
-		triage := createResolvedTriageForRegressions(t, "https://redhat.atlassian.net/browse/TEST-FC-SCOPE", resolved, before, after)
-
-		result, err := tracker.ForceCloseRegressions(triage.ID, "developer", "scoped close")
-		require.NoError(t, err)
-		assert.ElementsMatch(t, []uint{before.ID}, result.ClosedRegressionIDs,
-			"only the regression opened at or before the resolution time should be closed")
-
-		var checkBefore models.TestRegression
-		require.NoError(t, dbc.DB.First(&checkBefore, before.ID).Error)
-		assert.True(t, checkBefore.ForceClosed, "regression opened before resolution should be force closed")
-		assert.WithinDuration(t, resolved, checkBefore.Closed.Time, time.Second)
-
-		var checkAfter models.TestRegression
-		require.NoError(t, dbc.DB.First(&checkAfter, after.ID).Error)
-		assert.False(t, checkAfter.Closed.Valid, "regression opened after resolution should remain open")
-		assert.False(t, checkAfter.ForceClosed, "regression opened after resolution should not be force closed")
-	})
-
-	t.Run("is idempotent", func(t *testing.T) {
-		defer cleanup()
-
-		resolved := time.Now().Truncate(time.Second)
-		reg, err := rawCreateRegression(dbc, "4.19", "fc-idempotent", "force close test fc-idempotent",
-			[]string{"a:b"}, resolved.Add(-10*24*time.Hour), time.Time{})
-		require.NoError(t, err)
-		triage := createResolvedTriageForRegressions(t, "https://redhat.atlassian.net/browse/TEST-FC-3", resolved, reg)
-
-		result1, err := tracker.ForceCloseRegressions(triage.ID, "developer", "first call")
-		require.NoError(t, err)
-		require.Len(t, result1.ClosedRegressionIDs, 1)
-
-		var closedReg models.TestRegression
-		require.NoError(t, dbc.DB.First(&closedReg, reg.ID).Error)
-		originalClosedTime := closedReg.Closed.Time
-
-		// Second call should be a no-op: no open regressions remain.
-		result2, err := tracker.ForceCloseRegressions(triage.ID, "developer", "first call")
-		require.NoError(t, err)
-		assert.Empty(t, result2.ClosedRegressionIDs, "no regressions should be closed on repeat call")
-
-		require.NoError(t, dbc.DB.First(&closedReg, reg.ID).Error)
-		assert.WithinDuration(t, originalClosedTime, closedReg.Closed.Time, time.Second,
-			"closed time should not change on repeat call")
-	})
-
-	t.Run("force closed regression excluded from ListCurrentRegressionsForRelease", func(t *testing.T) {
-		defer cleanup()
-
-		resolved := time.Now().Truncate(time.Second)
-		reg, err := rawCreateRegression(dbc, "4.19", "fc-excluded", "force close test fc-excluded",
-			[]string{"a:b"}, resolved.Add(-24*time.Hour), time.Time{})
-		require.NoError(t, err)
-		triage := createResolvedTriageForRegressions(t, "https://redhat.atlassian.net/browse/TEST-FC-4", resolved, reg)
-
-		// Before force close, the recently opened regression is listed.
-		before, err := tracker.ListCurrentRegressionsForRelease("4.19")
-		require.NoError(t, err)
-		assert.True(t, containsRegression(before, reg.ID), "open regression should be listed before force close")
-
-		_, err = tracker.ForceCloseRegressions(triage.ID, "developer", "exclude from reuse")
-		require.NoError(t, err)
-
-		// After force close, even though it closed just now (within the hysteresis window), it must be excluded.
-		after, err := tracker.ListCurrentRegressionsForRelease("4.19")
-		require.NoError(t, err)
-		assert.False(t, containsRegression(after, reg.ID), "force closed regression should be excluded from reuse list")
-	})
-
-	t.Run("force closed regression is not reused by SyncRegressionsForReport", func(t *testing.T) {
-		defer cleanup()
-
-		report := makeReport(newRegSummary("fc-not-reused"))
-
-		// First sync opens a regression.
-		regs1, err := componentreadiness.SyncRegressionsForReport(tracker, forceView, rLog, report)
-		require.NoError(t, err)
-		require.Len(t, regs1, 1)
-		originalID := regs1[0].ID
-
-		// Force close it via a resolved triage.
-		triage := createResolvedTriageForRegressions(t, "https://redhat.atlassian.net/browse/TEST-FC-5",
-			time.Now().Add(time.Minute), regs1[0])
-		_, err = tracker.ForceCloseRegressions(triage.ID, "developer", "not reused")
-		require.NoError(t, err)
-
-		// Re-sync the same report: a brand new regression should open, not the force closed one.
-		regs2, err := componentreadiness.SyncRegressionsForReport(tracker, forceView, rLog, report)
-		require.NoError(t, err)
-		require.Len(t, regs2, 1)
-		assert.NotEqual(t, originalID, regs2[0].ID,
-			"a new regression should open instead of reusing the force closed one")
-
-		// The original stays closed and force closed.
-		var original models.TestRegression
-		require.NoError(t, dbc.DB.First(&original, originalID).Error)
-		assert.True(t, original.Closed.Valid, "force closed regression should remain closed")
-		assert.True(t, original.ForceClosed, "force closed regression should remain force closed")
-	})
-
-	t.Run("does not close a regression opened exactly at the resolution time", func(t *testing.T) {
-		defer cleanup()
-
-		resolved := time.Now().Truncate(time.Second)
-		// Opened at the exact resolution instant: strict opened < resolved means this must not close.
-		reg, err := rawCreateRegression(dbc, "4.19", "fc-boundary", "force close test fc-boundary",
-			[]string{"a:b"}, resolved, time.Time{})
-		require.NoError(t, err)
-		triage := createResolvedTriageForRegressions(t, "https://redhat.atlassian.net/browse/TEST-FC-BOUNDARY", resolved, reg)
-
-		result, err := tracker.ForceCloseRegressions(triage.ID, "developer", "boundary")
-		require.NoError(t, err)
-		assert.Empty(t, result.ClosedRegressionIDs,
-			"a regression opened exactly at the resolution time should not be force closed")
-
-		var checkReg models.TestRegression
-		require.NoError(t, dbc.DB.First(&checkReg, reg.ID).Error)
-		assert.False(t, checkReg.Closed.Valid, "boundary regression should remain open")
-		assert.False(t, checkReg.ForceClosed, "boundary regression should not be force closed")
-
-		// The preview must categorize the boundary regression under would_not_close, never would_close.
-		preview, err := tracker.ForceClosePreview(triage.ID)
-		require.NoError(t, err)
-		assert.True(t, containsPreviewRegression(preview.WouldNotClose, reg.ID),
-			"boundary regression should appear in would_not_close")
-		assert.False(t, containsPreviewRegression(preview.WouldClose, reg.ID),
-			"boundary regression should not appear in would_close")
-	})
-}
-
-func containsRegression(regressions []*models.TestRegression, id uint) bool {
-	for _, r := range regressions {
-		if r.ID == id {
-			return true
-		}
-	}
-	return false
-}
-
-func containsPreviewRegression(regressions []componentreadiness.ForceClosePreviewRegression, id uint) bool {
-	for _, r := range regressions {
-		if r.RegressionID == id {
-			return true
-		}
-	}
-	return false
 }
 
 func cleanupJobRuns(dbc *db.DB) {
@@ -792,15 +599,17 @@ func Test_RegressionJobRuns(t *testing.T) {
 	})
 }
 
-func cleanupTriages(dbc *db.DB) {
-	// Delete the triage_regressions join rows before the triages so no association outlives a
-	// referenced row, and surface any error rather than silently leaking rows into later tests.
+// cleanupTriages removes triage_regressions join rows before the triages so no association outlives a
+// referenced row. It returns an error rather than only logging so a deferred cleanup can assert on it and
+// surface leaks instead of silently letting rows bleed into later tests.
+func cleanupTriages(dbc *db.DB) error {
 	if err := dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1").Error; err != nil {
-		log.Errorf("error deleting triage_regressions: %v", err)
+		return fmt.Errorf("error deleting triage_regressions: %w", err)
 	}
 	if err := dbc.DB.Where("1 = 1").Delete(&models.Triage{}).Error; err != nil {
-		log.Errorf("error deleting triage records: %v", err)
+		return fmt.Errorf("error deleting triage records: %w", err)
 	}
+	return nil
 }
 
 func Test_SyncTriageSymptoms(t *testing.T) {
@@ -839,7 +648,7 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 	cleanup := func() {
 		util.CleanupTriageSymptoms(dbc)
 		cleanupJobRuns(dbc)
-		cleanupTriages(dbc)
+		assert.NoError(t, cleanupTriages(dbc))
 		cleanupAllRegressions(dbc)
 	}
 

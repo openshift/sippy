@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/andygrunwald/go-jira"
@@ -281,6 +282,10 @@ func (prs *PostgresRegressionStore) ResolveTriages() error {
 // Force closing needs a resolution time to scope which regressions to close and when to close them.
 var ErrTriageNotResolved = errors.New("triage is not resolved")
 
+// ErrForceCloseReasonRequired is returned by ForceCloseRegressions when called without a reason. Force
+// close records the reason on each regression for audit, so a reason is required regardless of caller.
+var ErrForceCloseReasonRequired = errors.New("a reason is required to force close regressions")
+
 // ForceCloseResult summarizes the outcome of a force close operation. It is returned by the API
 // so callers know which regressions were closed and at what time.
 type ForceCloseResult struct {
@@ -338,6 +343,13 @@ type ForceClosePreview struct {
 // ErrTriageNotResolved is returned. It is idempotent: already-closed regressions are left untouched.
 func (prs *PostgresRegressionStore) ForceCloseRegressions(triageID uint, closedBy, reason string) (*ForceCloseResult, error) {
 	result := &ForceCloseResult{}
+
+	// A reason is recorded on each force closed regression for audit, so refuse to proceed without one
+	// regardless of caller. The HTTP handler validates this earlier to return a precise status; this
+	// store-level check keeps the invariant for any caller.
+	if strings.TrimSpace(reason) == "" {
+		return nil, ErrForceCloseReasonRequired
+	}
 
 	var triage models.Triage
 	if err := prs.dbc.DB.First(&triage, triageID).Error; err != nil {
