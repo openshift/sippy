@@ -61,6 +61,7 @@ var testSuites = []string{
 	"github.com/openshift/console-operator/test/e2e",
 	"github.com/openshift/cluster-monitoring-operator/test/e2e",
 	"prowjob-junit",
+	"mcpchecker",
 	"OLM-Catalog-Validation",
 	"insights-operator-tests",
 	"CNV-lp-interop",
