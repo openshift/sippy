@@ -18,6 +18,7 @@ package infrafailurebackfill
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -39,6 +40,13 @@ const (
 	// defaultBatchSize is the default number of runs processed per batch.
 	defaultBatchSize = 100
 )
+
+// datasetPattern bounds the characters allowed in a BigQuery dataset name. The
+// dataset is interpolated directly into the query's table reference (it cannot
+// be a query parameter), so it is validated against this allow-list to prevent
+// SQL injection. It matches the characters valid in a BigQuery project/dataset
+// identifier: letters, digits, underscores, dots, and dashes.
+var datasetPattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 
 // Options configures a backfill run.
 type Options struct {
@@ -86,7 +94,7 @@ type Backfiller struct {
 	// be unit-tested with closures. New wires the real implementations.
 	fetchInfraFailureIDs func(ctx context.Context, startDate civil.Date) ([]int64, error)
 	findLabelStatus      func(ctx context.Context, batch []int64) (batchLabelStatus, error)
-	recordInfraFailure   func(ctx context.Context, prowJobRunID int64) error
+	recordInfraFailure   func(ctx context.Context, prowJobRunID int64) (infrafailure.RecordOutcome, error)
 }
 
 // New constructs a Backfiller wired to the given BigQuery and PostgreSQL
@@ -101,8 +109,8 @@ func New(bq *bqclient.Client, dbc *db.DB, opts Options) *Backfiller {
 	b := &Backfiller{bq: bq, dbc: dbc, opts: opts}
 	b.fetchInfraFailureIDs = b.fetchInfraFailureIDsFromBQ
 	b.findLabelStatus = b.findLabelStatusInPG
-	b.recordInfraFailure = func(ctx context.Context, prowJobRunID int64) error {
-		return infrafailure.RecordInfraFailure(ctx, b.dbc.DB, prowJobRunID)
+	b.recordInfraFailure = func(ctx context.Context, prowJobRunID int64) (infrafailure.RecordOutcome, error) {
+		return infrafailure.RecordInfraFailureWithOutcome(ctx, b.dbc.DB, prowJobRunID)
 	}
 	return b
 }
@@ -177,13 +185,26 @@ func (b *Backfiller) processBatch(ctx context.Context, batch []int64, stats *Sta
 	}
 
 	for _, id := range toSync {
-		if err := b.recordInfraFailure(ctx, id); err != nil {
+		outcome, err := b.recordInfraFailure(ctx, id)
+		if err != nil {
 			stats.Errors++
 			log.WithError(err).WithField("prowJobRunID", id).Error("failed to record InfraFailure")
 			continue
 		}
-		stats.NewlySynced++
-		log.WithField("prowJobRunID", id).Debug("recorded InfraFailure")
+		// toSync was classified as present-but-unlabeled by an earlier lookup, but
+		// a concurrent labeler or a pruned partition can change that before we
+		// record. Trust the recorded outcome so the stats stay accurate.
+		switch outcome {
+		case infrafailure.OutcomeRunNotFound:
+			stats.NotFoundInPG++
+			log.WithField("prowJobRunID", id).Debug("run not found in PostgreSQL at record time")
+		case infrafailure.OutcomeAlreadyLabeled:
+			stats.AlreadyLabeled++
+			log.WithField("prowJobRunID", id).Debug("run already labeled InfraFailure at record time")
+		default:
+			stats.NewlySynced++
+			log.WithField("prowJobRunID", id).Debug("recorded InfraFailure")
+		}
 	}
 	return nil
 }
@@ -191,7 +212,10 @@ func (b *Backfiller) processBatch(ctx context.Context, batch []int64, stats *Sta
 // fetchInfraFailureIDsFromBQ queries the BigQuery job_labels table for distinct
 // prow job run IDs labeled InfraFailure with a start time within the window.
 func (b *Backfiller) fetchInfraFailureIDsFromBQ(ctx context.Context, startDate civil.Date) ([]int64, error) {
-	sql, params := buildInfraFailureQuery(b.bq.Dataset, startDate)
+	sql, params, err := buildInfraFailureQuery(b.bq.Dataset, startDate)
+	if err != nil {
+		return nil, err
+	}
 	q := b.bq.Query(ctx, bqlabel.InfraFailureBackfill, sql)
 	q.Parameters = params
 	bqclient.LogQueryWithParamsReplaced(log.StandardLogger(), q)
@@ -278,7 +302,14 @@ func resolveStartDate(since string, days int, now time.Time) (civil.Date, error)
 // buildInfraFailureQuery builds the BigQuery SQL and parameters for fetching the
 // distinct InfraFailure run IDs whose prowjob_start falls within the window.
 // It is a pure function so it can be unit-tested without a BigQuery client.
-func buildInfraFailureQuery(dataset string, startDate civil.Date) (string, []bigquery.QueryParameter) {
+//
+// The dataset cannot be passed as a query parameter (it is part of the table
+// reference), so it is interpolated into the SQL. It is validated against
+// datasetPattern first to prevent SQL injection.
+func buildInfraFailureQuery(dataset string, startDate civil.Date) (string, []bigquery.QueryParameter, error) {
+	if !datasetPattern.MatchString(dataset) {
+		return "", nil, fmt.Errorf("invalid BigQuery dataset %q: must match %s", dataset, datasetPattern.String())
+	}
 	table := fmt.Sprintf("`%s.job_labels`", dataset)
 	sql := fmt.Sprintf(`SELECT DISTINCT prowjob_build_id
 FROM %s
@@ -288,7 +319,7 @@ WHERE label = @label
 		{Name: "label", Value: infrafailure.LabelInfraFailure},
 		{Name: "startDate", Value: startDate},
 	}
-	return sql, params
+	return sql, params, nil
 }
 
 // batchIDs splits ids into contiguous batches of at most size. A non-positive
@@ -300,7 +331,13 @@ func batchIDs(ids []int64, size int) [][]int64 {
 	if len(ids) == 0 {
 		return nil
 	}
-	batches := make([][]int64, 0, (len(ids)+size-1)/size)
+	// Ceiling division without the (len+size-1) form, which could overflow for
+	// very large inputs.
+	capacity := len(ids) / size
+	if len(ids)%size != 0 {
+		capacity++
+	}
+	batches := make([][]int64, 0, capacity)
 	for i := 0; i < len(ids); i += size {
 		end := i + size
 		if end > len(ids) {

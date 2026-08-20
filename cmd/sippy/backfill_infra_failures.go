@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -72,7 +71,7 @@ Example:
 
 			dbc, err := f.DBFlags.GetDBClient()
 			if err != nil {
-				return errors.WithMessage(err, "could not get db client")
+				return fmt.Errorf("could not get db client: %w", err)
 			}
 
 			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "backfill-infra-failures")
@@ -81,7 +80,7 @@ Example:
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, f.BigQueryFlags.ReleasesTable)
 			if err != nil {
-				return errors.WithMessage(err, "could not get bigquery client")
+				return fmt.Errorf("could not get bigquery client: %w", err)
 			}
 
 			backfiller := infrafailurebackfill.New(bqc, dbc, infrafailurebackfill.Options{
@@ -93,7 +92,7 @@ Example:
 
 			stats, err := backfiller.Run(ctx)
 			if err != nil {
-				return errors.WithMessage(err, "backfill failed")
+				return fmt.Errorf("backfill failed: %w", err)
 			}
 
 			if stats.Errors > 0 {

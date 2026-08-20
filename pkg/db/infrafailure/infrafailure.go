@@ -30,6 +30,24 @@ import (
 // and to avoid constructing SQL dynamically.
 const LabelInfraFailure = "InfraFailure"
 
+// RecordOutcome describes what RecordInfraFailureWithOutcome did for a run so
+// callers can report accurate statistics, in particular distinguishing a run
+// that was missing from PostgreSQL from one that was already labeled (both of
+// which leave the conditional UPDATE with RowsAffected == 0).
+type RecordOutcome int
+
+const (
+	// OutcomeSubtracted means the label was newly applied and the run's
+	// contribution was subtracted from the summary tables.
+	OutcomeSubtracted RecordOutcome = iota
+	// OutcomeAlreadyLabeled means the run already carried the InfraFailure label,
+	// so the subtraction had already been performed and nothing changed.
+	OutcomeAlreadyLabeled
+	// OutcomeRunNotFound means no prow_job_runs row exists for the id, so there
+	// was nothing to label or subtract.
+	OutcomeRunNotFound
+)
+
 // setInfraFailureLabelSQL sets the InfraFailure label on a single prow job run
 // and, as a side effect, acquires the PostgreSQL row lock. It is the first
 // operation performed so the lock is held for the remainder of the transaction.
@@ -126,33 +144,62 @@ WHERE cs.release = d.release
 // label the function returns nil without touching the summary tables, because
 // the invariant guarantees the subtraction was already performed.
 func RecordInfraFailure(ctx context.Context, dbc *gorm.DB, prowJobRunID int64) error {
-	return dbc.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return recordInfraFailureInTx(tx, prowJobRunID)
+	_, err := RecordInfraFailureWithOutcome(ctx, dbc, prowJobRunID)
+	return err
+}
+
+// RecordInfraFailureWithOutcome behaves like RecordInfraFailure but also reports
+// whether the run was newly labeled and subtracted, was already labeled, or was
+// absent from PostgreSQL. The outcome lets callers (for example the backfill)
+// report accurate per-run statistics. The already-labeled and not-found cases
+// both return a nil error because they are benign, idempotent no-ops.
+func RecordInfraFailureWithOutcome(ctx context.Context, dbc *gorm.DB, prowJobRunID int64) (RecordOutcome, error) {
+	var outcome RecordOutcome
+	err := dbc.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var txErr error
+		outcome, txErr = recordInfraFailureInTx(tx, prowJobRunID)
+		return txErr
 	})
+	return outcome, err
 }
 
 // recordInfraFailureInTx performs the label set and summary subtraction on the
 // supplied transaction. Returning an error rolls back the transaction so
 // neither the label nor the subtraction persists, preserving the invariant.
-func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) error {
+func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) (RecordOutcome, error) {
 	logger := log.WithField("prowJobRunID", prowJobRunID)
 
 	// Conditional UPDATE as the first operation: set the label and acquire the
-	// row lock together. RowsAffected == 0 means the label was already set, so
-	// the subtraction is already done -- nothing further to do.
+	// row lock together. RowsAffected == 0 means either the label was already set
+	// (subtraction already done) or the run does not exist in PostgreSQL.
 	res := tx.Exec(setInfraFailureLabelSQL, prowJobRunID)
 	if res.Error != nil {
-		return fmt.Errorf("setting InfraFailure label on prow_job_run %d: %w", prowJobRunID, res.Error)
+		return OutcomeSubtracted, fmt.Errorf("setting InfraFailure label on prow_job_run %d: %w", prowJobRunID, res.Error)
 	}
 	if res.RowsAffected == 0 {
+		// Disambiguate the two RowsAffected == 0 cases with a follow-up existence
+		// check (cheap, and the row lock the UPDATE would have taken is moot here)
+		// so callers can distinguish an already-labeled run from a missing one.
+		var exists int
+		check := tx.Raw("SELECT 1 FROM prow_job_runs WHERE id = ? LIMIT 1", prowJobRunID).Scan(&exists)
+		if check.Error != nil {
+			return OutcomeAlreadyLabeled, fmt.Errorf("checking existence of prow_job_run %d: %w", prowJobRunID, check.Error)
+		}
+		if check.RowsAffected == 0 {
+			logger.Debug("prow job run not found in PostgreSQL; nothing to label")
+			return OutcomeRunNotFound, nil
+		}
 		logger.Debug("prow job run already labeled InfraFailure; summary subtraction already applied, skipping")
-		return nil
+		return OutcomeAlreadyLabeled, nil
 	}
 	logger.Debug("set InfraFailure label on prow job run")
 
 	// The atomic gate passed (the label was newly applied), so remove the run's
 	// contribution from the summary tables in the same transaction.
-	return subtractFromSummaries(tx, prowJobRunID)
+	if err := subtractFromSummaries(tx, prowJobRunID); err != nil {
+		return OutcomeSubtracted, err
+	}
+	return OutcomeSubtracted, nil
 }
 
 // subtractFromSummaries removes a single prow job run's test results from the

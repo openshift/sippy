@@ -75,7 +75,10 @@ func TestResolveStartDate(t *testing.T) {
 
 func TestBuildInfraFailureQuery(t *testing.T) {
 	startDate := civil.Date{Year: 2026, Month: time.July, Day: 1}
-	sql, params := buildInfraFailureQuery("ci_analysis_us", startDate)
+	sql, params, err := buildInfraFailureQuery("ci_analysis_us", startDate)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	wantSubstrings := []string{
 		"SELECT DISTINCT prowjob_build_id",
@@ -105,6 +108,35 @@ func TestBuildInfraFailureQuery(t *testing.T) {
 
 	// Ensure the returned params are usable as BigQuery parameters (type check).
 	var _ []bigquery.QueryParameter = params
+}
+
+func TestBuildInfraFailureQueryRejectsUnsafeDataset(t *testing.T) {
+	startDate := civil.Date{Year: 2026, Month: time.July, Day: 1}
+
+	tests := []struct {
+		name    string
+		dataset string
+		wantErr bool
+	}{
+		{name: "valid dataset", dataset: "ci_analysis_us", wantErr: false},
+		{name: "valid project-qualified dataset", dataset: "openshift-gce-devel.ci_analysis_us", wantErr: false},
+		{name: "empty dataset", dataset: "", wantErr: true},
+		{name: "backtick injection", dataset: "ci`; DROP TABLE job_labels; --", wantErr: true},
+		{name: "space injection", dataset: "ci_analysis_us job_labels", wantErr: true},
+		{name: "quote injection", dataset: "ci'us", wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err := buildInfraFailureQuery(tc.dataset, startDate)
+			if tc.wantErr && err == nil {
+				t.Errorf("expected error for dataset %q, got nil", tc.dataset)
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("unexpected error for dataset %q: %v", tc.dataset, err)
+			}
+		})
+	}
 }
 
 func TestBatchIDs(t *testing.T) {
@@ -259,12 +291,12 @@ func TestProcessBatch(t *testing.T) {
 				findLabelStatus: func(_ context.Context, _ []int64) (batchLabelStatus, error) {
 					return status, nil
 				},
-				recordInfraFailure: func(_ context.Context, id int64) error {
+				recordInfraFailure: func(_ context.Context, id int64) (infrafailure.RecordOutcome, error) {
 					recorded = append(recorded, id)
 					if id == tc.failOnID {
-						return errTest
+						return infrafailure.OutcomeSubtracted, errTest
 					}
-					return nil
+					return infrafailure.OutcomeSubtracted, nil
 				},
 			}
 
@@ -282,6 +314,41 @@ func TestProcessBatch(t *testing.T) {
 	}
 }
 
+// TestProcessBatchOutcomeReclassification verifies that runs classified as
+// present-but-unlabeled are re-counted according to the outcome reported at
+// record time (a concurrent labeler or a pruned partition can change the
+// classification between the lookup and the record).
+func TestProcessBatchOutcomeReclassification(t *testing.T) {
+	batch := []int64{1, 2, 3}
+	status := batchLabelStatus{
+		existing: sets.New[int64](1, 2, 3),
+		labeled:  sets.New[int64](),
+	}
+	outcomes := map[int64]infrafailure.RecordOutcome{
+		1: infrafailure.OutcomeSubtracted,
+		2: infrafailure.OutcomeAlreadyLabeled,
+		3: infrafailure.OutcomeRunNotFound,
+	}
+
+	b := &Backfiller{
+		findLabelStatus: func(_ context.Context, _ []int64) (batchLabelStatus, error) {
+			return status, nil
+		},
+		recordInfraFailure: func(_ context.Context, id int64) (infrafailure.RecordOutcome, error) {
+			return outcomes[id], nil
+		},
+	}
+
+	var stats Stats
+	if err := b.processBatch(context.Background(), batch, &stats); err != nil {
+		t.Fatalf("processBatch returned error: %v", err)
+	}
+	want := Stats{NewlySynced: 1, AlreadyLabeled: 1, NotFoundInPG: 1}
+	if stats != want {
+		t.Errorf("stats = %+v, want %+v", stats, want)
+	}
+}
+
 func TestRun(t *testing.T) {
 	var recorded []int64
 	b := &Backfiller{
@@ -296,9 +363,9 @@ func TestRun(t *testing.T) {
 				labeled:  sets.New[int64](1),
 			}, nil
 		},
-		recordInfraFailure: func(_ context.Context, id int64) error {
+		recordInfraFailure: func(_ context.Context, id int64) (infrafailure.RecordOutcome, error) {
 			recorded = append(recorded, id)
-			return nil
+			return infrafailure.OutcomeSubtracted, nil
 		},
 	}
 
