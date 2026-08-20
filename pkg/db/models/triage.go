@@ -255,7 +255,7 @@ type RegressionView struct {
 type RegressionJobRun struct {
 	ID           uint           `json:"id" gorm:"primaryKey"`
 	RegressionID uint           `json:"regression_id" gorm:"column:regression_id;not null;uniqueIndex:idx_regression_job_run"`
-	ProwJobRunID string         `json:"prowjob_run_id" gorm:"column:prow_job_run_id;not null;uniqueIndex:idx_regression_job_run"`
+	ProwJobRunID string         `json:"prowjob_run_id" gorm:"column:prow_job_run_id;not null;uniqueIndex:idx_regression_job_run;index:idx_rjr_prow_job_run_id"`
 	ProwJobName  string         `json:"prowjob_name" gorm:"column:prow_job_name;not null"`
 	ProwJobURL   string         `json:"prowjob_url" gorm:"column:prow_job_url"`
 	StartTime    time.Time      `json:"start_time" gorm:"column:start_time"`

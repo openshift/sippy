@@ -410,7 +410,9 @@ JOIN tests t ON t.id = pjrt.test_id
 LEFT JOIN LATERAL (
     SELECT rjr.job_labels, rjr.job_symptoms
     FROM regression_job_runs rjr
+    JOIN test_regressions tr ON tr.id = rjr.regression_id
     WHERE rjr.prow_job_run_id = CAST(pjr.id AS TEXT)
+      AND tr.test_id = tt.unique_id
     ORDER BY rjr.id
     LIMIT 1
 ) rjr_agg ON true
