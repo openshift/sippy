@@ -31,6 +31,50 @@ func TestComponentReadinessViews(t *testing.T) {
 	require.Greater(t, len(views), 0, "no views returned, check server cli params")
 }
 
+func TestCapabilitiesFilter(t *testing.T) {
+	var views []crview.View
+	err := util.SippyGet("/api/component_readiness/views", &views)
+	require.NoError(t, err, "error fetching views")
+	require.Greater(t, len(views), 0, "no views returned")
+
+	viewName := views[0].Name
+
+	// Fetch without capabilities filter
+	var unfilteredReport componentreport.ComponentReport
+	err = util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s", viewName), &unfilteredReport)
+	require.NoError(t, err, "error fetching unfiltered component report")
+	require.Greater(t, len(unfilteredReport.Rows), 0, "unfiltered report has no rows")
+
+	// Fetch with testCapabilities=install filter
+	var filteredReport componentreport.ComponentReport
+	err = util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s&testCapabilities=install", viewName), &filteredReport)
+	require.NoError(t, err, "error fetching filtered component report")
+
+	// The filtered report should have fewer rows since only tests with
+	// the "install" capability are included.
+	assert.Less(t, len(filteredReport.Rows), len(unfilteredReport.Rows),
+		"capabilities filter did not reduce the number of rows (got %d filtered vs %d unfiltered)",
+		len(filteredReport.Rows), len(unfilteredReport.Rows))
+
+	// Collect component names from each report to verify filtering
+	unfilteredComponents := map[string]bool{}
+	for _, row := range unfilteredReport.Rows {
+		unfilteredComponents[row.Component] = true
+	}
+	filteredComponents := map[string]bool{}
+	for _, row := range filteredReport.Rows {
+		filteredComponents[row.Component] = true
+	}
+
+	// The unfiltered report should have components that the filtered
+	// report does not (e.g., components with only "cap1" tests).
+	assert.Greater(t, len(unfilteredComponents), len(filteredComponents),
+		"filter should exclude components that have no tests with the install capability")
+
+	t.Logf("unfiltered: %d components, filtered (install): %d components",
+		len(unfilteredComponents), len(filteredComponents))
+}
+
 func TestRegressionCacheLoader(t *testing.T) {
 	credFile := os.Getenv("GCS_SA_JSON_PATH")
 	if credFile == "" {
