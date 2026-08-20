@@ -342,16 +342,18 @@ func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 // --- TestDetailsQuerier ---
 
 type testDetailRow struct {
-	TestID          string    `gorm:"column:test_id"`
-	TestName        string    `gorm:"column:test_name"`
-	ProwJobName     string    `gorm:"column:prowjob_name"`
-	ProwJobRunID    string    `gorm:"column:prowjob_run_id"`
-	ProwJobURL      string    `gorm:"column:prowjob_url"`
-	ProwJobStart    time.Time `gorm:"column:prowjob_start"`
-	ProwJobID       uint      `gorm:"column:prow_job_id"`
-	Status          int       `gorm:"column:status"`
-	JiraComponent   string    `gorm:"column:jira_component"`
-	JiraComponentID *uint     `gorm:"column:jira_component_id"`
+	TestID          string         `gorm:"column:test_id"`
+	TestName        string         `gorm:"column:test_name"`
+	ProwJobName     string         `gorm:"column:prowjob_name"`
+	ProwJobRunID    string         `gorm:"column:prowjob_run_id"`
+	ProwJobURL      string         `gorm:"column:prowjob_url"`
+	ProwJobStart    time.Time      `gorm:"column:prowjob_start"`
+	ProwJobID       uint           `gorm:"column:prow_job_id"`
+	Status          int            `gorm:"column:status"`
+	JiraComponent   string         `gorm:"column:jira_component"`
+	JiraComponentID *uint          `gorm:"column:jira_component_id"`
+	JobLabels       pq.StringArray `gorm:"column:job_labels;type:text[]"`
+	JobSymptoms     pq.StringArray `gorm:"column:job_symptoms;type:text[]"`
 }
 
 func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
@@ -396,13 +398,22 @@ SELECT
     pj.id AS prow_job_id,
     pjrt.status,
     COALESCE(tt.jira_component, '') AS jira_component,
-    tt.jira_component_id
+    tt.jira_component_id,
+    rjr_agg.job_labels,
+    rjr_agg.job_symptoms
 FROM target_tests tt
 JOIN prow_job_run_tests pjrt ON pjrt.test_id = tt.test_id
     AND (tt.suite_id = pjrt.suite_id OR (tt.suite_id IS NULL AND pjrt.suite_id IS NULL))
 JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
 JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
 JOIN tests t ON t.id = pjrt.test_id
+LEFT JOIN LATERAL (
+    SELECT rjr.job_labels, rjr.job_symptoms
+    FROM regression_job_runs rjr
+    WHERE rjr.prow_job_run_id = CAST(pjr.id AS TEXT)
+    ORDER BY rjr.id
+    LIMIT 1
+) rjr_agg ON true
 WHERE pj.release = ?
     AND pjr.timestamp >= ? AND pjr.timestamp < ?
     AND pjr.prow_job_release = ?
@@ -481,6 +492,8 @@ WHERE pj.release = ?
 			Count:           crtest.Count{TotalCount: 1, SuccessCount: successCount, FlakeCount: flakeCount},
 			JiraComponent:   row.JiraComponent,
 			JiraComponentID: jiraComponentID,
+			JobLabels:       row.JobLabels,
+			JobSymptoms:     row.JobSymptoms,
 		}
 
 		result[normalizedName] = append(result[normalizedName], entry)

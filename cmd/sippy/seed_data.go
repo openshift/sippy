@@ -430,6 +430,34 @@ var syntheticTests = []syntheticTestSpec{
 		},
 	},
 
+	// --- Cross-compare regressions: arm64 significantly worse than amd64 ---
+	{
+		testID: "test-arm64-memory", testName: "[sig-node] Memory management should handle large allocations",
+		component: "comp-NodeStability", capabilities: []string{"cap1"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 190, 0}},
+			awsArm64Parallel: {"4.21": {180, 171, 0}, "4.22": {180, 140, 0}},
+		},
+	},
+	// Similar name for potential match (will not be triaged, providing a match candidate)
+	{
+		testID: "test-arm64-memory-dealloc", testName: "[sig-node] Memory management should handle large deallocations",
+		component: "comp-NodeStability", capabilities: []string{"cap1"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 188, 0}},
+			awsArm64Parallel: {"4.21": {180, 171, 0}, "4.22": {180, 135, 0}},
+		},
+	},
+	// Another cross-compare regression: arm64 drops significantly
+	{
+		testID: "test-arm64-container-startup", testName: "[sig-node] Container lifecycle should start containers promptly",
+		component: "comp-NodeStability", capabilities: []string{"cap1"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 192, 0}},
+			awsArm64Parallel: {"4.21": {180, 171, 0}, "4.22": {180, 142, 0}},
+		},
+	},
+
 	// --- Install / health indicator tests: run on every job, every release ---
 	{
 		testID: "test-install-overall", testName: "install should succeed: overall",
@@ -583,6 +611,11 @@ func seedSyntheticData(dbc *db.DB) error {
 	if err := syncRegressions(dbc); err != nil {
 		return errors.WithMessage(err, "failed to sync regressions")
 	}
+
+	if err := seedRegressionJobRuns(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed regression job runs")
+	}
+	log.Info("Seeded regression job runs")
 
 	if err := seedBugsAndTriages(dbc); err != nil {
 		return errors.WithMessage(err, "failed to seed bugs and triages")
@@ -1539,8 +1572,63 @@ func seedReleasePayloads(dbc *db.DB) error {
 	return nil
 }
 
+func seedRegressionJobRuns(dbc *db.DB) error {
+	var regressions []models.TestRegression
+	if err := dbc.DB.Where("closed IS NULL").Find(&regressions).Error; err != nil {
+		return fmt.Errorf("failed to find open regressions: %w", err)
+	}
+
+	created := 0
+	for _, reg := range regressions {
+		var test models.Test
+		if err := dbc.DB.Where("name = ?", reg.TestName).First(&test).Error; err != nil {
+			log.WithField("test", reg.TestName).Debug("test not found, skipping job run seeding")
+			continue
+		}
+
+		type failedRunInfo struct {
+			ProwJobRunID uint      `gorm:"column:prow_job_run_id"`
+			ProwJobName  string    `gorm:"column:prow_job_name"`
+			Timestamp    time.Time `gorm:"column:timestamp"`
+			Labels       pq.StringArray
+		}
+		var failedRuns []failedRunInfo
+		if err := dbc.DB.Raw(`
+			SELECT DISTINCT pjr.id AS prow_job_run_id, pj.name AS prow_job_name,
+			       pjr.timestamp, pjr.labels
+			FROM prow_job_run_tests pjrt
+			JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
+			JOIN prow_jobs pj ON pj.id = pjrt.prow_job_id
+			WHERE pjrt.test_id = ? AND pjrt.status = ? AND pj.release = ?
+			ORDER BY pjr.id
+			LIMIT 10
+		`, test.ID, int(v1.TestStatusFailure), reg.Release).Scan(&failedRuns).Error; err != nil {
+			return fmt.Errorf("querying failed runs for %q: %w", reg.TestName, err)
+		}
+
+		for _, fr := range failedRuns {
+			rjr := models.RegressionJobRun{
+				RegressionID: reg.ID,
+				ProwJobRunID: fmt.Sprintf("%d", fr.ProwJobRunID),
+				ProwJobName:  fr.ProwJobName,
+				StartTime:    fr.Timestamp,
+				TestFailed:   true,
+				TestFailures: 1,
+				JobLabels:    fr.Labels,
+			}
+			if err := dbc.DB.Create(&rjr).Error; err != nil {
+				return fmt.Errorf("creating regression job run: %w", err)
+			}
+			created++
+		}
+	}
+
+	log.WithField("count", created).Info("Created regression job run records")
+	return nil
+}
+
 func seedBugsAndTriages(dbc *db.DB) error {
-	var installTest, networkTest, etcdTest models.Test
+	var installTest, networkTest, etcdTest, memoryTest models.Test
 	if err := dbc.DB.Where("name = ?", "install should succeed: overall").First(&installTest).Error; err != nil {
 		return fmt.Errorf("failed to find install test: %w", err)
 	}
@@ -1549,6 +1637,9 @@ func seedBugsAndTriages(dbc *db.DB) error {
 	}
 	if err := dbc.DB.Where("name = ?", "[sig-etcd] etcd leader changes are not excessive").First(&etcdTest).Error; err != nil {
 		return fmt.Errorf("failed to find etcd test: %w", err)
+	}
+	if err := dbc.DB.Where("name = ?", "[sig-node] Memory management should handle large allocations").First(&memoryTest).Error; err != nil {
+		return fmt.Errorf("failed to find memory test: %w", err)
 	}
 
 	var awsJob models.ProwJob
@@ -1609,6 +1700,18 @@ func seedBugsAndTriages(dbc *db.DB) error {
 			ReleaseBlocker:  "Accepted",
 			Tests:           []models.Test{etcdTest},
 		},
+		{
+			Key:             "OCPBUGS-40005",
+			Status:          "New",
+			LastChangeTime:  now.AddDate(0, 0, -1),
+			Summary:         "arm64 memory allocation regression",
+			AffectsVersions: pq.StringArray{"4.22"},
+			TargetVersions:  pq.StringArray{"4.22"},
+			Components:      pq.StringArray{"Node"},
+			Labels:          pq.StringArray{"ci-test-failure"},
+			URL:             "https://issues.redhat.com/browse/OCPBUGS-40005",
+			Tests:           []models.Test{memoryTest},
+		},
 	}
 
 	for i := range bugs {
@@ -1618,43 +1721,71 @@ func seedBugsAndTriages(dbc *db.DB) error {
 	}
 	log.WithField("count", len(bugs)).Info("Created bug records")
 
-	var regressions []models.TestRegression
-	if err := dbc.DB.Where("release = ?", "4.22").Order("id").Limit(2).Find(&regressions).Error; err != nil {
+	// Look up regressions by test name for deterministic triage associations.
+	regressionsByTest := map[string][]models.TestRegression{}
+	var allRegressions []models.TestRegression
+	if err := dbc.DB.Where("release = ? AND closed IS NULL", "4.22").Order("id").Find(&allRegressions).Error; err != nil {
 		return fmt.Errorf("failed to find regressions: %w", err)
 	}
+	for _, r := range allRegressions {
+		regressionsByTest[r.TestName] = append(regressionsByTest[r.TestName], r)
+	}
 
-	if len(regressions) > 0 {
-		triageDB := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "seed-data"))
+	triageDB := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "seed-data"))
 
-		triage1 := models.Triage{
-			URL:         "https://issues.redhat.com/browse/OCPBUGS-40001",
-			Description: "Install test intermittent failure tracked",
-			Type:        models.TriageTypeProduct,
-			BugID:       &bugs[0].ID,
-			Regressions: []models.TestRegression{regressions[0]},
+	// Triage 1: network test regression (single view)
+	if regs, ok := regressionsByTest["[sig-network] Services should serve endpoints on same port and different protocol"]; ok && len(regs) > 0 {
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/OCPBUGS-40002",
+			Description: "Network endpoint regression under investigation",
+			Type:        models.TriageTypeCIInfra,
+			BugID:       &bugs[1].ID,
+			Regressions: []models.TestRegression{regs[0]},
 		}
-		if err := triageDB.Create(&triage1).Error; err != nil {
-			return fmt.Errorf("failed to create triage 1: %w", err)
-		}
-
-		if len(regressions) > 1 {
-			triage2 := models.Triage{
-				URL:         "https://issues.redhat.com/browse/OCPBUGS-40002",
-				Description: "Network endpoint regression under investigation",
-				Type:        models.TriageTypeCIInfra,
-				BugID:       &bugs[1].ID,
-				Regressions: []models.TestRegression{regressions[1]},
-			}
-			if err := triageDB.Create(&triage2).Error; err != nil {
-				return fmt.Errorf("failed to create triage 2: %w", err)
-			}
+		if err := triageDB.Create(&triage).Error; err != nil {
+			return fmt.Errorf("failed to create network triage: %w", err)
 		}
 	}
+
+	// Triage 2: etcd test regression (single view)
+	if regs, ok := regressionsByTest["[sig-etcd] etcd leader changes are not excessive"]; ok && len(regs) > 0 {
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/OCPBUGS-40003",
+			Description: "Etcd leader changes causing instability",
+			Type:        models.TriageTypeProduct,
+			BugID:       &bugs[2].ID,
+			Regressions: []models.TestRegression{regs[0]},
+		}
+		if err := triageDB.Create(&triage).Error; err != nil {
+			return fmt.Errorf("failed to create etcd triage: %w", err)
+		}
+	}
+
+	// Triage 3: memory allocation regression spanning multiple views.
+	// This test has regressions in both the main view (arm64 variant regressed 4.21->4.22)
+	// and the cross-compare view (arm64 vs amd64).
+	if regs, ok := regressionsByTest["[sig-node] Memory management should handle large allocations"]; ok && len(regs) > 0 {
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/OCPBUGS-40005",
+			Description: "arm64 memory allocation regression across views",
+			Type:        models.TriageTypeProduct,
+			BugID:       &bugs[4].ID,
+			Regressions: regs, // links all regressions for this test (main + cross-compare)
+		}
+		if err := triageDB.Create(&triage).Error; err != nil {
+			return fmt.Errorf("failed to create multi-view triage: %w", err)
+		}
+	}
+
+	// Note: "[sig-node] Memory management should handle large deallocations" is intentionally
+	// left untriaged so it appears as a potential match for the allocations triage above
+	// (similar name with Levenshtein distance of 2, overlapping job runs).
 
 	return nil
 }
 
 func seedSymptomJobRunLinkage(dbc *db.DB) error {
+	// Apply labels to some failed job runs (for label display on job runs)
 	var jobRuns []models.ProwJobRun
 	if err := dbc.DB.
 		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
@@ -1684,62 +1815,66 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 	}
 	log.WithField("count", labeled).Info("Applied labels to failed job runs")
 
-	var regressions []models.TestRegression
-	if err := dbc.DB.Where("release = ?", "4.22").Preload("JobRuns").Order("id").Limit(3).Find(&regressions).Error; err != nil {
-		return fmt.Errorf("failed to find regressions: %w", err)
+	// Assign symptoms to regression job runs by test name.
+	type symptomSpec struct {
+		testName string
+		symptoms pq.StringArray
+	}
+	symptomSpecs := []symptomSpec{
+		{
+			testName: "[sig-network] Services should serve endpoints on same port and different protocol",
+			symptoms: pq.StringArray{"DNSTimeoutSymptom"},
+		},
+		{
+			testName: "[sig-etcd] etcd leader changes are not excessive",
+			symptoms: pq.StringArray{"InstallTimeoutSymptom", "APITimeoutSymptom"},
+		},
+		{
+			testName: "[sig-node] Memory management should handle large allocations",
+			symptoms: pq.StringArray{"DNSTimeoutSymptom", "APITimeoutSymptom"},
+		},
+		{
+			testName: "[sig-node] Memory management should handle large deallocations",
+			symptoms: pq.StringArray{"DNSTimeoutSymptom"},
+		},
+		{
+			testName: "[sig-node] Container lifecycle should start containers promptly",
+			symptoms: pq.StringArray{"InstallTimeoutSymptom"},
+		},
 	}
 
-	symptomAssignments := []pq.StringArray{
-		{"DNSTimeoutSymptom"},
-		{"InstallTimeoutSymptom", "APITimeoutSymptom"},
-	}
-	regressionSymptom := make(map[uint]string)
 	updatedCount := 0
-	for regIdx, symptoms := range symptomAssignments {
-		if regIdx >= len(regressions) {
-			break
+	for _, spec := range symptomSpecs {
+		var regs []models.TestRegression
+		if err := dbc.DB.Preload("JobRuns").
+			Where("test_name = ? AND closed IS NULL", spec.testName).
+			Find(&regs).Error; err != nil {
+			return fmt.Errorf("finding regressions for %q: %w", spec.testName, err)
 		}
-		regressionSymptom[regressions[regIdx].ID] = symptoms[0]
-		for _, jr := range regressions[regIdx].JobRuns {
-			if err := dbc.DB.Model(&models.RegressionJobRun{}).Where("id = ?", jr.ID).
-				Update("job_symptoms", symptoms).Error; err != nil {
-				return fmt.Errorf("failed to update regression job run symptoms: %w", err)
+		for _, reg := range regs {
+			for _, jr := range reg.JobRuns {
+				if err := dbc.DB.Model(&models.RegressionJobRun{}).Where("id = ?", jr.ID).
+					Update("job_symptoms", spec.symptoms).Error; err != nil {
+					return fmt.Errorf("failed to update regression job run symptoms: %w", err)
+				}
+				updatedCount++
 			}
-			updatedCount++
 		}
 	}
 	log.WithField("count", updatedCount).Info("Populated job_symptoms on regression job runs")
 
-	var regressionIDs []uint
-	for id := range regressionSymptom {
-		regressionIDs = append(regressionIDs, id)
+	// Sync triage symptoms from the regression job run data.
+	backend := componentreadiness.NewPostgresRegressionStore(dbc, nil)
+	var activeRegs []*models.TestRegression
+	var allRegs []models.TestRegression
+	if err := dbc.DB.Where("release = ? AND closed IS NULL", "4.22").Find(&allRegs).Error; err != nil {
+		return fmt.Errorf("finding active regressions: %w", err)
 	}
-
-	var triages []models.Triage
-	if err := dbc.DB.Preload("Regressions").
-		Joins("JOIN triage_regressions ON triage_regressions.triage_id = triages.id").
-		Where("triage_regressions.test_regression_id IN ?", regressionIDs).
-		Order("triages.id").
-		Find(&triages).Error; err != nil {
-		return fmt.Errorf("failed to find triages: %w", err)
+	for i := range allRegs {
+		activeRegs = append(activeRegs, &allRegs[i])
 	}
-
-	for _, t := range triages {
-		for _, reg := range t.Regressions {
-			symptom, ok := regressionSymptom[reg.ID]
-			if !ok {
-				continue
-			}
-			ts := models.TriageSymptom{
-				TriageID:     t.ID,
-				SymptomID:    symptom,
-				RegressionID: reg.ID,
-				JobRunCount:  2,
-			}
-			if err := dbc.DB.Create(&ts).Error; err != nil {
-				return fmt.Errorf("failed to create triage symptom: %w", err)
-			}
-		}
+	if err := backend.SyncTriageSymptoms(activeRegs); err != nil {
+		return fmt.Errorf("syncing triage symptoms: %w", err)
 	}
 
 	return nil
