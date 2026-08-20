@@ -40,8 +40,7 @@ type RegressionAllowances struct {
 	regressionGetterFunc func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
 }
 
-func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup,
-	_, _ chan map[string]crstatus.TestStatus, _ chan error) {
+func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 	// unused
 }
 

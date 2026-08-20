@@ -326,17 +326,11 @@ func mergeCompareVariants(reqOptions reqopts.RequestOptions, includeVariants map
 	return merged
 }
 
-func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-	includeVariants map[string][]string,
-	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
-	includeVariants = mergeCompareVariants(reqOptions, includeVariants)
-	return p.queryTestStatusPrefixSum(ctx, reqOptions, reqOptions.SampleRelease.Name,
-		reqOptions.Lifecycles,
-		includeVariants,
-		query.DateRange{
-			Start: civil.DateOf(start),
-			End:   civil.DateOf(end).AddDays(1),
-		})
+func (p *PostgresProvider) QueryTestStatus(
+	ctx context.Context,
+	reqOptions reqopts.RequestOptions,
+) (baseStatus, sampleStatus map[string]crstatus.TestStatus, errs []error) {
+	return p.queryCombinedTestStatus(ctx, reqOptions)
 }
 
 // --- TestDetailsQuerier ---

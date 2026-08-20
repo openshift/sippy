@@ -44,18 +44,19 @@ func buildVariantFilterClause(includeVariants map[string][]string) (string, []an
 	return strings.Join(clauses, " AND "), args
 }
 
-// lookupVariantValues queries variant_combinations matching the filter and
-// returns a map from variant_combination_id to the extracted variant values
-// for each dbGroupBy key. This runs as a small, fast query (~6ms for ~400
-// rows) and the result is used to enrich aggregated rows in Go.
+// lookupVariantValues queries variant_combinations matching the given filter
+// clause and returns a map from variant_combination_id to the extracted variant
+// values for each dbGroupBy key. This runs as a small, fast query (~6ms for
+// ~400 rows) and the result is used to enrich aggregated rows in Go. The filter
+// clause/args come from buildVariantFilterClause; the caller passes them in so
+// the same pure call is not repeated within one code path.
 func lookupVariantValues(
 	ctx context.Context,
 	dbc *db.DB,
-	includeVariants map[string][]string,
+	filterClause string,
+	filterArgs []any,
 	dbGroupBy sets.Set[string],
 ) (map[uint]map[string]string, error) {
-	filterClause, args := buildVariantFilterClause(includeVariants)
-
 	query := "SELECT id, variants FROM variant_combinations"
 	if filterClause != "" {
 		query += " WHERE " + filterClause
@@ -67,7 +68,7 @@ func lookupVariantValues(
 	}
 
 	var rows []vcRow
-	if err := dbc.DB.WithContext(ctx).Raw(query, args...).Scan(&rows).Error; err != nil {
+	if err := dbc.DB.WithContext(ctx).Raw(query, filterArgs...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("looking up variant values: %w", err)
 	}
 
@@ -83,6 +84,64 @@ func lookupVariantValues(
 		result[row.ID] = filtered
 	}
 	return result, nil
+}
+
+// variantFilterResult bundles the outputs needed to join prow_jobs against a
+// filtered set of variant_combinations: the resolved variant values (for
+// building a group mapping), the bind args for that filter, and a subquery
+// selecting matching variant_combination_ids.
+type variantFilterResult struct {
+	lookup          map[uint]map[string]string
+	filterArgs      []any
+	variantSubquery string
+}
+
+// resolveVariantFilter looks up variant_combinations matching includeVariants
+// and builds the subquery/args used to join prow_jobs against them. This is
+// the shared bundle behind both the standalone (prepareVariantQuery) and
+// combined (queryCombinedTestStatus) query paths; keep it as the single place
+// that turns includeVariants into a lookup + filter + subquery so the two
+// paths can't drift apart.
+func resolveVariantFilter(
+	ctx context.Context,
+	dbc *db.DB,
+	includeVariants map[string][]string,
+	dbGroupBy sets.Set[string],
+) (*variantFilterResult, error) {
+	if includeVariants == nil {
+		includeVariants = map[string][]string{}
+	}
+
+	filterClause, filterArgs := buildVariantFilterClause(includeVariants)
+
+	lookup, err := lookupVariantValues(ctx, dbc, filterClause, filterArgs, dbGroupBy)
+	if err != nil {
+		return nil, err
+	}
+
+	variantSubquery := "SELECT vc.id FROM variant_combinations vc"
+	if filterClause != "" {
+		variantSubquery += " WHERE " + filterClause
+	}
+
+	return &variantFilterResult{
+		lookup:          lookup,
+		filterArgs:      filterArgs,
+		variantSubquery: variantSubquery,
+	}, nil
+}
+
+// prowJobVariantJoin builds the prow_jobs join that restricts to jobs whose
+// variant_combination_id matches the given subquery, plus the vg join that maps
+// each combination to its variant group. variantSubquery is the
+// "SELECT vc.id FROM variant_combinations vc [WHERE ...]" produced by
+// resolveVariantFilter. Both the standalone and combined query paths share this
+// join so their materialized CTEs line up identically.
+func prowJobVariantJoin(variantSubquery string) string {
+	return fmt.Sprintf(`JOIN prow_jobs pj ON pj.id = e.prow_job_id
+                AND pj.deleted_at IS NULL
+                AND pj.variant_combination_id IN (%s)
+            JOIN vg ON vg.vcid = pj.variant_combination_id`, variantSubquery)
 }
 
 // variantGroupMapping holds the result of grouping variant_combination_ids by
