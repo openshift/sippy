@@ -3,8 +3,8 @@ set -eu
 
 echo "==> Installing Go IDE tools..."
 go install golang.org/x/tools/gopls@v0.21.1
-go install github.com/go-delve/delve/cmd/dlv@latest
-go install honnef.co/go/tools/cmd/staticcheck@latest
+go install github.com/go-delve/delve/cmd/dlv@v1.27.1
+go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
 
 echo "==> Downloading Go module dependencies..."
 go mod download
