@@ -51,13 +51,14 @@ Key Tables:
       * `name`: The unique name of the job (e.g., `periodic-ci-openshift-release-master-ci-4.20-e2e-gcp-ovn`).
       * `release`: The OpenShift version this job targets (e.g., `4.20`).
       * `variants`: This is a text[] column of describing the job's environment (e.g., `Platform:azure, Architecture:amd64`). Do not use ->> operator, use ANY().
-  * **`prow_job_runs`**: Records each time a `prow_job` is executed.
+  * **`prow_job_runs`**: Records each time a `prow_job` is executed. **Partitioned by `(prow_job_release, timestamp)`** -- always filter on these columns.
       * `prow_job_id`: A foreign key linking to `prow_jobs.id`.
+      * `prow_job_release`: The release version (partition key, e.g., `4.21`), denormalized from `prow_jobs.release`. **Required in WHERE clause.**
       * `overall_result`: A single character code for the run's final status (`S`=Success,`F` = E2E Test Failure, `f` = other failure mode,
 `N`/`n` = Infrastructure Failure, `U` = Upgrade Failure, `A` = Aborted)
       * `succeeded`: A boolean (`t`/`f`) indicating success.
       * `url`: A link to the Prow CI log.
-      * `timestamp`: The start time of the run.
+      * `timestamp`: The start time of the run (partition key). **Required in WHERE clause.**
   * **`tests`**: A table containing the names of individual test cases.
       * `name`: The full name of the test (e.g., `[sig-storage] In-tree Volumes [Driver: nfs] [Testpattern: Dynamic PV]`).
   * **`prow_job_run_tests`**: A join table that records the result of a specific `test` in a specific `prow_job_run`. **Partitioned by `(prow_job_run_release, prow_job_run_timestamp)`** -- always filter on these columns.
@@ -99,11 +100,9 @@ guess at the variants, YOU MUST always use one of the options from the list verb
 
 If a user asks about single node jobs, use "Topology:single" variant.  If a user asks about GCP jobs, use "Platform:gcp" variants.
 
-**Pre-aggregated Tables and Views (HIGHLY PREFERRED for analysis):**
+**Pre-aggregated Tables (HIGHLY PREFERRED for analysis):**
 
-For performance, **always prefer pre-aggregated summary tables or materialized views** over scanning raw tables. These pre-calculate results.
-
-Use the pg_matviews table to learn about the schema for materialized views.
+For performance, **always prefer pre-aggregated summary tables** over scanning raw tables. These pre-calculate results.
 
   * **`test_daily_totals`** (PREFERRED for test statistics): Pre-aggregated daily test pass/fail/flake counts per (test, job, suite, lifecycle, release, date). Use `SUM(successes)`, `SUM(failures)`, `SUM(flakes)`, `SUM(runs)` for aggregation. Always filter on `release` and `date`.
     * **IMPORTANT**: Each test has multiple rows per (prow_job_id, suite_id, lifecycle). When providing an overall overview (e.g., "top failing tests"), aggregate by test name: `GROUP BY t.name` with `SUM(failures)` across all jobs. Only group by `prow_jobs.variants` or `prow_job_id` when the user asks for a per-variant or per-job breakdown.
@@ -111,28 +110,22 @@ Use the pg_matviews table to learn about the schema for materialized views.
   * **`test_cumulative_summaries`** (PREFERRED for date-range test statistics): Running prefix sums of `test_daily_totals`. To compute totals for any date range [start, end], query two dates and subtract: `prefix_sum(end) - prefix_sum(start - 1)`. Always filter on `release` and `date`.
     * **IMPORTANT**: Same multi-row structure as `test_daily_totals` — see aggregation guidance above.
 
-  * **`prow_job_runs_report_matview`**: Pre-joined and aggregated data about job runs. Excellent for job pass/fail rates.
-    * `release`: OpenShift release version (e.g., `4.19`)
-    * `variants`: This is a text[] column of describing the job's environment (e.g., `Platform:azure, Architecture:amd64`). Do not use ->> operator, use ANY().
-    * `name`: Full name of the job
-    * `job`: Job name (same as name)
-    * `overall_result`: A single character code for the run's final status (`S`=Success,`F` = E2E Test Failure, `f` = other failure mode,
-    * `url`: URL to the job run logs
-    * `succeeded`: Boolean indicating if the job succeeded (t/f)
-    * `timestamp`: Bigint representing milliseconds since epoch
-    * `prow_id`: Prow job run ID
-    * `cluster`: Build cluster name (e.g., `build01`)
-    * `flaked_test_names`: Array of test names that flaked
-    * `failed_test_names`: Array of test names that failed
-    * `pull_request_link`, `pull_request_sha`, `pull_request_org`, `pull_request_repo`, `pull_request_author`: PR information when applicable
+  * **Job pass/fail rates**: Query `prow_job_runs JOIN prow_jobs` directly. `prow_job_runs` is partitioned by `(prow_job_release, timestamp)` -- always filter on both as literal values.
+    * `prow_job_runs.timestamp`: `timestamptz`. Compare directly with `NOW() - INTERVAL '...'` or an ISO timestamp string -- do NOT convert to epoch millis.
+    * `prow_job_runs.cluster`: Build cluster name (e.g., `build01`).
+    * `prow_job_runs.overall_result`: A single character code for the run's final status (`S`=Success, `F` = E2E Test Failure, `f` = other failure mode, `N`/`n` = Infrastructure Failure, `U` = Upgrade Failure, `A` = Aborted).
+    * `prow_job_runs.succeeded`: Boolean indicating if the job succeeded (t/f).
+    * `prow_jobs.release`, `prow_jobs.variants`, `prow_jobs.name`: Job metadata, joined via `prow_job_runs.prow_job_id = prow_jobs.id`.
+    * For failed/flaked test names on a run, join `prow_job_run_tests` + `tests` and `array_agg(t.name) FILTER (WHERE pjrt.status = ...)`.
+    * For PR info, join `prow_job_run_prow_pull_requests` to `prow_pull_requests`.
 
 ### Query Guidelines (MANDATORY)
 
 1.  **Always use `LIMIT`**: The database tool has timeout. Always end your query with `LIMIT 10;` or a similar small number to prevent timeouts.
 2.  **Filter by Time**: Whenever possible, use a `WHERE` clause to filter by a time range (e.g., `date >= CURRENT_DATE - 7`).
-3.  **Prefer Pre-aggregated Tables**: For test pass/fail/flake rates or counts, use `test_daily_totals` or `test_cumulative_summaries`. For job pass/fail rates, use `prow_job_runs_report_matview`. Only query raw `prow_job_run_tests` when you need individual test execution details (e.g., failure output, specific job run results).
+3.  **Prefer Pre-aggregated Tables**: For test pass/fail/flake rates or counts, use `test_daily_totals` or `test_cumulative_summaries`. For job pass/fail rates, query `prow_job_runs JOIN prow_jobs` directly. Only query raw `prow_job_run_tests` when you need individual test execution details (e.g., failure output, specific job run results).
 4.  **Read-Only**: You only have `SELECT` permissions. Do not attempt to write data.
-5.  **Partition Pruning**: `prow_job_run_tests` and `prow_job_run_test_outputs` are partitioned by release and timestamp. `test_daily_totals` and `test_cumulative_summaries` are partitioned by release and date. **Always** include WHERE filters on the partition key columns (release and timestamp/date) when querying these tables. These partition keys must be **literal values** in the WHERE clause, not subqueries or join conditions, because the query planner needs them at plan time to prune partitions. If partition keys are not known, first query a non-partitioned table (e.g., `prow_job_runs` or `prow_jobs`) to get them, then use those values as literals in a second query against the partitioned table. See examples 3 and 7.
+5.  **Partition Pruning**: `prow_job_runs`, `prow_job_run_tests`, and `prow_job_run_test_outputs` are partitioned by release and timestamp. `test_daily_totals` and `test_cumulative_summaries` are partitioned by release and date. **Always** include WHERE filters on the partition key columns (release and timestamp/date) when querying these tables. These partition keys must be **literal values** in the WHERE clause, not subqueries or join conditions, because the query planner needs them at plan time to prune partitions. If partition keys are not known, first look up the specific run in `prow_job_runs` by `id` (or `prow_jobs` by `name`/`id` for `release` alone), then use those values as literals in a second query against the partitioned table. See examples 3 and 7.
 
 ### Example Queries
 
@@ -155,10 +148,19 @@ ORDER BY
 LIMIT 10;
 ```
 
-**2. Get the Status of the Last 5 Runs for a Specific Job**
+**2. Get the Status of the Last 5 Runs for a Specific Job (Two-Step)**
 
+Step 1: Look up the job's release (partition key) by name.
+```sql
+SELECT release FROM prow_jobs WHERE name = 'periodic-ci-openshift-release-master-ci-4.20-e2e-gcp-ovn';
+```
+
+Step 2: Use that literal release value to query the partitioned table.
 ```sql
 -- Find the last 5 runs for the 'periodic-ci-openshift-release-master-ci-4.20-e2e-gcp-ovn' job
+-- No timestamp literal here since we don't know how far back the last 5 runs are (that's the
+-- point of the query) -- Postgres uses the timestamp index within the release partition for an
+-- efficient backward-ordered scan; it just can't prune by timestamp.
 SELECT
   pj.name,
   pjr.url,
@@ -171,6 +173,7 @@ JOIN
   prow_jobs pj ON pjr.prow_job_id = pj.id
 WHERE
   pj.name = 'periodic-ci-openshift-release-master-ci-4.20-e2e-gcp-ovn'
+  AND pjr.prow_job_release = '4.20' -- Partition key: from step 1
 ORDER BY
   pjr.timestamp DESC
 LIMIT 5;
@@ -206,6 +209,9 @@ LIMIT 20;
 
 ```sql
 -- Show the 10 most recent jobs that failed due to infrastructure issues ('N') in the last 3 days
+-- No release filter here since this spans all releases -- Postgres scans every partition
+-- (still using each partition's timestamp index), it just can't prune. If the user names a
+-- release, add "AND pjr.prow_job_release = '...'" as a literal to prune to one partition.
 SELECT
   pjr.id,
   pj.name,
@@ -228,17 +234,22 @@ LIMIT 10;
 ```sql
 -- Calculate job pass rates for release '4.19' grouped by platform over the last 7 days
 -- Note: variants is text[], not JSONB. Use unnest() to extract and filter variants.
+-- Join prow_job_runs directly to prow_jobs.
+-- Filter on prow_job_runs.prow_job_release (not prow_jobs.release), a literal, to prune partitions.
 SELECT
   v.variant AS platform,
   COUNT(*) AS total_runs,
-  COUNT(*) FILTER (WHERE m.succeeded = true) AS successful_runs,
-  ROUND(100.0 * COUNT(*) FILTER (WHERE m.succeeded = true) / COUNT(*), 2) AS pass_percentage
+  COUNT(*) FILTER (WHERE pjr.succeeded = true) AS successful_runs,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE pjr.succeeded = true) / COUNT(*), 2) AS pass_percentage
 FROM
-  prow_job_runs_report_matview m,
-  LATERAL unnest(m.variants) AS v(variant)
+  prow_job_runs pjr
+JOIN
+  prow_jobs pj ON pjr.prow_job_id = pj.id,
+  LATERAL unnest(pj.variants) AS v(variant)
 WHERE
-  m.release = '4.19'
-  AND m.timestamp > (EXTRACT(EPOCH FROM NOW() - INTERVAL '7 days') * 1000)::bigint
+  pj.release = '4.19'
+  AND pjr.prow_job_release = '4.19'
+  AND pjr.timestamp > NOW() - INTERVAL '7 days'
   AND v.variant LIKE 'Platform:%'
 GROUP BY
   v.variant
