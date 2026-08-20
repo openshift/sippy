@@ -102,7 +102,7 @@ func (q *JobArtifactQuery) getJobRun(jobRunID int64) (JobRun, error) {
 		ID:      strconv.FormatInt(jobRunID, 10),
 		IsFinal: true, // even errors are final - only if we timed out getting answers might a retry get more
 	}
-	partKeys, err := query.LookupProwJobRunPartitionKeys(q.DbClient, jobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(q.DbClient.DB, jobRunID)
 	if err != nil {
 		return jobRunResponse, fmt.Errorf("looking up partition keys for job run %d: %w", jobRunID, err)
 	}

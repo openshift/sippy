@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	jobrunannotator "github.com/openshift/sippy/pkg/componentreadiness/jobrunannotator"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/infrafailure"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -177,7 +179,7 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 		return result
 	}
 
-	partKeys, err := query.LookupProwJobRunPartitionKeys(r.db, jobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(r.db.DB, jobRunID)
 	if err != nil {
 		result.Status = ReEvalEvalError
 		result.Error = fmt.Sprintf("looking up partition keys for job run %s: %v", buildID, err)
@@ -489,7 +491,19 @@ func (r *ReEvaluator) clearGCSLabels(ctx context.Context, jobRunPath string) err
 	return nil
 }
 
-// updatePostgresLabels updates the labels array on prow_job_runs (and release_job_runs if applicable).
+// updatePostgresLabels updates the labels array on prow_job_runs (and
+// release_job_runs if applicable) with the merged label set.
+//
+// For prow_job_runs the InfraFailure label is coupled to the summary-table
+// subtraction (see pkg/db/infrafailure): whenever the merged set carries
+// InfraFailure, the subtraction is performed inline via SubtractNewInfraFailure
+// (idempotent) inside the same row-locked transaction that replaces the labels
+// array. If PostgreSQL already carries InfraFailure but the merged set does not
+// (for example the BQ labels were cleared after RecordInfraFailure had already
+// applied it), the label is re-appended so the full-array replace does not
+// clobber it and break the "InfraFailure label in PostgreSQL == subtraction
+// done" invariant. release_job_runs is not coupled to the subtraction, so it
+// receives the merged set as-is.
 func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, jobRun *models.ProwJobRun, newBQLabels []models.JobRunLabel) error {
 	// Query BQ for existing non-symptom labels for this build ID
 	manualLabels, err := r.queryNonSymptomLabels(ctx, buildID, jobRun.Timestamp)
@@ -501,28 +515,70 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 	}
 
 	// Merge manual labels with new symptom labels
-	merged := pq.StringArray(mergeLabels(manualLabels, newBQLabels))
+	merged := mergeLabels(manualLabels, newBQLabels)
 
-	// Update prow_job_runs
-	if err := r.db.DB.Model(&models.ProwJobRun{}).
-		Where("id = ? AND prow_job_release = ? AND timestamp = ?", jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp).
-		Update("labels", merged).Error; err != nil {
-		return fmt.Errorf("updating prow_job_runs.labels: %w", err)
+	// The InfraFailure label in prow_job_runs is coupled to the summary-table
+	// subtraction (see pkg/db/infrafailure). Serialize the label read and the
+	// full-array-replace write against RecordInfraFailure by running both inside
+	// a single transaction that first takes a row lock (SELECT ... FOR UPDATE) on
+	// the prow_job_runs row. RecordInfraFailure acquires the same row lock via
+	// its conditional UPDATE, so the lock forces the two paths to run one after
+	// the other and keeps the "InfraFailure label in PostgreSQL == subtraction
+	// done" invariant intact.
+	mergedHasInfraFailure := slices.Contains(merged, infrafailure.LabelInfraFailure)
+	prowJobRunLabels := merged
+	if err := r.db.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Read (and lock) the current labels from the row so we can preserve an
+		// InfraFailure that RecordInfraFailure already applied.
+		var currentRun models.ProwJobRun
+		if err := tx.Raw(
+			"SELECT labels FROM prow_job_runs WHERE id = ? AND prow_job_release = ? AND timestamp = ? FOR UPDATE",
+			jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp).Scan(&currentRun).Error; err != nil {
+			return fmt.Errorf("locking prow_job_runs row for build %s: %w", buildID, err)
+		}
+
+		if mergedHasInfraFailure {
+			// The merged set applies InfraFailure: perform the coupled summary
+			// subtraction now (idempotent -- a no-op if the row already carries
+			// the label). The label itself is written by the full-array replace
+			// below, so the merged set is used as-is.
+			if err := infrafailure.SubtractNewInfraFailure(tx, int64(jobRun.ID)); err != nil { //nolint:gosec // G115: prow_job_runs.id is a PostgreSQL serial, always within int64 range
+				return fmt.Errorf("subtracting infra-failure summaries for build %s: %w", buildID, err)
+			}
+		} else if slices.Contains(currentRun.Labels, infrafailure.LabelInfraFailure) {
+			// PostgreSQL already carries InfraFailure but the merged set does not
+			// (its subtraction was done by RecordInfraFailure): preserve the
+			// label so the full-array replace does not clobber it and break the
+			// invariant.
+			prowJobRunLabels = append(prowJobRunLabels, infrafailure.LabelInfraFailure)
+		}
+
+		if err := tx.Model(&models.ProwJobRun{}).
+			Where("id = ? AND prow_job_release = ? AND timestamp = ?", jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp).
+			Update("labels", pq.StringArray(prowJobRunLabels)).Error; err != nil {
+			return fmt.Errorf("updating prow_job_runs.labels: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
-	// Check and update release_job_runs if this job run exists there
+	// Mirror the merged labels onto release_job_runs when this job run has a
+	// release row. Unlike prow_job_runs, release_job_runs is not coupled to the
+	// summary-table subtraction, so the merged set is written as-is. Select only
+	// the primary key: it is all the label update needs.
 	var releaseJobRun models.ReleaseJobRun
-	if err := r.db.DB.Where("prow_job_run_id = ?", jobRun.ID).First(&releaseJobRun).Error; err != nil {
+	if err := r.db.DB.Select("id").Where("prow_job_run_id = ?", jobRun.ID).First(&releaseJobRun).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("looking up release_job_runs for build %s: %w", buildID, err)
 		}
 	} else {
-		if err := r.db.DB.Model(&releaseJobRun).Update("labels", merged).Error; err != nil {
+		if err := r.db.DB.Model(&releaseJobRun).Update("labels", pq.StringArray(merged)).Error; err != nil {
 			return fmt.Errorf("updating release_job_runs.labels: %w", err)
 		}
 	}
 
-	log.WithFields(log.Fields{"buildID": buildID, "labels": merged}).Debug("symptom reEval: updated PostgreSQL labels")
+	log.WithFields(log.Fields{"buildID": buildID, "labels": pq.StringArray(prowJobRunLabels)}).Debug("symptom reEval: updated PostgreSQL labels")
 	return nil
 }
 

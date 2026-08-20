@@ -5,6 +5,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -24,9 +25,9 @@ type ProwJobRunPartitionKeys struct {
 // LookupProwJobRunPartitionKeys fetches the partition keys for a prow_job_run
 // by ID. This is intended as the first step of a two-step lookup pattern where
 // the caller then uses these keys to load the full row with partition pruning.
-func LookupProwJobRunPartitionKeys(dbc *db.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
+func LookupProwJobRunPartitionKeys(gormDB *gorm.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
 	var keys ProwJobRunPartitionKeys
-	err := dbc.DB.Table("prow_job_runs").
+	err := gormDB.Table("prow_job_runs").
 		Select("prow_job_release, timestamp").
 		Where("id = ?", jobRunID).
 		Take(&keys).Error
