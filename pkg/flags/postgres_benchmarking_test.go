@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/civil"
+
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
@@ -54,6 +56,17 @@ func sortedMapKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// sortedDateKeys returns the map's civil.Date keys as sorted YYYY-MM-DD strings,
+// which sort chronologically.
+func sortedDateKeys[V any](m map[civil.Date]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k.String())
 	}
 	sort.Strings(keys)
 	return keys
@@ -225,7 +238,7 @@ func getQueryCases() []queryCase {
 				snap := validationSnapshot{RowCount: len(durations)}
 				if len(durations) > 0 {
 					snap.SpotChecks = map[string]string{
-						"keys": strings.Join(sortedMapKeys(durations), ","),
+						"keys": strings.Join(sortedDateKeys(durations), ","),
 					}
 				}
 				return snap, nil
@@ -245,7 +258,9 @@ func getQueryCases() []queryCase {
 		{
 			name: "JobDetails",
 			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
-				jobRuns, err := api.JobDetailsReport(dbc, benchmarkRelease, benchmarkJobName, asOf)
+				asOfDate := civil.DateOf(asOf.UTC())
+				jobRuns, err := api.JobDetailsReport(dbc, benchmarkRelease,
+					benchmarkJobName, asOfDate.AddDays(-14), asOfDate.AddDays(1))
 				if err != nil {
 					return validationSnapshot{}, err
 				}

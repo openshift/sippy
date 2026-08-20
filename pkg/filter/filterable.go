@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
@@ -164,10 +165,6 @@ func (f FilterItem) FilterItemToSQL(column string) (string, any, error) {
 // with array and timestamp type awareness from the filterable.
 func (f FilterItem) FilterFieldToSQL(filterable Filterable) (string, any) {
 	field := fmt.Sprintf("%q", f.Field)
-	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
-		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
-	}
-
 	// Operators that need array-aware handling delegate to specialized helpers;
 	// all other operators use the common scalar implementation.
 	switch f.Operator {
@@ -190,9 +187,6 @@ func (f FilterItem) FilterFieldToSQL(filterable Filterable) (string, any) {
 
 func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, params []bigquery.QueryParameter) { //nolint
 	field := strings.ReplaceAll(fmt.Sprintf("%q", f.Field), "\"", "")
-	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
-		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
-	}
 
 	// Helper to create a parameter
 	paramName := fmt.Sprintf("filterParam%d", paramIndex+1)
@@ -214,6 +208,21 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		}
 		return makeParam(num)
 	}
+	makeTimestampParam := func() []bigquery.QueryParameter {
+		t, err := time.Parse(time.RFC3339Nano, f.Value)
+		if err != nil {
+			log.Errorf("Failed to parse timestamp filter value %q for field %s: %v", f.Value, f.Field, err)
+			return makeParam("NOT A TIMESTAMP: " + f.Value)
+		}
+		return makeParam(t)
+	}
+	isTimestamp := filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp
+	makeArithmeticParam := func() []bigquery.QueryParameter {
+		if isTimestamp {
+			return makeTimestampParam()
+		}
+		return makeNumParam()
+	}
 
 	switch f.Operator {
 	case OperatorHasEntry:
@@ -234,34 +243,34 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		return fmt.Sprintf("%s = @%s", field, paramName), makeParam(f.Value)
 	case OperatorArithmeticEquals:
 		if f.Not {
-			return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s != @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s = @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s = @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticGreaterThan:
 		if f.Not {
-			return fmt.Sprintf("%s <= @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s <= @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s > @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s > @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticGreaterThanOrEquals:
 		if f.Not {
-			return fmt.Sprintf("%s < @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s < @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s >= @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s >= @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticLessThan:
 		if f.Not {
-			return fmt.Sprintf("%s >= @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s >= @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s < @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s < @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticLessThanOrEquals:
 		if f.Not {
-			return fmt.Sprintf("%s > @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s > @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s <= @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s <= @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticNotEquals:
 		if f.Not {
-			return fmt.Sprintf("%s = @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s = @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s != @%s", field, paramName), makeArithmeticParam()
 	case OperatorStartsWith:
 		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(strings.ToLower(f.Value) + "%")
 	case OperatorEndsWith:
@@ -282,6 +291,7 @@ type Filterable interface {
 	GetFieldType(param string) apitype.ColumnType
 	GetStringValue(param string) (string, error)
 	GetNumericalValue(param string) (float64, error)
+	GetTimestampValue(param string) (time.Time, error)
 	GetArrayValue(param string) ([]string, error)
 }
 
@@ -501,6 +511,13 @@ func (filters Filter) Filter(item Filterable) (bool, error) {
 				log.Debugf("Could not filter numerical type: %s", err)
 				return false, err
 			}
+		case apitype.ColumnTypeTimestamp:
+			log.Debugf("Column %s is of timestamp type", filter.Field)
+			result, err = filterTimestamp(filter, item)
+			if err != nil {
+				log.Debugf("Could not filter timestamp type: %s", err)
+				return false, err
+			}
 		case apitype.ColumnTypeArray:
 			log.Debugf("Column %s is of array type", filter.Field)
 			result, err = filterArray(filter, item)
@@ -609,6 +626,52 @@ func filterNumerical(filter FilterItem, item Filterable) (bool, error) {
 	}
 }
 
+func filterTimestamp(filter FilterItem, item Filterable) (bool, error) {
+	value, err := item.GetTimestampValue(filter.Field)
+	if err != nil {
+		return false, err
+	}
+
+	switch filter.Operator {
+	case OperatorIsEmpty:
+		return value.IsZero(), nil
+	case OperatorIsNotEmpty:
+		return !value.IsZero(), nil
+	}
+
+	if filter.Value == "" {
+		return true, nil
+	}
+
+	// A zero timestamp means the underlying field is nil/unset. Mimic SQL
+	// NULL semantics: arithmetic comparisons against NULL yield no match.
+	if value.IsZero() {
+		return false, nil
+	}
+
+	comparison, err := time.Parse(time.RFC3339Nano, filter.Value)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse timestamp filter value %q: %w", filter.Value, err)
+	}
+
+	switch filter.Operator {
+	case OperatorArithmeticEquals:
+		return value.Equal(comparison), nil
+	case OperatorArithmeticNotEquals:
+		return !value.Equal(comparison), nil
+	case OperatorArithmeticGreaterThan:
+		return value.After(comparison), nil
+	case OperatorArithmeticLessThan:
+		return value.Before(comparison), nil
+	case OperatorArithmeticGreaterThanOrEquals:
+		return !value.Before(comparison), nil
+	case OperatorArithmeticLessThanOrEquals:
+		return !value.After(comparison), nil
+	default:
+		return false, fmt.Errorf("unknown timestamp field operator %s", filter.Operator)
+	}
+}
+
 func filterArray(filter FilterItem, item Filterable) (bool, error) {
 	list, err := item.GetArrayValue(filter.Field)
 	if err != nil {
@@ -653,6 +716,20 @@ func Compare(a, b Filterable, sortField string) bool {
 		}
 
 		return val1 < val2
+	}
+
+	if kind == apitype.ColumnTypeTimestamp {
+		val1, err := a.GetTimestampValue(sortField)
+		if err != nil {
+			log.Error(err)
+		}
+
+		val2, err := b.GetTimestampValue(sortField)
+		if err != nil {
+			log.Error(err)
+		}
+
+		return val1.Before(val2)
 	}
 
 	return false

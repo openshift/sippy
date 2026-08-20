@@ -326,17 +326,19 @@ export default function TriagePotentialMatches({
     {
       field: 'opened',
       headerName: 'Regressed Since',
+      type: 'date',
       flex: 12,
       valueGetter: (params) => {
         const opened = params.row.regressed_test.regression.opened
         if (!opened) {
-          return ''
+          return null
         }
-        const regressedSinceDate = new Date(opened)
-        return relativeTime(regressedSinceDate, new Date())
+        return new Date(opened)
       },
       renderCell: (param) => (
-        <div className="regressed-since">{param.value}</div>
+        <div className="regressed-since">
+          {param.value ? relativeTime(param.value, new Date()) : ''}
+        </div>
       ),
     },
     {

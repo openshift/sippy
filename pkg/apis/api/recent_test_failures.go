@@ -75,6 +75,10 @@ func (r RecentTestFailure) GetNumericalValue(param string) (float64, error) {
 	}
 }
 
+func (r RecentTestFailure) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
+}
+
 func (r RecentTestFailure) GetArrayValue(param string) ([]string, error) {
 	return nil, fmt.Errorf("unknown array value field %s", param)
 }

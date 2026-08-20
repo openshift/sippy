@@ -170,8 +170,8 @@ func (c Cache) findCacheEntry(ctx context.Context, key string) (CacheRecord, err
 	// limit the columns so we don't query too much data
 	query := c.client.Query(ctx, bqlabel.CacheLookup, fmt.Sprintf(
 		"SELECT modified_time, expiration, uuid FROM `%s.%s` "+
-			`WHERE %s > TIMESTAMP(@expByNowTime)
-		  AND expiration > TIMESTAMP(@expTime)
+			`WHERE %s > @expByNowTime
+		  AND expiration > @expTime
 		  AND key = @keyParam
 		ORDER BY %s DESC LIMIT 1`,
 		c.client.Dataset, cachedTable,
@@ -179,11 +179,11 @@ func (c Cache) findCacheEntry(ctx context.Context, key string) (CacheRecord, err
 	query.Parameters = []bigquery.QueryParameter{
 		{ // limit partitions to those that could contain un-expired entries
 			Name:  "expByNowTime",
-			Value: time.Now().Add(-1 * c.maxExpiration).Format(time.RFC3339),
+			Value: time.Now().Add(-1 * c.maxExpiration),
 		},
 		{ // entry itself is not already expired
 			Name:  "expTime",
-			Value: time.Now().Format(time.RFC3339),
+			Value: time.Now(),
 		},
 		{
 			Name:  "keyParam",
@@ -207,7 +207,7 @@ func (c Cache) getFullCacheRecords(ctx context.Context, key string, metadataReco
 	// we have to add a +/- 5 second grace as exact match doesn't work
 	query := c.client.Query(ctx, bqlabel.CacheLookup, fmt.Sprintf(
 		"SELECT * FROM `%s.%s` "+
-			`WHERE %s BETWEEN TIMESTAMP(@tsLower) AND TIMESTAMP(@tsUpper)
+			`WHERE %s BETWEEN @tsLower AND @tsUpper
 		       AND key = @keyParam
 		       AND uuid = @uuidParam
 		     ORDER BY chunk_index ASC`,
@@ -216,11 +216,11 @@ func (c Cache) getFullCacheRecords(ctx context.Context, key string, metadataReco
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "tsLower",
-			Value: metadataRecord.Modified.Add(-5 * time.Second).Format(time.RFC3339),
+			Value: metadataRecord.Modified.Add(-5 * time.Second),
 		},
 		{
 			Name:  "tsUpper",
-			Value: metadataRecord.Modified.Add(5 * time.Second).Format(time.RFC3339),
+			Value: metadataRecord.Modified.Add(5 * time.Second),
 		},
 		{
 			Name:  "keyParam",

@@ -48,8 +48,8 @@ func TestRecentTestFailures_ReturnsFailedTestsWithCounts(t *testing.T) {
 	require.Len(t, rows, 1)
 	assert.Equal(t, "test-basic-failure", rows[0].TestName)
 	assert.Equal(t, 2, rows[0].FailureCount)
-	assert.True(t, ts1.Equal(rows[0].FirstFailure), "first_failure: expected %v, got %v", ts1, rows[0].FirstFailure)
-	assert.True(t, ts2.Equal(rows[0].LastFailure), "last_failure: expected %v, got %v", ts2, rows[0].LastFailure)
+	assert.Equal(t, ts1, rows[0].FirstFailure, "first_failure")
+	assert.Equal(t, ts2, rows[0].LastFailure, "last_failure")
 }
 
 func TestRecentTestFailures_ExcludesTestsAlsoFailingInPreviousPeriod(t *testing.T) {
@@ -145,7 +145,7 @@ func TestRecentTestFailures_PopulatesLastPassFromCumulativeSummary(t *testing.T)
 	rows := result.Rows.([]apitype.RecentTestFailure)
 	require.Len(t, rows, 1)
 	require.NotNil(t, rows[0].LastPass, "LastPass should be populated from cumulative summary")
-	assert.True(t, lastSuccess.Equal(*rows[0].LastPass), "last_pass: expected %v, got %v", lastSuccess, *rows[0].LastPass)
+	assert.Equal(t, lastSuccess, *rows[0].LastPass, "last_pass")
 }
 
 func TestRecentTestFailures_SumsFailuresAcrossMultipleJobs(t *testing.T) {
@@ -179,8 +179,8 @@ func TestRecentTestFailures_SumsFailuresAcrossMultipleJobs(t *testing.T) {
 	rows := result.Rows.([]apitype.RecentTestFailure)
 	require.Len(t, rows, 1)
 	assert.Equal(t, 3, rows[0].FailureCount, "should sum failures across both jobs")
-	assert.True(t, ts1.Equal(rows[0].FirstFailure), "first_failure should be earliest across all jobs")
-	assert.True(t, ts3.Equal(rows[0].LastFailure), "last_failure should be latest across all jobs")
+	assert.Equal(t, ts1, rows[0].FirstFailure, "first_failure should be earliest across all jobs")
+	assert.Equal(t, ts3, rows[0].LastFailure, "last_failure should be latest across all jobs")
 }
 
 func TestRecentTestFailures_ReportsSuitesSeparately(t *testing.T) {
