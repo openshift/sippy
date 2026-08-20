@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/pgwriter"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/infrafailure"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/query"
 	intutil "github.com/openshift/sippy/test/integration/util"
 )
 
@@ -484,4 +486,84 @@ func TestRecordInfraFailureScopedByRelease(t *testing.T) {
 		assert.Equal(t, int64(1), cum419.PrefixSumSuccesses, "4.19 cumulative unaffected, date %s", d)
 		assert.Equal(t, int64(1), cum419.PrefixSumRuns, "4.19 cumulative unaffected, date %s", d)
 	}
+}
+
+// readQueryRelease is the release the read-time query exclusion tests operate on. The
+// TestOutputs and TestDurations queries filter on this release across the run, test, and
+// output rows, so all seeded rows use it.
+const readQueryRelease = "4.18"
+
+// seedReadQueryRun creates a prow job run (optionally InfraFailure-labeled) with a single
+// failing test result, its duration, prow job URL, and failure output. The three rows share
+// the run timestamp and readQueryRelease because the read-time TestOutputs and TestDurations
+// queries join prow_job_runs -> prow_job_run_tests -> prow_job_run_test_outputs on equal
+// (timestamp, release), so they must line up for the run to be counted.
+func seedReadQueryRun(t *testing.T, dbc *db.DB, jobID, testID uint, ts time.Time, duration float64, url, output string, infra bool) {
+	t.Helper()
+	runOpts := []intutil.ProwJobRunOption{intutil.WithURL(url)}
+	if infra {
+		runOpts = append(runOpts, intutil.WithLabels(infrafailure.LabelInfraFailure))
+	}
+	// OverallResult "F" (JobTestFailure); the read-time queries don't filter on it.
+	run := intutil.CreateProwJobRun(t, dbc, jobID, readQueryRelease, ts, false, "F", runOpts...)
+	pjrt := intutil.CreateProwJobRunTest(t, dbc, run.ID, jobID, testID, readQueryRelease, ts, statusFailure, intutil.WithDuration(duration))
+	intutil.CreateProwJobRunTestOutput(t, dbc, pjrt, output)
+}
+
+// recentReadQueryDay returns a fixed time-of-day on a date two days in the past. The
+// read-time queries constrain rows to current_date - interval '14' day, so fixtures for
+// them must use timestamps relative to the real current date rather than the fixed testDate
+// used by the summary-table tests.
+func recentReadQueryDay() time.Time {
+	base := time.Now().UTC().Add(-2 * 24 * time.Hour)
+	return time.Date(base.Year(), base.Month(), base.Day(), 10, 0, 0, 0, time.UTC)
+}
+
+// TestTestOutputsExcludesInfraFailureRuns verifies the read-time exclusion in
+// query.TestOutputs: two runs of the same failing test are written on the same day, one
+// carrying the InfraFailure label, and only the clean run's output is returned.
+func TestTestOutputsExcludesInfraFailureRuns(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	jobID := seedProwJob(t, dbc, "periodic-e2e-aws", readQueryRelease)
+	testRec := intutil.CreateTest(t, dbc, "read-exclude-outputs-test")
+
+	day := recentReadQueryDay()
+	infraTS := day
+	cleanTS := day.Add(1 * time.Hour)
+
+	seedReadQueryRun(t, dbc, jobID, testRec.ID, infraTS, 99.0, "https://prow/infra-run", "infra failure output", true)
+	seedReadQueryRun(t, dbc, jobID, testRec.ID, cleanTS, 3.0, "https://prow/clean-run", "clean failure output", false)
+
+	outputs, err := query.TestOutputs(dbc, readQueryRelease, "read-exclude-outputs-test", nil, nil, 10)
+	require.NoError(t, err)
+	require.Len(t, outputs, 1, "the InfraFailure-labeled run's output must be excluded")
+	assert.Equal(t, "https://prow/clean-run", outputs[0].ProwJobURL, "only the clean run's output should be returned")
+	assert.Equal(t, "clean failure output", outputs[0].Output)
+}
+
+// TestTestDurationsExcludesInfraFailureRuns verifies the read-time exclusion in
+// query.TestDurations: two runs of the same test land in the same day's duration bucket, one
+// carrying the InfraFailure label, and the returned average reflects only the clean run's
+// duration rather than the blended average of both runs.
+func TestTestDurationsExcludesInfraFailureRuns(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	jobID := seedProwJob(t, dbc, "periodic-e2e-aws", readQueryRelease)
+	testRec := intutil.CreateTest(t, dbc, "read-exclude-durations-test")
+
+	day := recentReadQueryDay()
+	infraTS := day
+	cleanTS := day.Add(1 * time.Hour)
+
+	// Both runs share the same UTC date, so without the exclusion the query would return the
+	// blended average (99 + 3) / 2 = 51 for that date. With the exclusion only the clean run
+	// remains, so the average must be exactly the clean run's 3.0.
+	seedReadQueryRun(t, dbc, jobID, testRec.ID, infraTS, 99.0, "https://prow/infra-run", "infra failure output", true)
+	seedReadQueryRun(t, dbc, jobID, testRec.ID, cleanTS, 3.0, "https://prow/clean-run", "clean failure output", false)
+
+	durations, err := query.TestDurations(dbc, readQueryRelease, "read-exclude-durations-test", nil, nil)
+	require.NoError(t, err)
+	require.Len(t, durations, 1, "only the clean run's date bucket should be present")
+	dateKey := day.Format("2006-01-02")
+	require.Contains(t, durations, dateKey)
+	assert.InDelta(t, 3.0, durations[dateKey], 1e-9, "duration must reflect only the clean run, not the blended average with the infra run")
 }
