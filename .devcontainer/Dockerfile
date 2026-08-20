@@ -59,7 +59,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env INSTALLER_NO_MODIFY_PATH=1 
 
 USER vscode
 
-RUN go install gotest.tools/gotestsum@latest
+RUN go install gotest.tools/gotestsum@v1.13.0
 
 # Cursor's install script calls base64 -D (macOS flag) but GNU coreutils uses -d
 RUN sudo cp /usr/bin/base64 /usr/bin/base64.gnu && \
