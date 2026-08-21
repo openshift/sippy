@@ -155,13 +155,11 @@ export default function JobRunsTable(props) {
       filterable: true,
       flex: 1.25,
       type: 'date',
-      valueFormatter: (params) => {
-        return new Date(params.value)
-      },
+      valueGetter: (params) => new Date(params.value),
       renderCell: (params) => {
         return (
-          <Tooltip title={relativeTime(new Date(params.value), startDate)}>
-            <p>{new Date(params.value).toLocaleString()}</p>
+          <Tooltip title={relativeTime(params.value, startDate)}>
+            <p>{params.value.toLocaleString()}</p>
           </Tooltip>
         )
       },

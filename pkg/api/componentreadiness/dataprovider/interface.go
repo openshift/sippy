@@ -16,10 +16,10 @@ type TestStatusQuerier interface {
 	// QueryBaseTestStatus returns test status for the basis release.
 	QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error)
 
-	// QuerySampleTestStatus returns test status for the sample release.
-	QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
-		includeVariants map[string][]string,
-		start, end time.Time) (map[string]crstatus.TestStatus, []error)
+	// QueryTestStatus returns both base and sample test status.
+	// Providers may execute this as a single optimized query or by
+	// delegating to QueryBaseTestStatus and a provider-internal sample query.
+	QueryTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (baseStatus, sampleStatus map[string]crstatus.TestStatus, errs []error)
 }
 
 // TestDetailsQuerier fetches per-job test breakdowns used for test details reports.

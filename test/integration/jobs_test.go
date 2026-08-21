@@ -24,6 +24,8 @@ import (
 var pgContainer *intutil.PostgresContainer
 
 func TestMain(m *testing.M) {
+	// Match the production setting from cmd/sippy/main.go init().
+	time.Local = time.UTC
 	os.Exit(runTests(m))
 }
 
@@ -453,7 +455,7 @@ func TestJobReports(t *testing.T) {
 	assert.Equal(t, 30, report.PreviousAverageDurationMinutes)
 
 	require.NotNil(t, report.LastPass)
-	assert.True(t, lastSucceededTimestamp.Equal(*report.LastPass),
+	assert.Equal(t, lastSucceededTimestamp, *report.LastPass,
 		"last pass should be %v, got %v", lastSucceededTimestamp, *report.LastPass)
 
 	assert.Empty(t, report.Org)

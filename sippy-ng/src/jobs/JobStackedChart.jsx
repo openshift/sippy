@@ -12,7 +12,7 @@ export const dayFilter = (days, startDate) => {
     {
       columnField: 'timestamp',
       operatorValue: '>',
-      value: `${startDate - 1000 * 60 * 60 * 24 * days}`,
+      value: new Date(startDate - 1000 * 60 * 60 * 24 * days).toISOString(),
     },
   ]
 }
@@ -22,12 +22,16 @@ export const hourFilter = (dayOffset, startDate) => {
     {
       columnField: 'timestamp',
       operatorValue: '>',
-      value: `${startDate - dayOffset * 1000 * 60 * 60 * 24}`,
+      value: new Date(
+        startDate - dayOffset * 1000 * 60 * 60 * 24
+      ).toISOString(),
     },
     {
       columnField: 'timestamp',
       operatorValue: '<=',
-      value: `${startDate - (dayOffset - 1) * 1000 * 60 * 60 * 24}`,
+      value: new Date(
+        startDate - (dayOffset - 1) * 1000 * 60 * 60 * 24
+      ).toISOString(),
     },
   ]
 }

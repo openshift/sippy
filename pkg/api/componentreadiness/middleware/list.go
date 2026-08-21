@@ -11,10 +11,10 @@ import (
 
 type List []Middleware
 
-func (l List) Query(ctx context.Context, wg *sync.WaitGroup, baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
+func (l List) Query(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
 	// Invoke the Query phase for each middleware configured:
 	for _, mw := range l {
-		mw.Query(ctx, wg, baseStatusCh, sampleStatusCh, errCh)
+		mw.Query(ctx, wg, errCh)
 	}
 }
 

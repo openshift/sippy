@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -264,8 +263,7 @@ func TestJobRunsReport_BasicQuery(t *testing.T) {
 	assert.Equal(t, 2, r.TestFailures)
 	assert.Equal(t, 1, r.TestFlakes)
 
-	expectedTimestampMs := td.runA1.Timestamp.UnixMilli()
-	assert.Equal(t, int(expectedTimestampMs), r.Timestamp, "timestamp should be epoch milliseconds")
+	assert.Equal(t, td.runA1.Timestamp, r.Timestamp, "timestamp should round-trip as UTC")
 }
 
 func TestJobRunsReport_BriefNameWithMainBranch(t *testing.T) {
@@ -1335,12 +1333,11 @@ func TestJobRunsReport_FilterByTimestampEpoch(t *testing.T) {
 	td := setupJobRunsTestData(t, dbc)
 
 	cutoff := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
-	cutoffEpochMs := fmt.Sprintf("%d", cutoff.UnixMilli())
 
 	opts := &filter.FilterOptions{
 		Filter: &filter.Filter{
 			Items: []filter.FilterItem{
-				{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: cutoffEpochMs},
+				{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: cutoff.Format(time.RFC3339Nano)},
 			},
 		},
 	}

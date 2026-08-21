@@ -88,11 +88,11 @@ export const getColumns = (config, _openBugzillaDialog) => {
       filterable: true,
       flex: 1.25,
       type: 'date',
-      valueFormatter: (params) => {
-        return new Date(params.value)
+      valueGetter: (params) => {
+        return params.value ? new Date(params.value) : null
       },
       renderCell: (params) => {
-        if (params.value === undefined || params.value === '') {
+        if (!params.value) {
           return (
             <Tooltip title="Job has not passed within the report window">
               <Fragment>-</Fragment>
@@ -101,10 +101,8 @@ export const getColumns = (config, _openBugzillaDialog) => {
         }
 
         return (
-          <Tooltip title={params.value}>
-            <Fragment>
-              {relativeTime(new Date(params.value), new Date())}
-            </Fragment>
+          <Tooltip title={params.value.toLocaleString()}>
+            <Fragment>{relativeTime(params.value, new Date())}</Fragment>
           </Tooltip>
         )
       },

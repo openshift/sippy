@@ -1091,19 +1091,15 @@ func (s *Server) jsonTestRunsAndOutputsFromBigQuery(w http.ResponseWriter, req *
 	endDateParam := getDateParam("end_date", req)
 
 	if endDateParam != nil {
-		// Set to end of day (11:59:59pm)
-		endDate = time.Date(endDateParam.Year(), endDateParam.Month(), endDateParam.Day(), 23, 59, 59, 0, time.UTC)
+		endDate = time.Date(endDateParam.Year, endDateParam.Month, endDateParam.Day, 23, 59, 59, 0, time.UTC)
 	} else {
-		// Default to end of today
 		now := time.Now().UTC()
 		endDate = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
 	}
 
 	if startDateParam != nil {
-		// Start of the specified day
-		startDate = time.Date(startDateParam.Year(), startDateParam.Month(), startDateParam.Day(), 0, 0, 0, 0, time.UTC)
+		startDate = startDateParam.In(time.UTC)
 	} else {
-		// Default to 7 days before end date at start of day
 		startDate = endDate.AddDate(0, 0, -7)
 		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
 	}
@@ -1303,11 +1299,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
-	jobFilter, _, err := splitJobAndJobRunFilters(fil)
-	if err != nil {
-		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
-		return
-	}
+	jobFilter, _ := splitJobAndJobRunFilters(fil)
 
 	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 	limit := getLimitParam(req)
@@ -1855,11 +1847,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
-	jobFilter, jobRunsFilter, err := splitJobAndJobRunFilters(fil)
-	if err != nil {
-		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
-		return
-	}
+	jobFilter, jobRunsFilter := splitJobAndJobRunFilters(fil)
 
 	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 	limit := getLimitParam(req)

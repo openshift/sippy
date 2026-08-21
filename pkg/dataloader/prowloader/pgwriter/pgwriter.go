@@ -370,7 +370,7 @@ func insertTestResults(ctx context.Context, tx pgx.Tx) error {
 
 type releaseDate struct {
 	release string
-	date    time.Time
+	date    civil.Date
 }
 
 func upsertSummaryTables(ctx context.Context, tx pgx.Tx, currentDate civil.Date) error {
@@ -394,11 +394,10 @@ func upsertSummaryTables(ctx context.Context, tx pgx.Tx, currentDate civil.Date)
 
 	stepStart := time.Now()
 	for _, rd := range releaseDates {
-		day := civil.DateOf(rd.date)
-		if err := ensureDailyTotalRows(ctx, tx, day, rd.release); err != nil {
+		if err := ensureDailyTotalRows(ctx, tx, rd.date, rd.release); err != nil {
 			return err
 		}
-		if err := updateDailyTotals(ctx, tx, day, rd.release); err != nil {
+		if err := updateDailyTotals(ctx, tx, rd.date, rd.release); err != nil {
 			return err
 		}
 	}
@@ -407,9 +406,8 @@ func upsertSummaryTables(ctx context.Context, tx pgx.Tx, currentDate civil.Date)
 	stepStart = time.Now()
 	releaseMinDate := make(map[string]civil.Date)
 	for _, rd := range releaseDates {
-		day := civil.DateOf(rd.date)
-		if earliest, ok := releaseMinDate[rd.release]; !ok || day.Before(earliest) {
-			releaseMinDate[rd.release] = day
+		if earliest, ok := releaseMinDate[rd.release]; !ok || rd.date.Before(earliest) {
+			releaseMinDate[rd.release] = rd.date
 		}
 	}
 	for release, minDate := range releaseMinDate {
@@ -469,11 +467,12 @@ func queryReleaseDates(ctx context.Context, tx pgx.Tx) ([]releaseDate, error) {
 	defer rows.Close()
 	var releaseDates []releaseDate
 	for rows.Next() {
-		var rd releaseDate
-		if err := rows.Scan(&rd.release, &rd.date); err != nil {
+		var release string
+		var date time.Time
+		if err := rows.Scan(&release, &date); err != nil {
 			return nil, fmt.Errorf("scanning release-date: %w", err)
 		}
-		releaseDates = append(releaseDates, rd)
+		releaseDates = append(releaseDates, releaseDate{release: release, date: civil.DateOf(date)})
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterating release-dates: %w", err)

@@ -33,7 +33,7 @@ func syncPostgresFunctions(db *gorm.DB) error {
 }
 
 const testResultFunction = `
-CREATE FUNCTION public.test_results(start timestamp without time zone, boundary timestamp without time zone, endstamp timestamp without time zone) RETURNS TABLE(id bigint, name text, previous_successes bigint, previous_flakes bigint, previous_failures bigint, previous_runs bigint, current_successes bigint, current_flakes bigint, current_failures bigint, current_runs bigint, current_pass_percentage double precision, current_failure_percentage double precision, previous_pass_percentage double precision, previous_failure_percentage double precision, net_improvement double precision, release text)
+CREATE FUNCTION public.test_results(start timestamptz, boundary timestamptz, endstamp timestamptz) RETURNS TABLE(id bigint, name text, previous_successes bigint, previous_flakes bigint, previous_failures bigint, previous_runs bigint, current_successes bigint, current_flakes bigint, current_failures bigint, current_runs bigint, current_pass_percentage double precision, current_failure_percentage double precision, previous_pass_percentage double precision, previous_failure_percentage double precision, net_improvement double precision, release text)
     LANGUAGE sql
     AS $_$
 WITH results AS (
@@ -75,7 +75,7 @@ $_$;
 `
 
 const jobResultFunction = `
-CREATE FUNCTION public.job_results(p_release text, p_start timestamp without time zone, p_boundary timestamp without time zone, p_endstamp timestamp without time zone) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_fails bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamp without time zone, updated_at timestamp without time zone, deleted_at timestamp without time zone, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamp, current_average_duration_minutes int, previous_average_duration_minutes int)
+CREATE FUNCTION public.job_results(p_release text, p_start timestamptz, p_boundary timestamptz, p_endstamp timestamptz) RETURNS TABLE(pj_name text, pj_variants text[], org text, repo text, average_retests_to_merge double precision, previous_passes bigint, previous_fails bigint, previous_runs bigint, previous_infra_fails bigint, current_passes bigint, current_fails bigint, current_runs bigint, current_infra_fails bigint, id bigint, created_at timestamptz, updated_at timestamptz, deleted_at timestamptz, name text, release text, variants text[], test_grid_url text, kind text, brief_name text, current_pass_percentage real, current_projected_pass_percentage real, current_failure_percentage real, previous_pass_percentage real, previous_projected_pass_percentage real, previous_failure_percentage real, net_improvement real, open_bugs int, last_pass timestamptz, current_average_duration_minutes int, previous_average_duration_minutes int)
     LANGUAGE plpgsql
     AS $fn$
 BEGIN
@@ -120,7 +120,7 @@ results AS (
         group by prow_jobs.name, prow_jobs.variants
 ),
 lp AS (
-    SELECT prow_job_runs.prow_job_id, max(prow_job_runs.timestamp)::timestamp without time zone as last_pass
+    SELECT prow_job_runs.prow_job_id, max(prow_job_runs.timestamp) as last_pass
     FROM prow_job_runs
     WHERE overall_result = 'S' AND prow_job_release = p_release
       AND prow_job_runs.timestamp >= p_endstamp - INTERVAL '90 days'
@@ -141,9 +141,9 @@ SELECT results.pj_name,
        results.current_runs,
        results.current_infra_fails,
        prow_jobs.id,
-       prow_jobs.created_at::timestamp without time zone,
-       prow_jobs.updated_at::timestamp without time zone,
-       prow_jobs.deleted_at::timestamp without time zone,
+       prow_jobs.created_at,
+       prow_jobs.updated_at,
+       prow_jobs.deleted_at,
        prow_jobs.name,
        prow_jobs.release,
        prow_jobs.variants,

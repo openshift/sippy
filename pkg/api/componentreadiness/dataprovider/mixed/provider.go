@@ -64,8 +64,8 @@ func (p *MixedProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqo
 	return p.providerFor(reqOptions).QueryBaseTestStatus(ctx, reqOptions)
 }
 
-func (p *MixedProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions, includeVariants map[string][]string, start, end time.Time) (map[string]crstatus.TestStatus, []error) {
-	return p.providerFor(reqOptions).QuerySampleTestStatus(ctx, reqOptions, includeVariants, start, end)
+func (p *MixedProvider) QueryTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (baseStatus, sampleStatus map[string]crstatus.TestStatus, errs []error) {
+	return p.providerFor(reqOptions).QueryTestStatus(ctx, reqOptions)
 }
 
 func (p *MixedProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {

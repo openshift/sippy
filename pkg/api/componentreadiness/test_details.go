@@ -173,7 +173,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 		return testdetails.Report{}, errs
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	componentJobRunTestReportStatus.GeneratedAt = &now
 
 	// Generate the report for the main release that was originally requested:
