@@ -1,9 +1,11 @@
 package postgres
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 )
 
@@ -11,15 +13,15 @@ func TestBuildDrilldownFilters(t *testing.T) {
 	tests := []struct {
 		name                    string
 		reqOptions              reqopts.RequestOptions
-		wantOuterContains       string
+		wantOuterContains       []string
 		wantOuterNotContains    string
-		wantOuterArgsCount      int
+		wantOuterArgs           []any
 		wantInnerClauseNotEmpty bool
 	}{
 		{
-			name:               "empty options produces no clauses",
-			reqOptions:         reqopts.RequestOptions{},
-			wantOuterArgsCount: 0,
+			name:          "empty options produces no clauses",
+			reqOptions:    reqopts.RequestOptions{},
+			wantOuterArgs: nil,
 		},
 		{
 			name: "IgnoreDisruption adds disruption exclusion",
@@ -28,8 +30,8 @@ func TestBuildDrilldownFilters(t *testing.T) {
 					IgnoreDisruption: true,
 				},
 			},
-			wantOuterContains:  "AND NOT ('Disruption' = ANY(tow.capabilities))",
-			wantOuterArgsCount: 0,
+			wantOuterContains: []string{"AND NOT ('Disruption' = ANY(tow.capabilities))"},
+			wantOuterArgs:     nil,
 		},
 		{
 			name: "IgnoreDisruption false does not add disruption exclusion",
@@ -39,7 +41,7 @@ func TestBuildDrilldownFilters(t *testing.T) {
 				},
 			},
 			wantOuterNotContains: "Disruption",
-			wantOuterArgsCount:   0,
+			wantOuterArgs:        nil,
 		},
 		{
 			name: "capabilities filter and IgnoreDisruption combined",
@@ -51,8 +53,11 @@ func TestBuildDrilldownFilters(t *testing.T) {
 					IgnoreDisruption: true,
 				},
 			},
-			wantOuterContains:  "AND NOT ('Disruption' = ANY(tow.capabilities))",
-			wantOuterArgsCount: 1,
+			wantOuterContains: []string{
+				"AND tow.capabilities && ?",
+				"AND NOT ('Disruption' = ANY(tow.capabilities))",
+			},
+			wantOuterArgs: []any{pq.Array([]string{"install"})},
 		},
 		{
 			name: "single TestIDOption with test ID and capability",
@@ -61,8 +66,8 @@ func TestBuildDrilldownFilters(t *testing.T) {
 					{TestID: "test-123", Capability: "install"},
 				},
 			},
-			wantOuterContains:       "AND tow.unique_id = ?",
-			wantOuterArgsCount:      2,
+			wantOuterContains:       []string{"AND tow.unique_id = ?"},
+			wantOuterArgs:           []any{"test-123", "install"},
 			wantInnerClauseNotEmpty: true,
 		},
 	}
@@ -71,16 +76,24 @@ func TestBuildDrilldownFilters(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := buildDrilldownFilters(tc.reqOptions)
 
-			if tc.wantOuterContains != "" && !strings.Contains(f.outerClause, tc.wantOuterContains) {
-				t.Errorf("outerClause = %q, want it to contain %q", f.outerClause, tc.wantOuterContains)
+			for _, want := range tc.wantOuterContains {
+				if !strings.Contains(f.outerClause, want) {
+					t.Errorf("outerClause = %q, want it to contain %q", f.outerClause, want)
+				}
 			}
 
 			if tc.wantOuterNotContains != "" && strings.Contains(f.outerClause, tc.wantOuterNotContains) {
 				t.Errorf("outerClause = %q, want it to NOT contain %q", f.outerClause, tc.wantOuterNotContains)
 			}
 
-			if len(f.outerArgs) != tc.wantOuterArgsCount {
-				t.Errorf("outerArgs count = %d, want %d", len(f.outerArgs), tc.wantOuterArgsCount)
+			if len(f.outerArgs) != len(tc.wantOuterArgs) {
+				t.Errorf("outerArgs count = %d, want %d", len(f.outerArgs), len(tc.wantOuterArgs))
+			} else {
+				for i := range tc.wantOuterArgs {
+					if fmt.Sprintf("%v", f.outerArgs[i]) != fmt.Sprintf("%v", tc.wantOuterArgs[i]) {
+						t.Errorf("outerArgs[%d] = %v, want %v", i, f.outerArgs[i], tc.wantOuterArgs[i])
+					}
+				}
 			}
 
 			if tc.wantInnerClauseNotEmpty && f.innerClause == "" {
