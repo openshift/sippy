@@ -449,7 +449,7 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []strin
 		q = q.Preload(preload)
 	}
 
-	partKeys, err := query.LookupProwJobRunPartitionKeys(dbc, jobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(dbc.DB, jobRunID)
 	if err != nil {
 		return nil, fmt.Errorf("looking up partition keys for job run %d: %w", jobRunID, err)
 	}

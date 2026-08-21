@@ -443,7 +443,11 @@ func createBatchDeltas(ctx context.Context, tx pgx.Tx) error {
 			MAX(tmp.prow_job_run_timestamp) FILTER (WHERE tmp.status = 1) AS max_success_ts
 		FROM tmp_job_run_tests tmp
 		INNER JOIN tests t ON t.name = tmp.test_name AND t.deleted_at IS NULL
+		INNER JOIN tmp_prow_job_runs r ON r.id = tmp.prow_job_run_id
+			AND r.prow_job_release = tmp.prow_job_run_release
+			AND r.timestamp = tmp.prow_job_run_timestamp
 		LEFT JOIN suites s ON s.name = tmp.suite_name AND s.deleted_at IS NULL
+		WHERE (r.labels IS NULL OR NOT (r.labels @> ARRAY['InfraFailure']))
 		GROUP BY t.id, tmp.prow_job_id, COALESCE(s.id, 0), tmp.lifecycle,
 			tmp.prow_job_run_release, date(tmp.prow_job_run_timestamp)
 	`); err != nil {

@@ -75,6 +75,12 @@ func WithURL(url string) ProwJobRunOption {
 	return func(r *models.ProwJobRun) { r.URL = url }
 }
 
+// WithLabels sets the job run's Labels array (e.g. infrafailure.LabelInfraFailure).
+// Read-time summary queries exclude runs carrying the InfraFailure label.
+func WithLabels(labels ...string) ProwJobRunOption {
+	return func(r *models.ProwJobRun) { r.Labels = pq.StringArray(labels) }
+}
+
 func CreateProwJobRun(t *testing.T, dbc *db.DB, prowJobID uint, release string, timestamp time.Time, succeeded bool, overallResult v1.JobOverallResult, opts ...ProwJobRunOption) models.ProwJobRun {
 	t.Helper()
 	run := models.ProwJobRun{
@@ -171,6 +177,14 @@ func WithLifecycle(lifecycle string) ProwJobRunTestOption {
 	}
 }
 
+// WithDuration sets the test result's duration (seconds). TestDurations averages
+// this column per day.
+func WithDuration(duration float64) ProwJobRunTestOption {
+	return func(pjrt *models.ProwJobRunTest) {
+		pjrt.Duration = duration
+	}
+}
+
 func CreateProwJobRunTest(t *testing.T, dbc *db.DB, prowJobRunID, prowJobID, testID uint, release string, timestamp time.Time, status int, opts ...ProwJobRunTestOption) models.ProwJobRunTest {
 	t.Helper()
 	pjrt := models.ProwJobRunTest{
@@ -186,6 +200,22 @@ func CreateProwJobRunTest(t *testing.T, dbc *db.DB, prowJobRunID, prowJobID, tes
 	}
 	require.NoError(t, dbc.DB.Create(&pjrt).Error, "creating ProwJobRunTest")
 	return pjrt
+}
+
+// CreateProwJobRunTestOutput creates the prow_job_run_test_outputs row for a given
+// ProwJobRunTest. It wires the composite (id, timestamp, release) key that the
+// read-time TestOutputs query joins on, denormalizing the timestamp and release
+// from the parent test result.
+func CreateProwJobRunTestOutput(t *testing.T, dbc *db.DB, pjrt models.ProwJobRunTest, output string) models.ProwJobRunTestOutput {
+	t.Helper()
+	o := models.ProwJobRunTestOutput{
+		ProwJobRunTestID:        pjrt.ID,
+		Output:                  output,
+		ProwJobRunTestTimestamp: pjrt.ProwJobRunTimestamp,
+		ProwJobRunTestRelease:   pjrt.ProwJobRunRelease,
+	}
+	require.NoError(t, dbc.DB.Create(&o).Error, "creating ProwJobRunTestOutput for test %d", pjrt.ID)
+	return o
 }
 
 func CreateReleaseDefinition(t *testing.T, dbc *db.DB, release string, major, minor int) models.ReleaseDefinition {

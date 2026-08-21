@@ -452,7 +452,7 @@ func getQueryCases() []queryCase {
 					return validationSnapshot{}, res.Error
 				}
 
-				partKeys, err := query.LookupProwJobRunPartitionKeys(dbc, jobRunID)
+				partKeys, err := query.LookupProwJobRunPartitionKeys(dbc.DB, jobRunID)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
