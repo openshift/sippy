@@ -510,12 +510,18 @@ func seedReadQueryRun(t *testing.T, dbc *db.DB, jobID, testID uint, ts time.Time
 	intutil.CreateProwJobRunTestOutput(t, dbc, pjrt, output)
 }
 
-// recentReadQueryDay returns a fixed time-of-day on a date two days in the past. The
-// read-time queries constrain rows to current_date - interval '14' day, so fixtures for
-// them must use timestamps relative to the real current date rather than the fixed testDate
-// used by the summary-table tests.
-func recentReadQueryDay() time.Time {
-	base := time.Now().UTC().Add(-2 * 24 * time.Hour)
+// recentReadQueryDay returns a fixed time-of-day (10:00 UTC) two days before the
+// database's current_date. The read-time TestOutputs and TestDurations queries
+// constrain rows to current_date - interval '14' day, so their fixtures must fall
+// inside that window. Anchoring to the database's own current_date (rather than the
+// Go process's time.Now()) keeps the fixtures deterministic for a given run and ties
+// them to the same clock the SQL filters use, so the test cannot drift out of the
+// window or fail depending on the wall clock.
+func recentReadQueryDay(t *testing.T, dbc *db.DB) time.Time {
+	t.Helper()
+	var dbCurrentDate time.Time
+	require.NoError(t, dbc.DB.Raw("SELECT current_date").Scan(&dbCurrentDate).Error)
+	base := dbCurrentDate.AddDate(0, 0, -2)
 	return time.Date(base.Year(), base.Month(), base.Day(), 10, 0, 0, 0, time.UTC)
 }
 
@@ -527,7 +533,7 @@ func TestTestOutputsExcludesInfraFailureRuns(t *testing.T) {
 	jobID := seedProwJob(t, dbc, "periodic-e2e-aws", readQueryRelease)
 	testRec := intutil.CreateTest(t, dbc, "read-exclude-outputs-test")
 
-	day := recentReadQueryDay()
+	day := recentReadQueryDay(t, dbc)
 	infraTS := day
 	cleanTS := day.Add(1 * time.Hour)
 
@@ -550,7 +556,7 @@ func TestTestDurationsExcludesInfraFailureRuns(t *testing.T) {
 	jobID := seedProwJob(t, dbc, "periodic-e2e-aws", readQueryRelease)
 	testRec := intutil.CreateTest(t, dbc, "read-exclude-durations-test")
 
-	day := recentReadQueryDay()
+	day := recentReadQueryDay(t, dbc)
 	infraTS := day
 	cleanTS := day.Add(1 * time.Hour)
 
