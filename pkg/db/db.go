@@ -91,6 +91,10 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 	// all partitions instead of pruning to the relevant ones.
 	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
+	// Loaders (e.g. pgwriter) COPY batches into temp tables and then join back
+	// against them; the 8MB default leaves too little headroom and trips
+	// "no empty local buffer available" under normal batch sizes.
+	pgxConfig.RuntimeParams["temp_buffers"] = "128MB"
 	pgxConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60s"
 	pgxConfig.RuntimeParams["random_page_cost"] = "1.1"
 	pgxConfig.RuntimeParams["timezone"] = "UTC"
