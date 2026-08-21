@@ -13,6 +13,7 @@ func TestBuildDrilldownFilters(t *testing.T) {
 	tests := []struct {
 		name                 string
 		reqOptions           reqopts.RequestOptions
+		wantOuterClause      string
 		wantOuterContains    []string
 		wantOuterNotContains string
 		wantOuterArgs        []any
@@ -67,6 +68,7 @@ func TestBuildDrilldownFilters(t *testing.T) {
 					{TestID: "test-123", Capability: "install"},
 				},
 			},
+			wantOuterClause: " AND tow.unique_id = ? AND ? = ANY(tow.capabilities)",
 			wantOuterContains: []string{
 				"AND tow.unique_id = ?",
 				"AND ? = ANY(tow.capabilities)",
@@ -82,6 +84,10 @@ func TestBuildDrilldownFilters(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			f := buildDrilldownFilters(tc.reqOptions)
+
+			if tc.wantOuterClause != "" && f.outerClause != tc.wantOuterClause {
+				t.Errorf("outerClause = %q, want %q", f.outerClause, tc.wantOuterClause)
+			}
 
 			if len(tc.wantOuterContains) == 0 && tc.wantOuterArgs == nil && f.outerClause != "" {
 				t.Errorf("outerClause = %q, want empty", f.outerClause)
