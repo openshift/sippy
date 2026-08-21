@@ -563,7 +563,7 @@ func TestTestDurationsExcludesInfraFailureRuns(t *testing.T) {
 	durations, err := query.TestDurations(dbc, readQueryRelease, "read-exclude-durations-test", nil, nil)
 	require.NoError(t, err)
 	require.Len(t, durations, 1, "only the clean run's date bucket should be present")
-	dateKey := day.Format("2006-01-02")
+	dateKey := civil.DateOf(day.UTC())
 	require.Contains(t, durations, dateKey)
 	assert.InDelta(t, 3.0, durations[dateKey], 1e-9, "duration must reflect only the clean run, not the blended average with the infra run")
 }
