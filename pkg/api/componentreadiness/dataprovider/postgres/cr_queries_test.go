@@ -66,7 +66,10 @@ func TestBuildDrilldownFilters(t *testing.T) {
 					{TestID: "test-123", Capability: "install"},
 				},
 			},
-			wantOuterContains:       []string{"AND tow.unique_id = ?"},
+			wantOuterContains: []string{
+				"AND tow.unique_id = ?",
+				"AND ? = ANY(tow.capabilities)",
+			},
 			wantOuterArgs:           []any{"test-123", "install"},
 			wantInnerClauseNotEmpty: true,
 		},
