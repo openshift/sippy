@@ -2,8 +2,11 @@ package sippyserver
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/openshift/sippy/pkg/api"
 	apijobrunscan "github.com/openshift/sippy/pkg/api/jobrunscan"
@@ -182,14 +185,9 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 	}
 	req.Body = http.MaxBytesReader(w, req.Body, 1<<20) // 1 MiB limit to prevent DoS
 	dec := json.NewDecoder(req.Body)
-	dec.DisallowUnknownFields() // catch client errors faster
+	dec.DisallowUnknownFields()
 	if err := dec.Decode(&body); err != nil {
 		failureResponse(w, http.StatusBadRequest, "invalid request body: "+err.Error())
-		return
-	}
-
-	if err := apijobrunscan.ValidateReEvalRequest(body.ProwJobBuildIDs); err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -198,8 +196,21 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 		return
 	}
 
-	re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, body.DryRun)
-	results, err := re.ReEvaluateJobRuns(req.Context(), body.ProwJobBuildIDs)
+	if body.DryRun {
+		s.reEvaluateSynchronous(w, req, body.ProwJobBuildIDs)
+		return
+	}
+	s.reEvaluateAsync(w, req, body.ProwJobBuildIDs)
+}
+
+func (s *Server) reEvaluateSynchronous(w http.ResponseWriter, req *http.Request, buildIDs []string) {
+	if err := apijobrunscan.ValidateReEvalRequest(buildIDs); err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, true)
+	results, err := re.ReEvaluateJobRuns(req.Context(), buildIDs)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -207,4 +218,71 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 	resp := apijobrunscan.ReEvaluationResponse{Results: results}
 	apijobrunscan.InjectReEvalHATEOASLinks(&resp, api.GetBaseURL(req))
 	api.RespondWithJSON(http.StatusOK, w, resp)
+}
+
+func (s *Server) reEvaluateAsync(w http.ResponseWriter, req *http.Request, buildIDs []string) {
+	if s.workqueueSubmitter == nil {
+		failureResponse(w, http.StatusServiceUnavailable, "async re-evaluation is not configured")
+		return
+	}
+
+	if len(buildIDs) == 0 {
+		failureResponse(w, http.StatusBadRequest, "prow_job_build_ids is required")
+		return
+	}
+	if len(buildIDs) > apijobrunscan.MaxJobRunsPerBatch {
+		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("maximum %d job runs per batch", apijobrunscan.MaxJobRunsPerBatch))
+		return
+	}
+
+	re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, false)
+	symptomHash, err := re.RefreshSymptomCache()
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, "failed to load symptoms: "+err.Error())
+		return
+	}
+
+	insertParams, itemKeys := apijobrunscan.BuildInsertParams(buildIDs, symptomHash)
+	result, err := s.workqueueSubmitter.Submit(req.Context(), apijobrunscan.ReevaluateJobKind, insertParams, itemKeys)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, "failed to submit batch: "+err.Error())
+		return
+	}
+
+	baseURL := api.GetBaseURL(req)
+	api.RespondWithJSON(http.StatusAccepted, w, map[string]interface{}{
+		"batch_id":  result.BatchID,
+		"requested": result.Requested,
+		"enqueued":  result.Enqueued,
+		"deduped":   result.Deduped,
+		"links": map[string]string{
+			"status": baseURL + "/api/jobs/runs/reevaluate/" + result.BatchID.String(),
+		},
+	})
+}
+
+func (s *Server) jsonReEvaluateBatchStatus(w http.ResponseWriter, req *http.Request) {
+	if s.workqueueStatusQuerier == nil {
+		failureResponse(w, http.StatusServiceUnavailable, "batch status is not configured")
+		return
+	}
+
+	batchIDStr := mux.Vars(req)["batch_id"]
+	batchID, err := uuid.Parse(batchIDStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid batch_id: "+err.Error())
+		return
+	}
+
+	status, err := s.workqueueStatusQuerier.Query(req.Context(), batchID)
+	if err != nil {
+		if strings.Contains(err.Error(), "record not found") {
+			failureResponse(w, http.StatusNotFound, "batch not found")
+			return
+		}
+		failureResponse(w, http.StatusInternalServerError, "failed to query batch status: "+err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, status)
 }

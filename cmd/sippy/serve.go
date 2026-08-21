@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 )
@@ -196,6 +197,22 @@ func NewServeCommand() *cobra.Command {
 				f.APIFlags.ChatAPIURL,
 				jiraClient,
 			)
+
+			// Set up River insert-only client for async batch submission
+			if dbc != nil && f.APIFlags.EnableWriteEndpoints {
+				riverSetup, err := workqueue.Setup(cmd.Context(), workqueue.SetupConfig{
+					DatabaseDSN: f.DBFlags.DSN,
+				})
+				if err != nil {
+					log.WithError(err).Warn("failed to set up River work queue, async re-evaluation will not be available")
+				} else {
+					server.SetWorkqueue(
+						workqueue.NewSubmitter(dbc.DB, riverSetup.Client),
+						workqueue.NewStatusQuerier(dbc.DB),
+					)
+					log.Info("River work queue configured for insert-only mode")
+				}
+			}
 
 			if f.APIFlags.MetricsAddr != "" {
 				// Do an immediate metrics update

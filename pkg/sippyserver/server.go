@@ -62,6 +62,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -137,6 +138,12 @@ func NewServer(
 	return server
 }
 
+// SetWorkqueue configures the server for async batch processing via River.
+func (s *Server) SetWorkqueue(submitter *workqueue.Submitter, statusQuerier *workqueue.StatusQuerier) {
+	s.workqueueSubmitter = submitter
+	s.workqueueStatusQuerier = statusQuerier
+}
+
 var matViewRefreshMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 	Name:    "sippy_matview_refresh_millis",
 	Help:    "Milliseconds to refresh our postgresql materialized views",
@@ -160,31 +167,33 @@ var matViewUniqueNumberOfJobRuns = promauto.NewGaugeVec(prometheus.GaugeOpts{
 }, []string{"lookback_days"})
 
 type Server struct {
-	mode                 Mode
-	listenAddr           string
-	corsAllowedOrigin    string
-	syntheticTestManager synthetictests.SyntheticTestManager
-	variantManager       testidentification.VariantManager
-	jobartifactsManager  *jobartifacts.Manager
-	sippyNG              fs.FS
-	static               fs.FS
-	httpServer           *http.Server
-	db                   *db.DB
-	bigQueryClient       *sippybq.Client
-	crDataProvider       dataprovider.DataProvider
-	pinnedDateTime       *time.Time
-	gcsClient            *storage.Client
-	gcsBucket            string
-	cache                cache.Cache
-	crTimeRoundingFactor time.Duration
-	crTimeRoundingOffset time.Duration
-	capabilities         []string
-	views                *apitype.SippyViews
-	config               *v1.SippyConfig
-	enableWriteAPIs      bool
-	chatAPIURL           string
-	jiraClient           *jira.Client
-	rateLimiters         map[string]*rateLimiter
+	mode                   Mode
+	listenAddr             string
+	corsAllowedOrigin      string
+	syntheticTestManager   synthetictests.SyntheticTestManager
+	variantManager         testidentification.VariantManager
+	jobartifactsManager    *jobartifacts.Manager
+	sippyNG                fs.FS
+	static                 fs.FS
+	httpServer             *http.Server
+	db                     *db.DB
+	bigQueryClient         *sippybq.Client
+	crDataProvider         dataprovider.DataProvider
+	pinnedDateTime         *time.Time
+	gcsClient              *storage.Client
+	gcsBucket              string
+	cache                  cache.Cache
+	crTimeRoundingFactor   time.Duration
+	crTimeRoundingOffset   time.Duration
+	capabilities           []string
+	views                  *apitype.SippyViews
+	config                 *v1.SippyConfig
+	enableWriteAPIs        bool
+	workqueueSubmitter     *workqueue.Submitter
+	workqueueStatusQuerier *workqueue.StatusQuerier
+	chatAPIURL             string
+	jiraClient             *jira.Client
+	rateLimiters           map[string]*rateLimiter
 }
 
 // getReleases returns release data via the configured data provider.
@@ -2676,6 +2685,13 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodPost},
 			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonReEvaluateJobRunSymptoms,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/reevaluate/{batch_id}",
+			Description:  "Get status of an async re-evaluation batch",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonReEvaluateBatchStatus,
 		},
 		{
 			EndpointPath: "/api/job_variants",

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lib/pq"
@@ -98,6 +99,10 @@ type ReEvaluator struct {
 	cache       cache.Cache
 	artifactMgr *jobartifacts.Manager
 	dryRun      bool
+
+	symptomMu   sync.RWMutex
+	cachedHash  string
+	cachedSymps []jobrunscan.Symptom
 }
 
 // NewReEvaluator creates a ReEvaluator with the given clients.
@@ -111,6 +116,33 @@ func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBuc
 		artifactMgr: artifactMgr,
 		dryRun:      dryRun,
 	}
+}
+
+// RefreshSymptomCache loads active symptoms from the database and stores them
+// along with their hash. Returns the hash for use in job deduplication.
+func (r *ReEvaluator) RefreshSymptomCache() (string, error) {
+	symptoms, err := r.loadActiveSymptoms()
+	if err != nil {
+		return "", fmt.Errorf("loading symptoms for cache: %w", err)
+	}
+	hash := computeSymptomHash(symptoms)
+
+	r.symptomMu.Lock()
+	r.cachedSymps = symptoms
+	r.cachedHash = hash
+	r.symptomMu.Unlock()
+
+	log.WithFields(log.Fields{"count": len(symptoms), "hash": hash}).
+		Info("symptom cache refreshed")
+	return hash, nil
+}
+
+// CachedSymptoms returns the cached symptom list, or nil if the cache has not
+// been populated via RefreshSymptomCache.
+func (r *ReEvaluator) CachedSymptoms() []jobrunscan.Symptom {
+	r.symptomMu.RLock()
+	defer r.symptomMu.RUnlock()
+	return r.cachedSymps
 }
 
 // symptomMatch records that a symptom matched a file/text in a job run.
