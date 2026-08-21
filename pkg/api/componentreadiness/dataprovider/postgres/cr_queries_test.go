@@ -11,12 +11,13 @@ import (
 
 func TestBuildDrilldownFilters(t *testing.T) {
 	tests := []struct {
-		name                    string
-		reqOptions              reqopts.RequestOptions
-		wantOuterContains       []string
-		wantOuterNotContains    string
-		wantOuterArgs           []any
-		wantInnerClauseNotEmpty bool
+		name                 string
+		reqOptions           reqopts.RequestOptions
+		wantOuterContains    []string
+		wantOuterNotContains string
+		wantOuterArgs        []any
+		wantInnerContains    []string
+		wantInnerArgs        []any
 	}{
 		{
 			name:          "empty options produces no clauses",
@@ -70,8 +71,11 @@ func TestBuildDrilldownFilters(t *testing.T) {
 				"AND tow.unique_id = ?",
 				"AND ? = ANY(tow.capabilities)",
 			},
-			wantOuterArgs:           []any{"test-123", "install"},
-			wantInnerClauseNotEmpty: true,
+			wantOuterArgs: []any{"test-123", "install"},
+			wantInnerContains: []string{
+				"AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE unique_id = ?)",
+			},
+			wantInnerArgs: []any{"test-123"},
 		},
 	}
 
@@ -79,6 +83,9 @@ func TestBuildDrilldownFilters(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := buildDrilldownFilters(tc.reqOptions)
 
+			if len(tc.wantOuterContains) == 0 && tc.wantOuterArgs == nil && f.outerClause != "" {
+				t.Errorf("outerClause = %q, want empty", f.outerClause)
+			}
 			for _, want := range tc.wantOuterContains {
 				if !strings.Contains(f.outerClause, want) {
 					t.Errorf("outerClause = %q, want it to contain %q", f.outerClause, want)
@@ -99,8 +106,23 @@ func TestBuildDrilldownFilters(t *testing.T) {
 				}
 			}
 
-			if tc.wantInnerClauseNotEmpty && f.innerClause == "" {
-				t.Error("innerClause is empty, want non-empty")
+			if len(tc.wantInnerContains) == 0 && tc.wantInnerArgs == nil && f.innerClause != "" {
+				t.Errorf("innerClause = %q, want empty", f.innerClause)
+			}
+			for _, want := range tc.wantInnerContains {
+				if !strings.Contains(f.innerClause, want) {
+					t.Errorf("innerClause = %q, want it to contain %q", f.innerClause, want)
+				}
+			}
+
+			if len(f.innerArgs) != len(tc.wantInnerArgs) {
+				t.Errorf("innerArgs count = %d, want %d", len(f.innerArgs), len(tc.wantInnerArgs))
+			} else {
+				for i := range tc.wantInnerArgs {
+					if fmt.Sprintf("%v", f.innerArgs[i]) != fmt.Sprintf("%v", tc.wantInnerArgs[i]) {
+						t.Errorf("innerArgs[%d] = %v, want %v", i, f.innerArgs[i], tc.wantInnerArgs[i])
+					}
+				}
 			}
 		})
 	}
