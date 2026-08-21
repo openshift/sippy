@@ -13,7 +13,7 @@ podman start sippy-postgres 2>/dev/null || \
         -e POSTGRES_PASSWORD=password \
         -e POSTGRES_HOST_AUTH_METHOD=trust \
         -p 127.0.0.1:5432:5432 \
-        quay.io/enterprisedb/postgresql \
+        docker.io/library/postgres:18.4 \
         -c listen_addresses='*'
 
 podman start sippy-redis 2>/dev/null || \

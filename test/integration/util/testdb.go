@@ -72,7 +72,7 @@ func podmanSocketPath() string {
 }
 
 const (
-	postgresImage    = "docker.io/library/postgres:16"
+	postgresImage    = "docker.io/library/postgres:18.4"
 	postgresUser     = "test"
 	postgresPassword = "test"
 	postgresDB       = "sippy_integration"
