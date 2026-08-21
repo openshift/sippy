@@ -96,6 +96,10 @@ func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 		f.outerArgs = append(f.outerArgs, pq.Array(reqOptions.Capabilities))
 	}
 
+	if reqOptions.AdvancedOption.IgnoreDisruption {
+		f.outerClause += " AND NOT ('Disruption' = ANY(tow.capabilities))"
+	}
+
 	return f
 }
 
