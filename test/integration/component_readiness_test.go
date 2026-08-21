@@ -2967,6 +2967,98 @@ func TestCapabilitiesArrayOverlapFilter(t *testing.T) {
 	})
 }
 
+func TestIgnoreDisruptionFilter(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-disruption", release, vc)
+
+	testDisruption := intutil.CreateTest(t, dbc, "openshift-tests:[sig-disruption] disruption test")
+	testStorage := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] PVC disruption test")
+	testRBAC := intutil.CreateTest(t, dbc, "openshift-tests:[sig-auth] RBAC disruption test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-disruption")
+
+	createTestOwnership(t, dbc, testDisruption.ID, &suite.ID, "openshift-tests:disruption-only", "Disruption", []string{"Disruption"})
+	createTestOwnership(t, dbc, testStorage.ID, &suite.ID, "openshift-tests:storage-disruption", "Storage", []string{"PVC", "Disruption"})
+	createTestOwnership(t, dbc, testRBAC.ID, &suite.ID, "openshift-tests:rbac-nodisruption", "Authentication", []string{"RBAC"})
+
+	startMinus1 := civil.Date{Year: 2024, Month: 5, Day: 31}
+	endMinus1 := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	for _, testModel := range []models.Test{testDisruption, testStorage, testRBAC} {
+		createCumulativeSummary(t, dbc, startMinus1, release, testModel.ID, job.ID, suite.ID, 100, 90, 5)
+		createCumulativeSummary(t, dbc, endMinus1, release, testModel.ID, job.ID, suite.ID, 110, 98, 6)
+	}
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+
+	t.Run("IgnoreDisruption excludes tests with Disruption capability", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.AdvancedOption.IgnoreDisruption = true
+		opts.VariantOption.IncludeVariants = map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}
+		_, result, errs := provider.QueryTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		nonPlaceholders := filterPlaceholders(result)
+		for _, ts := range nonPlaceholders {
+			assert.NotContains(t, ts.Capabilities, "Disruption",
+				"tests with Disruption capability should be excluded, got %v for %s", ts.Capabilities, ts.TestID)
+		}
+		foundRBAC := false
+		for _, ts := range nonPlaceholders {
+			switch ts.TestID {
+			case "openshift-tests:disruption-only":
+				t.Error("disruption-only test should not appear with IgnoreDisruption=true")
+			case "openshift-tests:storage-disruption":
+				t.Error("test with Disruption in capabilities should not appear with IgnoreDisruption=true")
+			case "openshift-tests:rbac-nodisruption":
+				foundRBAC = true
+			}
+		}
+		assert.True(t, foundRBAC, "RBAC test without Disruption capability should appear")
+	})
+
+	t.Run("IgnoreDisruption false includes all tests", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.AdvancedOption.IgnoreDisruption = false
+		opts.VariantOption.IncludeVariants = map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}
+		_, result, errs := provider.QueryTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		nonPlaceholders := filterPlaceholders(result)
+		foundDisruption := false
+		foundStorage := false
+		foundRBAC := false
+		for _, ts := range nonPlaceholders {
+			switch ts.TestID {
+			case "openshift-tests:disruption-only":
+				foundDisruption = true
+			case "openshift-tests:storage-disruption":
+				foundStorage = true
+			case "openshift-tests:rbac-nodisruption":
+				foundRBAC = true
+			}
+		}
+		assert.True(t, foundDisruption, "disruption-only test should appear with IgnoreDisruption=false")
+		assert.True(t, foundStorage, "storage-disruption test should appear with IgnoreDisruption=false")
+		assert.True(t, foundRBAC, "RBAC test should appear with IgnoreDisruption=false")
+	})
+
+	t.Run("IgnoreDisruption combined with capabilities filter", func(t *testing.T) {
+		opts := defaultReqOptions(release)
+		opts.AdvancedOption.IgnoreDisruption = true
+		opts.Capabilities = []string{"PVC"}
+		opts.VariantOption.IncludeVariants = map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}
+		_, result, errs := provider.QueryTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		nonPlaceholders := filterPlaceholders(result)
+		assert.Empty(t, nonPlaceholders,
+			"storage-disruption has PVC but also Disruption, so it should be excluded; no tests should remain")
+	})
+}
+
 func TestMixedLifecycleRowsProduceCorrectCounts(t *testing.T) {
 	dbc := crTestDB(t)
 	release := "4.16"
