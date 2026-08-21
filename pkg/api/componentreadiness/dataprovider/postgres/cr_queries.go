@@ -28,7 +28,6 @@ type variantQuerySetup struct {
 	groupMapping    variantGroupMapping
 	filterArgs      []any
 	variantSubquery string
-	minimumFailure  int
 }
 
 const queryPlannerHints = "SET LOCAL max_parallel_workers_per_gather = 4; SET LOCAL parallel_setup_cost = 0; SET LOCAL parallel_tuple_cost = 0; SET LOCAL enable_nestloop = off; SET LOCAL enable_sort = off"
@@ -38,7 +37,6 @@ func prepareVariantQuery(
 	dbc *db.DB,
 	includeVariants map[string][]string,
 	dbGroupBy sets.Set[string],
-	minimumFailure int,
 ) (*variantQuerySetup, error) {
 	vf, err := resolveVariantFilter(ctx, dbc, includeVariants, dbGroupBy)
 	if err != nil {
@@ -52,7 +50,6 @@ func prepareVariantQuery(
 		groupMapping:    buildVariantGroupMapping(vf.lookup),
 		filterArgs:      vf.filterArgs,
 		variantSubquery: vf.variantSubquery,
-		minimumFailure:  minimumFailure,
 	}, nil
 }
 
@@ -182,10 +179,23 @@ func buildStatusCTE(
 	return cteSQL, args
 }
 
+// testBranchTemplate is the UNION ALL branch that selects all tests with runs
+// from a status CTE, regardless of failure count. Used by the standalone path,
+// which has no "other side" to cross-reference (TRT-2883), so the MinimumFailure
+// threshold is left entirely to the Go-side check. The first %s is an optional
+// column prefix, the second %s is the CTE name.
+const testBranchTemplate = `SELECT
+        %spa.unique_id AS test_id, t.name AS test_name,
+        COALESCE(su.name, '') AS test_suite, pa.component, pa.capabilities,
+        pa.variant_group_id, pa.total_count, pa.success_count, pa.flake_count, pa.last_failure
+    FROM %s pa
+    JOIN tests t ON t.id = pa.test_id
+    LEFT JOIN suites su ON su.id = pa.suite_id`
+
 // failureBranchTemplate is the UNION ALL branch that selects tests meeting the
-// minimum failure threshold from a status CTE. The first %s is an optional
-// column prefix (e.g. "'S'::text AS source, " for the combined query, or "" for
-// standalone), and the second %s is the CTE name.
+// minimum failure threshold from a status CTE. The first %s is the column
+// prefix (e.g. "'S'::text AS source, " for the combined query), the second %s
+// is the CTE name.
 const failureBranchTemplate = `SELECT
         %spa.unique_id AS test_id, t.name AS test_name,
         COALESCE(su.name, '') AS test_suite, pa.component, pa.capabilities,
@@ -194,6 +204,55 @@ const failureBranchTemplate = `SELECT
     JOIN tests t ON t.id = pa.test_id
     LEFT JOIN suites su ON su.id = pa.suite_id
     WHERE pa.total_count - pa.success_count - pa.flake_count >= ?`
+
+// keysCTETemplate projects a status CTE down to just the columns needed to
+// answer "does this (unique_id, variant_group_id) exist on this side, and is
+// it above the minimum failure threshold?" The status CTEs (sample_agg /
+// base_agg) are MATERIALIZED and carry every output column (component,
+// capabilities text[], last_failure, etc.) on every row; joining directly
+// against them to answer a yes/no existence question forces Postgres to
+// build a hash table over the full row width. Materializing this narrow
+// projection once lets belowThresholdRescueBranchTemplate join against a
+// 3-column table instead. The first %s is the CTE name to define, the
+// second %s is the source status CTE.
+const keysCTETemplate = `%s AS MATERIALIZED (
+        SELECT unique_id, variant_group_id,
+            total_count - success_count - flake_count AS fail_count
+        FROM %s
+    )`
+
+// belowThresholdRescueBranchTemplate selects tests below the minimum failure
+// threshold that should still be surfaced because the other side doesn't
+// silently absorb them: either (a) the other side has a matching row that's
+// >= threshold (a test crossing the threshold between sample and base,
+// TRT-2883), or (b) the other side has no matching row at all (a test that
+// only ran during this side's window, e.g. newly added or removed) — without
+// this, such a test is silently dropped from both result maps even though
+// BigQuery has no SQL threshold filter and would surface it as
+// MissingBasis/MissingSample.
+//
+// Both conditions are expressed as a single LEFT JOIN against the other
+// side's narrow keys CTE (see keysCTETemplate) rather than two separate
+// correlated EXISTS/NOT EXISTS subqueries against the full status CTE, so
+// the planner only needs to hash/join a small (key, key, fail_count) table
+// once instead of hashing the full-width CTE twice. The first %s is the
+// column prefix, the second %s is this side's CTE, the third %s is the
+// other side's keys CTE.
+const belowThresholdRescueBranchTemplate = `SELECT
+        %spa.unique_id AS test_id, t.name AS test_name,
+        COALESCE(su.name, '') AS test_suite, pa.component, pa.capabilities,
+        pa.variant_group_id, pa.total_count, pa.success_count, pa.flake_count, pa.last_failure
+    FROM %s pa
+    JOIN tests t ON t.id = pa.test_id
+    LEFT JOIN suites su ON su.id = pa.suite_id
+    LEFT JOIN %s other
+      ON other.unique_id = pa.unique_id
+      AND other.variant_group_id = pa.variant_group_id
+    WHERE pa.total_count - pa.success_count - pa.flake_count < ?
+      AND (
+        other.unique_id IS NULL
+        OR other.fail_count >= ?
+      )`
 
 // placeholderBranchTemplate is the UNION ALL branch that produces grid
 // placeholder entries (one per component + col_group_id) from a status CTE.
@@ -207,11 +266,11 @@ const placeholderBranchTemplate = `SELECT
     GROUP BY pa.component, pa.capabilities, pa.col_group_id`
 
 // queryTestStatusCTE builds and executes a single CTE-based query that produces
-// both failure results (tests with >= MinimumFailure failures) and grid
-// placeholder entries (component-level cells confirming data exists).
+// test results and grid placeholder entries (component-level cells confirming
+// data exists).
 //
-// Grid placeholders ensure that cells without failures on one side correctly
-// show MissingSample / MissingBasis instead of NotSignificant.
+// Grid placeholders ensure that cells without any test data on one side
+// correctly show MissingSample / MissingBasis instead of NotSignificant.
 func (p *PostgresProvider) queryTestStatusCTE(
 	ctx context.Context,
 	reqOptions reqopts.RequestOptions,
@@ -222,7 +281,7 @@ func (p *PostgresProvider) queryTestStatusCTE(
 	includeVariants = mergeRequestedVariants(includeVariants, reqOptions)
 	filters := buildDrilldownFilters(reqOptions)
 
-	setup, err := prepareVariantQuery(ctx, p.dbc, includeVariants, reqOptions.VariantOption.DBGroupBy, reqOptions.AdvancedOption.MinimumFailure)
+	setup, err := prepareVariantQuery(ctx, p.dbc, includeVariants, reqOptions.VariantOption.DBGroupBy)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -240,14 +299,10 @@ func (p *PostgresProvider) queryTestStatusCTE(
 	fullSQL := fmt.Sprintf("WITH vg(vcid, group_id) AS (%s),\ncm(group_id, col_group_id) AS (%s),\n%s\n%s\nUNION ALL\n%s",
 		setup.groupMapping.valuesClause, colMapping.valuesClause,
 		cteSQL,
-		fmt.Sprintf(failureBranchTemplate, "", "status_agg"),
+		fmt.Sprintf(testBranchTemplate, "", "status_agg"),
 		fmt.Sprintf(placeholderBranchTemplate, "", "status_agg"))
 
-	var allArgs []any
-	allArgs = append(allArgs, cteArgs...)
-	allArgs = append(allArgs, setup.minimumFailure)
-
-	return p.scanWithParallelHints(ctx, fullSQL, allArgs, setup.groupMapping)
+	return p.scanWithParallelHints(ctx, fullSQL, cteArgs, setup.groupMapping)
 }
 
 // prefixSumSpec returns a testStatusSpec for querying test_cumulative_summaries
@@ -424,24 +479,36 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 	baseInnerSQL, baseInnerArgs := buildInnerAggregation(baseSpec, baseProwJobJoin, baseVF.filterArgs, filters)
 	baseCTE, baseCTEArgs := buildStatusCTE("base_agg", baseInnerSQL, baseInnerArgs, "cm", filters)
 
+	sampleKeysCTE := fmt.Sprintf(keysCTETemplate, "sample_keys", "sample_agg")
+	baseKeysCTE := fmt.Sprintf(keysCTETemplate, "base_keys", "base_agg")
+
 	// The combined query bakes the source tag into each branch as a typed
 	// literal so the row scanner can split results into sample and base maps.
+	// Each side has three branches: above-threshold tests (failureBranch),
+	// below-threshold tests rescued by a single LEFT JOIN against the other
+	// side's narrow keys CTE (belowThresholdRescueBranch, TRT-2883 + PG/BQ
+	// parity fix), and grid placeholders.
 	sampleSourcePrefix := "'S'::text AS source, "
 	baseSourcePrefix := "'B'::text AS source, "
 
-	fullSQL := fmt.Sprintf("WITH vg(vcid, group_id) AS (%s),\ncm(group_id, col_group_id) AS (%s),\n%s,\n%s\n%s\nUNION ALL\n%s\nUNION ALL\n%s\nUNION ALL\n%s",
+	fullSQL := fmt.Sprintf(
+		"WITH vg(vcid, group_id) AS (%s),\ncm(group_id, col_group_id) AS (%s),\n%s,\n%s,\n%s,\n%s\n%s\nUNION ALL\n%s\nUNION ALL\n%s\nUNION ALL\n%s\nUNION ALL\n%s\nUNION ALL\n%s",
 		groupMapping.valuesClause, colMapping.valuesClause,
-		sampleCTE, baseCTE,
+		sampleCTE, baseCTE, sampleKeysCTE, baseKeysCTE,
 		fmt.Sprintf(failureBranchTemplate, sampleSourcePrefix, "sample_agg"),
+		fmt.Sprintf(belowThresholdRescueBranchTemplate, sampleSourcePrefix, "sample_agg", "base_keys"),
 		fmt.Sprintf(placeholderBranchTemplate, sampleSourcePrefix, "sample_agg"),
 		fmt.Sprintf(failureBranchTemplate, baseSourcePrefix, "base_agg"),
+		fmt.Sprintf(belowThresholdRescueBranchTemplate, baseSourcePrefix, "base_agg", "sample_keys"),
 		fmt.Sprintf(placeholderBranchTemplate, baseSourcePrefix, "base_agg"))
 
 	var allArgs []any
 	allArgs = append(allArgs, sampleCTEArgs...)
 	allArgs = append(allArgs, baseCTEArgs...)
-	allArgs = append(allArgs, minimumFailure) // sample failure branch
-	allArgs = append(allArgs, minimumFailure) // base failure branch
+	allArgs = append(allArgs, minimumFailure)                 // sample failure branch
+	allArgs = append(allArgs, minimumFailure, minimumFailure) // sample below-threshold rescue branch
+	allArgs = append(allArgs, minimumFailure)                 // base failure branch
+	allArgs = append(allArgs, minimumFailure, minimumFailure) // base below-threshold rescue branch
 
 	// Execute with parallel hints
 	var sampleResult, baseResult map[string]crstatus.TestStatus

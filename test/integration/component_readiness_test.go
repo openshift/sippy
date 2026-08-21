@@ -414,14 +414,16 @@ func TestQueryTestStatus_SampleResults(t *testing.T) {
 		require.True(t, ok, "test2/gcp with 3 failures should pass MinimumFailure=2")
 		assert.Equal(t, 20, ts.TotalCount)
 
-		// test1/jobAWS has 1 failure (< 2), should NOT appear in failure results
-		// but a placeholder for its component should exist
+		// test1/jobAWS has 1 failure (< 2) and no base-side data at all for this release, so it's a
+		// one-sided test: belowThresholdRescueBranch surfaces it (PG/BQ parity fix) despite being
+		// below MinimumFailure.
 		awsOvnKey := crtest.KeyWithVariants{
 			TestID:   seed.tow1.UniqueID,
 			Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
 		}
-		_, hasDirect := result[awsOvnKey.Encode()]
-		assert.False(t, hasDirect, "test1/aws-ovn with 1 failure should not pass MinimumFailure=2 filter")
+		directTS, hasDirect := result[awsOvnKey.Encode()]
+		require.True(t, hasDirect, "test1/aws-ovn with no base-side data should be rescued as a one-sided test")
+		assert.Equal(t, 10, directTS.TotalCount)
 	})
 
 	t.Run("no data for release", func(t *testing.T) {
@@ -1058,6 +1060,44 @@ func TestQueryBaseTestStatus_PrefixSum(t *testing.T) {
 	assert.Equal(t, 2, ts.FlakeCount)
 }
 
+// TestQueryBaseTestStatus_BelowMinimumFailure covers the standalone query path
+// (queryTestStatusCTE, used only by release-fallback). Unlike the combined query, this path has
+// no "other side" to cross-reference, so TRT-2883 is fixed by dropping the SQL-level
+// MinimumFailure filter entirely rather than adding a cross-branch. This test confirms a base
+// test with failures below MinimumFailure is still returned instead of being filtered out.
+func TestQueryBaseTestStatus_BelowMinimumFailure(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+	seed := seedCRData(t, dbc)
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+
+	// base: 100 runs, 99 successes -> 1 failure, well below MinimumFailure=3
+	createCumulativeSummary(t, dbc, baseLookupStart, release, seed.test1.ID, seed.jobAWS.ID, seed.suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, seed.test1.ID, seed.jobAWS.ID, seed.suite.ID, 100, 99, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.MinimumFailure = 3
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	result, errs := provider.QueryBaseTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+
+	awsOvnKey := crtest.KeyWithVariants{
+		TestID:   seed.tow1.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	ts, ok := result[awsOvnKey.Encode()]
+	require.True(t, ok, "base test with 1 failure (< MinimumFailure=3) should still be returned")
+	assert.Equal(t, 100, ts.TotalCount)
+	assert.Equal(t, 99, ts.SuccessCount)
+}
+
 func TestQueryTestStatus_DifferentBaseAndSampleReleases(t *testing.T) {
 	dbc := crTestDB(t)
 	baseRelease := "4.16"
@@ -1127,6 +1167,122 @@ func TestQueryTestStatus_DifferentBaseAndSampleReleases(t *testing.T) {
 	require.True(t, ok, "expected sample result")
 	assert.Equal(t, 10, sampleTS.TotalCount, "sample should reflect sampleRelease data only")
 	assert.Equal(t, 8, sampleTS.SuccessCount)
+}
+
+// TestQueryTestStatus_BelowThresholdBothSides confirms that when a test's failure count is
+// below MinimumFailure on both the sample and base side, belowThresholdRescueBranchTemplate's
+// LEFT JOIN finds a matching row on the other side but it's also below threshold (not NULL,
+// not >= threshold), so neither side's rescue condition is met and the test is cleanly
+// excluded from both result maps.
+func TestQueryTestStatus_BelowThresholdBothSides(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-both-below", release, vc)
+
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-etcd] both below threshold test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-both-below")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:both-below", "Etcd", []string{"Quorum"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// base: 100 runs/99 success -> 1 failure < MinimumFailure=3
+	createCumulativeSummary(t, dbc, baseLookupStart, release, test.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, test.ID, job.ID, suite.ID, 100, 99, 0)
+	// sample: 100 runs/98 success -> 2 failures < MinimumFailure=3
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, test.ID, job.ID, suite.ID, 100, 99, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, test.ID, job.ID, suite.ID, 200, 197, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.MinimumFailure = 3
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	baseStatus, sampleStatus, errs := provider.QueryTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+
+	key := crtest.KeyWithVariants{
+		TestID:   tow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+
+	_, inSample := sampleStatus[key.Encode()]
+	assert.False(t, inSample, "test below MinimumFailure on both sides should not appear in sample results")
+	_, inBase := baseStatus[key.Encode()]
+	assert.False(t, inBase, "test below MinimumFailure on both sides should not appear in base results")
+}
+
+// TestQueryTestStatus_OneSidedBelowThreshold confirms the PG/BigQuery parity fix: a test that
+// only ran during one side's window (no counterpart row at all on the other side) is surfaced
+// even when it's below MinimumFailure on the side it did run on. BigQuery has no SQL-level
+// MinimumFailure filter, so such a test always reaches Go and is classified as
+// MissingBasis/MissingSample there; without belowThresholdRescueBranch's "other side has no row"
+// case, PostgreSQL would silently drop the row from both result maps instead.
+func TestQueryTestStatus_OneSidedBelowThreshold(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-onesided", release, vc)
+
+	sampleOnlyTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] sample-only below threshold test")
+	baseOnlyTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] base-only below threshold test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-onesided")
+	sampleOnlyTow := createTestOwnership(t, dbc, sampleOnlyTest.ID, &suite.ID, "openshift-tests:sample-only-below", "Storage", []string{"PVC"})
+	baseOnlyTow := createTestOwnership(t, dbc, baseOnlyTest.ID, &suite.ID, "openshift-tests:base-only-below", "Storage", []string{"PVC"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// sampleOnlyTest: no base-side data at all; sample: 100 runs/98 success -> 2 failures < MinimumFailure=3
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, sampleOnlyTest.ID, job.ID, suite.ID, 100, 99, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, sampleOnlyTest.ID, job.ID, suite.ID, 200, 197, 0)
+
+	// baseOnlyTest: no sample-side data at all; base: 100 runs/99 success -> 1 failure < MinimumFailure=3
+	createCumulativeSummary(t, dbc, baseLookupStart, release, baseOnlyTest.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, baseOnlyTest.ID, job.ID, suite.ID, 100, 99, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.MinimumFailure = 3
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	baseStatus, sampleStatus, errs := provider.QueryTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+
+	sampleOnlyKey := crtest.KeyWithVariants{
+		TestID:   sampleOnlyTow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	sampleOnlyTS, ok := sampleStatus[sampleOnlyKey.Encode()]
+	require.True(t, ok, "sample-only test below MinimumFailure with no base counterpart should be rescued")
+	assert.Equal(t, 100, sampleOnlyTS.TotalCount)
+	assert.Equal(t, 98, sampleOnlyTS.SuccessCount)
+	_, inBase := baseStatus[sampleOnlyKey.Encode()]
+	assert.False(t, inBase, "sample-only test should not appear in base results")
+
+	baseOnlyKey := crtest.KeyWithVariants{
+		TestID:   baseOnlyTow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	baseOnlyTS, ok := baseStatus[baseOnlyKey.Encode()]
+	require.True(t, ok, "base-only test below MinimumFailure with no sample counterpart should be rescued")
+	assert.Equal(t, 100, baseOnlyTS.TotalCount)
+	assert.Equal(t, 99, baseOnlyTS.SuccessCount)
+	_, inSample := sampleStatus[baseOnlyKey.Encode()]
+	assert.False(t, inSample, "base-only test should not appear in sample results")
 }
 
 func TestQueryBaseTestStatus_GA(t *testing.T) {
@@ -2821,14 +2977,19 @@ func TestMinimumFailureWithCapabilityFilter(t *testing.T) {
 
 	nonPlaceholders := filterPlaceholders(result)
 	// testHigh has PVC capability and 5 failures >= 3: should appear
-	// testLow has PVC capability but 1 failure < 3: should NOT appear
+	// testLow has PVC capability, 1 failure < 3, and no base-side data at all: it's a one-sided
+	// test, so belowThresholdRescueBranch surfaces it (PG/BQ parity fix) despite being below
+	// MinimumFailure
 	// testOther has 5 failures >= 3 but Services capability, not PVC: should NOT appear
+	var sawLow bool
 	for _, ts := range nonPlaceholders {
-		assert.NotEqual(t, towLow.UniqueID, ts.TestID,
-			"low-failure PVC test should not pass MinimumFailure=3")
+		if ts.TestID == towLow.UniqueID {
+			sawLow = true
+		}
 		assert.NotEqual(t, "openshift-tests:high-net", ts.TestID,
 			"non-PVC test should not appear with PVC capability filter")
 	}
+	assert.True(t, sawLow, "low-failure PVC test with no base-side data should be rescued as a one-sided test")
 }
 
 func TestDrillDownBySecondaryCapability(t *testing.T) {
@@ -4178,10 +4339,14 @@ func TestGenerateReport_MinimumFailureThreshold(t *testing.T) {
 
 	testHigh := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] high failure report test")
 	testLow := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] low failure report test")
+	testReverse := intutil.CreateTest(t, dbc, "openshift-tests:[sig-compute] reverse-direction report test")
+	testBothBelow := intutil.CreateTest(t, dbc, "openshift-tests:[sig-etcd] both-below-threshold report test")
 	suite := intutil.CreateSuite(t, dbc, "openshift-tests-mf-report")
 
 	createTestOwnership(t, dbc, testHigh.ID, &suite.ID, "openshift-tests:high-fail", "Storage", []string{"PVC"})
 	createTestOwnership(t, dbc, testLow.ID, &suite.ID, "openshift-tests:low-fail", "Networking", []string{"Services"})
+	createTestOwnership(t, dbc, testReverse.ID, &suite.ID, "openshift-tests:reverse-fail", "Compute", []string{"Nodes"})
+	createTestOwnership(t, dbc, testBothBelow.ID, &suite.ID, "openshift-tests:both-below-fail", "Etcd", []string{"Quorum"})
 
 	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
 	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
@@ -4199,6 +4364,24 @@ func TestGenerateReport_MinimumFailureThreshold(t *testing.T) {
 	createCumulativeSummary(t, dbc, baseLookupEnd, release, testLow.ID, job.ID, suite.ID, 100, 95, 0)
 	createCumulativeSummary(t, dbc, sampleLookupStart, release, testLow.ID, job.ID, suite.ID, 100, 95, 0)
 	createCumulativeSummary(t, dbc, sampleLookupEnd, release, testLow.ID, job.ID, suite.ID, 200, 193, 0)
+
+	// testReverse: base 100 runs/98 success → 2 failures < MinimumFailure=3 (below threshold),
+	// sample 100 runs/40 success → 60 failures >= MinimumFailure=3 (above threshold). This is the
+	// mirror image of testLow: it exercises belowThresholdRescueBranchTemplate's LEFT JOIN on
+	// the base side, rescuing the below-threshold base row because sample is at/above threshold.
+	createCumulativeSummary(t, dbc, baseLookupStart, release, testReverse.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, testReverse.ID, job.ID, suite.ID, 100, 98, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, testReverse.ID, job.ID, suite.ID, 100, 98, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, testReverse.ID, job.ID, suite.ID, 200, 138, 0)
+
+	// testBothBelow: base 100 runs/99 success → 1 failure < MinimumFailure=3, sample 100 runs/98
+	// success → 2 failures < MinimumFailure=3. Both sides are below threshold, so
+	// failureBranch doesn't match and belowThresholdRescueBranchTemplate's LEFT JOIN finds a
+	// matching row that's also below threshold, so neither branch matches on either side.
+	createCumulativeSummary(t, dbc, baseLookupStart, release, testBothBelow.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, testBothBelow.ID, job.ID, suite.ID, 100, 99, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, release, testBothBelow.ID, job.ID, suite.ID, 100, 99, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, release, testBothBelow.ID, job.ID, suite.ID, 200, 197, 0)
 
 	provider := postgres.NewPostgresProvider(dbc, nil)
 	opts := defaultReqOptions(release)
@@ -4219,10 +4402,31 @@ func TestGenerateReport_MinimumFailureThreshold(t *testing.T) {
 	assert.Equal(t, crtest.ExtremeRegression, storageCol.Status, "test with 60 failures should be extreme regression")
 	require.NotEmpty(t, storageCol.RegressedTests)
 
-	// testLow: 2 failures < MinimumFailure=3, should not be flagged as a regression
+	// testLow: 2 failures < MinimumFailure=3, should be NotSignificant (not MissingSample).
+	// TRT-2883: the Go-side MinimumFailure check handles this; SQL must not drop the row.
 	networkRow := findReportRow(t, report, "Networking")
 	networkCol := findReportColumn(t, networkRow, map[string]string{"Platform": "aws"})
 	assert.Empty(t, networkCol.RegressedTests, "test below MinimumFailure should not appear as regression")
+	assert.Equal(t, crtest.NotSignificant, networkCol.Status,
+		"test with failures below MinimumFailure should be NotSignificant, not MissingSample")
+
+	// testReverse: base below MinimumFailure, sample above it. Go's MinimumFailure check only
+	// looks at the sample side, so this should proceed to full Fisher exact analysis using the
+	// real (non-placeholder) base stats brought in by belowThresholdRescueBranchTemplate's
+	// LEFT JOIN on the base side.
+	computeRow := findReportRow(t, report, "Compute")
+	computeCol := findReportColumn(t, computeRow, map[string]string{"Platform": "aws"})
+	assert.Equal(t, crtest.ExtremeRegression, computeCol.Status,
+		"sample above MinimumFailure with a below-threshold base should still be analyzed as a regression")
+	require.NotEmpty(t, computeCol.RegressedTests)
+
+	// testBothBelow: below MinimumFailure on both sides. belowThresholdRescueBranchTemplate's
+	// LEFT JOIN finds a matching row on the other side but it's also below threshold, so
+	// neither branch matches on either side and the test must not surface as a regression
+	// anywhere in the report.
+	etcdRow := findReportRow(t, report, "Etcd")
+	etcdCol := findReportColumn(t, etcdRow, map[string]string{"Platform": "aws"})
+	assert.Empty(t, etcdCol.RegressedTests, "test below MinimumFailure on both sides should not appear as a regression")
 }
 
 // --- Report helpers ---
