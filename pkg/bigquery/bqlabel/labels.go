@@ -94,6 +94,7 @@ const (
 	JobRunLabels                        QueryValue = "job-run-labels"
 	JobRunLabelsReEvaluate              QueryValue = "job-run-labels-reevaluate"
 	JobRunLabelsReEvaluateDelete        QueryValue = "job-run-labels-reevaluate-delete"
+	InfraFailureBackfill                QueryValue = "infra-failure-backfill"
 	JobRunHighRisk                      QueryValue = "job-run-high-risk"
 	JobRuns                             QueryValue = "job-runs"
 	JobVariants                         QueryValue = "job-variants"
