@@ -185,10 +185,19 @@ func (b *Backfiller) processBatch(ctx context.Context, batch []int64, stats *Sta
 	}
 
 	for _, id := range toSync {
+		// Respond promptly to cancellation: a large backfill can enqueue many
+		// runs and each record opens its own transaction.
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		outcome, err := b.recordInfraFailure(ctx, id)
 		if err != nil {
 			stats.Errors++
-			log.WithError(err).WithField("prowJobRunID", id).Error("failed to record InfraFailure")
+			// Errors bubbling up from the database driver can embed connection
+			// details (host, credentials), so keep the default log generic and
+			// reserve the raw error for opt-in Debug troubleshooting.
+			log.WithField("prowJobRunID", id).Error("failed to record InfraFailure")
+			log.WithError(err).WithField("prowJobRunID", id).Debug("record InfraFailure error detail")
 			continue
 		}
 		// toSync was classified as present-but-unlabeled by an earlier lookup, but

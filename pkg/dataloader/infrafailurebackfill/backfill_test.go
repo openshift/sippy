@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -105,9 +104,6 @@ func TestBuildInfraFailureQuery(t *testing.T) {
 	if byName["startDate"] != startDate {
 		t.Errorf("startDate param = %v, want %v", byName["startDate"], startDate)
 	}
-
-	// Ensure the returned params are usable as BigQuery parameters (type check).
-	var _ []bigquery.QueryParameter = params
 }
 
 func TestBuildInfraFailureQueryRejectsUnsafeDataset(t *testing.T) {

@@ -14,6 +14,9 @@ import (
 	"github.com/openshift/sippy/pkg/flags"
 )
 
+// BackfillInfraFailuresFlags holds the configuration for the
+// backfill-infra-failures command: the BigQuery, PostgreSQL, and Google Cloud
+// connection flags plus the backfill window and batching options.
 type BackfillInfraFailuresFlags struct {
 	BigQueryFlags    *flags.BigQueryFlags
 	DBFlags          *flags.PostgresFlags
@@ -25,6 +28,8 @@ type BackfillInfraFailuresFlags struct {
 	BatchSize int
 }
 
+// NewBackfillInfraFailuresFlags returns BackfillInfraFailuresFlags initialized
+// with the default lookback window and batch size.
 func NewBackfillInfraFailuresFlags() *BackfillInfraFailuresFlags {
 	return &BackfillInfraFailuresFlags{
 		BigQueryFlags:    flags.NewBigQueryFlags(),
@@ -35,6 +40,7 @@ func NewBackfillInfraFailuresFlags() *BackfillInfraFailuresFlags {
 	}
 }
 
+// BindFlags registers the backfill-infra-failures flags on the given flag set.
 func (f *BackfillInfraFailuresFlags) BindFlags(fs *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(fs)
 	f.DBFlags.BindFlags(fs)
@@ -45,6 +51,8 @@ func (f *BackfillInfraFailuresFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&f.BatchSize, "batch-size", f.BatchSize, "Number of runs to process per batch")
 }
 
+// NewBackfillInfraFailuresCommand builds the cobra command that backfills
+// InfraFailure labels from BigQuery into PostgreSQL.
 func NewBackfillInfraFailuresCommand() *cobra.Command {
 	f := NewBackfillInfraFailuresFlags()
 
@@ -71,7 +79,10 @@ Example:
 
 			dbc, err := f.DBFlags.GetDBClient()
 			if err != nil {
-				return fmt.Errorf("could not get db client: %w", err)
+				// Do not wrap the raw driver error: it can embed the database host
+				// or credentials from the DSN. Return a generic message so those
+				// details do not leak into logs or stderr.
+				return fmt.Errorf("could not initialize database client")
 			}
 
 			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "backfill-infra-failures")
@@ -80,7 +91,10 @@ Example:
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, f.BigQueryFlags.ReleasesTable)
 			if err != nil {
-				return fmt.Errorf("could not get bigquery client: %w", err)
+				// Do not wrap the raw client error: it can embed credential file
+				// paths or endpoint hosts. Return a generic message so those
+				// details do not leak into logs or stderr.
+				return fmt.Errorf("could not initialize BigQuery client")
 			}
 
 			backfiller := infrafailurebackfill.New(bqc, dbc, infrafailurebackfill.Options{
