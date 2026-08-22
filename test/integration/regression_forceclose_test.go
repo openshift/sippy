@@ -152,10 +152,10 @@ func TestForceClosePreview(t *testing.T) {
 		lastBefore := resolved.Add(-2 * 24 * time.Hour)
 		firstAfter := resolved.Add(2 * 24 * time.Hour)
 		require.NoError(t, dbc.DB.Create(&models.RegressionJobRun{
-			RegressionID: wouldClose.ID, ProwJobRunID: "gap-before", ProwJobName: "job-1", StartTime: lastBefore, TestFailed: true,
+			RegressionID: wouldClose.ID, ProwJobRunID: "gap-before", ProwJobName: "job-1", StartTime: lastBefore, TestFailed: true, TestFailures: 1,
 		}).Error)
 		require.NoError(t, dbc.DB.Create(&models.RegressionJobRun{
-			RegressionID: wouldClose.ID, ProwJobRunID: "gap-after", ProwJobName: "job-1", StartTime: firstAfter, TestFailed: true,
+			RegressionID: wouldClose.ID, ProwJobRunID: "gap-after", ProwJobName: "job-1", StartTime: firstAfter, TestFailed: true, TestFailures: 1,
 		}).Error)
 
 		preview, err := store.ForceClosePreview(triage.ID)

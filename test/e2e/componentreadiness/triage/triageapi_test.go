@@ -816,8 +816,8 @@ func Test_ForceCloseRegressionsAPI(t *testing.T) {
 
 		// Failures before and after the resolution time drive the preview gap indicator.
 		require.NoError(t, tracker.MergeJobRuns(wouldClose.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "api-before", ProwJobName: "job-1", StartTime: resolved.Add(-2 * 24 * time.Hour), TestFailed: true},
-			{ProwJobRunID: "api-after", ProwJobName: "job-1", StartTime: resolved.Add(2 * 24 * time.Hour), TestFailed: true},
+			{ProwJobRunID: "api-before", ProwJobName: "job-1", StartTime: resolved.Add(-2 * 24 * time.Hour), TestFailed: true, TestFailures: 1},
+			{ProwJobRunID: "api-after", ProwJobName: "job-1", StartTime: resolved.Add(2 * 24 * time.Hour), TestFailed: true, TestFailures: 1},
 		}))
 
 		// Create the triage over both regressions, then resolve it via the API.

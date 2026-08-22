@@ -423,7 +423,7 @@ func (prs *PostgresRegressionStore) queryRegressionFailureGaps(regressionIDs []u
 	var lastRows []gapRow
 	if err := prs.dbc.DB.Table("regression_job_runs").
 		Select("regression_id, MAX(start_time) AS failure_time").
-		Where("regression_id IN ? AND start_time <= ? AND test_failed = true", regressionIDs, resolutionTime).
+		Where("regression_id IN ? AND start_time <= ? AND test_failures > 0", regressionIDs, resolutionTime).
 		Group("regression_id").
 		Scan(&lastRows).Error; err != nil {
 		return nil, fmt.Errorf("error querying last failures before resolution for regressions %v: %w", regressionIDs, err)
@@ -441,7 +441,7 @@ func (prs *PostgresRegressionStore) queryRegressionFailureGaps(regressionIDs []u
 	var firstRows []gapRow
 	if err := prs.dbc.DB.Table("regression_job_runs").
 		Select("regression_id, MIN(start_time) AS failure_time").
-		Where("regression_id IN ? AND start_time > ? AND test_failed = true", regressionIDs, resolutionTime).
+		Where("regression_id IN ? AND start_time > ? AND test_failures > 0", regressionIDs, resolutionTime).
 		Group("regression_id").
 		Scan(&firstRows).Error; err != nil {
 		return nil, fmt.Errorf("error querying first failures after resolution for regressions %v: %w", regressionIDs, err)
