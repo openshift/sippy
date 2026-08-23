@@ -249,7 +249,7 @@ func (b *Backfiller) fetchInfraFailureIDsFromBQ(ctx context.Context, startDate c
 		// prow_job_runs.id primary key in PostgreSQL.
 		id, perr := strconv.ParseInt(row.ProwJobBuildID, 10, 64)
 		if perr != nil {
-			log.WithError(perr).WithField("prowjob_build_id", row.ProwJobBuildID).
+			log.WithField("prowjob_build_id", row.ProwJobBuildID).
 				Warn("skipping non-numeric prowjob_build_id from job_labels")
 			continue
 		}
