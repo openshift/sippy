@@ -194,10 +194,9 @@ func (b *Backfiller) processBatch(ctx context.Context, batch []int64, stats *Sta
 		if err != nil {
 			stats.Errors++
 			// Errors bubbling up from the database driver can embed connection
-			// details (host, credentials), so keep the default log generic and
-			// reserve the raw error for opt-in Debug troubleshooting.
+			// details (host, credentials), so keep the log generic and do not
+			// record the raw error.
 			log.WithField("prowJobRunID", id).Error("failed to record InfraFailure")
-			log.WithError(err).WithField("prowJobRunID", id).Debug("record InfraFailure error detail")
 			continue
 		}
 		// toSync was classified as present-but-unlabeled by an earlier lookup, but
