@@ -16746,6 +16746,8 @@ releases:
             periodic-ci-stolostron-policy-collection-main-ocp5.0-interop-opp-aws: true
             periodic-ci-stolostron-policy-collection-main-ocp5.0-interop-opp-vsphere: true
             periodic-ci-stolostron-policy-collection-main-ocp5.0-upgrade-interop-opp-upgrade-aws: true
+        regexp:
+            - ^periodic-ci-openshift-tls-scanner-release-5\.0-periodics-.*
         blockingJobs:
             - periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-aks
             - periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-aks-multi-x-ax
@@ -18701,6 +18703,8 @@ releases:
             periodic-ci-stolostron-policy-collection-main-ocp5.1-interop-opp-vsphere: true
             periodic-ci-stolostron-policy-collection-main-ocp5.1-upgrade-interop-opp-upgrade-aws: true
             release-openshift-origin-installer-e2e-aws-upgrade-4.19-to-4.20-to-4.21-to-5.1-ci: true
+        regexp:
+            - ^periodic-ci-openshift-tls-scanner-release-5\.1-periodics-.*
         blockingJobs:
             - periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-aks
             - periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-aks-multi-x-ax
