@@ -12,9 +12,6 @@ Sippy also exposes REST APIs for programmatic access to its data and reports.
 See [DEVELOPMENT.md](DEVELOPMENT.md) for information about standing up a
 local environment.
 
-See [resources](resources/) for example deployment manifests in
-Kubernetes.
-
 ## API
 
 See [the API documentation](pkg/api/README.md)
