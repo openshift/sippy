@@ -2,6 +2,12 @@
 prow:
   url: https://prow.ci.openshift.org/prowjobs.js
 releases:
+  "5.0":
+    regexp:
+      - "^periodic-ci-openshift-tls-scanner-release-5\\.0-periodics-.*"
+  "5.1":
+    regexp:
+      - "^periodic-ci-openshift-tls-scanner-release-5\\.1-periodics-.*"
   "3.11":
     jobs:
       periodic-ci-openshift-openshift-ansible-release-3.11-e2e-aws-nightly: true
