@@ -55857,75 +55857,6 @@ periodic-ci-openshift-microshift-release-4.16-rebase-on-nightlies:
     Suite: unknown
     Topology: microshift
     Upgrade: none
-periodic-ci-openshift-microshift-release-4.17-clusterbot:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.17-publish-release-notes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.17-rebase-on-nightlies:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
 periodic-ci-openshift-microshift-release-4.18-periodics-clusterbot-nightly:
     Aggregation: none
     Architecture: amd64
@@ -249292,6 +249223,29 @@ periodic-ci-openshift-ovn-kubernetes-release-4.21-periodics-e2e-metal-ipi-ovn-du
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-ovn-kubernetes-release-4.22-periodics-branch-sync:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-ovn-kubernetes-release-4.22-periodics-e2e-metal-ipi-ovn-bgp-virt-dualstack:
     Aggregation: none
     Architecture: amd64
@@ -249580,52 +249534,6 @@ periodic-ci-openshift-ovn-kubernetes-release-4.23-periodics-e2e-metal-ipi-ovn-du
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-ovn-kubernetes-release-5.0-periodics-branch-sync:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-ovn-kubernetes-release-5.0-periodics-downstream-merge:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-ovn-kubernetes-release-5.0-periodics-e2e-metal-ipi-ovn-bgp-virt-dualstack:
     Aggregation: none
     Architecture: amd64
@@ -249765,29 +249673,6 @@ periodic-ci-openshift-ovn-kubernetes-release-5.0-periodics-e2e-metal-ipi-ovn-dua
     Release: "5.0"
     ReleaseMajor: "5"
     ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-ovn-kubernetes-release-5.1-periodics-branch-sync:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: informing
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
