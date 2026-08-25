@@ -1036,7 +1036,7 @@ func (s *Server) jsonBackendDisruptionByRun(w http.ResponseWriter, req *http.Req
 
 	var minTime, maxTime time.Time
 	if s.db != nil {
-		row := s.db.DB.Raw("SELECT MIN(timestamp), MAX(timestamp) FROM prow_job_runs WHERE id IN ?", jobRunNames).Row()
+		row := s.db.DB.Raw("SELECT MIN(timestamp), MAX(timestamp) FROM prow_job_run_id_map WHERE id IN ?", jobRunNames).Row()
 		if err := row.Scan(&minTime, &maxTime); err != nil {
 			log.WithError(err).Warn("could not look up job run timestamps from postgres, falling back to no time bound")
 		}

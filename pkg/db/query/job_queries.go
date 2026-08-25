@@ -15,19 +15,19 @@ import (
 
 // ProwJobRunPartitionKeys holds the partition key columns for prow_job_runs.
 // Used for two-step lookups: fetch these lightweight keys first, then load the
-// full row with partition pruning. This will be replaced by a mapping table in
-// a future iteration.
+// full row with partition pruning.
 type ProwJobRunPartitionKeys struct {
 	ProwJobRelease string    `gorm:"column:prow_job_release"`
 	Timestamp      time.Time `gorm:"column:timestamp"`
 }
 
 // LookupProwJobRunPartitionKeys fetches the partition keys for a prow_job_run
-// by ID. This is intended as the first step of a two-step lookup pattern where
-// the caller then uses these keys to load the full row with partition pruning.
+// by ID from prow_job_run_id_map. This is the first step of a two-step lookup
+// pattern where the caller then uses these keys to load the full row with
+// partition pruning.
 func LookupProwJobRunPartitionKeys(gormDB *gorm.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
 	var keys ProwJobRunPartitionKeys
-	err := gormDB.Table("prow_job_runs").
+	err := gormDB.Model(&models.ProwJobRunIDMap{}).
 		Select("prow_job_release, timestamp").
 		Where("id = ?", jobRunID).
 		Take(&keys).Error
