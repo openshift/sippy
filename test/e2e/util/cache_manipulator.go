@@ -151,7 +151,30 @@ func (c *E2ECacheManipulator) GetReport() (componentreport.ComponentReport, stri
 		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to scan for ComponentReport keys: %w", err)
 	}
 
-	var cacheKey string
+	cacheKey := findMainComponentReportCacheKey(keys, c.release)
+	if cacheKey == "" {
+		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to find proper ComponentReport key")
+	}
+	log.Debugf("Found ComponentReport cache key: %s", cacheKey)
+
+	// Get the cached data
+	cachedData, err := c.client.Get(cacheKey).Bytes()
+	if err != nil {
+		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to get cached data for key %s: %w", cacheKey, err)
+	}
+
+	// Unmarshal the component report
+	var report componentreport.ComponentReport
+	err = json.Unmarshal(cachedData, &report)
+	if err != nil {
+		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to unmarshal component report: %w", err)
+	}
+
+	log.Debugf("Retrieved cached component report with %d rows", len(report.Rows))
+	return report, cacheKey, nil
+}
+
+func findMainComponentReportCacheKey(keys []string, release string) string {
 	for _, key := range keys {
 		// Strip the prefixes to get the JSON part
 		// Key format: "_SIPPY_cc:ComponentReport~{JSON}" or "_SIPPY_ComponentReport~{JSON}"
@@ -175,31 +198,21 @@ func (c *E2ECacheManipulator) GetReport() (componentreport.ComponentReport, stri
 			log.Warnf("Failed to unmarshal ComponentReport key JSON '%s' from key '%s': %v", jsonPart, key, err)
 			continue
 		}
-		if gk.SampleRelease.Name == Release && gk.BaseRelease.Name == BaseRelease && len(gk.TestIDOptions) == 0 && !gk.IncludeAllTests {
-			cacheKey = key
-			break
+		columnGroupBy := gk.VariantOption.ColumnGroupBy
+		// The main e2e view groups by these three variants. The gcp-only view shares
+		// the releases and report options above, but groups only by Network.
+		if gk.SampleRelease.Name == release &&
+			gk.BaseRelease.Name == BaseRelease &&
+			len(gk.TestIDOptions) == 0 &&
+			!gk.IncludeAllTests &&
+			len(columnGroupBy) == 3 &&
+			columnGroupBy.Has("Network") &&
+			columnGroupBy.Has("Platform") &&
+			columnGroupBy.Has("Topology") {
+			return key
 		}
 	}
-	if cacheKey == "" {
-		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to find proper ComponentReport key")
-	}
-	log.Debugf("Found ComponentReport cache key: %s", cacheKey)
-
-	// Get the cached data
-	cachedData, err := c.client.Get(cacheKey).Bytes()
-	if err != nil {
-		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to get cached data for key %s: %w", cacheKey, err)
-	}
-
-	// Unmarshal the component report
-	var report componentreport.ComponentReport
-	err = json.Unmarshal(cachedData, &report)
-	if err != nil {
-		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to unmarshal component report: %w", err)
-	}
-
-	log.Debugf("Retrieved cached component report with %d rows", len(report.Rows))
-	return report, cacheKey, nil
+	return ""
 }
 
 // updateReportWithKey updates the Redis cache with the modified component report using the exact cache key
