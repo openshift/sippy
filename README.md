@@ -31,3 +31,4 @@ parameter group settings.
 ## Chat
 
 See [the chat documentation](chat/README.md)
+Chai was here
