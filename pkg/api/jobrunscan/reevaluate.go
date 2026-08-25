@@ -2,12 +2,16 @@ package jobrunscan
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lib/pq"
@@ -89,6 +93,15 @@ func InjectReEvalHATEOASLinks(resp *ReEvaluationResponse, baseURL string) {
 	}
 }
 
+// symptomCache holds a concurrency-safe snapshot of active symptoms for the
+// daemon's async batch processing path. The synchronous API path
+// (ReEvaluateJobRuns) loads symptoms directly and does not use the cache.
+type symptomCache struct {
+	mu       sync.RWMutex
+	symptoms []jobrunscan.Symptom
+	hash     string
+}
+
 // ReEvaluator re-runs symptom detection against job artifacts and updates BQ, GCS, and PostgreSQL.
 type ReEvaluator struct {
 	bqClient    *bqclient.Client
@@ -98,6 +111,7 @@ type ReEvaluator struct {
 	cache       cache.Cache
 	artifactMgr *jobartifacts.Manager
 	dryRun      bool
+	symptoms    symptomCache
 }
 
 // NewReEvaluator creates a ReEvaluator with the given clients.
@@ -144,6 +158,68 @@ func (r *ReEvaluator) loadActiveSymptoms() ([]jobrunscan.Symptom, error) {
 		return nil, res.Error
 	}
 	return filterRelevantSymptoms(all), nil
+}
+
+// RefreshSymptomCache loads active symptoms from the database, caches them, and
+// computes a SHA-256 hash of the sorted symptom IDs. The hash is included in
+// per-item River job args so that deduplication is scoped to the current symptom
+// state: if symptoms change between batches, the new hash defeats deduplication.
+func (r *ReEvaluator) RefreshSymptomCache() (string, error) {
+	symptoms, err := r.loadActiveSymptoms()
+	if err != nil {
+		return "", fmt.Errorf("refreshing symptom cache: %w", err)
+	}
+	hash := computeSymptomHash(symptoms)
+
+	r.symptoms.mu.Lock()
+	r.symptoms.symptoms = symptoms
+	r.symptoms.hash = hash
+	r.symptoms.mu.Unlock()
+
+	log.WithFields(log.Fields{
+		"symptoms": len(symptoms),
+		"hash":     hash[:12],
+	}).Info("symptom reEval: refreshed symptom cache")
+	return hash, nil
+}
+
+// ReEvaluateOneFromCache re-evaluates a single job run using cached symptoms.
+// Returns an error if evaluation fails, which triggers River's retry logic.
+func (r *ReEvaluator) ReEvaluateOneFromCache(ctx context.Context, prowJobBuildID string) error {
+	r.symptoms.mu.RLock()
+	symptoms := r.symptoms.symptoms
+	r.symptoms.mu.RUnlock()
+
+	if len(symptoms) == 0 {
+		return fmt.Errorf("symptom cache is empty; RefreshSymptomCache must be called first")
+	}
+
+	result := r.reEvaluateOne(ctx, prowJobBuildID, symptoms)
+	if result.Status != ReEvalSuccess {
+		return fmt.Errorf("re-evaluation of %s failed (%s): %s", prowJobBuildID, result.Status, result.Error)
+	}
+	return nil
+}
+
+// symptomHashEntry pairs a symptom ID with its UpdatedAt timestamp so that
+// editing a symptom's content defeats deduplication even if the ID is unchanged.
+type symptomHashEntry struct {
+	ID        string `json:"id"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
+// computeSymptomHash produces a deterministic SHA-256 hex digest from sorted
+// symptom IDs and their UpdatedAt timestamps. The hash changes when symptoms
+// are added, removed, renamed, or modified.
+func computeSymptomHash(symptoms []jobrunscan.Symptom) string {
+	entries := make([]symptomHashEntry, len(symptoms))
+	for i, s := range symptoms {
+		entries[i] = symptomHashEntry{ID: s.ID, UpdatedAt: s.UpdatedAt.UnixMicro()}
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ID < entries[j].ID })
+	data, _ := json.Marshal(entries)
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("%x", sum)
 }
 
 // filterRelevantSymptoms returns only symptoms with labels and implemented matcher types (string, regex, none).

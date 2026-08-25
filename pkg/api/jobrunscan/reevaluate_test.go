@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lib/pq"
 
@@ -390,6 +391,65 @@ func TestBuildOutputsMultipleLabels(t *testing.T) {
 	}
 	if len(bucketLabels) != 2 {
 		t.Fatalf("expected 2 bucket labels, got %d", len(bucketLabels))
+	}
+}
+
+func TestComputeSymptomHash(t *testing.T) {
+	withLabels := pq.StringArray{"label-a"}
+	ts := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	makeSymptom := func(id string, mt string, updatedAt time.Time) jobrunscan.Symptom {
+		return jobrunscan.Symptom{
+			SymptomContent: jobrunscan.SymptomContent{ID: id, MatcherType: mt, LabelIDs: withLabels},
+			Metadata:       jobrunscan.Metadata{UpdatedAt: updatedAt},
+		}
+	}
+
+	symptoms := []jobrunscan.Symptom{
+		makeSymptom("beta", jobrunscan.MatcherTypeString, ts),
+		makeSymptom("alpha", jobrunscan.MatcherTypeRegex, ts),
+		makeSymptom("gamma", jobrunscan.MatcherTypeFile, ts),
+	}
+
+	hash1 := computeSymptomHash(symptoms)
+	if hash1 == "" {
+		t.Fatal("computeSymptomHash returned empty string")
+	}
+	if len(hash1) != 64 {
+		t.Errorf("expected 64-char hex hash, got %d chars: %s", len(hash1), hash1)
+	}
+
+	// Order should not matter (IDs are sorted internally)
+	reversed := []jobrunscan.Symptom{symptoms[2], symptoms[1], symptoms[0]}
+	hash2 := computeSymptomHash(reversed)
+	if hash1 != hash2 {
+		t.Errorf("hash should be order-independent: %s != %s", hash1, hash2)
+	}
+
+	// Different symptoms produce a different hash
+	different := []jobrunscan.Symptom{
+		makeSymptom("delta", jobrunscan.MatcherTypeString, ts),
+	}
+	hash3 := computeSymptomHash(different)
+	if hash1 == hash3 {
+		t.Error("different symptom sets should produce different hashes")
+	}
+
+	// Same IDs but different UpdatedAt produces a different hash
+	modified := []jobrunscan.Symptom{
+		makeSymptom("beta", jobrunscan.MatcherTypeString, ts.Add(time.Second)),
+		makeSymptom("alpha", jobrunscan.MatcherTypeRegex, ts),
+		makeSymptom("gamma", jobrunscan.MatcherTypeFile, ts),
+	}
+	hash6 := computeSymptomHash(modified)
+	if hash1 == hash6 {
+		t.Error("modified symptom (different UpdatedAt) should produce different hash")
+	}
+
+	// Empty symptoms produce a deterministic hash
+	hash4 := computeSymptomHash(nil)
+	hash5 := computeSymptomHash([]jobrunscan.Symptom{})
+	if hash4 != hash5 {
+		t.Errorf("nil and empty should produce the same hash: %s != %s", hash4, hash5)
 	}
 }
 
