@@ -2526,6 +2526,9 @@ func TestVariantSyncer(t *testing.T) {
 		},
 		{
 			job: "periodic-ci-openshift-release-main-ci-5.0-e2e-gcd-ovn",
+			variantsFile: map[string]string{
+				"Platform": "gcp", // should be ignored
+			},
 			expected: map[string]string{
 				VariantRelease:          "5.0",
 				VariantReleaseMajor:     "5",
