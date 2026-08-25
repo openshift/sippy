@@ -38,8 +38,8 @@ flowchart TB
     LookupUnchanged[Lookup unchanged on prow_job_runs]
     FindNew[findNewJobRunIDs unchanged]
   end
-  subgraph phase2 [Phase 2 - External ops backfill]
-    Backfill[External process backfills map]
+  subgraph phase2 [Phase 2 - Premigration backfill]
+    Backfill[gopar premigration backfills map]
     Verify[Verify row counts]
   end
   subgraph phase3 [Phase 3 - Post-backfill]
@@ -82,7 +82,8 @@ flowchart TB
 | pgwriter insert | `pkg/dataloader/prowloader/pgwriter/pgwriter.go` | Map rows in same txn as `prow_job_runs` |
 | Test fixture | `test/integration/util/fixtures.go` | `CreateProwJobRun` syncs map row |
 | Tests | `test/integration/pgwriter_test.go` | Verify map row created on pgwriter insert |
-| Docs | `pkg/db/PARTITIONS_README.md` or partitioning prep doc | Document phases; reference example backfill SQL below |
+| Premigration backfill | `config/specs/premigration/003_prow_job_run_id_map_backfill.json` (gopar) | Batched INSERT from `prow_job_runs`; run in Phase 2 |
+| Docs | `pkg/db/PARTITIONS_README.md` or partitioning prep doc | Document phases |
 
 ### What does NOT change in Phase 1
 
@@ -90,7 +91,7 @@ flowchart TB
 |------|--------|
 | `LookupProwJobRunPartitionKeys` | Map is incomplete until backfill; keep querying `prow_job_runs` |
 | `findNewJobRunIDs` | Still anti-joins `prow_job_runs`; map is incomplete until backfill |
-| External backfill | Managed outside this repo in Phase 2; example SQL documented below |
+| Running the backfill | Spec ships in Phase 1; execution is Phase 2 after deploy |
 | `prow_job_runs` partitioning | Phase 4b, separate effort |
 
 ### Phase 1 implementation details
@@ -107,7 +108,7 @@ CREATE TABLE prow_job_run_id_map (
 );
 ```
 
-Historical backfill is **not** run during schema setup. An external ops process handles backfill separately in Phase 2 (see example SQL below).
+Historical backfill is **not** run during schema setup. Backfill is handled separately in Phase 2 via a gopar premigration spec (see below).
 
 #### pgwriter
 
@@ -120,17 +121,29 @@ FROM tmp_prow_job_runs
 ON CONFLICT (id) DO NOTHING;
 ```
 
-#### Proposed external backfill SQL (example only, not in repo)
+#### Premigration backfill spec (gopar)
 
-Backfill is **not** part of Phase 1 and **no script is added to this repository**. An external ops process owns backfill timing and tooling. The SQL below is a reference example that process may adapt (batching, scheduling, etc.):
+Backfill is handled in Phase 2 via the gopar premigration spec at `config/specs/premigration/003_prow_job_run_id_map_backfill.json`. The spec uses the same batched CTE pattern as the existing premigration backfills (batch size 500K, `LEFT JOIN` to find missing rows, `ON CONFLICT DO NOTHING` for idempotency):
 
 ```sql
--- Idempotent; safe to re-run.
-INSERT INTO prow_job_run_id_map (id, prow_job_release, timestamp)
-SELECT id, prow_job_release, timestamp
-FROM prow_job_runs
-WHERE prow_job_release IS NOT NULL AND prow_job_release <> ''
-ON CONFLICT (id) DO NOTHING;
+WITH batch AS (
+    SELECT r.id, r.prow_job_release, r."timestamp"
+    FROM prow_job_runs r
+    LEFT JOIN prow_job_run_id_map m ON m.id = r.id
+    WHERE m.id IS NULL
+    AND r.prow_job_release IS NOT NULL AND r.prow_job_release <> ''
+    LIMIT $1
+)
+INSERT INTO prow_job_run_id_map (id, prow_job_release, "timestamp")
+SELECT id, prow_job_release, "timestamp"
+FROM batch
+ON CONFLICT (id) DO NOTHING
+```
+
+Run via:
+
+```bash
+gopar sql --dsn "$DSN" --spec-file config/specs/premigration/003_prow_job_run_id_map_backfill.json
 ```
 
 #### Tests
@@ -172,17 +185,21 @@ SELECT COUNT(*) FROM prow_job_run_id_map;
 
 ---
 
-## Phase 2: External backfill (ops, not in repo)
+## Phase 2: Premigration backfill (gopar)
 
 **Goal:** Populate historical rows into `prow_job_run_id_map` without blocking deploy or migrate.
 
 **Prerequisite:** Phase 1 deployed and pgwriter writing new map rows.
 
-**Owner:** External ops process (not maintained in this repository).
+**Owner:** gopar premigration spec (`config/specs/premigration/003_prow_job_run_id_map_backfill.json`).
 
 ### Steps
 
-1. Run backfill against staging, then production using the external process (may use the example SQL in this plan as a starting point)
+1. Run backfill against staging, then production via gopar:
+
+```bash
+gopar sql --dsn "$DSN" --spec-file config/specs/premigration/003_prow_job_run_id_map_backfill.json
+```
 2. Verify completeness:
 
 ```sql
@@ -201,7 +218,7 @@ SELECT COUNT(*) FROM prow_job_run_id_map;
 -- should match (minus rows with empty prow_job_release)
 ```
 
-**No application code changes in Phase 2.** `LookupProwJobRunPartitionKeys` continues querying `prow_job_runs`.
+**No application code changes in Phase 2.** `LookupProwJobRunPartitionKeys` continues querying `prow_job_runs`. The backfill is idempotent and safe to re-run.
 
 ---
 
@@ -283,7 +300,7 @@ Suboptimal after partitioning; add composite join on release + timestamp (patter
 
 Not mapping-table problems; separate phase 4b query optimization.
 
-**Phase 1 scope:** GORM AutoMigrate + model + pgwriter + pgwriter test + docs. No lookup changes. No backfill script in repo.
+**Phase 1 scope:** GORM AutoMigrate + model + pgwriter + pgwriter test + docs. No lookup changes. Backfill script ships as gopar premigration spec (run in Phase 2).
 
 ---
 
@@ -291,7 +308,7 @@ Not mapping-table problems; separate phase 4b query optimization.
 
 - Partitioning `prow_job_runs` / annotations / PR join table (phase 4b, separate plan)
 - Golden-file validation (`docs/plans/trt-2709-golden-file-validation.md`)
-- In-migrate backfill and repo-maintained backfill scripts (external ops owns backfill; example SQL in this plan only)
+- In-migrate backfill (backfill runs via gopar premigration spec, not during GORM AutoMigrate)
 - BigQuery changes (BQ uses build ID strings independently)
 - Infrafailure id-only UPDATE/SELECT, disruption API, composite JOIN hardening (phase 4b; see inventory above)
 
@@ -301,6 +318,6 @@ Not mapping-table problems; separate phase 4b query optimization.
 
 | Phase | Deliverable | When |
 |-------|-------------|------|
-| **1** | This PR: AutoMigrate + model + pgwriter + pgwriter test + docs | Now |
-| **2** | External ops backfill + verification | After Phase 1 deploy |
+| **1** | This PR: AutoMigrate + model + pgwriter + pgwriter test + docs + gopar premigration backfill spec | Now |
+| **2** | Run gopar premigration backfill + verification | After Phase 1 deploy |
 | **3** | Switch lookup to map + `findNewJobRunIDs` + infrafailure/disruption fixes + composite JOIN hardening | After Phase 2 verified; with phase 4b |
