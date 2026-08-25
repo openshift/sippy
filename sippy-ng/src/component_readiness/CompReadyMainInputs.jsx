@@ -34,6 +34,8 @@ export default function CompReadyMainInputs({ controlsOpts }) {
   // This could also be deduced from varsContext.dbGroupByVariants
   const checkBoxHiddenIncludeVariants = new Set([
     'Aggregation',
+    'Capability',
+    'Component',
     'FromRelease',
     'FromReleaseMajor',
     'FromReleaseMinor',
