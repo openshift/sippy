@@ -157,13 +157,11 @@ func (c *E2ECacheManipulator) GetReport() (componentreport.ComponentReport, stri
 	}
 	log.Debugf("Found ComponentReport cache key: %s", cacheKey)
 
-	// Get the cached data
 	cachedData, err := c.client.Get(cacheKey).Bytes()
 	if err != nil {
 		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to get cached data for key %s: %w", cacheKey, err)
 	}
 
-	// Unmarshal the component report
 	var report componentreport.ComponentReport
 	err = json.Unmarshal(cachedData, &report)
 	if err != nil {
@@ -205,6 +203,8 @@ func findMainComponentReportCacheKey(keys []string, release string) string {
 			gk.BaseRelease.Name == BaseRelease &&
 			len(gk.TestIDOptions) == 0 &&
 			!gk.IncludeAllTests &&
+			len(gk.TestFilters.Capabilities) == 0 &&
+			len(gk.TestFilters.Lifecycles) == 0 &&
 			len(columnGroupBy) == 3 &&
 			columnGroupBy.Has("Network") &&
 			columnGroupBy.Has("Platform") &&

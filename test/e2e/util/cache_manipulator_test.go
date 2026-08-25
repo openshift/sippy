@@ -11,8 +11,9 @@ import (
 )
 
 func TestFindMainComponentReportCacheKey(t *testing.T) {
-	mainKey := componentReportCacheKey(t, "Network", "Platform", "Topology")
-	gcpOnlyKey := componentReportCacheKey(t, "Network")
+	mainKey := componentReportCacheKey(t, reqopts.TestFilters{}, "Network", "Platform", "Topology")
+	filteredKey := componentReportCacheKey(t, reqopts.TestFilters{Capabilities: []string{"Networking"}}, "Network", "Platform", "Topology")
+	gcpOnlyKey := componentReportCacheKey(t, reqopts.TestFilters{}, "Network")
 
 	tests := []struct {
 		name string
@@ -30,6 +31,11 @@ func TestFindMainComponentReportCacheKey(t *testing.T) {
 			want: mainKey,
 		},
 		{
+			name: "filtered before main",
+			keys: []string{filteredKey, mainKey},
+			want: mainKey,
+		},
+		{
 			name: "no main match",
 			keys: []string{gcpOnlyKey},
 		},
@@ -44,7 +50,7 @@ func TestFindMainComponentReportCacheKey(t *testing.T) {
 	}
 }
 
-func componentReportCacheKey(t *testing.T, columnGroupBy ...string) string {
+func componentReportCacheKey(t *testing.T, testFilters reqopts.TestFilters, columnGroupBy ...string) string {
 	t.Helper()
 
 	key, err := json.Marshal(componentreadiness.GeneratorCacheKey{
@@ -53,6 +59,7 @@ func componentReportCacheKey(t *testing.T, columnGroupBy ...string) string {
 		VariantOption: reqopts.Variants{
 			ColumnGroupBy: sets.New(columnGroupBy...),
 		},
+		TestFilters: testFilters,
 	})
 	if err != nil {
 		t.Fatalf("failed to marshal cache key: %v", err)
