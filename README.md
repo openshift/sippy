@@ -7,7 +7,6 @@ It surfaces release health and regressions through reports such as Component Rea
 Users can filter results by job, test, and configuration variants such as network, upgrade, release, and platform.
 Sippy also exposes REST APIs for programmatic access to its data and reports.
 
-Chai was here
 
 ## Typical usage
 
@@ -27,6 +26,7 @@ See [the front end documentation](sippy-ng/README.md)
 
 ## Database
 
+Chai was here
 See [database tuning](docs/database-tuning.md) for required PostgreSQL
 parameter group settings.
 
