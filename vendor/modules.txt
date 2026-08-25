@@ -589,6 +589,7 @@ github.com/riverqueue/river/internal/rivercommon
 github.com/riverqueue/river/internal/riverplugin
 github.com/riverqueue/river/internal/util/chanutil
 github.com/riverqueue/river/internal/workunit
+github.com/riverqueue/river/rivermigrate
 # github.com/riverqueue/river/riverdriver v0.44.1
 ## explicit; go 1.25.0
 github.com/riverqueue/river/riverdriver
@@ -600,6 +601,7 @@ github.com/riverqueue/river/riverdriver/riverpgxv5/internal/dbsqlc
 ## explicit; go 1.25.0
 github.com/riverqueue/river/rivershared/baseservice
 github.com/riverqueue/river/rivershared/circuitbreaker
+github.com/riverqueue/river/rivershared/levenshtein
 github.com/riverqueue/river/rivershared/riverpilot
 github.com/riverqueue/river/rivershared/riversharedmaintenance
 github.com/riverqueue/river/rivershared/sqlctemplate

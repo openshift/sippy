@@ -24,13 +24,21 @@ type ProcessBatchWorker struct {
 	riverClient *river.Client[pgx.Tx]
 }
 
-// NewProcessBatchWorker creates a ProcessBatchWorker.
-func NewProcessBatchWorker(reEvaluator *jobrunscan.ReEvaluator, gormDB *gorm.DB, riverClient *river.Client[pgx.Tx]) *ProcessBatchWorker {
+// NewProcessBatchWorker creates a ProcessBatchWorker. The riverClient field
+// must be set via SetRiverClient before the worker processes any jobs, because
+// the River client cannot be created until after the worker is registered
+// (circular dependency resolved by deferred wiring).
+func NewProcessBatchWorker(reEvaluator *jobrunscan.ReEvaluator, gormDB *gorm.DB) *ProcessBatchWorker {
 	return &ProcessBatchWorker{
 		reEvaluator: reEvaluator,
 		gormDB:      gormDB,
-		riverClient: riverClient,
 	}
+}
+
+// SetRiverClient wires the River client after construction. Must be called
+// before the River client is started.
+func (w *ProcessBatchWorker) SetRiverClient(client *river.Client[pgx.Tx]) {
+	w.riverClient = client
 }
 
 // Work processes a batch: refreshes symptoms, fans out individual River jobs,
