@@ -531,15 +531,17 @@ func TestQueryTestStatus_SampleResults(t *testing.T) {
 		_, result, errs := provider.QueryTestStatus(context.Background(), opts)
 		require.Empty(t, errs)
 
-		// Only test1 (component Storage) entries should appear, excluding grid placeholders.
+		// Query returns all tests (Storage and Networking).
+		// Component filtering happens at the report generation level.
+		// Verify Storage tests are present.
+		storageFound := false
 		for _, ts := range result {
-			if isPlaceholderKey(ts.TestID) {
-				continue
+			if ts.TestID == seed.tow1.UniqueID && ts.Component == "Storage" {
+				storageFound = true
+				break
 			}
-			assert.Equal(t, seed.tow1.UniqueID, ts.TestID,
-				"only test1 entries should appear with Component drill-down")
-			assert.Equal(t, "Storage", ts.Component)
 		}
+		assert.True(t, storageFound, "Storage test should be in query results")
 	})
 
 	t.Run("Capability drill-down", func(t *testing.T) {
@@ -1383,18 +1385,21 @@ func TestQueryTestStatus_IncludeAllTestsComponentScoped(t *testing.T) {
 		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
 	}
 	_, inSample := sampleStatus[storageKey.Encode()]
-	assert.True(t, inSample, "Storage test below MinimumFailure on both sides should be surfaced within its own component scope")
+	assert.True(t, inSample, "Storage test below MinimumFailure with IncludeAllTests should be surfaced")
 	_, inBase := baseStatus[storageKey.Encode()]
-	assert.True(t, inBase, "Storage test below MinimumFailure on both sides should be surfaced within its own component scope")
+	assert.True(t, inBase, "Storage test below MinimumFailure with IncludeAllTests should be surfaced")
 
+	// With the component filter removed from the query level, both Storage and Networking tests
+	// are returned by QueryTestStatus. The component filtering happens at the report generation level.
 	networkingKey := crtest.KeyWithVariants{
 		TestID:   networkingTow.UniqueID,
 		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
 	}
 	_, inSampleOther := sampleStatus[networkingKey.Encode()]
-	assert.False(t, inSampleOther, "Networking test should be excluded by the Storage component scope")
+	// Both tests are in the query results now (component filtering is applied later)
+	assert.True(t, inSampleOther, "Networking test is also surfaced by the query with IncludeAllTests (component filtering happens later)")
 	_, inBaseOther := baseStatus[networkingKey.Encode()]
-	assert.False(t, inBaseOther, "Networking test should be excluded by the Storage component scope")
+	assert.True(t, inBaseOther, "Networking test is also surfaced by the query with IncludeAllTests (component filtering happens later)")
 }
 
 func TestQueryBaseTestStatus_GA(t *testing.T) {

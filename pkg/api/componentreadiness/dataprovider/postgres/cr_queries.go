@@ -91,12 +91,6 @@ func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 			f.outerArgs = append(f.outerArgs, tid.TestID)
 		}
 
-		if tid.Component != "" {
-			f.innerClause += " AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE component = ? AND staff_approved_obsolete = false)"
-			f.innerArgs = append(f.innerArgs, tid.Component)
-			f.outerClause += " AND tow.component = ?"
-			f.outerArgs = append(f.outerArgs, tid.Component)
-		}
 
 		if tid.Capability != "" {
 			f.innerClause += " AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE ? = ANY(capabilities))"
