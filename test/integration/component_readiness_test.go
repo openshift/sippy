@@ -1336,9 +1336,9 @@ func TestQueryTestStatus_OneSidedBelowThreshold(t *testing.T) {
 
 // TestQueryTestStatus_IncludeAllTestsComponentScoped confirms that IncludeAllTests composes
 // with a Component drill-down (TRT-2923): a both-sides-below-threshold test in the requested
-// component is surfaced, while one in a different component is excluded entirely, proving the
-// unconditional testBranchTemplate path still respects buildDrilldownFilters' scoping rather
-// than always returning every test in the view.
+// component is surfaced. The query returns both components (component filtering happens at
+// the report generation level), but only the requested component's test will appear in the
+// final report, proving component scoping is still respected despite the SQL returning all data.
 func TestQueryTestStatus_IncludeAllTestsComponentScoped(t *testing.T) {
 	dbc := crTestDB(t)
 	release := "4.16"

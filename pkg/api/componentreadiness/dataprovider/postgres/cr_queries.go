@@ -53,33 +53,25 @@ func prepareVariantQuery(
 	}, nil
 }
 
-// drilldownFilters holds optional SQL WHERE fragments for TestID, Component,
-// and Capability filtering when drilling down to a specific test + environment.
+// drilldownFilters holds optional SQL WHERE fragments for TestID and Capability
+// filtering when drilling down to a specific test + environment.
 type drilldownFilters struct {
-	// innerClause filters on test_id and optionally component via subquery (for the inner aggregation).
-	// Component filtering here reduces join cost when drilling down to a specific component.
+	// innerClause filters on test_id via subquery (for the inner aggregation).
 	innerClause string
 	innerArgs   []any
-	// outerClause filters on tow.unique_id, tow.component, and tow.capabilities (for outerQuery and placeholder).
-	// Capability filtering happens at this level to respect the top-level Capabilities array.
+	// outerClause filters on tow.unique_id and tow.capabilities (for outerQuery and placeholder).
 	outerClause string
 	outerArgs   []any
 }
 
-// buildDrilldownFilters returns SQL filter fragments for TestID, Component,
-// Capability, and top-level capability filtering from reqOptions. For
-// drilldown (single TestIDOption), it filters on test_id, component, and
-// per-test capability. For top-level views, it applies the Capabilities
+// buildDrilldownFilters returns SQL filter fragments for TestID and Capability
+// filtering from reqOptions. For drilldown (single TestIDOption), it filters on
+// test_id and per-test capability. For top-level views, it applies the Capabilities
 // array-overlap filter matching the BQ provider's behavior.
 //
-// Component filtering is pushed into innerClause (a subquery against the
-// raw aggregation input, same as TestID) rather than only the outer
-// test_ownerships join, so a component-scoped request narrows the
-// expensive join through prow_jobs/variant combinations before it runs,
-// not just the final result set. This matters when reqOptions.IncludeAllTests
-// drops the MinimumFailure gate (see queryCombinedTestStatus): an unscoped
-// includeAllTests request is allowed to be slow, but a component- or
-// capability-scoped one should stay cheap.
+// Component filtering is NOT applied here and is instead handled at the report
+// generation level (in Go), matching BigQuery's behavior and ensuring all requested
+// environments appear in the column universe even when a component has no data there.
 func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 	var f drilldownFilters
 
@@ -92,7 +84,6 @@ func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 			f.outerClause += " AND tow.unique_id = ?"
 			f.outerArgs = append(f.outerArgs, tid.TestID)
 		}
-
 
 		if tid.Capability != "" {
 			f.innerClause += " AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE ? = ANY(capabilities))"
@@ -204,9 +195,10 @@ func buildStatusCTE(
 // threshold is left entirely to the Go-side check. The combined query's
 // IncludeAllTests mode uses this template for both sample and base sides,
 // allowing tests below MinimumFailure to be surfaced in includeAllTests listings.
-// Component and Capability filtering (via drilldownFilters) is still applied
-// regardless of which template is chosen. The first %s is an optional column
-// prefix, the second %s is the CTE name.
+// Capability filtering (via drilldownFilters) is applied at the SQL level.
+// Component filtering is NOT applied here and is instead handled at the report
+// generation level to preserve environment columns. The first %s is an optional
+// column prefix, the second %s is the CTE name.
 const testBranchTemplate = `SELECT
         %spa.unique_id AS test_id, t.name AS test_name,
         COALESCE(su.name, '') AS test_suite, pa.component, pa.capabilities,
