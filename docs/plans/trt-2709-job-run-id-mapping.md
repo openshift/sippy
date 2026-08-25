@@ -33,7 +33,7 @@ This works on the current unpartitioned table (~410K rows) but will degrade once
 ```mermaid
 flowchart TB
   subgraph phase1 [Phase 1 - This PR]
-    Migrate[DDL migration]
+    AutoMigrate[GORM AutoMigrate]
     PgWriter[pgwriter writes map rows]
     LookupUnchanged[Lookup unchanged on prow_job_runs]
     FindNew[findNewJobRunIDs unchanged]
@@ -78,8 +78,7 @@ flowchart TB
 
 | Item | File(s) | Notes |
 |------|---------|-------|
-| DDL migration | `pkg/db/migrations/000013_*` | CREATE TABLE only; backfill INSERT commented out |
-| GORM model | `pkg/db/models/prow.go` | `ProwJobRunIDMap` |
+| GORM model + AutoMigrate | `pkg/db/models/prow.go`, `pkg/db/db.go` | `ProwJobRunIDMap` registered in `UpdateSchema` |
 | pgwriter insert | `pkg/dataloader/prowloader/pgwriter/pgwriter.go` | Map rows in same txn as `prow_job_runs` |
 | Test fixture | `test/integration/util/fixtures.go` | `CreateProwJobRun` syncs map row |
 | Tests | `test/integration/pgwriter_test.go` | Verify map row created on pgwriter insert |
@@ -96,27 +95,19 @@ flowchart TB
 
 ### Phase 1 implementation details
 
-#### Migration `000013_create_prow_job_run_id_map`
+#### Schema (`ProwJobRunIDMap`)
+
+The table is created by GORM `AutoMigrate` in `UpdateSchema` (no golang-migrate file). Equivalent DDL:
 
 ```sql
-CREATE TABLE IF NOT EXISTS prow_job_run_id_map (
+CREATE TABLE prow_job_run_id_map (
     id BIGINT PRIMARY KEY,
     prow_job_release TEXT NOT NULL,
     timestamp TIMESTAMPTZ NOT NULL
 );
-
--- Backfill is intentionally NOT run here. Scanning all of prow_job_runs during
--- migrate is too slow and timing-sensitive for production deploys. Run the
--- external backfill process separately in Phase 2 (see example SQL below).
---
--- INSERT INTO prow_job_run_id_map (id, prow_job_release, timestamp)
--- SELECT id, prow_job_release, timestamp
--- FROM prow_job_runs
--- WHERE prow_job_release IS NOT NULL AND prow_job_release <> ''
--- ON CONFLICT (id) DO NOTHING;
 ```
 
-**`.down.sql`:** `DROP TABLE IF EXISTS prow_job_run_id_map;`
+Historical backfill is **not** run during schema setup. An external ops process handles backfill separately in Phase 2 (see example SQL below).
 
 #### pgwriter
 
@@ -149,6 +140,8 @@ ON CONFLICT (id) DO NOTHING;
 | pgwriter mapping row | New run via `writeBatch` creates map row |
 
 ### Phase 1 verification
+
+`prow_job_run_id_map` is created by GORM `AutoMigrate` in `UpdateSchema` (invoked by `migrate`, `serve`, and integration test setup), not by a golang-migrate SQL file.
 
 ```bash
 go run ./cmd/sippy migrate --database-dsn "$SIPPY_SEED_DATABASE_DSN"
@@ -290,7 +283,7 @@ Suboptimal after partitioning; add composite join on release + timestamp (patter
 
 Not mapping-table problems; separate phase 4b query optimization.
 
-**Phase 1 scope:** DDL + model + pgwriter + pgwriter test + docs. No lookup changes. No backfill script in repo.
+**Phase 1 scope:** GORM AutoMigrate + model + pgwriter + pgwriter test + docs. No lookup changes. No backfill script in repo.
 
 ---
 
@@ -298,7 +291,7 @@ Not mapping-table problems; separate phase 4b query optimization.
 
 - Partitioning `prow_job_runs` / annotations / PR join table (phase 4b, separate plan)
 - Golden-file validation (`docs/plans/trt-2709-golden-file-validation.md`)
-- In-migration backfill and repo-maintained backfill scripts (external ops owns backfill; example SQL in this plan only)
+- In-migrate backfill and repo-maintained backfill scripts (external ops owns backfill; example SQL in this plan only)
 - BigQuery changes (BQ uses build ID strings independently)
 - Infrafailure id-only UPDATE/SELECT, disruption API, composite JOIN hardening (phase 4b; see inventory above)
 
@@ -308,6 +301,6 @@ Not mapping-table problems; separate phase 4b query optimization.
 
 | Phase | Deliverable | When |
 |-------|-------------|------|
-| **1** | This PR: DDL + model + pgwriter + pgwriter test + docs | Now |
+| **1** | This PR: AutoMigrate + model + pgwriter + pgwriter test + docs | Now |
 | **2** | External ops backfill + verification | After Phase 1 deploy |
 | **3** | Switch lookup to map + `findNewJobRunIDs` + infrafailure/disruption fixes + composite JOIN hardening | After Phase 2 verified; with phase 4b |
