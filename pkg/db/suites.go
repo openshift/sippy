@@ -77,6 +77,7 @@ var testSuites = []string{
 	"ServiceMesh-lp-interop",
 	"OpenshiftPipelines-lp-interop",
 	"tracing-uiplugin",
+	"TLSSecurityScan",
 }
 
 // testSuitePatterns are regular expressions for suite names that should be imported
