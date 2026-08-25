@@ -29,6 +29,7 @@ func SetupIntegrationSchema(dbc *db.DB) error {
 		&models.VariantCombination{},
 		&models.ProwJob{},
 		&models.ProwJobRun{},
+		&models.ProwJobRunIDMap{},
 		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},

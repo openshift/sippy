@@ -155,6 +155,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.VariantCombination{},
 		&models.ProwJob{},
 		&models.ProwJobRun{},
+		&models.ProwJobRunIDMap{},
 		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},

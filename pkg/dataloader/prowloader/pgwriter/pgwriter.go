@@ -222,6 +222,9 @@ func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobR
 	if err := insertJobRuns(ctx, tx); err != nil {
 		return err
 	}
+	if err := insertJobRunIDMap(ctx, tx); err != nil {
+		return err
+	}
 	if err := insertAnnotations(ctx, tx, len(anns)); err != nil {
 		return err
 	}
@@ -268,6 +271,20 @@ func insertJobRuns(ctx context.Context, tx pgx.Tx) error {
 		return fmt.Errorf("inserting prow_job_runs: %w", err)
 	}
 	log.WithField("elapsed", time.Since(stepStart)).Debug("inserted prow_job_runs")
+	return nil
+}
+
+func insertJobRunIDMap(ctx context.Context, tx pgx.Tx) error {
+	stepStart := time.Now()
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO prow_job_run_id_map (id, prow_job_release, timestamp)
+		SELECT id, prow_job_release, timestamp
+		FROM tmp_prow_job_runs
+		ON CONFLICT (id) DO NOTHING
+	`); err != nil {
+		return fmt.Errorf("inserting prow_job_run_id_map: %w", err)
+	}
+	log.WithField("elapsed", time.Since(stepStart)).Debug("inserted prow_job_run_id_map")
 	return nil
 }
 

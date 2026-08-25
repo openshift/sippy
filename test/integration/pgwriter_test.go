@@ -60,6 +60,12 @@ func TestJobRunsPersisted(t *testing.T) {
 	assert.Equal(t, "S", string(run.OverallResult))
 	assert.Equal(t, 2, run.TestFailures)
 	assert.True(t, run.Succeeded)
+
+	var idMap models.ProwJobRunIDMap
+	require.NoError(t, dbc.DB.First(&idMap, 1001).Error)
+	assert.Equal(t, uint(1001), idMap.ID)
+	assert.Equal(t, "4.18", idMap.ProwJobRelease)
+	assert.True(t, ts.Equal(idMap.Timestamp))
 }
 
 func TestAnnotationsStored(t *testing.T) {
