@@ -335,6 +335,10 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 				if jnv == "osd-gcp" {
 					continue
 				}
+				// GCD (Google Dedicated Cloud) is identified as GCP, but we want to keep it in a separate bucket
+				if jnv == "gcd" {
+					continue
+				}
 				variants[k] = v
 			case VariantArch:
 				// Job name identification wins for arch, heterogenous jobs can show cluster data with
