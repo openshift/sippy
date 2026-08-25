@@ -53,13 +53,15 @@ func prepareVariantQuery(
 	}, nil
 }
 
-// drilldownFilters holds optional SQL WHERE fragments for TestID and
-// Capability filtering when drilling down to a specific test + environment.
+// drilldownFilters holds optional SQL WHERE fragments for TestID, Component,
+// and Capability filtering when drilling down to a specific test + environment.
 type drilldownFilters struct {
-	// innerClause filters on test_id via subquery (for the inner aggregation)
+	// innerClause filters on test_id and optionally component via subquery (for the inner aggregation).
+	// Component filtering here reduces join cost when drilling down to a specific component.
 	innerClause string
 	innerArgs   []any
-	// outerClause filters on tow.unique_id and tow.capabilities (for outerQuery and placeholder)
+	// outerClause filters on tow.unique_id, tow.component, and tow.capabilities (for outerQuery and placeholder).
+	// Capability filtering happens at this level to respect the top-level Capabilities array.
 	outerClause string
 	outerArgs   []any
 }
@@ -196,10 +198,15 @@ func buildStatusCTE(
 }
 
 // testBranchTemplate is the UNION ALL branch that selects all tests with runs
-// from a status CTE, regardless of failure count. Used by the standalone path,
-// which has no "other side" to cross-reference (TRT-2883), so the MinimumFailure
-// threshold is left entirely to the Go-side check. The first %s is an optional
-// column prefix, the second %s is the CTE name.
+// from a status CTE, regardless of failure count. Used by the standalone path
+// and by the combined query when IncludeAllTests=true (TRT-2923). The standalone
+// path has no "other side" to cross-reference (TRT-2883), so the MinimumFailure
+// threshold is left entirely to the Go-side check. The combined query's
+// IncludeAllTests mode uses this template for both sample and base sides,
+// allowing tests below MinimumFailure to be surfaced in includeAllTests listings.
+// Component and Capability filtering (via drilldownFilters) is still applied
+// regardless of which template is chosen. The first %s is an optional column
+// prefix, the second %s is the CTE name.
 const testBranchTemplate = `SELECT
         %spa.unique_id AS test_id, t.name AS test_name,
         COALESCE(su.name, '') AS test_suite, pa.component, pa.capabilities,
