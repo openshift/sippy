@@ -17,21 +17,28 @@ func TestFindMainComponentReportCacheKey(t *testing.T) {
 	tests := []struct {
 		name string
 		keys []string
+		want string
 	}{
 		{
 			name: "main before gcp-only",
 			keys: []string{mainKey, gcpOnlyKey},
+			want: mainKey,
 		},
 		{
 			name: "gcp-only before main",
 			keys: []string{gcpOnlyKey, mainKey},
+			want: mainKey,
+		},
+		{
+			name: "no main match",
+			keys: []string{gcpOnlyKey},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := findMainComponentReportCacheKey(test.keys, Release); got != mainKey {
-				t.Fatalf("expected main cache key %q, got %q", mainKey, got)
+			if got := findMainComponentReportCacheKey(test.keys, Release); got != test.want {
+				t.Fatalf("expected cache key %q, got %q", test.want, got)
 			}
 		})
 	}
@@ -50,5 +57,5 @@ func componentReportCacheKey(t *testing.T, columnGroupBy ...string) string {
 	if err != nil {
 		t.Fatalf("failed to marshal cache key: %v", err)
 	}
-	return "_SIPPY_cc:ComponentReport~" + string(key)
+	return "_SIPPY_cc:" + componentreadiness.ComponentReportCacheKeyPrefix + string(key)
 }

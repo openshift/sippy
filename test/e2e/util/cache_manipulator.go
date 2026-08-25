@@ -145,7 +145,7 @@ func (c *E2ECacheManipulator) AddTestRegressionsToReport(testRegressions []compo
 // GetReport retrieves the component report directly from Redis cache
 func (c *E2ECacheManipulator) GetReport() (componentreport.ComponentReport, string, error) {
 	// Find the ComponentReport cache key by scanning for keys that start with "ComponentReport~"
-	keyPattern := "_SIPPY_*ComponentReport~*"
+	keyPattern := "_SIPPY_*" + componentreadiness.ComponentReportCacheKeyPrefix + "*"
 	keys, err := c.client.Keys(keyPattern).Result()
 	if err != nil {
 		return componentreport.ComponentReport{}, "", fmt.Errorf("failed to scan for ComponentReport keys: %w", err)
@@ -187,11 +187,11 @@ func findMainComponentReportCacheKey(keys []string, release string) string {
 		jsonPart = strings.TrimPrefix(jsonPart, "cc:")
 
 		// Remove "ComponentReport~" prefix
-		if !strings.HasPrefix(jsonPart, "ComponentReport~") {
+		if !strings.HasPrefix(jsonPart, componentreadiness.ComponentReportCacheKeyPrefix) {
 			log.Warnf("Unexpected cache key format, missing ComponentReport~ prefix: %s", key)
 			continue
 		}
-		jsonPart = jsonPart[len("ComponentReport~"):]
+		jsonPart = jsonPart[len(componentreadiness.ComponentReportCacheKeyPrefix):]
 
 		gk := &componentreadiness.GeneratorCacheKey{}
 		if err := json.Unmarshal([]byte(jsonPart), gk); err != nil {
