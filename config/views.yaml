@@ -52,6 +52,7 @@ component_readiness:
       - aws
       - azure
       - gcp
+      - gcd
       - metal
       - vsphere
       Topology:
@@ -2381,6 +2382,7 @@ component_readiness:
       - aws
       - azure
       - gcp
+      - gcd
       - metal
       - vsphere
       Topology:

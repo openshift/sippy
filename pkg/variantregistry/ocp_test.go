@@ -2524,6 +2524,39 @@ func TestVariantSyncer(t *testing.T) {
 				VariantCapability:       "NoRegistryClusterInstall",
 			},
 		},
+		{
+			job: "periodic-ci-openshift-release-main-ci-5.0-e2e-gcd-ovn",
+			variantsFile: map[string]string{
+				"Platform": "gcp", // should be ignored
+			},
+			expected: map[string]string{
+				VariantRelease:          "5.0",
+				VariantReleaseMajor:     "5",
+				VariantReleaseMinor:     "0",
+				VariantArch:             "amd64",
+				VariantInstaller:        "ipi",
+				VariantPlatform:         "gcd",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng",
+				VariantTopology:         "ha",
+				VariantSuite:            "unknown",
+				VariantUpgrade:          VariantNoValue,
+				VariantProcedure:        VariantNoValue,
+				VariantJobTier:          "standard",
+				VariantAggregation:      VariantNoValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantFeatureSet:       VariantDefaultValue,
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+				VariantOS:               "rhcos10",
+				VariantComponent:        "Installer",
+				VariantCapability:       "GCPSovereignCloudInstall",
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {

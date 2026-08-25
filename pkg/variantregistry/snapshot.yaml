@@ -273985,7 +273985,7 @@ periodic-ci-openshift-release-main-ci-5.1-e2e-gcd-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -274011,7 +274011,7 @@ periodic-ci-openshift-release-main-ci-5.1-e2e-gcd-ovn-techpreview:
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
