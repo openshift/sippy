@@ -46,6 +46,36 @@
 		s8.094-2.481,10.902,0.732c3.429,3.924,8.572,6.175,14.109,6.175s10.679-2.251,14.109-6.175c2.808-3.213,7.689-3.541,10.902-0.732
 		c3.213,2.808,3.541,7.689,0.732,10.902C275.379,372.805,265.995,376.982,255.999,376.982z"/>
 </g>
+<g id="silly-hat" stroke="#38484A" stroke-linejoin="round">
+	<ellipse cx="255.999" cy="151" rx="170" ry="29" style="fill:#56348C;stroke-width:8;"/>
+	<ellipse cx="255.999" cy="143" rx="154" ry="20" style="fill:#8E5AC7;stroke-width:6;"/>
+	<path style="fill:#7543A8;stroke-width:8;" d="M145,127c18-31,28-65,25-101c47,11,115,7,158-8
+		c-2,36,16,76,39,109C306,146,205,146,145,127z"/>
+	<path style="fill:#FF5D73;stroke-width:4;" d="M157,99c29,10,55,13,82,12l-2,30c-30,0-60-5-89-15L157,99z"/>
+	<path style="fill:#FFB641;stroke-width:4;" d="M239,111c26,0,50-3,73-8l7,29c-27,6-55,9-82,9L239,111z"/>
+	<path style="fill:#5ED6C0;stroke-width:4;" d="M312,103c17-4,33-10,48-17l13,28c-17,8-35,14-54,18L312,103z"/>
+	<path d="M249,32L247,15" style="fill:none;stroke-width:7;stroke-linecap:round;"/>
+	<ellipse cx="212" cy="15" rx="38" ry="9" transform="rotate(-8 212 15)" style="fill:#FC7176;stroke-width:6;"/>
+	<ellipse cx="282" cy="15" rx="38" ry="9" transform="rotate(8 282 15)" style="fill:#80C9FF;stroke-width:6;"/>
+	<circle cx="247" cy="15" r="10" style="fill:#FFB641;stroke-width:5;"/>
+	<circle cx="220" cy="69" r="18" style="fill:#FFFFFF;stroke-width:5;"/>
+	<circle cx="286" cy="69" r="18" style="fill:#FFFFFF;stroke-width:5;"/>
+	<circle cx="226" cy="74" r="7" style="fill:#38484A;stroke:none;"/>
+	<circle cx="280" cy="65" r="7" style="fill:#38484A;stroke:none;"/>
+	<path d="M253,88c-13-13-33-5-35,8c11-8,25-3,35,7c10-10,24-15,35-7
+		C286,83,266,75,253,88z" style="fill:#38484A;stroke:none;"/>
+	<path d="M190,44l5,10l11,1l-8,8l2,11l-10-5l-10,5l2-11l-8-8l11-1L190,44z"
+		style="fill:#FFF176;stroke-width:3;"/>
+	<path d="M316,43l4,8l9,1l-7,6l2,9l-8-4l-8,4l2-9l-7-6l9-1L316,43z"
+		style="fill:#FF8AD8;stroke-width:3;"/>
+	<g id="hat-duck">
+		<ellipse cx="365" cy="117" rx="27" ry="18" style="fill:#FFF176;stroke-width:5;"/>
+		<circle cx="382" cy="97" r="15" style="fill:#FFF176;stroke-width:5;"/>
+		<path d="M394,98l19,7l-19,7z" style="fill:#FF8A3D;stroke-width:4;"/>
+		<circle cx="387" cy="93" r="3.5" style="fill:#38484A;stroke:none;"/>
+		<path d="M347,114c8-9,17-9,25,0" style="fill:none;stroke-width:4;stroke-linecap:round;"/>
+	</g>
+</g>
 <g>
 </g>
 <g>
