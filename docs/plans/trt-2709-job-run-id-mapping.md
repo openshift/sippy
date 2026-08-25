@@ -24,11 +24,11 @@ This works on the current unpartitioned table (~410K rows) but will degrade once
 
 **Callers (5 production paths, no API signature changes needed):**
 
-- `pkg/api/job_runs.go` — `FetchJobRun`
+- `pkg/api/job_runs.go` (`FetchJobRun`)
 - `pkg/api/jobartifacts/query.go`
 - `pkg/api/jobrunscan/reevaluate.go`
 - `pkg/db/infrafailure/infrafailure.go`
-- `pkg/flags/postgres_benchmarking_test.go` — validation harness
+- `pkg/flags/postgres_benchmarking_test.go` (validation harness)
 
 ```mermaid
 flowchart TB
@@ -63,10 +63,10 @@ flowchart TB
 
 **Properties:**
 
-- **Not partitioned** — single PK index lookup by `id`
-- **Tiny rows** — ~24 bytes each
-- **No FK to `prow_job_runs`** — application-level integrity (same pattern as phase 4a child tables)
-- **Immutable after insert** — release and timestamp for a build ID never change
+- **Not partitioned**: single PK index lookup by `id`
+- **Tiny rows**: ~24 bytes each
+- **No FK to `prow_job_runs`** (application-level integrity, same pattern as phase 4a child tables)
+- **Immutable after insert**: release and timestamp for a build ID never change
 
 ---
 
@@ -250,7 +250,7 @@ LEFT JOIN prow_job_runs r ON r.id = t.id WHERE r.id IS NULL
 LEFT JOIN prow_job_run_id_map m ON m.id = t.id WHERE m.id IS NULL
 ```
 
-Can ship with phase 4b `prow_job_runs` partitioning PR. **Only safe after backfill verified** — map-only before backfill would re-process historical runs.
+Can ship with phase 4b `prow_job_runs` partitioning PR. **Only safe after backfill verified**; map-only before backfill would re-process historical runs.
 
 ### Phase 3 also documents
 
@@ -273,14 +273,14 @@ The problem class is **point lookups or writes keyed only by build ID**:
 | `pkg/api/jobrunscan/reevaluate.go` | same |
 | `pkg/db/infrafailure/infrafailure.go` `subtractFromSummaries` | lookup → child table scan with partition keys |
 
-### ID-only — Phase 3 (after backfill)
+### ID-only: Phase 3 (after backfill)
 
 | Location | Query | Phase |
 |----------|-------|-------|
 | `pkg/db/query/job_queries.go` | `LookupProwJobRunPartitionKeys` | Phase 3 (map only, no fallback) |
 | `pkg/dataloader/prowloader/prow.go` `findNewJobRunIDs` | `LEFT JOIN prow_job_runs r ON r.id = t.id` | Phase 3 (after backfill) |
 
-### ID-only — NOT in Phase 1; phase 4b follow-up
+### ID-only: NOT in Phase 1; phase 4b follow-up
 
 | Location | Query | Fix |
 |----------|-------|-----|
