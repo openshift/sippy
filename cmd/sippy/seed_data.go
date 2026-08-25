@@ -1595,10 +1595,10 @@ func seedRegressionJobRuns(dbc *db.DB) error {
 		}
 
 		type failedRunInfo struct {
-			ProwJobRunID uint      `gorm:"column:prow_job_run_id"`
-			ProwJobName  string    `gorm:"column:prow_job_name"`
-			Timestamp    time.Time `gorm:"column:timestamp"`
-			Labels       pq.StringArray
+			ProwJobRunID uint           `gorm:"column:prow_job_run_id"`
+			ProwJobName  string         `gorm:"column:prow_job_name"`
+			Timestamp    time.Time      `gorm:"column:timestamp"`
+			Labels       pq.StringArray `gorm:"column:labels;type:text[]"`
 		}
 		var failedRuns []failedRunInfo
 		if err := dbc.DB.Raw(`
