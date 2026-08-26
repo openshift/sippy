@@ -38,7 +38,7 @@ import (
 
 const (
 	reEvalSourceTool = "sippy-api-reevaluate"
-	maxJobRunsPerReq = 50
+	maxJobRunsPerReq = 10000
 )
 
 // ReEvalStatus indicates the outcome of re-evaluating symptoms for a single job run.
@@ -110,12 +110,11 @@ type ReEvaluator struct {
 	db          *db.DB
 	cache       cache.Cache
 	artifactMgr *jobartifacts.Manager
-	dryRun      bool
 	symptoms    symptomCache
 }
 
 // NewReEvaluator creates a ReEvaluator with the given clients.
-func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBucket string, dbc *db.DB, cacheClient cache.Cache, artifactMgr *jobartifacts.Manager, dryRun bool) *ReEvaluator {
+func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBucket string, dbc *db.DB, cacheClient cache.Cache, artifactMgr *jobartifacts.Manager) *ReEvaluator {
 	return &ReEvaluator{
 		bqClient:    bqClient,
 		gcsClient:   gcsClient,
@@ -123,7 +122,6 @@ func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBuc
 		db:          dbc,
 		cache:       cacheClient,
 		artifactMgr: artifactMgr,
-		dryRun:      dryRun,
 	}
 }
 
@@ -135,7 +133,7 @@ type symptomMatch struct {
 }
 
 // ReEvaluateJobRuns re-evaluates all symptom matches for the specified job runs.
-func (r *ReEvaluator) ReEvaluateJobRuns(ctx context.Context, prowJobBuildIDs []string) ([]ReEvaluationResult, error) {
+func (r *ReEvaluator) ReEvaluateJobRuns(ctx context.Context, prowJobBuildIDs []string, dryRun bool) ([]ReEvaluationResult, error) {
 	symptoms, err := r.loadActiveSymptoms()
 	if err != nil {
 		return nil, fmt.Errorf("loading symptoms: %w", err)
@@ -144,7 +142,7 @@ func (r *ReEvaluator) ReEvaluateJobRuns(ctx context.Context, prowJobBuildIDs []s
 
 	results := make([]ReEvaluationResult, 0, len(prowJobBuildIDs))
 	for _, buildID := range prowJobBuildIDs {
-		result := r.reEvaluateOne(ctx, buildID, symptoms)
+		result := r.reEvaluateOne(ctx, buildID, symptoms, dryRun)
 		results = append(results, result)
 	}
 	return results, nil
@@ -185,7 +183,7 @@ func (r *ReEvaluator) RefreshSymptomCache() (string, error) {
 
 // ReEvaluateOneFromCache re-evaluates a single job run using cached symptoms.
 // Returns an error if evaluation fails, which triggers River's retry logic.
-func (r *ReEvaluator) ReEvaluateOneFromCache(ctx context.Context, prowJobBuildID string) error {
+func (r *ReEvaluator) ReEvaluateOneFromCache(ctx context.Context, prowJobBuildID string, dryRun bool) error {
 	r.symptoms.mu.RLock()
 	symptoms := r.symptoms.symptoms
 	r.symptoms.mu.RUnlock()
@@ -194,7 +192,7 @@ func (r *ReEvaluator) ReEvaluateOneFromCache(ctx context.Context, prowJobBuildID
 		return fmt.Errorf("symptom cache is empty; RefreshSymptomCache must be called first")
 	}
 
-	result := r.reEvaluateOne(ctx, prowJobBuildID, symptoms)
+	result := r.reEvaluateOne(ctx, prowJobBuildID, symptoms, dryRun)
 	if result.Status != ReEvalSuccess {
 		return fmt.Errorf("re-evaluation of %s failed (%s): %s", prowJobBuildID, result.Status, result.Error)
 	}
@@ -242,7 +240,7 @@ func filterRelevantSymptoms(symptoms []jobrunscan.Symptom) []jobrunscan.Symptom 
 }
 
 // reEvaluateOne processes a single job run through all symptoms.
-func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptoms []jobrunscan.Symptom) ReEvaluationResult {
+func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptoms []jobrunscan.Symptom, dryRun bool) ReEvaluationResult {
 	result := ReEvaluationResult{
 		ProwJobBuildID:    buildID,
 		SymptomsEvaluated: len(symptoms),
@@ -298,7 +296,7 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	}
 	result.LabelsApplied = uniqueLabels(bqLabels)
 
-	if r.dryRun {
+	if dryRun {
 		log.WithFields(log.Fields{
 			"buildID":      buildID,
 			"matched":      len(result.SymptomsMatched),
@@ -735,18 +733,22 @@ func uniqueLabels(labels []models.JobRunLabel) []string {
 	return s.UnsortedList()
 }
 
-// ValidateReEvalRequest validates the re-evaluation request parameters.
-func ValidateReEvalRequest(prowJobBuildIDs []string) error {
+// ValidateReEvalRequest validates and deduplicates the re-evaluation request
+// parameters, returning the deduplicated list or an error.
+func ValidateReEvalRequest(prowJobBuildIDs []string) ([]string, error) {
 	if len(prowJobBuildIDs) == 0 {
-		return fmt.Errorf("prow_job_build_ids is required")
+		return nil, fmt.Errorf("prow_job_build_ids is required")
 	}
-	if len(prowJobBuildIDs) > maxJobRunsPerReq {
-		return fmt.Errorf("maximum %d job runs per request", maxJobRunsPerReq)
+
+	deduped := sets.New[string](prowJobBuildIDs...).UnsortedList()
+
+	if len(deduped) > maxJobRunsPerReq {
+		return nil, fmt.Errorf("maximum %d job runs per request (after dedup: %d)", maxJobRunsPerReq, len(deduped))
 	}
-	for _, id := range prowJobBuildIDs {
+	for _, id := range deduped {
 		if _, err := strconv.ParseInt(id, 10, 64); err != nil {
-			return fmt.Errorf("invalid prow_job_build_id %q: must be a numeric string", id)
+			return nil, fmt.Errorf("invalid prow_job_build_id %q: must be a numeric string", id)
 		}
 	}
-	return nil
+	return deduped, nil
 }

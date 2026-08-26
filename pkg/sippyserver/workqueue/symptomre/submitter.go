@@ -42,11 +42,12 @@ func NewSubmitter(gormDB *gorm.DB, riverClient *river.Client[pgx.Tx]) *Submitter
 // River job is inserted via the River client (pgx/v5). These are separate
 // transactions: if the GORM write succeeds but the River insert fails, the
 // batch remains in "pending" status until resubmitted or cleaned up.
-func (s *Submitter) Submit(ctx context.Context, prowJobBuildIDs []string) (*SubmitResult, error) {
+func (s *Submitter) Submit(ctx context.Context, prowJobBuildIDs []string, dryRun bool) (*SubmitResult, error) {
 	batchID := uuid.New()
 	batch := Batch{
 		ID:             batchID,
 		RequestedCount: len(prowJobBuildIDs),
+		DryRun:         dryRun,
 		Status:         workqueue.BatchStatusPending,
 	}
 

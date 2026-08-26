@@ -3,6 +3,7 @@ CREATE TABLE workqueue_symptom_re_batches (
     requested_count INT NOT NULL,
     enqueued_count  INT NOT NULL DEFAULT 0,
     deduped_count   INT NOT NULL DEFAULT 0,
+    dry_run         BOOLEAN NOT NULL DEFAULT FALSE,
     status          TEXT NOT NULL DEFAULT 'pending',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     completed_at    TIMESTAMPTZ

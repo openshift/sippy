@@ -56,6 +56,7 @@ func (ProcessBatchArgs) InsertOpts() river.InsertOpts {
 type ReevaluateJobRunArgs struct {
 	ProwJobBuildID string `json:"prow_job_build_id" river:"unique"`
 	SymptomHash    string `json:"symptom_hash"      river:"unique"`
+	DryRun         bool   `json:"dry_run"           river:"unique"`
 }
 
 // Kind returns the River job kind identifier.

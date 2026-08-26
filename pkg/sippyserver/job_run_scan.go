@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/openshift/sippy/pkg/api"
 	apijobrunscan "github.com/openshift/sippy/pkg/api/jobrunscan"
@@ -171,7 +172,7 @@ func (s *Server) jsonDeleteSymptom(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Job run symptom re-evaluation handler
+// Job run symptom re-evaluation handlers
 
 func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.Request) {
 	log.WithField("user", getUserForRequest(req)).Info("symptom re-evaluation POST")
@@ -188,23 +189,54 @@ func (s *Server) jsonReEvaluateJobRunSymptoms(w http.ResponseWriter, req *http.R
 		return
 	}
 
-	if err := apijobrunscan.ValidateReEvalRequest(body.ProwJobBuildIDs); err != nil {
+	deduped, err := apijobrunscan.ValidateReEvalRequest(body.ProwJobBuildIDs)
+	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if s.bigQueryClient == nil || s.gcsClient == nil || s.gcsBucket == "" {
-		failureResponse(w, http.StatusServiceUnavailable, "symptom re-evaluation requires BigQuery and GCS configuration")
+	if s.symptomReSubmitter == nil {
+		failureResponse(w, http.StatusServiceUnavailable, "async symptom re-evaluation is not configured")
 		return
 	}
 
-	re := apijobrunscan.NewReEvaluator(s.bigQueryClient, s.gcsClient, s.gcsBucket, s.db, s.cache, s.jobartifactsManager, body.DryRun)
-	results, err := re.ReEvaluateJobRuns(req.Context(), body.ProwJobBuildIDs)
+	result, err := s.symptomReSubmitter.Submit(req.Context(), deduped, body.DryRun)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, "submitting re-evaluation batch: "+err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusAccepted, w, map[string]interface{}{
+		"batch_id":  result.BatchID,
+		"requested": result.Requested,
+		"links": map[string]string{
+			"status": api.GetBaseURL(req) + req.URL.Path + "/" + result.BatchID.String(),
+		},
+	})
+}
+
+func (s *Server) jsonGetReEvaluateBatchStatus(w http.ResponseWriter, req *http.Request) {
+	batchIDStr := mux.Vars(req)["batch_id"]
+	batchID, err := uuid.Parse(batchIDStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid batch_id: "+err.Error())
+		return
+	}
+
+	if s.symptomReStatusQuerier == nil {
+		failureResponse(w, http.StatusServiceUnavailable, "batch status query is not configured")
+		return
+	}
+
+	resp, err := s.symptomReStatusQuerier.Query(batchID)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	resp := apijobrunscan.ReEvaluationResponse{Results: results}
-	apijobrunscan.InjectReEvalHATEOASLinks(&resp, api.GetBaseURL(req))
+	if resp == nil {
+		failureResponse(w, http.StatusNotFound, "batch not found")
+		return
+	}
+
 	api.RespondWithJSON(http.StatusOK, w, resp)
 }

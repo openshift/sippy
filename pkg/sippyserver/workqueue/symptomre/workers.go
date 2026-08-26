@@ -64,7 +64,7 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 		return fmt.Errorf("updating batch %s to processing: %w", batchID, err)
 	}
 
-	enqueued, deduped, err := w.fanOutItems(ctx, batchID, items)
+	enqueued, deduped, err := w.fanOutItems(ctx, batchID, items, batch.DryRun)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 // fanOutItems refreshes the symptom cache, inserts individual River jobs for
 // each batch item, and links the resulting River job IDs back to the items.
 // Returns the count of newly enqueued and deduplicated jobs.
-func (w *ProcessBatchWorker) fanOutItems(ctx context.Context, batchID uuid.UUID, items []BatchItem) (enqueued, deduped int, err error) {
+func (w *ProcessBatchWorker) fanOutItems(ctx context.Context, batchID uuid.UUID, items []BatchItem, dryRun bool) (enqueued, deduped int, err error) {
 	symptomHash, err := w.reEvaluator.RefreshSymptomCache()
 	if err != nil {
 		return 0, 0, fmt.Errorf("refreshing symptom cache for batch %s: %w", batchID, err)
@@ -96,6 +96,7 @@ func (w *ProcessBatchWorker) fanOutItems(ctx context.Context, batchID uuid.UUID,
 			Args: ReevaluateJobRunArgs{
 				ProwJobBuildID: item.ItemKey,
 				SymptomHash:    symptomHash,
+				DryRun:         dryRun,
 			},
 		}
 	}
@@ -150,5 +151,5 @@ func NewReevaluateWorker(reEvaluator *jobrunscan.ReEvaluator) *ReevaluateWorker 
 // Work re-evaluates symptoms for a single job run. Errors trigger River's
 // retry logic (up to MaxAttemptsPerItem attempts with exponential backoff).
 func (w *ReevaluateWorker) Work(ctx context.Context, job *river.Job[ReevaluateJobRunArgs]) error {
-	return w.reEvaluator.ReEvaluateOneFromCache(ctx, job.Args.ProwJobBuildID)
+	return w.reEvaluator.ReEvaluateOneFromCache(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
 }

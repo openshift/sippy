@@ -68,14 +68,14 @@ func functionalTestReEvaluator(t *testing.T) *ReEvaluator {
 	}
 	dbc := &db.DB{DB: gormDB}
 
-	return NewReEvaluator(bqC, gcsC, gcsBucket, dbc, nil, jobartifacts.NewManager(ctx), false)
+	return NewReEvaluator(bqC, gcsC, gcsBucket, dbc, nil, jobartifacts.NewManager(ctx))
 }
 
 func TestReEvaluateEndToEnd(t *testing.T) {
 	re := functionalTestReEvaluator(t)
 	buildID := os.Getenv("PROW_JOB_BUILD_ID")
 
-	results, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID})
+	results, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("re-evaluation failed: %v", err)
 	}
@@ -98,11 +98,11 @@ func TestReEvaluateIdempotent(t *testing.T) {
 	buildID := os.Getenv("PROW_JOB_BUILD_ID")
 
 	// Run twice
-	results1, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID})
+	results1, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("first re-evaluation failed: %v", err)
 	}
-	results2, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID})
+	results2, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("second re-evaluation failed: %v", err)
 	}

@@ -186,7 +186,7 @@ func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, big
 	artifactMgr := jobartifacts.NewManager(ctx)
 	reEvaluator := jobrunscan.NewReEvaluator(
 		bigQueryClient, gcsClient, f.GoogleCloudFlags.StorageBucket,
-		dbc, cacheClient, artifactMgr, false,
+		dbc, cacheClient, artifactMgr,
 	)
 
 	workers := river.NewWorkers()

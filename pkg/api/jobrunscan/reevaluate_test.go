@@ -20,6 +20,7 @@ func TestValidateReEvalRequest(t *testing.T) {
 		ids     []string
 		wantErr bool
 		errMsg  string
+		wantIDs int // expected count of deduplicated IDs (0 means skip check)
 	}{
 		{
 			name:    "empty IDs",
@@ -51,20 +52,26 @@ func TestValidateReEvalRequest(t *testing.T) {
 		},
 		{
 			name:    "exceeds max batch size",
-			ids:     makeIDs(51),
+			ids:     makeIDs(10001),
 			wantErr: true,
-			errMsg:  "maximum 50 job runs per request",
+			errMsg:  "maximum 10000 job runs per request",
 		},
 		{
 			name:    "at max batch size",
-			ids:     makeIDs(50),
+			ids:     makeIDs(10000),
 			wantErr: false,
+		},
+		{
+			name:    "duplicates are deduplicated",
+			ids:     []string{"111", "222", "111", "333", "222"},
+			wantErr: false,
+			wantIDs: 3,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateReEvalRequest(tt.ids)
+			deduped, err := ValidateReEvalRequest(tt.ids)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateReEvalRequest() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -72,6 +79,9 @@ func TestValidateReEvalRequest(t *testing.T) {
 				if got := err.Error(); !strings.Contains(got, tt.errMsg) {
 					t.Errorf("error %q does not contain %q", got, tt.errMsg)
 				}
+			}
+			if tt.wantIDs > 0 && len(deduped) != tt.wantIDs {
+				t.Errorf("ValidateReEvalRequest() returned %d IDs, want %d", len(deduped), tt.wantIDs)
 			}
 		})
 	}

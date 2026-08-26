@@ -19,6 +19,7 @@ type Batch struct {
 	RequestedCount int                   `gorm:"not null"                      json:"requested_count"`
 	EnqueuedCount  int                   `gorm:"not null"                      json:"enqueued_count"`
 	DedupedCount   int                   `gorm:"not null"                      json:"deduped_count"`
+	DryRun         bool                  `gorm:"not null;default:false"        json:"dry_run"`
 	Status         workqueue.BatchStatus `gorm:"not null;default:'pending'"    json:"status"`
 	CreatedAt      time.Time             `gorm:"autoCreateTime"                json:"created_at"`
 	CompletedAt    *time.Time            `                                     json:"completed_at,omitempty"`
