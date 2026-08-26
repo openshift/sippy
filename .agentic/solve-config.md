@@ -1,3 +1,34 @@
+## Write Tests for New Code
+
+You MUST write tests for any new functionality you introduce. PRs that add new
+code without corresponding tests are incomplete.
+
+### Go (backend)
+
+- Write unit tests for every new exported function or method.
+- Write unit tests for non-trivial unexported functions (validation, data
+  transformation, aggregation logic).
+- Use **table-driven tests** with descriptive case names. Search the same
+  package for existing test patterns before writing new ones.
+- Do **not** mock storage clients (BigQuery, GCS, Postgres). Instead, separate
+  pure logic from client calls and test the logic directly.
+- When a struct method needs a single narrow query or RPC for testability,
+  extract it behind a **function-type field** on the struct (see
+  `regressiontracker.go` for the pattern).
+- Place test files next to the code they test (`foo_test.go` alongside `foo.go`).
+
+### React (frontend)
+
+The frontend testing framework is not yet mature enough to require tests for
+all new components. Testing of utility functions and shared hooks is
+recommended. Follow existing Vitest patterns in `sippy-ng/` when adding tests.
+
+### API endpoints
+
+- New or modified API endpoints must have tests that verify request handling,
+  response structure, and error cases. These belong in the **e2e testing suite**
+  (run via `run_e2e` MCP tool or `make e2e`).
+
 ## Build, Test, and Verify
 
 1. Run `make test` to verify your changes work.
