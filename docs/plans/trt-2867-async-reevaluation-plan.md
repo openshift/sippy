@@ -386,11 +386,8 @@ Modify the handler for `POST /api/jobs/runs/reevaluate` in `pkg/sippyserver/job_
 - Validate the request body (same fields as today: `prow_job_build_ids` and `dry_run`).
 - Validate that build ids are integers (error 400 if not), and deduplicate them.
 - Enforce a maximum of 10,000 job runs per request.
-- If `dry_run: true`, process synchronously using the existing `ReEvaluator` and return
-  results immediately with `200 OK` (preserving current behavior).
-- If `dry_run: false` (or omitted), use the `symptomre.Submitter` to create a batch
-  specification (batch row, batch item rows, and a `ProcessBatchArgs` River job), then
-  return `202 Accepted` with the batch ID and requested count.
+- Use the `symptomre.Submitter` to create a batch specification (batch row, batch item rows, and a
+  `ProcessBatchArgs` River job), then return `202 Accepted` with the batch ID and requested count.
 
 The API does **not** refresh the symptom cache or create individual re-evaluation River jobs.
 Those operations happen in the daemon when the `ProcessBatchWorker` picks up the
@@ -461,9 +458,6 @@ Response (`200 OK`):
 Batch status progresses through: `pending` (created by API, not yet picked up by daemon),
 `processing` (daemon is refreshing symptom cache and creating individual jobs), `running`
 (individual jobs are executing), `complete` or `failed` (all items terminal).
-
-When `dry_run: true`, the existing synchronous behavior is preserved; results are returned
-immediately with a `200 OK` response. This keeps the dry-run path simple and useful for testing.
 
 ## Step 6: Wire Up the API Server
 
