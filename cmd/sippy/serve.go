@@ -26,6 +26,8 @@ import (
 	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue/symptomre"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 )
@@ -196,6 +198,23 @@ func NewServeCommand() *cobra.Command {
 				f.APIFlags.ChatAPIURL,
 				jiraClient,
 			)
+
+			// Wire up async symptom re-evaluation (insert-only River client).
+			pgxPool, err := workqueue.NewPgxV5Pool(context.Background(), f.DBFlags.DSN)
+			if err != nil {
+				log.WithError(err).Warn("unable to create pgx/v5 pool for River, async re-evaluation will be unavailable")
+			} else {
+				riverClient, err := workqueue.NewInsertOnlyClient(pgxPool)
+				if err != nil {
+					log.WithError(err).Warn("unable to create insert-only River client, async re-evaluation will be unavailable")
+					pgxPool.Close()
+				} else {
+					server.SetSymptomReEvaluation(
+						symptomre.NewSubmitter(dbc.DB, riverClient),
+						symptomre.NewStatusQuerier(dbc.DB),
+					)
+				}
+			}
 
 			if f.APIFlags.MetricsAddr != "" {
 				// Do an immediate metrics update
