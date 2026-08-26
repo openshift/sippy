@@ -1,3 +1,10 @@
+## Write Tests for New Code
+
+If your follow-up changes introduce new functions, components, or endpoints,
+write tests for them. See `.agentic/solve-config.md` for the full testing
+requirements (table-driven Go tests, no storage client mocks, function-type
+seams for narrow dependencies, Vitest for React).
+
 ## Verify and Push
 
 1. Run `make test` and `make lint`.
