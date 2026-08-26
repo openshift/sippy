@@ -95,6 +95,11 @@ func CreateProwJobRun(t *testing.T, dbc *db.DB, prowJobID uint, release string, 
 		opt(&run)
 	}
 	require.NoError(t, dbc.DB.Create(&run).Error, "creating ProwJobRun")
+	require.NoError(t, dbc.DB.Create(&models.ProwJobRunIDMap{
+		ID:             run.ID,
+		ProwJobRelease: run.ProwJobRelease,
+		Timestamp:      run.Timestamp,
+	}).Error, "creating ProwJobRunIDMap for run %d", run.ID)
 	return run
 }
 

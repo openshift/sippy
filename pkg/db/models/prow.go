@@ -45,6 +45,18 @@ type IDName struct {
 	Name string `gorm:"unique"`
 }
 
+// ProwJobRunIDMap maps a Prow build ID to the partition keys for prow_job_runs.
+// Populated on ingest via pgwriter; used for partition-pruned lookups after
+// prow_job_runs is partitioned (see docs/plans/trt-2709-job-run-id-mapping.md).
+type ProwJobRunIDMap struct {
+	ID             uint      `gorm:"primaryKey"`
+	ProwJobRelease string    `gorm:"not null"`
+	Timestamp      time.Time `gorm:"not null"`
+}
+
+// TableName overrides GORM's default pluralization, which would use prow_job_run_id_maps.
+func (ProwJobRunIDMap) TableName() string { return "prow_job_run_id_map" }
+
 type ProwJobRun struct {
 	gorm.Model
 
