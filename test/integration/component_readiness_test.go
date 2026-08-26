@@ -512,6 +512,38 @@ func TestQueryTestStatus_SampleResults(t *testing.T) {
 		}
 	})
 
+	t.Run("Component drill-down", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+		seed := seedCRData(t, dbc)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.TestIDOptions = []reqopts.TestIdentification{{
+			Component: "Storage",
+		}}
+		includeVariants := map[string][]string{
+			"Platform": {"aws", "gcp"},
+			"Network":  {"ovn", "sdn"},
+		}
+
+		opts.VariantOption.IncludeVariants = includeVariants
+		_, result, errs := provider.QueryTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+
+		// Query returns all tests (Storage and Networking).
+		// Component filtering happens at the report generation level.
+		// Verify Storage tests are present.
+		storageFound := false
+		for _, ts := range result {
+			if ts.TestID == seed.tow1.UniqueID && ts.Component == "Storage" {
+				storageFound = true
+				break
+			}
+		}
+		assert.True(t, storageFound, "Storage test should be in query results")
+	})
+
 	t.Run("Capability drill-down", func(t *testing.T) {
 		dbc := crTestDB(t)
 		release := "4.16"
@@ -1172,8 +1204,10 @@ func TestQueryTestStatus_DifferentBaseAndSampleReleases(t *testing.T) {
 // TestQueryTestStatus_BelowThresholdBothSides confirms that when a test's failure count is
 // below MinimumFailure on both the sample and base side, belowThresholdRescueBranchTemplate's
 // LEFT JOIN finds a matching row on the other side but it's also below threshold (not NULL,
-// not >= threshold), so neither side's rescue condition is met and the test is cleanly
-// excluded from both result maps.
+// not >= threshold), so neither side's rescue condition is met and the test is excluded from
+// both result maps by default. With IncludeAllTests set (TRT-2923), the query instead uses the
+// unconditional testBranchTemplate for both sides, so the same test is surfaced with its real
+// counts — matching BigQuery, which has no SQL-level MinimumFailure gate at all.
 func TestQueryTestStatus_BelowThresholdBothSides(t *testing.T) {
 	dbc := crTestDB(t)
 	release := "4.16"
@@ -1217,6 +1251,21 @@ func TestQueryTestStatus_BelowThresholdBothSides(t *testing.T) {
 	assert.False(t, inSample, "test below MinimumFailure on both sides should not appear in sample results")
 	_, inBase := baseStatus[key.Encode()]
 	assert.False(t, inBase, "test below MinimumFailure on both sides should not appear in base results")
+
+	// With IncludeAllTests set, the same test should now be surfaced with its real counts.
+	opts.IncludeAllTests = true
+	baseStatusAll, sampleStatusAll, errs := provider.QueryTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+
+	sampleTS, inSampleAll := sampleStatusAll[key.Encode()]
+	require.True(t, inSampleAll, "IncludeAllTests should surface a test below MinimumFailure on both sides in sample results")
+	assert.Equal(t, 100, sampleTS.TotalCount)
+	assert.Equal(t, 98, sampleTS.SuccessCount)
+
+	baseTS, inBaseAll := baseStatusAll[key.Encode()]
+	require.True(t, inBaseAll, "IncludeAllTests should surface a test below MinimumFailure on both sides in base results")
+	assert.Equal(t, 100, baseTS.TotalCount)
+	assert.Equal(t, 99, baseTS.SuccessCount)
 }
 
 // TestQueryTestStatus_OneSidedBelowThreshold confirms the PG/BigQuery parity fix: a test that
@@ -1283,6 +1332,74 @@ func TestQueryTestStatus_OneSidedBelowThreshold(t *testing.T) {
 	assert.Equal(t, 99, baseOnlyTS.SuccessCount)
 	_, inSample := sampleStatus[baseOnlyKey.Encode()]
 	assert.False(t, inSample, "base-only test should not appear in sample results")
+}
+
+// TestQueryTestStatus_IncludeAllTestsComponentScoped confirms that IncludeAllTests composes
+// with a Component drill-down (TRT-2923): a both-sides-below-threshold test in the requested
+// component is surfaced. The query returns both components (component filtering happens at
+// the report generation level), but only the requested component's test will appear in the
+// final report, proving component scoping is still respected despite the SQL returning all data.
+func TestQueryTestStatus_IncludeAllTestsComponentScoped(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-e2e-aws-scoped", release, vc)
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-scoped")
+
+	storageTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] both below threshold storage test")
+	storageTow := createTestOwnership(t, dbc, storageTest.ID, &suite.ID, "openshift-tests:both-below-storage", "Storage", []string{"PVC"})
+
+	networkingTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] both below threshold networking test")
+	networkingTow := createTestOwnership(t, dbc, networkingTest.ID, &suite.ID, "openshift-tests:both-below-networking", "Networking", []string{"Services"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	for _, testID := range []uint{storageTest.ID, networkingTest.ID} {
+		// base: 100 runs/99 success -> 1 failure < MinimumFailure=3
+		createCumulativeSummary(t, dbc, baseLookupStart, release, testID, job.ID, suite.ID, 0, 0, 0)
+		createCumulativeSummary(t, dbc, baseLookupEnd, release, testID, job.ID, suite.ID, 100, 99, 0)
+		// sample: 100 runs/98 success -> 2 failures < MinimumFailure=3
+		createCumulativeSummary(t, dbc, sampleLookupStart, release, testID, job.ID, suite.ID, 100, 99, 0)
+		createCumulativeSummary(t, dbc, sampleLookupEnd, release, testID, job.ID, suite.ID, 200, 197, 0)
+	}
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := defaultReqOptions(release)
+	opts.AdvancedOption.MinimumFailure = 3
+	opts.IncludeAllTests = true
+	opts.TestIDOptions = []reqopts.TestIdentification{{Component: "Storage"}}
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+
+	baseStatus, sampleStatus, errs := provider.QueryTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+
+	storageKey := crtest.KeyWithVariants{
+		TestID:   storageTow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	_, inSample := sampleStatus[storageKey.Encode()]
+	assert.True(t, inSample, "Storage test below MinimumFailure with IncludeAllTests should be surfaced")
+	_, inBase := baseStatus[storageKey.Encode()]
+	assert.True(t, inBase, "Storage test below MinimumFailure with IncludeAllTests should be surfaced")
+
+	// With the component filter removed from the query level, both Storage and Networking tests
+	// are returned by QueryTestStatus. The component filtering happens at the report generation level.
+	networkingKey := crtest.KeyWithVariants{
+		TestID:   networkingTow.UniqueID,
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	_, inSampleOther := sampleStatus[networkingKey.Encode()]
+	// Both tests are in the query results now (component filtering is applied later)
+	assert.True(t, inSampleOther, "Networking test is also surfaced by the query with IncludeAllTests (component filtering happens later)")
+	_, inBaseOther := baseStatus[networkingKey.Encode()]
+	assert.True(t, inBaseOther, "Networking test is also surfaced by the query with IncludeAllTests (component filtering happens later)")
 }
 
 func TestQueryBaseTestStatus_GA(t *testing.T) {

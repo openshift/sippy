@@ -53,22 +53,25 @@ func prepareVariantQuery(
 	}, nil
 }
 
-// drilldownFilters holds optional SQL WHERE fragments for TestID and
-// Capability filtering when drilling down to a specific test + environment.
+// drilldownFilters holds optional SQL WHERE fragments for TestID and Capability
+// filtering when drilling down to a specific test + environment.
 type drilldownFilters struct {
-	// innerClause filters on test_id via subquery (for the inner aggregation)
+	// innerClause filters on test_id via subquery (for the inner aggregation).
 	innerClause string
 	innerArgs   []any
-	// outerClause filters on tow.unique_id and tow.capabilities (for outerQuery and placeholder)
+	// outerClause filters on tow.unique_id and tow.capabilities (for outerQuery and placeholder).
 	outerClause string
 	outerArgs   []any
 }
 
-// buildDrilldownFilters returns SQL filter fragments for TestID, Capability,
-// and top-level capability filtering from reqOptions. For drilldown (single
-// TestIDOption), it filters on test_id and per-test capability. For top-level
-// views, it applies the Capabilities array-overlap filter matching the BQ
-// provider's behavior.
+// buildDrilldownFilters returns SQL filter fragments for TestID and Capability
+// filtering from reqOptions. For drilldown (single TestIDOption), it filters on
+// test_id and per-test capability. For top-level views, it applies the Capabilities
+// array-overlap filter matching the BQ provider's behavior.
+//
+// Component filtering is NOT applied here and is instead handled at the report
+// generation level (in Go), matching BigQuery's behavior and ensuring all requested
+// environments appear in the column universe even when a component has no data there.
 func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 	var f drilldownFilters
 
@@ -76,13 +79,15 @@ func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 		tid := reqOptions.TestIDOptions[0]
 
 		if tid.TestID != "" {
-			f.innerClause = " AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE unique_id = ?)"
-			f.innerArgs = []any{tid.TestID}
+			f.innerClause += " AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE unique_id = ?)"
+			f.innerArgs = append(f.innerArgs, tid.TestID)
 			f.outerClause += " AND tow.unique_id = ?"
 			f.outerArgs = append(f.outerArgs, tid.TestID)
 		}
 
 		if tid.Capability != "" {
+			f.innerClause += " AND e.test_id IN (SELECT test_id FROM test_ownerships WHERE ? = ANY(capabilities))"
+			f.innerArgs = append(f.innerArgs, tid.Capability)
 			f.outerClause += " AND ? = ANY(tow.capabilities)"
 			f.outerArgs = append(f.outerArgs, tid.Capability)
 		}
@@ -184,9 +189,15 @@ func buildStatusCTE(
 }
 
 // testBranchTemplate is the UNION ALL branch that selects all tests with runs
-// from a status CTE, regardless of failure count. Used by the standalone path,
-// which has no "other side" to cross-reference (TRT-2883), so the MinimumFailure
-// threshold is left entirely to the Go-side check. The first %s is an optional
+// from a status CTE, regardless of failure count. Used by the standalone path
+// and by the combined query when IncludeAllTests=true (TRT-2923). The standalone
+// path has no "other side" to cross-reference (TRT-2883), so the MinimumFailure
+// threshold is left entirely to the Go-side check. The combined query's
+// IncludeAllTests mode uses this template for both sample and base sides,
+// allowing tests below MinimumFailure to be surfaced in includeAllTests listings.
+// Capability filtering (via drilldownFilters) is applied at the SQL level.
+// Component filtering is NOT applied here and is instead handled at the report
+// generation level to preserve environment columns. The first %s is an optional
 // column prefix, the second %s is the CTE name.
 const testBranchTemplate = `SELECT
         %spa.unique_id AS test_id, t.name AS test_name,
@@ -483,36 +494,67 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 	baseInnerSQL, baseInnerArgs := buildInnerAggregation(baseSpec, baseProwJobJoin, baseVF.filterArgs, filters)
 	baseCTE, baseCTEArgs := buildStatusCTE("base_agg", baseInnerSQL, baseInnerArgs, "cm", filters)
 
-	sampleKeysCTE := fmt.Sprintf(keysCTETemplate, "sample_keys", "sample_agg")
-	baseKeysCTE := fmt.Sprintf(keysCTETemplate, "base_keys", "base_agg")
-
 	// The combined query bakes the source tag into each branch as a typed
 	// literal so the row scanner can split results into sample and base maps.
-	// Each side has three branches: above-threshold tests (failureBranch),
-	// below-threshold tests rescued by a single LEFT JOIN against the other
-	// side's narrow keys CTE (belowThresholdRescueBranch, TRT-2883 + PG/BQ
-	// parity fix), and grid placeholders.
+	//
+	// Each side's test branch(es) come from one of two shapes, chosen by
+	// reqOptions.IncludeAllTests rather than by which filters happen to be
+	// set — a single branch point, not a different code path per parameter
+	// combination:
+	//
+	//   - Default: above-threshold tests (failureBranch) plus below-threshold
+	//     tests rescued by a LEFT JOIN against the other side's narrow keys
+	//     CTE (belowThresholdRescueBranch, TRT-2883 + PG/BQ parity fix). This
+	//     still omits tests that are below threshold on BOTH sides with real
+	//     data on both, which is fine here: such a test is never a
+	//     regression (a genuine regression would already cross the
+	//     threshold and get rescued), and the grid placeholder mechanism
+	//     keeps the cell's aggregate status correct regardless.
+	//   - IncludeAllTests: every test with runs, unconditionally
+	//     (testBranchTemplate, the same one the standalone path already
+	//     uses), because the caller wants the full per-test listing (e.g. a
+	//     component/capability drill-down), where an invisible-but-real test
+	//     is a genuine gap (TRT-2923). This reuses whatever Component/
+	//     Capability/TestID filter buildDrilldownFilters already narrowed
+	//     the aggregation to, so a scoped drill-down stays cheap; a fully
+	//     unscoped IncludeAllTests request (not used by any current UI path)
+	//     is allowed to be slow rather than adding a second query/code path.
 	sampleSourcePrefix := "'S'::text AS source, "
 	baseSourcePrefix := "'B'::text AS source, "
 
-	fullSQL := fmt.Sprintf(
-		"WITH vg(vcid, group_id) AS (%s),\ncm(group_id, col_group_id) AS (%s),\n%s,\n%s,\n%s,\n%s\n%s\nUNION ALL\n%s\nUNION ALL\n%s\nUNION ALL\n%s\nUNION ALL\n%s\nUNION ALL\n%s",
-		groupMapping.valuesClause, colMapping.valuesClause,
-		sampleCTE, baseCTE, sampleKeysCTE, baseKeysCTE,
-		fmt.Sprintf(failureBranchTemplate, sampleSourcePrefix, "sample_agg"),
-		fmt.Sprintf(belowThresholdRescueBranchTemplate, sampleSourcePrefix, "sample_agg", "base_keys"),
-		fmt.Sprintf(placeholderBranchTemplate, sampleSourcePrefix, "sample_agg"),
-		fmt.Sprintf(failureBranchTemplate, baseSourcePrefix, "base_agg"),
-		fmt.Sprintf(belowThresholdRescueBranchTemplate, baseSourcePrefix, "base_agg", "sample_keys"),
-		fmt.Sprintf(placeholderBranchTemplate, baseSourcePrefix, "base_agg"))
-
+	var sampleTestBranches, baseTestBranches string
 	var allArgs []any
 	allArgs = append(allArgs, sampleCTEArgs...)
 	allArgs = append(allArgs, baseCTEArgs...)
-	allArgs = append(allArgs, minimumFailure)                 // sample failure branch
-	allArgs = append(allArgs, minimumFailure, minimumFailure) // sample below-threshold rescue branch
-	allArgs = append(allArgs, minimumFailure)                 // base failure branch
-	allArgs = append(allArgs, minimumFailure, minimumFailure) // base below-threshold rescue branch
+
+	if reqOptions.IncludeAllTests {
+		sampleTestBranches = fmt.Sprintf(testBranchTemplate, sampleSourcePrefix, "sample_agg")
+		baseTestBranches = fmt.Sprintf(testBranchTemplate, baseSourcePrefix, "base_agg")
+	} else {
+		sampleKeysCTE := fmt.Sprintf(keysCTETemplate, "sample_keys", "sample_agg")
+		baseKeysCTE := fmt.Sprintf(keysCTETemplate, "base_keys", "base_agg")
+		sampleCTE = sampleCTE + ",\n" + sampleKeysCTE
+		baseCTE = baseCTE + ",\n" + baseKeysCTE
+
+		sampleTestBranches = fmt.Sprintf(failureBranchTemplate, sampleSourcePrefix, "sample_agg") +
+			"\nUNION ALL\n" + fmt.Sprintf(belowThresholdRescueBranchTemplate, sampleSourcePrefix, "sample_agg", "base_keys")
+		baseTestBranches = fmt.Sprintf(failureBranchTemplate, baseSourcePrefix, "base_agg") +
+			"\nUNION ALL\n" + fmt.Sprintf(belowThresholdRescueBranchTemplate, baseSourcePrefix, "base_agg", "sample_keys")
+
+		allArgs = append(allArgs, minimumFailure)                 // sample failure branch
+		allArgs = append(allArgs, minimumFailure, minimumFailure) // sample below-threshold rescue branch
+		allArgs = append(allArgs, minimumFailure)                 // base failure branch
+		allArgs = append(allArgs, minimumFailure, minimumFailure) // base below-threshold rescue branch
+	}
+
+	fullSQL := fmt.Sprintf(
+		"WITH vg(vcid, group_id) AS (%s),\ncm(group_id, col_group_id) AS (%s),\n%s,\n%s\n%s\nUNION ALL\n%s\nUNION ALL\n%s\nUNION ALL\n%s",
+		groupMapping.valuesClause, colMapping.valuesClause,
+		sampleCTE, baseCTE,
+		sampleTestBranches,
+		fmt.Sprintf(placeholderBranchTemplate, sampleSourcePrefix, "sample_agg"),
+		baseTestBranches,
+		fmt.Sprintf(placeholderBranchTemplate, baseSourcePrefix, "base_agg"))
 
 	// Execute with parallel hints
 	var sampleResult, baseResult map[string]crstatus.TestStatus
