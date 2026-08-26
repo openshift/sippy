@@ -19,15 +19,15 @@ code without corresponding tests are incomplete.
 
 ### React (frontend)
 
-- Write tests for new components, hooks, and significant UI logic.
-- Place test files next to the component (e.g., `MyComponent.test.jsx`
-  alongside `MyComponent.jsx`).
-- Follow existing Vitest patterns in `sippy-ng/`.
+The frontend testing framework is not yet mature enough to require tests for
+all new components. Testing of utility functions and shared hooks is
+recommended. Follow existing Vitest patterns in `sippy-ng/` when adding tests.
 
 ### API endpoints
 
 - New or modified API endpoints must have tests that verify request handling,
-  response structure, and error cases.
+  response structure, and error cases. These belong in the **e2e testing suite**
+  (run via `run_e2e` MCP tool or `make e2e`).
 
 ## Build, Test, and Verify
 
