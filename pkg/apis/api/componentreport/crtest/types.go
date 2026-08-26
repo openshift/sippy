@@ -63,6 +63,38 @@ const (
 	SignificantImprovement Status = 300
 )
 
+// CellPrecedence returns an explicit priority rank for aggregating per-test
+// statuses into a single cell status. Lower values take priority. This makes
+// cell status deterministic regardless of map iteration order.
+func (s Status) CellPrecedence() int {
+	switch s {
+	case FailedFixedRegression:
+		return 0
+	case ExtremeRegression:
+		return 1
+	case SignificantRegression:
+		return 2
+	case ExtremeTriagedRegression:
+		return 3
+	case SignificantTriagedRegression:
+		return 4
+	case FixedRegression:
+		return 5
+	case MissingSample:
+		return 6
+	case SignificantImprovement:
+		return 7
+	case NotSignificant:
+		return 8
+	case MissingBasis:
+		return 9
+	case MissingBasisAndSample:
+		return 10
+	default:
+		return 11
+	}
+}
+
 func StringForStatus(s Status) string {
 	switch s {
 	case ExtremeRegression:
