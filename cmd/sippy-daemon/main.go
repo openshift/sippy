@@ -139,6 +139,9 @@ func NewSippyDaemonCommand() *cobra.Command {
 			}
 			processes = append(processes, riverProcess)
 
+			// Periodic cleanup of old completed batches and stale non-terminal batches.
+			processes = append(processes, symptomre.NewBatchCleanupProcess(dbc.DB))
+
 			daemonServer := sippyserver.NewDaemonServer(processes)
 
 			// Serve our metrics endpoint for prometheus to scrape
@@ -200,6 +203,11 @@ func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, big
 			symptomre.BatchQueue: {MaxWorkers: 1},
 			symptomre.ItemQueue:  {MaxWorkers: 12},
 		},
+		// Keep completed and discarded River jobs for 8 days, slightly longer
+		// than the 7-day batch retention so status queries on recent batches
+		// can still resolve individual job outcomes.
+		CompletedJobRetentionPeriod: 8 * 24 * time.Hour,
+		DiscardedJobRetentionPeriod: 8 * 24 * time.Hour,
 	}
 	riverClient, err := workqueue.NewWorkerClient(pgxPool, workers, riverConfig)
 	if err != nil {
