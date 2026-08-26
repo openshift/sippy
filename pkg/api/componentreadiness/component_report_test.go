@@ -1869,5 +1869,177 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 	}
 }
 
+func TestGetNewCellStatusDeterministic(t *testing.T) {
+	testID := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
+			Component:  "component",
+			Capability: "cap",
+			TestName:   "test",
+		},
+	}
+	makeStats := func(s crtest.Status) testdetails.TestComparison {
+		return testdetails.TestComparison{ReportStatus: s}
+	}
+	makeCell := func(s crtest.Status) *cellStatus {
+		return &cellStatus{status: s}
+	}
+
+	tests := []struct {
+		name     string
+		existing crtest.Status
+		incoming crtest.Status
+		want     crtest.Status
+	}{
+		{
+			name:     "regression overrides NotSignificant",
+			existing: crtest.NotSignificant,
+			incoming: crtest.SignificantRegression,
+			want:     crtest.SignificantRegression,
+		},
+		{
+			name:     "worse regression overrides milder regression",
+			existing: crtest.SignificantRegression,
+			incoming: crtest.ExtremeRegression,
+			want:     crtest.ExtremeRegression,
+		},
+		{
+			name:     "milder regression does not override worse",
+			existing: crtest.ExtremeRegression,
+			incoming: crtest.SignificantRegression,
+			want:     crtest.ExtremeRegression,
+		},
+		{
+			name:     "SignificantImprovement overrides NotSignificant",
+			existing: crtest.NotSignificant,
+			incoming: crtest.SignificantImprovement,
+			want:     crtest.SignificantImprovement,
+		},
+		{
+			name:     "NotSignificant does not override SignificantImprovement",
+			existing: crtest.SignificantImprovement,
+			incoming: crtest.NotSignificant,
+			want:     crtest.SignificantImprovement,
+		},
+		{
+			name:     "NotSignificant overrides MissingBasis",
+			existing: crtest.MissingBasis,
+			incoming: crtest.NotSignificant,
+			want:     crtest.NotSignificant,
+		},
+		{
+			name:     "MissingBasis does not override NotSignificant",
+			existing: crtest.NotSignificant,
+			incoming: crtest.MissingBasis,
+			want:     crtest.NotSignificant,
+		},
+		{
+			name:     "NotSignificant overrides MissingBasisAndSample",
+			existing: crtest.MissingBasisAndSample,
+			incoming: crtest.NotSignificant,
+			want:     crtest.NotSignificant,
+		},
+		{
+			name:     "MissingBasisAndSample does not override NotSignificant",
+			existing: crtest.NotSignificant,
+			incoming: crtest.MissingBasisAndSample,
+			want:     crtest.NotSignificant,
+		},
+		{
+			name:     "MissingBasis overrides MissingBasisAndSample",
+			existing: crtest.MissingBasisAndSample,
+			incoming: crtest.MissingBasis,
+			want:     crtest.MissingBasis,
+		},
+		{
+			name:     "MissingBasisAndSample does not override MissingBasis",
+			existing: crtest.MissingBasis,
+			incoming: crtest.MissingBasisAndSample,
+			want:     crtest.MissingBasis,
+		},
+		{
+			name:     "SignificantImprovement overrides MissingBasis",
+			existing: crtest.MissingBasis,
+			incoming: crtest.SignificantImprovement,
+			want:     crtest.SignificantImprovement,
+		},
+		{
+			name:     "MissingBasis does not override SignificantImprovement",
+			existing: crtest.SignificantImprovement,
+			incoming: crtest.MissingBasis,
+			want:     crtest.SignificantImprovement,
+		},
+		{
+			name:     "MissingSample overrides NotSignificant",
+			existing: crtest.NotSignificant,
+			incoming: crtest.MissingSample,
+			want:     crtest.MissingSample,
+		},
+		{
+			name:     "MissingSample overrides MissingBasis",
+			existing: crtest.MissingBasis,
+			incoming: crtest.MissingSample,
+			want:     crtest.MissingSample,
+		},
+		{
+			name:     "regression overrides MissingBasis",
+			existing: crtest.MissingBasis,
+			incoming: crtest.ExtremeRegression,
+			want:     crtest.ExtremeRegression,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getNewCellStatus(testID, makeStats(tt.incoming), makeCell(tt.existing), false)
+			assert.Equal(t, tt.want, result.status,
+				"getNewCellStatus(existing=%d, incoming=%d) = %d, want %d",
+				tt.existing, tt.incoming, result.status, tt.want)
+		})
+	}
+}
+
+func TestGetNewCellStatusSymmetry(t *testing.T) {
+	testID := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
+			Component: "c", Capability: "cap", TestName: "t",
+		},
+	}
+	makeStats := func(s crtest.Status) testdetails.TestComparison {
+		return testdetails.TestComparison{ReportStatus: s}
+	}
+
+	allStatuses := []crtest.Status{
+		crtest.FailedFixedRegression,
+		crtest.ExtremeRegression,
+		crtest.SignificantRegression,
+		crtest.ExtremeTriagedRegression,
+		crtest.SignificantTriagedRegression,
+		crtest.FixedRegression,
+		crtest.MissingSample,
+		crtest.NotSignificant,
+		crtest.MissingBasis,
+		crtest.MissingBasisAndSample,
+		crtest.SignificantImprovement,
+	}
+
+	for _, a := range allStatuses {
+		for _, b := range allStatuses {
+			t.Run(fmt.Sprintf("%d_then_%d_vs_%d_then_%d", a, b, b, a), func(t *testing.T) {
+				// Process a first, then b
+				cell1 := getNewCellStatus(testID, makeStats(a), nil, false)
+				cell1 = getNewCellStatus(testID, makeStats(b), &cell1, false)
+
+				// Process b first, then a
+				cell2 := getNewCellStatus(testID, makeStats(b), nil, false)
+				cell2 = getNewCellStatus(testID, makeStats(a), &cell2, false)
+
+				assert.Equal(t, cell1.status, cell2.status,
+					"non-deterministic: processing order [%d, %d] gives %d but [%d, %d] gives %d",
+					a, b, cell1.status, b, a, cell2.status)
+			})
+		}
+	}
+}
+
 // TestCopyIncludeVariantsAndRemoveOverrides moved to dataprovider/bigquery package
 // where the function now lives.

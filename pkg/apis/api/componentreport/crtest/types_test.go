@@ -108,6 +108,34 @@ func TestVariantRoundTrip(t *testing.T) {
 	assert.Equal(t, value, gotValue)
 }
 
+func TestCellPrecedenceOrder(t *testing.T) {
+	// Statuses listed from highest priority (lowest precedence number) to lowest.
+	ordered := []Status{
+		FailedFixedRegression,
+		ExtremeRegression,
+		SignificantRegression,
+		ExtremeTriagedRegression,
+		SignificantTriagedRegression,
+		FixedRegression,
+		MissingSample,
+		SignificantImprovement,
+		NotSignificant,
+		MissingBasis,
+		MissingBasisAndSample,
+	}
+	for i := 1; i < len(ordered); i++ {
+		assert.Less(t, ordered[i-1].CellPrecedence(), ordered[i].CellPrecedence(),
+			"%v (precedence %d) should have higher priority than %v (precedence %d)",
+			ordered[i-1], ordered[i-1].CellPrecedence(), ordered[i], ordered[i].CellPrecedence())
+	}
+}
+
+func TestCellPrecedenceUnknownStatus(t *testing.T) {
+	unknown := Status(9999)
+	assert.Equal(t, 11, unknown.CellPrecedence(), "unknown status should have lowest priority")
+	assert.Greater(t, unknown.CellPrecedence(), MissingBasisAndSample.CellPrecedence())
+}
+
 func TestColumnEncodeEmpty(t *testing.T) {
 	col := ColumnIdentification{Variants: map[string]string{}}
 	encoded := col.Encode()
