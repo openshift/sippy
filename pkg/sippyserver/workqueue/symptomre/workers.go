@@ -136,20 +136,27 @@ func (w *ProcessBatchWorker) finalizeBatch(batchID uuid.UUID, enqueued, deduped 
 	return nil
 }
 
+// reEvalFunc is the function signature for re-evaluating a single job run's
+// symptoms from the cached symptom definitions. Extracting this as a function
+// type field lets tests substitute a stub without requiring a full ReEvaluator
+// (which needs GCS and BigQuery credentials).
+type reEvalFunc func(ctx context.Context, prowJobBuildID string, dryRun bool) error
+
 // ReevaluateWorker handles individual ReevaluateJobRunArgs River jobs by
 // delegating to the ReEvaluator's cached symptom evaluation.
 type ReevaluateWorker struct {
 	river.WorkerDefaults[ReevaluateJobRunArgs]
-	reEvaluator *jobrunscan.ReEvaluator
+	reEval reEvalFunc
 }
 
-// NewReevaluateWorker creates a ReevaluateWorker.
+// NewReevaluateWorker creates a ReevaluateWorker that delegates to the
+// ReEvaluator's cached evaluation method.
 func NewReevaluateWorker(reEvaluator *jobrunscan.ReEvaluator) *ReevaluateWorker {
-	return &ReevaluateWorker{reEvaluator: reEvaluator}
+	return &ReevaluateWorker{reEval: reEvaluator.ReEvaluateOneFromCache}
 }
 
 // Work re-evaluates symptoms for a single job run. Errors trigger River's
 // retry logic (up to MaxAttemptsPerItem attempts with exponential backoff).
 func (w *ReevaluateWorker) Work(ctx context.Context, job *river.Job[ReevaluateJobRunArgs]) error {
-	return w.reEvaluator.ReEvaluateOneFromCache(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
+	return w.reEval(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
 }

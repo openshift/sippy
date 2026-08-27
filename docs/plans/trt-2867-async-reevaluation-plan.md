@@ -492,9 +492,9 @@ enough history for status queries on recent batches.
 
 ## Step 8: Functional Testing
 
-Do not make mocks of vendored packages (River client, storage clients) for testing. Encapsulate
-access to each client in an interface of conceptually high-level methods requiring only that client;
-where tests exercise glue logic using multiple such interfaces, implement mock objects as needed.
+Do not make mocks of vendored packages (River client, storage clients) for testing. Where a worker
+struct needs a single narrow call that would otherwise force external credentials in tests, extract
+it behind a function-type field on the struct (the project's "function-field seam" pattern).
 
 Follow the project's functional test pattern: tests using external dependencies (PostgreSQL, GCS,
 BigQuery) require a human to set environment variables for the necessary credentials, skipping when
@@ -507,14 +507,20 @@ they are not set.
   real PostgreSQL instance with River migrations applied. Verify batch creation, daemon-side
   fan-out (batch item population with River job IDs), dedup counting, completion detection,
   and status transitions. Skip unless `SIPPY_FUNCTIONAL_TEST_DSN` (or similar) is set.
-- **Functional tests** for `ReevaluateWorker.Work()` using River's `rivertest` package
+- **Functional tests** for `ReevaluateWorker.Work()`
   against a real PostgreSQL instance. Verify success and error/retry paths.
-- **End-to-end functional test** of the full flow: POST to the API, verify 202, poll status, verify
-  items transition through `available` to `running` to `completed`. This should update existing
-  functional testing in `pkg/api/jobrunscan/reevaluate_functional_test.go`, requiring the user to
-  supply env vars for a PostgreSQL snapshot of real data (with River migrations) and edit-level
-  GCS/BigQuery credentials for full coverage against a few real job runs (specified by the user,
-  with results verified by the user). Include instructions for the user.
+- **End-to-end flow test** (`e2e_test.go`):
+  - Start an `httptest.Server` with submit and status endpoints (handler logic mirroring
+    production), and a River worker client process with both workers.
+  - Full flow: HTTP POST submit (verify 202) -> River processes batch -> fan-out ->
+    individual evaluation against real GCS artifacts -> HTTP GET status polling -> verify
+    completion. Always runs with `dry_run=true` (no BQ client is configured).
+  - Requires a PostgreSQL snapshot with real data (symptoms, job runs, labels) and GCS
+    credentials for artifact reads. Include user instructions for configuration and use.
+- **Existing write-path tests** update `pkg/api/jobrunscan/reevaluate_functional_test.go`
+  with cross-references to the new async e2e test and curl examples showing the
+  status polling endpoint. These tests exercise the ReEvaluator's BQ/GCS/Postgres write path
+  directly, complementing the e2e test's dry-run-only async pipeline coverage.
 
 ## Step 9. Update the React UI
 
