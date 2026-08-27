@@ -96,7 +96,6 @@ func NewServer(
 	views *apitype.SippyViews,
 	config *v1.SippyConfig,
 	enableWriteEndpoints bool,
-	chatAPIURL string,
 	jiraClient *jira.Client,
 ) *Server {
 
@@ -121,7 +120,6 @@ func NewServer(
 		views:                views,
 		config:               config,
 		enableWriteAPIs:      enableWriteEndpoints,
-		chatAPIURL:           chatAPIURL,
 		jiraClient:           jiraClient,
 	}
 
@@ -182,7 +180,6 @@ type Server struct {
 	views                *apitype.SippyViews
 	config               *v1.SippyConfig
 	enableWriteAPIs      bool
-	chatAPIURL           string
 	jiraClient           *jira.Client
 	rateLimiters         map[string]*rateLimiter
 }
@@ -468,10 +465,6 @@ func (s *Server) determineCapabilities() {
 
 	if s.db != nil && s.enableWriteAPIs {
 		capabilities = append(capabilities, WriteEndpointsCapability)
-	}
-
-	if s.chatAPIURL != "" {
-		capabilities = append(capabilities, ChatCapability)
 	}
 
 	s.capabilities = capabilities
@@ -3026,64 +3019,6 @@ func (s *Server) Serve() {
 			CacheTime:    4 * time.Hour,
 			HandlerFunc:  s.jsonFeatureGateDetail,
 		},
-		{
-			EndpointPath: "/api/chat",
-			Description:  "HTTP proxy for REST API requests to sippy-chat service",
-			Capabilities: []string{ChatCapability},
-			HandlerFunc:  s.handleChatProxy,
-		},
-		{
-			EndpointPath: "/api/chat/stream",
-			Description:  "Websocket proxy for chat API requests to sippy-chat service (supports HTTP and WebSocket)",
-			Capabilities: []string{ChatCapability},
-			HandlerFunc:  s.handleChatProxy,
-		},
-		{
-			EndpointPath: "/api/chat/personas",
-			Description:  "Proxy for listing personas from sippy-chat service.",
-			Capabilities: []string{ChatCapability},
-			HandlerFunc:  s.handleChatProxy,
-		},
-		{
-			EndpointPath: "/api/chat/models",
-			Description:  "Proxy for listing available models from sippy-chat service.",
-			Capabilities: []string{ChatCapability},
-			HandlerFunc:  s.handleChatProxy,
-		},
-		{
-			EndpointPath: "/api/chat/prompts",
-			Description:  "Proxy for listing available prompt templates from sippy-chat service.",
-			Capabilities: []string{ChatCapability},
-			HandlerFunc:  s.handleChatProxy,
-		},
-		{
-			EndpointPath: "/api/chat/prompts/render",
-			Description:  "Proxy for rendering prompt templates from sippy-chat service.",
-			Methods:      []string{http.MethodPost},
-			Capabilities: []string{ChatCapability},
-			HandlerFunc:  s.handleChatProxy,
-		},
-		{
-			EndpointPath: "/api/chat/ratings",
-			Description:  "Create a chat rating record",
-			Methods:      []string{http.MethodPost},
-			Capabilities: []string{LocalDBCapability, ChatCapability, WriteEndpointsCapability},
-			HandlerFunc:  s.jsonCreateChatRating,
-		},
-		{
-			EndpointPath: "/api/chat/conversations",
-			Description:  "Create a new chat conversation",
-			Methods:      []string{http.MethodPost},
-			Capabilities: []string{ChatCapability, WriteEndpointsCapability},
-			HandlerFunc:  s.jsonCreateChatConversation,
-		},
-		{
-			EndpointPath: "/api/chat/conversations/{id}",
-			Description:  "Get a specific chat conversation by ID",
-			Methods:      []string{http.MethodGet},
-			Capabilities: []string{ChatCapability},
-			HandlerFunc:  s.jsonGetChatConversation,
-		},
 	}
 
 	for _, ep := range endpoints {
@@ -3180,7 +3115,7 @@ func (w *statusCapturingResponseWriter) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
-// Hijack delegates to the underlying ResponseWriter so gorilla/websocket can upgrade connections (e.g. /api/chat/stream).
+// Hijack delegates to the underlying ResponseWriter so gorilla/websocket can upgrade connections.
 func (w *statusCapturingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hj, ok := w.ResponseWriter.(http.Hijacker); ok {
 		return hj.Hijack()
@@ -3310,43 +3245,4 @@ func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter
 
 func (s *Server) GetHTTPServer() *http.Server {
 	return s.httpServer
-}
-
-// handleChatProxy handles proxying requests to the sippy-chat service
-func (s *Server) handleChatProxy(w http.ResponseWriter, r *http.Request) {
-	if s.chatAPIURL == "" {
-		http.Error(w, "Chat API not configured", http.StatusServiceUnavailable)
-		return
-	}
-
-	// Create chat proxy if not already created
-	chatProxy, err := NewChatProxy(s.chatAPIURL)
-	if err != nil {
-		log.WithError(err).Error("Failed to create chat proxy")
-		http.Error(w, "Failed to initialize chat proxy", http.StatusInternalServerError)
-		return
-	}
-
-	// Proxy the request
-	chatProxy.ServeHTTP(w, r)
-}
-
-// jsonCreateChatRating handles POST requests to create a new chat rating record
-func (s *Server) jsonCreateChatRating(w http.ResponseWriter, req *http.Request) {
-	var rating models.ChatRating
-	if err := json.NewDecoder(req.Body).Decode(&rating); err != nil {
-		log.WithError(err).Error("error parsing chat rating")
-		failureResponse(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	// Create the rating in the database
-	if err := s.db.DB.Create(&rating).Error; err != nil {
-		log.WithError(err).Error("error creating chat rating")
-		failureResponse(w, http.StatusInternalServerError, "failed to create rating")
-		return
-	}
-
-	log.Infof("created chat rating with ID %d, rating: %d", rating.ID, rating.Rating)
-	api.RespondWithJSON(http.StatusCreated, w, rating)
 }

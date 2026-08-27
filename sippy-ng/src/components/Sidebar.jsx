@@ -9,7 +9,6 @@ import {
   FileCopyOutlined,
   GitHub,
   NotificationsActive,
-  SmartToy,
 } from '@mui/icons-material'
 import { DEFAULT_TEST_FILTERS } from '../constants'
 import { LaunderedListItem } from './Laundry'
@@ -404,28 +403,6 @@ export default function Sidebar(props) {
                       <ListItemText primary="Component Readiness" />
                     </StyledListItemButton>
                   </ListItem>
-
-                  <SippyCapabilitiesContext.Consumer>
-                    {(value) => {
-                      if (value.includes('chat')) {
-                        return (
-                          <ListItem
-                            key={'chat-agent'}
-                            component={Link}
-                            to={'/chat'}
-                            className={classes.nested}
-                          >
-                            <StyledListItemButton>
-                              <ListItemIcon>
-                                <SmartToy />
-                              </ListItemIcon>
-                              <ListItemText primary="Chat Assistant" />
-                            </StyledListItemButton>
-                          </ListItem>
-                        )
-                      }
-                    }}
-                  </SippyCapabilitiesContext.Consumer>
 
                   <ListItem
                     component="a"

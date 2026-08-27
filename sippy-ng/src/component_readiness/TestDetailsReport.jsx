@@ -28,8 +28,6 @@ import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { pathForExactTestAnalysisWithFilter } from '../helpers'
 import { ReleasesContext, SippyCapabilitiesContext } from '../App'
-import { usePageContextForChat } from '../chat/store/useChatStore'
-import AskSippyButton from '../chat/AskSippyButton'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
 import CompReadyCancelled from './CompReadyCancelled'
@@ -96,9 +94,6 @@ function TestsReportTabPanel(props) {
 // This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
 export default function TestDetailsReport(props) {
   const { accessibilityModeOn } = useContext(AccessibilityModeContext)
-  const { setPageContextForChat, unsetPageContextForChat } =
-    usePageContextForChat()
-
   const [activeTabIndex, setActiveTabIndex] = React.useState(0)
 
   const handleTabChange = (event, newValue) => {
@@ -115,7 +110,6 @@ export default function TestDetailsReport(props) {
   const [triageEntries, setTriageEntries] = React.useState([])
   const [symptomSummaries, setSymptomSummaries] = React.useState([])
   const releases = useContext(ReleasesContext)
-  const hasSetContextRef = React.useRef(false)
 
   // Set the browser tab title
   document.title =
@@ -279,58 +273,6 @@ export default function TestDetailsReport(props) {
   const datesEnv = useContext(CompReadyVarsContext)
   useEffect(() => setLoadedParams(datesEnv), [])
 
-  // Update page context for chat
-  useEffect(() => {
-    if (
-      !isLoaded ||
-      !data.analyses ||
-      !data.analyses[0] ||
-      hasSetContextRef.current
-    )
-      return
-
-    hasSetContextRef.current = true
-
-    setPageContextForChat({
-      page: 'component-readiness-test-details',
-      url: window.location.href,
-      suggestions: [
-        {
-          prompt: 'component-readiness-regression-analysis',
-          label: 'Analyze Test Regression',
-          args: {
-            url: window.location.href,
-          },
-        },
-        'Why is this test regressed?',
-        'Show me sample outputs from test failures',
-        'What other tests are failing together?',
-      ],
-      data: {
-        test_id: testId,
-        test_name: data.test_name,
-        component: component,
-        capability: capability,
-        environment: environment,
-      },
-    })
-
-    // Cleanup: Clear context when component unmounts
-    return () => {
-      unsetPageContextForChat()
-    }
-  }, [
-    isLoaded,
-    data,
-    testId,
-    component,
-    capability,
-    environment,
-    triageEntries.length,
-    setPageContextForChat,
-    unsetPageContextForChat,
-  ])
-
   if (fetchError !== '') {
     return gotFetchError(fetchError)
   }
@@ -475,18 +417,7 @@ View the [test details report|${document.location.href}] for additional context.
   return (
     <Fragment>
       <Sidebar controlsOpts={{ isTestDetails: true }} />
-      <Box
-        display="flex"
-        justifyContent="right"
-        alignItems="center"
-        gap={1}
-        width="100%"
-      >
-        <AskSippyButton
-          slashCommand="component-readiness-regression-analysis"
-          commandArgs={{ url: window.location.href }}
-          tooltip="Ask Sippy AI to analyze this test regression"
-        />
+      <Box display="flex" justifyContent="right" alignItems="center" width="100%">
         <Tooltip title="Frequently Asked Questions">
           <Link
             to="/component_readiness/help"

@@ -3,16 +3,13 @@ import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import {
-  getTestDetailsLink,
   getTriagesAPIUrl,
   hasFailedFixRegression,
   jiraUrlPrefix,
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
 import { SippyCapabilitiesContext } from '../App'
-import { usePageContextForChat } from '../chat/store/useChatStore'
 import { useTheme } from '@mui/material/styles'
-import AskSippyButton from '../chat/AskSippyButton'
 import CompSeverityIcon from './CompSeverityIcon'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
@@ -29,8 +26,6 @@ import UpsertTriageModal from './UpsertTriageModal'
 
 export default function Triage({ id }) {
   const theme = useTheme()
-  const { setPageContextForChat, unsetPageContextForChat } =
-    usePageContextForChat()
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')
@@ -75,77 +70,6 @@ export default function Triage({ id }) {
         setMessage(error.toString())
       })
   }, [isUpdated, localDBEnabled, id])
-
-  // Update page context for chat
-  React.useEffect(() => {
-    if (!isLoaded || !triage.id) return
-
-    const regressedTestsForContext = (
-      triage.regressed_tests
-        ? Object.values(triage.regressed_tests).filter(Boolean).flat()
-        : []
-    ).map((rt) => {
-      return {
-        test_name: rt.test_name,
-        component: rt.component,
-        capability: rt.capability,
-        environment: rt.environment,
-        test_id: rt.test_id,
-        status: rt.status,
-        explanations: rt.explanations || [],
-        test_details_api_url: getTestDetailsLink(rt.links, view) ?? null,
-        regression_id: rt.regression?.id,
-        regression_opened: rt.regression?.opened,
-        regression_closed: rt.regression?.closed?.valid
-          ? rt.regression.closed.time
-          : null,
-      }
-    })
-
-    const contextData = {
-      page: 'triage-details',
-      url: window.location.href,
-      suggestions: [
-        {
-          prompt: 'triage-failure-analysis',
-          label: 'Analyze failure patterns across regressed tests',
-          args: {
-            triage_id: triage.id,
-            view: view,
-          },
-        },
-        {
-          prompt: 'triage-fix-status',
-          label: 'Check Jira fix status and timeline',
-          args: {
-            issue_key: extractJiraIssueKey(triage.url),
-          },
-        },
-        {
-          prompt: 'triage-potential-matches',
-          label: 'Find potential test matches to add',
-          args: {
-            triage_id: triage.id,
-            view: view,
-          },
-        },
-      ],
-      data: {
-        triage_id: triage.id,
-        view: view,
-        jira_issue_key: extractJiraIssueKey(triage.url),
-        regressed_tests: regressedTestsForContext,
-        has_failed_fix: hasFailedFixRegression(triage, triage.regressed_tests),
-      },
-    }
-
-    setPageContextForChat(contextData)
-
-    // Cleanup: Clear context when component unmounts
-    return () => {
-      unsetPageContextForChat()
-    }
-  }, [isLoaded, triage, setPageContextForChat, unsetPageContextForChat])
 
   const deleteTriage = () => {
     const confirmed = window.confirm(
@@ -196,11 +120,6 @@ export default function Triage({ id }) {
       >
         <h2 style={{ margin: 0 }}>Triage Details</h2>
         <Box display="flex" alignItems="center" gap={1}>
-          <AskSippyButton
-            slashCommand="triage-failure-analysis"
-            commandArgs={{ triage_id: triage.id, view: view }}
-            tooltip="Ask Sippy AI to analyze this triage record's test failures"
-          />
           {localDBEnabled && <TriageAuditLogsModal triage={triage} />}
           {triageEnabled && (
             <Fragment>

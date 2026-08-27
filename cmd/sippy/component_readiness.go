@@ -213,7 +213,6 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		views,
 		config,
 		f.APIFlags.EnableWriteEndpoints,
-		"", // No chat API in Component Readiness
 		jiraClient,
 	)
 

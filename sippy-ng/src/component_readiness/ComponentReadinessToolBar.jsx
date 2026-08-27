@@ -26,8 +26,6 @@ import {
 } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import {
-  formColumnName,
-  generateTestDetailsReportLink,
   getTriagesAPIUrl,
   mergeRegressionData,
   Search,
@@ -36,7 +34,6 @@ import {
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { SippyCapabilitiesContext } from '../App'
-import { usePageContextForChat } from '../chat/store/useChatStore'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
@@ -65,9 +62,6 @@ export default function ComponentReadinessToolBar(props) {
   const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const localDBEnabled = capabilitiesContext.includes('local_db')
   const varsContext = useContext(CompReadyVarsContext)
-  const { setPageContextForChat, unsetPageContextForChat } =
-    usePageContextForChat()
-
   React.useEffect(() => {
     // triage entries will only be available when there is a postgres connection
     let triageFetch
@@ -107,81 +101,6 @@ export default function ComponentReadinessToolBar(props) {
       setIsLoaded(true)
     })
   }, [localDBEnabled, varsContext.view, data])
-
-  // Update page context when regression data is loaded
-  useEffect(() => {
-    if (!isLoaded || !varsContext.sampleRelease) {
-      return
-    }
-
-    // Helper to format test data for context
-    const formatTestForContext = (test) => ({
-      component: test.component,
-      capability: test.capability,
-      test_name: test.test_name,
-      test_id: test.test_id,
-      test_suite: test.test_suite,
-      variants: formColumnName({ variants: test.variants }),
-      status: test.status,
-      regression_id: test.regression?.id,
-      regressed_since: test.regression?.opened,
-      last_failure: test.last_failure,
-      details_link: generateTestDetailsReportLink(test),
-    })
-
-    setPageContextForChat({
-      page: 'component-readiness',
-      url: window.location.href,
-
-      instructions: `This is the Component Readiness main view showing a matrix of components vs environments with regression status. 
-        Focus on unresolved and untriaged regressions - these are the most important items requiring attention.
-        When providing test detail links, use the details_link field provided for each test.
-        Status values: negative numbers indicate regressions (more negative = more severe), positive numbers indicate stability.
-        Unresolved regressions have status <= -200 (not yet hopefully fixed).`,
-
-      suggestions: [
-        'What regressions are new today?',
-        "What regressions haven't been triaged?",
-      ],
-
-      data: {
-        sample_release: varsContext.sampleRelease,
-        base_release: varsContext.baseRelease,
-        view: varsContext.view,
-
-        summary: {
-          total_unresolved: unresolvedTests.length,
-          total_untriaged: regressedTests.length,
-          total_all_regressions: allRegressedTests.length,
-        },
-
-        // Unresolved regressions (status <= -200) - most critical
-        unresolved_regressions: unresolvedTests
-          .slice(0, 30)
-          .map(formatTestForContext),
-
-        // Untriaged regressions - need attention
-        untriaged_regressions: regressedTests
-          .slice(0, 30)
-          .map(formatTestForContext),
-      },
-    })
-
-    // Clear context on unmount
-    return () => {
-      unsetPageContextForChat()
-    }
-  }, [
-    isLoaded,
-    regressedTests,
-    allRegressedTests,
-    unresolvedTests,
-    varsContext.sampleRelease,
-    varsContext.baseRelease,
-    varsContext.view,
-    setPageContextForChat,
-    unsetPageContextForChat,
-  ])
 
   const linkToReport = () => {
     const currentUrl = new URL(window.location.href)
