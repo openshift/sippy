@@ -2,6 +2,11 @@
 <!-- Generator: Adobe Illustrator 19.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
 <svg version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 viewBox="0 0 511.999 511.999" style="enable-background:new 0 0 511.999 511.999;" xml:space="preserve">
+<defs>
+	<clipPath id="beanieDome">
+		<path d="M182,124 C182,60 205,32 256,32 C307,32 330,60 330,124 Z"/>
+	</clipPath>
+</defs>
 <path style="fill:#E6676C;" d="M295.543,32.719c-2.639-9.479-11.13-16.134-20.969-16.134h-37.148c-9.84,0-18.33,6.655-20.969,16.134
 	c-8.503,30.539-38.742,47.901-38.742,72.4l78.286,51.918l78.286-51.918C334.285,80.621,304.045,63.258,295.543,32.719z"/>
 <g>
@@ -75,5 +80,41 @@
 <g>
 </g>
 <g>
+</g>
+<!-- Fantastically silly propeller beanie, perched on top of Sippy -->
+<g id="silly-propeller-beanie">
+	<!-- Multi-color dome panels, fanned out and clipped to the beanie shape -->
+	<g clip-path="url(#beanieDome)">
+		<polygon points="256,124 36,124 78,-5" style="fill:#26C6DA;"/>
+		<polygon points="256,124 78,-5 188,-85" style="fill:#FFCA28;"/>
+		<polygon points="256,124 188,-85 324,-85" style="fill:#EF5350;"/>
+		<polygon points="256,124 324,-85 434,-5" style="fill:#66BB6A;"/>
+		<polygon points="256,124 434,-5 476,124" style="fill:#AB47BC;"/>
+		<!-- Polka dots for extra whimsy -->
+		<circle cx="216" cy="58" r="5.5" style="fill:#FFF3E0;stroke:#E6C68A;stroke-width:1.2;"/>
+		<circle cx="256" cy="54" r="5.5" style="fill:#FFF3E0;stroke:#E6C68A;stroke-width:1.2;"/>
+		<circle cx="296" cy="58" r="5.5" style="fill:#FFF3E0;stroke:#E6C68A;stroke-width:1.2;"/>
+	</g>
+	<!-- Beanie brim (with a darker rolled underside) -->
+	<rect x="166" y="110" width="180" height="24" rx="12" style="fill:#3F51B5;"/>
+	<rect x="166" y="123" width="180" height="12" rx="6" style="fill:#303F9F;"/>
+	<!-- Googly eyes on the beanie, because two faces are sillier than one -->
+	<g>
+		<circle cx="234" cy="82" r="14" style="fill:#FFFFFF;stroke:#37474F;stroke-width:2.5;"/>
+		<circle cx="278" cy="82" r="14" style="fill:#FFFFFF;stroke:#37474F;stroke-width:2.5;"/>
+		<circle cx="239" cy="87" r="6.5" style="fill:#263238;"/>
+		<circle cx="273" cy="87" r="6.5" style="fill:#263238;"/>
+		<circle cx="236.5" cy="84.5" r="2" style="fill:#FFFFFF;"/>
+		<circle cx="270.5" cy="84.5" r="2" style="fill:#FFFFFF;"/>
+	</g>
+	<!-- Propeller: axle, plus jaunty wavy asymmetric ball-tipped blades and a shiny hub -->
+	<rect x="250" y="22" width="12" height="22" rx="6" style="fill:#37474F;"/>
+	<g transform="rotate(-10 256 24)">
+		<path d="M256,24 C232,12 196,10 180,20 C174,24 176,26 182,28 C198,37 232,36 256,24 Z" style="fill:#8E24AA;"/>
+		<path d="M256,24 C282,10 320,8 336,19 C342,23 340,27 334,29 C316,38 282,38 256,24 Z" style="fill:#FB8C00;"/>
+		<circle cx="180" cy="21" r="6" style="fill:#26C6DA;stroke:#37474F;stroke-width:1.5;"/>
+		<circle cx="336" cy="21" r="6" style="fill:#EC407A;stroke:#37474F;stroke-width:1.5;"/>
+	</g>
+	<circle cx="256" cy="24" r="10" style="fill:#FFEE58;stroke:#F9A825;stroke-width:3;"/>
 </g>
 </svg>
