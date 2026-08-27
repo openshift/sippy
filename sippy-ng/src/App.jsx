@@ -26,10 +26,10 @@ import {
   Routes,
   useNavigate,
   useParams,
-} from 'react-router-dom'
+} from 'react-router'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
-import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
+import { ReactRouterAdapter } from './adapters/ReactRouterAdapter'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import AccessibilityToggle from './components/AccessibilityToggle'
@@ -567,7 +567,7 @@ function App(_props) {
                 <AccessibilityModeProvider>
                   <CssBaseline />
                   <QueryParamProvider
-                    adapter={ReactRouter6Adapter}
+                    adapter={ReactRouterAdapter}
                     options={{
                       enableBatching: true,
                       searchStringToObject: parse,
