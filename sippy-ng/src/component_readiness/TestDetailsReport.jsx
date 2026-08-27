@@ -417,7 +417,12 @@ View the [test details report|${document.location.href}] for additional context.
   return (
     <Fragment>
       <Sidebar controlsOpts={{ isTestDetails: true }} />
-      <Box display="flex" justifyContent="right" alignItems="center" width="100%">
+      <Box
+        display="flex"
+        justifyContent="right"
+        alignItems="center"
+        width="100%"
+      >
         <Tooltip title="Frequently Asked Questions">
           <Link
             to="/component_readiness/help"

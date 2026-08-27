@@ -1,5 +1,6 @@
-import { ForumOutlined } from '@mui/icons-material'
 import { Box, Button, Paper, Typography } from '@mui/material'
+import { ForumOutlined } from '@mui/icons-material'
+import React from 'react'
 
 export default function ChatTransition() {
   return (

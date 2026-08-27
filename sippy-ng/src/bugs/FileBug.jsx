@@ -578,7 +578,6 @@ See the [sippy test details|${url}] for additional context.
           </Typography>
         </DialogActions>
       </Dialog>
-
     </Fragment>
   )
 }
