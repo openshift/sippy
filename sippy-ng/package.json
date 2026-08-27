@@ -28,7 +28,6 @@
     "date-fns": "^2.0.0-beta.5",
     "date-fns-tz": "^1.1.6",
     "eventemitter3": "^5.0.1",
-    "idb-keyval": "^6.2.2",
     "p-limit": "^3.1.0",
     "plotly.js": "^3.1.1",
     "prop-types": "^15.8.1",
@@ -38,15 +37,13 @@
     "react-cookie": "^7.2.1",
     "react-dom": "^18.3.1",
     "react-error-boundary": "^5.0.0",
-    "react-joyride": "^3.2.0",
     "react-markdown": "^8.0.7",
     "react-plotly.js": "^2.6.0",
     "react-router-dom": "^7.18.1",
     "remark-gfm": "^3.0.1",
     "timelines-chart": "^2.12.1",
     "universal-cookie": "^7.2.1",
-    "use-query-params": "^2.2.2",
-    "zustand": "^4.4.7"
+    "use-query-params": "^2.2.2"
   },
   "scripts": {
     "start": "vite",

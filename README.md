@@ -24,7 +24,3 @@ See [the front end documentation](sippy-ng/README.md)
 
 See [database tuning](docs/database-tuning.md) for required PostgreSQL
 parameter group settings.
-
-## Chat
-
-See [the chat documentation](chat/README.md)
