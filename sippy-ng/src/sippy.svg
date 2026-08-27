@@ -76,4 +76,13 @@
 </g>
 <g>
 </g>
+<g id="fantastically-silly-hat" stroke="#49344D" stroke-width="5" stroke-linejoin="round">
+	<path fill="#7E57C2" d="M171,143 C187,102 206,65 234,24 C246,7 267,5 281,17 C292,27 290,42 280,54 C306,49 333,38 357,21 C365,15 374,20 373,29 C368,64 345,102 337,143 Z"/>
+	<circle cx="372" cy="25" r="13" fill="#FFD54F"/>
+	<path fill="#FFD54F" stroke="none" d="M245,55 L251,69 L266,70 L254,80 L258,95 L245,87 L232,95 L236,80 L224,70 L239,69 Z"/>
+	<circle cx="292" cy="91" r="8" fill="#26C6DA" stroke="none"/>
+	<circle cx="211" cy="113" r="6" fill="#FFD54F" stroke="none"/>
+	<path fill="#26C6DA" d="M128,136 C172,120 340,120 384,136 C405,144 405,159 385,168 C329,190 183,190 127,168 C107,160 107,144 128,136 Z"/>
+	<path fill="none" stroke="#FF5DA2" stroke-width="10" stroke-linecap="round" d="M139,151 C194,139 318,139 373,151"/>
+</g>
 </svg>
