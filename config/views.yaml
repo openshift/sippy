@@ -48,6 +48,7 @@ component_readiness:
       Owner:
       - eng
       - service-delivery
+      - mpict
       Platform:
       - aws
       - azure

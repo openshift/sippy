@@ -553,6 +553,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-online", "service-delivery"},
 		{"-telco5g", "cnf"},
 		{"-perfscale", "perfscale"},
+		{"-ocp-chaos-", "mpict"}, // MPEX Integrity Engineering Chaos Team
 		{"-chaos-", "chaos"},
 		{"-azure-aro-hcp", "aro"},
 		{"-qe", "qe"}, // Keep this one below perfscale
@@ -834,6 +835,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 	}{
 		// QE jobs allowlisted for Component Readiness
 		{[]string{"-automated-release"}, "standard"},
+
+		// Chaos team ocp-chaos CR jobs are release blocking
+		{[]string{"-ocp-chaos-cr-"}, "blocking"},
 
 		// OVN-Kubernetes BGP Virtualization jobs allowed for Component Readiness
 		{[]string{"-ovn-bgp-virt"}, "standard"},
