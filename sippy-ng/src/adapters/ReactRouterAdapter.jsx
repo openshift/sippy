@@ -1,3 +1,7 @@
+// Copy of use-query-params' ReactRouter6Adapter, importing from 'react-router'
+// instead of 'react-router-dom' (which this project no longer depends on).
+// The UNSAFE_ prefixed contexts are React Router's convention for internal APIs
+// intentionally exported for library interop, not a security concern.
 import {
   UNSAFE_DataRouterContext,
   UNSAFE_NavigationContext,
