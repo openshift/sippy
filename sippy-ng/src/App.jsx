@@ -780,7 +780,10 @@ function App(_props) {
                               element={<EventsChartWrapper />}
                             />
 
-                            <Route path="/chat/*" element={<ChatTransition />} />
+                            <Route
+                              path="/chat/*"
+                              element={<ChatTransition />}
+                            />
 
                             <Route
                               path="/"

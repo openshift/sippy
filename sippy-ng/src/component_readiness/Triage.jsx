@@ -1,6 +1,5 @@
 import { Box, Button, Chip, Tooltip } from '@mui/material'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
-import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import {
   getTriagesAPIUrl,
@@ -13,7 +12,7 @@ import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext } from 'react'
+import React, { Fragment } from 'react'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -37,13 +36,6 @@ export default function Triage({ id }) {
   const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
-  // The view is needed in order to formulate test_details links on the frontend, this is still necessary as they are not
-  // always included in the server response. If the triage has regressions from multiple views included on it, and the
-  // page is loaded from the context of one of those component_reports, then the regressions from the other view will not
-  // load properly. This is a better result than not being able to formulate any URLs when links aren't provided.
-  // TODO(sgoeddel): Make it so links are *always* provided, and remove this (https://issues.redhat.com/browse/TRT-2356)
-  const { sampleRelease, view } = useContext(CompReadyVarsContext)
-
   React.useEffect(() => {
     setIsLoaded(false)
     setIsUpdated(false)
