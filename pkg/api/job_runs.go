@@ -648,7 +648,7 @@ func JobRunRiskAnalysis(
 		}
 	}
 
-	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID, compareRelease)
+	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID, jobRun.ProwJob.Release)
 
 	// if we had an error we will continue the risk analysis and not elevate based on test counts
 	if err != nil {
