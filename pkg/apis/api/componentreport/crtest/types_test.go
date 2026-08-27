@@ -108,6 +108,64 @@ func TestVariantRoundTrip(t *testing.T) {
 	assert.Equal(t, value, gotValue)
 }
 
+func TestCompareCellStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		first  Status
+		second Status
+		want   int
+	}{
+		{
+			name:   "equal improvements have equal precedence",
+			first:  SignificantImprovement,
+			second: SignificantImprovement,
+			want:   0,
+		},
+		{
+			name:   "ordinary lower status wins",
+			first:  SignificantRegression,
+			second: NotSignificant,
+			want:   -1,
+		},
+		{
+			name:   "arbitrary negative status follows raw ordering",
+			first:  Status(-9999),
+			second: FailedFixedRegression,
+			want:   -1,
+		},
+		{
+			name:   "arbitrary positive status follows raw ordering",
+			first:  Status(50),
+			second: MissingBasis,
+			want:   -1,
+		},
+		{
+			name:   "improvement does not override a negative status",
+			first:  SignificantImprovement,
+			second: Status(-1),
+			want:   1,
+		},
+		{
+			name:   "improvement wins at NotSignificant boundary",
+			first:  SignificantImprovement,
+			second: NotSignificant,
+			want:   -1,
+		},
+		{
+			name:   "improvement wins as second status above boundary",
+			first:  Status(1),
+			second: SignificantImprovement,
+			want:   1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, CompareCellStatus(tt.first, tt.second))
+		})
+	}
+}
+
 func TestColumnEncodeEmpty(t *testing.T) {
 	col := ColumnIdentification{Variants: map[string]string{}}
 	encoded := col.Encode()
