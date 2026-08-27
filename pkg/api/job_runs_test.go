@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -485,6 +486,73 @@ func TestSelectRiskAnalysisResult(t *testing.T) {
 			analysis := selectRiskAnalysisResult(tc.jobNamesRiskLevel, tc.variantsRiskLevel, tc.jobNames, tc.compareRelease)
 			assert.Equal(t, tc.expectedRiskLevel, analysis.Level.Level, "%s risk level did not match expected", tc.name)
 			assert.Equal(t, tc.expectedResponse, analysis.Reasons, "%s response did not match expected", tc.name)
+		})
+	}
+}
+
+func TestLatestReleaseForProduct(t *testing.T) {
+	tests := []struct {
+		name     string
+		releases []sippyv1.Release
+		expected string
+	}{
+		{
+			name:     "empty list",
+			expected: "",
+		},
+		{
+			name: "skips non-OCP products",
+			releases: []sippyv1.Release{
+				{Release: "mcp-0.5", Product: "OCPMCP"},
+				{Release: "5.1", Product: "OCP", PreviousRelease: "5.0"},
+			},
+			expected: "5.1",
+		},
+		{
+			name: "skips releases without PreviousRelease",
+			releases: []sippyv1.Release{
+				{Release: "automation", Product: "OCP"},
+				{Release: "Presubmits", Product: "OCP"},
+				{Release: "4.23", Product: "OCP", PreviousRelease: "4.22"},
+			},
+			expected: "4.23",
+		},
+		{
+			name: "skips Presubmits even if it had PreviousRelease",
+			releases: []sippyv1.Release{
+				{Release: models.ReleasePresubmits, Product: "OCP", PreviousRelease: "something"},
+				{Release: "5.0", Product: "OCP", PreviousRelease: "4.22"},
+			},
+			expected: "5.0",
+		},
+		{
+			name: "realistic production ordering",
+			releases: []sippyv1.Release{
+				{Release: "mcp-0.5", Product: "OCPMCP"},
+				{Release: "5.1", Product: "OCP", PreviousRelease: "5.0"},
+				{Release: "4.23", Product: "OCP", PreviousRelease: "4.22"},
+				{Release: "5.0", Product: "OCP", PreviousRelease: "4.22"},
+				{Release: "5.0-okd", Product: "OKD", PreviousRelease: "4.22-okd"},
+				{Release: "4.22", Product: "OCP", PreviousRelease: "4.21"},
+				{Release: "aro-integration", Product: "HCM"},
+				{Release: "rosa-stage", Product: "ROSA"},
+			},
+			expected: "5.1",
+		},
+		{
+			name: "no OCP releases",
+			releases: []sippyv1.Release{
+				{Release: "mcp-0.5", Product: "OCPMCP"},
+				{Release: "aro-integration", Product: "HCM"},
+				{Release: "rosa-stage", Product: "ROSA"},
+			},
+			expected: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, latestReleaseForProduct(tc.releases, "OCP"))
 		})
 	}
 }

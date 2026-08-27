@@ -25,6 +25,7 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/apis/openshift"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
@@ -612,6 +613,15 @@ func joinSegments(segments []string, start int, separator string) string {
 	return strings.Join(segments[start:], separator)
 }
 
+func latestReleaseForProduct(releases []sippyv1.Release, product string) string {
+	for _, r := range releases {
+		if r.Product == product && r.PreviousRelease != "" && r.Release != models.ReleasePresubmits {
+			return r.Release
+		}
+	}
+	return ""
+}
+
 // JobRunRiskAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
 // risk level for each failed test, and the job run overall.
 func JobRunRiskAnalysis(
@@ -623,7 +633,7 @@ func JobRunRiskAnalysis(
 	logger = logger.WithField("func", "JobRunRiskAnalysis")
 	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
 	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
-	// master, so it should be safe to assume the latest compareRelease in the db.
+	// master, so we use the latest OCP release from the db.
 	compareRelease := jobRun.ProwJob.Release
 	neverStableJob := false
 	if compareRelease == models.ReleasePresubmits {
@@ -631,11 +641,11 @@ func JobRunRiskAnalysis(
 		if err != nil {
 			return apitype.ProwJobRunRiskAnalysis{}, err
 		}
-		if len(ar) == 0 {
-			return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("no releases found in db")
+		// TODO: Non-OCP are not supported yet. At least ensure adding new releases doesn't break OCP.
+		compareRelease = latestReleaseForProduct(ar, "OCP")
+		if compareRelease == "" {
+			return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("no suitable OCP release found")
 		}
-
-		compareRelease = ar[0].Release
 	}
 
 	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID, compareRelease)
