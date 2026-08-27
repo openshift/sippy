@@ -19,7 +19,7 @@ import {
 } from '@mui/material'
 import { escapeRegex } from '../helpers'
 import { makeStyles } from '@mui/styles'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import { stringify } from 'query-string'
 import Alert from '@mui/material/Alert'
 import FormControlLabel from '@mui/material/FormControlLabel'

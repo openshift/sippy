@@ -13,7 +13,7 @@ import {
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { escapeRegex, safeEncodeURIComponent } from '../helpers'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
 import CompCapRow from './CompCapRow'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'

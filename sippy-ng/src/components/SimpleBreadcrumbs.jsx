@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import Breadcrumbs from '@mui/material/Breadcrumbs'
 import PropTypes from 'prop-types'
 import React from 'react'

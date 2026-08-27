@@ -13,7 +13,7 @@ import {
 } from '@mui/icons-material'
 import { DEFAULT_TEST_FILTERS } from '../constants'
 import { LaunderedListItem } from './Laundry'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router'
 import { ListItemButton, ListSubheader, useTheme } from '@mui/material'
 import {
   pathForJobsWithFilter,

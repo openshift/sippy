@@ -53,7 +53,7 @@ followed by "Format Document" to quickly fix them.
 Imports must be sorted alphabetically. If using a multi-line import (also sorted alphabetically) then the first entry in that import determines the sort order relative to the other import statements.
 
 ```
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 ```
 
@@ -61,7 +61,7 @@ vs.
 
 ```
 import { getReportStartDate, relativeTime, safeEncodeURIComponent } from '../helpers'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 ```
 
 Helpers for each of these can be configured for on save actions or 'sort-imports'
