@@ -3,7 +3,7 @@ import { TabContext } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Route, Routes, useLocation } from 'react-router'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TestTable from './TestTable'
 

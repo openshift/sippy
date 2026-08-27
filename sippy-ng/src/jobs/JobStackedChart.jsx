@@ -5,7 +5,7 @@ import React, { useEffect } from 'react'
 
 import './JobAnalysis.css'
 import { safeEncodeURIComponent } from '../helpers'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 
 export const dayFilter = (days, startDate) => {
   return [

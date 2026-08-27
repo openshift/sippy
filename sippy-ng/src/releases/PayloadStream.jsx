@@ -1,6 +1,6 @@
 import { filterFor } from '../helpers'
 import { Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TabContext } from '@mui/lab'

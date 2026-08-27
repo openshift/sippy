@@ -29,7 +29,7 @@ import {
   jiraProjectForRelease,
   pathForExactTestAnalysisWithFilter,
 } from '../helpers'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ReleasesContext, SippyCapabilitiesContext } from '../App'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'

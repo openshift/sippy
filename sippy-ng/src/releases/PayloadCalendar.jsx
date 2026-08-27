@@ -2,7 +2,7 @@ import FullCalendar from '@fullcalendar/react'
 
 import { Alert, Grid } from '@mui/material'
 import { filterFor } from '../helpers'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useTheme } from '@mui/material/styles'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import PayloadCalendarLegend from './PayloadCalendarLegend'

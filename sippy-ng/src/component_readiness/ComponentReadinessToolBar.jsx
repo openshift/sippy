@@ -32,7 +32,7 @@ import {
   SearchIconWrapper,
   StyledInputBase,
 } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { SippyCapabilitiesContext } from '../App'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'

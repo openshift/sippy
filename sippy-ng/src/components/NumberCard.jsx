@@ -1,5 +1,5 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React from 'react'

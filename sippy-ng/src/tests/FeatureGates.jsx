@@ -1,6 +1,6 @@
 import { Container, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   parseVersion,
