@@ -25,12 +25,12 @@ type Client struct {
 }
 
 func New(ctx context.Context, opCtx bqlabel.OperationalContext, c cache.Cache, credentialFile, project, dataset, releasesTable string) (*Client, error) {
-	bqc, err := bigquery.NewClient(ctx, project, option.WithCredentialsFile(credentialFile))
+	bqc, err := bigquery.NewClient(ctx, project, option.WithAuthCredentialsFile(option.ServiceAccount, credentialFile))
 	if err != nil {
 		return nil, err
 	}
 	// Enable Storage API usage for fetching data
-	err = bqc.EnableStorageReadClient(context.Background(), option.WithCredentialsFile(credentialFile))
+	err = bqc.EnableStorageReadClient(context.Background(), option.WithAuthCredentialsFile(option.ServiceAccount, credentialFile))
 	if err != nil {
 		return nil, errors.WithMessage(err, "couldn't enable storage API")
 	}

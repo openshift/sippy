@@ -57,7 +57,7 @@ func functionalTestReEvaluator(t *testing.T) *ReEvaluator {
 		t.Fatalf("creating BQ client: %v", err)
 	}
 
-	gcsC, err := storage.NewClient(ctx, option.WithCredentialsFile(credFile))
+	gcsC, err := storage.NewClient(ctx, option.WithAuthCredentialsFile(option.ServiceAccount, credFile))
 	if err != nil {
 		t.Fatalf("creating GCS client: %v", err)
 	}

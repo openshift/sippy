@@ -75,7 +75,7 @@ func NewVariantsGenerateCommand() *cobra.Command {
 			}
 
 			bigQueryClient, err := bigquery.NewClient(ctx, f.BigQueryFlags.BigQueryProject,
-				option.WithCredentialsFile(f.GoogleCloudFlags.ServiceAccountCredentialFile))
+				option.WithAuthCredentialsFile(option.ServiceAccount, f.GoogleCloudFlags.ServiceAccountCredentialFile))
 			if err != nil {
 				log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents generating job variants")
 				return err
