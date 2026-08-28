@@ -16,8 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/riverdriver/riverpgxv5"
-	"github.com/riverqueue/river/rivermigrate"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -177,14 +175,12 @@ func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, big
 		return nil, fmt.Errorf("creating pgx/v5 pool for River: %w", err)
 	}
 
-	migrator, err := rivermigrate.New(riverpgxv5.New(pgxPool), nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating River migrator: %w", err)
+	// River schema is also migrated by "sippy migrate" so the API server can
+	// enqueue jobs. The daemon runs it too in case it starts before or without
+	// the migrate step (e.g. local development).
+	if err := workqueue.MigrateRiverSchema(ctx, pgxPool); err != nil {
+		return nil, err
 	}
-	if _, err := migrator.Migrate(ctx, rivermigrate.DirectionUp, nil); err != nil {
-		return nil, fmt.Errorf("running River migrations: %w", err)
-	}
-	log.Info("workqueue: River migrations applied")
 
 	artifactMgr := jobartifacts.NewManager(ctx)
 	reEvaluator := jobrunscan.NewReEvaluator(
