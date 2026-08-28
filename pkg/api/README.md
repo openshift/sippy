@@ -304,9 +304,10 @@ and counts are zero for an early duplicate):
 
 Errors have `{"code": <HTTP status>, "message": "<detail>"}`. Statuses are
 `400` for malformed requests or invalid/mismatched locations, `401` for missing
-forwarded identity, `404` for a missing ProwJob definition or release, `422` for
-invalid Prow metadata, age, state, or completion timing, `502` for ordinary
-artifact or label-query failures, `503` for recognized unavailable,
+forwarded identity, `404` for a missing top-level `prowjob.json`, ProwJob
+definition, or release, `422` for invalid Prow metadata, age, state, or
+completion timing, `502` for ordinary artifact or label-query failures, `503`
+for recognized unavailable,
 unconfigured, unauthorized, throttled, or timed-out dependencies, and `500`
 for partition or transactional persistence failures. Error details are retained
 for the trusted intra-team callers behind the OAuth proxy.

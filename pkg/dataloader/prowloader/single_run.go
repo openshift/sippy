@@ -155,6 +155,9 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 
 	prowBytes, err := i.readArtifact(ctx, request.Bucket, path.Join(prefix, prowJobFilename))
 	if err != nil {
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			return nil, classifyImportError(SingleRunNotFound, "reading prowjob.json", err)
+		}
 		return nil, classifyImportError(SingleRunArtifactFailure, "reading prowjob.json", err)
 	}
 	var pj prow.ProwJob

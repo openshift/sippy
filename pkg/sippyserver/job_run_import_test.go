@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"cloud.google.com/go/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -115,6 +117,25 @@ func TestJobRunImportErrorStatusMapping(t *testing.T) {
 			w := importRequest(t, fake, `{"prow_job_run_id":"123","bucket":"test-platform-results","job_prefix":"logs/job/123"}`, "engineer")
 			assert.Equal(t, tc.code, w.Code)
 			assert.Contains(t, w.Body.String(), "raw detail")
+		})
+	}
+}
+
+func TestJobRunImportProwJobArtifactStatusMapping(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		kind prowloader.SingleRunImportErrorKind
+		err  error
+		code int
+	}{
+		{"missing prowjob.json", prowloader.SingleRunNotFound, fmt.Errorf("reading prowjob.json: %w", storage.ErrObjectNotExist), http.StatusNotFound},
+		{"other GCS read failure", prowloader.SingleRunArtifactFailure, errors.New("reading prowjob.json: GCS read failed"), http.StatusBadGateway},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &fakeJobRunImporter{err: &prowloader.SingleRunImportError{Kind: tc.kind, Err: tc.err}}
+			w := importRequest(t, fake, `{"prow_job_run_id":"123","bucket":"test-platform-results","job_prefix":"logs/job/123"}`, "engineer")
+			assert.Equal(t, tc.code, w.Code)
+			assert.Contains(t, w.Body.String(), tc.err.Error())
 		})
 	}
 }

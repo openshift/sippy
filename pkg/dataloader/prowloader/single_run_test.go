@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/civil"
+	"cloud.google.com/go/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/api/googleapi"
@@ -105,6 +106,34 @@ func TestSingleRunImportRequestHasOnlyPublicContractFields(t *testing.T) {
 	assert.Equal(t, "prow_job_run_id", typ.Field(0).Tag.Get("json"))
 	assert.Equal(t, "bucket", typ.Field(1).Tag.Get("json"))
 	assert.Equal(t, "job_prefix", typ.Field(2).Tag.Get("json"))
+}
+
+func TestSingleRunProwJobArtifactReadClassification(t *testing.T) {
+	completion := singleRunNow.Add(-time.Hour)
+	pj := validSingleRunProw(singleRunNow.Add(-2*time.Hour), &completion)
+	for _, tc := range []struct {
+		name    string
+		readErr error
+		kind    SingleRunImportErrorKind
+	}{
+		{"missing prowjob.json", fmt.Errorf("wrapped storage error: %w", storage.ErrObjectNotExist), SingleRunNotFound},
+		{"other GCS read failure", errors.New("GCS read failed"), SingleRunArtifactFailure},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			i, _, calls := testSingleRunImporter(t, pj)
+			i.readArtifact = func(context.Context, string, string) ([]byte, error) {
+				return nil, tc.readErr
+			}
+
+			_, err := i.Import(context.Background(), validRequest())
+			assertImportKind(t, err, tc.kind)
+			require.ErrorIs(t, err, tc.readErr)
+			if tc.kind == SingleRunNotFound {
+				require.ErrorIs(t, err, storage.ErrObjectNotExist)
+			}
+			assert.Equal(t, []string{"exists"}, *calls)
+		})
+	}
 }
 
 func TestCanonicalJobPrefixLayouts(t *testing.T) {
@@ -213,6 +242,7 @@ func TestSingleRunInvalidMarkerAndReadFailure(t *testing.T) {
 		{"zero timestamp", `{"timestamp":0}`, nil, SingleRunInvalidProwJob},
 		{"malformed timestamp", `{"timestamp":"later"}`, nil, SingleRunInvalidProwJob},
 		{"before start", fmt.Sprintf(`{"timestamp":%d}`, start.Add(-time.Second).Unix()), nil, SingleRunInvalidProwJob},
+		{"missing marker", "", storage.ErrObjectNotExist, SingleRunArtifactFailure},
 		{"marker read failure", "", errors.New("GCS read failed"), SingleRunArtifactFailure},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -271,7 +301,7 @@ func TestSingleRunJUnitToleranceAndReadFailure(t *testing.T) {
 	t.Run("JUnit read failure aborts before labels and write", func(t *testing.T) {
 		i, _, calls := testSingleRunImporter(t, pj)
 		i.loadJUnit = func(context.Context, string, string) (*junit.TestSuites, []string, error) {
-			return nil, nil, errors.New("object read failed")
+			return nil, nil, storage.ErrObjectNotExist
 		}
 		_, err := i.Import(context.Background(), validRequest())
 		assertImportKind(t, err, SingleRunArtifactFailure)
