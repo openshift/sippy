@@ -8,92 +8,62 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import pLimit from 'p-limit'
 import PropTypes from 'prop-types'
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import RefreshIcon from '@mui/icons-material/Refresh'
 
-const CONCURRENCY = 10
-const MAX_RETRIES = 1
-const REQUEST_TIMEOUT_MS = 120000
+const POLL_INTERVAL_MS = 2500
 
-async function reEvaluateOne(buildID) {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-  try {
-    const response = await fetch(
-      import.meta.env.VITE_API_URL + '/api/jobs/runs/reevaluate',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prow_job_build_ids: [buildID] }),
-        signal: controller.signal,
-      }
-    )
-
-    if (!response.ok) {
-      let errorMsg = `HTTP ${response.status}`
-      try {
-        const errBody = await response.json()
-        if (errBody.message) errorMsg = errBody.message
-      } catch {
-        // fall back to status text if response isn't JSON
-      }
-      return {
-        prow_job_build_id: buildID,
-        status: 'eval_error',
-        error: errorMsg,
-      }
+// submitBatch sends all job run IDs in a single POST and returns the batch
+// metadata (batch_id, requested, links).
+async function submitBatch(prowJobBuildIDs) {
+  const response = await fetch(
+    import.meta.env.VITE_API_URL + '/api/jobs/runs/reevaluate',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prow_job_build_ids: prowJobBuildIDs }),
     }
+  )
 
-    const data = await response.json()
-    return (
-      data.results?.[0] ?? { prow_job_build_id: buildID, status: 'eval_error' }
-    )
-  } catch (err) {
-    return {
-      prow_job_build_id: buildID,
-      status: 'eval_error',
-      error:
-        err.name === 'AbortError'
-          ? 'request timed out'
-          : err.message || String(err),
+  if (!response.ok) {
+    let errorMsg = `HTTP ${response.status}`
+    try {
+      const errBody = await response.json()
+      if (errBody.message) errorMsg = errBody.message
+    } catch {
+      // fall back to status text if response body is not JSON
     }
-  } finally {
-    clearTimeout(timeoutId)
+    throw new Error(errorMsg)
   }
+
+  return response.json()
 }
 
-async function runPool(ids, onProgress) {
-  const limit = pLimit(CONCURRENCY)
-  const results = []
-  const tasks = ids.map((id) =>
-    limit(async () => {
-      const result = await reEvaluateOne(id)
-      results.push(result)
-      onProgress([...results])
-    })
+// fetchBatchStatus polls the batch status endpoint.
+async function fetchBatchStatus(batchID) {
+  const response = await fetch(
+    import.meta.env.VITE_API_URL +
+      '/api/jobs/runs/reevaluate/' +
+      encodeURIComponent(batchID)
   )
-  await Promise.all(tasks)
-  return results
+
+  if (!response.ok) {
+    let errorMsg = `HTTP ${response.status}`
+    try {
+      const errBody = await response.json()
+      if (errBody.message) errorMsg = errBody.message
+    } catch {
+      // fall back to status text
+    }
+    throw new Error(errorMsg)
+  }
+
+  return response.json()
 }
 
-function errorDetails(failures) {
-  const byMessage = new Map()
-  for (const f of failures) {
-    const msg = f.error || 'unknown error'
-    byMessage.set(msg, (byMessage.get(msg) || 0) + 1)
-  }
-  return (
-    <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
-      {[...byMessage.entries()].map(([msg, count]) => (
-        <li key={msg}>
-          {count > 1 ? `(${count}x) ` : ''}
-          {msg}
-        </li>
-      ))}
-    </ul>
-  )
+function isTerminalStatus(status) {
+  return status === 'complete' || status === 'failed'
 }
 
 function forceRefreshMessage(forceRefreshURL) {
@@ -118,164 +88,138 @@ export default function ReEvaluateButton({
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(null)
   const [snackbar, setSnackbar] = useState(null)
+  const pollTimerRef = useRef(null)
+  const batchIDRef = useRef(null)
 
-  const handleReEvaluate = async () => {
-    if (!prowJobBuildIDs?.length) return
-    setRunning(true)
-    setSnackbar(null)
+  const stopPolling = useCallback(() => {
+    if (pollTimerRef.current != null) {
+      clearInterval(pollTimerRef.current)
+      pollTimerRef.current = null
+    }
+  }, [])
 
-    const total = prowJobBuildIDs.length
-    setProgress({ total, results: [] })
+  // Clean up polling on unmount.
+  useEffect(() => {
+    return stopPolling
+  }, [stopPolling])
 
-    try {
-      let results = await runPool(prowJobBuildIDs, (partial) =>
-        setProgress({ total, results: partial })
-      )
+  const handleBatchComplete = useCallback(
+    (statusData) => {
+      stopPolling()
+      setRunning(false)
 
-      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        const retryable = results.filter(
-          (r) => r.status === 'eval_error' || r.status === 'rewrite_error'
-        )
-        if (retryable.length === 0) break
+      const { completed, failed, requested } = statusData
 
-        const kept = results.filter(
-          (r) => r.status !== 'eval_error' && r.status !== 'rewrite_error'
-        )
-        const retryIDs = retryable.map((r) => r.prow_job_build_id)
-        const retryResults = await runPool(retryIDs, (partial) =>
-          setProgress({ total, results: [...kept, ...partial] })
-        )
-        results = [...kept, ...retryResults]
-        setProgress({ total, results })
-      }
-
-      const successCount = results.filter((r) => r.status === 'success').length
-      const rewriteErrors = results.filter((r) => r.status === 'rewrite_error')
-      const evalErrors = results.filter((r) => r.status === 'eval_error')
-      const missingErrors = results.filter((r) => r.status === 'missing_error')
-
-      const allErrors = [...rewriteErrors, ...evalErrors, ...missingErrors]
-
-      if (rewriteErrors.length > 0) {
-        const parts = []
-        if (successCount > 0) parts.push(`${successCount} succeeded`)
-        parts.push(
-          `${rewriteErrors.length} failed during rewrite and may be in an inconsistent state`
-        )
-        if (evalErrors.length > 0)
-          parts.push(`${evalErrors.length} failed to evaluate`)
-        if (missingErrors.length > 0)
-          parts.push(`${missingErrors.length} not found`)
+      if (failed > 0 && completed === 0) {
         setSnackbar({
           severity: 'error',
-          message: (
-            <>
-              {parts.join(', ')}.
-              {rewriteErrors.length > 0 && (
-                <>
-                  <strong>Rewrite errors:</strong>
-                  {errorDetails(rewriteErrors)}
-                </>
-              )}
-              {evalErrors.length > 0 && (
-                <>
-                  <strong>Evaluation errors:</strong>
-                  {errorDetails(evalErrors)}
-                </>
-              )}
-              {missingErrors.length > 0 && (
-                <>
-                  <strong>Not found:</strong>
-                  {errorDetails(missingErrors)}
-                </>
-              )}
-            </>
-          ),
+          message: `Re-evaluation failed for all ${failed} job run(s).`,
         })
-      } else if (
-        successCount === 0 &&
-        missingErrors.length === results.length
-      ) {
-        setSnackbar({
-          severity: 'error',
-          message: (
-            <>
-              None of the selected job run(s) were found in Sippy
-              {errorDetails(missingErrors)}
-            </>
-          ),
-        })
-      } else if (
-        evalErrors.length > 0 &&
-        successCount === 0 &&
-        missingErrors.length === 0
-      ) {
-        setSnackbar({
-          severity: 'error',
-          message: (
-            <>
-              Re-evaluation failed for all {evalErrors.length} job run(s)
-              {errorDetails(evalErrors)}
-            </>
-          ),
-        })
-      } else if (evalErrors.length > 0 || missingErrors.length > 0) {
-        const parts = [`Re-evaluated ${successCount} job run(s)`]
-        if (evalErrors.length > 0) parts.push(`${evalErrors.length} failed`)
-        if (missingErrors.length > 0)
-          parts.push(`${missingErrors.length} not found`)
+      } else if (failed > 0) {
         setSnackbar({
           severity: 'warning',
           message: (
             <>
-              {parts.join(', ')}. {forceRefreshMessage(forceRefreshURL)}
-              {errorDetails(allErrors)}
+              Re-evaluated {completed} job run(s), {failed} failed.{' '}
+              {forceRefreshMessage(forceRefreshURL)}
             </>
           ),
+        })
+      } else if (requested === 0) {
+        setSnackbar({
+          severity: 'warning',
+          message: 'No job runs were submitted for re-evaluation.',
         })
       } else {
         setSnackbar({
           severity: 'success',
           message: (
             <>
-              Successfully re-evaluated {successCount} job run(s).{' '}
+              Successfully re-evaluated {completed} job run(s).{' '}
               {forceRefreshMessage(forceRefreshURL)}
             </>
           ),
         })
       }
+    },
+    [forceRefreshURL, stopPolling]
+  )
+
+  const startPolling = useCallback(
+    (batchID) => {
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const statusData = await fetchBatchStatus(batchID)
+          setProgress({
+            requested: statusData.requested,
+            completed: statusData.completed,
+            failed: statusData.failed,
+            running: statusData.running,
+            pending: statusData.pending,
+            status: statusData.status,
+          })
+
+          if (isTerminalStatus(statusData.status)) {
+            handleBatchComplete(statusData)
+          }
+        } catch (err) {
+          // A single poll failure is not fatal; keep polling.
+          // If the batch has already finished, the next poll will pick it up.
+          console.error('Error polling batch status:', err)
+        }
+      }, POLL_INTERVAL_MS)
+    },
+    [handleBatchComplete]
+  )
+
+  const handleReEvaluate = async () => {
+    if (!prowJobBuildIDs?.length) return
+    setRunning(true)
+    setSnackbar(null)
+    setProgress(null)
+
+    try {
+      const submitData = await submitBatch(prowJobBuildIDs)
+      batchIDRef.current = submitData.batch_id
+
+      setProgress({
+        requested: submitData.requested,
+        completed: 0,
+        failed: 0,
+        running: 0,
+        pending: submitData.requested,
+        status: 'pending',
+      })
+
+      startPolling(submitData.batch_id)
     } catch (err) {
+      setRunning(false)
       setSnackbar({
         severity: 'error',
         message: `Re-evaluation failed: ${err.message}`,
       })
-    } finally {
-      setRunning(false)
     }
   }
 
   const isDisabled = disabled || running || !prowJobBuildIDs?.length
 
-  const progressBar =
-    running && progress ? (
+  let progressBar = null
+  if (running && progress) {
+    const terminal = progress.completed + progress.failed
+    const pct =
+      progress.requested > 0 ? (terminal / progress.requested) * 100 : 0
+
+    progressBar = (
       <Stack spacing={0.5} sx={{ minWidth: 200 }}>
-        <LinearProgress
-          variant="determinate"
-          value={(progress.results.length / progress.total) * 100}
-        />
+        <LinearProgress variant="determinate" value={pct} />
         <Typography variant="caption" color="text.secondary">
-          {progress.results.length}/{progress.total} completed
-          {progress.results.filter((r) => r.status === 'success').length > 0 &&
-            ` (${
-              progress.results.filter((r) => r.status === 'success').length
-            } succeeded)`}
-          {progress.results.filter((r) => r.status !== 'success').length > 0 &&
-            `, ${
-              progress.results.filter((r) => r.status !== 'success').length
-            } failed`}
+          {terminal}/{progress.requested} completed
+          {progress.completed > 0 && ` (${progress.completed} succeeded)`}
+          {progress.failed > 0 && `, ${progress.failed} failed`}
         </Typography>
       </Stack>
-    ) : null
+    )
+  }
 
   return (
     <>
