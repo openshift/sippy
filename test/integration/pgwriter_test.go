@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/pgwriter"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -1552,4 +1554,171 @@ func TestCarryForwardThenWriteNewDataAccumulates(t *testing.T) {
 	assert.Equal(t, int64(1), updatedSummary.PrefixSumSuccesses, "carried-forward success should be preserved")
 	assert.Equal(t, int64(1), updatedSummary.PrefixSumFailures, "new failure should be added on top of carried-forward data")
 	assert.Equal(t, int64(2), updatedSummary.PrefixSumRuns, "runs should accumulate on top of carried-forward data")
+}
+
+func singleIdempotentResult(id, jobID uint, timestamp time.Time, labels []string) pgwriter.JobRunResult {
+	output := "failure output"
+	link := "https://github.com/openshift/origin/pull/2848"
+	return pgwriter.JobRunResult{
+		Run: pgwriter.RunRow{
+			ID: id, ProwJobID: jobID, ProwJobRelease: "4.18", Timestamp: timestamp,
+			URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/job/run",
+			GCSBucket: "test-platform-results", Labels: labels, OverallResult: "F", TestFailures: 1,
+		},
+		PullRequests: []pgwriter.PullRequestRow{{
+			Org: "openshift", Repo: "origin", Link: link, SHA: "abc2848", Number: 2848,
+		}},
+		PullRequestAssoc: []pgwriter.PullRequestAssocRow{{
+			ProwJobRunID: id, Link: link, SHA: "abc2848", ProwJobRunRelease: "4.18", ProwJobRunTimestamp: timestamp,
+		}},
+		Tests: []pgwriter.TestRow{{
+			ProwJobRunID: id, ProwJobID: jobID, ProwJobRunTimestamp: timestamp,
+			ProwJobRunRelease: "4.18", TestName: "single-run-test", SuiteName: "junit_e2e",
+			Status: statusFailure, Duration: 2.5, Output: &output, Lifecycle: "blocking",
+		}},
+	}
+}
+
+func TestWriteSingleIdempotentSequentialDuplicateAndPRAssociation(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	jobID := seedProwJob(t, dbc, "periodic-single-sequential", "4.18")
+	ts := time.Date(2026, 7, 15, 10, 0, 0, 0, time.UTC)
+	result := singleIdempotentResult(51001, jobID, ts, nil)
+
+	inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
+	require.NoError(t, err)
+	assert.True(t, inserted)
+	inserted, err = pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
+	require.NoError(t, err)
+	assert.False(t, inserted)
+
+	var parents, tests, outputs, associations int64
+	require.NoError(t, dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", 51001).Count(&parents).Error)
+	require.NoError(t, dbc.DB.Model(&models.ProwJobRunTest{}).Where("prow_job_run_id = ?", 51001).Count(&tests).Error)
+	require.NoError(t, dbc.DB.Model(&models.ProwJobRunTestOutput{}).Count(&outputs).Error)
+	require.NoError(t, dbc.DB.Model(&models.ProwJobRunProwPullRequest{}).Where("prow_job_run_id = ?", 51001).Count(&associations).Error)
+	assert.Equal(t, int64(1), parents)
+	assert.Equal(t, int64(1), tests)
+	assert.Equal(t, int64(1), outputs)
+	assert.Equal(t, int64(1), associations)
+}
+
+func TestWriteSingleIdempotentConcurrentDuplicateHasOneWinner(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	jobID := seedProwJob(t, dbc, "periodic-single-concurrent", "4.18")
+	ts := time.Date(2026, 7, 15, 11, 0, 0, 0, time.UTC)
+	result := singleIdempotentResult(51002, jobID, ts, nil)
+
+	start := make(chan struct{})
+	winners := make(chan bool, 2)
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
+			winners <- inserted
+			errs <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(winners)
+	close(errs)
+
+	winnerCount := 0
+	for won := range winners {
+		if won {
+			winnerCount++
+		}
+	}
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 1, winnerCount)
+
+	var parents, tests, daily, cumulative int64
+	require.NoError(t, dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", 51002).Count(&parents).Error)
+	require.NoError(t, dbc.DB.Model(&models.ProwJobRunTest{}).Where("prow_job_run_id = ?", 51002).Count(&tests).Error)
+	require.NoError(t, dbc.DB.Model(&models.TestDailyTotal{}).Where("prow_job_id = ?", jobID).Count(&daily).Error)
+	require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).Where("prow_job_id = ?", jobID).Count(&cumulative).Error)
+	assert.Equal(t, int64(1), parents)
+	assert.Equal(t, int64(1), tests)
+	assert.Equal(t, int64(1), daily)
+	assert.Greater(t, cumulative, int64(0))
+}
+
+func TestWriteSingleIdempotentRollbackIsAtomic(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	jobID := seedProwJob(t, dbc, "periodic-single-rollback", "4.18")
+	futureDate := testDate.AddDays(2)
+	ts := time.Date(futureDate.Year, futureDate.Month, futureDate.Day, 10, 0, 0, 0, time.UTC)
+	result := singleIdempotentResult(51003, jobID, ts, nil)
+
+	inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
+	assert.False(t, inserted)
+	require.ErrorContains(t, err, "batch contains test results dated after")
+
+	for name, query := range map[string]struct {
+		model any
+		where string
+	}{
+		"parent":      {&models.ProwJobRun{}, "id = 51003"},
+		"id map":      {&models.ProwJobRunIDMap{}, "id = 51003"},
+		"test row":    {&models.ProwJobRunTest{}, "prow_job_run_id = 51003"},
+		"association": {&models.ProwJobRunProwPullRequest{}, "prow_job_run_id = 51003"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var count int64
+			require.NoError(t, dbc.DB.Model(query.model).Where(query.where).Count(&count).Error)
+			assert.Zero(t, count)
+		})
+	}
+	var daily, cumulative int64
+	require.NoError(t, dbc.DB.Model(&models.TestDailyTotal{}).Where("prow_job_id = ?", jobID).Count(&daily).Error)
+	require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).Where("prow_job_id = ?", jobID).Count(&cumulative).Error)
+	assert.Zero(t, daily)
+	assert.Zero(t, cumulative)
+}
+
+func TestWriteSingleIdempotentPersistsInfraFailureWithoutSummaries(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	jobID := seedProwJob(t, dbc, "periodic-single-infra", "4.18")
+	ts := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+	result := singleIdempotentResult(51004, jobID, ts, []string{"InfraFailure", "KnownIssue"})
+
+	inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
+	require.NoError(t, err)
+	assert.True(t, inserted)
+
+	var parent models.ProwJobRun
+	require.NoError(t, dbc.DB.First(&parent, 51004).Error)
+	assert.ElementsMatch(t, []string{"InfraFailure", "KnownIssue"}, []string(parent.Labels))
+	var tests, daily, cumulative int64
+	require.NoError(t, dbc.DB.Model(&models.ProwJobRunTest{}).Where("prow_job_run_id = ?", 51004).Count(&tests).Error)
+	require.NoError(t, dbc.DB.Model(&models.TestDailyTotal{}).Where("prow_job_id = ?", jobID).Count(&daily).Error)
+	require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).Where("prow_job_id = ?", jobID).Count(&cumulative).Error)
+	assert.Equal(t, int64(1), tests)
+	assert.Zero(t, daily)
+	assert.Zero(t, cumulative)
+}
+
+func TestProwJobRunExistsRequiresRealParent(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	ts := time.Date(2026, 7, 15, 13, 0, 0, 0, time.UTC)
+	require.NoError(t, dbc.DB.Create(&models.ProwJobRunIDMap{ID: 51005, ProwJobRelease: "4.18", Timestamp: ts}).Error)
+
+	exists, err := prowloader.ProwJobRunExists(context.Background(), dbc, 51005)
+	require.NoError(t, err)
+	assert.False(t, exists, "an orphan partition-key map must not skip an import")
+
+	jobID := seedProwJob(t, dbc, "periodic-single-exists", "4.18")
+	inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, singleIdempotentResult(51006, jobID, ts, nil))
+	require.NoError(t, err)
+	assert.True(t, inserted)
+	exists, err = prowloader.ProwJobRunExists(context.Background(), dbc, 51006)
+	require.NoError(t, err)
+	assert.True(t, exists)
 }

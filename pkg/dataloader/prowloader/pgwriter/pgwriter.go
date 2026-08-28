@@ -144,17 +144,32 @@ var (
 // then INSERTs/UPSERTs into permanent tables including tests, suites,
 // prow_job_run_tests, test_daily_totals, and test_cumulative_summaries.
 func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobRunResult) error {
+	_, err := writeJobRuns(ctx, dbc, currentDate, batch, false)
+	return err
+}
+
+// WriteSingleIdempotent persists one fully prepared job run. The return value
+// is true only for the transaction that won the parent-row insert. A
+// concurrent loser returns false without writing children or summaries.
+func WriteSingleIdempotent(ctx context.Context, dbc *db.DB, currentDate civil.Date, result JobRunResult) (bool, error) {
+	return writeJobRuns(ctx, dbc, currentDate, []JobRunResult{result}, true)
+}
+
+func writeJobRuns(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobRunResult, idempotent bool) (bool, error) {
 	if len(batch) == 0 {
-		return nil
+		return false, nil
+	}
+	if idempotent && len(batch) != 1 {
+		return false, fmt.Errorf("idempotent job run write requires exactly one result")
 	}
 
 	sqlDB, err := dbc.DB.DB()
 	if err != nil {
-		return fmt.Errorf("getting sql.DB: %w", err)
+		return false, fmt.Errorf("getting sql.DB: %w", err)
 	}
 	conn, err := stdlib.AcquireConn(sqlDB)
 	if err != nil {
-		return fmt.Errorf("acquiring pgx conn: %w", err)
+		return false, fmt.Errorf("acquiring pgx conn: %w", err)
 	}
 	defer func() {
 		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
@@ -178,35 +193,35 @@ func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobR
 	copyStart := time.Now()
 	cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_prow_job_runs", runs, runCols)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer cleanup()
 
 	if len(anns) > 0 {
 		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_annotations", anns, annCols)
 		if err != nil {
-			return err
+			return false, err
 		}
 		defer cleanup()
 	}
 	if len(prs) > 0 {
 		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_pull_requests", prs, prCols)
 		if err != nil {
-			return err
+			return false, err
 		}
 		defer cleanup()
 	}
 	if len(prAssocs) > 0 {
 		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_pr_assocs", prAssocs, prAssocCols)
 		if err != nil {
-			return err
+			return false, err
 		}
 		defer cleanup()
 	}
 	if len(tests) > 0 {
 		cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_job_run_tests", tests, testCols)
 		if err != nil {
-			return err
+			return false, err
 		}
 		defer cleanup()
 	}
@@ -215,37 +230,41 @@ func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobR
 
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("beginning transaction: %w", err)
+		return false, fmt.Errorf("beginning transaction: %w", err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if err := insertJobRuns(ctx, tx); err != nil {
-		return err
+	inserted, err := insertJobRuns(ctx, tx, idempotent)
+	if err != nil {
+		return false, err
+	}
+	if !inserted {
+		return false, nil
 	}
 	if err := insertJobRunIDMap(ctx, tx); err != nil {
-		return err
+		return false, err
 	}
 	if err := insertAnnotations(ctx, tx, len(anns)); err != nil {
-		return err
+		return false, err
 	}
 	if err := upsertPullRequests(ctx, tx, len(prs)); err != nil {
-		return err
+		return false, err
 	}
 	if err := insertPRAssociations(ctx, tx, len(prAssocs)); err != nil {
-		return err
+		return false, err
 	}
 	if len(tests) > 0 {
 		if err := insertTestResults(ctx, tx); err != nil {
-			return err
+			return false, err
 		}
 		if err := upsertSummaryTables(ctx, tx, currentDate); err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	stepStart := time.Now()
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("committing job run batch: %w", err)
+		return false, fmt.Errorf("committing job run batch: %w", err)
 	}
 	log.WithField("elapsed", time.Since(stepStart)).Debug("committed transaction")
 
@@ -254,11 +273,33 @@ func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobR
 		"tests": len(tests),
 	}).Info("job run batch committed")
 
-	return nil
+	return true, nil
 }
 
-func insertJobRuns(ctx context.Context, tx pgx.Tx) error {
+func insertJobRuns(ctx context.Context, tx pgx.Tx, idempotent bool) (bool, error) {
 	stepStart := time.Now()
+	if idempotent {
+		var id uint
+		err := tx.QueryRow(ctx, `
+			INSERT INTO prow_job_runs (id, cluster, duration, prow_job_id, prow_job_release,
+				url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
+				succeeded, failed, infrastructure_failure, known_failure, labels, created_at, updated_at)
+			SELECT id, cluster, duration, prow_job_id, prow_job_release,
+				url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
+				succeeded, false, false, false, labels, NOW(), NOW()
+			FROM tmp_prow_job_runs
+			ON CONFLICT (id) DO NOTHING
+			RETURNING id
+		`).Scan(&id)
+		if err == pgx.ErrNoRows {
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("inserting idempotent prow_job_run: %w", err)
+		}
+		log.WithField("elapsed", time.Since(stepStart)).Debug("inserted prow_job_runs")
+		return true, nil
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO prow_job_runs (id, cluster, duration, prow_job_id, prow_job_release,
 			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
@@ -268,10 +309,10 @@ func insertJobRuns(ctx context.Context, tx pgx.Tx) error {
 			succeeded, false, false, false, labels, NOW(), NOW()
 		FROM tmp_prow_job_runs
 	`); err != nil {
-		return fmt.Errorf("inserting prow_job_runs: %w", err)
+		return false, fmt.Errorf("inserting prow_job_runs: %w", err)
 	}
 	log.WithField("elapsed", time.Since(stepStart)).Debug("inserted prow_job_runs")
-	return nil
+	return true, nil
 }
 
 func insertJobRunIDMap(ctx context.Context, tx pgx.Tx) error {

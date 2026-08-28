@@ -212,6 +212,105 @@ of variant success rates.
 
 ## Jobs
 
+### Import one completed Prow job run
+
+`POST /api/jobs/runs/import` imports a single completed run directly from its
+GCS artifacts. The route is enabled only when the server has both the
+`local_db` and `write_endpoints` capabilities. Production authentication is
+provided by the deployment OAuth proxy, and the handler additionally requires
+a nonempty `X-Forwarded-User` header before it invokes the importer.
+
+The JSON request body is limited to 1 MiB, must contain exactly one JSON value,
+and rejects unknown fields. Its public fields are exactly:
+
+```json
+{
+  "prow_job_run_id": "1234567890",
+  "bucket": "test-platform-results",
+  "job_prefix": "logs/periodic-ci-example/1234567890"
+}
+```
+
+The bucket must equal the Sippy server's configured Google storage bucket.
+`job_prefix` must be a canonical top-level Prow job path ending in the requested
+run ID. Accepted layouts are `logs/<job>/<id>`, legacy
+`pr-logs/pull/<pull-number>/<job>/<id>`, and current
+`pr-logs/pull/<org>_<repo>/<pull-number>/<job>/<id>`. Nested artifact or step
+paths are rejected even if their last component is the run ID. When present,
+the GCS location in `prowjob.json`'s `status.url` must agree with the request.
+
+The importer first checks PostgreSQL for a real committed parent run; a matching
+orphan ID-map row is not enough. A committed duplicate returns without reading
+GCS or BigQuery. Otherwise it reads `<job_prefix>/prowjob.json`, determines the
+duration, reads and combines every matching `**junit**.xml` object, resolves the
+existing ProwJob definition (including its release and variants), reads labels,
+prepares partitions, and finally performs the permanent write. The start time
+must not be in the future or more than 14 days old; exactly 14 days is accepted.
+
+`status.completionTime` is authoritative when present and no completion marker
+is read. When it is absent, the importer reads only the top-level
+`<job_prefix>/finished.json` and uses its positive numeric Unix-seconds
+`timestamp`. Duration is completion or marker time minus `status.startTime`;
+request receipt time and GCS object metadata are never used. Missing, malformed,
+zero, or pre-start marker timing makes the ProwJob invalid.
+
+JUnit behavior intentionally matches the batch loader. Artifact listing or
+read errors abort the import, while malformed or empty JUnit files contribute
+no native test rows. Synthetic results may still be produced, and a run with
+zero tests may still be imported. All files are downloaded and converted before
+the database transaction.
+
+Labels come from the authoritative BigQuery `job_labels` table using build ID
+and the exact `DATE(prowjob_start)` partition; the BigQuery `jobs` candidate
+table is not queried. A successful query with no row means an empty label set.
+An unavailable or failed label query aborts without writing rather than silently
+persisting incomplete labels. Labels are persisted unchanged, including
+`InfraFailure`. Runs already carrying `InfraFailure` retain their parent and
+test rows but are excluded from daily and cumulative summary deltas in both the
+single-run and batch writers. Existing late-label handling continues to
+subtract a run that was summarized before `InfraFailure` was applied.
+
+Before the permanent write, the importer calls the existing partition preparer
+for the resolved release from the Prow start time through two days after the
+single captured current time. The 14-day validation bound limits historical
+work but does not replace partition preparation. The unique parent insert
+(`ON CONFLICT (id) DO NOTHING RETURNING id`) is the race-ownership gate. Only
+the winner writes ID maps, annotations, pull-request associations, tests,
+outputs, and summaries in one transaction; concurrent losers return a
+successful idempotent no-op. Pull-request identities from `prowjob.json` are
+stored without live GitHub enrichment or risk-comment side effects.
+
+A new import returns `201 Created`; an early or concurrent duplicate returns
+`200 OK`. Both use this response shape (definition-derived fields may be absent
+and counts are zero for an early duplicate):
+
+```json
+{
+  "prow_job_run_id": "1234567890",
+  "status": "imported",
+  "prow_job_name": "periodic-ci-example",
+  "release": "4.20",
+  "bucket": "test-platform-results",
+  "job_prefix": "logs/periodic-ci-example/1234567890",
+  "gcs_location": "gs://test-platform-results/logs/periodic-ci-example/1234567890",
+  "junit_files": 2,
+  "tests": 347,
+  "links": {
+    "self": "https://sippy.example/api/jobs/runs/import",
+    "prow_job": "https://prow.ci.openshift.org/view/gs/..."
+  }
+}
+```
+
+Errors have `{"code": <HTTP status>, "message": "<detail>"}`. Statuses are
+`400` for malformed requests or invalid/mismatched locations, `401` for missing
+forwarded identity, `404` for a missing ProwJob definition or release, `422` for
+invalid Prow metadata, age, state, or completion timing, `502` for ordinary
+artifact or label-query failures, `503` for recognized unavailable,
+unconfigured, unauthorized, throttled, or timed-out dependencies, and `500`
+for partition or transactional persistence failures. Error details are retained
+for the trusted intra-team callers behind the OAuth proxy.
+
 Endpoint: `/api/jobs`
 
 <details>
