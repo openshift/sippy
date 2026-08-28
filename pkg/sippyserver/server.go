@@ -170,6 +170,7 @@ type Server struct {
 	static               fs.FS
 	httpServer           *http.Server
 	db                   *db.DB
+	applyLabel           applyLabelFunc
 	bigQueryClient       *sippybq.Client
 	crDataProvider       dataprovider.DataProvider
 	pinnedDateTime       *time.Time
@@ -2676,6 +2677,13 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodPost},
 			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonReEvaluateJobRunSymptoms,
+		},
+		{
+			EndpointPath: "/api/job/run/labels",
+			Description:  "Apply one externally-sourced label to a job run in PostgreSQL (every label uses the common append path; InfraFailure also triggers summary subtraction in the same transaction)",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonApplyLabel,
 		},
 		{
 			EndpointPath: "/api/job_variants",

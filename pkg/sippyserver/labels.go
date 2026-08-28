@@ -1,0 +1,64 @@
+package sippyserver
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/labels"
+)
+
+type applyLabelFunc func(context.Context, labels.ApplyRequest) (labels.Result, labels.ApplyOutcome)
+
+// jsonApplyLabel handles POST /api/job/run/labels. It applies a single
+// externally-sourced job run label request to PostgreSQL: every label is
+// appended to the run's prow_job_runs.labels array, and an InfraFailure label
+// additionally removes the run's contribution from the summary tables (via
+// pkg/db/infrafailure.SubtractInfraFailureFromSummaries) in the same transaction.
+// The endpoint is gated by the write-endpoints capability.
+func (s *Server) jsonApplyLabel(w http.ResponseWriter, req *http.Request) {
+	log.Info("labels apply POST")
+
+	if s.db == nil {
+		failureResponse(w, http.StatusServiceUnavailable, "applying labels requires a database connection")
+		return
+	}
+
+	var request labels.ApplyRequest
+	req.Body = http.MaxBytesReader(w, req.Body, 1<<20) // 1 MiB limit to prevent DoS
+	dec := json.NewDecoder(req.Body)
+	dec.DisallowUnknownFields() // catch client errors faster
+	if err := dec.Decode(&request); err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	if err := labels.ValidateRequest(request); err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	applyLabel := s.applyLabel
+	if applyLabel == nil {
+		applyLabel = labels.NewApplier(s.db).Apply
+	}
+	result, outcome := applyLabel(req.Context(), request)
+
+	api.RespondWithJSON(httpStatusForApplyOutcome(outcome), w, result)
+}
+
+func httpStatusForApplyOutcome(outcome labels.ApplyOutcome) int {
+	switch outcome {
+	case labels.ApplyOutcomeRecorded:
+		return http.StatusCreated
+	case labels.ApplyOutcomeAlreadyLabeled:
+		return http.StatusOK
+	case labels.ApplyOutcomeRunNotFound:
+		return http.StatusNotFound
+	default:
+		return http.StatusInternalServerError
+	}
+}

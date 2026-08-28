@@ -219,19 +219,24 @@ func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) (RecordOutcome, err
 
 	// The atomic gate passed (the label was newly applied), so remove the run's
 	// contribution from the summary tables in the same transaction.
-	if err := subtractFromSummaries(tx, prowJobRunID); err != nil {
+	if err := SubtractInfraFailureFromSummaries(tx, prowJobRunID); err != nil {
 		return OutcomeUnknown, err
 	}
 	return OutcomeSubtracted, nil
 }
 
-// subtractFromSummaries removes a single prow job run's test results from the
-// pre-aggregated summary tables (test_daily_totals and
+// SubtractInfraFailureFromSummaries removes a single prow job run's test results
+// from the pre-aggregated summary tables (test_daily_totals and
 // test_cumulative_summaries). It does not touch the InfraFailure label: callers
 // own the label and any gating that decides whether the subtraction should run.
 // All work happens on the supplied transaction so it commits or rolls back
 // atomically with the caller's other writes.
-func subtractFromSummaries(tx *gorm.DB, prowJobRunID int64) error {
+//
+// The subtraction is not idempotent on its own, so callers must gate it behind
+// the "InfraFailure label was newly applied" condition (as RecordInfraFailure and
+// the /api/job/run/labels applier both do) to avoid subtracting a run's
+// contribution twice.
+func SubtractInfraFailureFromSummaries(tx *gorm.DB, prowJobRunID int64) error {
 	logger := log.WithField("prowJobRunID", prowJobRunID)
 
 	// Read the run's partition keys (release and timestamp) so the delta scan
@@ -303,5 +308,5 @@ func SubtractNewInfraFailure(tx *gorm.DB, prowJobRunID int64) error {
 		log.WithField("prowJobRunID", prowJobRunID).Debug("prow job run already labeled InfraFailure; summary subtraction already applied, skipping")
 		return nil
 	}
-	return subtractFromSummaries(tx, prowJobRunID)
+	return SubtractInfraFailureFromSummaries(tx, prowJobRunID)
 }
