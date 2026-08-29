@@ -24,10 +24,6 @@ const (
 	// MaxAttemptsPerItem is the number of times an individual re-evaluation
 	// job is attempted before being discarded as a permanent failure.
 	MaxAttemptsPerItem = 3
-
-	// MaxJobRunsPerBatch is the maximum number of job runs that can be
-	// submitted in a single batch request.
-	MaxJobRunsPerBatch = 10000
 )
 
 // ProcessBatchArgs is a River job that the API enqueues when a new batch is

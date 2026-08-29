@@ -89,7 +89,6 @@ export default function ReEvaluateButton({
   const [progress, setProgress] = useState(null)
   const [snackbar, setSnackbar] = useState(null)
   const pollTimerRef = useRef(null)
-  const batchIDRef = useRef(null)
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current != null) {
@@ -180,8 +179,6 @@ export default function ReEvaluateButton({
 
     try {
       const submitData = await submitBatch(prowJobBuildIDs)
-      batchIDRef.current = submitData.batch_id
-
       setProgress({
         requested: submitData.requested,
         completed: 0,
