@@ -108,9 +108,9 @@ Labels are relevant in several Sippy pages:
 - Payload job runs table - labels column.
 - JAQ dialog - symptom management and label display.
 - Triage details - symptom summaries per regression displayed on test details pages.
-- Re-evaluation controls - button in the JAQ dialog action bar. Triggers retroactive symptom
-  matching for selected (or all visible) job runs in the dialog (requires SSO authentication
-  via the write-enabled deployment).
+- Re-evaluation controls - button in the JAQ dialog action bar. Submits an async batch
+  re-evaluation for selected (or all visible) job runs. The UI polls the batch status endpoint
+  and displays progress (requires SSO authentication via the write-enabled deployment).
 
 They are also displayed in Spyglass (the Deck display of a Prow job) - an HTML summary added to the
 job's bucket entry is included by the html lens.
@@ -121,17 +121,36 @@ The `POST /api/jobs/runs/reevaluate` endpoint re-runs symptom detection for spec
 Unlike the cloud function (which processes files as they arrive), the re-evaluator scans all
 artifacts at once for completed job runs.
 
+Re-evaluation is asynchronous. The API returns immediately with a batch ID; actual processing
+happens in the background via River (a PostgreSQL-based job queue) workers running in the
+sippy-daemon.
+
 Flow:
 
-1. Load all active symptom definitions from PostgreSQL (excluding unimplemented matcher types).
-2. For each job run, run one `JobArtifactQuery` per symptom against GCS artifacts.
-3. Delete existing symptom-originated labels (BQ rows with non-empty `symptom_id`, GCS label files).
-4. Write new results to BQ (`job_labels` table), GCS (label JSON files + HTML summary), and
-   PostgreSQL (`prow_job_runs.labels` and `release_job_runs.labels`).
+1. Client sends `POST /api/jobs/runs/reevaluate` with `{"prow_job_build_ids": [...], "dry_run": bool}`.
+2. The API creates a batch record (`workqueue_symptom_re_batches`) and returns `202 Accepted` with
+   a `batch_id` and a HATEOAS `links.status` URL.
+3. A River worker picks up the batch job, refreshes the symptom cache, and fans out one River job
+   per job run (`workqueue_symptom_re_batch_items`).
+4. Each per-run job loads symptom definitions, runs `JobArtifactQuery` per symptom against GCS
+   artifacts, deletes existing symptom-originated labels (BQ rows with non-empty `symptom_id`,
+   GCS label files), and writes new results to BQ, GCS, and PostgreSQL.
+5. The client polls `GET /api/jobs/runs/reevaluate/{batch_id}` to track progress. Batch status
+   transitions: `pending` -> `processing` -> `running` -> `complete` or `failed`. Completion is
+   detected lazily when the status endpoint is polled.
 
-The delete-then-insert strategy makes re-evaluation idempotent: if a symptom is modified, added, or
-removed, re-evaluating produces the correct result. Manually-applied labels (those with empty
-`symptom_id`) are preserved through re-evaluation.
+**Deduplication:** River's `UniqueOpts` (by args, with a 120-minute window) prevents re-enqueuing
+the same job run within a 2-hour period. The `dry_run` flag is part of the unique key, so dry runs
+do not deduplicate against real runs.
+
+**Retries:** Individual per-run jobs retry up to 3 times with exponential backoff via River.
+
+**Cleanup:** A background process deletes completed batches after 7 days and stale non-terminal
+batches after 24 hours.
+
+The delete-then-insert strategy for each job run makes re-evaluation idempotent: if a symptom is
+modified, added, or removed, re-evaluating produces the correct result. Manually-applied labels
+(those with empty `symptom_id`) are preserved through re-evaluation.
 
 ## Key Code Locations
 
@@ -155,6 +174,9 @@ removed, re-evaluating produces the correct result. Manually-applied labels (tho
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
 | `sippy-ng/src/component_readiness/JobArtifactQuery.js` | JAQ dialog including symptom creation UI. |
 | `sippy-ng/src/component_readiness/TriageSymptoms.js` | Triage symptom display component. |
+| `sippy-ng/src/jobs/ReEvaluateSymptoms.jsx` | React component for submitting re-evaluation batches and polling status. |
+| `pkg/sippyserver/workqueue/` | River client helpers and batch status constants. |
+| `pkg/sippyserver/workqueue/symptomre/` | Batch workers, submitter, status querier, models, and cleanup process for async re-evaluation. |
 
 ### Cloud Function (`openshift/ci-cloud-functions`)
 
@@ -170,7 +192,8 @@ All endpoints are under `/api/jobs/` and support standard CRUD:
 - `GET/PUT/DELETE /api/jobs/labels/{id}` - read / update / delete
 - `GET/POST /api/jobs/symptoms` - list / create symptoms
 - `GET/PUT/DELETE /api/jobs/symptoms/{id}` - read / update / delete
-- `POST /api/jobs/runs/reevaluate` - re-evaluate symptoms for specified job runs
+- `POST /api/jobs/runs/reevaluate` - submit async batch re-evaluation (returns `202 Accepted` with `batch_id`)
+- `GET /api/jobs/runs/reevaluate/{batch_id}` - poll batch status and per-item progress
 
 See `pkg/api/jobrunscan/` for validation rules and `pkg/api/README.md` for broader API
 documentation.
@@ -187,12 +210,18 @@ documentation.
 | BigQuery `ci_analysis_us.job_labels` | Applied labels with provenance | Warehouse for analytics; source of truth during fetchdata. |
 | GCS `artifacts/job_labels/*.json` | Per-match label files | Provenance and Spyglass display. |
 | GCS `artifacts/job_labels/label-summary.html` | HTML summary | Rendered by Spyglass html lens. |
+| PostgreSQL `workqueue_symptom_re_batches` | Re-evaluation batch records | Tracks batch lifecycle (pending through complete/failed). |
+| PostgreSQL `workqueue_symptom_re_batch_items` | Per-job-run items within a batch | Tracks individual re-evaluation status and results. |
+| PostgreSQL `river_job` (River) | Queued background jobs | River's internal table for job scheduling, retries, and deduplication. |
 
 ## Status
 
 The symptoms pipeline (definition → detection → labeling → display) is fully operational.
 Active/planned work includes:
 
+- **Async batch re-evaluation** ([TRT-2867](https://redhat.atlassian.net/browse/TRT-2867))
+  - completed. Re-evaluation moved from synchronous HTTP processing to an async River-based
+    batch model with status polling, deduplication, retries, and automatic cleanup.
 - **Compound symptoms** ([TRT-2466](https://redhat.atlassian.net/browse/TRT-2466))
   - richer CEL-based label composition.
 - **Full management UI** ([TRT-2479](https://redhat.atlassian.net/browse/TRT-2479))
