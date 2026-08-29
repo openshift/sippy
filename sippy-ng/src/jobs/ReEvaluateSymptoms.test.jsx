@@ -364,4 +364,92 @@ describe('ReEvaluateButton', () => {
       ).toBeInTheDocument()
     })
   })
+
+  it('shows cancel button during polling', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-cancel', 2))
+      .mockResolvedValue(
+        statusResponse('batch-cancel', {
+          status: 'running',
+          requested: 2,
+          completed: 0,
+          running: 2,
+          pending: 0,
+        })
+      )
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    })
+  })
+
+  it('cancels batch and shows info snackbar', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-cancel2', 2))
+      .mockResolvedValueOnce(
+        statusResponse('batch-cancel2', {
+          status: 'running',
+          requested: 2,
+          completed: 1,
+          running: 1,
+          pending: 0,
+        })
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            batch_id: 'batch-cancel2',
+            status: 'cancelled',
+            requested: 2,
+            completed: 1,
+            failed: 0,
+            running: 0,
+            pending: 1,
+            items: [],
+          }),
+      })
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+
+    // Wait for first poll so cancel button appears.
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    })
+
+    // Click cancel.
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Batch cancelled\. 1 job run\(s\) completed/)
+      ).toBeInTheDocument()
+    })
+
+    // Verify the DELETE call was made.
+    const deleteCall = global.fetch.mock.calls.find(
+      (call) => call[1]?.method === 'DELETE'
+    )
+    expect(deleteCall).toBeDefined()
+    expect(deleteCall[0]).toContain('batch-cancel2')
+  })
 })

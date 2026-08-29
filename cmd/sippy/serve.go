@@ -212,6 +212,7 @@ func NewServeCommand() *cobra.Command {
 					server.SetSymptomReEvaluation(
 						symptomre.NewSubmitter(dbc.DB, riverClient),
 						symptomre.NewStatusQuerier(dbc.DB),
+						symptomre.NewBatchCanceller(dbc.DB, riverClient),
 					)
 				}
 			}

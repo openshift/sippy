@@ -63,7 +63,29 @@ async function fetchBatchStatus(batchID) {
 }
 
 function isTerminalStatus(status) {
-  return status === 'complete' || status === 'failed'
+  return status === 'complete' || status === 'failed' || status === 'cancelled'
+}
+
+async function cancelBatch(batchID) {
+  const response = await fetch(
+    import.meta.env.VITE_API_URL +
+      '/api/jobs/runs/reevaluate/' +
+      encodeURIComponent(batchID),
+    { method: 'DELETE' }
+  )
+
+  if (!response.ok) {
+    let errorMsg = `HTTP ${response.status}`
+    try {
+      const errBody = await response.json()
+      if (errBody.message) errorMsg = errBody.message
+    } catch {
+      // fall back to status text
+    }
+    throw new Error(errorMsg)
+  }
+
+  return response.json()
 }
 
 function forceRefreshMessage(forceRefreshURL) {
@@ -89,6 +111,7 @@ export default function ReEvaluateButton({
   const [progress, setProgress] = useState(null)
   const [snackbar, setSnackbar] = useState(null)
   const pollTimerRef = useRef(null)
+  const batchIDRef = useRef(null)
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current != null) {
@@ -107,9 +130,17 @@ export default function ReEvaluateButton({
       stopPolling()
       setRunning(false)
 
-      const { completed, failed, requested } = statusData
+      const { completed, failed, requested, status } = statusData
 
-      if (failed > 0 && completed === 0) {
+      if (status === 'cancelled') {
+        setSnackbar({
+          severity: 'info',
+          message:
+            completed > 0
+              ? `Batch cancelled. ${completed} job run(s) completed before cancellation.`
+              : 'Batch cancelled.',
+        })
+      } else if (failed > 0 && completed === 0) {
         setSnackbar({
           severity: 'error',
           message: `Re-evaluation failed for all ${failed} job run(s).`,
@@ -179,6 +210,7 @@ export default function ReEvaluateButton({
 
     try {
       const submitData = await submitBatch(prowJobBuildIDs)
+      batchIDRef.current = submitData.batch_id
       setProgress({
         requested: submitData.requested,
         completed: 0,
@@ -198,6 +230,19 @@ export default function ReEvaluateButton({
     }
   }
 
+  const handleCancel = async () => {
+    if (!batchIDRef.current) return
+    try {
+      const statusData = await cancelBatch(batchIDRef.current)
+      handleBatchComplete(statusData)
+    } catch (err) {
+      setSnackbar({
+        severity: 'error',
+        message: `Cancel failed: ${err.message}`,
+      })
+    }
+  }
+
   const isDisabled = disabled || running || !prowJobBuildIDs?.length
 
   let progressBar = null
@@ -209,11 +254,20 @@ export default function ReEvaluateButton({
     progressBar = (
       <Stack spacing={0.5} sx={{ minWidth: 200 }}>
         <LinearProgress variant="determinate" value={pct} />
-        <Typography variant="caption" color="text.secondary">
-          {terminal}/{progress.requested} completed
-          {progress.completed > 0 && ` (${progress.completed} succeeded)`}
-          {progress.failed > 0 && `, ${progress.failed} failed`}
-        </Typography>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          <Typography variant="caption" color="text.secondary">
+            {terminal}/{progress.requested} completed
+            {progress.completed > 0 && ` (${progress.completed} succeeded)`}
+            {progress.failed > 0 && `, ${progress.failed} failed`}
+          </Typography>
+          <Button size="small" color="warning" onClick={handleCancel}>
+            Cancel
+          </Button>
+        </Stack>
       </Stack>
     )
   }

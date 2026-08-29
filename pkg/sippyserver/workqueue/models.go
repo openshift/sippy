@@ -12,4 +12,5 @@ const (
 	BatchStatusRunning    BatchStatus = "running"
 	BatchStatusComplete   BatchStatus = "complete"
 	BatchStatusFailed     BatchStatus = "failed"
+	BatchStatusCancelled  BatchStatus = "cancelled"
 )

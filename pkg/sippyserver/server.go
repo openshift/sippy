@@ -188,13 +188,16 @@ type Server struct {
 	rateLimiters           map[string]*rateLimiter
 	symptomReSubmitter     *symptomre.Submitter
 	symptomReStatusQuerier *symptomre.StatusQuerier
+	symptomReCanceller     *symptomre.BatchCanceller
 }
 
-// SetSymptomReEvaluation wires the async symptom re-evaluation submitter and
-// status querier. Called during server setup when River is available.
-func (s *Server) SetSymptomReEvaluation(submitter *symptomre.Submitter, querier *symptomre.StatusQuerier) {
+// SetSymptomReEvaluation wires the async symptom re-evaluation submitter,
+// status querier, and batch canceller. Called during server setup when River
+// is available.
+func (s *Server) SetSymptomReEvaluation(submitter *symptomre.Submitter, querier *symptomre.StatusQuerier, canceller *symptomre.BatchCanceller) {
 	s.symptomReSubmitter = submitter
 	s.symptomReStatusQuerier = querier
+	s.symptomReCanceller = canceller
 }
 
 // getReleases returns release data via the configured data provider.
@@ -2785,6 +2788,13 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodGet},
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonGetReEvaluateBatchStatus,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/reevaluate/{batch_id}",
+			Description:  "Cancel an in-flight symptom re-evaluation batch",
+			Methods:      []string{http.MethodDelete},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCancelReEvaluateBatch,
 		},
 		{
 			EndpointPath: "/api/job_variants",

@@ -136,8 +136,10 @@ Flow:
    artifacts, deletes existing symptom-originated labels (BQ rows with non-empty `symptom_id`,
    GCS label files), and writes new results to BQ, GCS, and PostgreSQL.
 5. The client polls `GET /api/jobs/runs/reevaluate/{batch_id}` to track progress. Batch status
-   transitions: `pending` -> `processing` -> `running` -> `complete` or `failed`. Completion is
-   detected lazily when the status endpoint is polled.
+   transitions: `pending` -> `processing` -> `running` -> `complete`, `failed`, or `cancelled`.
+   Completion is detected lazily when the status endpoint is polled.
+6. The client can send `DELETE /api/jobs/runs/reevaluate/{batch_id}` to cancel an in-flight batch.
+   This requests cancellation of all non-completed River jobs and marks the batch as `cancelled`.
 
 **Deduplication:** River's `UniqueOpts` (by args, with a 120-minute window) prevents re-enqueuing
 the same job run within a 2-hour period. The `dry_run` flag is part of the unique key, so dry runs
@@ -194,6 +196,7 @@ All endpoints are under `/api/jobs/` and support standard CRUD:
 - `GET/PUT/DELETE /api/jobs/symptoms/{id}` - read / update / delete
 - `POST /api/jobs/runs/reevaluate` - submit async batch re-evaluation (returns `202 Accepted` with `batch_id`)
 - `GET /api/jobs/runs/reevaluate/{batch_id}` - poll batch status and per-item progress
+- `DELETE /api/jobs/runs/reevaluate/{batch_id}` - cancel an in-flight batch
 
 See `pkg/api/jobrunscan/` for validation rules and `pkg/api/README.md` for broader API
 documentation.

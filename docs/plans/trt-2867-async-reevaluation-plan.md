@@ -546,10 +546,9 @@ endpoint, deduplication semantics, and polling pattern.
 
 ## Known Limitations
 
-1. **No batch cancellation** - There is no API to cancel an in-flight batch. Once River jobs
-   are enqueued, they will run to completion (or exhaust retries). A future enhancement could
-   add `DELETE /api/jobs/runs/reevaluate/{batch_id}` to cancel pending River jobs associated
-   with a batch.
+1. ~~**No batch cancellation**~~ - Implemented: `DELETE /api/jobs/runs/reevaluate/{batch_id}`
+   cancels non-completed River jobs and marks the batch as `cancelled`. Jobs that are already
+   running may complete before the cancellation takes effect.
 
 2. **Lazy batch completion** - The batch status is only updated to "complete" or "failed" when
    the status endpoint is polled and detects that all items have reached a terminal state. If

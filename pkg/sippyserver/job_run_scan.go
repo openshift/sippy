@@ -240,3 +240,29 @@ func (s *Server) jsonGetReEvaluateBatchStatus(w http.ResponseWriter, req *http.R
 
 	api.RespondWithJSON(http.StatusOK, w, resp)
 }
+
+func (s *Server) jsonCancelReEvaluateBatch(w http.ResponseWriter, req *http.Request) {
+	batchIDStr := mux.Vars(req)["batch_id"]
+	batchID, err := uuid.Parse(batchIDStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid batch_id: "+err.Error())
+		return
+	}
+
+	if s.symptomReCanceller == nil {
+		failureResponse(w, http.StatusServiceUnavailable, "batch cancellation is not configured")
+		return
+	}
+
+	resp, err := s.symptomReCanceller.Cancel(req.Context(), batchID)
+	if err != nil {
+		failureResponse(w, http.StatusConflict, err.Error())
+		return
+	}
+	if resp == nil {
+		failureResponse(w, http.StatusNotFound, "batch not found")
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, resp)
+}
