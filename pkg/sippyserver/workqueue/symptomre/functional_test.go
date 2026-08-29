@@ -199,7 +199,7 @@ func TestFunctionalBatchCleanup(t *testing.T) {
 		assert.Equal(t, int64(1), count, "recently completed batch should be preserved")
 	})
 
-	t.Run("deletes stale non-terminal batches", func(t *testing.T) {
+	t.Run("marks stale non-terminal batches as failed", func(t *testing.T) {
 		batchID := uuid.New()
 		require.NoError(t, gormDB.Create(&Batch{
 			ID: batchID, RequestedCount: 1, Status: workqueue.BatchStatusPending,
@@ -209,13 +209,14 @@ func TestFunctionalBatchCleanup(t *testing.T) {
 			Update("created_at", twoDaysAgo).Error, "backdating batch created_at should succeed")
 
 		process := NewBatchCleanupProcess(gormDB)
-		deleted, err := process.deleteStaleBatches()
-		require.NoError(t, err, "deleteStaleBatches should succeed")
-		assert.GreaterOrEqual(t, deleted, int64(1), "at least one stale batch should be deleted")
+		failed, err := process.failStaleBatches()
+		require.NoError(t, err, "failStaleBatches should succeed")
+		assert.GreaterOrEqual(t, failed, int64(1), "at least one stale batch should be marked failed")
 
-		var count int64
-		gormDB.Model(&Batch{}).Where("id = ?", batchID).Count(&count)
-		assert.Zero(t, count, "stale pending batch should be removed after timeout")
+		var batch Batch
+		require.NoError(t, gormDB.Take(&batch, "id = ?", batchID).Error, "batch should still exist")
+		assert.Equal(t, workqueue.BatchStatusFailed, batch.Status, "stale batch should be marked failed")
+		assert.NotNil(t, batch.CompletedAt, "stale batch should have completed_at set")
 	})
 }
 

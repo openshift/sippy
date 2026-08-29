@@ -77,11 +77,11 @@ func (p *BatchCleanupProcess) runCleanup() {
 		log.WithField("count", deleted).Info("batch cleanup: deleted old completed batches")
 	}
 
-	deleted, err = p.deleteStaleBatches()
+	failed, err := p.failStaleBatches()
 	if err != nil {
-		log.WithError(err).Error("batch cleanup: failed to delete stale batches")
-	} else if deleted > 0 {
-		log.WithField("count", deleted).Info("batch cleanup: deleted stale non-terminal batches")
+		log.WithError(err).Error("batch cleanup: failed to mark stale batches as failed")
+	} else if failed > 0 {
+		log.WithField("count", failed).Info("batch cleanup: marked stale non-terminal batches as failed")
 	}
 }
 
@@ -98,21 +98,27 @@ func (p *BatchCleanupProcess) deleteCompletedBatches() (int64, error) {
 	return result.RowsAffected, nil
 }
 
-// deleteStaleBatches removes batches stuck in non-terminal statuses
-// (pending, processing, running) that were created more than the stale
-// timeout ago, indicating they are likely abandoned.
-func (p *BatchCleanupProcess) deleteStaleBatches() (int64, error) {
+// failStaleBatches marks batches stuck in non-terminal statuses (pending,
+// processing, running) as failed if they were created more than the stale
+// timeout ago. This preserves history for the frontend (which would otherwise
+// see a 404) and lets deleteCompletedBatches remove them after the normal
+// retention period.
+func (p *BatchCleanupProcess) failStaleBatches() (int64, error) {
 	cutoff := time.Now().UTC().Add(-p.staleTimeout)
+	now := time.Now().UTC()
 	staleStatuses := []workqueue.BatchStatus{
 		workqueue.BatchStatusPending,
 		workqueue.BatchStatusProcessing,
 		workqueue.BatchStatusRunning,
 	}
-	result := p.db.
+	result := p.db.Model(&Batch{}).
 		Where("status IN ? AND created_at < ?", staleStatuses, cutoff).
-		Delete(&Batch{})
+		Updates(map[string]interface{}{
+			"status":       workqueue.BatchStatusFailed,
+			"completed_at": now,
+		})
 	if result.Error != nil {
-		return 0, fmt.Errorf("deleting stale batches older than %v: %w", p.staleTimeout, result.Error)
+		return 0, fmt.Errorf("failing stale batches older than %v: %w", p.staleTimeout, result.Error)
 	}
 	return result.RowsAffected, nil
 }

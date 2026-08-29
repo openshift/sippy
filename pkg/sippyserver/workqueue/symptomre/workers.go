@@ -2,6 +2,7 @@ package symptomre
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -155,8 +156,13 @@ func NewReevaluateWorker(reEvaluator *jobrunscan.ReEvaluator) *ReevaluateWorker 
 	return &ReevaluateWorker{reEval: reEvaluator.ReEvaluateOneFromCache}
 }
 
-// Work re-evaluates symptoms for a single job run. Errors trigger River's
-// retry logic (up to MaxAttemptsPerItem attempts with exponential backoff).
+// Work re-evaluates symptoms for a single job run. Transient errors trigger
+// River's retry logic (up to MaxAttemptsPerItem attempts with exponential
+// backoff). Permanent errors (e.g. missing job run) cancel the job immediately.
 func (w *ReevaluateWorker) Work(ctx context.Context, job *river.Job[ReevaluateJobRunArgs]) error {
-	return w.reEval(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
+	err := w.reEval(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
+	if err != nil && errors.Is(err, jobrunscan.ErrPermanent) {
+		return river.JobCancel(err)
+	}
+	return err
 }

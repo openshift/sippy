@@ -13,6 +13,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import RefreshIcon from '@mui/icons-material/Refresh'
 
 const POLL_INTERVAL_MS = 2500
+const REQUEST_TIMEOUT_MS = 30000
+const MAX_CONSECUTIVE_POLL_ERRORS = 5
 
 // submitBatch sends all job run IDs in a single POST and returns the batch
 // metadata (batch_id, requested, links).
@@ -23,6 +25,7 @@ async function submitBatch(prowJobBuildIDs) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prow_job_build_ids: prowJobBuildIDs }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     }
   )
 
@@ -45,7 +48,8 @@ async function fetchBatchStatus(batchID) {
   const response = await fetch(
     import.meta.env.VITE_API_URL +
       '/api/jobs/runs/reevaluate/' +
-      encodeURIComponent(batchID)
+      encodeURIComponent(batchID),
+    { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
   )
 
   if (!response.ok) {
@@ -71,7 +75,7 @@ async function cancelBatch(batchID) {
     import.meta.env.VITE_API_URL +
       '/api/jobs/runs/reevaluate/' +
       encodeURIComponent(batchID),
-    { method: 'DELETE' }
+    { method: 'DELETE', signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
   )
 
   if (!response.ok) {
@@ -112,12 +116,16 @@ export default function ReEvaluateButton({
   const [snackbar, setSnackbar] = useState(null)
   const pollTimerRef = useRef(null)
   const batchIDRef = useRef(null)
+  const pollInFlightRef = useRef(false)
+  const consecutiveErrorsRef = useRef(0)
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current != null) {
       clearInterval(pollTimerRef.current)
       pollTimerRef.current = null
     }
+    pollInFlightRef.current = false
+    consecutiveErrorsRef.current = 0
   }, [])
 
   // Clean up polling on unmount.
@@ -178,8 +186,12 @@ export default function ReEvaluateButton({
   const startPolling = useCallback(
     (batchID) => {
       pollTimerRef.current = setInterval(async () => {
+        if (pollInFlightRef.current) return
+        pollInFlightRef.current = true
         try {
           const statusData = await fetchBatchStatus(batchID)
+          consecutiveErrorsRef.current = 0
+          if (pollTimerRef.current == null) return
           setProgress({
             requested: statusData.requested,
             completed: statusData.completed,
@@ -193,13 +205,22 @@ export default function ReEvaluateButton({
             handleBatchComplete(statusData)
           }
         } catch (err) {
-          // A single poll failure is not fatal; keep polling.
-          // If the batch has already finished, the next poll will pick it up.
+          consecutiveErrorsRef.current += 1
           console.error('Error polling batch status:', err)
+          if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_POLL_ERRORS) {
+            stopPolling()
+            setRunning(false)
+            setSnackbar({
+              severity: 'error',
+              message: `Lost connection to batch status after ${MAX_CONSECUTIVE_POLL_ERRORS} failed attempts.`,
+            })
+          }
+        } finally {
+          pollInFlightRef.current = false
         }
       }, POLL_INTERVAL_MS)
     },
-    [handleBatchComplete]
+    [handleBatchComplete, stopPolling]
   )
 
   const handleReEvaluate = async () => {
@@ -234,7 +255,13 @@ export default function ReEvaluateButton({
     if (!batchIDRef.current) return
     try {
       const statusData = await cancelBatch(batchIDRef.current)
-      handleBatchComplete(statusData)
+      handleBatchComplete({
+        requested: progress?.requested ?? 0,
+        completed: 0,
+        failed: 0,
+        ...statusData,
+        status: 'cancelled',
+      })
     } catch (err) {
       setSnackbar({
         severity: 'error',

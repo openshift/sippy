@@ -46,9 +46,10 @@ func (ProcessBatchArgs) InsertOpts() river.InsertOpts {
 }
 
 // ReevaluateJobRunArgs is a River job for re-evaluating a single job run's
-// symptoms. Both ProwJobBuildID and SymptomHash participate in River's
-// uniqueness check so that the same job run is re-evaluated if symptoms
-// change, but duplicate requests within a DedupPeriod are skipped.
+// symptoms. ProwJobBuildID, SymptomHash, and DryRun all participate in River's
+// uniqueness check, so the same job run is re-evaluated if symptoms change,
+// dry runs do not deduplicate against real runs, and duplicate requests within
+// a DedupPeriod are skipped.
 type ReevaluateJobRunArgs struct {
 	ProwJobBuildID string `json:"prow_job_build_id" river:"unique"`
 	SymptomHash    string `json:"symptom_hash"      river:"unique"`

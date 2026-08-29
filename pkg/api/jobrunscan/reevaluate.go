@@ -100,6 +100,7 @@ type symptomCache struct {
 	mu       sync.RWMutex
 	symptoms []jobrunscan.Symptom
 	hash     string
+	loaded   bool
 }
 
 // ReEvaluator re-runs symptom detection against job artifacts and updates BQ, GCS, and PostgreSQL.
@@ -172,6 +173,7 @@ func (r *ReEvaluator) RefreshSymptomCache() (string, error) {
 	r.symptoms.mu.Lock()
 	r.symptoms.symptoms = symptoms
 	r.symptoms.hash = hash
+	r.symptoms.loaded = true
 	r.symptoms.mu.Unlock()
 
 	log.WithFields(log.Fields{
@@ -181,22 +183,36 @@ func (r *ReEvaluator) RefreshSymptomCache() (string, error) {
 	return hash, nil
 }
 
+// ErrPermanent wraps errors that should not be retried by River.
+var ErrPermanent = errors.New("permanent failure")
+
 // ReEvaluateOneFromCache re-evaluates a single job run using cached symptoms.
 // Returns an error if evaluation fails, which triggers River's retry logic.
+// Permanent failures (e.g. missing job run) are wrapped with ErrPermanent so
+// the River worker can cancel instead of retrying.
 func (r *ReEvaluator) ReEvaluateOneFromCache(ctx context.Context, prowJobBuildID string, dryRun bool) error {
 	r.symptoms.mu.RLock()
 	symptoms := r.symptoms.symptoms
+	loaded := r.symptoms.loaded
 	r.symptoms.mu.RUnlock()
 
+	if !loaded {
+		return fmt.Errorf("symptom cache not initialized; RefreshSymptomCache must be called first")
+	}
 	if len(symptoms) == 0 {
-		return fmt.Errorf("symptom cache is empty; RefreshSymptomCache must be called first")
+		log.Warn("symptom reEval: no active symptoms after filtering; nothing to evaluate")
+		return nil
 	}
 
 	result := r.reEvaluateOne(ctx, prowJobBuildID, symptoms, dryRun)
-	if result.Status != ReEvalSuccess {
+	switch result.Status {
+	case ReEvalSuccess:
+		return nil
+	case ReEvalMissingError:
+		return fmt.Errorf("%w: %s", ErrPermanent, result.Error)
+	default:
 		return fmt.Errorf("re-evaluation of %s failed (%s): %s", prowJobBuildID, result.Status, result.Error)
 	}
-	return nil
 }
 
 // symptomHashEntry pairs a symptom ID with its UpdatedAt timestamp so that

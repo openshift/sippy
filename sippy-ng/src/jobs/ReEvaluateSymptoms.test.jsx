@@ -452,4 +452,38 @@ describe('ReEvaluateButton', () => {
     expect(deleteCall).toBeDefined()
     expect(deleteCall[0]).toContain('batch-cancel2')
   })
+
+  it('stops polling and shows error after 5 consecutive poll failures', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-err', 2))
+      // All subsequent polls fail.
+      .mockRejectedValue(new Error('network error'))
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+
+    // Advance through 5 poll intervals to trigger 5 consecutive failures.
+    for (let i = 0; i < 5; i++) {
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+    }
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /Lost connection to batch status after 5 failed attempts/
+        )
+      ).toBeInTheDocument()
+    })
+
+    // Button should be re-enabled after polling stops.
+    expect(
+      screen.getByRole('button', { name: /Re-evaluate/ })
+    ).not.toBeDisabled()
+  })
 })
