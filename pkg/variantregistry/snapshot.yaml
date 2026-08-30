@@ -373938,7 +373938,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-ocp-chaos-cr--outage-node--aws:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos9
-    Owner: chaos
+    Owner: mpict
     Platform: aws
     Procedure: none
     Release: "4.22"
@@ -373962,7 +373962,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-ocp-chaos-cr--outage-pod--aws:
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos9
-    Owner: chaos
+    Owner: mpict
     Platform: aws
     Procedure: none
     Release: "4.22"
