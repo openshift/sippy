@@ -15,7 +15,7 @@ type ReleaseReader interface {
 }
 
 type ProwJobRunReader interface {
-	ProwJobRunIDs(context.Context, time.Time, time.Time) (map[string]map[BuildID]struct{}, error)
+	ProwJobRunIDs(context.Context, string, time.Time, time.Time) (map[BuildID]struct{}, error)
 }
 
 type DailyTotalsReader interface {

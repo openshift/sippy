@@ -157,7 +157,7 @@ func TestRunnerRunsAllSelectedChecksAfterFailures(t *testing.T) {
 	result := runner.Run(context.Background(), Options{Date: testDate, Checks: AllChecks})
 	assert.False(t, result.Passed())
 	assert.Equal(t, 1, bq.calls, "BQ is queried once globally")
-	assert.Equal(t, 1, pg.runIDCalls, "PostgreSQL completeness is queried once globally")
+	assert.Equal(t, []string{"4.20", "pseudo"}, pg.runIDCalls, "PostgreSQL completeness is queried once per release")
 	assert.Equal(t, []string{"4.20", "pseudo"}, pg.dailyCalls)
 	assert.Equal(t, []string{"4.20", "pseudo"}, pg.cumulativeCalls)
 	assert.Len(t, result.Summaries, 6, "one summary per check and release")
@@ -179,13 +179,13 @@ func TestRunnerDispatchesOnlySelectedChecks(t *testing.T) {
 		name                string
 		check               Check
 		wantBQCalls         int
-		wantRunIDCalls      int
+		wantRunIDCalls      []string
 		wantDailyCalls      []string
 		wantCumulativeCalls []string
 	}{
 		{
 			name:  "BigQuery completeness",
-			check: CheckBQCompleteness, wantBQCalls: 1, wantRunIDCalls: 1,
+			check: CheckBQCompleteness, wantBQCalls: 1, wantRunIDCalls: []string{"4.20", "pseudo"},
 		},
 		{
 			name:  "daily totals",
@@ -242,6 +242,35 @@ func TestRunnerNormalizesAndDeduplicatesBQBuildIDs(t *testing.T) {
 	assert.Equal(t, "bad", result.Discrepancies[0].Key)
 	assert.Equal(t, time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC), bq.start)
 	assert.Equal(t, time.Date(2026, 8, 26, 0, 0, 0, 0, time.UTC), bq.end)
+	assert.Equal(t, []string{"4.20"}, pg.runIDCalls)
+}
+
+func TestRunnerBQCompletenessContinuesAfterReleaseReadError(t *testing.T) {
+	pg := &fakePostgreSQL{
+		releases: []string{"pseudo", "4.20"},
+		runIDs:   map[string]map[BuildID]struct{}{"pseudo": idSet(2)},
+		runIDErr: map[string]error{"4.20": errors.New("release unavailable")},
+	}
+	bq := &fakeBigQuery{jobs: []BQJob{{JobName: "pseudo-job", BuildID: "2"}}}
+	runner := Runner{
+		PostgreSQL: pg,
+		BigQuery:   bq,
+		Config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+			"pseudo": {Jobs: map[string]bool{"pseudo-job": true}},
+		}},
+	}
+
+	result := runner.Run(context.Background(), Options{Date: testDate, Checks: []Check{CheckBQCompleteness}})
+
+	assert.False(t, result.Passed())
+	assert.Equal(t, 1, bq.calls, "BQ is queried once globally")
+	assert.Equal(t, []string{"4.20", "pseudo"}, pg.runIDCalls)
+	require.Len(t, result.Summaries, 2)
+	assert.Equal(t, "4.20", result.Summaries[0].Release)
+	assert.ErrorContains(t, errors.New(result.Summaries[0].Error), "release unavailable")
+	assert.Equal(t, "pseudo", result.Summaries[1].Release)
+	assert.True(t, result.Summaries[1].Passed, "other releases are still compared")
+	assert.Empty(t, result.Discrepancies)
 }
 
 func TestRunnerReleaseSelection(t *testing.T) {
@@ -255,6 +284,14 @@ func TestRunnerReleaseSelection(t *testing.T) {
 	assert.False(t, missing.Passed())
 	require.Len(t, missing.Summaries, 1)
 	assert.ErrorContains(t, errors.New(missing.Summaries[0].Error), "was not found")
+
+	bq := &fakeBigQuery{}
+	bqResult := (&Runner{PostgreSQL: pg, BigQuery: bq}).Run(context.Background(), Options{
+		Date: testDate, Checks: []Check{CheckBQCompleteness}, Release: "pseudo",
+	})
+	assert.True(t, bqResult.Passed())
+	assert.Equal(t, 1, bq.calls)
+	assert.Equal(t, []string{"pseudo"}, pg.runIDCalls)
 }
 
 func TestResultSortAndFields(t *testing.T) {
@@ -288,7 +325,7 @@ func TestReadersRejectNilClients(t *testing.T) {
 		call func(*PostgreSQL) error
 	}{
 		{name: "releases", call: func(p *PostgreSQL) error { _, err := p.Releases(ctx); return err }},
-		{name: "Prow job run IDs", call: func(p *PostgreSQL) error { _, err := p.ProwJobRunIDs(ctx, start, end); return err }},
+		{name: "Prow job run IDs", call: func(p *PostgreSQL) error { _, err := p.ProwJobRunIDs(ctx, "4.20", start, end); return err }},
 		{name: "daily rows", call: func(p *PostgreSQL) error { _, _, err := p.DailyRows(ctx, "4.20", testDate); return err }},
 		{name: "cumulative rows", call: func(p *PostgreSQL) error { _, err := p.CumulativeRows(ctx, "4.20", testDate); return err }},
 	}
@@ -325,7 +362,8 @@ type fakePostgreSQL struct {
 	releases        []string
 	releasesErr     error
 	runIDs          map[string]map[BuildID]struct{}
-	runIDCalls      int
+	runIDErr        map[string]error
+	runIDCalls      []string
 	daily           map[string][2][]DailyRow
 	dailyErr        map[string]error
 	dailyCalls      []string
@@ -338,9 +376,12 @@ func (f *fakePostgreSQL) Releases(context.Context) ([]string, error) {
 	return f.releases, f.releasesErr
 }
 
-func (f *fakePostgreSQL) ProwJobRunIDs(context.Context, time.Time, time.Time) (map[string]map[BuildID]struct{}, error) {
-	f.runIDCalls++
-	return f.runIDs, nil
+func (f *fakePostgreSQL) ProwJobRunIDs(_ context.Context, release string, _, _ time.Time) (map[BuildID]struct{}, error) {
+	f.runIDCalls = append(f.runIDCalls, release)
+	if err := f.runIDErr[release]; err != nil {
+		return nil, err
+	}
+	return f.runIDs[release], nil
 }
 
 func (f *fakePostgreSQL) DailyRows(_ context.Context, release string, _ civil.Date) ([]DailyRow, []DailyRow, error) {

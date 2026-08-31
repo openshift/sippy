@@ -51,13 +51,16 @@ func TestVerifyPostgreSQLProwStartHalfOpenUTCBoundaries(t *testing.T) {
 	atStart := intutil.CreateProwJobRun(t, dbc, job.ID, "4.20", start, true, processingv1.JobSucceeded)
 	atEnd := intutil.CreateProwJobRun(t, dbc, job.ID, "4.20", end, true, processingv1.JobSucceeded)
 	insideFromOffset := intutil.CreateProwJobRun(t, dbc, job.ID, "4.20", time.Date(2026, 8, 24, 20, 30, 0, 0, time.FixedZone("minus-four", -4*60*60)), true, processingv1.JobSucceeded)
+	otherJob := intutil.CreateProwJob(t, dbc, "other-release-job", "4.19", nil)
+	otherRelease := intutil.CreateProwJobRun(t, dbc, otherJob.ID, "4.19", start.Add(time.Hour), true, processingv1.JobSucceeded)
 
-	ids, err := dbverify.NewPostgreSQL(dbc).ProwJobRunIDs(context.Background(), start, end)
+	ids, err := dbverify.NewPostgreSQL(dbc).ProwJobRunIDs(context.Background(), "4.20", start, end)
 	require.NoError(t, err)
-	assert.Contains(t, ids["4.20"], dbverify.BuildID(atStart.ID))
-	assert.Contains(t, ids["4.20"], dbverify.BuildID(insideFromOffset.ID))
-	assert.NotContains(t, ids["4.20"], dbverify.BuildID(before.ID))
-	assert.NotContains(t, ids["4.20"], dbverify.BuildID(atEnd.ID))
+	assert.Contains(t, ids, dbverify.BuildID(atStart.ID))
+	assert.Contains(t, ids, dbverify.BuildID(insideFromOffset.ID))
+	assert.NotContains(t, ids, dbverify.BuildID(before.ID))
+	assert.NotContains(t, ids, dbverify.BuildID(atEnd.ID))
+	assert.NotContains(t, ids, dbverify.BuildID(otherRelease.ID))
 }
 
 func TestVerifyDailyRowsProductionSemanticsAndMismatches(t *testing.T) {

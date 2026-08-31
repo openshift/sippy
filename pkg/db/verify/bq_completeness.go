@@ -55,13 +55,6 @@ func (v *BQCompletenessVerifier) Verify(ctx context.Context, scope Scope) Result
 		}
 		return result
 	}
-	postgresIDs, err := v.PostgreSQL.ProwJobRunIDs(ctx, start, end)
-	if err != nil {
-		for _, release := range scope.Releases {
-			result.Summaries = append(result.Summaries, operationalSummary(CheckBQCompleteness, release, scope.Date, err))
-		}
-		return result
-	}
 
 	attributor := prowloader.NewReleaseAttributor(scope.Releases, v.Config, v.SyntheticReleaseOverrides)
 	bqIDs := make(map[string]map[BuildID]struct{}, len(scope.Releases))
@@ -93,38 +86,39 @@ func (v *BQCompletenessVerifier) Verify(ctx context.Context, scope Scope) Result
 		bqIDs[release][BuildID(id)] = struct{}{}
 	}
 	for _, release := range scope.Releases {
+		postgresIDs, err := v.PostgreSQL.ProwJobRunIDs(ctx, release, start, end)
+		if err != nil {
+			result.Summaries = append(result.Summaries, operationalSummary(CheckBQCompleteness, release, scope.Date, err))
+			continue
+		}
 		malformed := sets.List(malformedSets[release])
-		summary, discrepancies := CompareBuildIDs(release, scope.Date, bqIDs[release], postgresIDs[release], malformed)
+		summary, discrepancies := CompareBuildIDs(release, scope.Date, bqIDs[release], postgresIDs, malformed)
 		result.Summaries = append(result.Summaries, summary)
 		result.Discrepancies = append(result.Discrepancies, discrepancies...)
 	}
 	return result
 }
 
-func (p *PostgreSQL) ProwJobRunIDs(ctx context.Context, start, end time.Time) (map[string]map[BuildID]struct{}, error) {
+func (p *PostgreSQL) ProwJobRunIDs(ctx context.Context, release string, start, end time.Time) (map[BuildID]struct{}, error) {
 	if err := p.validate(); err != nil {
 		return nil, err
 	}
 	type row struct {
-		Release string
-		ID      uint64
+		ID uint64
 	}
 	var rows []row
 	err := p.dbc.DB.WithContext(ctx).Raw(`
-		SELECT prow_job_release AS release, id
+		SELECT id
 		FROM prow_job_runs
-		WHERE timestamp >= ? AND timestamp < ? AND deleted_at IS NULL
-		ORDER BY prow_job_release, id
-	`, start, end).Scan(&rows).Error
+		WHERE prow_job_release = ? AND timestamp >= ? AND timestamp < ? AND deleted_at IS NULL
+		ORDER BY id
+	`, release, start, end).Scan(&rows).Error
 	if err != nil {
-		return nil, fmt.Errorf("querying PostgreSQL Prow job runs: %w", err)
+		return nil, fmt.Errorf("querying PostgreSQL Prow job runs for release %s: %w", release, err)
 	}
-	result := make(map[string]map[BuildID]struct{})
+	result := make(map[BuildID]struct{}, len(rows))
 	for _, row := range rows {
-		if result[row.Release] == nil {
-			result[row.Release] = make(map[BuildID]struct{})
-		}
-		result[row.Release][BuildID(row.ID)] = struct{}{}
+		result[BuildID(row.ID)] = struct{}{}
 	}
 	return result, nil
 }
