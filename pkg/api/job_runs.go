@@ -627,18 +627,15 @@ func JobRunRiskAnalysis(
 	compareRelease := jobRun.ProwJob.Release
 	neverStableJob := false
 	if compareRelease == models.ReleasePresubmits {
-		ar, err := GetReleasesFromDB(ctx, dbc)
+		// TODO: Non-OCP are not supported yet. At least ensure adding new releases doesn't break OCP.
+		var err error
+		compareRelease, err = query.CurrentActiveRelease(dbc)
 		if err != nil {
-			return apitype.ProwJobRunRiskAnalysis{}, err
+			return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("getting release for presubmit risk analysis: %w", err)
 		}
-		if len(ar) == 0 {
-			return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("no releases found in db")
-		}
-
-		compareRelease = ar[0].Release
 	}
 
-	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID, compareRelease)
+	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID, jobRun.ProwJob.Release)
 
 	// if we had an error we will continue the risk analysis and not elevate based on test counts
 	if err != nil {
