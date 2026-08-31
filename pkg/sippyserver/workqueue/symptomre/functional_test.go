@@ -147,7 +147,7 @@ func TestFunctionalStatusQuerier(t *testing.T) {
 		assert.Equal(t, 2, resp.Pending, "all items should be pending before daemon processing")
 		assert.Len(t, resp.Items, 2, "all items should appear in status response")
 		for _, item := range resp.Items {
-			assert.Equal(t, "pending", item.State, "each item should be in pending state")
+			assert.Equal(t, ItemStateNotEnqueued, item.State, "each item should be in not_enqueued state")
 		}
 	})
 
@@ -244,7 +244,8 @@ func TestFunctionalProcessBatchWorker(t *testing.T) {
 	worker.SetRiverClient(riverClient)
 
 	submitter := NewSubmitter(gormDB, riverClient)
-	result, err := submitter.Submit(ctx, []string{"batch-work-1", "batch-work-2"}, false)
+	suffix := uuid.New().String()[:8]
+	result, err := submitter.Submit(ctx, []string{"batch-work-1-" + suffix, "batch-work-2-" + suffix}, false)
 	require.NoError(t, err, "Submit should succeed")
 
 	job := &river.Job[ProcessBatchArgs]{Args: ProcessBatchArgs{BatchID: result.BatchID}}

@@ -3,10 +3,10 @@ package workqueue
 // ItemStateCounts holds aggregated River job state counts for a batch's items.
 type ItemStateCounts struct {
 	Total     int
-	Completed int
-	Failed    int // discarded + cancelled
+	Pending   int
 	Running   int
-	Pending   int // null river_job_id + available + scheduled + retryable
+	Completed int
+	Failed    int
 }
 
 // OverallStatus derives the batch status from item state counts.

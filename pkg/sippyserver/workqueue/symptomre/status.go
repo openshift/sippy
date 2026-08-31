@@ -12,31 +12,6 @@ import (
 	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
 )
 
-// BatchStatusCounts holds the numeric counters for a batch status response.
-type BatchStatusCounts struct {
-	Requested int `json:"requested"`
-	Enqueued  int `json:"enqueued"`
-	Deduped   int `json:"deduped"`
-	Completed int `json:"completed"`
-	Failed    int `json:"failed"`
-	Running   int `json:"running"`
-	Pending   int `json:"pending"`
-}
-
-// BatchStatusResponse is the API response for querying a batch's status.
-type BatchStatusResponse struct {
-	BatchID uuid.UUID             `json:"batch_id"`
-	Status  workqueue.BatchStatus `json:"status"`
-	BatchStatusCounts
-	Items []ItemStatus `json:"items"`
-}
-
-// ItemStatus reports the state of a single item within a batch.
-type ItemStatus struct {
-	ItemKey string `gorm:"column:item_key" json:"item_key"`
-	State   string `gorm:"column:state"    json:"state"`
-}
-
 // StatusQuerier queries the current status of a symptom re-evaluation batch
 // by joining batch items with River job state.
 type StatusQuerier struct {
@@ -66,26 +41,32 @@ func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchSta
 	var items []ItemStatus
 	if err := db.Raw(`
 		SELECT bi.item_key,
-		       CASE WHEN bi.river_job_id IS NULL THEN 'pending'
-		            WHEN rj.id IS NULL THEN 'unknown'
+		       CASE WHEN bi.river_job_id IS NULL THEN @notEnqueued
+		            WHEN rj.id IS NULL THEN @orphaned
 		            ELSE rj.state::text END AS state
 		FROM workqueue_symptom_re_batch_items bi
 		LEFT JOIN river_job rj ON rj.id = bi.river_job_id
-		WHERE bi.batch_id = ?`, batchID).Scan(&items).Error; err != nil {
+		WHERE bi.batch_id = @batchID`,
+		map[string]interface{}{
+			"notEnqueued": ItemStateNotEnqueued,
+			"orphaned":    ItemStateOrphaned,
+			"batchID":     batchID,
+		}).Scan(&items).Error; err != nil {
 		return nil, fmt.Errorf("querying batch items for %s: %w", batchID, err)
 	}
 
 	counts := workqueue.ItemStateCounts{Total: len(items)}
 	for _, item := range items {
 		switch item.State {
-		case "completed":
+		case ItemStateCompleted:
 			counts.Completed++
-		case "discarded", "cancelled", "unknown":
+		case ItemStateDiscarded, ItemStateCancelled, ItemStateOrphaned:
 			counts.Failed++
-		case "running":
+		case ItemStateRunning:
 			counts.Running++
 		default:
-			// pending, available, scheduled, retryable
+			// ItemStateNotEnqueued, ItemStateAvailable, ItemStateScheduled,
+			// ItemStateRetryable, ItemStatePending
 			counts.Pending++
 		}
 	}
