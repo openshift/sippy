@@ -26273,6 +26273,29 @@ periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-co
     Suite: unknown
     Topology: compact
     Upgrade: none
+periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-compact-agent-ipv4-static-f7:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: hidden
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: qe
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: compact
+    Upgrade: none
 periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-compact-agent-ipv6-dynamic-f7:
     Aggregation: none
     Architecture: amd64
@@ -26285,29 +26308,6 @@ periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-co
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv6
-    OS: rhcos9
-    Owner: qe
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: compact
-    Upgrade: none
-periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-compact-agent-platform-none-ipv4-static-f7:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: agent
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
     OS: rhcos9
     Owner: qe
     Procedure: none
@@ -27583,29 +27583,6 @@ periodic-ci-openshift-eng-agent-qe-infra-release-5.0-amd64-nightly-baremetal-com
     Suite: unknown
     Topology: compact
     Upgrade: none
-periodic-ci-openshift-eng-agent-qe-infra-release-5.0-amd64-nightly-baremetal-compact-agent-ipv6-dynamic-f7:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: agent
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv6
-    OS: rhcos10
-    Owner: qe
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: compact
-    Upgrade: none
 periodic-ci-openshift-eng-agent-qe-infra-release-5.0-amd64-nightly-baremetal-compact-agent-platform-none-ipv4-static-f7:
     Aggregation: none
     Architecture: amd64
@@ -28686,7 +28663,7 @@ periodic-ci-openshift-eng-agent-qe-infra-release-5.0-arm64-nightly-baremetal-com
     Suite: unknown
     Topology: compact
     Upgrade: none
-periodic-ci-openshift-eng-agent-qe-infra-release-5.0-arm64-nightly-baremetal-compact-agent-ipv4-static-disc-proxy-f7:
+periodic-ci-openshift-eng-agent-qe-infra-release-5.0-arm64-nightly-baremetal-compact-agent-ipv4-static-disc-proxy-umn-f7:
     Aggregation: none
     Architecture: arm64
     CGroupMode: v2
@@ -28729,6 +28706,29 @@ periodic-ci-openshift-eng-agent-qe-infra-release-5.0-arm64-nightly-baremetal-com
     ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: fips
+    Suite: unknown
+    Topology: compact
+    Upgrade: none
+periodic-ci-openshift-eng-agent-qe-infra-release-5.0-arm64-nightly-baremetal-compact-agent-ipv6-dynamic-f7:
+    Aggregation: none
+    Architecture: arm64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: hidden
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: qe
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
     Suite: unknown
     Topology: compact
     Upgrade: none
@@ -49383,6 +49383,25 @@ periodic-ci-openshift-lvm-operator-main-nightly-e2e-aws-disc-sno-qe-integration-
     Suite: unknown
     Topology: single
     Upgrade: none
+periodic-ci-openshift-lvm-operator-main-nightly-e2e-aws-mno-4disks-qe-integration-tests:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: hidden
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: qe
+    Platform: aws
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-lvm-operator-main-nightly-e2e-aws-mno-arm-qe-integration-tests:
     Aggregation: none
     Architecture: arm64
@@ -49439,6 +49458,25 @@ periodic-ci-openshift-lvm-operator-main-nightly-e2e-aws-mno-y-1-qe-integration-t
     SecurityMode: default
     Suite: unknown
     Topology: ha
+    Upgrade: none
+periodic-ci-openshift-lvm-operator-main-nightly-e2e-aws-sno-4disks-qe-integration-tests:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: hidden
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: qe
+    Platform: aws
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: single
     Upgrade: none
 periodic-ci-openshift-lvm-operator-main-nightly-e2e-aws-sno-arm-qe-integration-tests:
     Aggregation: none
@@ -80491,6 +80529,71 @@ periodic-ci-openshift-must-gather-operator-master-multi-e2e-aws-operator-multi-w
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-must-gather-operator-master-multi-e2e-hypershift-operator-weekly:
+    Aggregation: none
+    Architecture: multi
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-must-gather-operator-release-5.0-multi-e2e-aws-operator-multi-weekly:
+    Aggregation: none
+    Architecture: multi
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-must-gather-operator-release-5.0-multi-e2e-hypershift-operator-weekly:
+    Aggregation: none
+    Architecture: multi
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-network-observability-operator-release-2.0-nightly-4.14-netobserv-aws-ipi-amd-f60:
     Aggregation: none
     Architecture: amd64
@@ -82958,6 +83061,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osdfm-integration-ocm-fvt-per
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osdfm-staging-ocm-fvt-gating-osdfm-stage-canary:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osdfm-staging-ocm-fvt-gating-osdfm-stage-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -372860,6 +372983,25 @@ periodic-ci-quay-quay-tests-master-ocp-421-quay-quay-e2e-tests-quay318-ocp421-vi
     NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-tests-master-ocp-421-s390x-quay-quay-e2e-tests-quay317-ocp421-s390x-libvirt:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: libvirt
     Procedure: none
     Scheduler: default
     SecurityMode: default
