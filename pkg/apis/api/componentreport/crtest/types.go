@@ -1,6 +1,7 @@
 package crtest
 
 import (
+	"cmp"
 	"sort"
 	"strings"
 	"time"
@@ -62,6 +63,25 @@ const (
 	// SignificantImprovement indicates improved sample rate
 	SignificantImprovement Status = 300
 )
+
+// CompareCellStatus compares two statuses for aggregation into a Component
+// Readiness cell. It returns a negative value when first wins cell aggregation,
+// zero when the statuses have equal precedence, and a positive value when
+// second wins cell aggregation. Lower raw status values win, except that
+// SignificantImprovement wins over every other status greater than or equal to
+// NotSignificant.
+func CompareCellStatus(first, second Status) int {
+	if first == second {
+		return 0
+	}
+	if first == SignificantImprovement && second >= NotSignificant {
+		return -1
+	}
+	if second == SignificantImprovement && first >= NotSignificant {
+		return 1
+	}
+	return cmp.Compare(first, second)
+}
 
 func StringForStatus(s Status) string {
 	switch s {

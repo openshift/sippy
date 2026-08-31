@@ -455,9 +455,7 @@ type cellStatus struct {
 func getNewCellStatus(testID crtest.Identification, testStats testdetails.TestComparison, existingCellStatus *cellStatus, includeAllTests bool) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
-		if (testStats.ReportStatus < crtest.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
-			(existingCellStatus.status == crtest.NotSignificant && testStats.ReportStatus == crtest.SignificantImprovement) {
-			// We want to show the significant improvement if assessment is not regression
+		if crtest.CompareCellStatus(testStats.ReportStatus, existingCellStatus.status) < 0 {
 			newCellStatus.status = testStats.ReportStatus
 		} else {
 			newCellStatus.status = existingCellStatus.status
