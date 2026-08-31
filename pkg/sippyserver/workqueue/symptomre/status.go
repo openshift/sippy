@@ -1,6 +1,7 @@
 package symptomre
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -51,9 +52,11 @@ func NewStatusQuerier(gormDB *gorm.DB) *StatusQuerier {
 // states. It performs lazy completion detection: when all items have reached
 // a terminal state, the batch is marked complete (or failed if all items
 // failed) and completed_at is set. This is idempotent.
-func (q *StatusQuerier) Query(batchID uuid.UUID) (*BatchStatusResponse, error) {
+func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchStatusResponse, error) {
+	db := q.gormDB.WithContext(ctx)
+
 	var batch Batch
-	if err := q.gormDB.Take(&batch, "id = ?", batchID).Error; err != nil {
+	if err := db.Take(&batch, "id = ?", batchID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -61,10 +64,11 @@ func (q *StatusQuerier) Query(batchID uuid.UUID) (*BatchStatusResponse, error) {
 	}
 
 	var items []ItemStatus
-	if err := q.gormDB.Raw(`
+	if err := db.Raw(`
 		SELECT bi.item_key,
 		       CASE WHEN bi.river_job_id IS NULL THEN 'pending'
-		            ELSE rj.state END AS state
+		            WHEN rj.id IS NULL THEN 'unknown'
+		            ELSE rj.state::text END AS state
 		FROM workqueue_symptom_re_batch_items bi
 		LEFT JOIN river_job rj ON rj.id = bi.river_job_id
 		WHERE bi.batch_id = ?`, batchID).Scan(&items).Error; err != nil {
@@ -76,7 +80,7 @@ func (q *StatusQuerier) Query(batchID uuid.UUID) (*BatchStatusResponse, error) {
 		switch item.State {
 		case "completed":
 			counts.Completed++
-		case "discarded", "cancelled":
+		case "discarded", "cancelled", "unknown":
 			counts.Failed++
 		case "running":
 			counts.Running++
@@ -107,7 +111,7 @@ func (q *StatusQuerier) Query(batchID uuid.UUID) (*BatchStatusResponse, error) {
 		derived := workqueue.OverallStatus(counts)
 		if derived == workqueue.BatchStatusComplete || derived == workqueue.BatchStatusFailed {
 			now := time.Now()
-			if err := q.gormDB.Model(&Batch{}).Where("id = ?", batchID).
+			if err := db.Model(&Batch{}).Where("id = ?", batchID).
 				Updates(map[string]interface{}{
 					"status":       derived,
 					"completed_at": now,

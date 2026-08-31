@@ -91,5 +91,5 @@ func (c *BatchCanceller) Cancel(ctx context.Context, batchID uuid.UUID) (*BatchS
 	}).Info("batch cancel: batch cancelled")
 
 	querier := NewStatusQuerier(c.gormDB)
-	return querier.Query(batchID)
+	return querier.Query(ctx, batchID)
 }

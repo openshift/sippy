@@ -138,7 +138,7 @@ func TestFunctionalStatusQuerier(t *testing.T) {
 		result, err := submitter.Submit(ctx, []string{"status-1", "status-2"}, false)
 		require.NoError(t, err, "Submit should succeed")
 
-		resp, err := querier.Query(result.BatchID)
+		resp, err := querier.Query(context.Background(), result.BatchID)
 		require.NoError(t, err, "Query should succeed for existing batch")
 		require.NotNil(t, resp, "response should be non-nil for existing batch")
 		assert.Equal(t, result.BatchID, resp.BatchID, "response batch ID should match")
@@ -152,7 +152,7 @@ func TestFunctionalStatusQuerier(t *testing.T) {
 	})
 
 	t.Run("query non-existent batch returns nil", func(t *testing.T) {
-		resp, err := querier.Query(uuid.New())
+		resp, err := querier.Query(context.Background(), uuid.New())
 		require.NoError(t, err, "Query should not error for unknown batch ID")
 		assert.Nil(t, resp, "response should be nil for non-existent batch")
 	})

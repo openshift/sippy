@@ -230,7 +230,7 @@ func (s *Server) jsonGetReEvaluateBatchStatus(w http.ResponseWriter, req *http.R
 		return
 	}
 
-	resp, err := s.symptomReStatusQuerier.Query(batchID)
+	resp, err := s.symptomReStatusQuerier.Query(req.Context(), batchID)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return

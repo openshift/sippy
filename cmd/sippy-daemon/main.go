@@ -199,10 +199,11 @@ func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, big
 			symptomre.BatchQueue: {MaxWorkers: 1},
 			symptomre.ItemQueue:  {MaxWorkers: 12},
 		},
-		// Keep completed and discarded River jobs for 8 days, slightly longer
-		// than the 7-day batch retention so status queries on recent batches
-		// can still resolve individual job outcomes.
+		// Keep terminal River jobs for 8 days, slightly longer than the 7-day
+		// batch retention so status queries on recent batches can still resolve
+		// individual job outcomes via the LEFT JOIN on river_job.
 		CompletedJobRetentionPeriod: 8 * 24 * time.Hour,
+		CancelledJobRetentionPeriod: 8 * 24 * time.Hour,
 		DiscardedJobRetentionPeriod: 8 * 24 * time.Hour,
 	}
 	riverClient, err := workqueue.NewWorkerClient(pgxPool, workers, riverConfig)
