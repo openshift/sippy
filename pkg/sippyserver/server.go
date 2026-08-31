@@ -2002,6 +2002,98 @@ func (s *Server) jsonUpdateTriage(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, triage)
 }
 
+// forceCloseRegressionsRequest is the request body for the force close regressions endpoint.
+type forceCloseRegressionsRequest struct {
+	// Reason is a required user supplied explanation for force closing the triage's regressions.
+	Reason string `json:"reason"`
+}
+
+func (s *Server) jsonForceCloseRegressions(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	idStr := vars["id"]
+	// ParseUint rejects negative and non-numeric IDs before we touch the database.
+	triageID, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
+		return
+	}
+
+	user := getUserForRequest(req)
+	// Force closing records who closed each regression for attribution and audit, so we refuse to
+	// proceed when we cannot determine the user rather than recording an empty ForceClosedBy. The
+	// user identity is intentionally not logged.
+	if strings.TrimSpace(user) == "" {
+		failureResponse(w, http.StatusUnauthorized, "cannot determine user for force close request; authentication is required")
+		return
+	}
+
+	var forceCloseReq forceCloseRegressionsRequest
+	decoder := json.NewDecoder(req.Body)
+	if err := decoder.Decode(&forceCloseReq); err != nil {
+		log.WithError(err).Error("error parsing force close regressions request")
+		failureResponse(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	// Reject any trailing data after the JSON object so bodies like {"reason":"first"}{"reason":"second"}
+	// are not silently accepted with only the first object honored. A well formed body decodes to exactly
+	// one value, after which the next decode must report io.EOF.
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		failureResponse(w, http.StatusBadRequest, "request body must contain a single JSON object")
+		return
+	}
+	if strings.TrimSpace(forceCloseReq.Reason) == "" {
+		failureResponse(w, http.StatusBadRequest, "reason is required to force close regressions")
+		return
+	}
+
+	tracker := componentreadiness.NewPostgresRegressionStore(s.db, s.jiraClient)
+	result, err := tracker.ForceCloseRegressions(uint(triageID), user, forceCloseReq.Reason) // nolint:gosec
+	if err != nil {
+		if errors.Is(err, componentreadiness.ErrTriageNotResolved) {
+			failureResponse(w, http.StatusBadRequest, "Cannot force-close regressions for an unresolved triage. Resolve the triage first.")
+			return
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			failureResponse(w, http.StatusNotFound, fmt.Sprintf("triage %d not found", triageID))
+			return
+		}
+		log.WithError(err).Error("error force closing regressions")
+		failureResponse(w, http.StatusInternalServerError, "failed to force close regressions")
+		return
+	}
+	componentreadiness.InjectForceCloseHATEOASLinks(result, api.GetBaseURL(req), uint(triageID)) // nolint:gosec
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
+func (s *Server) jsonForceClosePreview(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	idStr := vars["id"]
+	// ParseUint rejects negative and non-numeric IDs before we touch the database.
+	triageID, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
+		return
+	}
+
+	tracker := componentreadiness.NewPostgresRegressionStore(s.db, s.jiraClient)
+	preview, err := tracker.ForceClosePreview(uint(triageID)) // nolint:gosec
+	if err != nil {
+		if errors.Is(err, componentreadiness.ErrTriageNotResolved) {
+			failureResponse(w, http.StatusBadRequest, "Cannot force-close regressions for an unresolved triage. Resolve the triage first.")
+			return
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			failureResponse(w, http.StatusNotFound, fmt.Sprintf("triage %d not found", triageID))
+			return
+		}
+		log.WithError(err).Error("error building force close preview")
+		failureResponse(w, http.StatusInternalServerError, "failed to build force close preview")
+		return
+	}
+	componentreadiness.InjectForceClosePreviewHATEOASLinks(preview, api.GetBaseURL(req))
+	api.RespondWithJSON(http.StatusOK, w, preview)
+}
+
 func (s *Server) jsonDeleteTriage(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	idStr := vars["id"]
@@ -2911,6 +3003,20 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodDelete},
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonDeleteTriage,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages/{id}/force_close_regressions",
+			Description:  "Force close the open regressions that existed at a resolved triage's resolution time so they are excluded from the regression reuse window",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonForceCloseRegressions,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages/{id}/force_close_preview",
+			Description:  "Preview which regressions would be force closed for a resolved triage, with failure gap data, without modifying anything",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonForceClosePreview,
 		},
 		{
 			EndpointPath: "/api/component_readiness/triages/{id}/matches",

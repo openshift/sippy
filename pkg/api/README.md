@@ -644,3 +644,74 @@ Updates an existing triage record.
 Endpoint: `DELETE /api/component_readiness/triages/{id}`
 
 Deletes a triage record.
+
+Endpoint: `POST /api/component_readiness/triages/{id}/force_close_regressions`
+
+Force closes the open regressions associated with a resolved triage that existed at its
+resolution time (opened strictly before `resolved`). Force closed regressions are excluded from
+the regression reuse window (regressionHysteresisDays), so they are not reopened for unrelated
+failures. This prevents generic tests (for example "install should succeed") from staying open
+for weeks with false "pants on fire" or "failed fix" status.
+
+Each regression is closed at the triage's resolution time and records, directly on the
+regression row, that it was force closed, by which user, for what reason, and the triage that
+drove the action. The operation is idempotent: regressions that opened at or after the
+resolution time, or that are already closed, are left untouched.
+
+The triage must be resolved. If it is not, the endpoint returns `400 Bad Request` with the
+message "Cannot force-close regressions for an unresolved triage. Resolve the triage first."
+This is a write endpoint and requires the `write_endpoints` capability.
+
+### Request body
+
+| Field  | Type   | Description                                              | Required |
+|--------|--------|----------------------------------------------------------|----------|
+| reason | String | The reason the regressions are being force closed.       | Yes      |
+
+`reason` is required and must be non-empty (a blank or whitespace-only value returns
+`400 Bad Request`). A non-numeric or negative triage `id` in the path returns `400 Bad Request`,
+and a triage `id` that does not exist returns `404 Not Found`.
+
+### Response
+
+| Field                   | Type            | Description                                                     |
+|-------------------------|-----------------|-----------------------------------------------------------------|
+| closed_regression_ids   | Array of number | IDs of the regressions that were open and got closed.           |
+| timestamp               | String (time)   | The closed time applied to the regressions (the resolution time). |
+| links                   | Object          | HATEOAS links (`self`, `triage`, `force_close`, `force_close_preview`). |
+
+The regression record returned by `GET /api/component_readiness/regressions/{id}` includes
+`force_closed`, `force_closed_by`, `force_closed_reason`, and `force_closed_by_triage_id`
+directly (no join is required, the data is stored on the regression).
+
+Endpoint: `GET /api/component_readiness/triages/{id}/force_close_preview`
+
+Previews (dry run) what `force_close_regressions` would do for a resolved triage, without
+modifying anything. Use it to review which regressions would close and to spot any that kept
+failing after the claimed resolution before committing. The triage must be resolved; otherwise
+the endpoint returns `400 Bad Request` with the same message as the force close endpoint. A
+non-numeric or negative triage `id` returns `400 Bad Request`, and a triage `id` that does not
+exist returns `404 Not Found`.
+
+### Preview response
+
+| Field           | Type            | Description                                                          |
+|-----------------|-----------------|---------------------------------------------------------------------|
+| triage_id       | Number          | The triage being previewed.                                         |
+| resolved        | String (time)   | The triage's resolution time (the cutoff used for scoping).         |
+| would_close     | Array of object | Open regressions that opened strictly before the resolution time (would close). |
+| would_not_close | Array of object | Regressions opened at or after the resolution time (left untouched). |
+| links           | Object          | HATEOAS links (`self`, `triage`, `force_close`, `force_close_preview`). |
+
+Each regression object in `would_close` / `would_not_close` includes:
+
+| Field                         | Type            | Description                                                     |
+|-------------------------------|-----------------|-----------------------------------------------------------------|
+| regression_id                 | Number          | The regression ID.                                              |
+| test_name                     | String          | The regressed test name.                                        |
+| variants                      | Array of string | The regression's variants.                                      |
+| opened                        | String (time)   | When the regression opened.                                     |
+| closed                        | String (time)   | When the regression closed, if already closed.                  |
+| last_failure_before_resolution| String (time)   | Most recent failing job run at or before the resolution time.   |
+| first_failure_after_resolution| String (time)   | Earliest failing job run after the resolution time, if any (a gap indicator that the test kept failing). |
+| links                         | Object          | HATEOAS links for the regression (`self` points to its detail endpoint). |

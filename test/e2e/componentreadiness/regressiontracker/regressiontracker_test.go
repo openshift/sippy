@@ -3,6 +3,8 @@ package regressiontracker
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -273,6 +276,88 @@ func Test_RegressionTracker(t *testing.T) {
 
 }
 
+func Test_ForceCloseRegressions(t *testing.T) {
+	dbc := util.CreateE2EPostgresConnection(t)
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
+
+	createTriageForRegressions := func(t *testing.T, url string, regs ...*models.TestRegression) models.Triage {
+		t.Helper()
+		triage := models.Triage{
+			URL:         url,
+			Description: "force close triage",
+			Type:        models.TriageTypeProduct,
+		}
+		dbWithContext := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "e2e-test"))
+		// Create the triage first without regressions, then link the existing
+		// regressions via the association API. Embedding the regressions in the
+		// Create() call makes GORM upsert them, which writes the partial objects
+		// (nil Variants) and violates the NOT NULL constraint on variants.
+		require.NoError(t, dbWithContext.Create(&triage).Error)
+		require.NoError(t, dbWithContext.Model(&triage).Association("Regressions").Append(regs))
+		return triage
+	}
+
+	createResolvedTriageForRegressions := func(t *testing.T, url string, resolved time.Time, regs ...*models.TestRegression) models.Triage {
+		t.Helper()
+		triage := createTriageForRegressions(t, url, regs...)
+		dbWithContext := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "e2e-test"))
+		require.NoError(t, dbWithContext.Model(&triage).Update("resolved", sql.NullTime{Valid: true, Time: resolved}).Error)
+		return triage
+	}
+
+	cleanup := func() {
+		assert.NoError(t, cleanupTriages(dbc))
+		cleanupAllRegressions(dbc)
+	}
+
+	t.Run("records force close details on each regression", func(t *testing.T) {
+		defer cleanup()
+
+		resolved := time.Now().Truncate(time.Second)
+		reg, err := rawCreateRegression(dbc, "4.19", "fc-fields", "force close test fc-fields",
+			[]string{"a:b"}, resolved.Add(-10*24*time.Hour), time.Time{})
+		require.NoError(t, err)
+		triage := createResolvedTriageForRegressions(t, "https://redhat.atlassian.net/browse/TEST-FC-1", resolved, reg)
+
+		result, err := tracker.ForceCloseRegressions(triage.ID, "developer", "generic test, unrelated failures")
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.ElementsMatch(t, []uint{reg.ID}, result.ClosedRegressionIDs)
+		assert.WithinDuration(t, resolved, result.Timestamp, time.Second, "timestamp should be the resolution time")
+
+		var checkReg models.TestRegression
+		require.NoError(t, dbc.DB.First(&checkReg, reg.ID).Error)
+		assert.True(t, checkReg.Closed.Valid, "regression should be closed")
+		assert.WithinDuration(t, resolved, checkReg.Closed.Time, time.Second, "regression should close at the resolution time")
+		assert.True(t, checkReg.ForceClosed, "regression should be force closed")
+		require.NotNil(t, checkReg.ForceClosedBy, "regression should record who force closed it")
+		assert.Equal(t, "developer", *checkReg.ForceClosedBy, "regression should record who force closed it")
+		require.NotNil(t, checkReg.ForceClosedReason, "regression should record the reason")
+		assert.Equal(t, "generic test, unrelated failures", *checkReg.ForceClosedReason, "regression should record the reason")
+		require.NotNil(t, checkReg.ForceClosedByTriageID)
+		assert.Equal(t, triage.ID, *checkReg.ForceClosedByTriageID)
+	})
+
+	t.Run("returns ErrTriageNotResolved for an unresolved triage", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := rawCreateRegression(dbc, "4.19", "fc-unresolved", "force close test fc-unresolved",
+			[]string{"a:b"}, time.Now().Add(-10*24*time.Hour), time.Time{})
+		require.NoError(t, err)
+		triage := createTriageForRegressions(t, "https://redhat.atlassian.net/browse/TEST-FC-UNRESOLVED", reg)
+
+		_, err = tracker.ForceCloseRegressions(triage.ID, "developer", "should fail")
+		require.Error(t, err)
+		assert.ErrorIs(t, err, componentreadiness.ErrTriageNotResolved)
+
+		// The regression must remain untouched.
+		var checkReg models.TestRegression
+		require.NoError(t, dbc.DB.First(&checkReg, reg.ID).Error)
+		assert.False(t, checkReg.Closed.Valid, "regression should remain open")
+		assert.False(t, checkReg.ForceClosed, "regression should not be force closed")
+	})
+}
+
 func cleanupJobRuns(dbc *db.DB) {
 	res := dbc.DB.Where("1 = 1").Delete(&models.RegressionJobRun{})
 	if res.Error != nil {
@@ -516,9 +601,19 @@ func Test_RegressionJobRuns(t *testing.T) {
 	})
 }
 
-func cleanupTriages(dbc *db.DB) {
-	dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1")
-	dbc.DB.Where("1 = 1").Delete(&models.Triage{})
+// cleanupTriages removes triage_regressions join rows before the triages so no association outlives a
+// referenced row. It returns an error rather than only logging so a deferred cleanup can assert on it and
+// surface leaks instead of silently letting rows bleed into later tests.
+func cleanupTriages(dbc *db.DB) error {
+	// gorm.ErrRecordNotFound simply means there was nothing to delete, which is a valid
+	// cleanup state rather than a failure, so it is filtered out on each step.
+	if err := dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1").Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("error deleting triage_regressions: %w", err)
+	}
+	if err := dbc.DB.Where("1 = 1").Delete(&models.Triage{}).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("error deleting triage records: %w", err)
+	}
+	return nil
 }
 
 func Test_SyncTriageSymptoms(t *testing.T) {
@@ -557,7 +652,7 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 	cleanup := func() {
 		util.CleanupTriageSymptoms(dbc)
 		cleanupJobRuns(dbc)
-		cleanupTriages(dbc)
+		assert.NoError(t, cleanupTriages(dbc))
 		cleanupAllRegressions(dbc)
 	}
 
