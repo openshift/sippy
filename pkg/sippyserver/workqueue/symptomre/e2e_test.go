@@ -145,7 +145,7 @@ func TestE2EAsyncSymptomReEvaluation(t *testing.T) {
 	// --- Submit batch via HTTP POST ---
 	reqBody := fmt.Sprintf(`{"prow_job_build_ids": [%s], "dry_run": true}`,
 		quoteAndJoin(buildIDs))
-	resp, err := http.Post(ts.URL+"/api/jobs/runs/reevaluate", "application/json", strings.NewReader(reqBody))
+	resp, err := http.Post(ts.URL+"/api/jobs/runs/reevaluate", "application/json", strings.NewReader(reqBody)) //nolint:gosec // test server URL
 	require.NoError(t, err, "HTTP POST should succeed")
 	defer resp.Body.Close()
 

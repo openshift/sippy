@@ -32,8 +32,8 @@ type BatchStatusResponse struct {
 
 // ItemStatus reports the state of a single item within a batch.
 type ItemStatus struct {
-	ItemKey string `json:"item_key"`
-	State   string `json:"state"`
+	ItemKey string `gorm:"column:item_key" json:"item_key"`
+	State   string `gorm:"column:state"    json:"state"`
 }
 
 // StatusQuerier queries the current status of a symptom re-evaluation batch
@@ -45,12 +45,6 @@ type StatusQuerier struct {
 // NewStatusQuerier creates a StatusQuerier.
 func NewStatusQuerier(gormDB *gorm.DB) *StatusQuerier {
 	return &StatusQuerier{gormDB: gormDB}
-}
-
-// itemRow is the result of the batch-item/river-job join query.
-type itemRow struct {
-	ItemKey string `gorm:"column:item_key"`
-	State   string `gorm:"column:state"`
 }
 
 // Query loads a batch and its items, joining with river_job to get current
@@ -66,22 +60,20 @@ func (q *StatusQuerier) Query(batchID uuid.UUID) (*BatchStatusResponse, error) {
 		return nil, fmt.Errorf("loading batch %s: %w", batchID, err)
 	}
 
-	var rows []itemRow
+	var items []ItemStatus
 	if err := q.gormDB.Raw(`
 		SELECT bi.item_key,
 		       CASE WHEN bi.river_job_id IS NULL THEN 'pending'
 		            ELSE rj.state END AS state
 		FROM workqueue_symptom_re_batch_items bi
 		LEFT JOIN river_job rj ON rj.id = bi.river_job_id
-		WHERE bi.batch_id = ?`, batchID).Scan(&rows).Error; err != nil {
+		WHERE bi.batch_id = ?`, batchID).Scan(&items).Error; err != nil {
 		return nil, fmt.Errorf("querying batch items for %s: %w", batchID, err)
 	}
 
-	counts := workqueue.ItemStateCounts{Total: len(rows)}
-	items := make([]ItemStatus, len(rows))
-	for i, r := range rows {
-		items[i] = ItemStatus{ItemKey: r.ItemKey, State: r.State}
-		switch r.State {
+	counts := workqueue.ItemStateCounts{Total: len(items)}
+	for _, item := range items {
+		switch item.State {
 		case "completed":
 			counts.Completed++
 		case "discarded", "cancelled":
