@@ -177,7 +177,7 @@ func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, big
 
 	// River schema is also migrated by "sippy migrate" so the API server can
 	// enqueue jobs. The daemon runs it too in case it starts before or without
-	// the migrate step (e.g. local development).
+	// the migrate step (e.g. local development), otherwise the daemon exits.
 	if err := workqueue.MigrateRiverSchema(ctx, pgxPool); err != nil {
 		return nil, err
 	}
