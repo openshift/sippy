@@ -22,3 +22,11 @@ applyTo: "**/*_test.go"
   interface.
 * Prefer **table-driven tests** with descriptive case names. Search the same package for
   existing test patterns before writing new ones.
+* New or modified functionality must include test coverage:
+  new Go functions and methods should have corresponding unit tests,
+  bug fixes should include a regression test that fails without the fix,
+  and pure functions (no DB/external dependencies) should always be tested.
+  If a function is hard to test, consider refactoring it into simpler functions 
+  (disentangle separate conceptual chunks).
+  Exceptions: trivial changes (renaming, formatting, comments), generated code or
+  configuration-only changes, and refactors already covered by existing tests.

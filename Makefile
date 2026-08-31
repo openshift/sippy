@@ -79,10 +79,12 @@ apm:
 verify-migrations:
 	./hack/verify-migrations.sh
 
+APM_GENERATED_FILES := .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md pkg/db/query/AGENTS.md pkg/db/query/CLAUDE.md
+
 verify-apm: apm
-	@if [ -n "$$(git status --porcelain -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md)" ]; then \
+	@if [ -n "$$(git status --porcelain -- $(APM_GENERATED_FILES))" ]; then \
 		echo "ERROR: Generated APM files are out of date. Run 'make apm' and commit the results."; \
-		git status --short -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md; \
+		git status --short -- $(APM_GENERATED_FILES); \
 		exit 1; \
 	fi
 

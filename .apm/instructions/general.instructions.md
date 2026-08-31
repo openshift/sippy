@@ -20,5 +20,6 @@ The system consists of:
 * A **Go-based API backend**.
 * A **React/Material-UI frontend** (located in `sippy-ng`).
 * Data sources including **PostgreSQL**, and **BigQuery**
+* A **headless daemon** for asynchronous processing
 
 Favor clarity and maintainability over cleverness. Comments should be minimal, helpful, and explain the "why" not the "what".
