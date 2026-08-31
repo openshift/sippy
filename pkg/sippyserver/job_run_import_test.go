@@ -56,9 +56,20 @@ func TestJobRunImportRequestAndResponses(t *testing.T) {
 		assert.Equal(t, "https://sippy.example/api/jobs/runs/import", response.Links["self"])
 	})
 	t.Run("duplicate", func(t *testing.T) {
-		fake := &fakeJobRunImporter{result: &prowloader.SingleRunImportResult{Status: "already_imported"}}
+		fake := &fakeJobRunImporter{result: &prowloader.SingleRunImportResult{Status: prowloader.SingleRunStatusAlreadyImported}}
 		w := importRequest(t, fake, validBody, "engineer")
 		assert.Equal(t, http.StatusOK, w.Code)
+	})
+	t.Run("untracked ProwJob is ignored", func(t *testing.T) {
+		fake := &fakeJobRunImporter{result: &prowloader.SingleRunImportResult{
+			ProwJobRunID: "123", Status: prowloader.SingleRunStatusIgnored, Reason: prowloader.SingleRunReasonNotTracked,
+		}}
+		w := importRequest(t, fake, validBody, "engineer")
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response prowloader.SingleRunImportResult
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+		assert.Equal(t, prowloader.SingleRunStatusIgnored, response.Status)
+		assert.Equal(t, prowloader.SingleRunReasonNotTracked, response.Reason)
 	})
 }
 

@@ -244,7 +244,7 @@ orphan ID-map row is not enough. A committed duplicate returns without reading
 GCS or BigQuery. Otherwise it reads `<job_prefix>/prowjob.json`, determines the
 duration, reads and combines every matching `**junit**.xml` object, resolves the
 existing ProwJob definition (including its release and variants), reads labels,
-prepares partitions, and finally performs the permanent write. The start time
+prepares the rows, and finally performs the permanent write. The start time
 must not be in the future or more than 14 days old; exactly 14 days is accepted.
 
 `status.completionTime` is authoritative when present and no completion marker
@@ -270,10 +270,11 @@ test rows but are excluded from daily and cumulative summary deltas in both the
 single-run and batch writers. Existing late-label handling continues to
 subtract a run that was summarized before `InfraFailure` was applied.
 
-Before the permanent write, the importer calls the existing partition preparer
-for the resolved release from the Prow start time through two days after the
-single captured current time. The 14-day validation bound limits historical
-work but does not replace partition preparation. The unique parent insert
+The API request does not create database partitions. The external daily
+Prow-loader schedule owns partition preparation: its existing batch load
+ensures partitions for configured releases through two days in the future
+before importing jobs. The API assumes that daily maintenance has run. The
+unique parent insert
 (`ON CONFLICT (id) DO NOTHING RETURNING id`) is the race-ownership gate. Only
 the winner writes ID maps, annotations, pull-request associations, tests,
 outputs, and summaries in one transaction; concurrent losers return a
@@ -281,8 +282,9 @@ successful idempotent no-op. Pull-request identities from `prowjob.json` are
 stored without live GitHub enrichment or risk-comment side effects.
 
 A new import returns `201 Created`; an early or concurrent duplicate returns
-`200 OK`. Both use this response shape (definition-derived fields may be absent
-and counts are zero for an early duplicate):
+`200 OK` with `status: "already_imported"`. Both use this response shape
+(definition-derived fields may be absent and counts are zero for an early
+duplicate):
 
 ```json
 {
@@ -302,14 +304,38 @@ and counts are zero for an early duplicate):
 }
 ```
 
+If the exact ProwJob definition is not tracked, the request performs no
+database writes and returns `200 OK` with a machine-readable ignored outcome:
+
+```json
+{
+  "prow_job_run_id": "1234567890",
+  "status": "ignored",
+  "reason": "prow_job_not_tracked",
+  "prow_job_name": "periodic-ci-example",
+  "bucket": "test-platform-results",
+  "job_prefix": "logs/periodic-ci-example/1234567890",
+  "gcs_location": "gs://test-platform-results/logs/periodic-ci-example/1234567890",
+  "junit_files": 0,
+  "tests": 0,
+  "links": {
+    "self": "https://sippy.example/api/jobs/runs/import"
+  }
+}
+```
+
+A failed definition lookup is not ignored. It retains its `500` or `503`
+downstream failure response.
+
 Errors have `{"code": <HTTP status>, "message": "<detail>"}`. Statuses are
 `400` for malformed requests or invalid/mismatched locations, `401` for missing
-forwarded identity, `404` for a missing top-level `prowjob.json`, ProwJob
-definition, or release, `422` for invalid Prow metadata, age, state, or
-completion timing, `502` for ordinary artifact or label-query failures, `503`
+forwarded identity, `404` for a missing top-level `prowjob.json` or a tracked
+ProwJob definition with no release, `422` for invalid Prow metadata, age,
+state, or completion timing, `502` for ordinary artifact or label-query
+failures, `503`
 for recognized unavailable,
 unconfigured, unauthorized, throttled, or timed-out dependencies, and `500`
-for partition or transactional persistence failures. Error details are retained
+for transactional persistence failures. Error details are retained
 for the trusted intra-team callers behind the OAuth proxy.
 
 Endpoint: `/api/jobs`

@@ -55,7 +55,7 @@ func (s *Server) jsonImportJobRun(w http.ResponseWriter, req *http.Request) {
 	}
 	result.Links["self"] = api.GetBaseURL(req) + "/api/jobs/runs/import"
 	code := http.StatusCreated
-	if result.Status == "already_imported" {
+	if result.Status == prowloader.SingleRunStatusAlreadyImported || result.Status == prowloader.SingleRunStatusIgnored {
 		code = http.StatusOK
 	}
 	api.RespondWithJSON(code, w, result)

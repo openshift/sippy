@@ -21,7 +21,6 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
@@ -37,6 +36,11 @@ const (
 	SingleRunMaximumAge = 14 * 24 * time.Hour
 	finishedFilename    = "finished.json"
 	prowJobFilename     = "prowjob.json"
+
+	SingleRunStatusImported        = "imported"
+	SingleRunStatusAlreadyImported = "already_imported"
+	SingleRunStatusIgnored         = "ignored"
+	SingleRunReasonNotTracked      = "prow_job_not_tracked"
 )
 
 type SingleRunImportErrorKind string
@@ -72,6 +76,7 @@ type SingleRunImportRequest struct {
 type SingleRunImportResult struct {
 	ProwJobRunID string            `json:"prow_job_run_id"`
 	Status       string            `json:"status"`
+	Reason       string            `json:"reason,omitempty"`
 	ProwJobName  string            `json:"prow_job_name,omitempty"`
 	Release      string            `json:"release,omitempty"`
 	Bucket       string            `json:"bucket"`
@@ -87,7 +92,6 @@ type singleRunReadArtifactFunc func(context.Context, string, string) ([]byte, er
 type singleRunLoadJUnitFunc func(context.Context, string, string) (*junit.TestSuites, []string, error)
 type singleRunDefinitionFunc func(context.Context, string) (*models.ProwJob, error)
 type singleRunLabelsFunc func(context.Context, string, civil.Date) ([]string, error)
-type singleRunEnsurePartitionsFunc func([]string, time.Time, time.Time, bool) (int, error)
 type singleRunWriteFunc func(context.Context, *db.DB, civil.Date, pgwriter.JobRunResult) (bool, error)
 
 type SingleRunImporter struct {
@@ -103,7 +107,6 @@ type SingleRunImporter struct {
 	loadJUnit        singleRunLoadJUnitFunc
 	lookupDefinition singleRunDefinitionFunc
 	loadLabels       singleRunLabelsFunc
-	ensurePartitions singleRunEnsurePartitionsFunc
 	write            singleRunWriteFunc
 }
 
@@ -125,12 +128,6 @@ func NewSingleRunImporter(dbc *db.DB, gcsClient *storage.Client, bqClient *bqcac
 	i.loadLabels = func(ctx context.Context, buildID string, startDate civil.Date) ([]string, error) {
 		return GatherLabelsForRunFromBQ(ctx, i.bqClient, buildID, startDate)
 	}
-	i.ensurePartitions = func(releases []string, start, end time.Time, dryRun bool) (int, error) {
-		if i.dbc == nil {
-			return 0, fmt.Errorf("PostgreSQL is not configured")
-		}
-		return i.dbc.EnsurePartitions(releases, start, end, dryRun)
-	}
 	return i
 }
 
@@ -149,7 +146,7 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 		return nil, classifyImportError(SingleRunPersistenceFailure, "checking existing Prow job run", err)
 	}
 	if exists {
-		result.Status = "already_imported"
+		result.Status = SingleRunStatusAlreadyImported
 		return result, nil
 	}
 
@@ -182,10 +179,13 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 
 	definition, err := i.lookupDefinition(ctx, pj.Spec.Job)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, importError(SingleRunNotFound, "ProwJob definition %q was not found", pj.Spec.Job)
-		}
 		return nil, classifyImportError(SingleRunPersistenceFailure, "looking up ProwJob definition", err)
+	}
+	if definition == nil {
+		result.ProwJobName = pj.Spec.Job
+		result.Status = SingleRunStatusIgnored
+		result.Reason = SingleRunReasonNotTracked
+		return result, nil
 	}
 	if definition.Release == "" {
 		return nil, importError(SingleRunNotFound, "ProwJob definition %q has no release", pj.Spec.Job)
@@ -205,10 +205,6 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 	prepared := assembleJobRunResult(&pj, runID, definition, tests, failures, flakes, overall, pulls, labels, duration)
 	prepared.Run.GCSBucket = request.Bucket
 
-	if _, err := i.ensurePartitions([]string{definition.Release}, pj.Status.StartTime.UTC(), now.AddDate(0, 0, 2), false); err != nil {
-		return nil, classifyImportError(SingleRunPersistenceFailure, "ensuring database partitions", err)
-	}
-
 	inserted, err := i.write(ctx, i.dbc, civil.DateOf(now), *prepared)
 	if err != nil {
 		return nil, classifyImportError(SingleRunPersistenceFailure, "writing Prow job run", err)
@@ -217,9 +213,9 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 	result.Release = definition.Release
 	result.JUnitFiles = len(junitPaths)
 	result.Tests = len(tests)
-	result.Status = "imported"
+	result.Status = SingleRunStatusImported
 	if !inserted {
-		result.Status = "already_imported"
+		result.Status = SingleRunStatusAlreadyImported
 	}
 	if pj.Status.URL != "" {
 		result.Links = map[string]string{"prow_job": pj.Status.URL}
@@ -414,8 +410,12 @@ func (i *SingleRunImporter) findDefinition(ctx context.Context, jobName string) 
 		return nil, fmt.Errorf("PostgreSQL is not configured")
 	}
 	var definition models.ProwJob
-	if err := i.dbc.DB.WithContext(ctx).Where("name = ?", jobName).First(&definition).Error; err != nil {
-		return nil, err
+	query := i.dbc.DB.WithContext(ctx).Where("name = ?", jobName).Limit(1).Find(&definition)
+	if query.Error != nil {
+		return nil, query.Error
+	}
+	if query.RowsAffected == 0 {
+		return nil, nil
 	}
 	return &definition, nil
 }
