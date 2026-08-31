@@ -2,6 +2,7 @@ package jobrunscan
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/api/option"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -91,7 +93,7 @@ func TestReEvaluateEndToEnd(t *testing.T) {
 	re := functionalTestReEvaluator(t)
 	buildID := os.Getenv("PROW_JOB_BUILD_ID")
 
-	results, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID}, false)
+	results, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("re-evaluation failed: %v", err)
 	}
@@ -114,11 +116,11 @@ func TestReEvaluateIdempotent(t *testing.T) {
 	buildID := os.Getenv("PROW_JOB_BUILD_ID")
 
 	// Run twice
-	results1, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID}, false)
+	results1, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("first re-evaluation failed: %v", err)
 	}
-	results2, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID}, false)
+	results2, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("second re-evaluation failed: %v", err)
 	}
@@ -133,4 +135,20 @@ func TestReEvaluateIdempotent(t *testing.T) {
 	if !sameStrings(r1.LabelsApplied, r2.LabelsApplied) {
 		t.Errorf("labels applied differ: %v vs %v", r1.LabelsApplied, r2.LabelsApplied)
 	}
+}
+
+// reEvaluateJobRuns re-evaluates all symptom matches for the specified job runs.
+func reEvaluateJobRuns(ctx context.Context, r *ReEvaluator, prowJobBuildIDs []string, dryRun bool) ([]ReEvaluationResult, error) {
+	symptoms, err := r.loadActiveSymptoms()
+	if err != nil {
+		return nil, fmt.Errorf("loading symptoms: %w", err)
+	}
+	logrus.WithField("activeSymptoms", len(symptoms)).Debug("symptom reEval: loaded active symptoms")
+
+	results := make([]ReEvaluationResult, 0, len(prowJobBuildIDs))
+	for _, buildID := range prowJobBuildIDs {
+		result := r.reEvaluateOne(ctx, buildID, symptoms, dryRun)
+		results = append(results, result)
+	}
+	return results, nil
 }

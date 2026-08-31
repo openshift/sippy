@@ -94,8 +94,7 @@ func InjectReEvalHATEOASLinks(resp *ReEvaluationResponse, baseURL string) {
 }
 
 // symptomCache holds a concurrency-safe snapshot of active symptoms for the
-// daemon's async batch processing path. The synchronous API path
-// (ReEvaluateJobRuns) loads symptoms directly and does not use the cache.
+// daemon's async batch processing.
 type symptomCache struct {
 	mu       sync.RWMutex
 	symptoms []jobrunscan.Symptom
@@ -131,22 +130,6 @@ type symptomMatch struct {
 	symptom   jobrunscan.Symptom
 	fileMatch string // path relative to bucket root
 	textMatch string // first matched line (empty for "none" matcher)
-}
-
-// ReEvaluateJobRuns re-evaluates all symptom matches for the specified job runs.
-func (r *ReEvaluator) ReEvaluateJobRuns(ctx context.Context, prowJobBuildIDs []string, dryRun bool) ([]ReEvaluationResult, error) {
-	symptoms, err := r.loadActiveSymptoms()
-	if err != nil {
-		return nil, fmt.Errorf("loading symptoms: %w", err)
-	}
-	log.WithField("activeSymptoms", len(symptoms)).Debug("symptom reEval: loaded active symptoms")
-
-	results := make([]ReEvaluationResult, 0, len(prowJobBuildIDs))
-	for _, buildID := range prowJobBuildIDs {
-		result := r.reEvaluateOne(ctx, buildID, symptoms, dryRun)
-		results = append(results, result)
-	}
-	return results, nil
 }
 
 // loadActiveSymptoms fetches all symptom definitions with implemented matcher types.
