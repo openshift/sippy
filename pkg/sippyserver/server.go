@@ -170,6 +170,7 @@ type Server struct {
 	static               fs.FS
 	httpServer           *http.Server
 	db                   *db.DB
+	applyLabel           applyLabelFunc
 	bigQueryClient       *sippybq.Client
 	crDataProvider       dataprovider.DataProvider
 	pinnedDateTime       *time.Time
@@ -430,6 +431,12 @@ func (s *Server) hasCapabilities(capabilities []string) bool {
 	return true
 }
 
+// hasDatabase reports whether both the database wrapper and its GORM handle
+// are initialized for database-backed request paths.
+func (s *Server) hasDatabase() bool {
+	return s != nil && s.db != nil && s.db.DB != nil
+}
+
 func (s *Server) determineCapabilities() {
 	capabilities := make([]string, 0)
 	if s.mode == ModeOpenShift {
@@ -439,7 +446,7 @@ func (s *Server) determineCapabilities() {
 	if s.bigQueryClient != nil || s.crDataProvider != nil {
 		capabilities = append(capabilities, ComponentReadinessCapability)
 	}
-	if s.db != nil {
+	if s.hasDatabase() {
 		capabilities = append(capabilities, LocalDBCapability)
 
 		hasBuildCluster := false
@@ -466,7 +473,7 @@ func (s *Server) determineCapabilities() {
 		}
 	}
 
-	if s.db != nil && s.enableWriteAPIs {
+	if s.hasDatabase() && s.enableWriteAPIs {
 		capabilities = append(capabilities, WriteEndpointsCapability)
 	}
 
@@ -2768,6 +2775,13 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodPost},
 			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonReEvaluateJobRunSymptoms,
+		},
+		{
+			EndpointPath: "/api/job/run/labels",
+			Description:  "Apply one externally-sourced label to a job run in PostgreSQL (every label uses the common append path; InfraFailure also triggers summary subtraction in the same transaction)",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonApplyLabel,
 		},
 		{
 			EndpointPath: "/api/job_variants",

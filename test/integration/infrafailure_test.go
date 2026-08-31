@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/pgwriter"
 	"github.com/openshift/sippy/pkg/db"
@@ -81,6 +82,77 @@ func TestRecordInfraFailureSubtractsFromSummaries(t *testing.T) {
 		assert.Equal(t, int64(1), cs.PrefixSumFailures, "date %s", d)
 		assert.Equal(t, int64(1), cs.PrefixSumRuns, "date %s", d)
 	}
+}
+
+// TestSubtractInfraFailureFromSummaries verifies the exported subtraction entry
+// point removes a run's contribution from the summary tables WITHOUT touching the
+// InfraFailure label. This is the half of the invariant the
+// /api/job/run/labels applier relies on: the applier appends the label itself
+// and then calls this to subtract in the same transaction. The run here is never
+// labeled, proving the function does only the subtraction.
+func TestSubtractInfraFailureFromSummaries(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	jobID := seedProwJob(t, dbc, "periodic-e2e-aws", "4.18")
+	today := testDate
+	ts := time.Date(today.Year, today.Month, today.Day, 10, 0, 0, 0, time.UTC)
+
+	const infraRunID = 48001
+	const keepRunID = 48002
+
+	writeBatch(t, dbc, testDate, []pgwriter.JobRunResult{
+		{
+			Run: pgwriter.RunRow{ID: infraRunID, ProwJobID: jobID, ProwJobRelease: "4.18", Timestamp: ts},
+			Tests: []pgwriter.TestRow{
+				{ProwJobRunID: infraRunID, ProwJobID: jobID, ProwJobRunTimestamp: ts, ProwJobRunRelease: "4.18", TestName: "subtract-only-test", SuiteName: "junit_e2e", Status: statusSuccess, Duration: 1.0},
+			},
+		},
+		{
+			Run: pgwriter.RunRow{ID: keepRunID, ProwJobID: jobID, ProwJobRelease: "4.18", Timestamp: ts},
+			Tests: []pgwriter.TestRow{
+				{ProwJobRunID: keepRunID, ProwJobID: jobID, ProwJobRunTimestamp: ts, ProwJobRunRelease: "4.18", TestName: "subtract-only-test", SuiteName: "junit_e2e", Status: statusFailure, Duration: 2.0},
+			},
+		},
+	})
+
+	var test models.Test
+	require.NoError(t, dbc.DB.Where("name = ?", "subtract-only-test").First(&test).Error)
+
+	// Precondition: both runs counted (1 success + 1 failure = 2 runs).
+	var dt models.TestDailyTotal
+	require.NoError(t, dbc.DB.Where("test_id = ? AND prow_job_id = ? AND release = ? AND date = ?", test.ID, jobID, "4.18", today).First(&dt).Error)
+	require.Equal(t, int32(1), dt.Successes)
+	require.Equal(t, int32(1), dt.Failures)
+	require.Equal(t, int32(2), dt.Runs)
+
+	// Subtract the infra run's contribution directly. The function expects a
+	// transaction (its temp table is ON COMMIT DROP), so wrap it; unlike
+	// RecordInfraFailure it does not set the InfraFailure label.
+	require.NoError(t, dbc.DB.Transaction(func(tx *gorm.DB) error {
+		return infrafailure.SubtractInfraFailureFromSummaries(tx, infraRunID)
+	}))
+
+	// Daily totals now reflect only the retained run's failure.
+	require.NoError(t, dbc.DB.Where("test_id = ? AND prow_job_id = ? AND release = ? AND date = ?", test.ID, jobID, "4.18", today).First(&dt).Error)
+	assert.Equal(t, int32(0), dt.Successes, "infra run's success should be subtracted")
+	assert.Equal(t, int32(1), dt.Failures, "retained run's failure should remain")
+	assert.Equal(t, int32(1), dt.Runs)
+
+	// Cumulative summaries cascade the subtraction from the affected date onward
+	// (today and the carried-forward tomorrow row).
+	tomorrow := today.AddDays(1)
+	for _, d := range []civil.Date{today, tomorrow} {
+		var cs models.TestCumulativeSummary
+		require.NoError(t, dbc.DB.Where("test_id = ? AND prow_job_id = ? AND release = ? AND date = ?", test.ID, jobID, "4.18", d).First(&cs).Error, "date %s", d)
+		assert.Equal(t, int64(0), cs.PrefixSumSuccesses, "date %s", d)
+		assert.Equal(t, int64(1), cs.PrefixSumFailures, "date %s", d)
+		assert.Equal(t, int64(1), cs.PrefixSumRuns, "date %s", d)
+	}
+
+	// The function must NOT have set the InfraFailure label: it does only the
+	// subtraction and leaves the label to the caller.
+	var infraRun models.ProwJobRun
+	require.NoError(t, dbc.DB.First(&infraRun, infraRunID).Error)
+	assert.NotContains(t, []string(infraRun.Labels), infrafailure.LabelInfraFailure, "SubtractInfraFailureFromSummaries must not set the label")
 }
 
 // TestRecordInfraFailureIsIdempotent verifies that repeated calls for the same
