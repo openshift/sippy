@@ -57,6 +57,17 @@ import (
 // This test always runs with dry_run=true. It does not configure a BigQuery client, so non-dry-run
 // evaluation would fail. Full write-path testing (BQ, GCS, Postgres label updates) is covered by
 // the existing functional tests in pkg/api/jobrunscan/reevaluate_functional_test.go.
+
+/*
+   Example invocation of the async API against an actual running server (for manual e2e testing):
+   # Submit a batch:
+   curl -X POST http://localhost:8080/api/jobs/runs/reevaluate \
+        -H 'Content-Type: application/json' \
+        -d '{"prow_job_build_ids": ["2061603073523978240"], "dry_run": true}'
+   # Poll status (batch_id from the 202 response):
+   curl http://localhost:8080/api/jobs/runs/reevaluate/<batch_id>
+*/
+
 func TestE2EAsyncSymptomReEvaluation(t *testing.T) {
 	dsn := os.Getenv("SIPPY_DATABASE_DSN")
 	credFile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")

@@ -34,21 +34,6 @@ import (
 // These tests call ReEvaluator methods directly, not through the async batch
 // pipeline. The async pipeline (HTTP submit, River processing, status polling)
 // is tested in pkg/sippyserver/workqueue/symptomre/e2e_test.go.
-//
-// To test the full async flow via HTTP (dry_run only, no BQ writes):
-//
-//	SIPPY_DATABASE_DSN=... GOOGLE_APPLICATION_CREDENTIALS=... GCS_BUCKET=... \
-//	PROW_JOB_BUILD_ID=... \
-//	go test -v -run TestE2E -timeout 5m ./pkg/sippyserver/workqueue/symptomre/
-
-/* Example of invoking the async API:
-   # Submit a batch:
-   curl -X POST http://localhost:8080/api/jobs/runs/reevaluate \
-        -H 'Content-Type: application/json' \
-        -d '{"prow_job_build_ids": ["2061603073523978240"], "dry_run": true}'
-   # Poll status (batch_id from the 202 response):
-   curl http://localhost:8080/api/jobs/runs/reevaluate/<batch_id>
-*/
 
 func functionalTestReEvaluator(t *testing.T) *ReEvaluator {
 	t.Helper()
