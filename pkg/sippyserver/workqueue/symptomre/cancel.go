@@ -15,6 +15,10 @@ import (
 	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
 )
 
+// ErrBatchTerminal indicates the batch is already in a terminal status and
+// cannot be cancelled. The handler maps this to 409 Conflict.
+var ErrBatchTerminal = errors.New("batch is already in a terminal status")
+
 // BatchCanceller cancels in-flight symptom re-evaluation batches by
 // requesting cancellation of their River jobs and marking the batch as
 // cancelled. Jobs that have already completed are left alone.
@@ -46,7 +50,7 @@ func (c *BatchCanceller) Cancel(ctx context.Context, batchID uuid.UUID) (*BatchS
 	if batch.Status == workqueue.BatchStatusComplete ||
 		batch.Status == workqueue.BatchStatusFailed ||
 		batch.Status == workqueue.BatchStatusCancelled {
-		return nil, fmt.Errorf("batch %s is already in terminal status %q", batchID, batch.Status)
+		return nil, fmt.Errorf("%w: batch %s has status %q", ErrBatchTerminal, batchID, batch.Status)
 	}
 
 	var items []BatchItem
@@ -56,6 +60,9 @@ func (c *BatchCanceller) Cancel(ctx context.Context, batchID uuid.UUID) (*BatchS
 
 	cancelled := 0
 	for _, item := range items {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("cancellation interrupted: %w", ctx.Err())
+		}
 		if item.RiverJobID == nil {
 			continue
 		}

@@ -100,6 +100,7 @@ const (
     BatchStatusRunning    BatchStatus = "running"
     BatchStatusComplete   BatchStatus = "complete"
     BatchStatusFailed     BatchStatus = "failed"
+    BatchStatusCancelled  BatchStatus = "cancelled"
 )
 ```
 
@@ -391,9 +392,9 @@ Modify the handler for `POST /api/jobs/runs/reevaluate` in `pkg/sippyserver/job_
 
 The API does **not** refresh the symptom cache or create individual re-evaluation River jobs.
 Those operations happen in the daemon when the `ProcessBatchWorker` picks up the
-`ProcessBatchArgs` job (see Step 3.2). The `enqueued` and `deduped` counts in the submit
-response are zero at this point; the user sees them populate when polling the status endpoint
-after the daemon processes the batch.
+`ProcessBatchArgs` job (see Step 3.2). The submit response contains only `batch_id`,
+`requested`, and `links`; the `enqueued` and `deduped` counts appear when polling the status
+endpoint after the daemon processes the batch.
 
 ### 5.2: Add the batch status endpoint
 
@@ -405,7 +406,7 @@ the result. Return `404` if the batch ID is not found.
 
 **Submit batch (POST):**
 
-```
+```http
 POST /api/jobs/runs/reevaluate
 Content-Type: application/json
 
@@ -429,7 +430,7 @@ Response (`202 Accepted`):
 
 **Poll status (GET):**
 
-```
+```http
 GET /api/jobs/runs/reevaluate/{batch_id}
 ```
 
@@ -482,7 +483,10 @@ endpoints). The existing `POST /api/jobs/runs/reevaluate` already requires both
 Add a periodic cleanup job (either a River periodic job or a simple cron-like `DaemonProcess`)
 that deletes `workqueue_symptom_re_batches` rows where `completed_at` is older than 7 days.
 The `ON DELETE CASCADE` foreign key handles the `workqueue_symptom_re_batch_items` rows
-automatically.
+automatically. Additionally, mark non-terminal batches (pending, processing, running) as
+failed if they are older than 24 hours, indicating they are stuck or abandoned. This
+preserves history for clients that may still be polling, and lets the normal 7-day retention
+clean them up later.
 
 ### 7.2: River job retention
 

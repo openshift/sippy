@@ -2,6 +2,7 @@ package sippyserver
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -9,6 +10,7 @@ import (
 	"github.com/openshift/sippy/pkg/api"
 	apijobrunscan "github.com/openshift/sippy/pkg/api/jobrunscan"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue/symptomre"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -256,7 +258,11 @@ func (s *Server) jsonCancelReEvaluateBatch(w http.ResponseWriter, req *http.Requ
 
 	resp, err := s.symptomReCanceller.Cancel(req.Context(), batchID)
 	if err != nil {
-		failureResponse(w, http.StatusConflict, err.Error())
+		if errors.Is(err, symptomre.ErrBatchTerminal) {
+			failureResponse(w, http.StatusConflict, err.Error())
+		} else {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 	if resp == nil {

@@ -132,7 +132,7 @@ Flow:
    a `batch_id` and a HATEOAS `links.status` URL.
 3. A River worker picks up the batch job, refreshes the symptom cache, and fans out one River job
    per job run (`workqueue_symptom_re_batch_items`).
-4. Each per-run job loads symptom definitions, runs `JobArtifactQuery` per symptom against GCS
+4. Each per-run job evaluates against the batch's cached symptom definitions, running `JobArtifactQuery` per symptom against GCS
    artifacts, deletes existing symptom-originated labels (BQ rows with non-empty `symptom_id`,
    GCS label files), and writes new results to BQ, GCS, and PostgreSQL.
 5. The client polls `GET /api/jobs/runs/reevaluate/{batch_id}` to track progress. Batch status
