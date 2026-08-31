@@ -55,21 +55,7 @@ func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchSta
 		return nil, fmt.Errorf("querying batch items for %s: %w", batchID, err)
 	}
 
-	counts := workqueue.ItemStateCounts{Total: len(items)}
-	for _, item := range items {
-		switch item.State {
-		case ItemStateCompleted:
-			counts.Completed++
-		case ItemStateDiscarded, ItemStateCancelled, ItemStateOrphaned:
-			counts.Failed++
-		case ItemStateRunning:
-			counts.Running++
-		default:
-			// ItemStateNotEnqueued, ItemStateAvailable, ItemStateScheduled,
-			// ItemStateRetryable, ItemStatePending
-			counts.Pending++
-		}
-	}
+	counts := classifyItemStates(items)
 
 	resp := &BatchStatusResponse{
 		BatchID: batch.ID,
@@ -104,4 +90,26 @@ func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchSta
 	}
 
 	return resp, nil
+}
+
+// classifyItemStates aggregates a slice of ItemStatus into counts by
+// category: completed, failed (discarded/cancelled/orphaned), running,
+// and pending (everything else including not-enqueued).
+func classifyItemStates(items []ItemStatus) workqueue.ItemStateCounts {
+	counts := workqueue.ItemStateCounts{Total: len(items)}
+	for _, item := range items {
+		switch item.State {
+		case ItemStateCompleted:
+			counts.Completed++
+		case ItemStateDiscarded, ItemStateCancelled, ItemStateOrphaned:
+			counts.Failed++
+		case ItemStateRunning:
+			counts.Running++
+		default:
+			// ItemStateNotEnqueued, ItemStateAvailable, ItemStateScheduled,
+			// ItemStateRetryable, ItemStatePending
+			counts.Pending++
+		}
+	}
+	return counts
 }
