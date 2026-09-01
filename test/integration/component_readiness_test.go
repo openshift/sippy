@@ -1252,7 +1252,60 @@ func TestQueryTestStatus_BelowThresholdBothSides(t *testing.T) {
 	_, inBase := baseStatus[key.Encode()]
 	assert.False(t, inBase, "test below MinimumFailure on both sides should not appear in base results")
 
+	// Exact-test requests retain the optimized threshold branches unless the caller
+	// explicitly requests all tests.
+	opts.TestIDOptions = []reqopts.TestIdentification{{
+		Component: "Etcd", Capability: "Quorum", TestID: tow.UniqueID,
+	}}
+	baseExact, sampleExact, errs := provider.QueryTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+	_, inSampleExact := sampleExact[key.Encode()]
+	assert.False(t, inSampleExact, "exact test below MinimumFailure on both sides should retain threshold filtering")
+	_, inBaseExact := baseExact[key.Encode()]
+	assert.False(t, inBaseExact, "exact test below MinimumFailure on both sides should retain threshold filtering")
+
+	for _, scope := range []struct {
+		name           string
+		identification reqopts.TestIdentification
+	}{
+		{
+			name:           "component only",
+			identification: reqopts.TestIdentification{Component: "Etcd"},
+		},
+		{
+			name:           "component and capability",
+			identification: reqopts.TestIdentification{Component: "Etcd", Capability: "Quorum"},
+		},
+	} {
+		t.Run(scope.name, func(t *testing.T) {
+			scopedOpts := opts
+			scopedOpts.TestIDOptions = []reqopts.TestIdentification{scope.identification}
+
+			baseScoped, sampleScoped, scopedErrs := provider.QueryTestStatus(context.Background(), scopedOpts)
+			require.Empty(t, scopedErrs)
+
+			sampleTS, samplePresent := sampleScoped[key.Encode()]
+			require.True(t, samplePresent, "scoped request should return the real sample row")
+			assert.Equal(t, 100, sampleTS.TotalCount)
+			assert.Equal(t, 98, sampleTS.SuccessCount)
+
+			baseTS, basePresent := baseScoped[key.Encode()]
+			require.True(t, basePresent, "scoped request should return the real base row")
+			assert.Equal(t, 100, baseTS.TotalCount)
+			assert.Equal(t, 99, baseTS.SuccessCount)
+
+			generator := componentreadiness.NewComponentReportGenerator(provider, scopedOpts, dbc, nil, "")
+			report, reportErrs := generator.GenerateReport(context.Background())
+			require.Empty(t, reportErrs)
+			row := findReportRow(t, report, "Etcd")
+			column := findReportColumn(t, row, map[string]string{"Platform": "aws"})
+			assert.Equal(t, crtest.NotSignificant, column.Status,
+				"real rows below MinimumFailure on both sides should be assessed as NotSignificant")
+		})
+	}
+
 	// With IncludeAllTests set, the same test should now be surfaced with its real counts.
+	opts.TestIDOptions = nil
 	opts.IncludeAllTests = true
 	baseStatusAll, sampleStatusAll, errs := provider.QueryTestStatus(context.Background(), opts)
 	require.Empty(t, errs)
