@@ -340,7 +340,7 @@ func TestSingleRunNoBigQueryJobsRowLabelsPRsAndRaceLoser(t *testing.T) {
 	require.Len(t, written.PullRequests, 1)
 	assert.Equal(t, "https://github.com/openshift/origin/pull/42", written.PullRequests[0].Link)
 	assert.Nil(t, written.PullRequests[0].MergedAt)
-	assert.Equal(t, []string{"exists", "read:logs/periodic-e2e/123/prowjob.json", "junit", "definition", "labels", "write"}, *calls,
+	assert.Equal(t, []string{"exists", "read:logs/periodic-e2e/123/prowjob.json", "definition", "junit", "labels", "write"}, *calls,
 		"the API import path must not prepare database partitions")
 }
 
@@ -360,40 +360,41 @@ func TestSingleRunWriteFailureIsPersistenceFailure(t *testing.T) {
 }
 
 func TestSingleRunDefinitionAndLabelFailuresPreventWrite(t *testing.T) {
-	completion := singleRunNow.Add(-time.Hour)
-	pj := validSingleRunProw(singleRunNow.Add(-2*time.Hour), &completion)
+	pj := validSingleRunProw(singleRunNow.Add(-2*time.Hour), nil)
 	t.Run("missing definition is ignored without writes", func(t *testing.T) {
 		i, _, calls := testSingleRunImporter(t, pj)
-		i.lookupDefinition = func(context.Context, string) (*models.ProwJob, error) { return nil, nil }
+		i.lookupDefinition = func(context.Context, string) (*models.ProwJob, error) {
+			*calls = append(*calls, "definition")
+			return nil, nil
+		}
 		result, err := i.Import(context.Background(), validRequest())
 		require.NoError(t, err)
 		assert.Equal(t, SingleRunStatusIgnored, result.Status)
 		assert.Equal(t, SingleRunReasonNotTracked, result.Reason)
 		assert.Equal(t, "periodic-e2e", result.ProwJobName)
-		assert.NotContains(t, *calls, "labels")
-		assert.NotContains(t, *calls, "write")
+		assert.Equal(t, []string{"exists", "read:logs/periodic-e2e/123/prowjob.json", "definition"}, *calls)
 	})
 	t.Run("definition lookup error remains a persistence failure", func(t *testing.T) {
 		i, _, calls := testSingleRunImporter(t, pj)
 		i.lookupDefinition = func(context.Context, string) (*models.ProwJob, error) {
+			*calls = append(*calls, "definition")
 			return nil, errors.New("database unavailable")
 		}
 		result, err := i.Import(context.Background(), validRequest())
 		assert.Nil(t, result)
 		assertImportKind(t, err, SingleRunPersistenceFailure)
-		assert.NotContains(t, *calls, "labels")
-		assert.NotContains(t, *calls, "write")
+		assert.Equal(t, []string{"exists", "read:logs/periodic-e2e/123/prowjob.json", "definition"}, *calls)
 	})
 	t.Run("tracked definition without release remains not found", func(t *testing.T) {
 		i, _, calls := testSingleRunImporter(t, pj)
 		i.lookupDefinition = func(context.Context, string) (*models.ProwJob, error) {
+			*calls = append(*calls, "definition")
 			return &models.ProwJob{Name: "periodic-e2e"}, nil
 		}
 		result, err := i.Import(context.Background(), validRequest())
 		assert.Nil(t, result)
 		assertImportKind(t, err, SingleRunNotFound)
-		assert.NotContains(t, *calls, "labels")
-		assert.NotContains(t, *calls, "write")
+		assert.Equal(t, []string{"exists", "read:logs/periodic-e2e/123/prowjob.json", "definition"}, *calls)
 	})
 	t.Run("label source failure is strict", func(t *testing.T) {
 		i, _, calls := testSingleRunImporter(t, pj)

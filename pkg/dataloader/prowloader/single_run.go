@@ -167,16 +167,6 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 		return nil, err
 	}
 
-	duration, err := i.resolveDuration(ctx, &pj, request.Bucket, prefix)
-	if err != nil {
-		return nil, err
-	}
-
-	suites, junitPaths, err := i.loadJUnit(ctx, request.Bucket, prefix)
-	if err != nil {
-		return nil, classifyImportError(SingleRunArtifactFailure, "loading JUnit artifacts", err)
-	}
-
 	definition, err := i.lookupDefinition(ctx, pj.Spec.Job)
 	if err != nil {
 		return nil, classifyImportError(SingleRunPersistenceFailure, "looking up ProwJob definition", err)
@@ -189,6 +179,16 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 	}
 	if definition.Release == "" {
 		return nil, importError(SingleRunNotFound, "ProwJob definition %q has no release", pj.Spec.Job)
+	}
+
+	duration, err := i.resolveDuration(ctx, &pj, request.Bucket, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	suites, junitPaths, err := i.loadJUnit(ctx, request.Bucket, prefix)
+	if err != nil {
+		return nil, classifyImportError(SingleRunArtifactFailure, "loading JUnit artifacts", err)
 	}
 
 	labels, err := i.loadLabels(ctx, request.ProwJobRunID, civil.DateOf(pj.Status.StartTime.UTC()))
@@ -363,9 +363,8 @@ func parseProwJobURLLocation(rawURL, runID string) (string, string, error) {
 	return bucket, prefix, nil
 }
 
-// ProwJobRunExists reports whether id resolves through the partition-key map
-// to a real, committed Prow job run and its job definition. An orphan mapping
-// alone is deliberately not treated as an imported run.
+// ProwJobRunExists reports whether id is present in the authoritative
+// partition-key map populated for every committed Prow job run.
 func ProwJobRunExists(ctx context.Context, dbc *db.DB, id uint) (bool, error) {
 	if dbc == nil {
 		return false, fmt.Errorf("PostgreSQL is not configured")
@@ -374,12 +373,8 @@ func ProwJobRunExists(ctx context.Context, dbc *db.DB, id uint) (bool, error) {
 	err := dbc.DB.WithContext(ctx).Raw(`
 		SELECT EXISTS(
 			SELECT 1
-			FROM prow_job_run_id_map m
-			JOIN prow_job_runs r ON r.id = m.id
-				AND r.prow_job_release = m.prow_job_release
-				AND r.timestamp = m.timestamp
-			JOIN prow_jobs j ON j.id = r.prow_job_id
-			WHERE m.id = ?
+			FROM prow_job_run_id_map
+			WHERE id = ?
 		)`, id).Scan(&exists).Error
 	return exists, err
 }

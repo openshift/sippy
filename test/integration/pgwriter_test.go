@@ -1703,14 +1703,17 @@ func TestWriteSingleIdempotentPersistsInfraFailureWithoutSummaries(t *testing.T)
 	assert.Zero(t, cumulative)
 }
 
-func TestProwJobRunExistsRequiresRealParent(t *testing.T) {
+func TestProwJobRunExistsUsesAuthoritativeIDMap(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	ts := time.Date(2026, 7, 15, 13, 0, 0, 0, time.UTC)
 	require.NoError(t, dbc.DB.Create(&models.ProwJobRunIDMap{ID: 51005, ProwJobRelease: "4.18", Timestamp: ts}).Error)
 
 	exists, err := prowloader.ProwJobRunExists(context.Background(), dbc, 51005)
 	require.NoError(t, err)
-	assert.False(t, exists, "an orphan partition-key map must not skip an import")
+	assert.True(t, exists, "the partition-key map is authoritative for imported run IDs")
+	exists, err = prowloader.ProwJobRunExists(context.Background(), dbc, 51999)
+	require.NoError(t, err)
+	assert.False(t, exists)
 
 	jobID := seedProwJob(t, dbc, "periodic-single-exists", "4.18")
 	err = pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, singleIdempotentResult(51006, jobID, ts, nil))

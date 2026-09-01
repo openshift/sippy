@@ -276,7 +276,8 @@ func writeJobRuns(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch
 	return nil
 }
 
-func jobRunInsertSQL(idempotent bool) string {
+func insertJobRuns(ctx context.Context, tx pgx.Tx, idempotent bool) error {
+	stepStart := time.Now()
 	query := `
 		INSERT INTO prow_job_runs (id, cluster, duration, prow_job_id, prow_job_release,
 			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
@@ -291,14 +292,6 @@ func jobRunInsertSQL(idempotent bool) string {
 			ON CONFLICT (id) DO NOTHING
 			RETURNING id
 		`
-	}
-	return query
-}
-
-func insertJobRuns(ctx context.Context, tx pgx.Tx, idempotent bool) error {
-	stepStart := time.Now()
-	query := jobRunInsertSQL(idempotent)
-	if idempotent {
 		var id uint
 		if err := tx.QueryRow(ctx, query).Scan(&id); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {

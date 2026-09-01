@@ -239,13 +239,15 @@ run ID. Accepted layouts are `logs/<job>/<id>`, legacy
 paths are rejected even if their last component is the run ID. When present,
 the GCS location in `prowjob.json`'s `status.url` must agree with the request.
 
-The importer first checks PostgreSQL for a real committed parent run; a matching
-orphan ID-map row is not enough. A committed duplicate returns without reading
-GCS or BigQuery. Otherwise it reads `<job_prefix>/prowjob.json`, determines the
-duration, reads and combines every matching `**junit**.xml` object, resolves the
-existing ProwJob definition (including its release and variants), reads labels,
-prepares the rows, and finally performs the permanent write. The start time
-must not be in the future or more than 14 days old; exactly 14 days is accepted.
+The importer first checks PostgreSQL's authoritative Prow job run ID map. A
+matching ID returns without reading GCS or BigQuery. Otherwise it reads and
+validates `<job_prefix>/prowjob.json`, resolves the existing ProwJob definition
+(including its release and variants), determines the duration, reads and
+combines every matching `**junit**.xml` object, reads labels, prepares the rows,
+and finally performs the permanent write. Resolving the definition before
+JUnit enumeration avoids unnecessary artifact work for untracked jobs. The
+start time must not be in the future or more than 14 days old; exactly 14 days
+is accepted.
 
 `status.completionTime` is authoritative when present and no completion marker
 is read. When it is absent, the importer reads only the top-level
