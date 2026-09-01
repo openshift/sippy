@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
@@ -266,6 +267,214 @@ func TestFunctionalProcessBatchWorker(t *testing.T) {
 		"batch should transition to running after fan-out")
 	assert.Equal(t, 2, batch.EnqueuedCount,
 		"enqueued count should reflect items inserted into River")
+}
+
+// submitAndFanOut creates a batch with unique item keys, runs the
+// ProcessBatchWorker to fan out River jobs, and returns the batch ID and
+// the resulting batch items (with populated RiverJobIDs). The batch will
+// be in BatchStatusRunning after this call.
+func submitAndFanOut(ctx context.Context, t *testing.T, gormDB *gorm.DB, riverClient *river.Client[pgx.Tx], n int) (uuid.UUID, []BatchItem) {
+	t.Helper()
+
+	dbc := &db.DB{DB: gormDB}
+	reEvaluator := apijobrunscan.NewReEvaluator(nil, nil, "", dbc, nil, nil)
+
+	suffix := uuid.New().String()[:8]
+	jobIDs := make([]string, n)
+	for i := range jobIDs {
+		jobIDs[i] = fmt.Sprintf("item-%d-%s", i, suffix)
+	}
+
+	submitter := NewSubmitter(gormDB, riverClient)
+	result, err := submitter.Submit(ctx, jobIDs, false)
+	require.NoError(t, err, "Submit should succeed")
+
+	worker := NewProcessBatchWorker(reEvaluator, gormDB)
+	worker.SetRiverClient(riverClient)
+	job := &river.Job[ProcessBatchArgs]{Args: ProcessBatchArgs{BatchID: result.BatchID}}
+	require.NoError(t, worker.Work(ctx, job), "ProcessBatchWorker.Work should succeed")
+
+	var items []BatchItem
+	require.NoError(t, gormDB.Where("batch_id = ?", result.BatchID).Find(&items).Error,
+		"loading fan-out items should succeed")
+	for _, item := range items {
+		require.NotNil(t, item.RiverJobID, "all items should have river_job_id after fan-out")
+	}
+	return result.BatchID, items
+}
+
+// setRiverJobState directly updates a river_job row's state via raw SQL,
+// bypassing River's state machine. Terminal states (completed, cancelled,
+// discarded) also set finalized_at to satisfy River's check constraint.
+func setRiverJobState(t *testing.T, gormDB *gorm.DB, riverJobID int64, state string) {
+	t.Helper()
+	var result *gorm.DB
+	switch state {
+	case ItemStateCompleted, ItemStateCancelled, ItemStateDiscarded:
+		result = gormDB.Exec(
+			"UPDATE river_job SET state = ?::river_job_state, finalized_at = NOW() WHERE id = ?",
+			state, riverJobID)
+	default:
+		result = gormDB.Exec(
+			"UPDATE river_job SET state = ?::river_job_state, finalized_at = NULL WHERE id = ?",
+			state, riverJobID)
+	}
+	require.NoError(t, result.Error, "updating river_job state should succeed")
+	require.Equal(t, int64(1), result.RowsAffected, "exactly one river_job row should be updated")
+}
+
+func TestFunctionalQueryLazyCompletion(t *testing.T) {
+	gormDB, cleanup := functionalTestSetup(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	dsn := os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN")
+	pool, err := workqueue.NewPgxV5Pool(ctx, dsn)
+	require.NoError(t, err, "pgx/v5 pool should succeed")
+	defer pool.Close()
+
+	riverClient, err := workqueue.NewInsertOnlyClient(pool)
+	require.NoError(t, err, "River client should be created")
+	querier := NewStatusQuerier(gormDB)
+
+	t.Run("all completed triggers batch completion", func(t *testing.T) {
+		batchID, items := submitAndFanOut(ctx, t, gormDB, riverClient, 3)
+
+		for _, item := range items {
+			setRiverJobState(t, gormDB, *item.RiverJobID, "completed")
+		}
+
+		resp, err := querier.Query(ctx, batchID)
+		require.NoError(t, err, "Query should succeed")
+		assert.Equal(t, workqueue.BatchStatusComplete, resp.Status,
+			"batch should transition to complete when all items completed")
+		assert.Equal(t, 3, resp.Completed, "all items should count as completed")
+		assert.Zero(t, resp.Failed, "no items should be failed")
+		assert.Zero(t, resp.Pending, "no items should be pending")
+
+		var batch Batch
+		require.NoError(t, gormDB.Take(&batch, "id = ?", batchID).Error)
+		assert.NotNil(t, batch.CompletedAt, "completed_at should be set")
+	})
+
+	t.Run("all failed triggers batch failed", func(t *testing.T) {
+		batchID, items := submitAndFanOut(ctx, t, gormDB, riverClient, 2)
+
+		setRiverJobState(t, gormDB, *items[0].RiverJobID, "discarded")
+		setRiverJobState(t, gormDB, *items[1].RiverJobID, "cancelled")
+
+		resp, err := querier.Query(ctx, batchID)
+		require.NoError(t, err, "Query should succeed")
+		assert.Equal(t, workqueue.BatchStatusFailed, resp.Status,
+			"batch should transition to failed when all items failed")
+		assert.Equal(t, 2, resp.Failed, "all items should count as failed")
+		assert.Zero(t, resp.Completed, "no items should be completed")
+	})
+
+	t.Run("mixed completed and failed triggers batch complete", func(t *testing.T) {
+		batchID, items := submitAndFanOut(ctx, t, gormDB, riverClient, 3)
+
+		setRiverJobState(t, gormDB, *items[0].RiverJobID, "completed")
+		setRiverJobState(t, gormDB, *items[1].RiverJobID, "completed")
+		setRiverJobState(t, gormDB, *items[2].RiverJobID, "discarded")
+
+		resp, err := querier.Query(ctx, batchID)
+		require.NoError(t, err, "Query should succeed")
+		assert.Equal(t, workqueue.BatchStatusComplete, resp.Status,
+			"batch with at least one success should be complete, not failed")
+		assert.Equal(t, 2, resp.Completed)
+		assert.Equal(t, 1, resp.Failed)
+	})
+
+	t.Run("non-terminal items prevent lazy completion", func(t *testing.T) {
+		batchID, items := submitAndFanOut(ctx, t, gormDB, riverClient, 2)
+
+		setRiverJobState(t, gormDB, *items[0].RiverJobID, "completed")
+		// items[1] stays in its initial state (available/pending)
+
+		resp, err := querier.Query(ctx, batchID)
+		require.NoError(t, err, "Query should succeed")
+		assert.Equal(t, workqueue.BatchStatusRunning, resp.Status,
+			"batch should stay running while items are still pending")
+		assert.Equal(t, 1, resp.Completed)
+		assert.Equal(t, 1, resp.Pending)
+	})
+
+	t.Run("lazy completion is idempotent", func(t *testing.T) {
+		batchID, items := submitAndFanOut(ctx, t, gormDB, riverClient, 1)
+
+		setRiverJobState(t, gormDB, *items[0].RiverJobID, "completed")
+
+		resp1, err := querier.Query(ctx, batchID)
+		require.NoError(t, err, "first Query should succeed")
+		assert.Equal(t, workqueue.BatchStatusComplete, resp1.Status)
+
+		resp2, err := querier.Query(ctx, batchID)
+		require.NoError(t, err, "second Query should succeed")
+		assert.Equal(t, workqueue.BatchStatusComplete, resp2.Status,
+			"repeated Query should return same status")
+	})
+}
+
+func TestFunctionalBatchCanceller(t *testing.T) {
+	gormDB, cleanup := functionalTestSetup(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	dsn := os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN")
+	pool, err := workqueue.NewPgxV5Pool(ctx, dsn)
+	require.NoError(t, err, "pgx/v5 pool should succeed")
+	defer pool.Close()
+
+	riverClient, err := workqueue.NewInsertOnlyClient(pool)
+	require.NoError(t, err, "River client should be created")
+	canceller := NewBatchCanceller(gormDB, riverClient)
+
+	t.Run("cancel running batch", func(t *testing.T) {
+		batchID, _ := submitAndFanOut(ctx, t, gormDB, riverClient, 2)
+
+		resp, err := canceller.Cancel(ctx, batchID)
+		require.NoError(t, err, "Cancel should succeed")
+		require.NotNil(t, resp, "response should be non-nil")
+		assert.Equal(t, workqueue.BatchStatusCancelled, resp.Status,
+			"batch should be cancelled")
+
+		var batch Batch
+		require.NoError(t, gormDB.Take(&batch, "id = ?", batchID).Error)
+		assert.Equal(t, workqueue.BatchStatusCancelled, batch.Status)
+		assert.NotNil(t, batch.CompletedAt, "completed_at should be set on cancellation")
+	})
+
+	t.Run("cancel already-cancelled batch returns ErrBatchTerminal", func(t *testing.T) {
+		batchID, _ := submitAndFanOut(ctx, t, gormDB, riverClient, 1)
+
+		_, err := canceller.Cancel(ctx, batchID)
+		require.NoError(t, err, "first Cancel should succeed")
+
+		_, err = canceller.Cancel(ctx, batchID)
+		require.Error(t, err, "second Cancel should fail")
+		assert.ErrorIs(t, err, ErrBatchTerminal,
+			"cancelling an already-cancelled batch should return ErrBatchTerminal")
+	})
+
+	t.Run("cancel completed batch returns ErrBatchTerminal", func(t *testing.T) {
+		batchID, items := submitAndFanOut(ctx, t, gormDB, riverClient, 1)
+		setRiverJobState(t, gormDB, *items[0].RiverJobID, "completed")
+
+		querier := NewStatusQuerier(gormDB)
+		_, err := querier.Query(ctx, batchID)
+		require.NoError(t, err, "Query to trigger lazy completion should succeed")
+
+		_, err = canceller.Cancel(ctx, batchID)
+		require.Error(t, err, "Cancel should fail for completed batch")
+		assert.ErrorIs(t, err, ErrBatchTerminal)
+	})
+
+	t.Run("cancel non-existent batch returns nil", func(t *testing.T) {
+		resp, err := canceller.Cancel(ctx, uuid.New())
+		require.NoError(t, err, "Cancel should not error for unknown batch")
+		assert.Nil(t, resp, "response should be nil for non-existent batch")
+	})
 }
 
 func TestFunctionalReevaluateWorker(t *testing.T) {
