@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/api/labels"
@@ -213,7 +214,61 @@ func TestDetermineCapabilitiesSkipsUninitializedDatabase(t *testing.T) {
 	if server.hasCapabilities([]string{LocalDBCapability}) {
 		t.Errorf("unexpected %q capability with nil GORM database", LocalDBCapability)
 	}
-	if server.hasCapabilities([]string{WriteEndpointsCapability}) {
-		t.Errorf("unexpected %q capability with nil GORM database", WriteEndpointsCapability)
+	if !server.hasCapabilities([]string{WriteEndpointsCapability}) {
+		t.Errorf("missing %q capability when write APIs are enabled", WriteEndpointsCapability)
+	}
+}
+
+func TestApplyLabelRoutedCapabilityResponses(t *testing.T) {
+	tests := []struct {
+		name            string
+		enableWriteAPIs bool
+		wantStatus      int
+	}{
+		{name: "enabled without database", enableWriteAPIs: true, wantStatus: http.StatusServiceUnavailable},
+		{name: "write API disabled", enableWriteAPIs: false, wantStatus: http.StatusNotImplemented},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := &Server{db: &db.DB{}, enableWriteAPIs: tt.enableWriteAPIs}
+			server.determineCapabilities()
+			router := mux.NewRouter()
+			server.registerEndpoint(router, server.applyLabelEndpoint())
+
+			req := httptest.NewRequest(http.MethodPost, "/api/job/run/labels", strings.NewReader(`{}`))
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, req)
+
+			if recorder.Code != tt.wantStatus {
+				t.Errorf("HTTP status = %d, want %d", recorder.Code, tt.wantStatus)
+			}
+		})
+	}
+}
+
+func TestRegisterEndpointUnsupportedCapabilityReturnsNotImplemented(t *testing.T) {
+	server := &Server{enableWriteAPIs: true}
+	server.determineCapabilities()
+	called := false
+	router := mux.NewRouter()
+	server.registerEndpoint(router, apiEndpoint{
+		EndpointPath: "/unsupported",
+		Methods:      []string{http.MethodPost},
+		Capabilities: []string{LocalDBCapability},
+		HandlerFunc: func(http.ResponseWriter, *http.Request) {
+			called = true
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/unsupported", nil)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusNotImplemented {
+		t.Errorf("HTTP status = %d, want %d", recorder.Code, http.StatusNotImplemented)
+	}
+	if called {
+		t.Error("unsupported endpoint handler was called")
 	}
 }

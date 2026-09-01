@@ -14,6 +14,18 @@ import (
 
 type applyLabelFunc func(context.Context, labels.ApplyRequest) (labels.Result, labels.ApplyOutcome)
 
+// applyLabelEndpoint keeps the label route's enablement separate from its
+// runtime database availability check.
+func (s *Server) applyLabelEndpoint() apiEndpoint {
+	return apiEndpoint{
+		EndpointPath: "/api/job/run/labels",
+		Description:  "Apply one externally-sourced label to a job run in PostgreSQL (every label uses the common append path; InfraFailure also triggers summary subtraction in the same transaction)",
+		Methods:      []string{http.MethodPost},
+		Capabilities: []string{WriteEndpointsCapability},
+		HandlerFunc:  s.jsonApplyLabel,
+	}
+}
+
 // jsonApplyLabel handles POST /api/job/run/labels. It applies a single
 // externally-sourced job run label request to PostgreSQL: every label is
 // appended to the run's prow_job_runs.labels array, and an InfraFailure label

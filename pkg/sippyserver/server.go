@@ -473,7 +473,7 @@ func (s *Server) determineCapabilities() {
 		}
 	}
 
-	if s.hasDatabase() && s.enableWriteAPIs {
+	if s.enableWriteAPIs {
 		capabilities = append(capabilities, WriteEndpointsCapability)
 	}
 
@@ -2515,6 +2515,18 @@ func contentMatcherParamFailure(w http.ResponseWriter, errs map[string]error) (f
 	return true
 }
 
+// apiEndpoint describes one API route and the middleware applied during registration.
+type apiEndpoint struct {
+	EndpointPath      string                                       `json:"path"`
+	Description       string                                       `json:"description"`
+	Capabilities      []string                                     `json:"required_capabilities"`
+	CacheTime         time.Duration                                `json:"cache_time"`
+	Methods           []string                                     `json:"methods,omitempty"`
+	HandlerFunc       func(w http.ResponseWriter, r *http.Request) `json:"-"`
+	RateLimitRequests int                                          `json:"-"`
+	RateLimitPeriod   time.Duration                                `json:"-"`
+}
+
 func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.ResponseWriter, req *http.Request)) func(http.ResponseWriter, *http.Request) {
 	if s.hasCapabilities(capabilities) {
 		return implFn
@@ -2547,6 +2559,29 @@ func (s *Server) rateLimit(endpointPath string, maxRequests int, period time.Dur
 			return
 		}
 		handler(w, r)
+	}
+}
+
+// registerEndpoint applies the standard middleware chain and registers one API route.
+func (s *Server) registerEndpoint(router *mux.Router, endpoint apiEndpoint) {
+	fn := endpoint.HandlerFunc
+	// Apply rate limiting first (innermost middleware). This ensures cached
+	// responses bypass rate limiting.
+	if endpoint.RateLimitRequests > 0 && endpoint.RateLimitPeriod > 0 {
+		fn = s.rateLimit(endpoint.EndpointPath, endpoint.RateLimitRequests, endpoint.RateLimitPeriod, fn)
+	}
+	// Apply caching second so cache hits return before the rate-limited handler.
+	if endpoint.CacheTime > 0 {
+		fn = s.cached(endpoint.CacheTime, fn)
+	}
+	// Apply capability checks last as the outermost middleware.
+	if len(endpoint.Capabilities) > 0 {
+		fn = s.requireCapabilities(endpoint.Capabilities, fn)
+	}
+
+	route := router.HandleFunc(endpoint.EndpointPath, fn)
+	if len(endpoint.Methods) > 0 {
+		route.Methods(endpoint.Methods...)
 	}
 }
 
@@ -2591,19 +2626,8 @@ func (s *Server) Serve() {
 	// Setup MCP Server
 	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
 
-	type apiEndpoints struct {
-		EndpointPath      string                                       `json:"path"`
-		Description       string                                       `json:"description"`
-		Capabilities      []string                                     `json:"required_capabilities"`
-		CacheTime         time.Duration                                `json:"cache_time"`
-		Methods           []string                                     `json:"methods,omitempty"`
-		HandlerFunc       func(w http.ResponseWriter, r *http.Request) `json:"-"`
-		RateLimitRequests int                                          `json:"-"` // Maximum number of requests
-		RateLimitPeriod   time.Duration                                `json:"-"` // Time period for rate limit
-	}
-
-	var endpoints []apiEndpoints
-	endpoints = []apiEndpoints{
+	var endpoints []apiEndpoint
+	endpoints = []apiEndpoint{
 		{
 			EndpointPath: "/mcp/v1/",
 			Description:  "Handles MCP Requests",
@@ -2615,7 +2639,7 @@ func (s *Server) Serve() {
 			Description:  "API docs",
 			Methods:      []string{http.MethodGet},
 			HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
-				var availableEndpoints []apiEndpoints
+				var availableEndpoints []apiEndpoint
 				for _, ep := range endpoints {
 					if s.hasCapabilities(ep.Capabilities) {
 						availableEndpoints = append(availableEndpoints, ep)
@@ -2776,13 +2800,7 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonReEvaluateJobRunSymptoms,
 		},
-		{
-			EndpointPath: "/api/job/run/labels",
-			Description:  "Apply one externally-sourced label to a job run in PostgreSQL (every label uses the common append path; InfraFailure also triggers summary subtraction in the same transaction)",
-			Methods:      []string{http.MethodPost},
-			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
-			HandlerFunc:  s.jsonApplyLabel,
-		},
+		s.applyLabelEndpoint(),
 		{
 			EndpointPath: "/api/job_variants",
 			Description:  "Reports all job variants",
@@ -3207,27 +3225,7 @@ func (s *Server) Serve() {
 	}
 
 	for _, ep := range endpoints {
-		fn := ep.HandlerFunc
-		// Apply rate limiting first (innermost middleware)
-		// This ensures cached responses bypass rate limiting
-		if ep.RateLimitRequests > 0 && ep.RateLimitPeriod > 0 {
-			fn = s.rateLimit(ep.EndpointPath, ep.RateLimitRequests, ep.RateLimitPeriod, fn)
-		}
-		// Apply caching second - wraps rate-limited handler
-		// Cache hits return early without calling the rate-limited handler
-		if ep.CacheTime > 0 {
-			fn = s.cached(ep.CacheTime, fn)
-		}
-		// Apply capability checks last (outermost middleware)
-		if len(ep.Capabilities) > 0 {
-			fn = s.requireCapabilities(ep.Capabilities, fn)
-		}
-
-		// Register endpoint with proper HTTP methods
-		route := router.HandleFunc(ep.EndpointPath, fn)
-		if len(ep.Methods) > 0 {
-			route.Methods(ep.Methods...)
-		}
+		s.registerEndpoint(router, ep)
 	}
 
 	// Catch-all fallback: serve static files for any unmatched routes, or redirect to sippy-ng

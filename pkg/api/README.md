@@ -521,6 +521,7 @@ machine-readable outcome. The body does not contain `status` or HATEOAS links.
 - `500 Internal Server Error`: applying the request failed. The response's
   `error` field contains details.
 - `400 Bad Request`: the JSON body is malformed or a required field is invalid.
+- `501 Not Implemented`: write endpoints are disabled on this server.
 - `503 Service Unavailable`: the server has no database connection configured.
 
 ## Tests
