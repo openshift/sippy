@@ -880,8 +880,9 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 // with counts and percentages for the triage detail view.
 type TriageSymptomSummary struct {
 	Symptom struct {
-		ID      string `json:"id"`
-		Summary string `json:"summary"`
+		ID       string   `json:"id"`
+		Summary  string   `json:"summary"`
+		LabelIDs []string `json:"label_ids,omitempty"`
 	} `json:"symptom"`
 	RegressionCount int     `json:"regression_count"`
 	TotalCount      int     `json:"total_count"`
@@ -952,6 +953,9 @@ func GetTriageSymptomSummaries(dbc *db.DB, triageID uint, totalRegressions int) 
 		}
 		summary.Symptom.ID = s.ID
 		summary.Symptom.Summary = s.Summary
+		if len(s.LabelIDs) > 0 {
+			summary.Symptom.LabelIDs = []string(s.LabelIDs)
+		}
 		summaries = append(summaries, summary)
 	}
 	sort.Slice(summaries, func(i, j int) bool {

@@ -110,11 +110,12 @@ Labels are relevant in several Sippy pages:
 - Triage details - symptom summaries per regression, with a Label column showing clickable
   label chips that link to job runs with that label. Label chips include tooltips with the
   label description. Symptom names are displayed as plain text alongside the label chips.
-  Label details are resolved client-side from the `/api/jobs/symptoms` and `/api/jobs/labels`
-  APIs, not embedded in the triage API response.
+  The triage API returns `label_ids` on each symptom summary (IDs only); the UI fetches
+  display details (title, explanation) from `/api/jobs/labels`.
 - Test details (Component Readiness) - symptom summaries built client-side from job run data,
-  with the same label chip display as triage details. Symptoms and labels are fetched from
-  their respective APIs.
+  with the same label chip display as triage details. The UI fetches symptom definitions
+  (including `label_ids`) from `/api/jobs/symptoms` and label display details from
+  `/api/jobs/labels`.
 - Re-evaluation controls - button in the JAQ dialog action bar. Triggers retroactive symptom
   matching for selected (or all visible) job runs in the dialog (requires SSO authentication
   via the write-enabled deployment).

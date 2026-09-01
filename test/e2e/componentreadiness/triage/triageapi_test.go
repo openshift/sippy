@@ -424,11 +424,16 @@ func Test_TriageAPI(t *testing.T) {
 		assertTriageDataMatches(t, originalTriage, oldTriageData, "OldData")
 	})
 
-	t.Run("expanded triage includes symptom summaries", func(t *testing.T) {
+	t.Run("expanded triage includes symptom summaries with label_ids", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 		defer util.CleanupTriageSymptoms(dbc)
 
-		symA := util.SeedSymptom(t, dbc, "e2e-sym-a", "E2E Symptom A")
+		labelX := util.SeedLabel(t, dbc, "e2e-label-x", "E2E Label X")
+		defer util.CleanupLabels(dbc, labelX.ID)
+		labelY := util.SeedLabel(t, dbc, "e2e-label-y", "E2E Label Y")
+		defer util.CleanupLabels(dbc, labelY.ID)
+
+		symA := util.SeedSymptomWithLabels(t, dbc, "e2e-sym-a", "E2E Symptom A", []string{"e2e-label-x", "e2e-label-y"})
 		defer dbc.DB.Delete(symA)
 		symB := util.SeedSymptom(t, dbc, "e2e-sym-b", "E2E Symptom B")
 		defer dbc.DB.Delete(symB)
@@ -470,11 +475,15 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, 1, symMap["e2e-sym-a"].RegressionCount)
 		assert.Equal(t, 2, symMap["e2e-sym-a"].JobRunCount)
 		assert.Contains(t, symMap["e2e-sym-a"].RegressionIDs, reg.ID)
+		assert.ElementsMatch(t, []string{"e2e-label-x", "e2e-label-y"}, symMap["e2e-sym-a"].Symptom.LabelIDs,
+			"symptom A should include its label_ids")
 
 		require.Contains(t, symMap, "e2e-sym-b")
 		assert.Equal(t, 1, symMap["e2e-sym-b"].RegressionCount)
 		assert.Equal(t, 1, symMap["e2e-sym-b"].JobRunCount)
 		assert.Contains(t, symMap["e2e-sym-b"].RegressionIDs, reg.ID)
+		assert.Empty(t, symMap["e2e-sym-b"].Symptom.LabelIDs,
+			"symptom B should have no label_ids")
 	})
 
 	t.Run("expand=symptoms only returns symptoms without regressed_tests", func(t *testing.T) {

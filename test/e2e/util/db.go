@@ -31,17 +31,40 @@ func CreateE2EPostgresConnection(t *testing.T) *db.DB {
 }
 
 func SeedSymptom(t *testing.T, dbc *db.DB, id, summary string) *jobrunscan.Symptom {
+	return SeedSymptomWithLabels(t, dbc, id, summary, nil)
+}
+
+func SeedSymptomWithLabels(t *testing.T, dbc *db.DB, id, summary string, labelIDs []string) *jobrunscan.Symptom {
 	sym := &jobrunscan.Symptom{
 		SymptomContent: jobrunscan.SymptomContent{
 			ID:          id,
 			Summary:     summary,
 			MatcherType: jobrunscan.MatcherTypeString,
 			MatchString: "e2e-test-match",
+			LabelIDs:    labelIDs,
 		},
 	}
 	res := dbc.DB.Where("id = ?", id).FirstOrCreate(sym)
 	require.NoError(t, res.Error)
 	return sym
+}
+
+func SeedLabel(t *testing.T, dbc *db.DB, id, title string) *jobrunscan.Label {
+	label := &jobrunscan.Label{
+		LabelContent: jobrunscan.LabelContent{
+			ID:         id,
+			LabelTitle: title,
+		},
+	}
+	res := dbc.DB.Where("id = ?", id).FirstOrCreate(label)
+	require.NoError(t, res.Error)
+	return label
+}
+
+func CleanupLabels(dbc *db.DB, ids ...string) {
+	for _, id := range ids {
+		dbc.DB.Where("id = ?", id).Delete(&jobrunscan.Label{})
+	}
 }
 
 func CleanupSymptoms(dbc *db.DB, ids ...string) {
