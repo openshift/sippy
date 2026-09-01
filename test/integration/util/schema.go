@@ -28,15 +28,12 @@ func SetupIntegrationSchema(dbc *db.DB) error {
 		&models.ProwGARawTestDatum{},
 		&models.VariantCombination{},
 		&models.ProwJob{},
-		&models.ProwJobRun{},
 		&models.ProwJobRunIDMap{},
-		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
-		&models.ProwJobRunProwPullRequest{},
 		&models.SchemaHash{},
 		&models.PullRequestComment{},
 		&models.JiraIncident{},
@@ -56,6 +53,9 @@ func SetupIntegrationSchema(dbc *db.DB) error {
 
 		// Models normally managed by migrations (partitioned tables).
 		// Created here as regular tables for integration testing.
+		&models.ProwJobRun{},
+		&models.ProwJobRunAnnotation{},
+		&models.ProwJobRunProwPullRequest{},
 		&models.ProwJobRunTest{},
 		&models.ProwJobRunTestOutput{},
 		&models.TestDailyTotal{},
