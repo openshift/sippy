@@ -118,6 +118,7 @@ export default function ReEvaluateButton({
   const batchIDRef = useRef(null)
   const pollInFlightRef = useRef(false)
   const consecutiveErrorsRef = useRef(0)
+  const mountedRef = useRef(true)
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current != null) {
@@ -128,9 +129,13 @@ export default function ReEvaluateButton({
     consecutiveErrorsRef.current = 0
   }, [])
 
-  // Clean up polling on unmount.
+  // Clean up polling on unmount and prevent post-unmount startPolling.
   useEffect(() => {
-    return stopPolling
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      stopPolling()
+    }
   }, [stopPolling])
 
   const handleBatchComplete = useCallback(
@@ -241,7 +246,9 @@ export default function ReEvaluateButton({
         status: 'pending',
       })
 
-      startPolling(submitData.batch_id)
+      if (mountedRef.current) {
+        startPolling(submitData.batch_id)
+      }
     } catch (err) {
       setRunning(false)
       setSnackbar({
