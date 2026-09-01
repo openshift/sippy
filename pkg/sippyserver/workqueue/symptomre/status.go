@@ -78,7 +78,7 @@ func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchSta
 		derived := workqueue.OverallStatus(counts)
 		if derived == workqueue.BatchStatusComplete || derived == workqueue.BatchStatusFailed {
 			now := time.Now()
-			if err := db.Model(&Batch{}).Where("id = ?", batchID).
+			if err := db.Model(&Batch{}).Where("id = ? and status = ?", batchID, batch.Status).
 				Updates(map[string]interface{}{
 					"status":       derived,
 					"completed_at": now,
