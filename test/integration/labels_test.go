@@ -30,7 +30,7 @@ func TestApplyLabelPartitionOutcomes(t *testing.T) {
 		}
 	}
 
-	t.Run("missing id map row", func(t *testing.T) {
+	t.Run("new keyed update succeeds without id map row", func(t *testing.T) {
 		dbc := intutil.NewTestDB(t, pgContainer)
 		job := intutil.CreateProwJob(t, dbc, "periodic-e2e-aws", "4.18", nil)
 		run := intutil.CreateProwJobRun(t, dbc, job.ID, "4.18", timestamp, true, v1.JobSucceeded)
@@ -38,11 +38,22 @@ func TestApplyLabelPartitionOutcomes(t *testing.T) {
 
 		result, outcome := labels.NewApplier(dbc).Apply(context.Background(), requestFor(run.ID))
 
+		assert.Equal(t, labels.ApplyOutcomeRecorded, outcome)
+		assert.Equal(t, "label recorded", result.Message)
+		assertRunLabels(t, dbc, run.ID, timestamp, "DNSTimeout")
+	})
+
+	t.Run("zero-row duplicate with no id map returns missing run", func(t *testing.T) {
+		dbc := intutil.NewTestDB(t, pgContainer)
+		job := intutil.CreateProwJob(t, dbc, "periodic-e2e-aws", "4.18", nil)
+		run := intutil.CreateProwJobRun(t, dbc, job.ID, "4.18", timestamp, true, v1.JobSucceeded, intutil.WithLabels("DNSTimeout"))
+		require.NoError(t, dbc.DB.Where("id = ?", run.ID).Delete(&models.ProwJobRunIDMap{}).Error)
+
+		result, outcome := labels.NewApplier(dbc).Apply(context.Background(), requestFor(run.ID))
+
 		assert.Equal(t, labels.ApplyOutcomeRunNotFound, outcome)
 		assert.Equal(t, "job run not found", result.Message)
-		var stored models.ProwJobRun
-		require.NoError(t, dbc.DB.Where("id = ? AND prow_job_release = ? AND timestamp = ?", run.ID, "4.18", timestamp).Take(&stored).Error)
-		assert.Empty(t, stored.Labels)
+		assertRunLabels(t, dbc, run.ID, timestamp, "DNSTimeout")
 	})
 
 	t.Run("release mismatch", func(t *testing.T) {

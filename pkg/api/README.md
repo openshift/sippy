@@ -483,12 +483,13 @@ The body is a single label application request (not an array or envelope):
 `run_id`, `label`, `prowjob_start`, and `release` are required; `run_id` must be a
 numeric string (it maps to the `prow_job_runs.id` primary key), `prowjob_start`
 is the job run's start time (RFC 3339), and `release` is the OpenShift release.
-The server looks up `run_id` in `prow_job_run_id_map` and requires `release` and
-`prowjob_start` to match that authoritative mapping before accessing the
-partitioned `prow_job_runs` table. The label is appended to the run, and an
-`InfraFailure` label also triggers the summary subtraction. The remaining
-fields (`requested_at`, `comment`, `user`, `source_tool`, `symptom_id`) are
-optional request metadata.
+The server first attempts a partition-pruned label update using `run_id`,
+`release`, and `prowjob_start`. If that guarded update changes no row, the
+server looks up `run_id` in `prow_job_run_id_map` to distinguish a missing run,
+partition-key mismatch, already-present label, or mapped-target integrity
+error. An `InfraFailure` label also triggers the summary subtraction. The
+remaining fields (`requested_at`, `comment`, `user`, `source_tool`,
+`symptom_id`) are optional request metadata.
 `requested_at` is when the label was requested or applied, which is distinct
 from `prowjob_start`, the job run's own start time.
 

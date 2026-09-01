@@ -97,9 +97,8 @@ func ValidateRequest(request ApplyRequest) error {
 	return nil
 }
 
-// appendOutcome describes request resolution and what the guarded label append
-// did, including outcomes decided from the authoritative ID map before the
-// partitioned target table is accessed.
+// appendOutcome describes what the guarded label append did and, when it did
+// not change a row, how the request resolved against the authoritative ID map.
 type appendOutcome int
 
 const appendProwJobRunLabelSQL = `
@@ -150,8 +149,8 @@ func NewApplier(dbc *db.DB) *Applier {
 }
 
 // Apply records the label request in PostgreSQL and returns the outcome. The
-// authoritative partition-key lookup, label append, and any per-label side
-// effect run in one transaction so they commit (or roll back) atomically.
+// request-keyed label append, any fallback ID-map lookup, and any per-label
+// side effect run in one transaction so they commit (or roll back) atomically.
 func (a *Applier) Apply(ctx context.Context, request ApplyRequest) (Result, ApplyOutcome) {
 	res := Result{RunID: request.RunID, Label: request.Label}
 
@@ -172,21 +171,12 @@ func (a *Applier) Apply(ctx context.Context, request ApplyRequest) (Result, Appl
 
 	var outcome appendOutcome
 	if err := a.dbc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		partKeys, lookupErr := query.LookupProwJobRunPartitionKeys(tx, runID)
-		if lookupErr != nil {
-			if errors.Is(lookupErr, gorm.ErrRecordNotFound) {
-				outcome = outcomeRunNotFound
-				return nil
-			}
-			return fmt.Errorf("reading partition keys for prow_job_run %d: %w", runID, lookupErr)
+		requestKeys := query.ProwJobRunPartitionKeys{
+			ProwJobRelease: request.Release,
+			Timestamp:      request.ProwJobStart,
 		}
-		if request.Release != partKeys.ProwJobRelease || !request.ProwJobStart.Equal(partKeys.Timestamp) {
-			outcome = outcomePartitionKeyMismatch
-			return nil
-		}
-
 		var txErr error
-		outcome, txErr = a.applyOne(tx, runID, request.Label, partKeys)
+		outcome, txErr = a.applyOne(tx, runID, request.Label, requestKeys)
 		return txErr
 	}); err != nil {
 		log.WithError(err).WithField("run_id", res.RunID).WithField("label", request.Label).Error("failed to apply label")
@@ -205,12 +195,12 @@ func (a *Applier) Apply(ctx context.Context, request ApplyRequest) (Result, Appl
 // applyOne is the single label-application path shared by every label. It appends
 // the label to the run's prow_job_runs.labels array and then runs any per-label
 // side effect. Both steps run on tx so they commit atomically.
-func (a *Applier) applyOne(tx *gorm.DB, runID int64, label string, partKeys query.ProwJobRunPartitionKeys) (appendOutcome, error) {
-	outcome, err := appendProwJobRunLabel(tx, runID, label, partKeys)
+func (a *Applier) applyOne(tx *gorm.DB, runID int64, label string, requestKeys query.ProwJobRunPartitionKeys) (appendOutcome, error) {
+	outcome, err := appendProwJobRunLabel(tx, runID, label, requestKeys)
 	if err != nil {
 		return outcomeUnknown, err
 	}
-	if err := a.applySideEffects(tx, outcome, runID, label, partKeys); err != nil {
+	if err := a.applySideEffects(tx, outcome, runID, label, requestKeys); err != nil {
 		return outcomeUnknown, err
 	}
 	return outcome, nil
@@ -223,7 +213,7 @@ func (a *Applier) applyOne(tx *gorm.DB, runID int64, label string, partKeys quer
 // Side effects run only when the label was newly applied (outcome ==
 // outcomeApplied). An already-present label means the side effect already ran, so
 // skipping it keeps the operation idempotent under request redelivery.
-func (a *Applier) applySideEffects(tx *gorm.DB, outcome appendOutcome, runID int64, label string, partKeys query.ProwJobRunPartitionKeys) error {
+func (a *Applier) applySideEffects(tx *gorm.DB, outcome appendOutcome, runID int64, label string, requestKeys query.ProwJobRunPartitionKeys) error {
 	if outcome != outcomeApplied {
 		return nil
 	}
@@ -235,7 +225,7 @@ func (a *Applier) applySideEffects(tx *gorm.DB, outcome appendOutcome, runID int
 		if a == nil || a.subtractInfraFailure == nil {
 			return fmt.Errorf("InfraFailure summary subtraction is unavailable")
 		}
-		return a.subtractInfraFailure(tx, runID, partKeys)
+		return a.subtractInfraFailure(tx, runID, requestKeys)
 	default:
 		// Generic labels need no bookkeeping beyond the append. Add a case here to
 		// give a future label special semantics; it will run in the same
@@ -249,17 +239,28 @@ func (a *Applier) applySideEffects(tx *gorm.DB, outcome appendOutcome, runID int
 // the array-column equivalent of ON CONFLICT DO NOTHING: array_append runs only
 // when the label is not already present (the NULL-safe predicate also handles
 // runs with no labels yet), so redelivery of the same request is a no-op.
-func appendProwJobRunLabel(tx *gorm.DB, prowJobRunID int64, label string, partKeys query.ProwJobRunPartitionKeys) (appendOutcome, error) {
-	res := tx.Exec(appendProwJobRunLabelSQL, label, prowJobRunID, partKeys.ProwJobRelease, partKeys.Timestamp, label)
+func appendProwJobRunLabel(tx *gorm.DB, prowJobRunID int64, label string, requestKeys query.ProwJobRunPartitionKeys) (appendOutcome, error) {
+	res := tx.Exec(appendProwJobRunLabelSQL, label, prowJobRunID, requestKeys.ProwJobRelease, requestKeys.Timestamp, label)
 	if res.Error != nil {
 		return outcomeUnknown, fmt.Errorf("appending label %q to prow_job_run %d: %w", label, prowJobRunID, res.Error)
 	}
 	if res.RowsAffected == 0 {
-		// The id map was already checked, so RowsAffected == 0 means either the
-		// label was already present or the mapped target row is missing. The latter
-		// is a data-integrity error, not a normal missing-run or idempotent outcome.
+		mappedKeys, lookupErr := query.LookupProwJobRunPartitionKeys(tx, prowJobRunID)
+		if lookupErr != nil {
+			if errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+				return outcomeRunNotFound, nil
+			}
+			return outcomeUnknown, fmt.Errorf("reading partition keys for prow_job_run %d: %w", prowJobRunID, lookupErr)
+		}
+		if requestKeys.ProwJobRelease != mappedKeys.ProwJobRelease || !requestKeys.Timestamp.Equal(mappedKeys.Timestamp) {
+			return outcomePartitionKeyMismatch, nil
+		}
+
+		// Matching map keys leave two possibilities: the label was already
+		// present, or the map points to a missing target row. The latter is a
+		// data-integrity error, not a normal idempotent outcome.
 		var exists int
-		check := tx.Raw(prowJobRunExistsSQL, prowJobRunID, partKeys.ProwJobRelease, partKeys.Timestamp).Scan(&exists)
+		check := tx.Raw(prowJobRunExistsSQL, prowJobRunID, mappedKeys.ProwJobRelease, mappedKeys.Timestamp).Scan(&exists)
 		if check.Error != nil {
 			return outcomeUnknown, fmt.Errorf("checking existence of prow_job_run %d: %w", prowJobRunID, check.Error)
 		}
