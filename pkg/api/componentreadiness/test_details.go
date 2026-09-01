@@ -2,11 +2,13 @@ package componentreadiness
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,12 +21,26 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
+
+const (
+	// multiTestStatusQueryRetries allows BigQuery-derived test status data to settle
+	// before cache priming gives up on a partial response.
+	multiTestStatusQueryRetries = 4
+)
+
+// multiTestStatusQueryBackoff defines the 1m, 2m, 4m, and 8m waits between five status queries.
+var multiTestStatusQueryBackoff = wait.Backoff{
+	Steps:    multiTestStatusQueryRetries + 1,
+	Duration: time.Minute,
+	Factor:   2,
+}
 
 func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
 	generator := NewComponentReportGenerator(provider, reqOptions, dbc, releases, baseURL)
@@ -85,14 +101,10 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 
 // GenerateTestDetailsReportMultiTest variant of the function is for multi-test reports, used for cache priming all test detail reports for a view.
 func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx context.Context) ([]testdetails.Report, []error) {
-	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
-	before := time.Now()
-	allTestsJobRunStatuses, errs := c.getJobRunTestStatus(ctx)
+	allTestsJobRunStatuses, errs := c.getCompleteMultiTestJobRunStatuses(ctx)
 	if len(errs) > 0 {
 		return []testdetails.Report{}, errs
 	}
-	logrus.Infof("getJobRunTestStatus completed in %s with %d sample results and %d base results",
-		time.Since(before), len(allTestsJobRunStatuses.SampleStatus), len(allTestsJobRunStatuses.BaseStatus))
 
 	// We have a struct where the statuses are mapped by prowjob to all rows results for that prowjob,
 	// with multiple tests intermingled in that layer.
@@ -146,6 +158,79 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 
 	}
 	return reports, errs
+}
+
+// getCompleteMultiTestJobRunStatuses retries a partial status response because
+// recently ingested BigQuery data can briefly omit regressions found by the view query.
+func (c *ComponentReportGenerator) getCompleteMultiTestJobRunStatuses(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
+	var statuses crstatus.TestJobRunStatuses
+	var queryErrs []error
+	var missingKeys []string
+	attempt := 0
+	fetchStatuses := c.jobRunTestStatusFetcher
+	if fetchStatuses == nil {
+		fetchStatuses = (*ComponentReportGenerator).getJobRunTestStatus
+	}
+	err := wait.ExponentialBackoffWithContext(ctx, multiTestStatusQueryBackoff, func(ctx context.Context) (bool, error) {
+		attempt++
+		before := time.Now()
+		statuses, queryErrs = fetchStatuses(c, ctx)
+		if len(queryErrs) > 0 {
+			return false, queryErrs[0]
+		}
+		logrus.Infof("getJobRunTestStatus completed in %s with %d sample results and %d base results",
+			time.Since(before), len(statuses.SampleStatus), len(statuses.BaseStatus))
+
+		missingKeys = missingMultiTestStatusKeys(statuses, c.ReqOptions.TestIDOptions)
+		if len(missingKeys) == 0 {
+			return true, nil
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"attempt":     attempt,
+			"maxAttempts": multiTestStatusQueryBackoff.Steps,
+			"missingKeys": missingKeys,
+			"backoff":     multiTestStatusQueryBackoff,
+		}).Warn("test details status query was incomplete, retrying")
+		return false, nil
+	})
+	if len(queryErrs) > 0 {
+		return crstatus.TestJobRunStatuses{}, queryErrs
+	}
+	if err != nil {
+		if wait.Interrupted(err) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			return crstatus.TestJobRunStatuses{}, []error{fmt.Errorf(
+				"test details status query remained incomplete after %d attempts, missing test keys: %s",
+				attempt, strings.Join(missingKeys, ", "))}
+		}
+		return crstatus.TestJobRunStatuses{}, []error{fmt.Errorf("wait for complete multi-test job run statuses: %w", err)}
+	}
+	return statuses, nil
+}
+
+// missingMultiTestStatusKeys returns requested test keys absent from the returned status response.
+func missingMultiTestStatusKeys(statuses crstatus.TestJobRunStatuses, testIDOptions []reqopts.TestIdentification) []string {
+	availableKeys := sets.New[string]()
+	for _, statusByJob := range []map[string][]crstatus.TestDetailsSummary{
+		statuses.BaseStatus,
+		statuses.BaseOverrideStatus,
+		statuses.SampleStatus,
+	} {
+		for _, summaries := range statusByJob {
+			for _, summary := range summaries {
+				availableKeys.Insert(summary.TestKeyStr)
+			}
+		}
+	}
+
+	missingKeys := make([]string, 0)
+	for _, testIDOption := range testIDOptions {
+		testKey := crtest.KeyWithVariants{TestID: testIDOption.TestID, Variants: testIDOption.RequestedVariants}.Encode()
+		if !availableKeys.Has(testKey) {
+			missingKeys = append(missingKeys, testKey)
+		}
+	}
+	return missingKeys
 }
 
 // GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.

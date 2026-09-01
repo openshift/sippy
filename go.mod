@@ -174,4 +174,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
+	k8s.io/klog/v2 v2.120.1 // indirect
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
