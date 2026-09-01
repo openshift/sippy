@@ -107,7 +107,9 @@ Labels are relevant in several Sippy pages:
 - Classic job runs table - labels column.
 - Payload job runs table - labels column.
 - JAQ dialog - symptom management and label display.
-- Triage details - symptom summaries per regression displayed on test details pages.
+- Triage details - symptom summaries per regression, with a Label column showing clickable
+  label chips that link to job runs with that label. Label chips include tooltips with the
+  label description. Symptom names are displayed as plain text alongside the label chips.
 - Re-evaluation controls - button in the JAQ dialog action bar. Triggers retroactive symptom
   matching for selected (or all visible) job runs in the dialog (requires SSO authentication
   via the write-enabled deployment).
@@ -154,7 +156,7 @@ removed, re-evaluating produces the correct result. Manually-applied labels (tho
 | `pkg/api/componentreadiness/regressiontracker.go` | `SyncTriageSymptoms` - links symptoms to triage records. |
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
 | `sippy-ng/src/component_readiness/JobArtifactQuery.js` | JAQ dialog including symptom creation UI. |
-| `sippy-ng/src/component_readiness/TriageSymptoms.js` | Triage symptom display component. |
+| `sippy-ng/src/component_readiness/TriageSymptoms.jsx` | Triage symptom display component (with label chips linking to job runs). |
 
 ### Cloud Function (`openshift/ci-cloud-functions`)
 
