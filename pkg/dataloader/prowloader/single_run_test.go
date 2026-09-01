@@ -74,11 +74,11 @@ func testSingleRunImporter(t *testing.T, pj prow.ProwJob) (*SingleRunImporter, *
 			calls = append(calls, "labels")
 			return []string{"InfraFailure", "KnownIssue"}, nil
 		},
-		write: func(_ context.Context, _ *db.DB, current civil.Date, result pgwriter.JobRunResult) (bool, error) {
+		write: func(_ context.Context, _ *db.DB, current civil.Date, result pgwriter.JobRunResult) error {
 			calls = append(calls, "write")
 			assert.Equal(t, civil.DateOf(singleRunNow), current)
 			written = result
-			return true, nil
+			return nil
 		},
 	}
 	i.lookupDefinition = func(_ context.Context, name string) (*models.ProwJob, error) {
@@ -325,10 +325,10 @@ func TestSingleRunNoBigQueryJobsRowLabelsPRsAndRaceLoser(t *testing.T) {
 	start := singleRunNow.Add(-2 * time.Hour)
 	completion := start.Add(time.Hour)
 	i, written, calls := testSingleRunImporter(t, validSingleRunProw(start, &completion))
-	i.write = func(_ context.Context, _ *db.DB, _ civil.Date, result pgwriter.JobRunResult) (bool, error) {
+	i.write = func(_ context.Context, _ *db.DB, _ civil.Date, result pgwriter.JobRunResult) error {
 		*calls = append(*calls, "write")
 		*written = result
-		return false, nil
+		return pgwriter.ErrProwJobRunAlreadyExists
 	}
 	result, err := i.Import(context.Background(), validRequest())
 	require.NoError(t, err)
@@ -342,6 +342,21 @@ func TestSingleRunNoBigQueryJobsRowLabelsPRsAndRaceLoser(t *testing.T) {
 	assert.Nil(t, written.PullRequests[0].MergedAt)
 	assert.Equal(t, []string{"exists", "read:logs/periodic-e2e/123/prowjob.json", "junit", "definition", "labels", "write"}, *calls,
 		"the API import path must not prepare database partitions")
+}
+
+func TestSingleRunWriteFailureIsPersistenceFailure(t *testing.T) {
+	start := singleRunNow.Add(-2 * time.Hour)
+	completion := start.Add(time.Hour)
+	i, _, calls := testSingleRunImporter(t, validSingleRunProw(start, &completion))
+	i.write = func(context.Context, *db.DB, civil.Date, pgwriter.JobRunResult) error {
+		*calls = append(*calls, "write")
+		return errors.New("database write failed")
+	}
+
+	result, err := i.Import(context.Background(), validRequest())
+	assert.Nil(t, result)
+	assertImportKind(t, err, SingleRunPersistenceFailure)
+	assert.Contains(t, err.Error(), "database write failed")
 }
 
 func TestSingleRunDefinitionAndLabelFailuresPreventWrite(t *testing.T) {

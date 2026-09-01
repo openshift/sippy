@@ -92,7 +92,7 @@ type singleRunReadArtifactFunc func(context.Context, string, string) ([]byte, er
 type singleRunLoadJUnitFunc func(context.Context, string, string) (*junit.TestSuites, []string, error)
 type singleRunDefinitionFunc func(context.Context, string) (*models.ProwJob, error)
 type singleRunLabelsFunc func(context.Context, string, civil.Date) ([]string, error)
-type singleRunWriteFunc func(context.Context, *db.DB, civil.Date, pgwriter.JobRunResult) (bool, error)
+type singleRunWriteFunc func(context.Context, *db.DB, civil.Date, pgwriter.JobRunResult) error
 
 type SingleRunImporter struct {
 	dbc              *db.DB
@@ -205,16 +205,16 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 	prepared := assembleJobRunResult(&pj, runID, definition, tests, failures, flakes, overall, pulls, labels, duration)
 	prepared.Run.GCSBucket = request.Bucket
 
-	inserted, err := i.write(ctx, i.dbc, civil.DateOf(now), *prepared)
-	if err != nil {
-		return nil, classifyImportError(SingleRunPersistenceFailure, "writing Prow job run", err)
+	writeErr := i.write(ctx, i.dbc, civil.DateOf(now), *prepared)
+	if writeErr != nil && !errors.Is(writeErr, pgwriter.ErrProwJobRunAlreadyExists) {
+		return nil, classifyImportError(SingleRunPersistenceFailure, "writing Prow job run", writeErr)
 	}
 	result.ProwJobName = pj.Spec.Job
 	result.Release = definition.Release
 	result.JUnitFiles = len(junitPaths)
 	result.Tests = len(tests)
 	result.Status = SingleRunStatusImported
-	if !inserted {
+	if errors.Is(writeErr, pgwriter.ErrProwJobRunAlreadyExists) {
 		result.Status = SingleRunStatusAlreadyImported
 	}
 	if pj.Status.URL != "" {

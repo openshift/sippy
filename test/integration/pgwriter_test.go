@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -915,6 +916,7 @@ func TestDuplicateJobRunIDFailsBatch(t *testing.T) {
 		Run: pgwriter.RunRow{ID: 19001, ProwJobID: jobID, ProwJobRelease: "4.18", Timestamp: ts},
 	}})
 	assert.Error(t, err, "inserting a duplicate job run ID should fail")
+	assert.False(t, errors.Is(err, pgwriter.ErrProwJobRunAlreadyExists), "batch duplicates must remain database errors")
 }
 
 func TestFutureDatedTestResultsRejectBatch(t *testing.T) {
@@ -1585,12 +1587,10 @@ func TestWriteSingleIdempotentSequentialDuplicateAndPRAssociation(t *testing.T) 
 	ts := time.Date(2026, 7, 15, 10, 0, 0, 0, time.UTC)
 	result := singleIdempotentResult(51001, jobID, ts, nil)
 
-	inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
+	err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
 	require.NoError(t, err)
-	assert.True(t, inserted)
-	inserted, err = pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
-	require.NoError(t, err)
-	assert.False(t, inserted)
+	err = pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
+	require.ErrorIs(t, err, pgwriter.ErrProwJobRunAlreadyExists)
 
 	var parents, tests, outputs, associations int64
 	require.NoError(t, dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", 51001).Count(&parents).Error)
@@ -1610,7 +1610,6 @@ func TestWriteSingleIdempotentConcurrentDuplicateHasOneWinner(t *testing.T) {
 	result := singleIdempotentResult(51002, jobID, ts, nil)
 
 	start := make(chan struct{})
-	winners := make(chan bool, 2)
 	errs := make(chan error, 2)
 	var wg sync.WaitGroup
 	for range 2 {
@@ -1618,26 +1617,26 @@ func TestWriteSingleIdempotentConcurrentDuplicateHasOneWinner(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
-			winners <- inserted
-			errs <- err
+			errs <- pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
 		}()
 	}
 	close(start)
 	wg.Wait()
-	close(winners)
 	close(errs)
 
-	winnerCount := 0
-	for won := range winners {
-		if won {
+	winnerCount, duplicateCount := 0, 0
+	for err := range errs {
+		switch {
+		case err == nil:
 			winnerCount++
+		case errors.Is(err, pgwriter.ErrProwJobRunAlreadyExists):
+			duplicateCount++
+		default:
+			require.NoError(t, err)
 		}
 	}
-	for err := range errs {
-		require.NoError(t, err)
-	}
 	assert.Equal(t, 1, winnerCount)
+	assert.Equal(t, 1, duplicateCount)
 
 	var parents, tests, daily, cumulative int64
 	require.NoError(t, dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", 51002).Count(&parents).Error)
@@ -1657,9 +1656,9 @@ func TestWriteSingleIdempotentRollbackIsAtomic(t *testing.T) {
 	ts := time.Date(futureDate.Year, futureDate.Month, futureDate.Day, 10, 0, 0, 0, time.UTC)
 	result := singleIdempotentResult(51003, jobID, ts, nil)
 
-	inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
-	assert.False(t, inserted)
+	err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
 	require.ErrorContains(t, err, "batch contains test results dated after")
+	assert.False(t, errors.Is(err, pgwriter.ErrProwJobRunAlreadyExists))
 
 	for name, query := range map[string]struct {
 		model any
@@ -1689,9 +1688,8 @@ func TestWriteSingleIdempotentPersistsInfraFailureWithoutSummaries(t *testing.T)
 	ts := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
 	result := singleIdempotentResult(51004, jobID, ts, []string{"InfraFailure", "KnownIssue"})
 
-	inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
+	err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, result)
 	require.NoError(t, err)
-	assert.True(t, inserted)
 
 	var parent models.ProwJobRun
 	require.NoError(t, dbc.DB.First(&parent, 51004).Error)
@@ -1715,9 +1713,8 @@ func TestProwJobRunExistsRequiresRealParent(t *testing.T) {
 	assert.False(t, exists, "an orphan partition-key map must not skip an import")
 
 	jobID := seedProwJob(t, dbc, "periodic-single-exists", "4.18")
-	inserted, err := pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, singleIdempotentResult(51006, jobID, ts, nil))
+	err = pgwriter.WriteSingleIdempotent(context.Background(), dbc, testDate, singleIdempotentResult(51006, jobID, ts, nil))
 	require.NoError(t, err)
-	assert.True(t, inserted)
 	exists, err = prowloader.ProwJobRunExists(context.Background(), dbc, 51006)
 	require.NoError(t, err)
 	assert.True(t, exists)
