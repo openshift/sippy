@@ -110,6 +110,11 @@ Labels are relevant in several Sippy pages:
 - Triage details - symptom summaries per regression, with a Label column showing clickable
   label chips that link to job runs with that label. Label chips include tooltips with the
   label description. Symptom names are displayed as plain text alongside the label chips.
+  Label details are resolved client-side from the `/api/jobs/symptoms` and `/api/jobs/labels`
+  APIs, not embedded in the triage API response.
+- Test details (Component Readiness) - symptom summaries built client-side from job run data,
+  with the same label chip display as triage details. Symptoms and labels are fetched from
+  their respective APIs.
 - Re-evaluation controls - button in the JAQ dialog action bar. Triggers retroactive symptom
   matching for selected (or all visible) job runs in the dialog (requires SSO authentication
   via the write-enabled deployment).
@@ -157,6 +162,7 @@ removed, re-evaluating produces the correct result. Manually-applied labels (tho
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
 | `sippy-ng/src/component_readiness/JobArtifactQuery.js` | JAQ dialog including symptom creation UI. |
 | `sippy-ng/src/component_readiness/TriageSymptoms.jsx` | Triage symptom display component (with label chips linking to job runs). |
+| `sippy-ng/src/component_readiness/TestDetailsReport.jsx` | Test details page, builds client-side symptom summaries from job run data. |
 
 ### Cloud Function (`openshift/ci-cloud-functions`)
 

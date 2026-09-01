@@ -876,13 +876,6 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 	)
 }
 
-// SymptomLabel carries the label details associated with a symptom for display in the UI.
-type SymptomLabel struct {
-	ID          string `json:"id"`
-	LabelTitle  string `json:"label_title"`
-	Explanation string `json:"explanation,omitempty"`
-}
-
 // TriageSymptomSummary represents a symptom found across a triage's regressions,
 // with counts and percentages for the triage detail view.
 type TriageSymptomSummary struct {
@@ -890,12 +883,11 @@ type TriageSymptomSummary struct {
 		ID      string `json:"id"`
 		Summary string `json:"summary"`
 	} `json:"symptom"`
-	Labels          []SymptomLabel `json:"labels,omitempty"`
-	RegressionCount int            `json:"regression_count"`
-	TotalCount      int            `json:"total_count"`
-	Percentage      float64        `json:"percentage"`
-	JobRunCount     int            `json:"job_run_count"`
-	RegressionIDs   []uint         `json:"regression_ids"`
+	RegressionCount int     `json:"regression_count"`
+	TotalCount      int     `json:"total_count"`
+	Percentage      float64 `json:"percentage"`
+	JobRunCount     int     `json:"job_run_count"`
+	RegressionIDs   []uint  `json:"regression_ids"`
 }
 
 // GetTriageSymptomSummaries queries the triage_symptoms junction table to build
@@ -945,23 +937,6 @@ func GetTriageSymptomSummaries(dbc *db.DB, triageID uint, totalRegressions int) 
 		regIDsBySymptom[row.SymptomID] = append(regIDsBySymptom[row.SymptomID], row.RegressionID)
 	}
 
-	allLabelIDs := sets.New[string]()
-	for _, s := range symptoms {
-		for _, lid := range s.LabelIDs {
-			allLabelIDs.Insert(lid)
-		}
-	}
-	labelMap := make(map[string]jobrunscan.Label)
-	if allLabelIDs.Len() > 0 {
-		var labels []jobrunscan.Label
-		if err := dbc.DB.Where("id IN ?", allLabelIDs.UnsortedList()).Find(&labels).Error; err != nil {
-			return nil, fmt.Errorf("error loading labels for symptoms: %w", err)
-		}
-		for _, l := range labels {
-			labelMap[l.ID] = l
-		}
-	}
-
 	var summaries []TriageSymptomSummary
 	for _, c := range counts {
 		s, ok := symptomMap[c.SymptomID]
@@ -977,15 +952,6 @@ func GetTriageSymptomSummaries(dbc *db.DB, triageID uint, totalRegressions int) 
 		}
 		summary.Symptom.ID = s.ID
 		summary.Symptom.Summary = s.Summary
-		for _, lid := range s.LabelIDs {
-			if l, found := labelMap[lid]; found {
-				summary.Labels = append(summary.Labels, SymptomLabel{
-					ID:          l.ID,
-					LabelTitle:  l.LabelTitle,
-					Explanation: l.Explanation,
-				})
-			}
-		}
 		summaries = append(summaries, summary)
 	}
 	sort.Slice(summaries, func(i, j int) bool {

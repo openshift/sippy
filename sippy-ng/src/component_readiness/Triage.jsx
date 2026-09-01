@@ -67,6 +67,41 @@ export default function Triage({ id }) {
 
     triageFetch
       .then((t) => {
+        if (!t.symptom_summaries || t.symptom_summaries.length === 0) {
+          return t
+        }
+        return Promise.all([
+          fetch(import.meta.env.VITE_API_URL + '/api/jobs/symptoms').then((r) =>
+            r.json()
+          ),
+          fetch(import.meta.env.VITE_API_URL + '/api/jobs/labels').then((r) =>
+            r.json()
+          ),
+        ]).then(([allSymptoms, allLabels]) => {
+          const symptomLookup = {}
+          for (const s of allSymptoms) {
+            symptomLookup[s.id] = s
+          }
+          const labelLookup = {}
+          for (const l of allLabels) {
+            labelLookup[l.id] = l
+          }
+          t.symptom_summaries = t.symptom_summaries.map((ss) => {
+            const symptom = symptomLookup[ss.symptom.id]
+            const labels = (symptom?.label_ids || [])
+              .map((lid) => labelLookup[lid])
+              .filter(Boolean)
+              .map((l) => ({
+                id: l.id,
+                label_title: l.label_title,
+                explanation: l.explanation,
+              }))
+            return { ...ss, labels }
+          })
+          return t
+        })
+      })
+      .then((t) => {
         setTriage(t)
         setIsLoaded(true)
         document.title = 'Triage "' + t.description + '" (' + t.id + ')'
