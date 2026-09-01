@@ -1449,6 +1449,55 @@ func Test_GetTriageSymptomSummaries(t *testing.T) {
 		require.Contains(t, symMap, "regid-sym-b")
 		assert.ElementsMatch(t, []uint{reg2.ID, reg3.ID}, symMap["regid-sym-b"].RegressionIDs)
 	})
+
+	t.Run("includes label details for symptoms with labels", func(t *testing.T) {
+		defer cleanup()
+
+		labelA := util.SeedLabel(t, dbc, "e2e-lbl-a", "Label A Title", "Label A explanation")
+		labelB := util.SeedLabel(t, dbc, "e2e-lbl-b", "Label B Title", "Label B explanation")
+		defer util.CleanupLabels(dbc, labelA.ID, labelB.ID)
+
+		symWithLabels := util.SeedSymptomWithLabels(t, dbc, "lbl-sym-with", "Symptom With Labels", []string{"e2e-lbl-a", "e2e-lbl-b"})
+		symNoLabels := util.SeedSymptom(t, dbc, "lbl-sym-without", "Symptom Without Labels")
+		defer util.CleanupSymptoms(dbc, symWithLabels.ID, symNoLabels.ID)
+
+		reg := createTestRegression(t, tracker, view, "lbl-test-1")
+		triage := models.Triage{
+			URL:         "https://redhat.atlassian.net/browse/TEST-LBL-1",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage).Error)
+
+		err := tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "lbl-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"lbl-sym-with", "lbl-sym-without"}},
+		})
+		require.NoError(t, err)
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		result, err := componentreadiness.GetTriageSymptomSummaries(dbc, triage.ID, 1)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+
+		symMap := make(map[string]componentreadiness.TriageSymptomSummary)
+		for _, s := range result {
+			symMap[s.Symptom.ID] = s
+		}
+
+		require.Contains(t, symMap, "lbl-sym-with")
+		require.Len(t, symMap["lbl-sym-with"].Labels, 2)
+		labelMap := make(map[string]componentreadiness.SymptomLabel)
+		for _, l := range symMap["lbl-sym-with"].Labels {
+			labelMap[l.ID] = l
+		}
+		assert.Equal(t, "Label A Title", labelMap["e2e-lbl-a"].LabelTitle)
+		assert.Equal(t, "Label A explanation", labelMap["e2e-lbl-a"].Explanation)
+		assert.Equal(t, "Label B Title", labelMap["e2e-lbl-b"].LabelTitle)
+
+		require.Contains(t, symMap, "lbl-sym-without")
+		assert.Nil(t, symMap["lbl-sym-without"].Labels)
+	})
 }
 
 func createBug(t *testing.T, dbc *gorm.DB) *models.Bug {
