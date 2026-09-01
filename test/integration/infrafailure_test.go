@@ -128,7 +128,10 @@ func TestSubtractInfraFailureFromSummaries(t *testing.T) {
 	// transaction (its temp table is ON COMMIT DROP), so wrap it; unlike
 	// RecordInfraFailure it does not set the InfraFailure label.
 	require.NoError(t, dbc.DB.Transaction(func(tx *gorm.DB) error {
-		return infrafailure.SubtractInfraFailureFromSummaries(tx, infraRunID)
+		return infrafailure.SubtractInfraFailureFromSummaries(tx, infraRunID, query.ProwJobRunPartitionKeys{
+			ProwJobRelease: "4.18",
+			Timestamp:      ts,
+		})
 	}))
 
 	// Daily totals now reflect only the retained run's failure.

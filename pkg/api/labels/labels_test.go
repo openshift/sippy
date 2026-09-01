@@ -12,6 +12,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/infrafailure"
+	"github.com/openshift/sippy/pkg/db/query"
 )
 
 func TestApplyRequestJSONFields(t *testing.T) {
@@ -45,6 +46,29 @@ func TestApplyRequestJSONFields(t *testing.T) {
 				t.Errorf("ApplyRequest.%s JSON tag = %q, want %q", field.name, tag, field.tag)
 			}
 		})
+	}
+}
+
+func TestProwJobRunSQLUsesBothPartitionKeys(t *testing.T) {
+	queries := []struct {
+		name string
+		sql  string
+	}{
+		{name: "guarded append", sql: appendProwJobRunLabelSQL},
+		{name: "fallback existence check", sql: prowJobRunExistsSQL},
+	}
+	for _, tt := range queries {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, predicate := range []string{"WHERE id = ?", "AND prow_job_release = ?", "AND timestamp = ?"} {
+				if !strings.Contains(tt.sql, predicate) {
+					t.Errorf("query is missing partition-aware predicate %q:\n%s", predicate, tt.sql)
+				}
+			}
+		})
+	}
+	if !strings.Contains(appendProwJobRunLabelSQL, "array_append(labels, ?)") ||
+		!strings.Contains(appendProwJobRunLabelSQL, "labels IS NULL OR NOT (labels @> ARRAY[?])") {
+		t.Errorf("append query must retain the single guarded array_append path:\n%s", appendProwJobRunLabelSQL)
 	}
 }
 
@@ -90,6 +114,10 @@ func TestValidateRequest(t *testing.T) {
 // the default case never touches it, so the dispatch is exercised without a
 // database.
 func TestApplySideEffects(t *testing.T) {
+	partKeys := query.ProwJobRunPartitionKeys{
+		ProwJobRelease: "4.18",
+		Timestamp:      time.Unix(1000, 0).UTC(),
+	}
 	tests := []struct {
 		name         string
 		outcome      appendOutcome
@@ -109,12 +137,18 @@ func TestApplySideEffects(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			called := false
 			a := &Applier{
-				subtractInfraFailure: func(_ *gorm.DB, _ int64) error {
+				subtractInfraFailure: func(_ *gorm.DB, runID int64, gotKeys query.ProwJobRunPartitionKeys) error {
 					called = true
+					if runID != 123 {
+						t.Errorf("runID = %d, want 123", runID)
+					}
+					if gotKeys != partKeys {
+						t.Errorf("partition keys = %#v, want %#v", gotKeys, partKeys)
+					}
 					return tt.subtractErr
 				},
 			}
-			err := a.applySideEffects(nil, tt.outcome, 123, tt.label)
+			err := a.applySideEffects(nil, tt.outcome, 123, tt.label, partKeys)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("applySideEffects() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -136,6 +170,7 @@ func TestApplyOutcomeForAppendOutcome(t *testing.T) {
 		{name: "applied", outcome: outcomeApplied, want: ApplyOutcomeRecorded},
 		{name: "already present", outcome: outcomeAlreadyPresent, want: ApplyOutcomeAlreadyLabeled},
 		{name: "run not found", outcome: outcomeRunNotFound, want: ApplyOutcomeRunNotFound},
+		{name: "partition key mismatch", outcome: outcomePartitionKeyMismatch, want: ApplyOutcomePartitionKeyMismatch},
 		{name: "unknown falls back to error", outcome: outcomeUnknown, want: ApplyOutcomeError},
 	}
 	for _, tt := range tests {
@@ -153,7 +188,7 @@ func TestApplyOutcomeForAppendOutcome(t *testing.T) {
 func TestApplyRejectsNonNumericRunID(t *testing.T) {
 	called := false
 	a := &Applier{
-		subtractInfraFailure: func(_ *gorm.DB, _ int64) error {
+		subtractInfraFailure: func(_ *gorm.DB, _ int64, _ query.ProwJobRunPartitionKeys) error {
 			called = true
 			return nil
 		},
@@ -236,9 +271,30 @@ func TestApplySideEffectsRejectsUnavailableInfraFailureSubtractor(t *testing.T) 
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.applier.applySideEffects(nil, outcomeApplied, 123, infrafailure.LabelInfraFailure)
+			err := tt.applier.applySideEffects(nil, outcomeApplied, 123, infrafailure.LabelInfraFailure, query.ProwJobRunPartitionKeys{})
 			if err == nil || !strings.Contains(err.Error(), "summary subtraction is unavailable") {
 				t.Errorf("applySideEffects() error = %v, want unavailable subtraction error", err)
+			}
+		})
+	}
+}
+
+func TestMessageForApplyOutcome(t *testing.T) {
+	tests := []struct {
+		name    string
+		outcome ApplyOutcome
+		want    string
+	}{
+		{name: "recorded", outcome: ApplyOutcomeRecorded, want: "label recorded"},
+		{name: "already labeled", outcome: ApplyOutcomeAlreadyLabeled, want: "label already present"},
+		{name: "run not found", outcome: ApplyOutcomeRunNotFound, want: "job run not found"},
+		{name: "partition key mismatch", outcome: ApplyOutcomePartitionKeyMismatch, want: "job run partition keys do not match request"},
+		{name: "error", outcome: ApplyOutcomeError, want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := messageForApplyOutcome(tt.outcome); got != tt.want {
+				t.Errorf("messageForApplyOutcome(%d) = %q, want %q", tt.outcome, got, tt.want)
 			}
 		})
 	}

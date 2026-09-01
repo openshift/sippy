@@ -7,7 +7,7 @@ import "testing"
 // InfraFailure label) requires a real PostgreSQL instance and is exercised by the
 // integration test TestSubtractInfraFailureFromSummaries in
 // test/integration/infrafailure_test.go. The applier's compile-time wiring in
-// pkg/api/labels.NewApplier also pins its func(*gorm.DB, int64) error signature.
+// pkg/api/labels.NewApplier also pins its partition-key-aware signature.
 // The unit tests below cover the parts that do not need a database.
 
 // The DB-backed behavior of RecordInfraFailure and RecordInfraFailureWithOutcome

@@ -483,10 +483,12 @@ The body is a single label application request (not an array or envelope):
 `run_id`, `label`, `prowjob_start`, and `release` are required; `run_id` must be a
 numeric string (it maps to the `prow_job_runs.id` primary key), `prowjob_start`
 is the job run's start time (RFC 3339), and `release` is the OpenShift release.
-Only `run_id` and `label` affect PostgreSQL (the label is appended to the run,
-and an `InfraFailure` label also triggers the summary subtraction). The
-remaining fields (`requested_at`, `comment`, `user`, `source_tool`,
-`symptom_id`) are optional request metadata.
+The server looks up `run_id` in `prow_job_run_id_map` and requires `release` and
+`prowjob_start` to match that authoritative mapping before accessing the
+partitioned `prow_job_runs` table. The label is appended to the run, and an
+`InfraFailure` label also triggers the summary subtraction. The remaining
+fields (`requested_at`, `comment`, `user`, `source_tool`, `symptom_id`) are
+optional request metadata.
 `requested_at` is when the label was requested or applied, which is distinct
 from `prowjob_start`, the job run's own start time.
 
@@ -510,7 +512,11 @@ machine-readable outcome. The body does not contain `status` or HATEOAS links.
   label the run's contribution was also subtracted from the summary tables.
 - `200 OK`: the run already carried the label, so no change was needed
   (idempotent no-op).
-- `404 Not Found`: no job run with that id exists in PostgreSQL.
+- `404 Not Found`: no authoritative `prow_job_run_id_map` row exists for that
+  run id.
+- `409 Conflict`: the supplied `release` or `prowjob_start` does not match the
+  authoritative partition keys for that run id. No label or summary data is
+  changed.
 - `500 Internal Server Error`: applying the request failed. The response's
   `error` field contains details.
 - `400 Bad Request`: the JSON body is malformed or a required field is invalid.

@@ -13,6 +13,7 @@ package labels
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -22,7 +23,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/infrafailure"
-	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/query"
 )
 
 // ApplyRequest is the request body for applying one job run label.
@@ -54,8 +55,11 @@ const (
 	// ApplyOutcomeAlreadyLabeled means the run already carried the label, so no change
 	// was needed (idempotent no-op).
 	ApplyOutcomeAlreadyLabeled
-	// ApplyOutcomeRunNotFound means no prow_job_runs row exists for the run id.
+	// ApplyOutcomeRunNotFound means no prow_job_run_id_map row exists for the run id.
 	ApplyOutcomeRunNotFound
+	// ApplyOutcomePartitionKeyMismatch means the request's release or timestamp
+	// does not match the authoritative prow_job_run_id_map entry for the run.
+	ApplyOutcomePartitionKeyMismatch
 )
 
 // Result is the JSON body returned by POST /api/job/run/labels. The message
@@ -93,11 +97,26 @@ func ValidateRequest(request ApplyRequest) error {
 	return nil
 }
 
-// appendOutcome describes what appending a label to prow_job_runs.labels did, so
-// a run that is missing from PostgreSQL can be distinguished from one that
-// already carried the label (both leave the guarded UPDATE with
-// RowsAffected == 0).
+// appendOutcome describes request resolution and what the guarded label append
+// did, including outcomes decided from the authoritative ID map before the
+// partitioned target table is accessed.
 type appendOutcome int
+
+const appendProwJobRunLabelSQL = `
+UPDATE prow_job_runs
+SET labels = array_append(labels, ?)
+WHERE id = ?
+  AND prow_job_release = ?
+  AND timestamp = ?
+  AND (labels IS NULL OR NOT (labels @> ARRAY[?]))`
+
+const prowJobRunExistsSQL = `
+SELECT 1
+FROM prow_job_runs
+WHERE id = ?
+  AND prow_job_release = ?
+  AND timestamp = ?
+LIMIT 1`
 
 const (
 	// outcomeUnknown is the zero value, reserved so an error path never
@@ -107,8 +126,11 @@ const (
 	outcomeApplied
 	// outcomeAlreadyPresent means the run already carried the label.
 	outcomeAlreadyPresent
-	// outcomeRunNotFound means no prow_job_runs row exists for the id.
+	// outcomeRunNotFound means no prow_job_run_id_map row exists for the id.
 	outcomeRunNotFound
+	// outcomePartitionKeyMismatch means the request does not identify the
+	// partition recorded in prow_job_run_id_map for the run.
+	outcomePartitionKeyMismatch
 )
 
 // Applier applies label requests to PostgreSQL.
@@ -116,7 +138,7 @@ type Applier struct {
 	dbc *db.DB
 
 	// subtractInfraFailure enables testing InfraFailure side effects without a database.
-	subtractInfraFailure func(tx *gorm.DB, prowJobRunID int64) error
+	subtractInfraFailure func(tx *gorm.DB, prowJobRunID int64, partKeys query.ProwJobRunPartitionKeys) error
 }
 
 // NewApplier constructs an Applier wired to the given database client.
@@ -128,8 +150,8 @@ func NewApplier(dbc *db.DB) *Applier {
 }
 
 // Apply records the label request in PostgreSQL and returns the outcome. The
-// label append and any per-label side effect run in one transaction so they
-// commit (or roll back) atomically.
+// authoritative partition-key lookup, label append, and any per-label side
+// effect run in one transaction so they commit (or roll back) atomically.
 func (a *Applier) Apply(ctx context.Context, request ApplyRequest) (Result, ApplyOutcome) {
 	res := Result{RunID: request.RunID, Label: request.Label}
 
@@ -150,8 +172,21 @@ func (a *Applier) Apply(ctx context.Context, request ApplyRequest) (Result, Appl
 
 	var outcome appendOutcome
 	if err := a.dbc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		partKeys, lookupErr := query.LookupProwJobRunPartitionKeys(tx, runID)
+		if lookupErr != nil {
+			if errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+				outcome = outcomeRunNotFound
+				return nil
+			}
+			return fmt.Errorf("reading partition keys for prow_job_run %d: %w", runID, lookupErr)
+		}
+		if request.Release != partKeys.ProwJobRelease || !request.ProwJobStart.Equal(partKeys.Timestamp) {
+			outcome = outcomePartitionKeyMismatch
+			return nil
+		}
+
 		var txErr error
-		outcome, txErr = a.applyOne(tx, runID, request.Label)
+		outcome, txErr = a.applyOne(tx, runID, request.Label, partKeys)
 		return txErr
 	}); err != nil {
 		log.WithError(err).WithField("run_id", res.RunID).WithField("label", request.Label).Error("failed to apply label")
@@ -170,12 +205,12 @@ func (a *Applier) Apply(ctx context.Context, request ApplyRequest) (Result, Appl
 // applyOne is the single label-application path shared by every label. It appends
 // the label to the run's prow_job_runs.labels array and then runs any per-label
 // side effect. Both steps run on tx so they commit atomically.
-func (a *Applier) applyOne(tx *gorm.DB, runID int64, label string) (appendOutcome, error) {
-	outcome, err := appendProwJobRunLabel(tx, runID, label)
+func (a *Applier) applyOne(tx *gorm.DB, runID int64, label string, partKeys query.ProwJobRunPartitionKeys) (appendOutcome, error) {
+	outcome, err := appendProwJobRunLabel(tx, runID, label, partKeys)
 	if err != nil {
 		return outcomeUnknown, err
 	}
-	if err := a.applySideEffects(tx, outcome, runID, label); err != nil {
+	if err := a.applySideEffects(tx, outcome, runID, label, partKeys); err != nil {
 		return outcomeUnknown, err
 	}
 	return outcome, nil
@@ -187,9 +222,8 @@ func (a *Applier) applyOne(tx *gorm.DB, runID int64, label string) (appendOutcom
 //
 // Side effects run only when the label was newly applied (outcome ==
 // outcomeApplied). An already-present label means the side effect already ran, so
-// skipping it keeps the operation idempotent under request redelivery; a
-// missing run has nothing to act on.
-func (a *Applier) applySideEffects(tx *gorm.DB, outcome appendOutcome, runID int64, label string) error {
+// skipping it keeps the operation idempotent under request redelivery.
+func (a *Applier) applySideEffects(tx *gorm.DB, outcome appendOutcome, runID int64, label string, partKeys query.ProwJobRunPartitionKeys) error {
 	if outcome != outcomeApplied {
 		return nil
 	}
@@ -201,7 +235,7 @@ func (a *Applier) applySideEffects(tx *gorm.DB, outcome appendOutcome, runID int
 		if a == nil || a.subtractInfraFailure == nil {
 			return fmt.Errorf("InfraFailure summary subtraction is unavailable")
 		}
-		return a.subtractInfraFailure(tx, runID)
+		return a.subtractInfraFailure(tx, runID, partKeys)
 	default:
 		// Generic labels need no bookkeeping beyond the append. Add a case here to
 		// give a future label special semantics; it will run in the same
@@ -215,24 +249,22 @@ func (a *Applier) applySideEffects(tx *gorm.DB, outcome appendOutcome, runID int
 // the array-column equivalent of ON CONFLICT DO NOTHING: array_append runs only
 // when the label is not already present (the NULL-safe predicate also handles
 // runs with no labels yet), so redelivery of the same request is a no-op.
-func appendProwJobRunLabel(tx *gorm.DB, prowJobRunID int64, label string) (appendOutcome, error) {
-	res := tx.Model(&models.ProwJobRun{}).
-		Where("id = ? AND (labels IS NULL OR NOT (labels @> ARRAY[?]))", prowJobRunID, label).
-		Update("labels", gorm.Expr("array_append(labels, ?)", label))
+func appendProwJobRunLabel(tx *gorm.DB, prowJobRunID int64, label string, partKeys query.ProwJobRunPartitionKeys) (appendOutcome, error) {
+	res := tx.Exec(appendProwJobRunLabelSQL, label, prowJobRunID, partKeys.ProwJobRelease, partKeys.Timestamp, label)
 	if res.Error != nil {
 		return outcomeUnknown, fmt.Errorf("appending label %q to prow_job_run %d: %w", label, prowJobRunID, res.Error)
 	}
 	if res.RowsAffected == 0 {
-		// RowsAffected == 0 means either the label was already present or the run
-		// does not exist. Disambiguate with an existence check so callers can
-		// report run_not_found separately from already_labeled.
-		var count int64
-		if err := tx.Model(&models.ProwJobRun{}).
-			Where("id = ?", prowJobRunID).Count(&count).Error; err != nil {
-			return outcomeUnknown, fmt.Errorf("checking existence of prow_job_run %d: %w", prowJobRunID, err)
+		// The id map was already checked, so RowsAffected == 0 means either the
+		// label was already present or the mapped target row is missing. The latter
+		// is a data-integrity error, not a normal missing-run or idempotent outcome.
+		var exists int
+		check := tx.Raw(prowJobRunExistsSQL, prowJobRunID, partKeys.ProwJobRelease, partKeys.Timestamp).Scan(&exists)
+		if check.Error != nil {
+			return outcomeUnknown, fmt.Errorf("checking existence of prow_job_run %d: %w", prowJobRunID, check.Error)
 		}
-		if count == 0 {
-			return outcomeRunNotFound, nil
+		if check.RowsAffected == 0 {
+			return outcomeUnknown, fmt.Errorf("prow_job_run %d is present in the id map but its target row is missing", prowJobRunID)
 		}
 		return outcomeAlreadyPresent, nil
 	}
@@ -253,6 +285,8 @@ func applyOutcomeForAppendOutcome(outcome appendOutcome) ApplyOutcome {
 		return ApplyOutcomeAlreadyLabeled
 	case outcomeRunNotFound:
 		return ApplyOutcomeRunNotFound
+	case outcomePartitionKeyMismatch:
+		return ApplyOutcomePartitionKeyMismatch
 	default:
 		return ApplyOutcomeError
 	}
@@ -266,6 +300,8 @@ func messageForApplyOutcome(outcome ApplyOutcome) string {
 		return "label already present"
 	case ApplyOutcomeRunNotFound:
 		return "job run not found"
+	case ApplyOutcomePartitionKeyMismatch:
+		return "job run partition keys do not match request"
 	default:
 		return ""
 	}

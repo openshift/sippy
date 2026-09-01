@@ -63,6 +63,8 @@ func httpStatusForApplyOutcome(outcome labels.ApplyOutcome) int {
 		return http.StatusOK
 	case labels.ApplyOutcomeRunNotFound:
 		return http.StatusNotFound
+	case labels.ApplyOutcomePartitionKeyMismatch:
+		return http.StatusConflict
 	default:
 		return http.StatusInternalServerError
 	}

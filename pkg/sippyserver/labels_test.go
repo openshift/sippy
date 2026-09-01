@@ -45,6 +45,13 @@ func TestJSONApplyLabelHTTPOutcomes(t *testing.T) {
 			wantMessage: "job run not found",
 		},
 		{
+			name:        "partition keys mismatch",
+			outcome:     labels.ApplyOutcomePartitionKeyMismatch,
+			result:      labels.Result{RunID: "123", Label: "InfraFailure", Message: "job run partition keys do not match request"},
+			wantStatus:  http.StatusConflict,
+			wantMessage: "job run partition keys do not match request",
+		},
+		{
 			name:       "application error",
 			outcome:    labels.ApplyOutcomeError,
 			result:     labels.Result{RunID: "123", Label: "InfraFailure", Error: "database write failed"},
