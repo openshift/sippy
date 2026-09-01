@@ -86,6 +86,8 @@ WITH retests AS (
         SELECT prow_jobs.id, COUNT(*) as cnt
         FROM prow_job_runs
              INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
+                 AND prow_job_run_prow_pull_requests.prow_job_run_release = prow_job_runs.prow_job_release
+                 AND prow_job_run_prow_pull_requests.prow_job_run_timestamp = prow_job_runs.timestamp
              INNER JOIN prow_pull_requests on prow_pull_requests.id = prow_job_run_prow_pull_requests.prow_pull_request_id
              INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
         WHERE prow_pull_requests.merged_at BETWEEN p_start AND p_endstamp
@@ -168,6 +170,8 @@ FROM results
              SELECT prow_pull_requests.org, prow_pull_requests.repo, prow_jobs.id
              FROM prow_job_runs
                   INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id
+                 AND prow_job_run_prow_pull_requests.prow_job_run_release = prow_job_runs.prow_job_release
+                 AND prow_job_run_prow_pull_requests.prow_job_run_timestamp = prow_job_runs.timestamp
                   INNER JOIN prow_pull_requests on prow_pull_requests.id = prow_job_run_prow_pull_requests.prow_pull_request_id
                   INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
              WHERE prow_job_runs.prow_job_release = p_release

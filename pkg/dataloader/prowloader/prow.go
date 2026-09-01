@@ -545,8 +545,8 @@ func (pl *ProwLoader) findNewJobRunIDs(ctx context.Context, candidateIDs []uint)
 
 	rows, err := conn.Query(ctx, `
 		SELECT t.id FROM tmp_candidate_ids t
-		LEFT JOIN prow_job_runs r ON r.id = t.id
-		WHERE r.id IS NULL
+		LEFT JOIN prow_job_run_id_map m ON m.id = t.id
+		WHERE m.id IS NULL
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("querying new job run IDs: %w", err)

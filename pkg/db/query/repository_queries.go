@@ -21,7 +21,7 @@ func RepositoryReport(dbc *db.DB, filterOpts *filter.FilterOptions, release stri
 
 	repos := dbc.DB.Table("prow_pull_requests").
 		Joins("INNER JOIN prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id").
-		Joins("INNER JOIN prow_job_runs on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id").
+		Joins("INNER JOIN prow_job_runs on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id AND prow_job_run_prow_pull_requests.prow_job_run_release = prow_job_runs.prow_job_release AND prow_job_run_prow_pull_requests.prow_job_run_timestamp = prow_job_runs.timestamp").
 		Joins("INNER JOIN prow_jobs on prow_job_runs.prow_job_id = prow_jobs.id").
 		Joins("LEFT JOIN (?) revert_count ON revert_count.org = prow_pull_requests.org AND revert_count.repo = prow_pull_requests.repo", revertCount).
 		Joins("LEFT JOIN (?) premerge_failures ON premerge_failures.prow_job_ID = prow_jobs.id", averageByJob).

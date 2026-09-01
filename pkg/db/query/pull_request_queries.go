@@ -26,7 +26,7 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 		Joins("LEFT JOIN (?) nightly ON nightly.url = prow_pull_requests.link",
 			dbc.DB.Table("(?) as nightly", firstPayloadsByStreamAndArch).Where("nightly.stream = 'nightly' AND nightly.architecture = 'amd64'")).
 		Joins("INNER JOIN prow_job_run_prow_pull_requests ON prow_job_run_prow_pull_requests.prow_pull_request_id = prow_pull_requests.id").
-		Joins("INNER JOIN prow_job_runs on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id").
+		Joins("INNER JOIN prow_job_runs on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id AND prow_job_run_prow_pull_requests.prow_job_run_release = prow_job_runs.prow_job_release AND prow_job_run_prow_pull_requests.prow_job_run_timestamp = prow_job_runs.timestamp").
 		Joins("INNER JOIN prow_jobs on prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_jobs.release = ?", release).
 		Where("prow_job_runs.prow_job_release = ?", release).
@@ -49,7 +49,7 @@ func PullRequestReport(dbc *db.DB, filterOpts *filter.FilterOptions, release str
 func PullRequestAveragePremergeFailures(dbc *db.DB, release string, start, end *time.Time) *gorm.DB {
 	premergeFailures := dbc.DB.Table("prow_job_runs").
 		Select("prow_jobs.id as prow_job_id, prow_jobs.name as prow_job_name, prow_pull_requests.org, prow_pull_requests.repo, prow_pull_requests.link, COUNT(*) as total_runs").
-		Joins("INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id AND prow_job_run_prow_pull_requests.prow_job_run_release = prow_job_runs.prow_job_release").
+		Joins("INNER JOIN prow_job_run_prow_pull_requests on prow_job_run_prow_pull_requests.prow_job_run_id = prow_job_runs.id AND prow_job_run_prow_pull_requests.prow_job_run_release = prow_job_runs.prow_job_release AND prow_job_run_prow_pull_requests.prow_job_run_timestamp = prow_job_runs.timestamp").
 		Joins("INNER JOIN prow_pull_requests on prow_pull_requests.id = prow_job_run_prow_pull_requests.prow_pull_request_id").
 		Joins("INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_job_runs.prow_job_release = ?", release).
