@@ -6,7 +6,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { filterFor, pathForJobRunsWithFilter } from '../helpers'
 import { FilterList } from '@mui/icons-material'
+import { Link } from 'react-router-dom'
 import { symptomColor } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -20,10 +22,15 @@ export default function TriageSymptoms({
   symptomSummaries,
   symptomFilter,
   setSymptomFilter,
+  release,
 }) {
   const showRegressions =
     symptomSummaries?.length > 0 &&
     symptomSummaries[0].regression_count !== undefined
+
+  const hasLabels = symptomSummaries?.some(
+    (ss) => ss.labels && ss.labels.length > 0
+  )
 
   return (
     <>
@@ -44,6 +51,13 @@ export default function TriageSymptoms({
         <Table size="small" sx={{ mb: 3 }}>
           <TableHead>
             <TableRow>
+              {hasLabels && (
+                <TableCell>
+                  <Tooltip title="Label applied by this symptom to matched job runs">
+                    <span>Label</span>
+                  </Tooltip>
+                </TableCell>
+              )}
               <TableCell>
                 <Tooltip title="Auto-detected pattern found in job run artifacts">
                   <span>Symptom</span>
@@ -83,17 +97,47 @@ export default function TriageSymptoms({
           <TableBody>
             {symptomSummaries.map((ss) => (
               <TableRow key={ss.symptom.id}>
-                <TableCell>
-                  <Chip
-                    label={ss.symptom.summary}
-                    size="small"
-                    sx={{
-                      backgroundColor: symptomColor(ss.symptom.id),
-                      color: '#fff',
-                      fontSize: '0.75rem',
-                    }}
-                  />
-                </TableCell>
+                {hasLabels && (
+                  <TableCell>
+                    <Box display="flex" flexWrap="wrap" gap={0.5}>
+                      {(ss.labels || []).map((label) => {
+                        const chip = (
+                          <Tooltip
+                            key={label.id}
+                            title={label.explanation || label.label_title}
+                          >
+                            <Chip
+                              label={label.label_title}
+                              size="small"
+                              sx={{
+                                backgroundColor: symptomColor(label.id),
+                                color: '#fff',
+                                fontSize: '0.75rem',
+                              }}
+                            />
+                          </Tooltip>
+                        )
+                        if (release) {
+                          return (
+                            <Link
+                              key={label.id}
+                              to={pathForJobRunsWithFilter(release, {
+                                items: [
+                                  filterFor('labels', 'has entry', label.id),
+                                ],
+                              })}
+                              style={{ textDecoration: 'none' }}
+                            >
+                              {chip}
+                            </Link>
+                          )
+                        }
+                        return chip
+                      })}
+                    </Box>
+                  </TableCell>
+                )}
+                <TableCell>{ss.symptom.summary}</TableCell>
                 {showRegressions && (
                   <TableCell>
                     <Box display="flex" alignItems="center" gap={1}>
@@ -150,4 +194,5 @@ TriageSymptoms.propTypes = {
   symptomSummaries: PropTypes.array,
   symptomFilter: PropTypes.string,
   setSymptomFilter: PropTypes.func,
+  release: PropTypes.string,
 }

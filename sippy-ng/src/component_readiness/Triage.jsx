@@ -44,7 +44,7 @@ export default function Triage({ id }) {
   // page is loaded from the context of one of those component_reports, then the regressions from the other view will not
   // load properly. This is a better result than not being able to formulate any URLs when links aren't provided.
   // TODO(sgoeddel): Make it so links are *always* provided, and remove this (https://issues.redhat.com/browse/TRT-2356)
-  const { view } = useContext(CompReadyVarsContext)
+  const { view, sampleRelease } = useContext(CompReadyVarsContext)
 
   React.useEffect(() => {
     setIsLoaded(false)
@@ -359,6 +359,7 @@ export default function Triage({ id }) {
         symptomSummaries={triage.symptom_summaries}
         symptomFilter={symptomFilter}
         setSymptomFilter={setSymptomFilter}
+        release={sampleRelease}
       />
       <h2>Included Tests</h2>
       {symptomFilter && (

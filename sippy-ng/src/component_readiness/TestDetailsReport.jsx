@@ -234,22 +234,42 @@ export default function TestDetailsReport(props) {
       return
     }
     const controller = new AbortController()
-    fetch(import.meta.env.VITE_API_URL + '/api/jobs/symptoms', {
-      signal: controller.signal,
-    })
-      .then((r) => r.json())
-      .then((allSymptoms) => {
-        const lookup = {}
+    Promise.all([
+      fetch(import.meta.env.VITE_API_URL + '/api/jobs/symptoms', {
+        signal: controller.signal,
+      }).then((r) => r.json()),
+      fetch(import.meta.env.VITE_API_URL + '/api/jobs/labels', {
+        signal: controller.signal,
+      }).then((r) => r.json()),
+    ])
+      .then(([allSymptoms, allLabels]) => {
+        const symptomLookup = {}
         for (const s of allSymptoms) {
-          lookup[s.id] = s.summary
+          symptomLookup[s.id] = s
+        }
+        const labelLookup = {}
+        for (const l of allLabels) {
+          labelLookup[l.id] = l
         }
         const total = totalFailedRuns || 1
         const summaries = symptomIds
-          .map((id) => ({
-            symptom: { id, summary: lookup[id] || id },
-            job_run_count: counts[id],
-            percentage: (counts[id] / total) * 100,
-          }))
+          .map((id) => {
+            const symptom = symptomLookup[id]
+            const labels = (symptom?.label_ids || [])
+              .map((lid) => labelLookup[lid])
+              .filter(Boolean)
+              .map((l) => ({
+                id: l.id,
+                label_title: l.label_title,
+                explanation: l.explanation,
+              }))
+            return {
+              symptom: { id, summary: symptom?.summary || id },
+              labels,
+              job_run_count: counts[id],
+              percentage: (counts[id] / total) * 100,
+            }
+          })
           .sort((a, b) => b.job_run_count - a.job_run_count)
         setSymptomSummaries(summaries)
       })
@@ -648,7 +668,10 @@ View the [test details report|${document.location.href}] for additional context.
           </TableRow>
         </TableBody>
       </Table>
-      <TriageSymptoms symptomSummaries={symptomSummaries} />
+      <TriageSymptoms
+        symptomSummaries={symptomSummaries}
+        release={sampleRelease}
+      />
       {isBaseOverride ? (
         <Fragment>
           <Tabs
