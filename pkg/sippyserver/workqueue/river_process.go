@@ -34,7 +34,7 @@ func NewRiverProcess(pool *pgxpool.Pool, client *river.Client[pgx.Tx], reEvaluat
 // refreshed when the first batch arrives) and a graceful shutdown with a
 // 30-second timeout.
 func (p *RiverProcess) Run(ctx context.Context) {
-	if _, err := p.reEvaluator.RefreshSymptomCache(); err != nil {
+	if _, err := p.reEvaluator.RefreshSymptomCache(ctx); err != nil {
 		log.WithError(err).Warn("workqueue: initial symptom cache warm-up failed; cache will refresh on first batch")
 	}
 
@@ -49,12 +49,14 @@ func (p *RiverProcess) Run(ctx context.Context) {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := p.client.Stop(shutdownCtx); err != nil {
-		log.WithError(err).Error("workqueue: error stopping River client; waiting for workers to finish")
+		log.WithError(err).Error("workqueue: error stopping River client")
 	}
-	// Wait for all workers to finish before closing the pool, even if Stop
-	// returned early due to a deadline. Stopped() is independent of the
-	// context passed to Stop.
-	<-p.client.Stopped()
+	// Wait for workers to finish, but not past the shutdown deadline.
+	select {
+	case <-p.client.Stopped():
+		log.Info("workqueue: River client stopped cleanly")
+	case <-shutdownCtx.Done():
+		log.Warn("workqueue: shutdown deadline exceeded; closing pool with workers still running")
+	}
 	p.pool.Close()
-	log.Info("workqueue: River client stopped")
 }

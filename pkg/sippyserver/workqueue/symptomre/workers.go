@@ -86,7 +86,7 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 // each batch item, and links the resulting River job IDs back to the items.
 // Returns the count of newly enqueued and deduplicated jobs.
 func (w *ProcessBatchWorker) fanOutItems(ctx context.Context, batchID uuid.UUID, items []BatchItem, dryRun bool) (enqueued, deduped int, err error) {
-	symptomHash, err := w.reEvaluator.RefreshSymptomCache()
+	symptomHash, err := w.reEvaluator.RefreshSymptomCache(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("refreshing symptom cache for batch %s: %w", batchID, err)
 	}

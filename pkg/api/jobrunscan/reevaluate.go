@@ -133,9 +133,9 @@ type symptomMatch struct {
 }
 
 // loadActiveSymptoms fetches all symptom definitions with implemented matcher types.
-func (r *ReEvaluator) loadActiveSymptoms() ([]jobrunscan.Symptom, error) {
+func (r *ReEvaluator) loadActiveSymptoms(ctx context.Context) ([]jobrunscan.Symptom, error) {
 	var all []jobrunscan.Symptom
-	res := r.db.DB.Order("id").Find(&all)
+	res := r.db.DB.WithContext(ctx).Order("id").Find(&all)
 	if res.Error != nil {
 		return nil, res.Error
 	}
@@ -146,8 +146,8 @@ func (r *ReEvaluator) loadActiveSymptoms() ([]jobrunscan.Symptom, error) {
 // computes a SHA-256 hash of the sorted symptom IDs. The hash is included in
 // per-item River job args so that deduplication is scoped to the current symptom
 // state: if symptoms change between batches, the new hash defeats deduplication.
-func (r *ReEvaluator) RefreshSymptomCache() (string, error) {
-	symptoms, err := r.loadActiveSymptoms()
+func (r *ReEvaluator) RefreshSymptomCache(ctx context.Context) (string, error) {
+	symptoms, err := r.loadActiveSymptoms(ctx)
 	if err != nil {
 		return "", fmt.Errorf("refreshing symptom cache: %w", err)
 	}

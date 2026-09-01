@@ -124,7 +124,7 @@ func TestReEvaluateIdempotent(t *testing.T) {
 
 // reEvaluateJobRuns re-evaluates all symptom matches for the specified job runs.
 func reEvaluateJobRuns(ctx context.Context, r *ReEvaluator, prowJobBuildIDs []string, dryRun bool) ([]ReEvaluationResult, error) {
-	symptoms, err := r.loadActiveSymptoms()
+	symptoms, err := r.loadActiveSymptoms(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("loading symptoms: %w", err)
 	}
