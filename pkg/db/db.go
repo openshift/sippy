@@ -189,21 +189,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		}
 	}
 
-	// Temporary, to be removed post migration
-	initMissingModels := []any{
-		&models.ProwJobRun{},
-		&models.ProwJobRunProwPullRequest{},
-		&models.ProwJobRunAnnotation{},
-	}
-	for _, model := range initMissingModels {
-		if d.DB.Migrator().HasTable(model) {
-			continue
-		}
-		if err := d.DB.Migrator().CreateTable(model); err != nil {
-			return fmt.Errorf("creating missing table for %T: %w", model, err)
-		}
-	}
-
 	if err := createAuditLogIndexes(d.DB); err != nil {
 		return err
 	}
