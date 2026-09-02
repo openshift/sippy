@@ -18,6 +18,13 @@ func compareCounts(check Check, release string, date civil.Date, expectedRows, a
 		expectedCounts, hasExpected := expected[key]
 		actualCounts, hasActual := actual[key]
 		if !hasExpected {
+			if actualCounts.IsZero() {
+				// A row can be left behind with all-zero counts once its only
+				// contributing run is subtracted out (e.g. an InfraFailure
+				// exclusion applied after the row was first written). That is
+				// indistinguishable from the row never having existed.
+				continue
+			}
 			discrepancies = append(discrepancies, Discrepancy{
 				Check: check, Release: release, Date: date, Kind: "unexpected-row", Key: key.String(),
 				Expected: "missing", Actual: "present",
