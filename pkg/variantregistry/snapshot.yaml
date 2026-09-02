@@ -80963,6 +80963,30 @@ periodic-ci-openshift-must-gather-operator-master-multi-e2e-hypershift-operator-
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-must-gather-operator-release-5.0-multi-e2e-aws-operator-multi-art-fbc-weekly:
+    Aggregation: none
+    Architecture: multi
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-must-gather-operator-release-5.0-multi-e2e-aws-operator-multi-weekly:
     Aggregation: none
     Architecture: multi
