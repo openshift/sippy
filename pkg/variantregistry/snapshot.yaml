@@ -375360,7 +375360,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-5.1-ocp-chaos-cr--outage-node--aws:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: blocking
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -375384,7 +375384,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-5.1-ocp-chaos-cr--outage-pod--aws:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: blocking
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
