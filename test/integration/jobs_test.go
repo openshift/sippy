@@ -818,7 +818,7 @@ func TestJobRunTestCount(t *testing.T) {
 	assert.Equal(t, 3, count)
 }
 
-func TestJobRunTestCountExcludesNonMatchingRecords(t *testing.T) {
+func TestJobRunTestCountRequiresMatchingPartitionKeys(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
 	job := intutil.CreateProwJob(t, dbc, "periodic-ci-e2e-aws-4.16", "4.16", []string{"aws"})
@@ -826,26 +826,63 @@ func TestJobRunTestCountExcludesNonMatchingRecords(t *testing.T) {
 	run := intutil.CreateProwJobRun(t, dbc, job.ID, "4.16", timestamp, true, v1.JobSucceeded)
 	test1 := intutil.CreateTest(t, dbc, "test-alpha")
 	test2 := intutil.CreateTest(t, dbc, "test-beta")
-	// Remove after reviewing intention and fk_prow_job_runs_tests constraint
-	// test3 := intutil.CreateTest(t, dbc, "test-gamma")
 
-	// Two records match the queried release and timestamp
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test1.ID, "4.16", timestamp, 1)
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test2.ID, "4.16", timestamp, 1)
 
-	// Record with a different release should be excluded
-	// Remove after reviewing intention and fk_prow_job_runs_tests constraint
-	// intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test3.ID, "4.15", timestamp, 1)
-
-	// Remove after reviewing intention and fk_prow_job_runs_tests constraint
-	// Record with a different timestamp should be excluded
-	// otherTimestamp := time.Date(2024, 6, 11, 12, 0, 0, 0, time.UTC)
-	// intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test1.ID, "4.16", otherTimestamp, 1)
-
 	runID := int64(run.ID) //nolint:gosec
-	count, err := query.JobRunTestCount(dbc, runID, "4.16", timestamp)
-	require.NoError(t, err)
-	assert.Equal(t, 2, count)
+	tests := []struct {
+		name      string
+		release   string
+		timestamp time.Time
+		want      int
+	}{
+		{name: "matching keys", release: "4.16", timestamp: timestamp, want: 2},
+		{name: "wrong release", release: "4.15", timestamp: timestamp, want: 0},
+		{name: "wrong timestamp", release: "4.16", timestamp: timestamp.Add(24 * time.Hour), want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			count, err := query.JobRunTestCount(dbc, runID, tt.release, tt.timestamp)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, count)
+		})
+	}
+}
+
+func TestProwJobRunTestCompositeForeignKeyRejectsMismatchedPartitionKeys(t *testing.T) {
+	tests := []struct {
+		name      string
+		release   string
+		timestamp time.Time
+	}{
+		{name: "wrong release", release: "4.15"},
+		{name: "wrong timestamp", release: "4.16", timestamp: time.Date(2024, 6, 11, 12, 0, 0, 0, time.UTC)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbc := intutil.NewTestDB(t, pgContainer)
+			job := intutil.CreateProwJob(t, dbc, "periodic-ci-e2e-aws-4.16", "4.16", []string{"aws"})
+			timestamp := time.Date(2024, 6, 10, 12, 0, 0, 0, time.UTC)
+			run := intutil.CreateProwJobRun(t, dbc, job.ID, "4.16", timestamp, true, v1.JobSucceeded)
+			test := intutil.CreateTest(t, dbc, "test-alpha")
+			testTimestamp := tt.timestamp
+			if testTimestamp.IsZero() {
+				testTimestamp = timestamp
+			}
+
+			err := dbc.DB.Create(&models.ProwJobRunTest{
+				ProwJobRunID:        run.ID,
+				ProwJobID:           job.ID,
+				ProwJobRunRelease:   tt.release,
+				ProwJobRunTimestamp: testTimestamp,
+				TestID:              test.ID,
+				Status:              int(v1.TestStatusSuccess),
+			}).Error
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "fk_prow_job_runs_tests")
+		})
+	}
 }
 
 func TestJobRunTestCountNoTests(t *testing.T) {
@@ -954,12 +991,12 @@ func TestProwJobHistoricalTestCountsExcludesDifferentRelease(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test1.ID, "4.16", ts, 1)
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test2.ID, "4.16", ts, 1)
 
-	// 3 test records with a different release should be excluded
-	// Remove after reviewing intention and fk_prow_job_runs_tests constraint
-	// for i := 0; i < 3; i++ {
-	//	testN := intutil.CreateTest(t, dbc, fmt.Sprintf("other-release-test-%d", i))
-	//	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, testN.ID, "4.15", ts, 1)
-	// }
+	// A valid parent/child group in another release should be excluded.
+	otherRun := intutil.CreateProwJobRun(t, dbc, job.ID, "4.15", ts, true, v1.JobSucceeded)
+	for i := 0; i < 4; i++ {
+		testN := intutil.CreateTest(t, dbc, fmt.Sprintf("other-release-test-%d", i))
+		intutil.CreateProwJobRunTest(t, dbc, otherRun.ID, job.ID, testN.ID, "4.15", ts, 1)
+	}
 
 	// Only 4.16 tests count: avg(2) = 2
 	avg, err := query.ProwJobHistoricalTestCounts(dbc, job.ID, "4.16")

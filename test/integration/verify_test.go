@@ -89,12 +89,10 @@ func TestVerifyDailyRowsProductionSemanticsAndMismatches(t *testing.T) {
 	informingRun := intutil.CreateProwJobRun(t, dbc, job.ID, release, informingTime, true, processingv1.JobSucceeded)
 	intutil.CreateProwJobRunTest(t, dbc, informingRun.ID, job.ID, test.ID, release, informingTime, int(processingv1.TestStatusSuccess), intutil.WithSuiteID(suite.ID), intutil.WithLifecycle("informing"))
 
-	// InfraFailure results and rows whose composite run key does not match are excluded.
+	// InfraFailure results are excluded.
 	infraTime := start.Add(6 * time.Hour)
 	infraRun := intutil.CreateProwJobRun(t, dbc, job.ID, release, infraTime, false, processingv1.JobInternalInfrastructureFailure, intutil.WithLabels("InfraFailure"))
 	intutil.CreateProwJobRunTest(t, dbc, infraRun.ID, job.ID, test.ID, release, infraTime, int(processingv1.TestStatusFailure))
-	// Remove after reviewing intention and fk_prow_job_runs_tests constraint
-	// intutil.CreateProwJobRunTest(t, dbc, informingRun.ID, job.ID, test.ID, release, start.Add(7*time.Hour), int(processingv1.TestStatusFailure))
 
 	// The day is half-open: both joined rows are outside the target day.
 	beforeTime := start.Add(-time.Nanosecond)
