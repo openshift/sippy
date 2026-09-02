@@ -207,6 +207,14 @@ type Counts struct {
 	Runs      int64
 }
 
+// IsZero reports whether every counter is zero. A stored summary row can be
+// left with all-zero counts after its only contributing run is subtracted out
+// (see pkg/db/infrafailure), so such a row is equivalent to the row being
+// absent altogether.
+func (c Counts) IsZero() bool {
+	return c.Successes == 0 && c.Failures == 0 && c.Flakes == 0 && c.Runs == 0
+}
+
 func (c Counts) Add(other Counts) Counts {
 	return Counts{
 		Successes: c.Successes + other.Successes,

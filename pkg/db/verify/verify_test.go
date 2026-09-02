@@ -93,6 +93,7 @@ func TestCompareDaily(t *testing.T) {
 		{name: "equal", expected: []DailyRow{base}, actual: []DailyRow{base}},
 		{name: "raw only", expected: []DailyRow{base}, wantKind: "missing-row"},
 		{name: "summary only", actual: []DailyRow{base}, wantKind: "unexpected-row"},
+		{name: "zero-count summary only is not a discrepancy", actual: []DailyRow{{Key: key, Counts: Counts{}}}},
 		{name: "success mismatch", expected: []DailyRow{base}, actual: []DailyRow{{Key: key, Counts: Counts{Successes: 4, Failures: 2, Flakes: 1, Runs: 7}}}, wantKind: "count-mismatch", wantField: "successes"},
 		{name: "failure mismatch", expected: []DailyRow{base}, actual: []DailyRow{{Key: key, Counts: Counts{Successes: 3, Failures: 3, Flakes: 1, Runs: 7}}}, wantKind: "count-mismatch", wantField: "failures"},
 		{name: "flake mismatch", expected: []DailyRow{base}, actual: []DailyRow{{Key: key, Counts: Counts{Successes: 3, Failures: 2, Flakes: 2, Runs: 7}}}, wantKind: "count-mismatch", wantField: "flakes"},
@@ -113,6 +114,14 @@ func TestCompareDaily(t *testing.T) {
 			assert.Equal(t, tt.wantField, discrepancies[0].Field)
 		})
 	}
+}
+
+func TestCountsIsZero(t *testing.T) {
+	assert.True(t, Counts{}.IsZero())
+	assert.False(t, Counts{Successes: 1}.IsZero())
+	assert.False(t, Counts{Failures: 1}.IsZero())
+	assert.False(t, Counts{Flakes: 1}.IsZero())
+	assert.False(t, Counts{Runs: 1}.IsZero())
 }
 
 func TestCompareCumulative(t *testing.T) {
