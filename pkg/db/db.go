@@ -154,15 +154,12 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ProwGARawTestDatum{},
 		&models.VariantCombination{},
 		&models.ProwJob{},
-		&models.ProwJobRun{},
 		&models.ProwJobRunIDMap{},
-		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
-		&models.ProwJobRunProwPullRequest{},
 		&models.SchemaHash{},
 		&models.PullRequestComment{},
 		&models.JiraIncident{},
@@ -189,6 +186,21 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	for _, model := range modelsToMigrate {
 		if err := d.DB.AutoMigrate(model); err != nil {
 			return err
+		}
+	}
+
+	// Temporary, to be removed post migration
+	initMissingModels := []any{
+		&models.ProwJobRun{},
+		&models.ProwJobRunProwPullRequest{},
+		&models.ProwJobRunAnnotation{},
+	}
+	for _, model := range initMissingModels {
+		if d.DB.Migrator().HasTable(model) {
+			continue
+		}
+		if err := d.DB.Migrator().CreateTable(model); err != nil {
+			return fmt.Errorf("creating missing table for %T: %w", model, err)
 		}
 	}
 
