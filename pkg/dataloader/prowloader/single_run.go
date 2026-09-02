@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/civil"
@@ -59,6 +60,9 @@ type SingleRunImportError struct {
 	Kind SingleRunImportErrorKind
 	Err  error
 }
+
+// ErrDependencyNotConfigured indicates a required single-run import dependency is absent.
+var ErrDependencyNotConfigured = errors.New("not configured")
 
 func (e *SingleRunImportError) Error() string { return e.Err.Error() }
 func (e *SingleRunImportError) Unwrap() error { return e.Err }
@@ -196,8 +200,7 @@ func (i *SingleRunImporter) Import(ctx context.Context, request SingleRunImportR
 		return nil, classifyImportError(SingleRunArtifactFailure, "loading authoritative job labels", err)
 	}
 
-	pl := &ProwLoader{syntheticTestManager: i.syntheticManager}
-	tests, failures, flakes, overall, err := pl.prowJobRunTestsFromSuites(&pj, uint(runID), definition.ID, definition.Release, suites)
+	tests, failures, flakes, overall, err := prowJobRunTestsFromSuites(i.syntheticManager, &pj, uint(runID), definition.ID, definition.Release, suites)
 	if err != nil {
 		return nil, importError(SingleRunInvalidProwJob, "converting JUnit results: %v", err)
 	}
@@ -366,8 +369,8 @@ func parseProwJobURLLocation(rawURL, runID string) (string, string, error) {
 // ProwJobRunExists reports whether id is present in the authoritative
 // partition-key map populated for every committed Prow job run.
 func ProwJobRunExists(ctx context.Context, dbc *db.DB, id uint) (bool, error) {
-	if dbc == nil {
-		return false, fmt.Errorf("PostgreSQL is not configured")
+	if dbc == nil || dbc.DB == nil {
+		return false, fmt.Errorf("PostgreSQL is %w", ErrDependencyNotConfigured)
 	}
 	var exists bool
 	err := dbc.DB.WithContext(ctx).Raw(`
@@ -381,14 +384,14 @@ func ProwJobRunExists(ctx context.Context, dbc *db.DB, id uint) (bool, error) {
 
 func (i *SingleRunImporter) readGCSArtifact(ctx context.Context, bucket, object string) ([]byte, error) {
 	if i.gcsClient == nil {
-		return nil, fmt.Errorf("storage client is not configured")
+		return nil, fmt.Errorf("storage client is %w", ErrDependencyNotConfigured)
 	}
 	return gcs.NewGCSJobRun(i.gcsClient.Bucket(bucket), "").GetContent(ctx, object)
 }
 
 func (i *SingleRunImporter) loadGCSJUnit(ctx context.Context, bucket, prefix string) (*junit.TestSuites, []string, error) {
 	if i.gcsClient == nil {
-		return nil, nil, fmt.Errorf("storage client is not configured")
+		return nil, nil, fmt.Errorf("storage client is %w", ErrDependencyNotConfigured)
 	}
 	jobRun := gcs.NewGCSJobRun(i.gcsClient.Bucket(bucket), prefix+"/")
 	paths, err := jobRun.FindAllMatches(ctx, gcs.GlobJunitXML)
@@ -401,8 +404,8 @@ func (i *SingleRunImporter) loadGCSJUnit(ctx context.Context, bucket, prefix str
 }
 
 func (i *SingleRunImporter) findDefinition(ctx context.Context, jobName string) (*models.ProwJob, error) {
-	if i.dbc == nil {
-		return nil, fmt.Errorf("PostgreSQL is not configured")
+	if i.dbc == nil || i.dbc.DB == nil {
+		return nil, fmt.Errorf("PostgreSQL is %w", ErrDependencyNotConfigured)
 	}
 	var definition models.ProwJob
 	query := i.dbc.DB.WithContext(ctx).Where("name = ?", jobName).Limit(1).Find(&definition)
@@ -443,6 +446,5 @@ func isDependencyUnavailable(err error) bool {
 	if errors.As(err, &pgErr) {
 		return strings.HasPrefix(pgErr.Code, "08") || strings.HasPrefix(pgErr.Code, "53") || pgErr.Code == "57P01"
 	}
-	message := strings.ToLower(err.Error())
-	return strings.Contains(message, "not configured") || strings.Contains(message, "connection refused")
+	return errors.Is(err, ErrDependencyNotConfigured) || errors.Is(err, syscall.ECONNREFUSED)
 }

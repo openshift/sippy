@@ -1089,7 +1089,7 @@ func gatherLabelsBatch(ctx context.Context, bqClient *bqcachedclient.Client, bui
 // label set; query or iteration failures are returned to the caller.
 func GatherLabelsForRunFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, buildID string, startDate civil.Date) ([]string, error) {
 	if bqClient == nil {
-		return nil, fmt.Errorf("BigQuery labels source is not configured")
+		return nil, fmt.Errorf("BigQuery labels source is %w", ErrDependencyNotConfigured)
 	}
 	dataset := os.Getenv(LabelsDatasetEnv)
 	if dataset == "" {
@@ -1148,6 +1148,10 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 }
 
 func (pl *ProwLoader) prowJobRunTestsFromSuites(pj *prow.ProwJob, id, prowJobID uint, prowJobRelease string, suites *junit.TestSuites) ([]pgwriter.TestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
+	return prowJobRunTestsFromSuites(pl.syntheticTestManager, pj, id, prowJobID, prowJobRelease, suites)
+}
+
+func prowJobRunTestsFromSuites(syntheticTestManager synthetictests.SyntheticTestManager, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease string, suites *junit.TestSuites) ([]pgwriter.TestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
 	testCases := make(map[testCaseKey]*types.TestCaseEntry)
 	for _, suite := range suites.Suites {
 		if !db.IsSuiteImportable(suite.Name) {
@@ -1158,7 +1162,7 @@ func (pl *ProwLoader) prowJobRunTestsFromSuites(pj *prow.ProwJob, id, prowJobID 
 	}
 
 	oldTestCases := slices.Collect(maps.Values(testCases))
-	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, oldTestCases, pl.syntheticTestManager)
+	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, oldTestCases, syntheticTestManager)
 
 	if !db.IsSuiteImportable(syntheticSuite.Name) {
 		return nil, 0, 0, "", fmt.Errorf("synthetic suite %q is missing from the importable list", syntheticSuite.Name)

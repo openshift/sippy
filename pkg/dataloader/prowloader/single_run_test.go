@@ -5,27 +5,44 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"reflect"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
+	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/pgwriter"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/synthetictests"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 var singleRunNow = time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
+
+type recordingSyntheticTestManager struct {
+	called bool
+}
+
+func (m *recordingSyntheticTestManager) CreateSyntheticTests(result *sippyprocessingv1.RawJobRunResult) *junit.TestSuite {
+	m.called = true
+	result.OverallResult = sippyprocessingv1.JobSucceeded
+	return &junit.TestSuite{Name: testidentification.SippySuiteName}
+}
 
 func validSingleRunProw(start time.Time, completion *time.Time) prow.ProwJob {
 	return prow.ProwJob{
@@ -98,6 +115,18 @@ func TestSingleRunImportRequestHasOnlyPublicContractFields(t *testing.T) {
 	assert.Equal(t, "prow_job_run_id", typ.Field(0).Tag.Get("json"))
 	assert.Equal(t, "bucket", typ.Field(1).Tag.Get("json"))
 	assert.Equal(t, "job_prefix", typ.Field(2).Tag.Get("json"))
+}
+
+func TestSingleRunUsesExplicitSyntheticTestManager(t *testing.T) {
+	completion := singleRunNow.Add(-time.Hour)
+	i, _, _ := testSingleRunImporter(t, validSingleRunProw(singleRunNow.Add(-2*time.Hour), &completion))
+	manager := &recordingSyntheticTestManager{}
+	i.syntheticManager = manager
+
+	result, err := i.Import(context.Background(), validRequest())
+	require.NoError(t, err)
+	assert.True(t, manager.called)
+	assert.Equal(t, SingleRunStatusImported, result.Status)
 }
 
 func TestSingleRunProwJobArtifactReadClassification(t *testing.T) {
@@ -463,10 +492,70 @@ func TestValidateSingleRunRequestBucketRestriction(t *testing.T) {
 }
 
 func TestSingleRunDependencyErrorClassification(t *testing.T) {
-	err := classifyImportError(SingleRunArtifactFailure, "reading artifact", &googleapi.Error{Code: 429, Message: "throttled"})
-	assertImportKind(t, err, SingleRunDependencyFailure)
-	err = classifyImportError(SingleRunArtifactFailure, "reading artifact", errors.New("object missing"))
-	assertImportKind(t, err, SingleRunArtifactFailure)
+	tests := []struct {
+		name string
+		err  error
+		want SingleRunImportErrorKind
+	}{
+		{name: "configured sentinel", err: fmt.Errorf("storage client: %w", ErrDependencyNotConfigured), want: SingleRunDependencyFailure},
+		{name: "connection refused errno", err: fmt.Errorf("dialing PostgreSQL: %w", syscall.ECONNREFUSED), want: SingleRunDependencyFailure},
+		{name: "context deadline", err: context.DeadlineExceeded, want: SingleRunDependencyFailure},
+		{name: "network timeout", err: &net.DNSError{IsTimeout: true}, want: SingleRunDependencyFailure},
+		{name: "Google API unavailable", err: &googleapi.Error{Code: 429, Message: "throttled"}, want: SingleRunDependencyFailure},
+		{name: "gRPC unavailable", err: status.Error(codes.Unavailable, "unavailable"), want: SingleRunDependencyFailure},
+		{name: "PostgreSQL connection status", err: &pgconn.PgError{Code: "08006"}, want: SingleRunDependencyFailure},
+		{name: "matching configuration text is not typed", err: errors.New("storage client is not configured"), want: SingleRunArtifactFailure},
+		{name: "matching connection text is not typed", err: errors.New("dial tcp: connection refused"), want: SingleRunArtifactFailure},
+		{name: "ordinary artifact failure", err: errors.New("object missing"), want: SingleRunArtifactFailure},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := classifyImportError(SingleRunArtifactFailure, "reading artifact", tc.err)
+			assertImportKind(t, err, tc.want)
+		})
+	}
+}
+
+func TestSingleRunUnconfiguredDependenciesUseSentinel(t *testing.T) {
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{name: "Prow job run existence database", call: func() error {
+			_, err := ProwJobRunExists(context.Background(), nil, 123)
+			return err
+		}},
+		{name: "Prow job run existence database handle", call: func() error {
+			_, err := ProwJobRunExists(context.Background(), &db.DB{}, 123)
+			return err
+		}},
+		{name: "GCS artifact client", call: func() error {
+			_, err := (&SingleRunImporter{}).readGCSArtifact(context.Background(), "bucket", "object")
+			return err
+		}},
+		{name: "GCS JUnit client", call: func() error {
+			_, _, err := (&SingleRunImporter{}).loadGCSJUnit(context.Background(), "bucket", "prefix")
+			return err
+		}},
+		{name: "ProwJob definition database", call: func() error {
+			_, err := (&SingleRunImporter{}).findDefinition(context.Background(), "job")
+			return err
+		}},
+		{name: "ProwJob definition database handle", call: func() error {
+			_, err := (&SingleRunImporter{dbc: &db.DB{}}).findDefinition(context.Background(), "job")
+			return err
+		}},
+		{name: "BigQuery labels client", call: func() error {
+			_, err := GatherLabelsForRunFromBQ(context.Background(), nil, "123", civil.Date{})
+			return err
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.call()
+			require.ErrorIs(t, err, ErrDependencyNotConfigured)
+		})
+	}
 }
 
 func assertImportKind(t *testing.T, err error, want SingleRunImportErrorKind) {
