@@ -133,17 +133,17 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 		var g errgroup.Group
 
 		g.Go(func() error {
-			return enrichJobRunsWithTestNames(dbc, jobsResult, release)
+			return enrichJobRunsWithTestNames(dbc, jobsResult, release, lookback, reportEnd)
 		})
 
 		if !needs.needsPRJoin() {
 			g.Go(func() error {
-				return enrichJobRunsWithPRData(dbc, jobsResult, release)
+				return enrichJobRunsWithPRData(dbc, jobsResult, release, lookback, reportEnd)
 			})
 		}
 
 		g.Go(func() error {
-			return enrichJobRunsWithAnnotations(dbc, jobsResult, release)
+			return enrichJobRunsWithAnnotations(dbc, jobsResult, release, lookback, reportEnd)
 		})
 
 		if err := g.Wait(); err != nil {
@@ -326,25 +326,30 @@ func testNameFilterSQL(item filter.FilterItem, lookback time.Time) (string, []an
 	return filter.WrapNot(sql, item.Not), args, nil
 }
 
-func jobRunPartitionKeyPredicate(alias string, results []apitype.JobRun, release string) (string, []any) {
+// jobRunPartitionKeyPredicate identifies page rows while giving the planner explicit partition bounds.
+func jobRunPartitionKeyPredicate(alias string, results []apitype.JobRun, release string, lookback, reportEnd time.Time) (string, []any) {
 	placeholders := make([]string, len(results))
-	args := make([]any, 0, len(results)*3)
+	args := make([]any, 0, len(results)*3+3)
 	for i := range results {
 		placeholders[i] = "(?, ?, ?)"
 		args = append(args, results[i].ID, release, results[i].Timestamp)
 	}
-	return fmt.Sprintf("(%s.prow_job_run_id, %s.prow_job_run_release, %s.prow_job_run_timestamp) IN (%s)",
-		alias, alias, alias, strings.Join(placeholders, ", ")), args
+	args = append(args, release, lookback, reportEnd)
+	return fmt.Sprintf(`(%s.prow_job_run_id, %s.prow_job_run_release, %s.prow_job_run_timestamp) IN (%s)
+		AND %s.prow_job_run_release = ?
+		AND %s.prow_job_run_timestamp >= ?
+		AND %s.prow_job_run_timestamp < ?`,
+		alias, alias, alias, strings.Join(placeholders, ", "), alias, alias, alias), args
 }
 
-func enrichJobRunsWithTestNames(dbc *db.DB, results []apitype.JobRun, release string) error {
+func enrichJobRunsWithTestNames(dbc *db.DB, results []apitype.JobRun, release string, lookback, reportEnd time.Time) error {
 	type testNameResult struct {
 		ProwJobRunID    int            `gorm:"column:prow_job_run_id"`
 		FailedTestNames pq.StringArray `gorm:"column:failed_test_names;type:text[]"`
 		FlakedTestNames pq.StringArray `gorm:"column:flaked_test_names;type:text[]"`
 	}
 	var nameResults []testNameResult
-	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("pjrt", results, release)
+	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("pjrt", results, release, lookback, reportEnd)
 	nameSQL := fmt.Sprintf(`SELECT pjrt.prow_job_run_id,
 			array_agg(t.name) FILTER (WHERE pjrt.status = %d) AS failed_test_names,
 			array_agg(t.name) FILTER (WHERE pjrt.status = %d) AS flaked_test_names
@@ -371,7 +376,7 @@ func enrichJobRunsWithTestNames(dbc *db.DB, results []apitype.JobRun, release st
 	return nil
 }
 
-func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, release string) error {
+func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, release string, lookback, reportEnd time.Time) error {
 	type prResult struct {
 		ID                int    `gorm:"column:id"`
 		PullRequestLink   string `gorm:"column:pull_request_link"`
@@ -381,7 +386,7 @@ func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, release strin
 		PullRequestAuthor string `gorm:"column:pull_request_author"`
 	}
 	var prResults []prResult
-	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("jrpp", results, release)
+	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("jrpp", results, release, lookback, reportEnd)
 	q := dbc.DB.Table("prow_job_run_prow_pull_requests jrpp").
 		Select(`DISTINCT ON(jrpp.prow_job_run_id, jrpp.prow_job_run_release, jrpp.prow_job_run_timestamp)
 			jrpp.prow_job_run_id AS id,
@@ -414,9 +419,9 @@ func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, release strin
 	return nil
 }
 
-func enrichJobRunsWithAnnotations(dbc *db.DB, results []apitype.JobRun, release string) error {
+func enrichJobRunsWithAnnotations(dbc *db.DB, results []apitype.JobRun, release string, lookback, reportEnd time.Time) error {
 	var annotations []models.ProwJobRunAnnotation
-	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("prow_job_run_annotations", results, release)
+	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("prow_job_run_annotations", results, release, lookback, reportEnd)
 	annotationQuery := dbc.DB.Where(keyPredicate, keyArgs...)
 	if err := annotationQuery.Find(&annotations).Error; err != nil {
 		return err

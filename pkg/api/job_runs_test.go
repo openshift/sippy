@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -11,6 +12,28 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestJobRunPartitionKeyPredicate(t *testing.T) {
+	lookback := time.Date(2026, time.June, 1, 0, 0, 0, 0, time.UTC)
+	reportEnd := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
+	firstTimestamp := time.Date(2026, time.August, 30, 12, 0, 0, 0, time.UTC)
+	secondTimestamp := time.Date(2026, time.August, 31, 12, 0, 0, 0, time.UTC)
+
+	predicate, args := jobRunPartitionKeyPredicate("runs", []apitype.JobRun{
+		{ID: 101, Timestamp: firstTimestamp},
+		{ID: 202, Timestamp: secondTimestamp},
+	}, "5.0", lookback, reportEnd)
+
+	assert.Equal(t, `(runs.prow_job_run_id, runs.prow_job_run_release, runs.prow_job_run_timestamp) IN ((?, ?, ?), (?, ?, ?))
+		AND runs.prow_job_run_release = ?
+		AND runs.prow_job_run_timestamp >= ?
+		AND runs.prow_job_run_timestamp < ?`, predicate)
+	assert.Equal(t, []any{
+		101, "5.0", firstTimestamp,
+		202, "5.0", secondTimestamp,
+		"5.0", lookback, reportEnd,
+	}, args)
+}
 
 func TestRunJobAnalysis(t *testing.T) {
 
