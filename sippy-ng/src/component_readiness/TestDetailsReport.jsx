@@ -48,7 +48,9 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
 import TriagedTestsPanel from './TriagedTestsPanel'
-import TriageSymptoms from './TriageSymptoms'
+import TriageSymptomLabels, {
+  aggregateLabelSummaries,
+} from './TriageSymptomLabels'
 import UpsertTriageModal from './UpsertTriageModal'
 
 // Big query requests take a while so give the user the option to
@@ -113,7 +115,7 @@ export default function TestDetailsReport(props) {
   const [regressionId, setRegressionId] = React.useState(0)
   const [versions, setVersions] = React.useState({})
   const [triageEntries, setTriageEntries] = React.useState([])
-  const [symptomSummaries, setSymptomSummaries] = React.useState([])
+  const [labelSummaries, setLabelSummaries] = React.useState([])
   const releases = useContext(ReleasesContext)
   const hasSetContextRef = React.useRef(false)
 
@@ -213,49 +215,32 @@ export default function TestDetailsReport(props) {
 
   useEffect(() => {
     if (!data.analyses || !data.analyses[0]?.job_stats) {
-      setSymptomSummaries([])
+      setLabelSummaries([])
       return
     }
-    const counts = {}
-    let totalFailedRuns = 0
+    const failedRuns = []
     for (const js of data.analyses[0].job_stats) {
       for (const run of js.sample_job_run_stats || []) {
         if (run.test_stats?.failure_count > 0) {
-          totalFailedRuns++
-          for (const sid of run.job_symptoms || []) {
-            counts[sid] = (counts[sid] || 0) + 1
-          }
+          failedRuns.push(run)
         }
       }
     }
-    const symptomIds = Object.keys(counts)
-    if (symptomIds.length === 0) {
-      setSymptomSummaries([])
+    if (!failedRuns.some((run) => (run.job_labels || []).length > 0)) {
+      setLabelSummaries([])
       return
     }
     const controller = new AbortController()
-    fetch(import.meta.env.VITE_API_URL + '/api/jobs/symptoms', {
+    fetch(import.meta.env.VITE_API_URL + '/api/jobs/labels', {
       signal: controller.signal,
     })
       .then((r) => r.json())
-      .then((allSymptoms) => {
-        const lookup = {}
-        for (const s of allSymptoms) {
-          lookup[s.id] = s.summary
-        }
-        const total = totalFailedRuns || 1
-        const summaries = symptomIds
-          .map((id) => ({
-            symptom: { id, summary: lookup[id] || id },
-            job_run_count: counts[id],
-            percentage: (counts[id] / total) * 100,
-          }))
-          .sort((a, b) => b.job_run_count - a.job_run_count)
-        setSymptomSummaries(summaries)
-      })
+      .then((labels) =>
+        setLabelSummaries(aggregateLabelSummaries(failedRuns, labels))
+      )
       .catch((err) => {
         if (err.name !== 'AbortError') {
-          setSymptomSummaries([])
+          setLabelSummaries([])
         }
       })
     return () => controller.abort()
@@ -648,7 +633,10 @@ View the [test details report|${document.location.href}] for additional context.
           </TableRow>
         </TableBody>
       </Table>
-      <TriageSymptoms symptomSummaries={symptomSummaries} />
+      <TriageSymptomLabels
+        labelSummaries={labelSummaries}
+        release={sampleRelease}
+      />
       {isBaseOverride ? (
         <Fragment>
           <Tabs
