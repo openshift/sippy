@@ -819,13 +819,31 @@ func seedJobRunsAndResults(dbc *db.DB) (int, int, error) {
 	return totalRuns, totalResults, nil
 }
 
+func createProwJobRun(dbc *db.DB, run *models.ProwJobRun) error {
+	return dbc.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(run).Error; err != nil {
+			return fmt.Errorf("creating ProwJobRun: %w", err)
+		}
+
+		idMap := models.ProwJobRunIDMap{
+			ID:             run.ID,
+			ProwJobRelease: run.ProwJobRelease,
+			Timestamp:      run.Timestamp,
+		}
+		if err := tx.Create(&idMap).Error; err != nil {
+			return fmt.Errorf("creating ProwJobRunIDMap for run %d: %w", run.ID, err)
+		}
+		return nil
+	})
+}
+
 func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrKey jobReleaseKey, runCount int, testIDsByName map[string]uint) (int, int, error) {
 	start, end := releaseTimeWindow(jrKey.release)
 	window := end.Sub(start)
 	infraRuns := 2
 	totalRuns := runCount + infraRuns
 	interval := window / time.Duration(totalRuns)
-	runIDs := make([]uint, totalRuns)
+	runKeys := make([]models.ProwJobRunIDMap, totalRuns)
 	for i := range totalRuns {
 		timestamp := start.Add(time.Duration(i) * interval)
 		run := models.ProwJobRun{
@@ -835,10 +853,14 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 			Timestamp:      timestamp,
 			Duration:       3 * time.Hour,
 		}
-		if err := dbc.DB.Create(&run).Error; err != nil {
+		if err := createProwJobRun(dbc, &run); err != nil {
 			return 0, 0, fmt.Errorf("failed to create ProwJobRun: %w", err)
 		}
-		runIDs[i] = run.ID
+		runKeys[i] = models.ProwJobRunIDMap{
+			ID:             run.ID,
+			ProwJobRelease: run.ProwJobRelease,
+			Timestamp:      run.Timestamp,
+		}
 	}
 
 	runsWithFailure := map[uint]bool{}
@@ -868,19 +890,19 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 				status = 13 // flake (counts as success too)
 			default:
 				status = 12 // failure
-				runsWithFailure[runIDs[i]] = true
+				runsWithFailure[runKeys[i].ID] = true
 			}
 
 			result := models.ProwJobRunTest{
-				ProwJobRunID:        runIDs[i],
+				ProwJobRunID:        runKeys[i].ID,
 				ProwJobID:           prowJob.ID,
-				ProwJobRunRelease:   prowJob.Release,
-				ProwJobRunTimestamp: start.Add(time.Duration(i) * interval),
+				ProwJobRunRelease:   runKeys[i].ProwJobRelease,
+				ProwJobRunTimestamp: runKeys[i].Timestamp,
 				TestID:              testID,
 				SuiteID:             &suite.ID,
 				Status:              status,
 				Duration:            5.0,
-				CreatedAt:           start.Add(time.Duration(i) * interval),
+				CreatedAt:           runKeys[i].Timestamp,
 			}
 			if err := dbc.DB.Create(&result).Error; err != nil {
 				return 0, 0, fmt.Errorf("failed to create ProwJobRunTest: %w", err)
@@ -890,14 +912,14 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 	}
 
 	// Set OverallResult on all runs
-	for i, runID := range runIDs {
+	for i, runKey := range runKeys {
 		var overallResult v1.JobOverallResult
 		var succeeded, failed bool
 
 		if i >= runCount {
 			overallResult = v1.JobInternalInfrastructureFailure
 			failed = true
-		} else if runsWithFailure[runID] {
+		} else if runsWithFailure[runKey.ID] {
 			overallResult = v1.JobTestFailure
 			failed = true
 		} else {
@@ -916,7 +938,7 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 		}
 
 		if err := dbc.DB.Model(&models.ProwJobRun{}).
-			Where("id = ? AND prow_job_release = ?", runID, prowJob.Release).
+			Where("id = ? AND prow_job_release = ? AND timestamp = ?", runKey.ID, runKey.ProwJobRelease, runKey.Timestamp).
 			Updates(updates).Error; err != nil {
 			return 0, 0, fmt.Errorf("failed to update ProwJobRun result: %w", err)
 		}
@@ -929,16 +951,19 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 				SELECT COUNT(*) FROM prow_job_run_tests
 				WHERE prow_job_run_id = prow_job_runs.id
 				AND prow_job_run_release = prow_job_runs.prow_job_release
+				AND prow_job_run_timestamp = prow_job_runs.timestamp
 				AND status = ?
 			), 0),
 			test_flakes = COALESCE((
 				SELECT COUNT(*) FROM prow_job_run_tests
 				WHERE prow_job_run_id = prow_job_runs.id
 				AND prow_job_run_release = prow_job_runs.prow_job_release
+				AND prow_job_run_timestamp = prow_job_runs.timestamp
 				AND status = ?
 			), 0)
-		WHERE prow_job_id = ? AND prow_job_release = ?`,
-		int(v1.TestStatusFailure), int(v1.TestStatusFlake), prowJob.ID, prowJob.Release).Error; err != nil {
+		WHERE prow_job_id = ? AND prow_job_release = ?
+			AND timestamp >= ? AND timestamp < ?`,
+		int(v1.TestStatusFailure), int(v1.TestStatusFlake), prowJob.ID, prowJob.Release, start, end).Error; err != nil {
 		return 0, 0, fmt.Errorf("updating test counts for prow job %s: %w", prowJob.Name, err)
 	}
 
@@ -1162,7 +1187,7 @@ func seedPresubmitData(dbc *db.DB) error {
 				OverallResult:  v1.JobTestFailure,
 				Failed:         true,
 			}
-			if err := dbc.DB.Create(&run).Error; err != nil {
+			if err := createProwJobRun(dbc, &run); err != nil {
 				return fmt.Errorf("failed to create ProwJobRun: %w", err)
 			}
 			runs = append(runs, runInfo{run: run, prIdx: jobIdx})
@@ -1601,16 +1626,21 @@ func seedRegressionJobRuns(dbc *db.DB) error {
 			Labels       pq.StringArray `gorm:"column:labels;type:text[]"`
 		}
 		var failedRuns []failedRunInfo
+		start, end := releaseTimeWindow(reg.Release)
 		if err := dbc.DB.Raw(`
 			SELECT DISTINCT pjr.id AS prow_job_run_id, pj.name AS prow_job_name,
 			       pjr.timestamp, pjr.labels
 			FROM prow_job_run_tests pjrt
 			JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
+			 AND pjr.prow_job_release = pjrt.prow_job_run_release
+			 AND pjr.timestamp = pjrt.prow_job_run_timestamp
 			JOIN prow_jobs pj ON pj.id = pjrt.prow_job_id
-			WHERE pjrt.test_id = ? AND pjrt.status = ? AND pj.release = ?
+			WHERE pjrt.test_id = ? AND pjrt.status = ?
+			 AND pjrt.prow_job_run_release = ?
+			 AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
 			ORDER BY pjr.id
 			LIMIT 10
-		`, test.ID, int(v1.TestStatusFailure), reg.Release).Scan(&failedRuns).Error; err != nil {
+		`, test.ID, int(v1.TestStatusFailure), reg.Release, start, end).Scan(&failedRuns).Error; err != nil {
 			return fmt.Errorf("querying failed runs for %q: %w", reg.TestName, err)
 		}
 
@@ -1795,9 +1825,10 @@ func seedBugsAndTriages(dbc *db.DB) error {
 func seedSymptomJobRunLinkage(dbc *db.DB) error {
 	// Apply labels to some failed job runs (for label display on job runs)
 	var jobRuns []models.ProwJobRun
+	start, end := releaseTimeWindow("4.22")
 	if err := dbc.DB.
 		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
-		Where("prow_jobs.release = ? AND prow_job_runs.failed = true", "4.22").
+		Where("prow_job_runs.prow_job_release = ? AND prow_job_runs.timestamp >= ? AND prow_job_runs.timestamp < ? AND prow_job_runs.failed = true", "4.22", start, end).
 		Order("prow_job_runs.id").
 		Limit(4).
 		Find(&jobRuns).Error; err != nil {
@@ -1815,7 +1846,8 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 			break
 		}
 		merged := sets.New[string](jobRuns[idx].Labels...).Insert(labels...)
-		if err := dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", jobRuns[idx].ID).
+		if err := dbc.DB.Model(&models.ProwJobRun{}).
+			Where("id = ? AND prow_job_release = ? AND timestamp = ?", jobRuns[idx].ID, jobRuns[idx].ProwJobRelease, jobRuns[idx].Timestamp).
 			Update("labels", pq.StringArray(sets.List(merged))).Error; err != nil {
 			return fmt.Errorf("failed to update job run labels: %w", err)
 		}
@@ -1921,10 +1953,11 @@ func seedTestOutputsForPeriodicJobs(dbc *db.DB) error {
 	created := 0
 	for _, spec := range specs {
 		var testResults []models.ProwJobRunTest
+		start, end := releaseTimeWindow(spec.release)
 		if err := dbc.DB.
 			Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_run_tests.prow_job_id").
-			Where("prow_job_run_tests.status = ? AND prow_job_run_tests.test_id = (SELECT id FROM tests WHERE name = ?) AND prow_jobs.release = ? AND prow_jobs.kind = ?",
-				int(v1.TestStatusFailure), spec.testName, spec.release, "periodic").
+			Where("prow_job_run_tests.status = ? AND prow_job_run_tests.test_id = (SELECT id FROM tests WHERE name = ?) AND prow_job_run_tests.prow_job_run_release = ? AND prow_job_run_tests.prow_job_run_timestamp >= ? AND prow_job_run_tests.prow_job_run_timestamp < ? AND prow_jobs.kind = ?",
+				int(v1.TestStatusFailure), spec.testName, spec.release, start, end, "periodic").
 			Order("prow_job_run_tests.id").
 			Limit(2).
 			Find(&testResults).Error; err != nil {

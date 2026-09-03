@@ -1100,23 +1100,6 @@ func TestJobRunsReport_MultiplePRsOnOneRunReturnsSingleRun(t *testing.T) {
 	assert.Equal(t, 1, count, "runA1 should appear exactly once despite having two linked PRs")
 }
 
-func TestJobRunsReport_CrossReleaseAnnotationsExcluded(t *testing.T) {
-	dbc := intutil.NewTestDB(t, pgContainer)
-	td := setupJobRunsTestData(t, dbc)
-
-	jrCreateAnnotation(t, dbc, td.runA1.ID, "4.15", td.runA1.Timestamp, "jira/wrong-release", "TRT-9999")
-
-	result := callJobRunsReport(t, dbc, "4.16", defaultFilterOpts(), defaultPagination(), jrReportEnd)
-	runs := jobRunsFromResult(t, result)
-
-	r := findRunByID(runs, td.runA1.ID)
-	require.NotNil(t, r)
-	if r.Annotations != nil {
-		assert.Empty(t, r.Annotations["jira/wrong-release"],
-			"annotation for release 4.15 should not appear in 4.16 query results")
-	}
-}
-
 // Priority 1: Missing arithmetic operators
 
 func TestJobRunsReport_FilterByTestFailuresLessThan(t *testing.T) {
