@@ -16,7 +16,7 @@ import AskSippyButton from '../chat/AskSippyButton'
 import CompSeverityIcon from './CompSeverityIcon'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext, useState } from 'react'
+import React, { Fragment, useContext } from 'react'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -24,7 +24,9 @@ import TableRow from '@mui/material/TableRow'
 import TriageAuditLogsModal from './TriageAuditLogsModal'
 import TriagedRegressionTestList from './TriagedRegressionTestList'
 import TriagePotentialMatches from './TriagePotentialMatches'
-import TriageSymptoms from './TriageSymptoms'
+import TriageSymptomLabels, {
+  aggregateLabelSummaries,
+} from './TriageSymptomLabels'
 import UpsertTriageModal from './UpsertTriageModal'
 
 export default function Triage({ id }) {
@@ -35,7 +37,8 @@ export default function Triage({ id }) {
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')
   const [isUpdated, setIsUpdated] = React.useState(false)
-  const [symptomFilter, setSymptomFilter] = useState(null)
+  const [labelFilter, setLabelFilter] = React.useState(null)
+  const [labelSummaries, setLabelSummaries] = React.useState([])
   const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
@@ -44,7 +47,7 @@ export default function Triage({ id }) {
   // page is loaded from the context of one of those component_reports, then the regressions from the other view will not
   // load properly. This is a better result than not being able to formulate any URLs when links aren't provided.
   // TODO(sgoeddel): Make it so links are *always* provided, and remove this (https://issues.redhat.com/browse/TRT-2356)
-  const { view } = useContext(CompReadyVarsContext)
+  const { sampleRelease, view } = useContext(CompReadyVarsContext)
 
   React.useEffect(() => {
     setIsLoaded(false)
@@ -53,14 +56,14 @@ export default function Triage({ id }) {
     let triageFetch
     // triage entries will only be available when there is a postgres connection
     if (localDBEnabled) {
-      triageFetch = fetch(
-        `${getTriagesAPIUrl(id)}?expand=regressions,symptoms`
-      ).then((response) => {
-        if (response.status !== 200) {
-          throw new Error('API server returned ' + response.status)
+      triageFetch = fetch(`${getTriagesAPIUrl(id)}?expand=regressions`).then(
+        (response) => {
+          if (response.status !== 200) {
+            throw new Error('API server returned ' + response.status)
+          }
+          return response.json()
         }
-        return response.json()
-      })
+      )
     } else {
       triageFetch = Promise.resolve({})
     }
@@ -75,6 +78,40 @@ export default function Triage({ id }) {
         setMessage(error.toString())
       })
   }, [isUpdated, localDBEnabled, id])
+
+  React.useEffect(() => {
+    setLabelFilter(null)
+    setLabelSummaries([])
+
+    const regressions = triage.regressions || []
+    const jobRuns = regressions.flatMap((regression) =>
+      (regression.job_runs || []).map((run) => ({
+        ...run,
+        regression_id: regression.id,
+      }))
+    )
+    if (!jobRuns.some((run) => (run.job_labels || []).length > 0)) {
+      return
+    }
+
+    const controller = new AbortController()
+    fetch(import.meta.env.VITE_API_URL + '/api/jobs/labels', {
+      signal: controller.signal,
+    })
+      .then((response) => response.json())
+      .then((labels) =>
+        setLabelSummaries(
+          aggregateLabelSummaries(jobRuns, labels, regressions.length)
+        )
+      )
+      .catch((error) => {
+        if (error.name !== 'AbortError') {
+          setLabelSummaries([])
+        }
+      })
+
+    return () => controller.abort()
+  }, [triage])
 
   // Update page context for chat
   React.useEffect(() => {
@@ -355,21 +392,21 @@ export default function Triage({ id }) {
           </TableRow>
         </TableBody>
       </Table>
-      <TriageSymptoms
-        symptomSummaries={triage.symptom_summaries}
-        symptomFilter={symptomFilter}
-        setSymptomFilter={setSymptomFilter}
+      <TriageSymptomLabels
+        labelFilter={labelFilter}
+        labelSummaries={labelSummaries}
+        release={sampleRelease}
+        setLabelFilter={setLabelFilter}
       />
       <h2>Included Tests</h2>
-      {symptomFilter && (
+      {labelFilter && (
         <Box sx={{ mb: 1 }}>
           <Chip
             label={`Filtered by: ${
-              triage.symptom_summaries?.find(
-                (ss) => ss.symptom.id === symptomFilter
-              )?.symptom.summary || symptomFilter
+              labelSummaries.find((summary) => summary.label.id === labelFilter)
+                ?.label.label_title || labelFilter
             }`}
-            onDelete={() => setSymptomFilter(null)}
+            onDelete={() => setLabelFilter(null)}
             color="primary"
             variant="outlined"
           />
@@ -377,9 +414,9 @@ export default function Triage({ id }) {
       )}
       <TriagedRegressionTestList
         allRegressedTests={triage.regressed_tests}
+        labelFilter={labelFilter}
+        labelSummaries={labelSummaries}
         regressions={triage.regressions}
-        symptomFilter={symptomFilter}
-        symptomSummaries={triage.symptom_summaries}
       />
     </Fragment>
   )
