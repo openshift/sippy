@@ -128,3 +128,7 @@ releases:
     synthetic: true
     regexp:
       - "^periodic-ci-openshift-hypershift-.*-periodics-hcm-.*"
+  quay-3.18:
+    synthetic: true
+    jobs:
+      periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-3-18-nightly-4-22: true
