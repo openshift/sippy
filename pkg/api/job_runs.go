@@ -76,7 +76,15 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 
 	addPRJoin := func(q *gorm.DB) *gorm.DB {
 		return q.
-			Joins(`LEFT JOIN (SELECT DISTINCT ON(prow_job_run_id) prow_job_run_id, prow_pull_request_id FROM prow_job_run_prow_pull_requests WHERE prow_job_run_release = ? ORDER BY prow_job_run_id, prow_pull_request_id DESC) jrpp ON jrpp.prow_job_run_id = prow_job_runs.id`, release).
+			Joins(`LEFT JOIN (
+				SELECT DISTINCT ON(prow_job_run_id, prow_job_run_release, prow_job_run_timestamp)
+					prow_job_run_id, prow_job_run_release, prow_job_run_timestamp, prow_pull_request_id
+				FROM prow_job_run_prow_pull_requests
+				WHERE prow_job_run_release = ? AND prow_job_run_timestamp >= ? AND prow_job_run_timestamp < ?
+				ORDER BY prow_job_run_id, prow_job_run_release, prow_job_run_timestamp, prow_pull_request_id DESC
+			) jrpp ON jrpp.prow_job_run_id = prow_job_runs.id
+				AND jrpp.prow_job_run_release = prow_job_runs.prow_job_release
+				AND jrpp.prow_job_run_timestamp = prow_job_runs.timestamp`, release, lookback, reportEnd).
 			Joins("LEFT JOIN prow_pull_requests pp ON pp.id = jrpp.prow_pull_request_id")
 	}
 
@@ -122,25 +130,20 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 	// function writes to disjoint fields of jobsResult, so no locking
 	// is needed.
 	if len(jobsResult) > 0 {
-		ids := make([]int, len(jobsResult))
-		for i, jr := range jobsResult {
-			ids[i] = jr.ID
-		}
-
 		var g errgroup.Group
 
 		g.Go(func() error {
-			return enrichJobRunsWithTestNames(dbc, jobsResult, ids, release, lookback)
+			return enrichJobRunsWithTestNames(dbc, jobsResult, release, lookback, reportEnd)
 		})
 
 		if !needs.needsPRJoin() {
 			g.Go(func() error {
-				return enrichJobRunsWithPRData(dbc, jobsResult, ids, release)
+				return enrichJobRunsWithPRData(dbc, jobsResult, release, lookback, reportEnd)
 			})
 		}
 
 		g.Go(func() error {
-			return enrichJobRunsWithAnnotations(dbc, jobsResult, ids, release)
+			return enrichJobRunsWithAnnotations(dbc, jobsResult, release, lookback, reportEnd)
 		})
 
 		if err := g.Wait(); err != nil {
@@ -292,7 +295,7 @@ func testNameFilterSQL(item filter.FilterItem, lookback time.Time) (string, []an
 	}
 
 	existsBase := fmt.Sprintf(
-		"EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_run_tests.prow_job_run_release = prow_jobs.release AND prow_job_run_tests.prow_job_run_timestamp >= ?%s",
+		"EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_run_tests.prow_job_run_release = prow_job_runs.prow_job_release AND prow_job_run_tests.prow_job_run_timestamp = prow_job_runs.timestamp AND prow_job_run_tests.prow_job_run_timestamp >= ?%s",
 		statusClause,
 	)
 
@@ -323,29 +326,41 @@ func testNameFilterSQL(item filter.FilterItem, lookback time.Time) (string, []an
 	return filter.WrapNot(sql, item.Not), args, nil
 }
 
-func enrichJobRunsWithTestNames(dbc *db.DB, results []apitype.JobRun, ids []int, release string, lookback time.Time) error {
+// jobRunPartitionKeyPredicate identifies page rows while giving the planner explicit partition bounds.
+func jobRunPartitionKeyPredicate(alias string, results []apitype.JobRun, release string, lookback, reportEnd time.Time) (string, []any) {
+	placeholders := make([]string, len(results))
+	args := make([]any, 0, len(results)*3+3)
+	for i := range results {
+		placeholders[i] = "(?, ?, ?)"
+		args = append(args, results[i].ID, release, results[i].Timestamp)
+	}
+	args = append(args, release, lookback, reportEnd)
+	return fmt.Sprintf(`(%s.prow_job_run_id, %s.prow_job_run_release, %s.prow_job_run_timestamp) IN (%s)
+		AND %s.prow_job_run_release = ?
+		AND %s.prow_job_run_timestamp >= ?
+		AND %s.prow_job_run_timestamp < ?`,
+		alias, alias, alias, strings.Join(placeholders, ", "), alias, alias, alias), args
+}
+
+func enrichJobRunsWithTestNames(dbc *db.DB, results []apitype.JobRun, release string, lookback, reportEnd time.Time) error {
 	type testNameResult struct {
 		ProwJobRunID    int            `gorm:"column:prow_job_run_id"`
 		FailedTestNames pq.StringArray `gorm:"column:failed_test_names;type:text[]"`
 		FlakedTestNames pq.StringArray `gorm:"column:flaked_test_names;type:text[]"`
 	}
 	var nameResults []testNameResult
+	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("pjrt", results, release, lookback, reportEnd)
 	nameSQL := fmt.Sprintf(`SELECT pjrt.prow_job_run_id,
 			array_agg(t.name) FILTER (WHERE pjrt.status = %d) AS failed_test_names,
 			array_agg(t.name) FILTER (WHERE pjrt.status = %d) AS flaked_test_names
 		FROM prow_job_run_tests pjrt
 			JOIN tests t ON t.id = pjrt.test_id
-		WHERE pjrt.prow_job_run_id IN ?
-			AND pjrt.status IN (%d, %d)
-			AND pjrt.prow_job_run_timestamp >= ?`,
-		sippyprocessingv1.TestStatusFailure, sippyprocessingv1.TestStatusFlake, sippyprocessingv1.TestStatusFailure, sippyprocessingv1.TestStatusFlake)
-	nameArgs := []any{ids, lookback}
-	if len(release) > 0 {
-		nameSQL += ` AND pjrt.prow_job_run_release = ?`
-		nameArgs = append(nameArgs, release)
-	}
+		WHERE %s
+			AND pjrt.status IN (%d, %d)`,
+		sippyprocessingv1.TestStatusFailure, sippyprocessingv1.TestStatusFlake, keyPredicate,
+		sippyprocessingv1.TestStatusFailure, sippyprocessingv1.TestStatusFlake)
 	nameSQL += ` GROUP BY pjrt.prow_job_run_id`
-	if err := dbc.DB.Raw(nameSQL, nameArgs...).Scan(&nameResults).Error; err != nil {
+	if err := dbc.DB.Raw(nameSQL, keyArgs...).Scan(&nameResults).Error; err != nil {
 		return err
 	}
 	nameMap := make(map[int]*testNameResult, len(nameResults))
@@ -361,7 +376,7 @@ func enrichJobRunsWithTestNames(dbc *db.DB, results []apitype.JobRun, ids []int,
 	return nil
 }
 
-func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, ids []int, release string) error {
+func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, release string, lookback, reportEnd time.Time) error {
 	type prResult struct {
 		ID                int    `gorm:"column:id"`
 		PullRequestLink   string `gorm:"column:pull_request_link"`
@@ -371,8 +386,9 @@ func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, ids []int, re
 		PullRequestAuthor string `gorm:"column:pull_request_author"`
 	}
 	var prResults []prResult
+	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("jrpp", results, release, lookback, reportEnd)
 	q := dbc.DB.Table("prow_job_run_prow_pull_requests jrpp").
-		Select(`DISTINCT ON(jrpp.prow_job_run_id)
+		Select(`DISTINCT ON(jrpp.prow_job_run_id, jrpp.prow_job_run_release, jrpp.prow_job_run_timestamp)
 			jrpp.prow_job_run_id AS id,
 			pp.link AS pull_request_link,
 			pp.sha AS pull_request_sha,
@@ -380,11 +396,8 @@ func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, ids []int, re
 			pp.author AS pull_request_author,
 			pp.repo AS pull_request_repo`).
 		Joins("INNER JOIN prow_pull_requests pp ON pp.id = jrpp.prow_pull_request_id").
-		Where("jrpp.prow_job_run_id IN ?", ids).
-		Order("jrpp.prow_job_run_id, jrpp.prow_pull_request_id DESC")
-	if len(release) > 0 {
-		q = q.Where("jrpp.prow_job_run_release = ?", release)
-	}
+		Where(keyPredicate, keyArgs...).
+		Order("jrpp.prow_job_run_id, jrpp.prow_job_run_release, jrpp.prow_job_run_timestamp, jrpp.prow_pull_request_id DESC")
 	if err := q.Scan(&prResults).Error; err != nil {
 		return err
 	}
@@ -406,12 +419,10 @@ func enrichJobRunsWithPRData(dbc *db.DB, results []apitype.JobRun, ids []int, re
 	return nil
 }
 
-func enrichJobRunsWithAnnotations(dbc *db.DB, results []apitype.JobRun, ids []int, release string) error {
+func enrichJobRunsWithAnnotations(dbc *db.DB, results []apitype.JobRun, release string, lookback, reportEnd time.Time) error {
 	var annotations []models.ProwJobRunAnnotation
-	annotationQuery := dbc.DB.Where("prow_job_run_id IN ?", ids)
-	if len(release) > 0 {
-		annotationQuery = annotationQuery.Where("prow_job_run_release = ?", release)
-	}
+	keyPredicate, keyArgs := jobRunPartitionKeyPredicate("prow_job_run_annotations", results, release, lookback, reportEnd)
+	annotationQuery := dbc.DB.Where(keyPredicate, keyArgs...)
 	if err := annotationQuery.Find(&annotations).Error; err != nil {
 		return err
 	}
@@ -472,7 +483,7 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []strin
 			Where("NOT EXISTS (SELECT 1 FROM test_ownerships tow WHERE tow.test_id = prow_job_run_tests.test_id)").
 			Where(`NOT EXISTS (
 				SELECT 1 FROM prow_job_run_tests t2
-				INNER JOIN prow_job_run_prow_pull_requests prmap ON prmap.prow_job_run_id = t2.prow_job_run_id AND prmap.prow_job_run_release = t2.prow_job_run_release
+				INNER JOIN prow_job_run_prow_pull_requests prmap ON prmap.prow_job_run_id = t2.prow_job_run_id AND prmap.prow_job_run_release = t2.prow_job_run_release AND prmap.prow_job_run_timestamp = t2.prow_job_run_timestamp
 				INNER JOIN prow_pull_requests prs ON prs.id = prmap.prow_pull_request_id
 				WHERE t2.test_id = prow_job_run_tests.test_id
 				  AND t2.prow_job_run_release = prow_job_run_tests.prow_job_run_release
