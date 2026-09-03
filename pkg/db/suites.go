@@ -81,12 +81,16 @@ var testSuites = []string{
 }
 
 // testSuitePatterns are regular expressions for suite names that should be imported
-// without listing every literal name. Invalid patterns panic at process start.
+// without listing every literal name. These are applied after job selection (i.e.
+// a job must already be configured for ingestion); they filter which suites within
+// an ingested job's JUnit artifacts are imported. Invalid patterns panic at process start.
 var testSuitePatterns = []*regexp.Regexp{
 	// LP interop naming: `lp-interop--<product>--<suffix>`.
 	regexp.MustCompile(`^lp-chaos--`),
 	regexp.MustCompile(`^lp-interop--`),
 	regexp.MustCompile(`^lp-ocp-compat--`),
+	// Playwright e2e tests (e.g. Quay) use spec filenames as suite names.
+	regexp.MustCompile(`\.spec\.ts$`),
 }
 
 var testSuiteSet = sets.New[string](testSuites...)
