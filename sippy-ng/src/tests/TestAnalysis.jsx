@@ -38,7 +38,6 @@ import { TEST_THRESHOLDS } from '../constants'
 import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
 import { TestStackedChart } from './TestStackedChart'
-import { usePageContextForChat } from '../chat/store/useChatStore'
 import Alert from '@mui/material/Alert'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
@@ -59,9 +58,6 @@ export function TestAnalysis(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [testName = props.test] = useQueryParam('test', SafeStringParam)
   const [period = 'default'] = useQueryParam('period', StringParam)
-  const { setPageContextForChat, unsetPageContextForChat } =
-    usePageContextForChat()
-
   const [filterModel, setFilterModel] = useStableJSONQueryParam('filters', {
     items: [
       filterFor('name', 'equals', testName),
@@ -119,65 +115,6 @@ export function TestAnalysis(props) {
   useEffect(() => {
     fetchData()
   }, [period])
-
-  // Update page context for chat
-  useEffect(() => {
-    if (!isLoaded || !test || !testName) return
-
-    setPageContextForChat({
-      page: 'test-analysis',
-      url: window.location.href,
-      instructions: `The user is viewing detailed analysis for a specific test.
-        You can use your database query tools to answer additional questions about this test.
-        When querying the database, use the test name and apply the same filters shown in the context.
-        The test statistics shown are for the current ${
-          period === 'twoDay' ? '2-day' : '7-day'
-        } period compared to the previous ${
-          period === 'twoDay' ? '2-day' : '7-day'
-        } period.`,
-      suggestions: [
-        'What are the most common failure modes for this test?',
-        {
-          prompt: 'test-analysis',
-          label: 'Detailed Test Analysis',
-          args: {
-            release: props.release,
-            test_name: testName,
-          },
-        },
-      ],
-      data: {
-        release: props.release,
-        test_name: testName,
-        filters: filterModel,
-        statistics: {
-          current_pass_percentage: test.current_pass_percentage,
-          current_runs: test.current_runs,
-          current_successes: test.current_successes,
-          current_failures: test.current_failures,
-          current_flakes: test.current_flakes,
-          previous_pass_percentage: test.previous_pass_percentage,
-          previous_runs: test.previous_runs,
-          net_improvement: test.net_improvement,
-        },
-        jira_component: test.jira_component,
-      },
-    })
-
-    // Cleanup: Clear context when component unmounts
-    return () => {
-      unsetPageContextForChat()
-    }
-  }, [
-    isLoaded,
-    test,
-    testName,
-    filterModel,
-    period,
-    props.release,
-    setPageContextForChat,
-    unsetPageContextForChat,
-  ])
 
   const breadcrumbs = (
     <SimpleBreadcrumbs

@@ -9,7 +9,6 @@ import {
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { ReleasesContext } from '../App'
-import { usePageContextForChat } from '../chat/store/useChatStore'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import InfoIcon from '@mui/icons-material/Info'
@@ -76,13 +75,9 @@ const useStyles = makeStyles((theme) => ({
 
 export default function ReleaseOverview(props) {
   const classes = useStyles()
-  const { setPageContextForChat, unsetPageContextForChat } =
-    usePageContextForChat()
-
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
-  const hasSetContextRef = React.useRef(false)
   const releases = React.useContext(ReleasesContext)
 
   const fetchData = () => {
@@ -108,91 +103,6 @@ export default function ReleaseOverview(props) {
     document.title = `Sippy > ${props.release} > Health Summary`
     fetchData()
   }, [])
-
-  // Update page context for chat
-  useEffect(() => {
-    if (!isLoaded || !data.indicators || hasSetContextRef.current) return
-
-    hasSetContextRef.current = true
-    setPageContextForChat({
-      page: 'release-overview',
-      url: window.location.href,
-      suggestions: [
-        'How is the overall health of the release?',
-        {
-          prompt: 'payload-report',
-          label: 'Payload Status Report',
-          args: {
-            releases: [props.release],
-            streams: ['nightly', 'ci'],
-          },
-        },
-      ],
-      data: {
-        release: props.release,
-        indicators: {
-          infrastructure: data.indicators.infrastructure
-            ? {
-                current_pass_percentage:
-                  data.indicators.infrastructure.current_working_percentage,
-                current_runs: data.indicators.infrastructure.current_runs,
-                previous_pass_percentage:
-                  data.indicators.infrastructure.previous_working_percentage,
-                previous_runs: data.indicators.infrastructure.previous_runs,
-                net_improvement:
-                  data.indicators.infrastructure.net_working_improvement,
-              }
-            : null,
-          install: data.indicators.install
-            ? {
-                current_pass_percentage:
-                  data.indicators.install.current_working_percentage,
-                current_runs: data.indicators.install.current_runs,
-                previous_pass_percentage:
-                  data.indicators.install.previous_working_percentage,
-                previous_runs: data.indicators.install.previous_runs,
-                net_improvement:
-                  data.indicators.install.net_working_improvement,
-              }
-            : null,
-          tests: data.indicators.tests
-            ? {
-                current_pass_percentage:
-                  data.indicators.tests.current_working_percentage,
-                current_runs: data.indicators.tests.current_runs,
-                previous_pass_percentage:
-                  data.indicators.tests.previous_working_percentage,
-                previous_runs: data.indicators.tests.previous_runs,
-                net_improvement: data.indicators.tests.net_working_improvement,
-              }
-            : null,
-          upgrade: data.indicators.upgrade
-            ? {
-                current_pass_percentage:
-                  data.indicators.upgrade.current_working_percentage,
-                current_runs: data.indicators.upgrade.current_runs,
-                previous_pass_percentage:
-                  data.indicators.upgrade.previous_working_percentage,
-                previous_runs: data.indicators.upgrade.previous_runs,
-                net_improvement:
-                  data.indicators.upgrade.net_working_improvement,
-              }
-            : null,
-        },
-        statistics: {
-          current_mean: data.current_statistics?.mean,
-          previous_mean: data.previous_statistics?.mean,
-          quartiles: data.current_statistics?.quartiles,
-          standard_deviation: data.current_statistics?.standard_deviation,
-        },
-      },
-    })
-
-    // Cleanup: Clear context when component unmounts
-    return () => {
-      unsetPageContextForChat()
-    }
-  }, [isLoaded, setPageContextForChat, unsetPageContextForChat])
 
   if (fetchError !== '') {
     return (

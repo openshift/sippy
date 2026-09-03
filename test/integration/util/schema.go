@@ -49,8 +49,6 @@ func SetupIntegrationSchema(dbc *db.DB) error {
 		&models.Triage{},
 		&models.TriageSymptom{},
 		&models.AuditLog{},
-		&models.ChatRating{},
-		&models.ChatConversation{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
 
