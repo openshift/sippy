@@ -179,8 +179,9 @@ func TestPartitionLifecycle(t *testing.T) {
 		require.Greater(t, count, 0, "should create very old partitions")
 
 		// First detach only the very old partitions so cleanup exercises both paths.
-		_, err = dbc.DetachOldPartitions(375, false)
+		detachedBeforeCleanup, err := dbc.DetachOldPartitions(375, false)
 		require.NoError(t, err)
+		require.Greater(t, detachedBeforeCleanup, 0, "should detach the very old partitions before cleanup")
 
 		// Diagnostic: Check partition bounds before cleanup
 		type partitionDiagnostic struct {
