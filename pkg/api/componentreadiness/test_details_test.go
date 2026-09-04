@@ -35,7 +35,7 @@ func TestMultiTestStatusQueryBackoff(t *testing.T) {
 		Steps:    5,
 		Duration: time.Minute,
 		Factor:   2,
-	}, multiTestStatusQueryBackoff)
+	}, defaultMultiTestStatusQueryBackoff())
 }
 
 func TestGetCompleteMultiTestJobRunStatuses(t *testing.T) {
@@ -61,10 +61,6 @@ func TestGetCompleteMultiTestJobRunStatuses(t *testing.T) {
 			"job": {{TestKeyStr: present.Encode()}, {TestKeyStr: missing.Encode()}},
 		},
 	}
-
-	originalBackoff := multiTestStatusQueryBackoff
-	multiTestStatusQueryBackoff = wait.Backoff{Steps: 5}
-	t.Cleanup(func() { multiTestStatusQueryBackoff = originalBackoff })
 
 	for _, testCase := range []struct {
 		name       string
@@ -122,6 +118,7 @@ func TestGetCompleteMultiTestJobRunStatuses(t *testing.T) {
 					calls++
 					return response.statuses, response.errs
 				},
+				multiTestStatusBackoff: wait.Backoff{Steps: 5},
 			}
 
 			statuses, errs := generator.getCompleteMultiTestJobRunStatuses(context.Background())
