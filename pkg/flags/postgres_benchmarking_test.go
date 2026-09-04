@@ -24,9 +24,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const benchmarkRelease = "4.22"
+const benchmarkRelease = "5.0"
 const benchmarkTestName = "[Monitor:legacy-test-framework-invariants-pathological][sig-arch] events should not repeat pathologically for ns/kube-system"
-const benchmarkJobName = "periodic-ci-openshift-release-main-ci-4.22-e2e-aws-ovn"
+const benchmarkJobName = "periodic-ci-openshift-release-main-ci-5.0-e2e-aws-ovn"
+const benchmarkVariant = "Platform:aws"
+const benchmarkCluster = "build01"
+const benchmarkPROrg = "openshift"
 
 type benchmarkCase struct {
 	name string
@@ -476,11 +479,38 @@ func getQueryCases() []queryCase {
 				}, nil
 			},
 		},
+		{
+			name: "FetchJobRunOnlyNewTests",
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
+				var jobRunID int64
+				res := dbc.DB.Table("prow_job_runs").
+					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
+					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
+					Where("prow_job_runs.prow_job_release = ?", benchmarkRelease).
+					Order("prow_job_runs.timestamp DESC").
+					Limit(1).
+					Select("prow_job_runs.id").
+					Scan(&jobRunID)
+				if res.Error != nil {
+					return validationSnapshot{}, res.Error
+				}
+				if jobRunID == 0 {
+					return validationSnapshot{}, fmt.Errorf("no job run found for %s/%s", benchmarkRelease, benchmarkJobName)
+				}
+
+				jobRun, err := api.FetchJobRun(dbc, jobRunID, true, nil, log.WithField("benchmark", "FetchJobRunOnlyNewTests"))
+				if err != nil {
+					return validationSnapshot{}, err
+				}
+				log.Printf("FetchJobRunOnlyNewTests for run %d: %d new tests", jobRunID, len(jobRun.Tests))
+				return validationSnapshot{RowCount: len(jobRun.Tests)}, nil
+			},
+		},
 	}
 }
 
 func getReportQueryCases() []queryCase {
-	return []queryCase{
+	cases := []queryCase{
 		{
 			name: "VariantReports",
 			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
@@ -551,18 +581,6 @@ func getReportQueryCases() []queryCase {
 				}
 				log.Printf("RepositoryReport: %d repos", len(results))
 				return validationSnapshot{RowCount: len(results)}, nil
-			},
-		},
-		{
-			name: "JobsRunsReport",
-			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
-				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
-				result, err := api.JobsRunsReportFromDB(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, pagination, asOf)
-				if err != nil {
-					return validationSnapshot{}, err
-				}
-				log.Printf("JobsRunsReport: %d rows", result.TotalRows)
-				return validationSnapshot{RowCount: int(result.TotalRows)}, nil
 			},
 		},
 		{
@@ -696,6 +714,59 @@ func getReportQueryCases() []queryCase {
 			},
 		},
 	}
+	return append(cases, getJobRunsQueryCases()...)
+}
+
+func jobRunsQueryCase(name string, page int, sortField string, sortOrder apitype.Sort, filters func(time.Time) []filter.FilterItem) queryCase {
+	return queryCase{
+		name: name,
+		fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
+			filterItems := []filter.FilterItem{}
+			if filters != nil {
+				filterItems = filters(asOf)
+			}
+			result, err := api.JobsRunsReportFromDB(dbc, &filter.FilterOptions{
+				Filter:    &filter.Filter{Items: filterItems},
+				SortField: sortField,
+				Sort:      sortOrder,
+			}, benchmarkRelease, &apitype.Pagination{PerPage: 20, Page: page}, asOf)
+			if err != nil {
+				return validationSnapshot{}, err
+			}
+			log.Printf("%s: %d rows", name, result.TotalRows)
+			return validationSnapshot{RowCount: int(result.TotalRows)}, nil
+		},
+	}
+}
+
+func getJobRunsQueryCases() []queryCase {
+	return []queryCase{
+		jobRunsQueryCase("JobsRunsReport", 0, "", "", nil),
+		jobRunsQueryCase("JobsRunsReportExactJob", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "job", Operator: filter.OperatorEquals, Value: benchmarkJobName}}
+		}),
+		jobRunsQueryCase("JobsRunsReportVariant", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "variants", Operator: filter.OperatorHasEntry, Value: benchmarkVariant}}
+		}),
+		jobRunsQueryCase("JobsRunsReportCluster", 0, "", "", func(asOf time.Time) []filter.FilterItem {
+			return []filter.FilterItem{
+				{Field: "cluster", Operator: filter.OperatorEquals, Value: benchmarkCluster},
+				{Field: "name", Operator: filter.OperatorStartsWith, Value: "pull-ci", Not: true},
+				{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: asOf.Add(-14 * 24 * time.Hour).Format(time.RFC3339Nano)},
+			}
+		}),
+		jobRunsQueryCase("JobsRunsReportFailedTest", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "failed_test_names", Operator: filter.OperatorHasEntry, Value: benchmarkTestName}}
+		}),
+		jobRunsQueryCase("JobsRunsReportFlakedTest", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "flaked_test_names", Operator: filter.OperatorHasEntry, Value: benchmarkTestName}}
+		}),
+		jobRunsQueryCase("JobsRunsReportPRFilter", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "pull_request_org", Operator: filter.OperatorEquals, Value: benchmarkPROrg}}
+		}),
+		jobRunsQueryCase("JobsRunsReportPRSort", 0, "pull_request_author", "asc", nil),
+		jobRunsQueryCase("JobsRunsReportSecondPage", 1, "timestamp", "desc", nil),
+	}
 }
 
 func getBenchmarkDBClient(t *testing.T) (*db.DB, string) {
@@ -748,6 +819,22 @@ func Test_BenchmarkIndividual(t *testing.T) {
 	printSummaryTable(t, results, connName)
 }
 
+func Test_BenchmarkJobRuns(t *testing.T) {
+	dbc, connName := getBenchmarkDBClient(t)
+	asOf := time.Now().UTC()
+	iterations := 3
+	cases := toBenchmarkCases(getJobRunsQueryCases(), asOf)
+
+	var results []benchmarkResult
+	for _, bc := range cases {
+		t.Run(bc.name, func(t *testing.T) {
+			r := runBenchmarkCase(t, dbc, bc, iterations)
+			results = append(results, r)
+		})
+	}
+	printSummaryTable(t, results, connName)
+}
+
 func Test_BenchmarkFindTestsByRelease(t *testing.T) {
 	dbc, connName := getBenchmarkDBClient(t)
 	iterations := 1
@@ -758,6 +845,28 @@ func Test_BenchmarkFindTestsByRelease(t *testing.T) {
 	}
 
 	r := runBenchmarkCase(t, dbc, bc, iterations)
+	printSummaryTable(t, []benchmarkResult{r}, connName)
+}
+
+func Test_BenchmarkFetchJobRunOnlyNewTests(t *testing.T) {
+	dbc, connName := getBenchmarkDBClient(t)
+	iterations := 3
+	asOf := time.Now().UTC()
+
+	var benchmark benchmarkCase
+	found := false
+	for _, bc := range toBenchmarkCases(getQueryCases(), asOf) {
+		if bc.name == "FetchJobRunOnlyNewTests" {
+			benchmark = bc
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("benchmark case \"FetchJobRunOnlyNewTests\" not found")
+	}
+
+	r := runBenchmarkCase(t, dbc, benchmark, iterations)
 	printSummaryTable(t, []benchmarkResult{r}, connName)
 }
 
@@ -1085,7 +1194,7 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 					Filter: &filter.Filter{
 						Items: []filter.FilterItem{
 							{Field: "ran_test_names", Operator: filter.OperatorHasEntry, Value: benchmarkTestName},
-							{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: fmt.Sprintf("%d", asOf.Add(-14*24*time.Hour).UnixMilli())},
+							{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: asOf.Add(-14 * 24 * time.Hour).Format(time.RFC3339Nano)},
 							{Field: "variants", Operator: filter.OperatorHasEntry, Value: "never-stable", Not: true},
 							{Field: "variants", Operator: filter.OperatorHasEntry, Value: "aggregated", Not: true},
 						},
@@ -1107,7 +1216,7 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 				filterOpts := &filter.FilterOptions{
 					Filter: &filter.Filter{
 						Items: []filter.FilterItem{
-							{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: fmt.Sprintf("%d", asOf.Add(-14*24*time.Hour).UnixMilli())},
+							{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: asOf.Add(-14 * 24 * time.Hour).Format(time.RFC3339Nano)},
 							{Field: "variants", Operator: filter.OperatorHasEntry, Value: "never-stable", Not: true},
 							{Field: "variants", Operator: filter.OperatorHasEntry, Value: "aggregated", Not: true},
 						},

@@ -395,6 +395,8 @@ FROM target_tests tt
 JOIN prow_job_run_tests pjrt ON pjrt.test_id = tt.test_id
     AND (tt.suite_id = pjrt.suite_id OR (tt.suite_id IS NULL AND pjrt.suite_id IS NULL))
 JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
+    AND pjr.prow_job_release = pjrt.prow_job_run_release
+    AND pjr.timestamp = pjrt.prow_job_run_timestamp
 JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
 JOIN tests t ON t.id = pjrt.test_id
 WHERE pj.release = ?

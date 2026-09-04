@@ -33,8 +33,8 @@ type ProwJob struct {
 	VariantCombination   *VariantCombination
 	TestGridURL          string
 	// Bugs maps to all the bugs we scanned and found this prowjob name mentioned in the description or any comment.
-	Bugs    []Bug        `gorm:"many2many:bug_jobs;"`
-	JobRuns []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
+	Bugs    []Bug `gorm:"many2many:bug_jobs;"`
+	JobRuns []ProwJobRun
 }
 
 // IDName is a partial struct to query limited fields we need for caching. Can be used
@@ -57,14 +57,17 @@ type ProwJobRunIDMap struct {
 // TableName overrides GORM's default pluralization, which would use prow_job_run_id_maps.
 func (ProwJobRunIDMap) TableName() string { return "prow_job_run_id_map" }
 
+// ProwJobRun represents a single execution of a ProwJob.
+// Table is partitioned (LIST by prow_job_release, RANGE by timestamp) -
+// schema managed by migration 000001, not AutoMigrate.
 type ProwJobRun struct {
 	gorm.Model
 
 	// ProwJob is a link to the prow job this run belongs to.
 	ProwJob   ProwJob
 	ProwJobID uint `gorm:"index"`
-	// Used for partitioning (denormalized for prow_job_run_tests)
-	ProwJobRelease string `gorm:"index:idx_prow_job_runs_release_timestamp"`
+	// LIST partition key (denormalized from prow_jobs.release)
+	ProwJobRelease string `gorm:"primaryKey;index:idx_prow_job_runs_release_timestamp"`
 
 	// Cluster is the cluster where the prow job was run.
 	Cluster string
@@ -72,45 +75,49 @@ type ProwJobRun struct {
 	GCSBucket    string
 	URL          string
 	TestFailures int
-	TestFlakes   int `gorm:"not null;default:0"`
-	Tests        []ProwJobRunTest
-	PullRequests []ProwPullRequest      `gorm:"many2many:prow_job_run_prow_pull_requests;constraint:OnDelete:CASCADE;"`
-	Annotations  []ProwJobRunAnnotation `gorm:"constraint:OnDelete:CASCADE;"`
+	TestFlakes   int                    `gorm:"not null;default:0"`
+	Tests        []ProwJobRunTest       `gorm:"foreignKey:ProwJobRunID,ProwJobRunRelease,ProwJobRunTimestamp;references:ID,ProwJobRelease,Timestamp"`
+	PullRequests []ProwPullRequest      `gorm:"many2many:prow_job_run_prow_pull_requests;joinForeignKey:ProwJobRunID,ProwJobRunRelease,ProwJobRunTimestamp;joinReferences:ProwPullRequestID"`
+	Annotations  []ProwJobRunAnnotation `gorm:"foreignKey:ProwJobRunID,ProwJobRunRelease,ProwJobRunTimestamp;references:ID,ProwJobRelease,Timestamp"`
 	Failed       bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
-	KnownFailure  bool
-	Succeeded     bool
-	Timestamp     time.Time `gorm:"index;index:idx_prow_job_runs_timestamp_date,expression:DATE(timestamp AT TIME ZONE 'UTC');index:idx_prow_job_runs_release_timestamp"`
+	KnownFailure bool
+	Succeeded    bool
+	// RANGE partition key
+	Timestamp     time.Time `gorm:"primaryKey;index;index:idx_prow_job_runs_release_timestamp"`
 	Duration      time.Duration
-	OverallResult v1.JobOverallResult `gorm:"index"`
-	// Labels stores the IDs of labels applied to this job run
-	// This is populated from symptom detection or manual annotation
-	Labels pq.StringArray `gorm:"type:text[];index:idx_prow_job_runs_labels,type:gin" json:"labels"`
+	OverallResult v1.JobOverallResult
+	Labels        pq.StringArray `gorm:"type:text[]" json:"labels"`
 	// used to pass the TestCount in via the api, we have the actual tests in the db and can calculate it here so don't persist
 	TestCount   int         `gorm:"-"`
 	ClusterData ClusterData `gorm:"-"`
+	DeletedAt   gorm.DeletedAt
 }
 
 // ProwJobRunProwPullRequest is the explicit join table for the many-to-many relationship
-// between ProwJobRun and ProwPullRequest. Release and timestamp are denormalized from
-// ProwJobRun for query optimization.
+// between ProwJobRun and ProwPullRequest.
+// Table is partitioned (LIST by prow_job_run_release, RANGE by prow_job_run_timestamp) -
+// schema managed by migration 000001, not AutoMigrate.
 type ProwJobRunProwPullRequest struct {
 	ProwJobRunID        uint      `gorm:"primaryKey"`
-	ProwPullRequestID   uint      `gorm:"primaryKey;index:idx_prow_job_run_prow_pull_requests_pr_id"`
-	ProwJobRunRelease   string    `gorm:"index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
-	ProwJobRunTimestamp time.Time `gorm:"index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
+	ProwPullRequestID   uint      `gorm:"primaryKey;index:idx_prow_job_run_prow_pull_requests_prow_pull_request_id"`
+	ProwJobRunRelease   string    `gorm:"primaryKey;index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
+	ProwJobRunTimestamp time.Time `gorm:"primaryKey;index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
 }
 
 // ProwJobRunAnnotation stores a single key-value annotation for a ProwJobRun.
+// Table is partitioned (LIST by prow_job_run_release, RANGE by prow_job_run_timestamp) -
+// schema managed by migration 000001, not AutoMigrate.
 type ProwJobRunAnnotation struct {
 	gorm.Model
-	ProwJobRunID        uint   `gorm:"index;uniqueIndex:idx_prow_job_run_annotations_key"`
+	ProwJobRunID        uint   `gorm:"uniqueIndex:idx_prow_job_run_annotations_key"`
 	Key                 string `gorm:"uniqueIndex:idx_prow_job_run_annotations_key"`
 	Value               string
-	ProwJobRunRelease   string    `gorm:"index:idx_prow_job_run_annotations_release_timestamp"`
-	ProwJobRunTimestamp time.Time `gorm:"index:idx_prow_job_run_annotations_release_timestamp"`
+	ProwJobRunRelease   string    `gorm:"primaryKey;uniqueIndex:idx_prow_job_run_annotations_key;index:idx_prow_job_run_annotations_release_timestamp"`
+	ProwJobRunTimestamp time.Time `gorm:"primaryKey;uniqueIndex:idx_prow_job_run_annotations_key;index:idx_prow_job_run_annotations_release_timestamp"`
+	DeletedAt           gorm.DeletedAt
 }
 
 type Test struct {
@@ -126,7 +133,7 @@ type Test struct {
 type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint
-	ProwJobRun   ProwJobRun
+	ProwJobRun   ProwJobRun `gorm:"foreignKey:ProwJobRunID,ProwJobRunRelease,ProwJobRunTimestamp;references:ID,ProwJobRelease,Timestamp"`
 	// used for variants
 	// skips joining on ProwJobRunID just to get ProwJobID
 	ProwJobID uint

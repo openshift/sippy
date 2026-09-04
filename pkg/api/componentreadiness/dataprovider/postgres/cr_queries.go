@@ -190,11 +190,11 @@ func buildStatusCTE(
 
 // testBranchTemplate is the UNION ALL branch that selects all tests with runs
 // from a status CTE, regardless of failure count. Used by the standalone path
-// and by the combined query when IncludeAllTests=true (TRT-2923). The standalone
-// path has no "other side" to cross-reference (TRT-2883), so the MinimumFailure
-// threshold is left entirely to the Go-side check. The combined query's
-// IncludeAllTests mode uses this template for both sample and base sides,
-// allowing tests below MinimumFailure to be surfaced in includeAllTests listings.
+// and by the combined query for scoped drill-downs or IncludeAllTests=true
+// (TRT-2923). The standalone path has no "other side" to cross-reference
+// (TRT-2883), so the MinimumFailure threshold is left entirely to the Go-side
+// check. The combined query uses this template for both sample and base sides
+// in these modes, allowing tests below MinimumFailure to reach Go-side assessment.
 // Capability filtering (via drilldownFilters) is applied at the SQL level.
 // Component filtering is NOT applied here and is instead handled at the report
 // generation level to preserve environment columns. The first %s is an optional
@@ -206,6 +206,23 @@ const testBranchTemplate = `SELECT
     FROM %s pa
     JOIN tests t ON t.id = pa.test_id
     LEFT JOIN suites su ON su.id = pa.suite_id`
+
+// shouldUseAllTestBranches reports whether the combined query must return every
+// matching test so the shared Go analysis can determine its status. Component
+// and capability drill-downs need real rows even when both sides are below the
+// minimum failure threshold. Exact-test requests retain the threshold-optimized
+// query unless IncludeAllTests was explicitly requested.
+func shouldUseAllTestBranches(reqOptions reqopts.RequestOptions) bool {
+	if reqOptions.IncludeAllTests {
+		return true
+	}
+	if len(reqOptions.TestIDOptions) != 1 {
+		return false
+	}
+
+	testIDOption := reqOptions.TestIDOptions[0]
+	return testIDOption.TestID == "" && (testIDOption.Component != "" || testIDOption.Capability != "")
+}
 
 // failureBranchTemplate is the UNION ALL branch that selects tests meeting the
 // minimum failure threshold from a status CTE. The first %s is the column
@@ -497,10 +514,7 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 	// The combined query bakes the source tag into each branch as a typed
 	// literal so the row scanner can split results into sample and base maps.
 	//
-	// Each side's test branch(es) come from one of two shapes, chosen by
-	// reqOptions.IncludeAllTests rather than by which filters happen to be
-	// set — a single branch point, not a different code path per parameter
-	// combination:
+	// Each side's test branch(es) come from one of two shapes:
 	//
 	//   - Default: above-threshold tests (failureBranch) plus below-threshold
 	//     tests rescued by a LEFT JOIN against the other side's narrow keys
@@ -510,15 +524,17 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 	//     regression (a genuine regression would already cross the
 	//     threshold and get rescued), and the grid placeholder mechanism
 	//     keeps the cell's aggregate status correct regardless.
-	//   - IncludeAllTests: every test with runs, unconditionally
+	//   - Scoped component/capability drill-down or IncludeAllTests: every test
+	//     with runs, unconditionally
 	//     (testBranchTemplate, the same one the standalone path already
-	//     uses), because the caller wants the full per-test listing (e.g. a
-	//     component/capability drill-down), where an invisible-but-real test
-	//     is a genuine gap (TRT-2923). This reuses whatever Component/
-	//     Capability/TestID filter buildDrilldownFilters already narrowed
-	//     the aggregation to, so a scoped drill-down stays cheap; a fully
-	//     unscoped IncludeAllTests request (not used by any current UI path)
-	//     is allowed to be slow rather than adding a second query/code path.
+	//     uses), because a component/capability drill-down must assess real rows
+	//     even when they are below threshold on both sides, and IncludeAllTests
+	//     requests the full per-test listing. An invisible-but-real test
+	//     is a genuine gap (TRT-2923). Capability filters narrow the SQL
+	//     aggregation. Component filtering remains in Go so tests from other
+	//     components can preserve the complete environment column universe.
+	//     A fully unscoped IncludeAllTests request (not used by any current UI
+	//     path) is allowed to be slow rather than adding another query path.
 	sampleSourcePrefix := "'S'::text AS source, "
 	baseSourcePrefix := "'B'::text AS source, "
 
@@ -527,7 +543,7 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 	allArgs = append(allArgs, sampleCTEArgs...)
 	allArgs = append(allArgs, baseCTEArgs...)
 
-	if reqOptions.IncludeAllTests {
+	if shouldUseAllTestBranches(reqOptions) {
 		sampleTestBranches = fmt.Sprintf(testBranchTemplate, sampleSourcePrefix, "sample_agg")
 		baseTestBranches = fmt.Sprintf(testBranchTemplate, baseSourcePrefix, "base_agg")
 	} else {

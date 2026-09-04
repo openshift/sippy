@@ -17,7 +17,7 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
-import { DirectionsBoat, GitHub, Search } from '@mui/icons-material'
+import { DirectionsBoat, FilterList, GitHub, Search } from '@mui/icons-material'
 import {
   getReportStartDate,
   pathForExactJob,
@@ -258,17 +258,43 @@ export default function JobRunsTable(props) {
         if (!params.value || params.value.length === 0) {
           return ''
         }
-        const labelTitles = params.value.map((labelId) => {
-          const label = allLabels[labelId]
-          return label ? label.label_title : labelId
-        })
         return (
           <Tooltip
             title={
               <div>
-                {labelTitles.map((title, idx) => (
-                  <div key={idx}>{title}</div>
-                ))}
+                {params.value.map((labelId) => {
+                  const label = allLabels[labelId]
+                  const title = label ? label.label_title : labelId
+                  return (
+                    <div
+                      key={labelId}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ flex: 1 }}>{title}</span>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          addFilters([
+                            {
+                              columnField: 'labels',
+                              not: false,
+                              operatorValue: 'has entry',
+                              value: labelId,
+                            },
+                          ])
+                        }}
+                        sx={{ color: 'inherit', p: 0.25 }}
+                      >
+                        <FilterList sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </div>
+                  )
+                })}
               </div>
             }
           >
@@ -691,7 +717,30 @@ export default function JobRunsTable(props) {
           {selectedLabels.map((labelId) => {
             const label = allLabels[labelId]
             return (
-              <ListItem key={labelId}>
+              <ListItem
+                key={labelId}
+                secondaryAction={
+                  <Tooltip title="Filter by this label">
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={() => {
+                        addFilters([
+                          {
+                            columnField: 'labels',
+                            not: false,
+                            operatorValue: 'has entry',
+                            value: labelId,
+                          },
+                        ])
+                        setLabelsDialogOpen(false)
+                      }}
+                    >
+                      <FilterList />
+                    </IconButton>
+                  </Tooltip>
+                }
+              >
                 <ListItemText
                   primary={label ? label.label_title : labelId}
                   secondary={

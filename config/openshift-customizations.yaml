@@ -89,6 +89,8 @@ releases:
       - "^periodic-ci-openshift-rosa-master-e2e-rosa-.*"
       # Terraform provider RHCS e2e tests
       - "^periodic-ci-terraform-redhat-terraform-provider-rhcs-main-e2e-rosa-.*"
+      # CAPA e2e tests (uses underscore separator: rosa-e2e-main_capa-e2e)
+      - "^periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-.*"
   rosa-integration:
     synthetic: true
     regexp:
@@ -128,3 +130,7 @@ releases:
     synthetic: true
     regexp:
       - "^periodic-ci-openshift-hypershift-.*-periodics-hcm-.*"
+  quay-3.18:
+    synthetic: true
+    jobs:
+      periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-3-18-nightly-4-22: true

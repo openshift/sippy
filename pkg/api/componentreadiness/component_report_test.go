@@ -1869,5 +1869,56 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 	}
 }
 
+func TestGetNewCellStatusOrderIndependent(t *testing.T) {
+	testID := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
+			Component:  "component",
+			Capability: "cap",
+			TestName:   "test",
+		},
+	}
+	makeStats := func(s crtest.Status) testdetails.TestComparison {
+		return testdetails.TestComparison{ReportStatus: s}
+	}
+	statusForOrder := func(first, second crtest.Status) crtest.Status {
+		cell := getNewCellStatus(testID, makeStats(first), nil, false)
+		cell = getNewCellStatus(testID, makeStats(second), &cell, false)
+		return cell.status
+	}
+
+	tests := []struct {
+		name   string
+		first  crtest.Status
+		second crtest.Status
+		want   crtest.Status
+	}{
+		{
+			name:   "NotSignificant and MissingBasis",
+			first:  crtest.NotSignificant,
+			second: crtest.MissingBasis,
+			want:   crtest.NotSignificant,
+		},
+		{
+			name:   "NotSignificant and MissingSample",
+			first:  crtest.NotSignificant,
+			second: crtest.MissingSample,
+			want:   crtest.MissingSample,
+		},
+		{
+			name:   "NotSignificant and SignificantImprovement",
+			first:  crtest.NotSignificant,
+			second: crtest.SignificantImprovement,
+			want:   crtest.SignificantImprovement,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, statusForOrder(tt.first, tt.second))
+			assert.Equal(t, tt.want, statusForOrder(tt.second, tt.first))
+		})
+	}
+}
+
 // TestCopyIncludeVariantsAndRemoveOverrides moved to dataprovider/bigquery package
 // where the function now lives.

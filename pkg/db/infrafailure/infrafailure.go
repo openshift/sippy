@@ -13,6 +13,7 @@ package infrafailure
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
@@ -81,6 +82,8 @@ const setInfraFailureLabelSQL = `
 UPDATE prow_job_runs
 SET labels = array_append(labels, 'InfraFailure')
 WHERE id = ?
+  AND prow_job_release = ?
+  AND timestamp = ?
   AND (labels IS NULL OR NOT (labels @> ARRAY['InfraFailure']))`
 
 // createDeltasTempTableSQL materializes one job run's test results into a temp
@@ -192,10 +195,19 @@ func RecordInfraFailureWithOutcome(ctx context.Context, dbc *gorm.DB, prowJobRun
 func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) (RecordOutcome, error) {
 	logger := log.WithField("prowJobRunID", prowJobRunID)
 
+	partKeys, err := query.LookupProwJobRunPartitionKeys(tx, prowJobRunID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Debug("prow job run not found in id map; nothing to label")
+			return OutcomeRunNotFound, nil
+		}
+		return OutcomeUnknown, fmt.Errorf("reading partition keys for prow_job_run %d: %w", prowJobRunID, err)
+	}
+
 	// Conditional UPDATE as the first operation: set the label and acquire the
 	// row lock together. RowsAffected == 0 means either the label was already set
 	// (subtraction already done) or the run does not exist in PostgreSQL.
-	res := tx.Exec(setInfraFailureLabelSQL, prowJobRunID)
+	res := tx.Exec(setInfraFailureLabelSQL, prowJobRunID, partKeys.ProwJobRelease, partKeys.Timestamp)
 	if res.Error != nil {
 		return OutcomeUnknown, fmt.Errorf("setting InfraFailure label on prow_job_run %d: %w", prowJobRunID, res.Error)
 	}
@@ -204,7 +216,9 @@ func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) (RecordOutcome, err
 		// check (cheap, and the row lock the UPDATE would have taken is moot here)
 		// so callers can distinguish an already-labeled run from a missing one.
 		var exists int
-		check := tx.Raw("SELECT 1 FROM prow_job_runs WHERE id = ? LIMIT 1", prowJobRunID).Scan(&exists)
+		check := tx.Raw(
+			"SELECT 1 FROM prow_job_runs WHERE id = ? AND prow_job_release = ? AND timestamp = ? LIMIT 1",
+			prowJobRunID, partKeys.ProwJobRelease, partKeys.Timestamp).Scan(&exists)
 		if check.Error != nil {
 			return OutcomeUnknown, fmt.Errorf("checking existence of prow_job_run %d: %w", prowJobRunID, check.Error)
 		}
@@ -219,7 +233,7 @@ func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) (RecordOutcome, err
 
 	// The atomic gate passed (the label was newly applied), so remove the run's
 	// contribution from the summary tables in the same transaction.
-	if err := subtractFromSummaries(tx, prowJobRunID); err != nil {
+	if err := subtractFromSummaries(tx, prowJobRunID, partKeys); err != nil {
 		return OutcomeUnknown, err
 	}
 	return OutcomeSubtracted, nil
@@ -231,16 +245,8 @@ func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) (RecordOutcome, err
 // own the label and any gating that decides whether the subtraction should run.
 // All work happens on the supplied transaction so it commits or rolls back
 // atomically with the caller's other writes.
-func subtractFromSummaries(tx *gorm.DB, prowJobRunID int64) error {
+func subtractFromSummaries(tx *gorm.DB, prowJobRunID int64, partKeys query.ProwJobRunPartitionKeys) error {
 	logger := log.WithField("prowJobRunID", prowJobRunID)
-
-	// Read the run's partition keys (release and timestamp) so the delta scan
-	// below can prune to the run's single partition instead of scanning every
-	// partition for the run id.
-	partKeys, err := query.LookupProwJobRunPartitionKeys(tx, prowJobRunID)
-	if err != nil {
-		return fmt.Errorf("reading partition keys for prow_job_run %d: %w", prowJobRunID, err)
-	}
 
 	// Drop any stale temp table before recreating it. ON COMMIT DROP ties the
 	// table's lifetime to the outermost transaction, not to a savepoint, so when
@@ -291,11 +297,11 @@ func subtractFromSummaries(tx *gorm.DB, prowJobRunID int64) error {
 // Callers must run this inside the same row-locked transaction that later
 // replaces the labels array so the containment check and the subtraction stay
 // consistent with a concurrent RecordInfraFailure.
-func SubtractNewInfraFailure(tx *gorm.DB, prowJobRunID int64) error {
+func SubtractNewInfraFailure(tx *gorm.DB, prowJobRunID int64, partKeys query.ProwJobRunPartitionKeys) error {
 	var found int
 	res := tx.Raw(
-		"SELECT 1 FROM prow_job_runs WHERE id = ? AND labels @> ARRAY[?] LIMIT 1",
-		prowJobRunID, LabelInfraFailure).Scan(&found)
+		"SELECT 1 FROM prow_job_runs WHERE id = ? AND prow_job_release = ? AND timestamp = ? AND labels @> ARRAY[?] LIMIT 1",
+		prowJobRunID, partKeys.ProwJobRelease, partKeys.Timestamp, LabelInfraFailure).Scan(&found)
 	if res.Error != nil {
 		return fmt.Errorf("checking InfraFailure label on prow_job_run %d: %w", prowJobRunID, res.Error)
 	}
@@ -303,5 +309,5 @@ func SubtractNewInfraFailure(tx *gorm.DB, prowJobRunID int64) error {
 		log.WithField("prowJobRunID", prowJobRunID).Debug("prow job run already labeled InfraFailure; summary subtraction already applied, skipping")
 		return nil
 	}
-	return subtractFromSummaries(tx, prowJobRunID)
+	return subtractFromSummaries(tx, prowJobRunID, partKeys)
 }

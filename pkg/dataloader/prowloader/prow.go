@@ -56,26 +56,24 @@ import (
 var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
 
 type ProwLoader struct {
-	ctx                          context.Context
-	dbc                          *db.DB
-	errors                       []error
-	githubClient                 *github.Client
-	bigQueryClient               *bqcachedclient.Client
-	maxConcurrency               int
-	prowJobCache                 map[string]*models.ProwJob
-	variantManager               testidentification.VariantManager
-	syntheticTestManager         synthetictests.SyntheticTestManager
-	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides
-	releases                     []string
-	releaseSet                   sets.Set[string]
-	releaseRegexps               map[string][]*regexp.Regexp
-	config                       *v1config.SippyConfig
-	ghCommenter                  *commenter.GitHubCommenter
-	gcsClient                    *storage.Client
-	promPusher                   *push.Pusher
-	loadSince                    *time.Time
-	labelsCache                  map[string]pq.StringArray
-	currentDate                  civil.Date
+	ctx                  context.Context
+	dbc                  *db.DB
+	errors               []error
+	githubClient         *github.Client
+	bigQueryClient       *bqcachedclient.Client
+	maxConcurrency       int
+	prowJobCache         map[string]*models.ProwJob
+	variantManager       testidentification.VariantManager
+	syntheticTestManager synthetictests.SyntheticTestManager
+	releases             []string
+	releaseAttributor    *ReleaseAttributor
+	config               *v1config.SippyConfig
+	ghCommenter          *commenter.GitHubCommenter
+	gcsClient            *storage.Client
+	promPusher           *push.Pusher
+	loadSince            *time.Time
+	labelsCache          map[string]pq.StringArray
+	currentDate          civil.Date
 }
 
 func New(
@@ -93,39 +91,28 @@ func New(
 	loadSince *time.Time,
 	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides) *ProwLoader {
 
-	compiledRegexps := make(map[string][]*regexp.Regexp, len(releases))
-	for _, release := range releases {
-		if cfg, ok := config.Releases[release]; ok {
-			for _, expr := range cfg.Regexp {
-				re, err := regexp.Compile(expr)
-				if err != nil {
-					log.WithError(err).WithField("release", release).WithField("regex", expr).Error("invalid regex in configuration")
-					continue
-				}
-				compiledRegexps[release] = append(compiledRegexps[release], re)
-			}
-		}
-	}
-
+	releaseAttributor := NewReleaseAttributor(releases, config, syntheticReleaseJobOverrides)
 	return &ProwLoader{
-		ctx:                          ctx,
-		dbc:                          dbc,
-		gcsClient:                    gcsClient,
-		githubClient:                 githubClient,
-		bigQueryClient:               bigQueryClient,
-		maxConcurrency:               50,
-		syntheticTestManager:         syntheticTestManager,
-		syntheticReleaseJobOverrides: syntheticReleaseJobOverrides,
-		variantManager:               variantManager,
-		releases:                     releases,
-		releaseSet:                   sets.New[string](releases...),
-		releaseRegexps:               compiledRegexps,
-		config:                       config,
-		ghCommenter:                  ghCommenter,
-		promPusher:                   promPusher,
-		loadSince:                    loadSince,
-		currentDate:                  civil.DateOf(time.Now().UTC()),
+		ctx:                  ctx,
+		dbc:                  dbc,
+		gcsClient:            gcsClient,
+		githubClient:         githubClient,
+		bigQueryClient:       bigQueryClient,
+		maxConcurrency:       50,
+		syntheticTestManager: syntheticTestManager,
+		variantManager:       variantManager,
+		releases:             releases,
+		releaseAttributor:    releaseAttributor,
+		config:               config,
+		ghCommenter:          ghCommenter,
+		promPusher:           promPusher,
+		loadSince:            loadSince,
+		currentDate:          civil.DateOf(time.Now().UTC()),
 	}
+}
+
+func (pl *ProwLoader) matchRelease(pj *prow.ProwJob) string {
+	return pl.releaseAttributor.Match(pj)
 }
 
 const DefaultLookbackDays = 14
@@ -358,43 +345,6 @@ func (pl *ProwLoader) Load() {
 	}
 }
 
-// matchRelease returns the release a prow job belongs to, or "" if it
-// doesn't match any configured release. For /payload sub-jobs (identified
-// by releaseJobName annotation + PR refs), it returns the Presubmits
-// pseudo-release.
-func (pl *ProwLoader) matchRelease(pj *prow.ProwJob) string {
-	if _, ok := pj.Annotations["releaseJobName"]; ok && pj.Spec.Refs != nil {
-		if pl.releaseSet.Has(models.ReleasePresubmits) {
-			return models.ReleasePresubmits
-		}
-		return ""
-	}
-
-	jobName := pj.Spec.Job
-	if release, ok := pl.syntheticReleaseJobOverrides.Lookup(jobName); ok {
-		if pl.releaseSet.Has(release) {
-			return release
-		}
-		return ""
-	}
-
-	for _, release := range pl.releases {
-		cfg, ok := pl.config.Releases[release]
-		if !ok {
-			continue
-		}
-		if val, ok := cfg.Jobs[jobName]; val && ok {
-			return release
-		}
-		for _, re := range pl.releaseRegexps[release] {
-			if re.MatchString(jobName) {
-				return release
-			}
-		}
-	}
-	return ""
-}
-
 // isPayloadPresubmit returns true if the prow job is a /payload sub-job.
 func isPayloadPresubmit(pj *prow.ProwJob) bool {
 	_, hasAnnotation := pj.Annotations["releaseJobName"]
@@ -545,8 +495,8 @@ func (pl *ProwLoader) findNewJobRunIDs(ctx context.Context, candidateIDs []uint)
 
 	rows, err := conn.Query(ctx, `
 		SELECT t.id FROM tmp_candidate_ids t
-		LEFT JOIN prow_job_runs r ON r.id = t.id
-		WHERE r.id IS NULL
+		LEFT JOIN prow_job_run_id_map m ON m.id = t.id
+		WHERE m.id IS NULL
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("querying new job run IDs: %w", err)

@@ -247,7 +247,9 @@ func fetchOutputs(
 	}
 
 	if err := dbc.DB.Table("prow_job_run_tests pjrt").
-		Joins("JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id").
+		Joins(`JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
+			AND pjr.prow_job_release = pjrt.prow_job_run_release
+			AND pjr.timestamp = pjrt.prow_job_run_timestamp`).
 		Joins("JOIN prow_jobs pj ON pj.id = pjr.prow_job_id").
 		Joins(`LEFT JOIN prow_job_run_test_outputs pjrto ON pjrto.prow_job_run_test_id = pjrt.id
 			AND pjrto.prow_job_run_test_release = pjrt.prow_job_run_release

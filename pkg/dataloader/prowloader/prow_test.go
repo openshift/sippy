@@ -1,12 +1,10 @@
 package prowloader
 
 import (
-	"regexp"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/apis/prow"
@@ -171,11 +169,11 @@ func TestMatchRelease(t *testing.T) {
 		{
 			name: "payload presubmit with Presubmits in release set",
 			pl: &ProwLoader{
-				releaseSet:                   sets.New[string](models.ReleasePresubmits),
-				releases:                     []string{models.ReleasePresubmits},
-				config:                       &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{}},
-				releaseRegexps:               map[string][]*regexp.Regexp{},
-				syntheticReleaseJobOverrides: releaseoverride.New(),
+				releaseAttributor: NewReleaseAttributor(
+					[]string{models.ReleasePresubmits},
+					&v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{}},
+					releaseoverride.New(),
+				),
 			},
 			pj: &prow.ProwJob{
 				Annotations: map[string]string{"releaseJobName": "periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn"},
@@ -186,11 +184,11 @@ func TestMatchRelease(t *testing.T) {
 		{
 			name: "payload presubmit without Presubmits in release set",
 			pl: &ProwLoader{
-				releaseSet:                   sets.New[string]("4.18"),
-				releases:                     []string{"4.18"},
-				config:                       &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{}},
-				releaseRegexps:               map[string][]*regexp.Regexp{},
-				syntheticReleaseJobOverrides: releaseoverride.New(),
+				releaseAttributor: NewReleaseAttributor(
+					[]string{"4.18"},
+					&v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{}},
+					releaseoverride.New(),
+				),
 			},
 			pj: &prow.ProwJob{
 				Annotations: map[string]string{"releaseJobName": "some-job"},
@@ -201,13 +199,13 @@ func TestMatchRelease(t *testing.T) {
 		{
 			name: "regular job matching configured release by regex",
 			pl: &ProwLoader{
-				releaseSet: sets.New[string]("4.18"),
-				releases:   []string{"4.18"},
-				config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
-					"4.18": {},
-				}},
-				releaseRegexps:               map[string][]*regexp.Regexp{"4.18": {regexp.MustCompile(`-4\.18-`)}},
-				syntheticReleaseJobOverrides: releaseoverride.New(),
+				releaseAttributor: NewReleaseAttributor(
+					[]string{"4.18"},
+					&v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+						"4.18": {Regexp: []string{`-4\.18-`}},
+					}},
+					releaseoverride.New(),
+				),
 			},
 			pj: &prow.ProwJob{
 				Annotations: map[string]string{},
@@ -218,13 +216,13 @@ func TestMatchRelease(t *testing.T) {
 		{
 			name: "regular job matching no release",
 			pl: &ProwLoader{
-				releaseSet: sets.New[string]("4.18"),
-				releases:   []string{"4.18"},
-				config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
-					"4.18": {},
-				}},
-				releaseRegexps:               map[string][]*regexp.Regexp{"4.18": {regexp.MustCompile(`-4\.18-`)}},
-				syntheticReleaseJobOverrides: releaseoverride.New(),
+				releaseAttributor: NewReleaseAttributor(
+					[]string{"4.18"},
+					&v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+						"4.18": {Regexp: []string{`-4\.18-`}},
+					}},
+					releaseoverride.New(),
+				),
 			},
 			pj: &prow.ProwJob{
 				Annotations: map[string]string{},

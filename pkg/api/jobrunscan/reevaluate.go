@@ -615,7 +615,10 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 			// subtraction now (idempotent -- a no-op if the row already carries
 			// the label). The label itself is written by the full-array replace
 			// below, so the merged set is used as-is.
-			if err := infrafailure.SubtractNewInfraFailure(tx, int64(jobRun.ID)); err != nil { //nolint:gosec // G115: prow_job_runs.id is a PostgreSQL serial, always within int64 range
+			if err := infrafailure.SubtractNewInfraFailure(tx, int64(jobRun.ID), query.ProwJobRunPartitionKeys{ //nolint:gosec // G115: prow_job_runs.id is a PostgreSQL serial, always within int64 range
+				ProwJobRelease: jobRun.ProwJobRelease,
+				Timestamp:      jobRun.Timestamp,
+			}); err != nil {
 				return fmt.Errorf("subtracting infra-failure summaries for build %s: %w", buildID, err)
 			}
 		} else if slices.Contains(currentRun.Labels, infrafailure.LabelInfraFailure) {
