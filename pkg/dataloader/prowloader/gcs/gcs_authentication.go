@@ -17,7 +17,7 @@ import (
 func NewGCSClient(ctx context.Context, googleServiceAccountCredentialFile, googleOAuthClientCredentialFile string) (*storage.Client, error) {
 	if len(googleServiceAccountCredentialFile) > 0 {
 		return storage.NewClient(ctx,
-			option.WithCredentialsFile(googleServiceAccountCredentialFile),
+			option.WithAuthCredentialsFile(option.ServiceAccount, googleServiceAccountCredentialFile),
 		)
 	}
 

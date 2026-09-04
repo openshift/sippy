@@ -3,6 +3,74 @@
 
 
 
+## [1.74.0](https://github.com/googleapis/google-cloud-go/releases/tag/bigquery%2Fv1.74.0) (2026-02-25)
+
+### Features
+
+* add TotalServicesSkuSlotMillis to QueryStatistics (#13808) ([d716a47](https://github.com/googleapis/google-cloud-go/commit/d716a472d52af217bdccbcd5e974bac70e7e256a))
+
+## [1.73.1](https://github.com/googleapis/google-cloud-go/releases/tag/bigquery%2Fv1.73.1) (2026-02-05)
+
+### Bug Fixes
+
+* revert to useInt64Timestamp for REST format options (#13789) ([bdcc2f8](https://github.com/googleapis/google-cloud-go/commit/bdcc2f8068e9faa92cb66b8b7f4371c19dacb473))
+
+## [1.73.0](https://github.com/googleapis/google-cloud-go/releases/tag/bigquery%2Fv1.73.0) (2026-02-04)
+
+### Features
+
+* Support picosecond timestamp precision in BigQuery Storage API ([185951b](https://github.com/googleapis/google-cloud-go/commit/185951b3bea9fb942979e81ce248ccdebb40d94b))
+* add Stored Procedure Sharing support for analyticshub listings ([185951b](https://github.com/googleapis/google-cloud-go/commit/185951b3bea9fb942979e81ce248ccdebb40d94b))
+* add tags support for Pub/Sub subscriptions ([185951b](https://github.com/googleapis/google-cloud-go/commit/185951b3bea9fb942979e81ce248ccdebb40d94b))
+* add timestamp precision support to schema (#13421) ([52020af](https://github.com/googleapis/google-cloud-go/commit/52020af51ccbeacc922da94dfd3652cd286eee55))
+* transition format options (#13422) ([59efe32](https://github.com/googleapis/google-cloud-go/commit/59efe3238807932eca03b21803f91898def7a6e7))
+
+### Bug Fixes
+
+* make additional errors retriable: tcp timeout and http2 client connection lost (#13269) ([466d309](https://github.com/googleapis/google-cloud-go/commit/466d309daf183cf17c71758adb078d1da6871825))
+* roundtrip readonly fields (#13370) ([9e84705](https://github.com/googleapis/google-cloud-go/commit/9e847052090812d96f55df540365d0cc98f68320))
+
+### Documentation
+
+* change comment indicating `enable_gemini_in_bigquery` field for BigQuery Reservation Assignments is deprecated ([35d7578](https://github.com/googleapis/google-cloud-go/commit/35d75787536876c61ef70682a7ee5407579e41e6))
+
+## [1.72.0](https://github.com/googleapis/google-cloud-go/compare/bigquery/v1.71.0...bigquery/v1.72.0) (2025-10-28)
+
+
+### Features
+
+* **bigquery/reservation:** Add new `BACKGROUND_CHANGE_DATA_CAPTURE`, `BACKGROUND_COLUMN_METADATA_INDEX`, and `BACKGROUND_SEARCH_INDEX_REFRESH` reservation assignment types ([182df61](https://github.com/googleapis/google-cloud-go/commit/182df616184794be315edc7299aff021052c4f46))
+* **bigquery/reservation:** Add new reservation IAM policy get/set/test methods ([182df61](https://github.com/googleapis/google-cloud-go/commit/182df616184794be315edc7299aff021052c4f46))
+* **bigquery/reservation:** Add support for creation and modification of new reservation groups ([182df61](https://github.com/googleapis/google-cloud-go/commit/182df616184794be315edc7299aff021052c4f46))
+* **bigquery:** Expose continuous query in config ([#13130](https://github.com/googleapis/google-cloud-go/issues/13130)) ([2f0942b](https://github.com/googleapis/google-cloud-go/commit/2f0942b65854dcabbf49c1605e26fc5a6543c734))
+
+
+### Bug Fixes
+
+* **bigquery/v2:** Upgrade gRPC service registration func ([8fffca2](https://github.com/googleapis/google-cloud-go/commit/8fffca2819fa3dc858c213aa0c503e0df331b084))
+* **bigquery:** Upgrade gRPC service registration func ([8fffca2](https://github.com/googleapis/google-cloud-go/commit/8fffca2819fa3dc858c213aa0c503e0df331b084))
+
+## [1.71.0](https://github.com/googleapis/google-cloud-go/compare/bigquery/v1.70.0...bigquery/v1.71.0) (2025-09-30)
+
+
+### Features
+
+* **bigquery/analyticshub:** You can now configure listings for multiple regions for shared datasets and linked dataset replicas in BigQuery sharing ([10e67ef](https://github.com/googleapis/google-cloud-go/commit/10e67efccf048adea11d3ecba8d0c625455e545f))
+* **bigquery/reservation:** Add a new field `failover_mode` to `.google.cloud.bigquery.reservation.v1.FailoverReservationRequest` that allows users to choose between the HARD or SOFT failover modes when they initiate a failover operation on a reservation ([10e67ef](https://github.com/googleapis/google-cloud-go/commit/10e67efccf048adea11d3ecba8d0c625455e545f))
+* **bigquery/reservation:** Add a new field `soft_failover_start_time` in the existing `replication_status` in `.google.cloud.bigquery.reservation.v1.Reservation` to provide visibility into the state of ongoing soft failover operations on the reservation ([10e67ef](https://github.com/googleapis/google-cloud-go/commit/10e67efccf048adea11d3ecba8d0c625455e545f))
+* **bigquery:** Add support for MaxSlots ([#12958](https://github.com/googleapis/google-cloud-go/issues/12958)) ([a3c0aca](https://github.com/googleapis/google-cloud-go/commit/a3c0aca6edb873132360b46c7bb1a2aaab6d3fce))
+
+## [1.70.0](https://github.com/googleapis/google-cloud-go/compare/bigquery/v1.69.0...bigquery/v1.70.0) (2025-08-28)
+
+
+### Features
+
+* **bigquery/reservation:** Add Reservation.max_slots field to Reservation proto, indicating the total max number of slots this reservation can use up to ([f1de706](https://github.com/googleapis/google-cloud-go/commit/f1de7062db662aa6dfbf1e8cd2f0ac5df678e76d))
+* **bigquery/reservation:** Add Reservation.scaling_mode field and its corresponding enum message ScalingMode. This field should be used together with Reservation.max_slots ([f1de706](https://github.com/googleapis/google-cloud-go/commit/f1de7062db662aa6dfbf1e8cd2f0ac5df678e76d))
+* **bigquery/storage/managedwriter:** Allow overriding proto conversion mapping  ([#12579](https://github.com/googleapis/google-cloud-go/issues/12579)) ([ce9d29b](https://github.com/googleapis/google-cloud-go/commit/ce9d29bf2ca22877c64c9eea5b5c6489de141cc5)), refs [#12578](https://github.com/googleapis/google-cloud-go/issues/12578)
+* **bigquery:** Add load/extract job completion ratio ([#12471](https://github.com/googleapis/google-cloud-go/issues/12471)) ([3dab483](https://github.com/googleapis/google-cloud-go/commit/3dab483ad579c65ce520d6d9a2f8ad738ad68c9c))
+* **bigquery:** Load job and external table opts for custom time format, null markers and source column match ([#12470](https://github.com/googleapis/google-cloud-go/issues/12470)) ([67b0320](https://github.com/googleapis/google-cloud-go/commit/67b0320a54be1ba7bc64eeee47a9afff14faac5f))
+
 ## [1.69.0](https://github.com/googleapis/google-cloud-go/compare/bigquery/v1.68.0...bigquery/v1.69.0) (2025-05-27)
 
 
