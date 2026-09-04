@@ -169,6 +169,74 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 	}
 }
 
+func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
+	client := &bqcachedclient.Client{Dataset: "test_dataset"}
+	reqOptions := reqopts.RequestOptions{
+		TestFilters: reqopts.TestFilters{Lifecycles: []string{"blocking"}},
+		SampleRelease: reqopts.Release{
+			Name: "4.20",
+		},
+	}
+	testIDOptions := []reqopts.TestIdentification{{TestID: "test-id"}}
+	allJobVariants := crtest.JobVariants{
+		Variants: map[string][]string{"Release": {"4.20"}},
+	}
+
+	tests := []struct {
+		name             string
+		isSample         bool
+		lifecycles       []string
+		wantFilter       bool
+		wantLifecycleArg bool
+	}{
+		{
+			name:             "sample details use lifecycle filter",
+			isSample:         true,
+			lifecycles:       []string{"blocking"},
+			wantFilter:       true,
+			wantLifecycleArg: true,
+		},
+		{
+			name:       "base details remain unfiltered",
+			isSample:   false,
+			lifecycles: []string{"blocking"},
+		},
+		{
+			name:     "sample details without configured lifecycles remain unfiltered",
+			isSample: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := reqOptions
+			options.Lifecycles = tt.lifecycles
+			query, _, params := buildTestDetailsQuery(
+				client,
+				testIDOptions,
+				options,
+				allJobVariants,
+				nil,
+				DefaultJunitTable,
+				tt.isSample,
+				options.SampleRelease.Name,
+			)
+
+			assert.Equal(t, tt.wantFilter,
+				strings.Contains(query, "COALESCE(NULLIF(junit.lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)"))
+
+			var lifecycleParamFound bool
+			for _, queryParam := range params {
+				if queryParam.Name == "Lifecycles" {
+					lifecycleParamFound = true
+					assert.Equal(t, tt.lifecycles, queryParam.Value)
+				}
+			}
+			assert.Equal(t, tt.wantLifecycleArg, lifecycleParamFound)
+		})
+	}
+}
+
 func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 	// This test verifies the specific logic: we only exclude OTHER tests from jobs
 	// where key tests FAILED (not just present)

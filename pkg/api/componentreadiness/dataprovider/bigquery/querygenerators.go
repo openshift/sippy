@@ -653,6 +653,13 @@ func buildTestDetailsQuery(
 
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)
+		if len(c.Lifecycles) > 0 {
+			queryString += ` AND COALESCE(NULLIF(junit.lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)`
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  "Lifecycles",
+				Value: c.Lifecycles,
+			})
+		}
 		// Only set sample release when PR and payload options are not set
 		if c.SampleRelease.PayloadOptions == nil && c.SampleRelease.PullRequestOptions == nil {
 			queryString += ` AND jv_Release.variant_value = @SampleRelease`
