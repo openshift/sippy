@@ -35,11 +35,13 @@ const (
 	multiTestStatusQueryRetries = 4
 )
 
-// multiTestStatusQueryBackoff defines the 1m, 2m, 4m, and 8m waits between five status queries.
-var multiTestStatusQueryBackoff = wait.Backoff{
-	Steps:    multiTestStatusQueryRetries + 1,
-	Duration: time.Minute,
-	Factor:   2,
+// defaultMultiTestStatusQueryBackoff defines the 1m, 2m, 4m, and 8m waits between five status queries.
+func defaultMultiTestStatusQueryBackoff() wait.Backoff {
+	return wait.Backoff{
+		Steps:    multiTestStatusQueryRetries + 1,
+		Duration: time.Minute,
+		Factor:   2,
+	}
 }
 
 func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
@@ -171,7 +173,11 @@ func (c *ComponentReportGenerator) getCompleteMultiTestJobRunStatuses(ctx contex
 	if fetchStatuses == nil {
 		fetchStatuses = (*ComponentReportGenerator).getJobRunTestStatus
 	}
-	err := wait.ExponentialBackoffWithContext(ctx, multiTestStatusQueryBackoff, func(ctx context.Context) (bool, error) {
+	backoff := c.multiTestStatusBackoff
+	if backoff.Steps == 0 {
+		backoff = defaultMultiTestStatusQueryBackoff()
+	}
+	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
 		attempt++
 		before := time.Now()
 		statuses, queryErrs = fetchStatuses(c, ctx)
@@ -188,9 +194,9 @@ func (c *ComponentReportGenerator) getCompleteMultiTestJobRunStatuses(ctx contex
 
 		logrus.WithFields(logrus.Fields{
 			"attempt":     attempt,
-			"maxAttempts": multiTestStatusQueryBackoff.Steps,
+			"maxAttempts": backoff.Steps,
 			"missingKeys": missingKeys,
-			"backoff":     multiTestStatusQueryBackoff,
+			"backoff":     backoff,
 		}).Warn("test details status query was incomplete, retrying")
 		return false, nil
 	})

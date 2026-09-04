@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -161,6 +162,7 @@ func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions 
 	generator := ComponentReportGenerator{
 		dataProvider:            provider,
 		jobRunTestStatusFetcher: (*ComponentReportGenerator).getJobRunTestStatus,
+		multiTestStatusBackoff:  defaultMultiTestStatusQueryBackoff(),
 		ReqOptions:              reqOptions,
 		dbc:                     dbc,
 		releaseConfigs:          releaseConfigs,
@@ -179,6 +181,7 @@ func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions 
 type ComponentReportGenerator struct {
 	dataProvider            dataprovider.DataProvider
 	jobRunTestStatusFetcher func(*ComponentReportGenerator, context.Context) (crstatus.TestJobRunStatuses, []error)
+	multiTestStatusBackoff  wait.Backoff
 	dbc                     *db.DB
 	ReqOptions              reqopts.RequestOptions
 	middlewares             middleware.List
