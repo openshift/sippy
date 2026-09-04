@@ -249,7 +249,7 @@ func (pl *ProwLoader) Load() {
 		return
 	}
 
-	// Clean up old partitions (detach partitions older than 100 days, drop detached partitions older than 110 days)
+	// Clean up partitions older than the configured retention period.
 	if detached, dropped, err := pl.dbc.CleanupPartitions(false); err != nil {
 		log.WithError(err).Warning("failed to cleanup old partitions, continuing with load")
 	} else {

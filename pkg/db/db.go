@@ -33,6 +33,7 @@ const (
 	partitionedTableProwJobRunTestsOutputs                    = "prow_job_run_test_outputs"
 	partitionedTableTestDailyTotals                           = "test_daily_totals"
 	partitionedTableTestCumulativeSummaries                   = "test_cumulative_summaries"
+	partitionRetentionDays                                    = 365
 )
 
 type DB struct {
@@ -327,23 +328,24 @@ func (d *DB) DetachOldPartitions(retentionDays int, dryRun bool) (int, error) {
 	return totalDetached, nil
 }
 
-// DropDetachedPartitions drops partitions that have been detached for longer than
-// the specified period. This permanently deletes the data.
+// DropDetachedPartitions drops partition tables whose partition date is older than
+// the retention period. Callers should detach matching attached partitions first.
+// This permanently deletes the data.
 //
 // Parameters:
-//   - detachedDays: Minimum age in days since detachment (e.g., 110 means drop partitions detached more than 110 days ago)
+//   - retentionDays: Minimum partition age in days (e.g., 110 removes partitions dated more than 110 days ago)
 //   - dryRun: If true, only preview what would be dropped
 //
 // Returns the total number of partitions dropped across all tables.
-func (d *DB) DropDetachedPartitions(detachedDays int, dryRun bool) (int, error) {
+func (d *DB) DropDetachedPartitions(retentionDays int, dryRun bool) (int, error) {
 	totalDropped := 0
 
 	for _, tableName := range d.PartitionedTables() {
-		log.Infof("Finding detached partitions to drop for %s (detached more than %d days ago)",
-			tableName, detachedDays)
+		log.Infof("Finding detached partitions to drop for %s (older than %d days)",
+			tableName, retentionDays)
 
-		// Get partitions that are detached and older than detached period
-		partitions, err := d.GoparPartitions.GetPartitionsForRemoval(tableName, detachedDays, false)
+		// Include detached partition tables when finding partitions older than the retention period.
+		partitions, err := d.GoparPartitions.GetPartitionsForRemoval(tableName, retentionDays, false)
 		if err != nil {
 			return totalDropped, fmt.Errorf("failed to get detached partitions for removal from %s: %w", tableName, err)
 		}
@@ -368,10 +370,11 @@ func (d *DB) DropDetachedPartitions(detachedDays int, dryRun bool) (int, error) 
 }
 
 // CleanupPartitions performs the full partition lifecycle cleanup:
-// 1. Detaches partitions older than 100 days
-// 2. Drops detached partitions older than 110 days
+// 1. Detaches partitions older than partitionRetentionDays
+// 2. Drops detached partitions older than partitionRetentionDays
 //
-// This provides a 10-day safety window between detachment and permanent deletion.
+// Detached partitions could be held and reattached if needed, but no holding
+// period is configured by default.
 //
 // Parameters:
 //   - dryRun: If true, only preview what would be done
@@ -380,20 +383,15 @@ func (d *DB) DropDetachedPartitions(detachedDays int, dryRun bool) (int, error) 
 func (d *DB) CleanupPartitions(dryRun bool) (detached, dropped int, err error) {
 	log.Info("Starting partition cleanup...")
 
-	// First, detach old attached partitions (100 days)
-	detached, err = d.DetachOldPartitions(100, dryRun)
+	// First, detach old attached partitions.
+	detached, err = d.DetachOldPartitions(partitionRetentionDays, dryRun)
 	if err != nil {
 		return detached, dropped, fmt.Errorf("failed to detach old partitions: %w", err)
 	}
 	log.Infof("Detached %d old partitions", detached)
 
-	// Then, drop old detached partitions (100 days)
-	// We initially held detached partitions for 10 days.
-	// Detaching removes the association with the parent table and leaves them as individual tables
-	// Which clutters the table list
-	// We plan to keep partitions longer and
-	// no longer need the multiphase, detach, wait then drop.
-	dropped, err = d.DropDetachedPartitions(100, dryRun)
+	// Then, drop old detached partitions
+	dropped, err = d.DropDetachedPartitions(partitionRetentionDays, dryRun)
 	if err != nil {
 		return detached, dropped, fmt.Errorf("failed to drop detached partitions: %w", err)
 	}
