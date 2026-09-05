@@ -5,6 +5,8 @@ import {
   dateFormat,
   formatLongDate,
   generateTestDetailsReportLink,
+  getForceClosePreviewUrl,
+  getForceCloseRegressionsUrl,
   getTestDetailsLink,
   getTriagesAPIUrl,
 } from './CompReadyUtils'
@@ -140,6 +142,20 @@ describe('getTriagesAPIUrl', () => {
   test('returns ID-specific URL when only ID is provided', () => {
     const result = getTriagesAPIUrl(7)
     expect(result).toMatch(/\/api\/component_readiness\/triages\/7$/)
+  })
+})
+
+describe('force-close API URLs', () => {
+  test('returns the force-close preview URL for a triage', () => {
+    expect(getForceClosePreviewUrl(42)).toBe(
+      'http://localhost:8080/api/component_readiness/triages/42/force_close_preview'
+    )
+  })
+
+  test('returns the force-close submission URL for a triage', () => {
+    expect(getForceCloseRegressionsUrl(42)).toBe(
+      'http://localhost:8080/api/component_readiness/triages/42/force_close_regressions'
+    )
   })
 })
 
