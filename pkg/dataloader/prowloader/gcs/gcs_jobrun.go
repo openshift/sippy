@@ -40,6 +40,7 @@ type GCSJobRun struct {
 
 	gcsProwJobPath string
 	gcsJunitPaths  []string
+	junitPathsSet  bool
 
 	pathToContent map[string][]byte
 }
@@ -53,10 +54,11 @@ func NewGCSJobRun(bkt *storage.BucketHandle, path string) *GCSJobRun {
 
 func (j *GCSJobRun) SetGCSJunitPaths(paths []string) {
 	j.gcsJunitPaths = paths
+	j.junitPathsSet = true
 }
 
 func (j *GCSJobRun) GetGCSJunitPaths(ctx context.Context) ([]string, error) {
-	if len(j.gcsJunitPaths) == 0 {
+	if !j.junitPathsSet {
 		matches, err := j.FindAllMatches(ctx, GlobJunitXML)
 		if err != nil {
 			return nil, err
@@ -83,24 +85,28 @@ func (j *GCSJobRun) GetCombinedJUnitTestSuites(ctx context.Context) (*junit.Test
 		if len(junitContent) == 0 {
 			continue
 		}
-
-		// try as testsuites first just in case we are one
-		currTestSuites := &junit.TestSuites{}
-		testSuitesErr := xml.Unmarshal(junitContent, currTestSuites)
-		if testSuitesErr == nil {
-			testSuites.Suites = append(testSuites.Suites, currTestSuites.Suites...)
-			continue
-		}
-
-		currTestSuite := &junit.TestSuite{}
-		if testSuiteErr := xml.Unmarshal(junitContent, currTestSuite); testSuiteErr != nil {
-			log.WithError(testSuiteErr).Warningf("error parsing content for jobrun in file %s path %s", junitFile, j.gcsProwJobPath)
-			continue
-		}
-		testSuites.Suites = append(testSuites.Suites, currTestSuite)
+		appendJUnitXML(testSuites, junitContent, junitFile, j.gcsProwJobPath)
 	}
 
 	return testSuites, nil
+}
+
+// appendJUnitXML preserves the batch loader's tolerant parsing policy: empty
+// and malformed documents contribute no suites, while both testsuites and a
+// single testsuite document are accepted.
+func appendJUnitXML(testSuites *junit.TestSuites, content []byte, filename, jobPath string) {
+	currTestSuites := &junit.TestSuites{}
+	if err := xml.Unmarshal(content, currTestSuites); err == nil {
+		testSuites.Suites = append(testSuites.Suites, currTestSuites.Suites...)
+		return
+	}
+
+	currTestSuite := &junit.TestSuite{}
+	if err := xml.Unmarshal(content, currTestSuite); err != nil {
+		log.WithError(err).Warningf("error parsing content for jobrun in file %s path %s", filename, jobPath)
+		return
+	}
+	testSuites.Suites = append(testSuites.Suites, currTestSuite)
 }
 
 func (j *GCSJobRun) GetContent(ctx context.Context, path string) ([]byte, error) {
