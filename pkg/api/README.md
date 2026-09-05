@@ -452,6 +452,78 @@ Maximum 50 job run IDs per request. IDs must be numeric strings.
 - `eval_error` - artifact scanning failed (timeout, GCS error, database error).
 - `rewrite_error` - scanning succeeded but writing to BQ/GCS/PostgreSQL failed.
 
+## Apply Job Run Labels
+
+Endpoint: `POST /api/job/run/labels`
+
+Applies a single externally-sourced job run label request to PostgreSQL. The
+label is recorded on the run's `prow_job_runs.labels` array (idempotently, so
+request redelivery is safe). For an `InfraFailure` request the run's contribution
+is also removed from the summary tables in the same transaction.
+Requires `--enable-write-endpoints`.
+
+### Request
+
+The body is a single label application request (not an array or envelope):
+
+```json
+{
+  "run_id": "1234567890",
+  "label": "InfraFailure",
+  "prowjob_start": "2026-08-24T11:30:00Z",
+  "release": "4.18",
+  "requested_at": "2026-08-24T12:00:00Z",
+  "comment": "flaky infra, see the triage thread",
+  "user": "jdoe",
+  "source_tool": "sippy-ui",
+  "symptom_id": "sym-42"
+}
+```
+
+`run_id`, `label`, `prowjob_start`, and `release` are required; `run_id` must be a
+numeric string (it maps to the `prow_job_runs.id` primary key), `prowjob_start`
+is the job run's start time (RFC 3339), and `release` is the OpenShift release.
+The server first attempts a partition-pruned label update using `run_id`,
+`release`, and `prowjob_start`. If that guarded update changes no row, the
+server looks up `run_id` in `prow_job_run_id_map` to distinguish a missing run,
+partition-key mismatch, already-present label, or mapped-target integrity
+error. An `InfraFailure` label also triggers the summary subtraction. The
+remaining fields (`requested_at`, `comment`, `user`, `source_tool`,
+`symptom_id`) are optional request metadata.
+`requested_at` is when the label was requested or applied, which is distinct
+from `prowjob_start`, the job run's own start time.
+
+### Response (201 Created)
+
+The body is a single result object for the applied request. Its `message`
+provides a human-readable outcome, while the HTTP status is the
+machine-readable outcome. The body does not contain `status` or HATEOAS links.
+
+```json
+{
+  "run_id": "1234567890",
+  "label": "InfraFailure",
+  "message": "label recorded"
+}
+```
+
+### HTTP Outcomes
+
+- `201 Created`: the label was newly applied to the run. For an `InfraFailure`
+  label the run's contribution was also subtracted from the summary tables.
+- `200 OK`: the run already carried the label, so no change was needed
+  (idempotent no-op).
+- `404 Not Found`: no authoritative `prow_job_run_id_map` row exists for that
+  run id.
+- `409 Conflict`: the supplied `release` or `prowjob_start` does not match the
+  authoritative partition keys for that run id. No label or summary data is
+  changed.
+- `500 Internal Server Error`: applying the request failed. The response's
+  `error` field contains details.
+- `400 Bad Request`: the JSON body is malformed or a required field is invalid.
+- `501 Not Implemented`: write endpoints are disabled on this server.
+- `503 Service Unavailable`: the server has no database connection configured.
+
 ## Tests
 
 Endpoint: `/api/tests`
