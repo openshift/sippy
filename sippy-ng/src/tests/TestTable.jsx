@@ -27,7 +27,7 @@ import {
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router'
 import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { StyledDataGrid } from '../datagrid/StyledDataGrid'

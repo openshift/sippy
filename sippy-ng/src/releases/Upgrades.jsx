@@ -1,6 +1,6 @@
 import './Upgrades.css'
 import { Grid, Typography } from '@mui/material'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
