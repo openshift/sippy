@@ -5,7 +5,7 @@ import React, { Fragment, useEffect } from 'react'
 
 import './JobDetailTable.css'
 import { filterFor } from '../helpers'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Route, Routes, useLocation } from 'react-router'
 import JobRunsTable from './JobRunsTable'
 import JobTable from './JobTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'

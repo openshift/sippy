@@ -6,7 +6,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import { ReleasesContext } from '../App'
 import { usePageContextForChat } from '../chat/store/useChatStore'

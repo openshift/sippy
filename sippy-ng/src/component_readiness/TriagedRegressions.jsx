@@ -7,7 +7,7 @@ import {
   jiraUrlPrefix,
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'

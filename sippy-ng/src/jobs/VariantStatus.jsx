@@ -1,7 +1,7 @@
 import { Card, Container, Grid, Tab, Typography } from '@mui/material'
 import { filterFor } from '../helpers'
 import { JobStackedChart } from './JobStackedChart'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { TabContext, TabList, TabPanel } from '@mui/lab'
 import JobRunsTable from './JobRunsTable'
 import JobTable from './JobTable'

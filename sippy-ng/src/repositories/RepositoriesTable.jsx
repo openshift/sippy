@@ -18,7 +18,7 @@ import {
   useStableJSONQueryParam,
 } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'

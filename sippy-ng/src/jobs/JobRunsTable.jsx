@@ -25,7 +25,7 @@ import {
   safeEncodeURIComponent,
   useStableJSONQueryParam,
 } from '../helpers'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/material/Alert'

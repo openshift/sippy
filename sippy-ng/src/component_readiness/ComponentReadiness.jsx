@@ -27,13 +27,7 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { escapeRegex, safeEncodeURIComponent } from '../helpers'
 import { grey } from '@mui/material/colors'
 import { makeStyles, useTheme } from '@mui/styles'
-import {
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-  useParams,
-} from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router'
 import ComponentReadinessHelp from './ComponentReadinessHelp'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
