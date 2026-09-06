@@ -105,6 +105,10 @@ else
 	gotestsum --junitfile $(ARTIFACT_DIR)/integration-junit.xml ./test/integration/... -count 1 -p 1
 endif
 
+.PHONY: ci-integration
+ci-integration:
+	./scripts/integration.sh
+
 images:
 	$(DOCKER) build .
 
