@@ -62,6 +62,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue/symptomre"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -160,31 +161,43 @@ var matViewUniqueNumberOfJobRuns = promauto.NewGaugeVec(prometheus.GaugeOpts{
 }, []string{"lookback_days"})
 
 type Server struct {
-	mode                 Mode
-	listenAddr           string
-	corsAllowedOrigin    string
-	syntheticTestManager synthetictests.SyntheticTestManager
-	variantManager       testidentification.VariantManager
-	jobartifactsManager  *jobartifacts.Manager
-	sippyNG              fs.FS
-	static               fs.FS
-	httpServer           *http.Server
-	db                   *db.DB
-	bigQueryClient       *sippybq.Client
-	crDataProvider       dataprovider.DataProvider
-	pinnedDateTime       *time.Time
-	gcsClient            *storage.Client
-	gcsBucket            string
-	cache                cache.Cache
-	crTimeRoundingFactor time.Duration
-	crTimeRoundingOffset time.Duration
-	capabilities         []string
-	views                *apitype.SippyViews
-	config               *v1.SippyConfig
-	enableWriteAPIs      bool
-	chatAPIURL           string
-	jiraClient           *jira.Client
-	rateLimiters         map[string]*rateLimiter
+	mode                   Mode
+	listenAddr             string
+	corsAllowedOrigin      string
+	syntheticTestManager   synthetictests.SyntheticTestManager
+	variantManager         testidentification.VariantManager
+	jobartifactsManager    *jobartifacts.Manager
+	sippyNG                fs.FS
+	static                 fs.FS
+	httpServer             *http.Server
+	db                     *db.DB
+	bigQueryClient         *sippybq.Client
+	crDataProvider         dataprovider.DataProvider
+	pinnedDateTime         *time.Time
+	gcsClient              *storage.Client
+	gcsBucket              string
+	cache                  cache.Cache
+	crTimeRoundingFactor   time.Duration
+	crTimeRoundingOffset   time.Duration
+	capabilities           []string
+	views                  *apitype.SippyViews
+	config                 *v1.SippyConfig
+	enableWriteAPIs        bool
+	chatAPIURL             string
+	jiraClient             *jira.Client
+	rateLimiters           map[string]*rateLimiter
+	symptomReSubmitter     *symptomre.Submitter
+	symptomReStatusQuerier *symptomre.StatusQuerier
+	symptomReCanceller     *symptomre.BatchCanceller
+}
+
+// SetSymptomReEvaluation wires the async symptom re-evaluation submitter,
+// status querier, and batch canceller. Called during server setup when River
+// is available.
+func (s *Server) SetSymptomReEvaluation(submitter *symptomre.Submitter, querier *symptomre.StatusQuerier, canceller *symptomre.BatchCanceller) {
+	s.symptomReSubmitter = submitter
+	s.symptomReStatusQuerier = querier
+	s.symptomReCanceller = canceller
 }
 
 // getReleases returns release data via the configured data provider.
@@ -2768,6 +2781,20 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodPost},
 			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonReEvaluateJobRunSymptoms,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/reevaluate/{batch_id}",
+			Description:  "Get status of an async symptom re-evaluation batch",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetReEvaluateBatchStatus,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/reevaluate/{batch_id}",
+			Description:  "Cancel an in-flight symptom re-evaluation batch",
+			Methods:      []string{http.MethodDelete},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCancelReEvaluateBatch,
 		},
 		{
 			EndpointPath: "/api/job_variants",

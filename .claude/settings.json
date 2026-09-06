@@ -4,7 +4,8 @@
     "golang@ai-helpers": true,
     "github@ai-helpers": true,
     "gopls-lsp@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true
+    "typescript-lsp@claude-plugins-official": true,
+    "gopls-lsp@ai-helpers": true
   },
   "extraKnownMarketplaces": {
     "ai-helpers": {
