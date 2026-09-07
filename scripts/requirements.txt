@@ -1,3 +1,4 @@
 argparse
 sqlalchemy
 psycopg2
+pyyaml
