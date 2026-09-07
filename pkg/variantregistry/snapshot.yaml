@@ -9408,6 +9408,24 @@ periodic-ci-openshift-cert-manager-operator-master-periodic-review-agent:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-cert-manager-operator-master-tls-pqc-readiness-periodic:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-certman-operator-master-hive-e2e-promotion-int:
     Aggregation: none
     Architecture: amd64
