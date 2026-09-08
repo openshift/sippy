@@ -168,6 +168,7 @@ type Server struct {
 	static                 fs.FS
 	httpServer             *http.Server
 	db                     *db.DB
+	reconcileLabels        reconcileLabelsFunc
 	bigQueryClient         *sippybq.Client
 	crDataProvider         dataprovider.DataProvider
 	pinnedDateTime         *time.Time
@@ -439,6 +440,12 @@ func (s *Server) hasCapabilities(capabilities []string) bool {
 	return true
 }
 
+// hasDatabase reports whether both the database wrapper and its GORM handle
+// are initialized for database-backed request paths.
+func (s *Server) hasDatabase() bool {
+	return s != nil && s.db != nil && s.db.DB != nil
+}
+
 func (s *Server) determineCapabilities() {
 	capabilities := make([]string, 0)
 	if s.mode == ModeOpenShift {
@@ -448,7 +455,7 @@ func (s *Server) determineCapabilities() {
 	if s.bigQueryClient != nil || s.crDataProvider != nil {
 		capabilities = append(capabilities, ComponentReadinessCapability)
 	}
-	if s.db != nil {
+	if s.hasDatabase() {
 		capabilities = append(capabilities, LocalDBCapability)
 
 		hasBuildCluster := false
@@ -475,7 +482,7 @@ func (s *Server) determineCapabilities() {
 		}
 	}
 
-	if s.db != nil && s.enableWriteAPIs {
+	if s.hasDatabase() && s.enableWriteAPIs {
 		capabilities = append(capabilities, WriteEndpointsCapability)
 	}
 
@@ -2787,6 +2794,13 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodDelete},
 			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonCancelReEvaluateBatch,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/{run_id}/labels/reconcile",
+			Description:  "Reconcile a job run's complete label set from its authoritative GCS label files",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonReconcileLabels,
 		},
 		{
 			EndpointPath: "/api/job_variants",
