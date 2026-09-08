@@ -1,5 +1,5 @@
 import './JobDetailTable.css'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { pathForExactJob } from '../helpers'
 import { TableContainer } from '@mui/material'
 import JobDetailTestModal from './JobDetailTestModal'

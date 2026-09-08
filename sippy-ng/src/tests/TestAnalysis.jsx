@@ -32,7 +32,7 @@ import {
   useStableJSONQueryParam,
   withSort,
 } from '../helpers'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TEST_THRESHOLDS } from '../constants'
 import { TestDurationChart } from './TestDurationChart'

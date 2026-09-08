@@ -1,6 +1,6 @@
 import './TestByVariantTable.css'
 import { grey } from '@mui/material/colors'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import { parseVariantName, pathForExactTestAnalysis } from '../helpers'
 import { scale } from 'chroma-js'

@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@mui/material'
 import { makeStyles } from '@mui/styles'
-import { Link as RouterLink, useParams } from 'react-router-dom'
+import { Link as RouterLink, useParams } from 'react-router'
 import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import LaunderedLink from '../components/Laundry'

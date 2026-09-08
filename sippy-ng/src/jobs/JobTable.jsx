@@ -13,7 +13,7 @@ import {
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { usePageContextForChat } from '../chat/store/useChatStore'

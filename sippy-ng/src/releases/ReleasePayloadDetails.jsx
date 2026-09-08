@@ -10,7 +10,7 @@ import {
 } from '@mui/material'
 import { filterFor, safeEncodeURIComponent } from '../helpers'
 import { Fragment } from 'react'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Route, Routes, useLocation } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { WarningOutlined } from '@mui/icons-material'

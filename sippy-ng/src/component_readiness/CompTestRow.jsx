@@ -1,7 +1,7 @@
 import './ComponentReadiness.css'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Fragment, useContext } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { safeEncodeURIComponent } from '../helpers'
 import { sortQueryParams } from './CompReadyUtils'
 import { Tooltip, Typography } from '@mui/material'

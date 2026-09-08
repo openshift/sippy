@@ -8,7 +8,7 @@ import {
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material'
 import { formatChatTimestamp, humanize, MESSAGE_TYPES } from './chatUtils'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import { useModels } from './store/useChatStore'
 import MessageChart from './MessageChart'

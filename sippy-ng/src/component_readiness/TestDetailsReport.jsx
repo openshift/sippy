@@ -25,7 +25,7 @@ import {
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { pathForExactTestAnalysisWithFilter } from '../helpers'
 import { ReleasesContext, SippyCapabilitiesContext } from '../App'
 import { usePageContextForChat } from '../chat/store/useChatStore'

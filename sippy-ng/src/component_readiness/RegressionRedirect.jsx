@@ -3,7 +3,7 @@ import {
   getRegressionAPIUrl,
   getTestDetailsLink,
 } from './CompReadyUtils'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import React from 'react'
 import Typography from '@mui/material/Typography'

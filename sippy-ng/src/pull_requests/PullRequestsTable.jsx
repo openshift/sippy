@@ -22,7 +22,7 @@ import {
   useStableJSONQueryParam,
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles, useTheme } from '@mui/styles'
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'

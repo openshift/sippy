@@ -10,7 +10,7 @@ import {
   relativeTime,
   safeEncodeURIComponent,
 } from '../helpers'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/material/Alert'

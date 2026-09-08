@@ -34,7 +34,7 @@ import {
   SearchIconWrapper,
   StyledInputBase,
 } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { SippyCapabilitiesContext } from '../App'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import IconButton from '@mui/material/IconButton'

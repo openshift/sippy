@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@mui/material'
 import { DirectionsBoat, OpenInNew } from '@mui/icons-material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import {
   pathForExactTestAnalysis,
