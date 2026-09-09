@@ -6395,3 +6395,54 @@ component_readiness:
     enabled: false
   prime_cache:
     enabled: false
+- name: quay-3.18
+  base_release:
+    release: "quay-3.18"
+    relative_start: now-30d
+    relative_end: now-7d
+  sample_release:
+    release: "quay-3.18"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Topology: { }
+      Upgrade: { }
+    include_variants:
+      Architecture:
+      - amd64
+      Installer:
+      - ipi
+      Network:
+      - ovn
+      Owner:
+      - eng
+      Platform:
+      - aws
+      - gcp
+      Topology:
+      - ha
+      Upgrade:
+      - none
+  advanced_options:
+    minimum_failure: 2
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: false
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: false
