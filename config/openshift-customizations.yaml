@@ -134,3 +134,4 @@ releases:
     synthetic: true
     jobs:
       periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-3-18-nightly-4-22: true
+      periodic-ci-quay-quay-redhat-3.18-gcp-ocp422-e2e-install-gcp-gcs-3-18-nightly-4-22: true
