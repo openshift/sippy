@@ -76,4 +76,17 @@
 </g>
 <g>
 </g>
+<!-- A jaunty propeller beanie for Sippy. -->
+<g id="silly-propeller-hat" stroke="#38484A" stroke-width="8" stroke-linejoin="round">
+	<!-- Propeller and stem -->
+	<path d="M256,54V28" fill="none" stroke-linecap="round"/>
+	<path d="M256,28C226,2,181,2,181,24c0,22,45,25,75,4z" fill="#40C4FF"/>
+	<path d="M256,28c30-26,75-26,75-4c0,22-45,25-75,4z" fill="#FF6E9C"/>
+	<circle cx="256" cy="28" r="13" fill="#FFD740"/>
+	<!-- Beanie crown and brim -->
+	<path d="M166,132c4-53,43-84,90-84s86,31,90,84z" fill="#7E57C2"/>
+	<path d="M256,48c-47,0-86,31-90,84h90z" fill="#40C4FF" stroke="none"/>
+	<path d="M256,48v84" fill="none"/>
+	<path d="M153,127h206c11,0,20,9,20,20s-9,20-20,20H153c-11,0-20-9-20-20s9-20,20-20z" fill="#FFD740"/>
+</g>
 </svg>
