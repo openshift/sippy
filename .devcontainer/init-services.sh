@@ -10,9 +10,6 @@ podman network create sippy-net 2>/dev/null || true
 podman start sippy-postgres 2>/dev/null || \
     podman run -d --name sippy-postgres \
         --network sippy-net \
-        -e POSTGRESQL_USER=sippy \
-        -e POSTGRESQL_PASSWORD=password \
-        -e POSTGRESQL_DATABASE=prodlike \
         -e POSTGRESQL_ADMIN_PASSWORD=password \
         -p 127.0.0.1:5432:5432 \
         quay.io/openshift/ci:ci_postgresql_postgresql-18-c9s
