@@ -76,17 +76,33 @@
 </g>
 <g>
 </g>
-<!-- A jaunty propeller beanie for Sippy. -->
+<!-- An extravagantly silly propeller beanie for Sippy. -->
 <g id="silly-propeller-hat" stroke="#38484A" stroke-width="8" stroke-linejoin="round">
-	<!-- Propeller and stem -->
-	<path d="M256,54V28" fill="none" stroke-linecap="round"/>
-	<path d="M256,28C226,2,181,2,181,24c0,22,45,25,75,4z" fill="#40C4FF"/>
-	<path d="M256,28c30-26,75-26,75-4c0,22-45,25-75,4z" fill="#FF6E9C"/>
-	<circle cx="256" cy="28" r="13" fill="#FFD740"/>
-	<!-- Beanie crown and brim -->
-	<path d="M166,132c4-53,43-84,90-84s86,31,90,84z" fill="#7E57C2"/>
-	<path d="M256,48c-47,0-86,31-90,84h90z" fill="#40C4FF" stroke="none"/>
-	<path d="M256,48v84" fill="none"/>
-	<path d="M153,127h206c11,0,20,9,20,20s-9,20-20,20H153c-11,0-20-9-20-20s9-20,20-20z" fill="#FFD740"/>
+	<!-- Springy side bells -->
+	<path d="M153,139l-28-20-15,28-22-18-15,27" fill="none" stroke-linecap="round"/>
+	<path d="M359,139l28-20,15,28,22-18,15,27" fill="none" stroke-linecap="round"/>
+	<path d="M54,180q19-40,38,0l-5,15H59z" fill="#AEEA00"/>
+	<circle cx="73" cy="198" r="8" fill="#FFD740"/>
+	<path d="M420,180q19-40,38,0l-5,15h-28z" fill="#FF6E9C"/>
+	<circle cx="439" cy="198" r="8" fill="#FFD740"/>
+	<!-- Beanie crown and propeller stem -->
+	<path d="M166,139c4-48,43-76,90-76s86,28,90,76z" fill="#7E57C2"/>
+	<path d="M256,63c-47,0-86,28-90,76h90z" fill="#40C4FF" stroke="none"/>
+	<path d="M256,63v76M256,72V48" fill="none" stroke-linecap="round"/>
+	<!-- Four oversized rainbow propeller blades -->
+	<path d="M249,42C216,4,160,2,156,23c-5,25,54,42,95,29z" fill="#40C4FF"/>
+	<path d="M263,42c33-38,89-40,93-19c5,25-54,42-95,29z" fill="#FF6E9C"/>
+	<path d="M248,55c-39,3-81,31-70,51c12,22,60-8,77-45z" fill="#AEEA00"/>
+	<path d="M264,55c39,3,81,31,70,51c-12,22-60-8-77-45z" fill="#FFAB40"/>
+	<circle cx="256" cy="50" r="15" fill="#FFD740"/>
+	<!-- Cross-eyed googly eyes -->
+	<circle cx="218" cy="111" r="24" fill="#FFFFFF"/>
+	<circle cx="294" cy="111" r="24" fill="#FFFFFF"/>
+	<circle cx="228" cy="115" r="9" fill="#38484A" stroke="none"/>
+	<circle cx="284" cy="115" r="9" fill="#38484A" stroke="none"/>
+	<!-- Tongue and brim -->
+	<path d="M236,153h40v34c0,18-9,29-20,29s-20-11-20-29z" fill="#FF6E9C"/>
+	<path d="M153,134h206c11,0,20,9,20,20s-9,20-20,20H153c-11,0-20-9-20-20s9-20,20-20z" fill="#FFD740"/>
+	<path d="M256,190v22" fill="none" stroke="#D81B60" stroke-width="5" stroke-linecap="round"/>
 </g>
 </svg>
