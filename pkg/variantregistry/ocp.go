@@ -111,6 +111,7 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-quay-quay-redhat-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
   GROUP BY prowjob_job_name
 )
@@ -135,6 +136,7 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-quay-quay-redhat-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
       OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
 GROUP BY j.prowjob_job_name, r.prowjob_url, r.successful_start
