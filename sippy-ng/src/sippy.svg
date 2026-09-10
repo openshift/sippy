@@ -76,14 +76,32 @@
 </g>
 <g>
 </g>
-<!-- Party hat -->
+<!-- Extra-silly party hat -->
 <g>
-	<path style="fill:#8E5CD9;stroke:#38484A;stroke-width:4;stroke-linejoin:round;" d="M330,24L278,128
-		c33,10,68,10,105,0L330,24z"/>
-	<path style="fill:#FC7176;" d="M303,82l56-7l11,22l-77,9L303,82z"/>
-	<circle style="fill:#FFB641;stroke:#38484A;stroke-width:4;" cx="330" cy="20" r="14"/>
-	<circle style="fill:#FFB641;" cx="322" cy="57" r="8"/>
-	<path style="fill:#80C9FF;stroke:#38484A;stroke-width:4;stroke-linejoin:round;" d="M275,121
-		c35,14,73,15,112,0l3,18c-40,16-80,16-119,1L275,121z"/>
+	<path style="fill:none;stroke:#FC7176;stroke-width:8;stroke-linecap:round;" d="M156,142
+		c-44-16-68,15-44,36c21,18,9,44-21,36"/>
+	<path style="fill:none;stroke:#FFB641;stroke-width:8;stroke-linecap:round;" d="M356,143
+		c44-20,71,11,49,35c-19,20-3,43,26,33"/>
+	<path style="fill:#8E5CD9;stroke:#38484A;stroke-width:6;stroke-linejoin:round;" d="M219,30
+		c55,39,107,87,142,136c-55,22-150,21-210-3C169,107,192,58,219,30z"/>
+	<path style="fill:none;stroke:#FC7176;stroke-width:18;stroke-linecap:round;" d="M180,111
+		c43,20,98,22,142,5"/>
+	<path style="fill:none;stroke:#FFB641;stroke-width:9;stroke-linecap:round;stroke-linejoin:round;"
+		d="M169,147l25-17l25,22l27-18l26,22l27-17l27,17"/>
+	<circle style="fill:#FFB641;stroke:#38484A;stroke-width:3;" cx="224" cy="82" r="12"/>
+	<circle style="fill:#80C9FF;stroke:#38484A;stroke-width:3;" cx="276" cy="98" r="9"/>
+	<circle style="fill:#FC7176;" cx="260" cy="57" r="7"/>
+	<path style="fill:#FFB641;stroke:#38484A;stroke-width:5;stroke-linejoin:round;" d="M219,3
+		l9,14l16-6l-4,17l15,9l-17,6l2,18l-15-10l-11,14l-4-18l-18,2l9-16l-13-12l18-3L219,3z"/>
+	<path style="fill:#80C9FF;stroke:#38484A;stroke-width:6;stroke-linejoin:round;" d="M140,158
+		c58,21,161,26,231,0l9,24c-35,21-78,31-123,31c-46,0-91-10-125-32L140,158z"/>
+	<g style="fill:none;stroke:#38484A;stroke-width:5;stroke-linecap:round;">
+		<path d="M174,194l-8,24"/>
+		<path d="M257,207v25"/>
+		<path d="M340,194l8,24"/>
+	</g>
+	<circle style="fill:#FC7176;stroke:#38484A;stroke-width:4;" cx="166" cy="226" r="11"/>
+	<circle style="fill:#FFB641;stroke:#38484A;stroke-width:4;" cx="257" cy="239" r="13"/>
+	<circle style="fill:#FC7176;stroke:#38484A;stroke-width:4;" cx="348" cy="226" r="11"/>
 </g>
 </svg>
