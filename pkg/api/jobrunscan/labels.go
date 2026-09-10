@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 
+	"github.com/lib/pq"
 	sippyapi "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
@@ -12,14 +14,28 @@ import (
 	"gorm.io/gorm"
 )
 
+// validJiraKeyRegex accepts Jira's uppercase project-key and numeric issue format.
+var validJiraKeyRegex = regexp.MustCompile(`^[A-Z][A-Z0-9_]*-[0-9]+$`)
+
+// normalizeLabelBugs keeps the labels API response stable for legacy rows with a NULL bugs column.
+func normalizeLabelBugs(label *jobrunscan.Label) {
+	if label.Bugs == nil {
+		label.Bugs = pq.StringArray{}
+	}
+}
+
 // validateLabel ensures the Label record coming into the API appears valid.
-// update parameter controls whether this is for create (false) or update (true).
 func validateLabel(label jobrunscan.Label) error {
 	if label.LabelTitle == "" {
 		return fmt.Errorf("label_title is required for a label")
 	}
 	if !ValidIdentifierRegex.MatchString(label.ID) {
 		return fmt.Errorf("invalid id for a label: %s", label.ID)
+	}
+	for _, bug := range label.Bugs {
+		if !validJiraKeyRegex.MatchString(bug) {
+			return fmt.Errorf("invalid Jira issue key for a label: %s", bug)
+		}
 	}
 
 	return nil
@@ -36,6 +52,7 @@ func GetLabel(dbc *db.DB, id string, req *http.Request) (*jobrunscan.Label, erro
 		log.WithError(res.Error).Errorf("error looking up label: %s", id)
 		return nil, res.Error
 	}
+	normalizeLabelBugs(&label)
 	injectLabelHATEOASLinks(&label, sippyapi.GetBaseURL(req))
 	return &label, nil
 }
@@ -49,6 +66,7 @@ func ListLabels(dbc *db.DB, req *http.Request) ([]jobrunscan.Label, error) {
 		return nil, res.Error
 	}
 	for i := range labels {
+		normalizeLabelBugs(&labels[i])
 		injectLabelHATEOASLinks(&labels[i], sippyapi.GetBaseURL(req))
 	}
 	return labels, nil
@@ -63,6 +81,7 @@ func CreateLabel(dbc *gorm.DB, label jobrunscan.Label, user string, req *http.Re
 		return label, err
 	}
 	label.ID = uniqueID
+	normalizeLabelBugs(&label)
 
 	err = validateLabel(label)
 	if err != nil {
@@ -86,6 +105,7 @@ func CreateLabel(dbc *gorm.DB, label jobrunscan.Label, user string, req *http.Re
 
 // UpdateLabel updates an existing label
 func UpdateLabel(dbc *gorm.DB, label jobrunscan.Label, user string, req *http.Request) (jobrunscan.Label, error) {
+	normalizeLabelBugs(&label)
 	err := validateLabel(label)
 	if err != nil {
 		log.WithError(err).Error("error validating label")
