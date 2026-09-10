@@ -7,20 +7,36 @@ mkdir -p "${HOME}/.config/gcloud" "${HOME}/.config/gh" "${HOME}/.claude"
 
 podman network create sippy-net 2>/dev/null || true
 
+POSTGRES_IMAGE=quay.io/openshift/ci:ci_postgresql_postgresql-18-c9s
+REDIS_IMAGE=quay.io/openshift/ci:ci_redis_redis-7-c9s
+
+warn_if_wrong_image() {
+    name=$1
+    expected=$2
+    current=$(podman inspect -f '{{.Config.Image}}' "$name" 2>/dev/null || true)
+    if [ -n "$current" ] && [ "$current" != "$expected" ]; then
+        echo "WARNING: $name is using $current (expected $expected). Remove it to pick up the new image: podman rm -f $name" >&2
+    fi
+}
+
 podman start sippy-postgres 2>/dev/null || \
     podman run -d --name sippy-postgres \
+        --platform linux/amd64 \
         --network sippy-net \
         -e POSTGRESQL_ADMIN_PASSWORD=password \
         -p 127.0.0.1:5432:5432 \
-        quay.io/openshift/ci:ci_postgresql_postgresql-18-c9s
+        "$POSTGRES_IMAGE"
+warn_if_wrong_image sippy-postgres "$POSTGRES_IMAGE"
 
 podman start sippy-redis 2>/dev/null || \
     podman run -d --name sippy-redis \
+        --platform linux/amd64 \
         --network sippy-net \
         --restart=always \
         --memory=4g \
         -p 127.0.0.1:6379:6379 \
-        quay.io/openshift/ci:ci_redis_redis-7-c9s
+        "$REDIS_IMAGE"
+warn_if_wrong_image sippy-redis "$REDIS_IMAGE"
 
 echo "Waiting for PostgreSQL..."
 pg_ready=false
