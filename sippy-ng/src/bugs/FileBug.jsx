@@ -19,18 +19,15 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { AutoAwesome as AutoAwesomeIcon, Close } from '@mui/icons-material'
+import { Close } from '@mui/icons-material'
 import {
   getBugsAPIUrl,
   getTriagesAPIUrl,
 } from '../component_readiness/CompReadyUtils'
 import { makeStyles } from '@mui/styles'
-import { SippyCapabilitiesContext } from '../App'
-import { usePrompts } from '../chat/store/useChatStore'
 import BugButton from './BugButton'
-import OneShotChatModal from '../chat/OneShotChatModal'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext, useState } from 'react'
+import React, { Fragment, useState } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   alignedButton: {
@@ -62,7 +59,6 @@ export default function FileBug({
   url,
 }) {
   const classes = useStyles()
-  const { renderPrompt } = usePrompts()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formData, setFormData] = useState({
     summary: '',
@@ -80,12 +76,6 @@ export default function FileBug({
   const [errorAlert, setErrorAlert] = useState('')
   const [successAlert, setSuccessAlert] = useState(null)
   const [isValidationError, setIsValidationError] = useState(false)
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
-  const [aiGeneratedDescription, setAiGeneratedDescription] = useState('')
-  const [aiPrompt, setAiPrompt] = useState('')
-  const [promptRenderError, setPromptRenderError] = useState(null)
-  const capabilities = useContext(SippyCapabilitiesContext)
-  const chatEnabled = capabilities.includes('chat')
 
   const handleOpenModal = () => {
     const defaultText = `
@@ -101,8 +91,7 @@ See the [sippy test details|${url}] for additional context.
         ? `[${component}] [${capability}] test regressed`
         : ''
 
-    // Use AI-generated description if available, otherwise use context or default
-    const defaultDescription = aiGeneratedDescription || context || defaultText
+    const defaultDescription = context || defaultText
 
     const defaultAffectsVersions = []
     if (version) defaultAffectsVersions.push(version)
@@ -296,42 +285,6 @@ See the [sippy test details|${url}] for additional context.
     'test',
   ]
 
-  const handleGenerateAIDescription = async () => {
-    setPromptRenderError(null)
-    try {
-      // Render the prompt with arguments
-      const rendered = await renderPrompt(
-        'component-readiness-jira-description',
-        {
-          url: url,
-        }
-      )
-      setAiPrompt(rendered)
-      setIsAIModalOpen(true)
-    } catch (error) {
-      console.error('Failed to render prompt:', error)
-      setPromptRenderError(
-        `Failed to load AI prompt: ${error.message || error}`
-      )
-    }
-  }
-
-  const handleAIDescriptionResult = (generatedDescription) => {
-    const descriptionWithNote = `{panel:title=⚠️ AI-Generated Content|borderStyle=dashed|borderColor=#9C27B0|titleBGColor=#F3E5F5}
-Sippy AI-assisted description; please review details for accuracy.
-{panel}
-
-*Filed from:* [Test Regression Details|${url}]
-
-${generatedDescription}`
-    setAiGeneratedDescription(descriptionWithNote)
-    setFormData((prev) => ({
-      ...prev,
-      description: descriptionWithNote,
-    }))
-    setIsAIModalOpen(false)
-  }
-
   return (
     <Fragment>
       <Snackbar
@@ -451,50 +404,9 @@ ${generatedDescription}`
             helperText="Title of the issue"
           />
 
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Typography variant="subtitle2" className={classes.fieldLabel}>
-              Description *
-            </Typography>
-            {chatEnabled && (
-              <Button
-                size="small"
-                startIcon={<AutoAwesomeIcon />}
-                onClick={handleGenerateAIDescription}
-                sx={{
-                  background:
-                    'linear-gradient(45deg, #9C27B0 30%, #E91E63 90%)',
-                  boxShadow: '0 3px 5px 2px rgba(156, 39, 176, .3)',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  textTransform: 'none',
-                  transition: 'all 0.3s ease',
-                  animation: 'pulse 2s ease-in-out infinite',
-                  '@keyframes pulse': {
-                    '0%, 100%': {
-                      boxShadow: '0 3px 5px 2px rgba(156, 39, 176, .3)',
-                    },
-                    '50%': {
-                      boxShadow: '0 3px 15px 5px rgba(156, 39, 176, .5)',
-                    },
-                  },
-                  '&:hover': {
-                    background:
-                      'linear-gradient(45deg, #7B1FA2 30%, #C2185B 90%)',
-                    boxShadow: '0 6px 20px 4px rgba(156, 39, 176, .4)',
-                    transform: 'translateY(-2px)',
-                  },
-                }}
-              >
-                Generate AI-enhanced Description
-              </Button>
-            )}
-          </Box>
+          <Typography variant="subtitle2" className={classes.fieldLabel}>
+            Description *
+          </Typography>
           <TextField
             name="description"
             value={formData.description}
@@ -666,28 +578,6 @@ ${generatedDescription}`
           </Typography>
         </DialogActions>
       </Dialog>
-
-      {chatEnabled && (
-        <OneShotChatModal
-          open={isAIModalOpen}
-          onClose={() => setIsAIModalOpen(false)}
-          prompt={aiPrompt}
-          onResult={handleAIDescriptionResult}
-          title="Generating AI-Enhanced Bug Description"
-        />
-      )}
-
-      {/* Error snackbar for prompt rendering failures */}
-      <Snackbar
-        open={!!promptRenderError}
-        autoHideDuration={6000}
-        onClose={() => setPromptRenderError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert severity="error" onClose={() => setPromptRenderError(null)}>
-          {promptRenderError}
-        </Alert>
-      </Snackbar>
     </Fragment>
   )
 }

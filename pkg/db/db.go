@@ -178,8 +178,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.Triage{},
 		&models.TriageSymptom{},
 		&models.AuditLog{},
-		&models.ChatRating{},
-		&models.ChatConversation{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
 	}
