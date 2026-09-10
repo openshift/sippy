@@ -1376,7 +1376,8 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-coo-", "lp-interop-coo"},
 		{"-acm-cnv-", "lp-interop--acm-virt"},
 		{"-acm-virt-", "lp-interop--acm-virt"},
-		{"-interop-opp-", "lp-interop--OPP"},
+		{"-opp--ocp-", "lp-interop--OPP"},       // New OPP jobs in RedHatQE/interop-testing
+		{"-interop-opp-", "lp-interop--OPP"},     // Old OPP jobs in stolostron/policy-collection (deprecated)
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},
