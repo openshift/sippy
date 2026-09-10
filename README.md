@@ -7,6 +7,8 @@ It surfaces release health and regressions through reports such as Component Rea
 Users can filter results by job, test, and configuration variants such as network, upgrade, release, and platform.
 Sippy also exposes REST APIs for programmatic access to its data and reports.
 
+Sippy Chat has moved to Chai Bot in Slack. Existing `/chat` links display a transition page.
+
 ## Typical usage
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for information about standing up a

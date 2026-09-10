@@ -1,5 +1,6 @@
 import { Box, Button, Chip, Tooltip } from '@mui/material'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import {
   getTriagesAPIUrl,
@@ -27,6 +28,7 @@ import UpsertTriageModal from './UpsertTriageModal'
 
 export default function Triage({ id }) {
   const theme = useTheme()
+  const { sampleRelease } = React.useContext(CompReadyVarsContext)
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')

@@ -1,7 +1,6 @@
 package sippyserver
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -3219,14 +3218,6 @@ type statusCapturingResponseWriter struct {
 func (w *statusCapturingResponseWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
-}
-
-// Hijack delegates to the underlying ResponseWriter so gorilla/websocket can upgrade connections.
-func (w *statusCapturingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hj, ok := w.ResponseWriter.(http.Hijacker); ok {
-		return hj.Hijack()
-	}
-	return nil, nil, fmt.Errorf("upstream ResponseWriter does not implement http.Hijacker")
 }
 
 func logRequestHandler(h http.Handler) http.Handler {
