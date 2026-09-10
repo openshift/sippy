@@ -6,9 +6,9 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-export SIPPY_DATABASE_DSN="postgresql://postgres@localhost:5432/postgres?sslmode=disable"
+export SIPPY_DATABASE_DSN="postgresql://postgres:password@localhost:5432/postgres?sslmode=disable"
 export SIPPY_SEED_DATABASE_DSN="${SIPPY_DATABASE_DSN}"
-export SIPPY_PRODLIKE_DATABASE_DSN="postgresql://postgres@localhost:5432/prodlike?sslmode=disable"
+export SIPPY_PRODLIKE_DATABASE_DSN="postgresql://postgres:password@localhost:5432/prodlike?sslmode=disable"
 export REDIS_URL="redis://localhost:6379"
 export SIPPY_E2E_REDIS_URL="redis://localhost:6379/1"
 

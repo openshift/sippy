@@ -10,11 +10,12 @@ podman network create sippy-net 2>/dev/null || true
 podman start sippy-postgres 2>/dev/null || \
     podman run -d --name sippy-postgres \
         --network sippy-net \
-        -e POSTGRES_PASSWORD=password \
-        -e POSTGRES_HOST_AUTH_METHOD=trust \
+        -e POSTGRESQL_USER=sippy \
+        -e POSTGRESQL_PASSWORD=password \
+        -e POSTGRESQL_DATABASE=prodlike \
+        -e POSTGRESQL_ADMIN_PASSWORD=password \
         -p 127.0.0.1:5432:5432 \
-        docker.io/library/postgres:18.4 \
-        -c listen_addresses='*'
+        quay.io/openshift/ci:ci_postgresql_postgresql-18-c9s
 
 podman start sippy-redis 2>/dev/null || \
     podman run -d --name sippy-redis \
@@ -22,12 +23,11 @@ podman start sippy-redis 2>/dev/null || \
         --restart=always \
         --memory=4g \
         -p 127.0.0.1:6379:6379 \
-        docker.io/redis:7-alpine \
-        redis-server --maxmemory 3800mb --maxmemory-policy allkeys-lru
+        quay.io/openshift/ci:ci_redis_redis-7-c9s
 
 echo "Waiting for PostgreSQL..."
 pg_ready=false
-for i in $(seq 1 30); do
+for i in $(seq 1 60); do
     if podman exec sippy-postgres pg_isready -U postgres >/dev/null 2>&1; then
         pg_ready=true
         break
@@ -35,15 +35,15 @@ for i in $(seq 1 30); do
     sleep 1
 done
 if [ "$pg_ready" = false ]; then
-    echo "ERROR: PostgreSQL did not become ready within 30 seconds."
+    echo "ERROR: PostgreSQL did not become ready within 60 seconds."
     exit 1
 fi
 
 echo "Creating prod-like database (prodlike)..."
-podman exec sippy-postgres psql -U postgres -tc \
+podman exec -e PGPASSWORD=password sippy-postgres psql -U postgres -tc \
     "SELECT 1 FROM pg_database WHERE datname = 'prodlike'" \
     | grep -q 1 \
-    || podman exec sippy-postgres psql -U postgres -c "CREATE DATABASE prodlike"
+    || podman exec -e PGPASSWORD=password sippy-postgres psql -U postgres -c "CREATE DATABASE prodlike"
 
 echo "Waiting for Redis..."
 redis_ready=false
