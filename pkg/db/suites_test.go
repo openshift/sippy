@@ -109,6 +109,12 @@ func TestDynamicSuitePatternMatching(t *testing.T) {
 			shouldMatch:   false,
 			patternReason: "pattern requires at least one character before -lifecycle",
 		},
+		{
+			name:          "no pattern match - lifecycle suffix after a leading newline",
+			suiteName:     "x\nquay-lifecycle",
+			shouldMatch:   false,
+			patternReason: "pattern is anchored at the start",
+		},
 	}
 
 	for _, tt := range tests {

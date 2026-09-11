@@ -93,7 +93,7 @@ var testSuitePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\.spec\.ts$`),
 	// Product lifecycle suites (<product>-lifecycle) emitted by CI deploy/upgrade steps for
 	// synthetic releases.
-	regexp.MustCompile(`.+-lifecycle$`),
+	regexp.MustCompile(`^.+-lifecycle$`),
 }
 
 var testSuiteSet = sets.New[string](testSuites...)
