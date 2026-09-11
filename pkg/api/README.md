@@ -84,6 +84,13 @@ Endpoint: `/api/health`
 Returns a summary of overall release health, including the percentage of successful runs of each, as well as a summary
 of variant success rates.
 
+For releases named `<product>-<version>` (e.g. `quay-3.18`), the `install` and `upgrade` indicators select
+the "[sig-<product>] install should succeed" and "[sig-<product>] upgrade should succeed" testcases (e.g.
+"[sig-quay] install should succeed", "[sig-quay] upgrade should succeed") instead of the OpenShift install/upgrade
+tests. These testcases are emitted by CI in a `<product>-lifecycle` JUnit suite. Names whose segment before the
+first "-" is itself a release number, such as `4.21-okd` or `5.0-okd`, are OpenShift release variants rather than
+synthetic products, and keep the OpenShift install/upgrade tests.
+
 <details>
 <summary>Example response</summary>
 
@@ -155,6 +162,11 @@ of variant success rates.
 
 `*` indicates a required value.
 
+For releases named `<product>-<version>` (e.g. `quay-3.18`), this endpoint selects the
+"[sig-<product>] install should succeed" testcase (e.g. "[sig-quay] install should succeed"), instead of the
+OpenShift install tests. This testcase is emitted by CI in a `<product>-lifecycle` JUnit suite. See the naming
+exception for OpenShift release variants (e.g. `4.21-okd`) under [Release Health](#release-health).
+
 <details>
 <summary>Example response</summary>
 
@@ -216,6 +228,11 @@ of variant success rates.
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
 
 `*` indicates a required value.
+
+For releases named `<product>-<version>` (e.g. `quay-3.18`), this endpoint selects the
+"[sig-<product>] upgrade should succeed" testcase (e.g. "[sig-quay] upgrade should succeed"), instead of the
+OpenShift upgrade tests. This testcase is emitted by CI in a `<product>-lifecycle` JUnit suite. See the naming
+exception for OpenShift release variants (e.g. `4.21-okd`) under [Release Health](#release-health).
 
 ## Jobs
 

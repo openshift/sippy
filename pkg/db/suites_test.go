@@ -85,6 +85,30 @@ func TestDynamicSuitePatternMatching(t *testing.T) {
 			shouldMatch:   false,
 			patternReason: "pattern requires double hyphen after lp-interop",
 		},
+		{
+			name:          "product lifecycle suite suffix",
+			suiteName:     "quay-lifecycle",
+			shouldMatch:   true,
+			patternReason: "matches -lifecycle$ pattern",
+		},
+		{
+			name:          "no pattern match - lifecycle without product prefix",
+			suiteName:     "lifecycle",
+			shouldMatch:   false,
+			patternReason: "pattern requires a hyphen before lifecycle",
+		},
+		{
+			name:          "no pattern match - lifecycle suffix with trailing text",
+			suiteName:     "quay-lifecycle-extra",
+			shouldMatch:   false,
+			patternReason: "pattern requires -lifecycle at end",
+		},
+		{
+			name:          "no pattern match - lifecycle suffix without product",
+			suiteName:     "-lifecycle",
+			shouldMatch:   false,
+			patternReason: "pattern requires at least one character before -lifecycle",
+		},
 	}
 
 	for _, tt := range tests {
@@ -118,6 +142,9 @@ func TestIsSuiteImportableKnownAndUnknown(t *testing.T) {
 	}
 	if IsSuiteImportable("not-a-real-suite") {
 		t.Fatal("expected unknown suite to be rejected")
+	}
+	if !IsSuiteImportable("quay-lifecycle") {
+		t.Fatal("expected quay-lifecycle suite to be importable")
 	}
 }
 

@@ -91,6 +91,9 @@ var testSuitePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^lp-ocp-compat--`),
 	// Playwright e2e tests (e.g. Quay) use spec filenames as suite names.
 	regexp.MustCompile(`\.spec\.ts$`),
+	// Product lifecycle suites (<product>-lifecycle) emitted by CI deploy/upgrade steps for
+	// synthetic releases.
+	regexp.MustCompile(`.+-lifecycle$`),
 }
 
 var testSuiteSet = sets.New[string](testSuites...)

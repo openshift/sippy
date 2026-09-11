@@ -18,16 +18,10 @@ import (
 func PrintInstallJSONReportFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
 	excludedVariants := testidentification.DefaultExcludedVariants
 	excludedVariants = append(excludedVariants, "upgrade-minor")
-	exactTestNames := sets.New[string]()
-	testPrefixes := sets.New(testidentification.OperatorInstallPrefix)
-	if useNewInstallTest(release) {
-		testPrefixes.Insert(testidentification.InstallTestNamePrefix)
-	} else {
-		exactTestNames = exactTestNames.Insert(testidentification.InstallTestName)
-	}
+	lifecycleTests := lifecycleTestsForRelease(release)
 
 	variantColumns, tests, err := VariantTestsReport(dbc, release, v1.CurrentReport,
-		exactTestNames, testPrefixes, sets.New[string](), excludedVariants)
+		lifecycleTests.InstallExactNames, lifecycleTests.InstallPrefixes, sets.New[string](), excludedVariants)
 	if err != nil {
 		log.WithError(err).Error("could not generate install report")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Could not generate install report: " + err.Error()})

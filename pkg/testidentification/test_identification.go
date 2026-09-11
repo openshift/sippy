@@ -36,6 +36,13 @@ const (
 	NewInfrastructureTestName = `install should succeed: infrastructure`
 	NewInstallTestName        = `install should succeed: overall`
 
+	// LifecycleInstallTestName is the install headline testcase name product lifecycle CI steps
+	// emit under a "[sig-<product>] " prefix in a "<product>-lifecycle" suite.
+	LifecycleInstallTestName = "install should succeed"
+	// LifecycleUpgradeTestName is the upgrade headline testcase name product lifecycle CI steps
+	// emit under a "[sig-<product>] " prefix in a "<product>-lifecycle" suite.
+	LifecycleUpgradeTestName = "upgrade should succeed"
+
 	Success = "Success"
 	Failure = "Failure"
 	Unknown = "Unknown"
