@@ -345,6 +345,8 @@ github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a h1:b
 github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a/go.mod h1:HtbWQQG60/CJDMXoRkRvcdR2WJniLk4osp2kUCW4Q3E=
 github.com/openshift-eng/gopar v0.0.0-20260616192337-b77b4437ef28 h1:7TTfcwNfwbZVVAZbbPDARw8jg73QODSgJq6tvz6DxtM=
 github.com/openshift-eng/gopar v0.0.0-20260616192337-b77b4437ef28/go.mod h1:Yesw1IJMG98mQkZlXO48osQt5vegYpVKlr+H9bXkI0E=
+github.com/openshift-eng/gopar v0.0.0-20260910203208-c9b43b0b456d h1:OlPJxuCHOJqyQGesqujiKFrua7HXQkiKNC0YiI8AsSA=
+github.com/openshift-eng/gopar v0.0.0-20260910203208-c9b43b0b456d/go.mod h1:Yesw1IJMG98mQkZlXO48osQt5vegYpVKlr+H9bXkI0E=
 github.com/pierrec/lz4/v4 v4.1.18 h1:xaKrnTkyoqfh1YItXl56+6KJNVYWlEEPuAQW9xsplYQ=
 github.com/pierrec/lz4/v4 v4.1.18/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

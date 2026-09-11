@@ -25,7 +25,7 @@ require (
 	github.com/mark3labs/mcp-go v0.39.1
 	github.com/montanaflynn/stats v0.6.6
 	github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a
-	github.com/openshift-eng/gopar v0.0.0-20260616192337-b77b4437ef28
+	github.com/openshift-eng/gopar v0.0.0-20260910203208-c9b43b0b456d
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.3
 	github.com/sirupsen/logrus v1.9.4
