@@ -10,7 +10,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
@@ -40,21 +39,21 @@ function ReleaseSelector(props) {
   const releases = useContext(ReleasesContext)
   const [versions, setVersions] = useState({})
   const {
-    label,
+    label = 'Version',
     setStartTime,
     startTime,
     setEndTime,
     endTime,
     version,
     onChange,
-    pullRequestSupport,
+    pullRequestSupport = false,
     pullRequestOrg,
     setPullRequestOrg,
     pullRequestRepo,
     setPullRequestRepo,
     pullRequestNumber,
     setPullRequestNumber,
-    payloadSupport,
+    payloadSupport = false,
     payloadTags,
     setPayloadTags,
   } = props
@@ -276,11 +275,9 @@ function ReleaseSelector(props) {
 
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <DatePicker
-              showTodayButton
               disableFuture
               label="From"
               format={dateFormat}
-              ampm={false}
               value={startTime}
               onChange={(e) => {
                 const stringStartTime = dateExtractor('startTime', e)
@@ -290,16 +287,12 @@ function ReleaseSelector(props) {
                 )
                 setStartTime(formattedTime)
               }}
-              renderInput={(props) => (
-                <TextField variant="standard" {...props} />
-              )}
+              slotProps={{ textField: { variant: 'standard' } }}
             />
             <DatePicker
-              showTodayButton
               disableFuture
               label="To"
               format={dateEndFormat}
-              ampm={false}
               value={endTime}
               onChange={(e) => {
                 const stringEndTime = dateExtractor('endTime', e)
@@ -309,9 +302,7 @@ function ReleaseSelector(props) {
                 )
                 setEndTime(formattedTime)
               }}
-              renderInput={(props) => (
-                <TextField variant="standard" {...props} />
-              )}
+              slotProps={{ textField: { variant: 'standard' } }}
             />
           </LocalizationProvider>
         </Grid>
@@ -380,12 +371,6 @@ ReleaseSelector.propTypes = {
   payloadSupport: PropTypes.bool,
   payloadTags: PropTypes.string,
   setPayloadTags: PropTypes.func,
-}
-
-ReleaseSelector.defaultProps = {
-  label: 'Version',
-  pullRequestSupport: false,
-  payloadSupport: false,
 }
 
 export default ReleaseSelector

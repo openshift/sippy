@@ -185,14 +185,11 @@ export default function UpdateTriagePanel({
                   field: 'variants',
                   headerName: 'Variants',
                   flex: 35,
-                  valueGetter: (params) => {
-                    if (
-                      params.row.variants &&
-                      typeof params.row.variants === 'object'
-                    ) {
-                      return formColumnName({ variants: params.row.variants })
+                  valueGetter: (value, row) => {
+                    if (row.variants && typeof row.variants === 'object') {
+                      return formColumnName({ variants: row.variants })
                     }
-                    return params.row.variants || ''
+                    return row.variants || ''
                   },
                   renderCell: (param) => (
                     <div className="test-name">{param.value}</div>
@@ -202,11 +199,11 @@ export default function UpdateTriagePanel({
                   field: 'opened',
                   headerName: 'Regressed Since',
                   flex: 12,
-                  valueGetter: (params) => {
-                    if (!params.row.opened) {
+                  valueGetter: (value, row) => {
+                    if (!row.opened) {
                       return ''
                     }
-                    const regressedSinceDate = new Date(params.row.opened)
+                    const regressedSinceDate = new Date(row.opened)
                     return relativeTime(regressedSinceDate, new Date())
                   },
                   renderCell: (param) => (
@@ -217,10 +214,12 @@ export default function UpdateTriagePanel({
               getRowId={(row) => row.id}
               autoHeight={true}
               getRowHeight={() => 80}
-              disableSelectionOnClick
+              disableRowSelectionOnClick
               hideFooter={triage.regressions.length <= 10}
-              pageSize={10}
-              rowsPerPageOptions={[10, 25, 50]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 10 } },
+              }}
+              pageSizeOptions={[10, 25, 50]}
               disableColumnMenu={true}
               className={classes.dataGrid}
             />

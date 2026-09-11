@@ -45,7 +45,18 @@ const useStyles = makeStyles((_theme) => ({
   },
 }))
 
-function RepositoriesTable(props) {
+function RepositoriesTable({
+  limit = 0,
+  hideControls = false,
+  pageSize = 25,
+  view: viewDefault = 'Default',
+  pageSizeOptions = [5, 10, 25, 50, 100],
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'worst_premerge_job_failures',
+  sort: sortDefault = 'desc',
+  ...props
+}) {
   const PREMERGE_JOB_FAILURES_TOOLTIP =
     'Premerge job failures shows the average number of failures for the worst performing job. ' +
     'Failures exclude developer pushes or successful retests due to code changes.  It only looks ' +
@@ -64,16 +75,21 @@ function RepositoriesTable(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [view = props.view, setView] = useQueryParam('view', StringParam)
+  const [view = viewDefault, setView] = useQueryParam('view', StringParam)
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
+
+  const [paginationModel, setPaginationModel] = React.useState({
+    page: 0,
+    pageSize,
+  })
 
   const views = {
     Default: {
@@ -195,8 +211,8 @@ function RepositoriesTable(props) {
         '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
     }
 
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
+    if (limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(limit)
     }
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
@@ -238,7 +254,7 @@ function RepositoriesTable(props) {
   }
 
   if (isLoaded === false) {
-    if (props.briefTable) {
+    if (briefTable) {
       return <p>Loading...</p>
     } else {
       return (
@@ -259,7 +275,7 @@ function RepositoriesTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -278,11 +294,11 @@ function RepositoriesTable(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'repo')
+    const newItems = filterModel.items.filter((f) => f.field !== 'repo')
     newItems.push({
       id: 99,
-      columnField: 'repo',
-      operatorValue: 'contains',
+      field: 'repo',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -295,16 +311,17 @@ function RepositoriesTable(props) {
     <Fragment>
       <DataGrid
         className={gridClasses.root}
-        components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         density="compact"
         columns={gridView.columns}
         autoHeight={true}
         rowHeight={100}
-        disableColumnFilter={props.briefTable}
+        disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        pageSize={props.pageSize}
-        rowsPerPageOptions={props.rowsPerPageOptions}
+        paginationModel={paginationModel}
+        onPaginationModelChange={setPaginationModel}
+        pageSizeOptions={pageSizeOptions}
         getRowClassName={(params) =>
           classes[
             'row-percent-' + Math.round(params.row.worst_premerge_job_failures)
@@ -324,7 +341,7 @@ function RepositoriesTable(props) {
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             doSearch: requestSearch,
             searchField: 'repo',
@@ -347,21 +364,6 @@ function RepositoriesTable(props) {
   )
 }
 
-RepositoriesTable.defaultProps = {
-  collapse: true,
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  view: 'Default',
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'worst_premerge_job_failures',
-  sort: 'desc',
-}
-
 RepositoriesTable.propTypes = {
   briefTable: PropTypes.bool,
   hideControls: PropTypes.bool,
@@ -372,7 +374,7 @@ RepositoriesTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
 }
 

@@ -41,7 +41,7 @@ export default function TriagedRegressionTestList(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -49,19 +49,19 @@ export default function TriagedRegressionTestList(props) {
   const requestSearch = (searchValue) => {
     // Filter out empty items and existing test_name filters
     const currentFilters = filterModel.items.filter(
-      (f) => shouldKeepFilterItem(f) && f.columnField !== 'test_name'
+      (f) => shouldKeepFilterItem(f) && f.field !== 'test_name'
     )
     if (searchValue && searchValue !== '') {
       currentFilters.push({
         id: 99,
-        columnField: 'test_name',
-        operatorValue: 'contains',
+        field: 'test_name',
+        operator: 'contains',
         value: searchValue,
       })
     }
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -113,8 +113,8 @@ export default function TriagedRegressionTestList(props) {
       headerName: 'Test Name',
       flex: 50,
       autocomplete: 'test_name',
-      valueGetter: (params) => {
-        return params.row.test_name
+      valueGetter: (value, row) => {
+        return row.test_name
       },
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -123,8 +123,8 @@ export default function TriagedRegressionTestList(props) {
       headerName: 'Release',
       flex: 7,
       autocomplete: 'release',
-      valueGetter: (params) => {
-        return params.row.release
+      valueGetter: (value, row) => {
+        return row.release
       },
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -132,10 +132,10 @@ export default function TriagedRegressionTestList(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 20,
-      valueGetter: (params) => {
+      valueGetter: (value, row) => {
         // Join array values into a searchable string
-        return params.row.variants && Array.isArray(params.row.variants)
-          ? params.row.variants.sort().join(' ')
+        return row.variants && Array.isArray(row.variants)
+          ? row.variants.sort().join(' ')
           : ''
       },
       renderCell: (params) => (
@@ -150,11 +150,11 @@ export default function TriagedRegressionTestList(props) {
       type: 'date',
       flex: 12,
       filterable: false,
-      valueGetter: (params) => {
-        if (!params.row.opened) {
+      valueGetter: (value, row) => {
+        if (!row.opened) {
           return null
         }
-        return new Date(params.row.opened)
+        return new Date(row.opened)
       },
       renderCell: (param) => (
         <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
@@ -170,11 +170,11 @@ export default function TriagedRegressionTestList(props) {
       flex: 12,
       filterable: false,
       type: 'date',
-      valueGetter: (params) => {
-        if (!params.row.last_failure.Valid) {
+      valueGetter: (value, row) => {
+        if (!row.last_failure.Valid) {
           return null
         }
-        return new Date(params.row.last_failure.Time)
+        return new Date(row.last_failure.Time)
       },
       renderCell: (params) => {
         if (!params.value) return ''
@@ -198,9 +198,9 @@ export default function TriagedRegressionTestList(props) {
                 <span>{viewName}</span>
               </Tooltip>
             ),
-            valueGetter: (params) => {
+            valueGetter: (value, row) => {
               const tests = regressedTestsByView[viewName] || []
-              const rt = tests.find((t) => t?.regression?.id === params.row.id)
+              const rt = tests.find((t) => t?.regression?.id === row.id)
               if (!rt) return null
               return {
                 status: rt.status,
@@ -269,26 +269,25 @@ export default function TriagedRegressionTestList(props) {
         <DataGrid
           sortModel={sortModel}
           onSortModelChange={setSortModel}
-          components={{ Toolbar: GridToolbar }}
+          slots={{ toolbar: GridToolbar }}
           rows={filteredRegressions}
           columns={columns}
           getRowHeight={() => 'auto'}
           getRowId={(row) => row.id}
-          selectionModel={activeRow}
-          onSelectionModelChange={(newRow) => {
+          rowSelectionModel={activeRow}
+          onRowSelectionModelChange={(newRow) => {
             if (newRow.length > 0) {
               setActiveRow(Number(newRow), 'replaceIn')
             }
           }}
-          page={activePage}
-          onPageChange={(newPage) => {
-            setActivePage(newPage, 'replaceIn')
+          paginationModel={{ pageSize: 10, page: activePage || 0 }}
+          onPaginationModelChange={(model) => {
+            setActivePage(model.page, 'replaceIn')
           }}
-          pageSize={10}
           rowHeight={60}
           autoHeight={true}
           checkboxSelection={false}
-          componentsProps={{
+          slotProps={{
             toolbar: {
               columns: columns,
               addFilters: addFilters,

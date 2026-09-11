@@ -60,7 +60,18 @@ const useStyles = makeStyles((_theme) => ({
   },
 }))
 
-export default function PullRequestsTable(props) {
+export default function PullRequestsTable({
+  limit = 0,
+  hideControls = false,
+  pageSize = 25,
+  view: viewDefault = 'Default',
+  pageSizeOptions = [5, 10, 25, 50, 100],
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'merged_at',
+  sort: sortDefault = 'desc',
+  ...props
+}) {
   const _classes = props.classes
   const gridClasses = useStyles()
   const theme = useTheme()
@@ -68,19 +79,20 @@ export default function PullRequestsTable(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
+  const [page, setPage] = React.useState(0)
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [view = props.view, setView] = useQueryParam('view', StringParam)
+  const [view = viewDefault, setView] = useQueryParam('view', StringParam)
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
 
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
@@ -116,12 +128,12 @@ export default function PullRequestsTable(props) {
         {
           field: 'history',
           flex: 0.5,
-          hide: props.briefTable,
+          hide: briefTable,
         },
         {
           field: 'link',
           flex: 0.5,
-          hide: props.briefTable,
+          hide: briefTable,
         },
       ],
     },
@@ -140,7 +152,7 @@ export default function PullRequestsTable(props) {
         {
           field: 'link',
           flex: 0.6,
-          hide: props.briefTable,
+          hide: briefTable,
         },
       ],
     },
@@ -258,8 +270,8 @@ export default function PullRequestsTable(props) {
       type: 'date',
       field: 'merged_at',
       headerName: 'Merged at',
-      valueGetter: (params) => {
-        return params.value ? new Date(params.value) : null
+      valueGetter: (value) => {
+        return value ? new Date(value) : null
       },
       renderCell: (params) => {
         if (!params.value) {
@@ -334,8 +346,8 @@ export default function PullRequestsTable(props) {
         '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
     }
 
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
+    if (limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(limit)
     }
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
@@ -377,7 +389,7 @@ export default function PullRequestsTable(props) {
   }
 
   if (isLoaded === false) {
-    if (props.briefTable) {
+    if (briefTable) {
       return <p>Loading...</p>
     } else {
       return (
@@ -398,7 +410,7 @@ export default function PullRequestsTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -420,16 +432,17 @@ export default function PullRequestsTable(props) {
     <Fragment>
       <DataGrid
         className={gridClasses.root}
-        components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         density="compact"
         columns={gridView.columns}
         autoHeight={true}
         rowHeight={100}
-        disableColumnFilter={props.briefTable}
+        disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        pageSize={props.pageSize}
-        rowsPerPageOptions={props.rowsPerPageOptions}
+        paginationModel={{ pageSize, page }}
+        onPaginationModelChange={(model) => setPage(model.page)}
+        pageSizeOptions={pageSizeOptions}
         checkboxSelection={false}
         filterMode="server"
         sortingMode="server"
@@ -441,7 +454,7 @@ export default function PullRequestsTable(props) {
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             bookmarks: bookmarks,
             views: gridView.views,
@@ -462,21 +475,6 @@ export default function PullRequestsTable(props) {
   )
 }
 
-PullRequestsTable.defaultProps = {
-  collapse: true,
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  view: 'Default',
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'merged_at',
-  sort: 'desc',
-}
-
 PullRequestsTable.propTypes = {
   briefTable: PropTypes.bool,
   hideControls: PropTypes.bool,
@@ -487,6 +485,6 @@ PullRequestsTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
 }

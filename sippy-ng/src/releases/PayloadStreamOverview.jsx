@@ -239,8 +239,6 @@ function PayloadStreamOverview(props) {
   )
 }
 
-PayloadStreamOverview.defaultProps = {}
-
 PayloadStreamOverview.propTypes = {
   release: PropTypes.string,
   arch: PropTypes.string.isRequired,

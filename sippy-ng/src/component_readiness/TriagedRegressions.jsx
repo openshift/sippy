@@ -23,8 +23,8 @@ const bookmarks = [
     model: [
       {
         id: 1,
-        columnField: 'resolution_date',
-        operatorValue: 'equals',
+        field: 'resolution_date',
+        operator: 'equals',
         value: 'Resolved',
       },
     ],
@@ -34,8 +34,8 @@ const bookmarks = [
     model: [
       {
         id: 1,
-        columnField: 'resolution_date',
-        operatorValue: 'equals',
+        field: 'resolution_date',
+        operator: 'equals',
         value: 'Unresolved',
       },
     ],
@@ -45,8 +45,8 @@ const bookmarks = [
     model: [
       {
         id: 1,
-        columnField: 'release_blocker',
-        operatorValue: 'equals',
+        field: 'release_blocker',
+        operator: 'equals',
         value: 'approved',
       },
     ],
@@ -56,8 +56,8 @@ const bookmarks = [
     model: [
       {
         id: 1,
-        columnField: 'release_blocker',
-        operatorValue: 'equals',
+        field: 'release_blocker',
+        operator: 'equals',
         value: 'rejected',
       },
     ],
@@ -67,8 +67,8 @@ const bookmarks = [
     model: [
       {
         id: 1,
-        columnField: 'release_blocker',
-        operatorValue: 'equals',
+        field: 'release_blocker',
+        operator: 'equals',
         value: 'proposed',
       },
     ],
@@ -117,7 +117,7 @@ export default function TriagedRegressions({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -125,19 +125,19 @@ export default function TriagedRegressions({
   const requestSearch = (searchValue) => {
     // Filter out empty items and existing description filters
     const currentFilters = filterModel.items.filter(
-      (f) => shouldKeepFilterItem(f) && f.columnField !== 'description'
+      (f) => shouldKeepFilterItem(f) && f.field !== 'description'
     )
     if (searchValue && searchValue !== '') {
       currentFilters.push({
         id: 99,
-        columnField: 'description',
-        operatorValue: 'contains',
+        field: 'description',
+        operator: 'contains',
         value: searchValue,
       })
     }
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -188,8 +188,8 @@ export default function TriagedRegressions({
     },
     {
       field: 'resolution_date',
-      valueGetter: (value) => {
-        return value.row.resolved?.Valid ? 'Resolved' : 'Unresolved'
+      valueGetter: (value, row) => {
+        return row.resolved?.Valid ? 'Resolved' : 'Unresolved'
       },
       headerName: 'Resolved',
       flex: 2,
@@ -224,8 +224,8 @@ export default function TriagedRegressions({
     },
     {
       field: 'description',
-      valueGetter: (value) => {
-        return value.row.description
+      valueGetter: (value, row) => {
+        return row.description
       },
       headerName: 'Description',
       flex: 20,
@@ -233,8 +233,8 @@ export default function TriagedRegressions({
     },
     {
       field: 'type',
-      valueGetter: (value) => {
-        return value.row.type
+      valueGetter: (value, row) => {
+        return row.type
       },
       headerName: 'Type',
       flex: 3,
@@ -243,8 +243,8 @@ export default function TriagedRegressions({
     },
     {
       field: 'jira_key',
-      valueGetter: (value) => {
-        const url = value.row.url
+      valueGetter: (value, row) => {
+        const url = row.url
         if (url && url.startsWith(jiraUrlPrefix)) {
           return url.slice(jiraUrlPrefix.length)
         } else if (url && url.startsWith(jiraUrlPrefixDeprecated)) {
@@ -263,8 +263,8 @@ export default function TriagedRegressions({
     },
     {
       field: 'bug_component',
-      valueGetter: (value) => {
-        return value.row.bug?.components?.filter(Boolean).join(', ') || ''
+      valueGetter: (value, row) => {
+        return row.bug?.components?.filter(Boolean).join(', ') || ''
       },
       headerName: 'Component',
       flex: 4,
@@ -273,8 +273,8 @@ export default function TriagedRegressions({
     },
     {
       field: 'bug_state',
-      valueGetter: (value) => {
-        return value.row.bug?.status || ''
+      valueGetter: (value, row) => {
+        return row.bug?.status || ''
       },
       headerName: 'State',
       flex: 3,
@@ -283,10 +283,10 @@ export default function TriagedRegressions({
     },
     {
       field: 'bug_version',
-      valueGetter: (value) => {
-        return value.row.bug?.target_versions?.filter(Boolean).length
-          ? value.row.bug.target_versions.filter(Boolean).join(', ')
-          : value.row.bug?.affects_versions?.filter(Boolean).join(', ') || ''
+      valueGetter: (value, row) => {
+        return row.bug?.target_versions?.filter(Boolean).length
+          ? row.bug.target_versions.filter(Boolean).join(', ')
+          : row.bug?.affects_versions?.filter(Boolean).join(', ') || ''
       },
       headerName: 'Version',
       flex: 4,
@@ -295,8 +295,8 @@ export default function TriagedRegressions({
     },
     {
       field: 'release_blocker',
-      valueGetter: (value) => {
-        return value.row.bug?.release_blocker || ''
+      valueGetter: (value, row) => {
+        return row.bug?.release_blocker || ''
       },
       headerName: 'Release Blocker',
       flex: 4,
@@ -306,8 +306,8 @@ export default function TriagedRegressions({
     {
       field: 'last_change',
       type: 'date',
-      valueGetter: (value) => {
-        const ts = value.row.bug?.last_change_time
+      valueGetter: (value, row) => {
+        const ts = row.bug?.last_change_time
         return ts ? new Date(ts) : null
       },
       headerName: 'Jira updated',
@@ -327,8 +327,8 @@ export default function TriagedRegressions({
       type: 'date',
       hide: true,
       filterable: false,
-      valueGetter: (value) => {
-        return value.row.created_at ? new Date(value.row.created_at) : null
+      valueGetter: (value, row) => {
+        return row.created_at ? new Date(row.created_at) : null
       },
       headerName: 'Created at',
       flex: 5,
@@ -346,8 +346,8 @@ export default function TriagedRegressions({
       type: 'date',
       hide: true,
       filterable: false,
-      valueGetter: (value) => {
-        return value.row.updated_at ? new Date(value.row.updated_at) : null
+      valueGetter: (value, row) => {
+        return row.updated_at ? new Date(row.updated_at) : null
       },
       headerName: 'Updated At',
       flex: 5,
@@ -362,8 +362,8 @@ export default function TriagedRegressions({
     },
     {
       field: 'details',
-      valueGetter: (value) => {
-        return value.row.id
+      valueGetter: (value, row) => {
+        return row.id
       },
       headerName: 'Details',
       flex: 2,
@@ -391,21 +391,23 @@ export default function TriagedRegressions({
       <DataGrid
         sortModel={sortModel}
         onSortModelChange={setSortModel}
-        selectionModel={activeRow}
-        onSelectionModelChange={handleSetSelectionModel}
-        components={{ Toolbar: GridToolbar }}
+        rowSelectionModel={activeRow}
+        onRowSelectionModelChange={handleSetSelectionModel}
+        slots={{ toolbar: GridToolbar }}
         rows={filteredTriageEntries}
         columns={columns}
         getRowId={(row) => String(row.id)}
-        pageSize={entriesPerPage}
-        page={activePage}
-        onPageChange={(newPage) => {
-          setActivePage(newPage, 'replaceIn')
+        paginationModel={{
+          pageSize: entriesPerPage,
+          page: activePage || 0,
+        }}
+        onPaginationModelChange={(model) => {
+          setActivePage(model.page, 'replaceIn')
         }}
         rowHeight={60}
         autoHeight={true}
         checkboxSelection={false}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             bookmarks: bookmarks,
             columns: columns,

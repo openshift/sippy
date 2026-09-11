@@ -280,9 +280,9 @@ export default function TriageFields({
                   resolved: { Time: date, Valid: date !== null },
                 }))
               }
-              renderInput={(props) => (
-                <TextField variant="standard" fullWidth {...props} />
-              )}
+              slotProps={{
+                textField: { variant: 'standard', fullWidth: true },
+              }}
             />
           </LocalizationProvider>
         )}

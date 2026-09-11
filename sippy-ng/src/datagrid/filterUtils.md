@@ -58,7 +58,7 @@ export default function MyFilterableComponent({ data }) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -72,8 +72,8 @@ export default function MyFilterableComponent({ data }) {
     <DataGrid
       rows={filteredData}
       columns={columns}
-      components={{ Toolbar: GridToolbar }}
-      componentsProps={{
+      slots={{ toolbar: GridToolbar }}
+      slotProps={{
         toolbar: {
           columns: columns,
           addFilters: addFilters,
@@ -97,9 +97,9 @@ Applies a filter model to an array of rows.
 **Parameters:**
 
 - `rows` (Array): The data rows to filter
-- `filterModel` (Object): The filter model with `items` and `linkOperator`
+- `filterModel` (Object): The filter model with `items` and `logicOperator`
   - `items` (Array): Array of filter items
-  - `linkOperator` (string): 'and' or 'or' to combine filters
+  - `logicOperator` (string): 'and' or 'or' to combine filters
 
 **Returns:** Array of filtered rows
 
@@ -111,8 +111,8 @@ Evaluates a single filter against a row.
 
 - `row` (Object): The data row
 - `filter` (Object): The filter to apply
-  - `columnField` (string): The field name to filter on
-  - `operatorValue` (string): The comparison operator
+  - `field` (string): The field name to filter on
+  - `operator` (string): The comparison operator
   - `value` (any): The value to compare against
   - `not` (boolean): Whether to negate the result
 
@@ -138,19 +138,19 @@ Evaluates a single filter against a row.
 {
   items: [
     {
-      columnField: 'component',
-      operatorValue: 'contains',
+      field: 'component',
+      operator: 'contains',
       value: 'storage',
       not: false
     },
     {
-      columnField: 'status',
-      operatorValue: 'equals',
+      field: 'status',
+      operator: 'equals',
       value: 'regressed',
       not: false
     }
   ],
-  linkOperator: 'and' // or 'or'
+  logicOperator: 'and' // or 'or'
 }
 ```
 

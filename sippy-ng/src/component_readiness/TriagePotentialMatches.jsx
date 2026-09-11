@@ -296,8 +296,8 @@ export default function TriagePotentialMatches({
       field: 'test_name',
       headerName: 'Test Name',
       flex: 60,
-      valueGetter: (params) => {
-        return params.row.regressed_test.test_name
+      valueGetter: (value, row) => {
+        return row.regressed_test.test_name
       },
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -305,8 +305,8 @@ export default function TriagePotentialMatches({
       field: 'release',
       headerName: 'Release',
       flex: 4,
-      valueGetter: (params) => {
-        return params.row.regressed_test.regression.release
+      valueGetter: (value, row) => {
+        return row.regressed_test.regression.release
       },
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -314,8 +314,8 @@ export default function TriagePotentialMatches({
       field: 'variants',
       headerName: 'Variants',
       flex: 40,
-      valueGetter: (params) => {
-        const variants = params.row.regressed_test.regression.variants
+      valueGetter: (value, row) => {
+        const variants = row.regressed_test.regression.variants
         if (variants && Array.isArray(variants)) {
           return variants.join(', ')
         }
@@ -328,8 +328,8 @@ export default function TriagePotentialMatches({
       headerName: 'Regressed Since',
       type: 'date',
       flex: 12,
-      valueGetter: (params) => {
-        const opened = params.row.regressed_test.regression.opened
+      valueGetter: (value, row) => {
+        const opened = row.regressed_test.regression.opened
         if (!opened) {
           return null
         }
@@ -345,8 +345,8 @@ export default function TriagePotentialMatches({
       field: 'regression_id',
       headerName: 'Regression ID',
       flex: 8,
-      valueGetter: (params) => {
-        return params.row.regressed_test.regression.id
+      valueGetter: (value, row) => {
+        return row.regressed_test.regression.id
       },
       renderCell: (param) => <div>{param.value}</div>,
     },
@@ -354,8 +354,8 @@ export default function TriagePotentialMatches({
       field: 'status',
       headerName: 'Status',
       flex: 4,
-      valueGetter: (params) => {
-        const regressedTest = params.row.regressed_test
+      valueGetter: (value, row) => {
+        const regressedTest = row.regressed_test
         const viewToUse = selectedView || view
         const testDetailsUrl = generateTestDetailsReportLink(
           regressedTest,
@@ -552,14 +552,16 @@ export default function TriagePotentialMatches({
               <DataGrid
                 rows={filteredMatches}
                 columns={columns}
-                components={{ Toolbar: GridToolbar }}
+                slots={{ toolbar: GridToolbar }}
                 getRowId={(row) => row.regressed_test.regression.id}
                 autoHeight
                 rowHeight={80}
-                pageSize={10}
-                rowsPerPageOptions={[10, 25, 50]}
-                disableSelectionOnClick
-                componentsProps={{
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 10 } },
+                }}
+                pageSizeOptions={[10, 25, 50]}
+                disableRowSelectionOnClick
+                slotProps={{
                   toolbar: {
                     columns: columns,
                   },
