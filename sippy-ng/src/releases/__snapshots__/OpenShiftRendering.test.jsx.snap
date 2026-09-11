@@ -92,7 +92,7 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
               <h3
                 class="MuiBox-root css-0"
               >
-                100
+                99
                 % (
                 2251
                  runs)
@@ -111,9 +111,9 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
                   />
                 </svg>
                 <br />
-                0
+                91
                 % (
-                0
+                2100
                  runs)
               </h3>
             </div>
@@ -133,7 +133,7 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
           aria-label="How often the install configuration check completes successfully."
           class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-12 makeStyles-summaryCard-14 css-1s8a157-MuiPaper-root-MuiCard-root"
           data-mui-internal-clone-element="true"
-          style="background-color: rgb(46, 125, 50);"
+          style="background-color: rgb(235, 103, 6);"
         >
           <div
             class="MuiCardContent-root makeStyles-cardContent-11 css-46bh2p-MuiCardContent-root"
@@ -163,7 +163,7 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
               <h3
                 class="MuiBox-root css-0"
               >
-                100
+                98
                 % (
                 1171
                  runs)
@@ -182,9 +182,9 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
                   />
                 </svg>
                 <br />
-                0
+                92
                 % (
-                0
+                1100
                  runs)
               </h3>
             </div>
@@ -234,7 +234,7 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
               <h3
                 class="MuiBox-root css-0"
               >
-                100
+                97
                 % (
                 1228
                  runs)
@@ -253,9 +253,9 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
                   />
                 </svg>
                 <br />
-                0
+                93
                 % (
-                0
+                1150
                  runs)
               </h3>
             </div>
@@ -305,7 +305,7 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
               <h3
                 class="MuiBox-root css-0"
               >
-                100
+                96
                 % (
                 1285
                  runs)
@@ -324,9 +324,9 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
                   />
                 </svg>
                 <br />
-                0
+                94
                 % (
-                0
+                1200
                  runs)
               </h3>
             </div>
@@ -376,7 +376,7 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
               <h3
                 class="MuiBox-root css-0"
               >
-                100
+                95
                 % (
                 1057
                  runs)
@@ -395,9 +395,9 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
                   />
                 </svg>
                 <br />
-                0
+                85
                 % (
-                0
+                1000
                  runs)
               </h3>
             </div>
@@ -456,7 +456,7 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
             <h3
               class="MuiBox-root css-0"
             >
-              100
+              99
               % (
               2251
                runs)
@@ -475,9 +475,9 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
                 />
               </svg>
               <br />
-              0
+              91
               % (
-              0
+              2100
                runs)
             </h3>
           </div>
@@ -497,7 +497,7 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
         aria-label="How often the install configuration check completes successfully."
         class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-7 css-1s8a157-MuiPaper-root-MuiCard-root"
         data-mui-internal-clone-element="true"
-        style="background-color: rgb(46, 125, 50);"
+        style="background-color: rgb(235, 103, 6);"
       >
         <div
           class="MuiCardContent-root makeStyles-cardContent-4 css-46bh2p-MuiCardContent-root"
@@ -527,7 +527,7 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
             <h3
               class="MuiBox-root css-0"
             >
-              100
+              98
               % (
               1171
                runs)
@@ -546,9 +546,9 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
                 />
               </svg>
               <br />
-              0
+              92
               % (
-              0
+              1100
                runs)
             </h3>
           </div>
@@ -598,7 +598,7 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
             <h3
               class="MuiBox-root css-0"
             >
-              100
+              97
               % (
               1228
                runs)
@@ -617,9 +617,9 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
                 />
               </svg>
               <br />
-              0
+              93
               % (
-              0
+              1150
                runs)
             </h3>
           </div>
@@ -669,7 +669,7 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
             <h3
               class="MuiBox-root css-0"
             >
-              100
+              96
               % (
               1285
                runs)
@@ -688,9 +688,9 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
                 />
               </svg>
               <br />
-              0
+              94
               % (
-              0
+              1200
                runs)
             </h3>
           </div>
@@ -740,7 +740,7 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
             <h3
               class="MuiBox-root css-0"
             >
-              100
+              95
               % (
               1057
                runs)
@@ -759,9 +759,9 @@ exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1
                 />
               </svg>
               <br />
-              0
+              85
               % (
-              0
+              1000
                runs)
             </h3>
           </div>
@@ -1208,7 +1208,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
           <h2
             class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
           >
-            100
+            99
             %
           </h2>
           <span
@@ -1225,13 +1225,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
             class="makeStyles-stackedBar-3 MuiBox-root css-0"
           >
             <div
-              class="MuiBox-root css-157patp"
+              class="MuiBox-root css-19n6lqg"
             />
             <div
-              class="MuiBox-root css-1quhe83"
+              class="MuiBox-root css-1q0r1hp"
             />
             <div
-              class="MuiBox-root css-18nu7h4"
+              class="MuiBox-root css-zj8v3k"
             />
           </div>
         </div>
@@ -1253,14 +1253,14 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
             class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
           >
             +
-            99.8
+            10.0
             %
           </p>
           <span
             class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
           >
             vs prev (
-            0
+            91
             %)
           </span>
         </div>
@@ -1308,7 +1308,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
           <h2
             class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
           >
-            100
+            95
             %
           </h2>
           <span
@@ -1325,13 +1325,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
             class="makeStyles-stackedBar-3 MuiBox-root css-0"
           >
             <div
-              class="MuiBox-root css-v0rnr6"
+              class="MuiBox-root css-19n6lqg"
             />
             <div
-              class="MuiBox-root css-tucor8"
+              class="MuiBox-root css-1q0r1hp"
             />
             <div
-              class="MuiBox-root css-18nu7h4"
+              class="MuiBox-root css-zj8v3k"
             />
           </div>
         </div>
@@ -1353,14 +1353,14 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
             class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
           >
             +
-            99.7
+            10.0
             %
           </p>
           <span
             class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
           >
             vs prev (
-            0
+            85
             %)
           </span>
         </div>
@@ -1405,7 +1405,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
           <h2
             class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
           >
-            100
+            94
             %
           </h2>
           <span
@@ -1422,13 +1422,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
             class="makeStyles-stackedBar-3 MuiBox-root css-0"
           >
             <div
-              class="MuiBox-root css-32lrxj"
+              class="MuiBox-root css-19n6lqg"
             />
             <div
-              class="MuiBox-root css-1qnvelk"
+              class="MuiBox-root css-1q0r1hp"
             />
             <div
-              class="MuiBox-root css-18nu7h4"
+              class="MuiBox-root css-zj8v3k"
             />
           </div>
         </div>
@@ -1450,14 +1450,14 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
             class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
           >
             +
-            99.8
+            10.0
             %
           </p>
           <span
             class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
           >
             vs prev (
-            0
+            84
             %)
           </span>
         </div>
@@ -1502,7 +1502,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
           <h2
             class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
           >
-            100
+            93
             %
           </h2>
           <span
@@ -1519,13 +1519,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
             class="makeStyles-stackedBar-3 MuiBox-root css-0"
           >
             <div
-              class="MuiBox-root css-13s9ta6"
+              class="MuiBox-root css-19n6lqg"
             />
             <div
-              class="MuiBox-root css-1w5m5v8"
+              class="MuiBox-root css-1q0r1hp"
             />
             <div
-              class="MuiBox-root css-18nu7h4"
+              class="MuiBox-root css-zj8v3k"
             />
           </div>
         </div>
@@ -1547,14 +1547,14 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
             class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
           >
             +
-            99.7
+            10.0
             %
           </p>
           <span
             class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
           >
             vs prev (
-            0
+            83
             %)
           </span>
         </div>

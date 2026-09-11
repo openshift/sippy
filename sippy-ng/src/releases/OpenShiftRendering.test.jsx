@@ -2,13 +2,10 @@ import '@testing-library/jest-dom'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
 import { MemoryRouter } from 'react-router-dom'
 import { render, screen } from '@testing-library/react'
-import health from './testdata/lifecycle_reports/4.21/health.json'
-import install from './testdata/lifecycle_reports/4.21/install.json'
 import Install from './Install'
 import InstallTopLevelIndicators from './InstallTopLevelIndicators'
 import React from 'react'
 import TopLevelIndicators from './TopLevelIndicators'
-import upgrade from './testdata/lifecycle_reports/4.21/upgrade.json'
 import Upgrades from './Upgrades'
 
 const theme = createTheme()
@@ -26,6 +23,103 @@ function indicator(overrides = {}) {
     net_working_improvement: 10,
     ...overrides,
   }
+}
+
+// Mirrors the real 4.21 API response shape for the OpenShift health card grid.
+const health = {
+  indicators: {
+    infrastructure: indicator({
+      name: 'install should succeed: infrastructure',
+      current_working_percentage: 99,
+      current_runs: 2251,
+      previous_working_percentage: 91,
+      previous_runs: 2100,
+    }),
+    installConfig: indicator({
+      name: 'install should succeed: configuration',
+      current_working_percentage: 98,
+      current_runs: 1171,
+      previous_working_percentage: 92,
+      previous_runs: 1100,
+    }),
+    bootstrap: indicator({
+      name: 'install should succeed: cluster bootstrap',
+      current_working_percentage: 97,
+      current_runs: 1228,
+      previous_working_percentage: 93,
+      previous_runs: 1150,
+    }),
+    installOther: indicator({
+      name: 'install should succeed: other',
+      current_working_percentage: 96,
+      current_runs: 1285,
+      previous_working_percentage: 94,
+      previous_runs: 1200,
+    }),
+    install: indicator({
+      name: 'install should succeed: overall',
+      current_working_percentage: 95,
+      current_runs: 1057,
+      previous_working_percentage: 85,
+      previous_runs: 1000,
+    }),
+    upgrade: indicator({
+      name: '[sig-sippy] upgrade should work',
+      current_working_percentage: 94,
+      current_runs: 2821,
+      previous_working_percentage: 84,
+      previous_runs: 2700,
+    }),
+    tests: indicator({
+      name: '[sig-sippy] openshift-tests should work',
+      current_working_percentage: 93,
+      current_runs: 3049,
+      previous_working_percentage: 83,
+      previous_runs: 2900,
+    }),
+  },
+}
+
+function variantResult(overrides = {}) {
+  return {
+    current_pass_percentage: 95,
+    previous_pass_percentage: 90,
+    current_runs: 100,
+    ...overrides,
+  }
+}
+
+// Mirrors the real 4.21 per-variant operator table response shape.
+const install = {
+  column_names: ['All', 'aws', 'gcp'],
+  tests: {
+    'install should succeed: overall': {
+      All: variantResult({ current_runs: 1057 }),
+      aws: variantResult({ current_pass_percentage: 99, current_runs: 420 }),
+      gcp: variantResult({ current_pass_percentage: 93, current_runs: 310 }),
+    },
+    'operator install authentication': {
+      All: variantResult({ current_pass_percentage: 97, current_runs: 900 }),
+      aws: variantResult({ current_pass_percentage: 96, current_runs: 360 }),
+      gcp: variantResult({ current_pass_percentage: 90, current_runs: 260 }),
+    },
+  },
+}
+
+const upgrade = {
+  column_names: ['All', 'aws', 'gcp'],
+  tests: {
+    '[sig-sippy] upgrade should work': {
+      All: variantResult({ current_runs: 2821 }),
+      aws: variantResult({ current_pass_percentage: 99, current_runs: 1456 }),
+      gcp: variantResult({ current_pass_percentage: 91, current_runs: 700 }),
+    },
+    'operator upgrade authentication': {
+      All: variantResult({ current_pass_percentage: 96, current_runs: 800 }),
+      aws: variantResult({ current_pass_percentage: 95, current_runs: 400 }),
+      gcp: variantResult({ current_pass_percentage: 89, current_runs: 250 }),
+    },
+  },
 }
 
 function renderWithProviders(children, initialEntries = ['/']) {
