@@ -380,6 +380,13 @@ export function useNewInstallTests(release) {
   return major > 4 || (major === 4 && minor >= 11)
 }
 
+// productLabelFor returns the capitalized product name for a synthetic
+// "<product>-<version>" release (e.g. "quay-3.18" -> "Quay"), used to label
+// product lifecycle cards.
+export function productLabelFor(release) {
+  return release.split('-')[0].replace(/^./, (c) => c.toUpperCase())
+}
+
 export function getReportStartDate(reportDate) {
   let startDate = new Date()
   if (reportDate.length > 0) {
