@@ -106,9 +106,7 @@ export default function RepositoryDetails(props) {
                 </Typography>
                 <PullRequestsTable
                   view="Summary"
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 5 } },
-                  }}
+                  pageSize={5}
                   hideControls={true}
                   release={props.release}
                   filterModel={{
@@ -127,9 +125,7 @@ export default function RepositoryDetails(props) {
                 <Typography variant="h6">Recent Reverts</Typography>
                 <PullRequestsTable
                   view="Summary"
-                  initialState={{
-                    pagination: { paginationModel: { pageSize: 5 } },
-                  }}
+                  pageSize={5}
                   hideControls={true}
                   release={props.release}
                   filterModel={{

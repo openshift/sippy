@@ -79,6 +79,7 @@ export default function PullRequestsTable({
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
+  const [page, setPage] = React.useState(0)
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
@@ -439,7 +440,8 @@ export default function PullRequestsTable({
         rowHeight={100}
         disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        paginationModel={{ pageSize, page: 0 }}
+        paginationModel={{ pageSize, page }}
+        onPaginationModelChange={(model) => setPage(model.page)}
         pageSizeOptions={pageSizeOptions}
         checkboxSelection={false}
         filterMode="server"
