@@ -84346,6 +84346,26 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-osd-gcp-fips-e2e-staging-st
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-privatelink-staging:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-staging-candidate-5-0:
     Aggregation: none
     Architecture: amd64
@@ -365718,30 +365738,6 @@ periodic-ci-stackrox-stackrox-master-ocp-4.22-lpMainline-lp-ocp-compat-cr--acs--
     Release: "4.22"
     ReleaseMajor: "4"
     ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-stackrox-stackrox-release-4.9-ocp-4-21-lp-interop-cr-acs-tests-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: sdn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "4.9"
-    ReleaseMajor: "4"
-    ReleaseMinor: "9"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
