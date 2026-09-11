@@ -100,6 +100,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		Current:     currStats,
 		Previous:    prevStats,
 		Warnings:    warnings,
+		Links:       lifecycleLinks(release, lifecycleTests),
 	})
 }
 

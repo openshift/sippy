@@ -298,3 +298,49 @@ func TestLifecycleTestsForRelease(t *testing.T) {
 		})
 	}
 }
+
+func TestLifecycleLinks(t *testing.T) {
+	tests := []struct {
+		name    string
+		release string
+		want    map[string]string
+	}{
+		{
+			name:    "4.21 is not a product release",
+			release: "4.21",
+			want:    nil,
+		},
+		{
+			name:    "aro-stage is not on the lifecycle allowlist",
+			release: "aro-stage",
+			want:    nil,
+		},
+		{
+			name:    "quay-3.18 is a lifecycle product release",
+			release: "quay-3.18",
+			want: map[string]string{
+				"install": "/api/install?release=quay-3.18",
+				"upgrade": "/api/upgrade?release=quay-3.18",
+				"health":  "/api/health?release=quay-3.18",
+				"product_install_test": "/api/tests?release=quay-3.18&filter=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C" +
+					"%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-quay%5D+install+should+succeed%22%7D%5D%7D",
+				"product_upgrade_test": "/api/tests?release=quay-3.18&filter=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C" +
+					"%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-quay%5D+upgrade+should+succeed%22%7D%5D%7D",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := lifecycleLinks(tt.release, lifecycleTestsForRelease(tt.release))
+			if len(got) != len(tt.want) {
+				t.Fatalf("lifecycleLinks(%q) = %v, want %v", tt.release, got, tt.want)
+			}
+			for k, v := range tt.want {
+				if got[k] != v {
+					t.Errorf("lifecycleLinks(%q)[%q] = %q, want %q", tt.release, k, got[k], v)
+				}
+			}
+		})
+	}
+}

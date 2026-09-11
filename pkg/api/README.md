@@ -93,6 +93,11 @@ denominator; OpenShift and product results are never summed together.
 `/api/upgrade` reflect this by returning rows for both the OpenShift and (when applicable) the product
 testcases in the same response.
 
+For a lifecycle product release, `/api/health`, `/api/install`, and `/api/upgrade` also include a `links` map
+with relative API links: `install`, `upgrade`, and `health` (the three endpoints for the release), and
+`product_install_test`/`product_upgrade_test` (an `/api/tests` link filtered to the product's install/upgrade
+testcase). The `links` key is absent from non-product release responses.
+
 ## Release Health
 
 Endpoint: `/api/health`
@@ -162,6 +167,13 @@ The `productInstall`/`productUpgrade` keys shown below are absent for a non-prod
         "runs": 54
       }
     }
+  },
+  "links": {
+    "install": "/api/install?release=quay-3.18",
+    "upgrade": "/api/upgrade?release=quay-3.18",
+    "health": "/api/health?release=quay-3.18",
+    "product_install_test": "/api/tests?release=quay-3.18&filter=...",
+    "product_upgrade_test": "/api/tests?release=quay-3.18&filter=..."
   },
   "variants": {
     "current": {
