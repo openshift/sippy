@@ -8,9 +8,11 @@ import {
   jiraUrlPrefix,
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
+import { makeStyles } from '@mui/styles'
 import { SippyCapabilitiesContext } from '../App'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
+import ForceCloseRegressionsModal from './ForceCloseRegressionsModal'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -26,7 +28,15 @@ import TriageSymptomLabels, {
 } from './TriageSymptomLabels'
 import UpsertTriageModal from './UpsertTriageModal'
 
+const useStyles = makeStyles({
+  actionRow: {
+    '& > span': { display: 'flex' },
+    '& .MuiButton-root': { margin: 0 },
+  },
+})
+
 export default function Triage({ id }) {
+  const classes = useStyles()
   const theme = useTheme()
   const { sampleRelease } = React.useContext(CompReadyVarsContext)
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -150,7 +160,12 @@ export default function Triage({ id }) {
         mb={2}
       >
         <h2 style={{ margin: 0 }}>Triage Details</h2>
-        <Box display="flex" alignItems="center" gap={1}>
+        <Box
+          display="flex"
+          alignItems="stretch"
+          gap={1}
+          className={classes.actionRow}
+        >
           {localDBEnabled && <TriageAuditLogsModal triage={triage} />}
           {triageEnabled && (
             <Fragment>
@@ -163,6 +178,11 @@ export default function Triage({ id }) {
                 triage={triage}
                 buttonText={'Update'}
                 setComplete={setIsUpdated}
+              />
+              <ForceCloseRegressionsModal
+                triageId={triage.id}
+                resolved={triage.resolved?.Valid}
+                setIsUpdated={setIsUpdated}
               />
               <Button
                 onClick={deleteTriage}

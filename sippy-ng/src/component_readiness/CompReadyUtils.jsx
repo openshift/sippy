@@ -106,6 +106,18 @@ export function getTriagesAPIUrl(id = null, view = null) {
   return url
 }
 
+export function getForceClosePreviewUrl(triageId) {
+  return getAPIUrl(
+    `component_readiness/triages/${triageId}/force_close_preview`
+  )
+}
+
+export function getForceCloseRegressionsUrl(triageId) {
+  return getAPIUrl(
+    `component_readiness/triages/${triageId}/force_close_regressions`
+  )
+}
+
 export function getBugsAPIUrl() {
   return getAPIUrl(`component_readiness/bugs`)
 }
