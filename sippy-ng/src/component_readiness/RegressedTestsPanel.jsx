@@ -46,7 +46,7 @@ export default function RegressedTestsPanel(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -54,19 +54,19 @@ export default function RegressedTestsPanel(props) {
   const requestSearch = (searchValue) => {
     // Filter out empty items and existing test_name filters
     const currentFilters = filterModel.items.filter(
-      (f) => f.value !== '' && f.columnField !== 'test_name'
+      (f) => f.value !== '' && f.field !== 'test_name'
     )
     if (searchValue && searchValue !== '') {
       currentFilters.push({
         id: 99,
-        columnField: 'test_name',
-        operatorValue: 'contains',
+        field: 'test_name',
+        operator: 'contains',
         value: searchValue,
       })
     }
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -121,12 +121,12 @@ export default function RegressedTestsPanel(props) {
             headerName: 'Triage',
             flex: 4,
             filterable: false,
-            valueGetter: (params) => {
-              if (!params.row.regression?.opened) {
+            valueGetter: (value, row) => {
+              if (!row.regression?.opened) {
                 // For a regression we haven't yet detected:
                 return '0'
               }
-              return String(params.row.regression.id)
+              return String(row.regression.id)
             },
             renderCell: (param) => (
               <input
@@ -146,8 +146,8 @@ export default function RegressedTestsPanel(props) {
       headerName: 'Regression ID',
       flex: 5,
       filterable: false,
-      valueGetter: (params) => {
-        return params.row.regression?.id || ''
+      valueGetter: (value, row) => {
+        return row.regression?.id || ''
       },
       renderCell: (param) => <div>{param.value}</div>,
     },
@@ -183,8 +183,8 @@ export default function RegressedTestsPanel(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 30,
-      valueGetter: (params) => {
-        return formColumnName({ variants: params.row.variants })
+      valueGetter: (value, row) => {
+        return formColumnName({ variants: row.variants })
       },
       renderCell: (params) => {
         const variants = params.row.variants
@@ -216,12 +216,12 @@ export default function RegressedTestsPanel(props) {
       flex: 12,
       filterable: false,
       type: 'date',
-      valueGetter: (params) => {
-        if (!params.row.regression?.opened) {
+      valueGetter: (value, row) => {
+        if (!row.regression?.opened) {
           // For a regression we haven't yet detected:
           return null
         }
-        return new Date(params.row.regression.opened)
+        return new Date(row.regression.opened)
       },
       renderCell: (params) => {
         if (!params.value) return ''
@@ -247,11 +247,11 @@ export default function RegressedTestsPanel(props) {
       flex: 12,
       filterable: false,
       type: 'date',
-      valueGetter: (params) => {
-        if (!params.row.last_failure) {
+      valueGetter: (value, row) => {
+        if (!row.last_failure) {
           return null
         }
-        return new Date(params.row.last_failure)
+        return new Date(row.last_failure)
       },
       renderCell: (params) => {
         if (!params.value) return ''
@@ -342,7 +342,7 @@ export default function RegressedTestsPanel(props) {
       <DataGrid
         sortModel={sortModel}
         onSortModelChange={setSortModel}
-        components={{ Toolbar: GridToolbar }}
+        slots={{ toolbar: GridToolbar }}
         rows={filteredTests}
         columns={columns}
         getRowId={(row) =>
@@ -353,21 +353,20 @@ export default function RegressedTestsPanel(props) {
             .map((key) => row.variants[key])
             .join(' ')
         }
-        selectionModel={activeRow}
-        onSelectionModelChange={(newRow) => {
+        rowSelectionModel={activeRow}
+        onRowSelectionModelChange={(newRow) => {
           if (newRow.length > 0) {
             setActiveRow(String(newRow), 'replaceIn')
           }
         }}
-        pageSize={10}
-        page={activePage}
-        onPageChange={(newPage) => {
-          setActivePage(newPage, 'replaceIn')
+        paginationModel={{ pageSize: 10, page: activePage || 0 }}
+        onPaginationModelChange={(model) => {
+          setActivePage(model.page, 'replaceIn')
         }}
         rowHeight={60}
         autoHeight={true}
         checkboxSelection={false}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             columns: columns,
             addFilters: addFilters,

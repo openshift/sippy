@@ -12,7 +12,7 @@ export default function JobDetailTestModal({
   ...props
 }) {
   const filterModel = {
-    linkOperator: 'or',
+    logicOperator: 'or',
     items: [],
   }
 
@@ -20,8 +20,8 @@ export default function JobDetailTestModal({
     item.failedTestNames.slice(0, 25).forEach((test, index) => {
       filterModel.items.push({
         id: index,
-        columnField: 'name',
-        operatorValue: 'equals',
+        field: 'name',
+        operator: 'equals',
         value: test,
       })
     })

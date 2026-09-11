@@ -103,11 +103,11 @@ function PayloadTestFailures({
   )
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
+    const newItems = filterModel.items.filter((f) => f.field !== 'name')
     newItems.push({
       id: 99,
-      columnField: 'name',
-      operatorValue: 'contains',
+      field: 'name',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -126,7 +126,7 @@ function PayloadTestFailures({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -212,16 +212,16 @@ function PayloadTestFailures({
           </Tooltip>
         </Typography>
         <DataGrid
-          components={{ Toolbar: hideControls ? '' : GridToolbar }}
+          slots={{ toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
           columns={columns}
           autoHeight={true}
           rowHeight={125}
           disableColumnFilter={briefTable}
           disableColumnMenu={true}
-          pageSize={pageSize}
-          onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          paginationModel={{ pageSize, page: 0 }}
+          onPaginationModelChange={(model) => setPageSize(model.pageSize)}
+          pageSizeOptions={[5, 10, 25, 50]}
           filterMode="server"
           sortingMode="server"
           sortingOrder={['desc', 'asc']}
@@ -235,7 +235,7 @@ function PayloadTestFailures({
           getRowClassName={(params) =>
             classes['row-percent-' + params.row.failure_count]
           }
-          componentsProps={{
+          slotProps={{
             toolbar: {
               columns: columns,
               clearSearch: () => requestSearch(''),

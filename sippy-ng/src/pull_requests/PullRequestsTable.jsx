@@ -65,7 +65,7 @@ export default function PullRequestsTable({
   hideControls = false,
   pageSize = 25,
   view: viewDefault = 'Default',
-  rowsPerPageOptions = [5, 10, 25, 50, 100],
+  pageSizeOptions = [5, 10, 25, 50, 100],
   briefTable = false,
   filterModel: filterModelDefault = { items: [] },
   sortField: sortFieldDefault = 'merged_at',
@@ -269,8 +269,8 @@ export default function PullRequestsTable({
       type: 'date',
       field: 'merged_at',
       headerName: 'Merged at',
-      valueGetter: (params) => {
-        return params.value ? new Date(params.value) : null
+      valueGetter: (value) => {
+        return value ? new Date(value) : null
       },
       renderCell: (params) => {
         if (!params.value) {
@@ -409,7 +409,7 @@ export default function PullRequestsTable({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -431,7 +431,7 @@ export default function PullRequestsTable({
     <Fragment>
       <DataGrid
         className={gridClasses.root}
-        components={{ Toolbar: hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         density="compact"
         columns={gridView.columns}
@@ -439,8 +439,8 @@ export default function PullRequestsTable({
         rowHeight={100}
         disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        pageSize={pageSize}
-        rowsPerPageOptions={rowsPerPageOptions}
+        paginationModel={{ pageSize, page: 0 }}
+        pageSizeOptions={pageSizeOptions}
         checkboxSelection={false}
         filterMode="server"
         sortingMode="server"
@@ -452,7 +452,7 @@ export default function PullRequestsTable({
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             bookmarks: bookmarks,
             views: gridView.views,
@@ -483,6 +483,6 @@ PullRequestsTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
 }

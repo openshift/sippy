@@ -128,9 +128,9 @@ export default function JobRunsTable({
   const filteredTestNames = (filterModel?.items || [])
     .filter(
       (f) =>
-        testFilterFields.includes(f.columnField) &&
+        testFilterFields.includes(f.field) &&
         f.value &&
-        !(f.not && f.columnField === 'ran_test_names')
+        !(f.not && f.field === 'ran_test_names')
     )
     .map((f) => f.value)
   const uniqueFilteredTestNames = [...new Set(filteredTestNames)]
@@ -164,7 +164,7 @@ export default function JobRunsTable({
       filterable: true,
       flex: 1.25,
       type: 'date',
-      valueGetter: (params) => new Date(params.value),
+      valueGetter: (value) => new Date(value),
       renderCell: (params) => {
         return (
           <Tooltip title={relativeTime(params.value, startDate)}>
@@ -290,9 +290,9 @@ export default function JobRunsTable({
                           e.stopPropagation()
                           addFilters([
                             {
-                              columnField: 'labels',
+                              field: 'labels',
                               not: false,
-                              operatorValue: 'has entry',
+                              operator: 'has entry',
                               value: labelId,
                             },
                           ])
@@ -499,11 +499,11 @@ export default function JobRunsTable({
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'job')
+    const newItems = filterModel.items.filter((f) => f.field !== 'job')
     newItems.push({
       id: 99,
-      columnField: 'job',
-      operatorValue: 'contains',
+      field: 'job',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -575,7 +575,7 @@ export default function JobRunsTable({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -646,25 +646,34 @@ export default function JobRunsTable({
     </div>
   )
 
-  const changePage = (newPage) => {
-    setPageFlip(true)
-    setPage(newPage)
+  const paginationModel = { page, pageSize }
+  const handlePaginationModelChange = (newModel) => {
+    if (newModel.page !== page) {
+      setPageFlip(true)
+      setPage(newModel.page)
+    }
+    if (newModel.pageSize !== pageSize) {
+      setPageSize(newModel.pageSize)
+    }
   }
 
   const table = (
     <DataGrid
-      components={{ Toolbar: hideControls ? '' : GridToolbar }}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={apiResult.rows}
       rowCount={apiResult.total_rows}
       loading={pageFlip}
       pagination
       paginationMode="server"
-      onPageChange={(newPage) => changePage(newPage)}
+      paginationModel={paginationModel}
+      onPaginationModelChange={handlePaginationModelChange}
       columns={columns}
       autoHeight={true}
       checkboxSelection
-      onSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
-      selectionModel={selectionModel}
+      onRowSelectionModelChange={(newSelection) =>
+        setSelectionModel(newSelection)
+      }
+      rowSelectionModel={selectionModel}
       // Filtering:
       filterMode="server"
       sortingOrder={['desc', 'asc']}
@@ -677,11 +686,9 @@ export default function JobRunsTable({
       // Sorting:
       onSortModelChange={(m) => updateSortModel(m)}
       sortingMode="server"
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
       disableColumnMenu={true}
-      rowsPerPageOptions={[5, 10, 25, 50, 100]}
-      componentsProps={{
+      pageSizeOptions={[5, 10, 25, 50, 100]}
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),
@@ -728,9 +735,9 @@ export default function JobRunsTable({
                       onClick={() => {
                         addFilters([
                           {
-                            columnField: 'labels',
+                            field: 'labels',
                             not: false,
-                            operatorValue: 'has entry',
+                            operator: 'has entry',
                             value: labelId,
                           },
                         ])
