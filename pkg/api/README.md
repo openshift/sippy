@@ -77,6 +77,16 @@ The filter should be URI encoded json in the `filter` parameter.
 You may sort results by any sortable field in the item by specifying `sortField`, as well `sort` with the value
 `asc` or `desc`.
 
+### Product lifecycle releases
+
+For releases named `<product>-<version>` whose product (the text before the first "-") is in the
+`LifecycleProducts` allowlist in `pkg/testidentification` (currently `quay`, e.g. `quay-3.18`), install and
+upgrade indicators use the "[sig-<product>] install should succeed" and "[sig-<product>] upgrade should
+succeed" testcases (e.g. "[sig-quay] install should succeed", "[sig-quay] upgrade should succeed") instead of
+the OpenShift install/upgrade tests. CI emits these in a `<product>-lifecycle` JUnit suite. All other releases,
+including other synthetic releases such as `aro-stage` or `rosa-integration`, keep the OpenShift install/upgrade
+tests.
+
 ## Release Health
 
 Endpoint: `/api/health`
@@ -84,13 +94,8 @@ Endpoint: `/api/health`
 Returns a summary of overall release health, including the percentage of successful runs of each, as well as a summary
 of variant success rates.
 
-For releases named `<product>-<version>` whose product (the text before the first "-") is in the
-`LifecycleProducts` allowlist in `pkg/testidentification` (currently `quay`, e.g. `quay-3.18`), the `install` and
-`upgrade` indicators select the "[sig-<product>] install should succeed" and "[sig-<product>] upgrade should
-succeed" testcases (e.g. "[sig-quay] install should succeed", "[sig-quay] upgrade should succeed") instead of
-the OpenShift install/upgrade tests. These testcases are emitted by CI in a `<product>-lifecycle` JUnit suite.
-All other releases, including other synthetic releases such as `aro-stage` or `rosa-integration`, keep the
-OpenShift install/upgrade tests.
+For lifecycle products (see "Product lifecycle releases" above), the install and upgrade indicators select the
+"[sig-<product>] install should succeed" and "[sig-<product>] upgrade should succeed" testcases.
 
 <details>
 <summary>Example response</summary>
@@ -163,12 +168,8 @@ OpenShift install/upgrade tests.
 
 `*` indicates a required value.
 
-For releases named `<product>-<version>` whose product (the text before the first "-") is in the
-`LifecycleProducts` allowlist in `pkg/testidentification` (currently `quay`, e.g. `quay-3.18`), this endpoint
-selects the "[sig-<product>] install should succeed" testcase (e.g. "[sig-quay] install should succeed"), instead
-of the OpenShift install tests. This testcase is emitted by CI in a `<product>-lifecycle` JUnit suite. All other
-releases, including other synthetic releases such as `aro-stage` or `rosa-integration`, keep the OpenShift
-install tests.
+For lifecycle products (see "Product lifecycle releases" above), this endpoint selects "[sig-<product>] install
+should succeed".
 
 <details>
 <summary>Example response</summary>
@@ -232,12 +233,8 @@ install tests.
 
 `*` indicates a required value.
 
-For releases named `<product>-<version>` whose product (the text before the first "-") is in the
-`LifecycleProducts` allowlist in `pkg/testidentification` (currently `quay`, e.g. `quay-3.18`), this endpoint
-selects the "[sig-<product>] upgrade should succeed" testcase (e.g. "[sig-quay] upgrade should succeed"), instead
-of the OpenShift upgrade tests. This testcase is emitted by CI in a `<product>-lifecycle` JUnit suite. All other
-releases, including other synthetic releases such as `aro-stage` or `rosa-integration`, keep the OpenShift
-upgrade tests.
+For lifecycle products (see "Product lifecycle releases" above), this endpoint selects "[sig-<product>] upgrade
+should succeed".
 
 ## Jobs
 
