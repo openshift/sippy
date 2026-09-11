@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material'
 import {
   filterFor,
+  jiraProjectForRelease,
   not,
   pathForJobRunsWithTest,
   pathForJobRunsWithTestFailure,
@@ -365,6 +366,7 @@ export function TestAnalysis(props) {
                 }}
               >
                 <BugButton
+                  jiraProjectID={jiraProjectForRelease(props.release).pid}
                   jiraComponentID={test.jira_component_id}
                   testName={testName}
                 />
