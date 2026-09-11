@@ -77,6 +77,22 @@ The filter should be URI encoded json in the `filter` parameter.
 You may sort results by any sortable field in the item by specifying `sortField`, as well `sort` with the value
 `asc` or `desc`.
 
+### Product lifecycle releases
+
+The install and upgrade test selection is additive: the OpenShift install/upgrade rows are always present,
+for every release. For releases named `<product>-<version>` whose product (the text before the first "-") is
+in the `LifecycleProducts` allowlist in `pkg/testidentification` (currently `quay`, e.g. `quay-3.18`), the
+"[sig-<product>] install should succeed" and "[sig-<product>] upgrade should succeed" testcases (e.g.
+"[sig-quay] install should succeed", "[sig-quay] upgrade should succeed") are appended alongside the OpenShift
+rows. CI emits these in a `<product>-lifecycle` JUnit suite. All other releases, including other synthetic
+releases such as `aro-stage` or `rosa-integration`, only have the OpenShift rows. Each row keeps its own
+denominator; OpenShift and product results are never summed together.
+
+`/api/health` reflects this by keeping `install`/`upgrade` as the OpenShift indicators and adding optional
+`productInstall`/`productUpgrade` indicators, present only for a lifecycle product release. `/api/install` and
+`/api/upgrade` reflect this by returning rows for both the OpenShift and (when applicable) the product
+testcases in the same response.
+
 ## Release Health
 
 Endpoint: `/api/health`
@@ -84,8 +100,14 @@ Endpoint: `/api/health`
 Returns a summary of overall release health, including the percentage of successful runs of each, as well as a summary
 of variant success rates.
 
+For lifecycle products (see "Product lifecycle releases" above), the `productInstall` and `productUpgrade`
+indicators select the "[sig-<product>] install should succeed" and "[sig-<product>] upgrade should succeed"
+testcases, in addition to the OpenShift `install`/`upgrade` indicators.
+
 <details>
-<summary>Example response</summary>
+<summary>Example response (lifecycle product release)</summary>
+
+The `productInstall`/`productUpgrade` keys shown below are absent for a non-product release.
 
 ```json
 {
@@ -118,6 +140,26 @@ of variant success rates.
       "previous": {
         "percentage": 99.52941176470588,
         "runs": 425
+      }
+    },
+    "productInstall": {
+      "current": {
+        "percentage": 97.14285714285714,
+        "runs": 350
+      },
+      "previous": {
+        "percentage": 98.30508474576271,
+        "runs": 295
+      }
+    },
+    "productUpgrade": {
+      "current": {
+        "percentage": 96.72131147540983,
+        "runs": 61
+      },
+      "previous": {
+        "percentage": 98.14814814814815,
+        "runs": 54
       }
     }
   },
@@ -154,6 +196,9 @@ of variant success rates.
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
 
 `*` indicates a required value.
+
+For lifecycle products (see "Product lifecycle releases" above), this endpoint returns a "[sig-<product>]
+install should succeed" row in addition to the OpenShift install rows.
 
 <details>
 <summary>Example response</summary>
@@ -216,6 +261,9 @@ of variant success rates.
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
 
 `*` indicates a required value.
+
+For lifecycle products (see "Product lifecycle releases" above), this endpoint returns a "[sig-<product>]
+upgrade should succeed" row in addition to the OpenShift upgrade rows.
 
 ## Jobs
 
