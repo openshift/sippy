@@ -408,7 +408,265 @@ exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
   </div>
   <div
     class="MuiGrid-root css-vj1n65-MuiGrid-root"
-  />
+  >
+    <div
+      class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded css-1svxvyo-MuiPaper-root"
+    >
+      <div
+        class="MuiTableContainer-root makeStyles-tableContainer-18 css-rorn0c-MuiTableContainer-root"
+      >
+        <table
+          class="MuiTable-root MuiTable-stickyHeader css-xn82ks-MuiTable-root"
+        >
+          <thead
+            class="MuiTableHead-root css-15wwp11-MuiTableHead-root"
+          >
+            <tr
+              class="MuiTableRow-root MuiTableRow-head css-1q1u3t4-MuiTableRow-root"
+            >
+              <th
+                class="MuiTableCell-root MuiTableCell-head MuiTableCell-stickyHeader MuiTableCell-sizeMedium col-name  css-zrb38c-MuiTableCell-root"
+                scope="col"
+              >
+                <div
+                  class="MuiFormGroup-root MuiFormGroup-row css-qfz70r-MuiFormGroup-root"
+                >
+                  <label
+                    class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
+                  >
+                    <span
+                      class="MuiSwitch-root MuiSwitch-sizeMedium css-julti5-MuiSwitch-root"
+                    >
+                      <span
+                        class="MuiButtonBase-root MuiSwitch-switchBase MuiSwitch-colorPrimary PrivateSwitchBase-root MuiSwitch-switchBase MuiSwitch-colorPrimary css-5ryogn-MuiButtonBase-root-MuiSwitch-switchBase"
+                      >
+                        <input
+                          class="PrivateSwitchBase-input MuiSwitch-input css-1m9pwf3"
+                          name="showFull"
+                          type="checkbox"
+                        />
+                        <span
+                          class="MuiSwitch-thumb css-jsexje-MuiSwitch-thumb"
+                        />
+                        <span
+                          class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+                        />
+                      </span>
+                      <span
+                        class="MuiSwitch-track css-1yjjitx-MuiSwitch-track"
+                      />
+                    </span>
+                    <span
+                      class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
+                    >
+                      Show Full
+                    </span>
+                  </label>
+                </div>
+              </th>
+              <th
+                class="MuiTableCell-root MuiTableCell-head MuiTableCell-stickyHeader MuiTableCell-sizeMedium col-result css-y8ay40-MuiTableCell-root"
+                scope="col"
+              >
+                <h6
+                  class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+                >
+                  All
+                </h6>
+                <span
+                  class="MuiTypography-root MuiTypography-caption css-1sn4lm3-MuiTypography-root"
+                />
+              </th>
+              <th
+                class="MuiTableCell-root MuiTableCell-head MuiTableCell-stickyHeader MuiTableCell-sizeMedium col-result css-y8ay40-MuiTableCell-root"
+                scope="col"
+              >
+                <h6
+                  class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+                >
+                  aws
+                </h6>
+                <span
+                  class="MuiTypography-root MuiTypography-caption css-1sn4lm3-MuiTypography-root"
+                />
+              </th>
+              <th
+                class="MuiTableCell-root MuiTableCell-head MuiTableCell-stickyHeader MuiTableCell-sizeMedium col-result css-y8ay40-MuiTableCell-root"
+                scope="col"
+              >
+                <h6
+                  class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+                >
+                  gcp
+                </h6>
+                <span
+                  class="MuiTypography-root MuiTypography-caption css-1sn4lm3-MuiTypography-root"
+                />
+              </th>
+            </tr>
+          </thead>
+          <tbody
+            class="MuiTableBody-root css-apqrd9-MuiTableBody-root"
+          >
+            <tr
+              class="MuiTableRow-root css-1q1u3t4-MuiTableRow-root"
+            >
+              <td
+                class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium makeStyles-stickyCellName-19 css-1ex1afd-MuiTableCell-root"
+              >
+                <p
+                  aria-label="install should succeed: overall"
+                  class="MuiTypography-root MuiTypography-body1 cell-name css-ahj2mt-MuiTypography-root"
+                  data-mui-internal-clone-element="true"
+                >
+                  <a
+                    data-discover="true"
+                    href="/tests/4.21/analysis?test=install%20should%20succeed%3A%20overall&filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20overall%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22upgrade-minor%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22aggregated%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22never-stable%22%2C%22not%22%3Atrue%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+                  >
+                    install should succeed: overall
+                  </a>
+                </p>
+              </td>
+              <td
+                class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+                data-mui-internal-clone-element="true"
+                style="text-align: center; background-color: rgb(255, 152, 0);"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+              </td>
+              <td
+                class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+                data-mui-internal-clone-element="true"
+                style="text-align: center; background-color: rgb(112, 170, 64);"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+              </td>
+              <td
+                class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+                data-mui-internal-clone-element="true"
+                style="text-align: center; background-color: rgb(249, 124, 32);"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+              </td>
+            </tr>
+            <tr
+              class="MuiTableRow-root css-1q1u3t4-MuiTableRow-root"
+            >
+              <td
+                class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium makeStyles-stickyCellName-19 css-1ex1afd-MuiTableCell-root"
+              >
+                <p
+                  aria-label="operator install authentication"
+                  class="MuiTypography-root MuiTypography-body1 cell-name css-ahj2mt-MuiTypography-root"
+                  data-mui-internal-clone-element="true"
+                >
+                  <a
+                    data-discover="true"
+                    href="/tests/4.21/analysis?test=operator%20install%20authentication&filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator%20install%20authentication%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22upgrade-minor%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22aggregated%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22never-stable%22%2C%22not%22%3Atrue%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+                  >
+                    operator install authentication
+                  </a>
+                </p>
+              </td>
+              <td
+                class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+                data-mui-internal-clone-element="true"
+                style="text-align: center; background-color: rgb(183, 161, 32);"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+              </td>
+              <td
+                class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+                data-mui-internal-clone-element="true"
+                style="text-align: center; background-color: rgb(219, 157, 16);"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+              </td>
+              <td
+                class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+                data-mui-internal-clone-element="true"
+                style="text-align: center; background-color: rgb(239, 83, 80);"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="SyncAltRoundedIcon"
+                  data-testid="SyncAltRoundedIcon"
+                  focusable="false"
+                  style="color: grey;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="m21.65 7.65-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM20 15H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1z"
+                  />
+                </svg>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 `;
 
@@ -778,13 +1036,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with leg
     class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
   >
     <a
-      class="makeStyles-cardLink-19 MuiBox-root css-0"
+      class="makeStyles-cardLink-23 MuiBox-root css-0"
       data-discover="true"
       data-mui-internal-clone-element="true"
       href="/tests/4.10/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-sippy%5D%20infrastructure%20should%20work%22%7D%5D%7D"
     >
       <div
-        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-18 css-1s8a157-MuiPaper-root-MuiCard-root"
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-22 css-1s8a157-MuiPaper-root-MuiCard-root"
       >
         <div
           class="MuiBox-root css-1coeexk"
@@ -826,7 +1084,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with leg
           class="MuiBox-root css-8ziurz"
         >
           <div
-            class="makeStyles-stackedBar-20 MuiBox-root css-0"
+            class="makeStyles-stackedBar-24 MuiBox-root css-0"
           >
             <div
               class="MuiBox-root css-19n6lqg"
@@ -875,13 +1133,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with leg
     class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
   >
     <a
-      class="makeStyles-cardLink-19 MuiBox-root css-0"
+      class="makeStyles-cardLink-23 MuiBox-root css-0"
       data-discover="true"
       data-mui-internal-clone-element="true"
       href="/install/4.10"
     >
       <div
-        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-18 css-1s8a157-MuiPaper-root-MuiCard-root"
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-22 css-1s8a157-MuiPaper-root-MuiCard-root"
       >
         <div
           class="MuiBox-root css-1coeexk"
@@ -926,7 +1184,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with leg
           class="MuiBox-root css-8ziurz"
         >
           <div
-            class="makeStyles-stackedBar-20 MuiBox-root css-0"
+            class="makeStyles-stackedBar-24 MuiBox-root css-0"
           >
             <div
               class="MuiBox-root css-19n6lqg"
@@ -975,13 +1233,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with leg
     class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
   >
     <a
-      class="makeStyles-cardLink-19 MuiBox-root css-0"
+      class="makeStyles-cardLink-23 MuiBox-root css-0"
       data-discover="true"
       data-mui-internal-clone-element="true"
       href="/upgrade/4.10"
     >
       <div
-        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-18 css-1s8a157-MuiPaper-root-MuiCard-root"
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-22 css-1s8a157-MuiPaper-root-MuiCard-root"
       >
         <div
           class="MuiBox-root css-1coeexk"
@@ -1023,7 +1281,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with leg
           class="MuiBox-root css-8ziurz"
         >
           <div
-            class="makeStyles-stackedBar-20 MuiBox-root css-0"
+            class="makeStyles-stackedBar-24 MuiBox-root css-0"
           >
             <div
               class="MuiBox-root css-19n6lqg"
@@ -1072,13 +1330,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with leg
     class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
   >
     <a
-      class="makeStyles-cardLink-19 MuiBox-root css-0"
+      class="makeStyles-cardLink-23 MuiBox-root css-0"
       data-discover="true"
       data-mui-internal-clone-element="true"
       href="/tests/4.10/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-sippy%5D%20openshift-tests%20should%20work%22%7D%5D%7D"
     >
       <div
-        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-18 css-1s8a157-MuiPaper-root-MuiCard-root"
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-22 css-1s8a157-MuiPaper-root-MuiCard-root"
       >
         <div
           class="MuiBox-root css-1coeexk"
@@ -1120,7 +1378,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with leg
           class="MuiBox-root css-8ziurz"
         >
           <div
-            class="makeStyles-stackedBar-20 MuiBox-root css-0"
+            class="makeStyles-stackedBar-24 MuiBox-root css-0"
           >
             <div
               class="MuiBox-root css-19n6lqg"
@@ -1570,13 +1828,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with
     class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
   >
     <a
-      class="makeStyles-cardLink-22 MuiBox-root css-0"
+      class="makeStyles-cardLink-26 MuiBox-root css-0"
       data-discover="true"
       data-mui-internal-clone-element="true"
       href="/tests/4.21-okd/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20infrastructure%22%7D%5D%7D"
     >
       <div
-        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-21 css-1s8a157-MuiPaper-root-MuiCard-root"
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-25 css-1s8a157-MuiPaper-root-MuiCard-root"
       >
         <div
           class="MuiBox-root css-1coeexk"
@@ -1618,7 +1876,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with
           class="MuiBox-root css-8ziurz"
         >
           <div
-            class="makeStyles-stackedBar-23 MuiBox-root css-0"
+            class="makeStyles-stackedBar-27 MuiBox-root css-0"
           >
             <div
               class="MuiBox-root css-19n6lqg"
@@ -1667,13 +1925,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with
     class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
   >
     <a
-      class="makeStyles-cardLink-22 MuiBox-root css-0"
+      class="makeStyles-cardLink-26 MuiBox-root css-0"
       data-discover="true"
       data-mui-internal-clone-element="true"
       href="/install/4.21-okd"
     >
       <div
-        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-21 css-1s8a157-MuiPaper-root-MuiCard-root"
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-25 css-1s8a157-MuiPaper-root-MuiCard-root"
       >
         <div
           class="MuiBox-root css-1coeexk"
@@ -1718,7 +1976,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with
           class="MuiBox-root css-8ziurz"
         >
           <div
-            class="makeStyles-stackedBar-23 MuiBox-root css-0"
+            class="makeStyles-stackedBar-27 MuiBox-root css-0"
           >
             <div
               class="MuiBox-root css-19n6lqg"
@@ -1767,13 +2025,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with
     class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
   >
     <a
-      class="makeStyles-cardLink-22 MuiBox-root css-0"
+      class="makeStyles-cardLink-26 MuiBox-root css-0"
       data-discover="true"
       data-mui-internal-clone-element="true"
       href="/upgrade/4.21-okd"
     >
       <div
-        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-21 css-1s8a157-MuiPaper-root-MuiCard-root"
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-25 css-1s8a157-MuiPaper-root-MuiCard-root"
       >
         <div
           class="MuiBox-root css-1coeexk"
@@ -1815,7 +2073,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with
           class="MuiBox-root css-8ziurz"
         >
           <div
-            class="makeStyles-stackedBar-23 MuiBox-root css-0"
+            class="makeStyles-stackedBar-27 MuiBox-root css-0"
           >
             <div
               class="MuiBox-root css-19n6lqg"
@@ -1864,13 +2122,13 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with
     class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
   >
     <a
-      class="makeStyles-cardLink-22 MuiBox-root css-0"
+      class="makeStyles-cardLink-26 MuiBox-root css-0"
       data-discover="true"
       data-mui-internal-clone-element="true"
       href="/tests/4.21-okd/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-sippy%5D%20openshift-tests%20should%20work%22%7D%5D%7D"
     >
       <div
-        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-21 css-1s8a157-MuiPaper-root-MuiCard-root"
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-25 css-1s8a157-MuiPaper-root-MuiCard-root"
       >
         <div
           class="MuiBox-root css-1coeexk"
@@ -1912,7 +2170,7 @@ exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with
           class="MuiBox-root css-8ziurz"
         >
           <div
-            class="makeStyles-stackedBar-23 MuiBox-root css-0"
+            class="makeStyles-stackedBar-27 MuiBox-root css-0"
           >
             <div
               class="MuiBox-root css-19n6lqg"
@@ -2006,6 +2264,263 @@ exports[`OpenShift rendering matches base > Upgrades page for 4.21 1`] = `
       Upgrade health for 
       4.21
     </h4>
+  </div>
+  <div
+    class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded css-1svxvyo-MuiPaper-root"
+  >
+    <div
+      class="MuiTableContainer-root makeStyles-tableContainer-20 css-rorn0c-MuiTableContainer-root"
+    >
+      <table
+        class="MuiTable-root MuiTable-stickyHeader css-xn82ks-MuiTable-root"
+      >
+        <thead
+          class="MuiTableHead-root css-15wwp11-MuiTableHead-root"
+        >
+          <tr
+            class="MuiTableRow-root MuiTableRow-head css-1q1u3t4-MuiTableRow-root"
+          >
+            <th
+              class="MuiTableCell-root MuiTableCell-head MuiTableCell-stickyHeader MuiTableCell-sizeMedium col-name  css-zrb38c-MuiTableCell-root"
+              scope="col"
+            >
+              <div
+                class="MuiFormGroup-root MuiFormGroup-row css-qfz70r-MuiFormGroup-root"
+              >
+                <label
+                  class="MuiFormControlLabel-root MuiFormControlLabel-labelPlacementEnd css-j204z7-MuiFormControlLabel-root"
+                >
+                  <span
+                    class="MuiSwitch-root MuiSwitch-sizeMedium css-julti5-MuiSwitch-root"
+                  >
+                    <span
+                      class="MuiButtonBase-root MuiSwitch-switchBase MuiSwitch-colorPrimary PrivateSwitchBase-root MuiSwitch-switchBase MuiSwitch-colorPrimary css-5ryogn-MuiButtonBase-root-MuiSwitch-switchBase"
+                    >
+                      <input
+                        class="PrivateSwitchBase-input MuiSwitch-input css-1m9pwf3"
+                        name="showFull"
+                        type="checkbox"
+                      />
+                      <span
+                        class="MuiSwitch-thumb css-jsexje-MuiSwitch-thumb"
+                      />
+                      <span
+                        class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+                      />
+                    </span>
+                    <span
+                      class="MuiSwitch-track css-1yjjitx-MuiSwitch-track"
+                    />
+                  </span>
+                  <span
+                    class="MuiTypography-root MuiTypography-body1 MuiFormControlLabel-label css-ahj2mt-MuiTypography-root"
+                  >
+                    Show Full
+                  </span>
+                </label>
+              </div>
+            </th>
+            <th
+              class="MuiTableCell-root MuiTableCell-head MuiTableCell-stickyHeader MuiTableCell-sizeMedium col-result css-y8ay40-MuiTableCell-root"
+              scope="col"
+            >
+              <h6
+                class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+              >
+                All
+              </h6>
+              <span
+                class="MuiTypography-root MuiTypography-caption css-1sn4lm3-MuiTypography-root"
+              />
+            </th>
+            <th
+              class="MuiTableCell-root MuiTableCell-head MuiTableCell-stickyHeader MuiTableCell-sizeMedium col-result css-y8ay40-MuiTableCell-root"
+              scope="col"
+            >
+              <h6
+                class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+              >
+                aws
+              </h6>
+              <span
+                class="MuiTypography-root MuiTypography-caption css-1sn4lm3-MuiTypography-root"
+              />
+            </th>
+            <th
+              class="MuiTableCell-root MuiTableCell-head MuiTableCell-stickyHeader MuiTableCell-sizeMedium col-result css-y8ay40-MuiTableCell-root"
+              scope="col"
+            >
+              <h6
+                class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+              >
+                gcp
+              </h6>
+              <span
+                class="MuiTypography-root MuiTypography-caption css-1sn4lm3-MuiTypography-root"
+              />
+            </th>
+          </tr>
+        </thead>
+        <tbody
+          class="MuiTableBody-root css-apqrd9-MuiTableBody-root"
+        >
+          <tr
+            class="MuiTableRow-root css-1q1u3t4-MuiTableRow-root"
+          >
+            <td
+              class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium makeStyles-stickyCellName-21 css-1ex1afd-MuiTableCell-root"
+            >
+              <p
+                aria-label="[sig-sippy] upgrade should work"
+                class="MuiTypography-root MuiTypography-body1 cell-name css-ahj2mt-MuiTypography-root"
+                data-mui-internal-clone-element="true"
+              >
+                <a
+                  data-discover="true"
+                  href="/tests/4.21/analysis?test=%5Bsig-sippy%5D%20upgrade%20should%20work&filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-sippy%5D%20upgrade%20should%20work%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22never-stable%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22aggregated%22%2C%22not%22%3Atrue%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+                >
+                  [sig-sippy] upgrade should work
+                </a>
+              </p>
+            </td>
+            <td
+              class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+              data-mui-internal-clone-element="true"
+              style="text-align: center; background-color: rgb(255, 152, 0);"
+            >
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+            </td>
+            <td
+              class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+              data-mui-internal-clone-element="true"
+              style="text-align: center; background-color: rgb(112, 170, 64);"
+            >
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+            </td>
+            <td
+              class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+              data-mui-internal-clone-element="true"
+              style="text-align: center; background-color: rgb(242, 97, 64);"
+            >
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="SyncAltRoundedIcon"
+                data-testid="SyncAltRoundedIcon"
+                focusable="false"
+                style="color: grey;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="m21.65 7.65-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM20 15H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1z"
+                />
+              </svg>
+            </td>
+          </tr>
+          <tr
+            class="MuiTableRow-root css-1q1u3t4-MuiTableRow-root"
+          >
+            <td
+              class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium makeStyles-stickyCellName-21 css-1ex1afd-MuiTableCell-root"
+            >
+              <p
+                aria-label="operator upgrade authentication"
+                class="MuiTypography-root MuiTypography-body1 cell-name css-ahj2mt-MuiTypography-root"
+                data-mui-internal-clone-element="true"
+              >
+                <a
+                  data-discover="true"
+                  href="/tests/4.21/analysis?test=operator%20upgrade%20authentication&filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22operator%20upgrade%20authentication%22%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22never-stable%22%2C%22not%22%3Atrue%7D%2C%7B%22columnField%22%3A%22variants%22%2C%22operatorValue%22%3A%22has%20entry%22%2C%22value%22%3A%22aggregated%22%2C%22not%22%3Atrue%7D%5D%2C%22linkOperator%22%3A%22and%22%7D"
+                >
+                  operator upgrade authentication
+                </a>
+              </p>
+            </td>
+            <td
+              class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+              data-mui-internal-clone-element="true"
+              style="text-align: center; background-color: rgb(219, 157, 16);"
+            >
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+            </td>
+            <td
+              class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+              data-mui-internal-clone-element="true"
+              style="text-align: center; background-color: rgb(255, 152, 0);"
+            >
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+            </td>
+            <td
+              class="MuiTableCell-root MuiTableCell-body MuiTableCell-sizeMedium cell-result css-1ex1afd-MuiTableCell-root"
+              data-mui-internal-clone-element="true"
+              style="text-align: center; background-color: rgb(239, 83, 80);"
+            >
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="SyncAltRoundedIcon"
+                data-testid="SyncAltRoundedIcon"
+                focusable="false"
+                style="color: grey;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="m21.65 7.65-2.79-2.79c-.32-.32-.86-.1-.86.35V7H4c-.55 0-1 .45-1 1s.45 1 1 1h14v1.79c0 .45.54.67.85.35l2.79-2.79c.2-.19.2-.51.01-.7zM20 15H6v-1.79c0-.45-.54-.67-.85-.35l-2.79 2.79c-.2.19-.2.51-.01.7l2.79 2.79c.32.32.86.1.86-.35V17h14c.55 0 1-.45 1-1s-.45-1-1-1z"
+                />
+              </svg>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 `;

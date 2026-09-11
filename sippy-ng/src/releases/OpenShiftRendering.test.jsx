@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { render, screen } from '@testing-library/react'
 import Install from './Install'
 import InstallTopLevelIndicators from './InstallTopLevelIndicators'
@@ -170,10 +170,17 @@ describe('OpenShift rendering matches base', () => {
       throw new Error('unexpected fetch url: ' + url)
     })
 
-    const { container } = renderWithProviders(<Install release="4.21" />, [
-      '/install/4.21',
-    ])
+    const { container } = renderWithProviders(
+      <Routes>
+        <Route
+          path="/install/:release/*"
+          element={<Install release="4.21" />}
+        />
+      </Routes>,
+      ['/install/4.21/operators']
+    )
     await screen.findByText('Install health for 4.21')
+    await screen.findByText('operator install authentication')
     expect(container).toMatchSnapshot()
   })
 
@@ -184,10 +191,17 @@ describe('OpenShift rendering matches base', () => {
       throw new Error('unexpected fetch url: ' + url)
     })
 
-    const { container } = renderWithProviders(<Upgrades release="4.21" />, [
-      '/upgrade/4.21',
-    ])
+    const { container } = renderWithProviders(
+      <Routes>
+        <Route
+          path="/upgrade/:release/*"
+          element={<Upgrades release="4.21" />}
+        />
+      </Routes>,
+      ['/upgrade/4.21/operators']
+    )
     await screen.findByText('Upgrade health for 4.21')
+    await screen.findByText('operator upgrade authentication')
     expect(container).toMatchSnapshot()
   })
 
