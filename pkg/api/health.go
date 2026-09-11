@@ -94,14 +94,20 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// TODO: use or remove this logic
 	var warnings []string
 
-	RespondWithJSON(http.StatusOK, w, apitype.Health{
+	RespondWithJSON(http.StatusOK, w, releaseHealthResponse(release, lifecycleTests, indicators, lastUpdated, currStats, prevStats, warnings))
+}
+
+// releaseHealthResponse builds the /api/health response body from data the handler has already
+// fetched, adding the product lifecycle links (lifecycleLinks) when release is a product release.
+func releaseHealthResponse(release string, lifecycleTests lifecycleTestSelection, indicators map[string]apitype.Test, lastUpdated time.Time, currStats, prevStats sippyprocessingv1.Statistics, warnings []string) apitype.Health {
+	return apitype.Health{
 		Indicators:  indicators,
 		LastUpdated: lastUpdated,
 		Current:     currStats,
 		Previous:    prevStats,
 		Warnings:    warnings,
 		Links:       lifecycleLinks(release, lifecycleTests),
-	})
+	}
 }
 
 func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats sippyprocessingv1.Statistics) {

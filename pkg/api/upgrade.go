@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -24,7 +25,20 @@ func PrintUpgradeJSONReportFromDB(w http.ResponseWriter, req *http.Request, dbc 
 		return
 	}
 
-	// Build up a set of column names, every variant we encounter as well as an "All":
+	result, err := json.Marshal(upgradeReportSummary(release, lifecycleTests, variantColumns, tests))
+	if err != nil {
+		log.WithError(err).Error("could not generate install report")
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Could not generate install report: " + err.Error()})
+		return
+	}
+
+	jsonStr := string(result)
+	RespondWithJSON(http.StatusOK, w, jsonStr)
+}
+
+// upgradeReportSummary builds the /api/upgrade response body from the release's variant/test
+// data, adding the product lifecycle links (lifecycleLinks) when release is a product release.
+func upgradeReportSummary(release string, lifecycleTests lifecycleTestSelection, variantColumns sets.Set[string], tests map[string]map[string]apitype.Test) map[string]interface{} {
 	summary := map[string]interface{}{
 		"title":        "Upgrade Rates by Operator",
 		"description":  "Upgrade Rates by Operator by Variant",
@@ -34,14 +48,5 @@ func PrintUpgradeJSONReportFromDB(w http.ResponseWriter, req *http.Request, dbc 
 	if links := lifecycleLinks(release, lifecycleTests); links != nil {
 		summary["links"] = links
 	}
-
-	result, err := json.Marshal(summary)
-	if err != nil {
-		log.WithError(err).Error("could not generate install report")
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Could not generate install report: " + err.Error()})
-		return
-	}
-
-	jsonStr := string(result)
-	RespondWithJSON(http.StatusOK, w, jsonStr)
+	return summary
 }
