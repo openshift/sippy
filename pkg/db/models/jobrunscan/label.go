@@ -27,6 +27,9 @@ type LabelContent struct {
 
 	// Markdown explanation of what this label indicates
 	Explanation string `gorm:"type:text" json:"explanation"`
+
+	// Jira issue keys associated with this label
+	Bugs pq.StringArray `gorm:"type:text[]" json:"bugs"`
 }
 
 const (

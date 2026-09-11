@@ -403,6 +403,25 @@ A summary of runs for job(s). Results contains of the following values for each 
 | job      | String         | Return only jobs containing only containing this value in their name                                                     | N/A                                      |
 | limit    | Integer        | The maximum amount of results to return                                                                                  | N/A                                      |
 
+## Job Run Labels
+
+Endpoints:
+
+- `GET /api/jobs/labels` lists label definitions.
+- `POST /api/jobs/labels` creates a label definition.
+- `GET /api/jobs/labels/{id}` retrieves one label definition.
+- `PUT /api/jobs/labels/{id}` fully replaces one label definition.
+- `DELETE /api/jobs/labels/{id}` soft-deletes one label definition.
+
+Label definitions include the immutable `id`, human-readable `label_title`, Markdown
+`explanation`, optional `hide_display_contexts`, and `bugs`. The `bugs` field is an array of Jira
+issue keys such as `OCPBUGS-12345`. Responses always return an array for `bugs`, including `[]` for
+labels without associated issues. Jira keys are validated syntactically, but the API does not look
+up issues in Jira.
+
+PUT requests use full-replacement semantics. Clients must send the complete label definition,
+including `bugs` and `hide_display_contexts` when those values should be retained.
+
 ## Re-evaluate Job Run Symptoms
 
 Endpoint: `POST /api/jobs/runs/reevaluate`

@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -17,6 +18,7 @@ import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
+import JiraBugLinks from '../components/JiraBugLinks'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -346,7 +348,14 @@ function ReleasePayloadJobRuns(props) {
                   primary={label ? label.label_title : labelId}
                   secondary={
                     label ? (
-                      <ReactMarkdown>{label.explanation}</ReactMarkdown>
+                      <Box component="div">
+                        {label.explanation && (
+                          <ReactMarkdown>{label.explanation}</ReactMarkdown>
+                        )}
+                        {label.bugs?.length > 0 && (
+                          <JiraBugLinks bugs={label.bugs} showLabel />
+                        )}
+                      </Box>
                     ) : (
                       'Label not found'
                     )
