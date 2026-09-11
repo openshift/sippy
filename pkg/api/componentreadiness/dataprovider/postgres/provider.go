@@ -350,7 +350,8 @@ type testDetailRow struct {
 
 func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
 	reqOptions reqopts.RequestOptions,
-	includeVariants map[string][]string) (map[string][]crstatus.TestDetailsSummary, []error) {
+	includeVariants map[string][]string,
+	lifecycles []string) (map[string][]crstatus.TestDetailsSummary, []error) {
 
 	if includeVariants == nil {
 		includeVariants = map[string][]string{}
@@ -408,6 +409,7 @@ WHERE pj.release = ?
     AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`
 
 	args = append(args, release, start, end, release, release, start, end)
+	sqlQuery, args = appendTestDetailsLifecycleFilter(sqlQuery, args, lifecycles)
 
 	if len(includeVariants) > 0 {
 		filterClause, filterArgs := buildVariantFilterClause(includeVariants)
@@ -485,12 +487,22 @@ WHERE pj.release = ?
 	return crstatus.SummarizeTestJobRuns(result), nil
 }
 
+// appendTestDetailsLifecycleFilter keeps sample test details aligned with the
+// lifecycle-filtered component report that selected the tests for analysis.
+func appendTestDetailsLifecycleFilter(sqlQuery string, args []any, lifecycles []string) (string, []any) {
+	if len(lifecycles) == 0 {
+		return sqlQuery, args
+	}
+
+	return sqlQuery + " AND pjrt.lifecycle = ANY(?)", append(args, pq.Array(lifecycles))
+}
+
 func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {
 	result, errs := p.queryTestDetails(
 		ctx,
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End,
-		reqOptions, reqOptions.VariantOption.IncludeVariants,
+		reqOptions, reqOptions.VariantOption.IncludeVariants, nil,
 	)
 	if len(errs) > 0 {
 		return result, errs
@@ -714,7 +726,7 @@ func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqO
 		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
-		reqOptions, mergeCompareVariants(reqOptions, includeVariants),
+		reqOptions, mergeCompareVariants(reqOptions, includeVariants), reqOptions.Lifecycles,
 	)
 }
 

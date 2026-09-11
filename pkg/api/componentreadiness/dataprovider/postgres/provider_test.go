@@ -1,11 +1,55 @@
 package postgres
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/lib/pq"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
+
+func TestAppendTestDetailsLifecycleFilter(t *testing.T) {
+	tests := []struct {
+		name           string
+		lifecycles     []string
+		wantFilter     bool
+		wantAdditional int
+	}{
+		{
+			name:           "configured lifecycle is filtered",
+			lifecycles:     []string{"blocking"},
+			wantFilter:     true,
+			wantAdditional: 1,
+		},
+		{
+			name:       "empty lifecycle is unfiltered",
+			lifecycles: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			originalArgs := []any{"existing"}
+			query, args := appendTestDetailsLifecycleFilter("SELECT 1 WHERE true", originalArgs, tt.lifecycles)
+
+			if got := strings.Contains(query, "pjrt.lifecycle = ANY(?)"); got != tt.wantFilter {
+				t.Fatalf("lifecycle filter present = %t, want %t", got, tt.wantFilter)
+			}
+			if got, want := len(args), len(originalArgs)+tt.wantAdditional; got != want {
+				t.Fatalf("argument count = %d, want %d", got, want)
+			}
+			if tt.wantAdditional == 1 {
+				got, ok := args[len(args)-1].(*pq.StringArray)
+				if !ok {
+					t.Fatalf("lifecycle argument has type %T, want *pq.StringArray", args[len(args)-1])
+				}
+				if strings.Join(*got, ",") != strings.Join(tt.lifecycles, ",") {
+					t.Fatalf("lifecycle argument = %v, want %v", got, tt.lifecycles)
+				}
+			}
+		})
+	}
+}
 
 func TestParseVariants(t *testing.T) {
 	tests := []struct {

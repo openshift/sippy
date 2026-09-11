@@ -195,7 +195,6 @@ func NewServeCommand() *cobra.Command {
 				views,
 				config,
 				f.APIFlags.EnableWriteEndpoints,
-				f.APIFlags.ChatAPIURL,
 				jiraClient,
 			)
 

@@ -24,7 +24,6 @@ import {
   Navigate,
   Route,
   Routes,
-  useLocation,
   useNavigate,
   useParams,
 } from 'react-router-dom'
@@ -33,16 +32,13 @@ import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
-import { useDrawer } from './chat/store/useChatStore'
 import AccessibilityToggle from './components/AccessibilityToggle'
-import AIDisclaimerDialog from './components/AIDisclaimerDialog'
 import Alert from '@mui/material/Alert'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
-import ChatInterface from './chat/ChatInterface'
+import ChatTransition from './components/ChatTransition'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import CollapsibleChatDrawer from './chat/CollapsibleChatDrawer'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
 import EventsChart from './prow_job_runs/EventsChart'
@@ -395,11 +391,6 @@ const EventsChartWrapper = () => {
   )
 }
 
-const ChatInterfaceWrapper = () => {
-  const { id } = useParams()
-  return <ChatInterface mode="fullPage" conversationId={id} />
-}
-
 function App(_props) {
   const classes = useStyles()
   const theme = useTheme()
@@ -570,8 +561,6 @@ function App(_props) {
                     }}
                   >
                     <div className={classes.root}>
-                      <AIDisclaimerDialog />
-
                       <AppBar
                         position="fixed"
                         open={drawerOpen}
@@ -791,18 +780,10 @@ function App(_props) {
                               element={<EventsChartWrapper />}
                             />
 
-                            {sippyCapabilities.includes('chat') && (
-                              <>
-                                <Route
-                                  path="/chat"
-                                  element={<ChatInterface mode="fullPage" />}
-                                />
-                                <Route
-                                  path="/chat/:id"
-                                  element={<ChatInterfaceWrapper />}
-                                />
-                              </>
-                            )}
+                            <Route
+                              path="/chat/*"
+                              element={<ChatTransition />}
+                            />
 
                             <Route
                               path="/"
@@ -823,7 +804,6 @@ function App(_props) {
                     </div>
                   </QueryParamProvider>
                 </AccessibilityModeProvider>
-                {showWithCapability('chat', <GlobalChatControls />)}
               </SippyCapabilitiesContext.Provider>
             </ReportEndContext.Provider>
           </ReleasesContext.Provider>
@@ -833,26 +813,6 @@ function App(_props) {
   )
 
   return content
-}
-
-// Component that uses the drawer state
-function GlobalChatControls() {
-  const { isDrawerOpen, openDrawer, closeDrawer } = useDrawer()
-  const location = useLocation()
-
-  // Don't show chat drawer on the main /chat page
-  const isOnChatPage = location.pathname.includes('/chat')
-  if (isOnChatPage) {
-    return null
-  }
-
-  return (
-    <CollapsibleChatDrawer
-      open={isDrawerOpen}
-      onOpen={openDrawer}
-      onClose={closeDrawer}
-    />
-  )
 }
 
 export default App

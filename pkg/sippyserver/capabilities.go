@@ -16,7 +16,4 @@ const (
 
 	// WriteEndpointsCapability is whether we have enabled write APIs on this server.
 	WriteEndpointsCapability = "write_endpoints"
-
-	// ChatCapability is whether this sippy instance is configured to proxy chat requests to sippy-chat service.
-	ChatCapability = "chat"
 )

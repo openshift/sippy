@@ -140,7 +140,7 @@ func (p *BigQueryProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqO
 	generator := NewSampleTestDetailsQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.TestJobRunStatuses](
 		ctx, p.client.Cache, reqOptions.CacheOption,
-		apiPkg.NewCacheSpec(generator, "SampleJobRunTestStatusV3~", &end),
+		apiPkg.NewCacheSpec(generator, "SampleJobRunTestStatusV4~", &end),
 		generator.QueryTestStatus, crstatus.TestJobRunStatuses{})
 	if len(errs) > 0 {
 		return nil, errs

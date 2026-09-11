@@ -7,27 +7,40 @@ mkdir -p "${HOME}/.config/gcloud" "${HOME}/.config/gh" "${HOME}/.claude"
 
 podman network create sippy-net 2>/dev/null || true
 
+POSTGRES_IMAGE=quay.io/openshift/ci:ci_postgresql_postgresql-18-c9s
+REDIS_IMAGE=quay.io/openshift/ci:ci_redis_redis-7-c9s
+
+warn_if_wrong_image() {
+    name=$1
+    expected=$2
+    current=$(podman inspect -f '{{.Config.Image}}' "$name" 2>/dev/null || true)
+    if [ -n "$current" ] && [ "$current" != "$expected" ]; then
+        echo "WARNING: $name is using $current (expected $expected). Remove it to pick up the new image: podman rm -f $name" >&2
+    fi
+}
+
 podman start sippy-postgres 2>/dev/null || \
     podman run -d --name sippy-postgres \
+        --platform linux/amd64 \
         --network sippy-net \
-        -e POSTGRES_PASSWORD=password \
-        -e POSTGRES_HOST_AUTH_METHOD=trust \
+        -e POSTGRESQL_ADMIN_PASSWORD=password \
         -p 127.0.0.1:5432:5432 \
-        docker.io/library/postgres:18.4 \
-        -c listen_addresses='*'
+        "$POSTGRES_IMAGE"
+warn_if_wrong_image sippy-postgres "$POSTGRES_IMAGE"
 
 podman start sippy-redis 2>/dev/null || \
     podman run -d --name sippy-redis \
+        --platform linux/amd64 \
         --network sippy-net \
         --restart=always \
         --memory=4g \
         -p 127.0.0.1:6379:6379 \
-        docker.io/redis:7-alpine \
-        redis-server --maxmemory 3800mb --maxmemory-policy allkeys-lru
+        "$REDIS_IMAGE"
+warn_if_wrong_image sippy-redis "$REDIS_IMAGE"
 
 echo "Waiting for PostgreSQL..."
 pg_ready=false
-for i in $(seq 1 30); do
+for i in $(seq 1 60); do
     if podman exec sippy-postgres pg_isready -U postgres >/dev/null 2>&1; then
         pg_ready=true
         break
@@ -35,15 +48,15 @@ for i in $(seq 1 30); do
     sleep 1
 done
 if [ "$pg_ready" = false ]; then
-    echo "ERROR: PostgreSQL did not become ready within 30 seconds."
+    echo "ERROR: PostgreSQL did not become ready within 60 seconds."
     exit 1
 fi
 
 echo "Creating prod-like database (prodlike)..."
-podman exec sippy-postgres psql -U postgres -tc \
+podman exec -e PGPASSWORD=password sippy-postgres psql -U postgres -tc \
     "SELECT 1 FROM pg_database WHERE datname = 'prodlike'" \
     | grep -q 1 \
-    || podman exec sippy-postgres psql -U postgres -c "CREATE DATABASE prodlike"
+    || podman exec -e PGPASSWORD=password sippy-postgres psql -U postgres -c "CREATE DATABASE prodlike"
 
 echo "Waiting for Redis..."
 redis_ready=false

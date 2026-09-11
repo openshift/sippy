@@ -16,7 +16,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jackc/pgconn v1.14.3
 	github.com/jackc/pgtype v1.14.0
@@ -27,7 +26,7 @@ require (
 	github.com/mark3labs/mcp-go v0.39.1
 	github.com/montanaflynn/stats v0.6.6
 	github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a
-	github.com/openshift-eng/gopar v0.0.0-20260616192337-b77b4437ef28
+	github.com/openshift-eng/gopar v0.0.0-20260910203208-c9b43b0b456d
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.3
 	github.com/riverqueue/river v0.44.1
@@ -182,4 +181,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
+	k8s.io/klog/v2 v2.120.1 // indirect
+	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )

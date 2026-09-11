@@ -344,9 +344,6 @@ github.com/gorilla/handlers
 # github.com/gorilla/mux v1.8.1
 ## explicit; go 1.20
 github.com/gorilla/mux
-# github.com/gorilla/websocket v1.5.3
-## explicit; go 1.12
-github.com/gorilla/websocket
 # github.com/hashicorp/go-version v1.7.0
 ## explicit
 github.com/hashicorp/go-version
@@ -520,7 +517,7 @@ github.com/opencontainers/image-spec/specs-go/v1
 ## explicit; go 1.19
 github.com/openshift-eng/ci-test-mapping/pkg/api/types/v1
 github.com/openshift-eng/ci-test-mapping/pkg/bigquery
-# github.com/openshift-eng/gopar v0.0.0-20260616192337-b77b4437ef28
+# github.com/openshift-eng/gopar v0.0.0-20260910203208-c9b43b0b456d
 ## explicit; go 1.25.0
 github.com/openshift-eng/gopar/partitioning
 # github.com/pierrec/lz4/v4 v4.1.18
@@ -1177,8 +1174,22 @@ gorm.io/gorm/schema
 gorm.io/gorm/utils
 # k8s.io/apimachinery v0.30.1
 ## explicit; go 1.22.0
+k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/sets
+k8s.io/apimachinery/pkg/util/wait
 k8s.io/apimachinery/pkg/version
+# k8s.io/klog/v2 v2.120.1
+## explicit; go 1.18
+k8s.io/klog/v2
+k8s.io/klog/v2/internal/buffer
+k8s.io/klog/v2/internal/clock
+k8s.io/klog/v2/internal/dbg
+k8s.io/klog/v2/internal/serialize
+k8s.io/klog/v2/internal/severity
+k8s.io/klog/v2/internal/sloghandler
+# k8s.io/utils v0.0.0-20230726121419-3b25d923346b
+## explicit; go 1.18
+k8s.io/utils/clock
 # maragu.dev/gomponents v1.2.0
 ## explicit; go 1.18
 maragu.dev/gomponents

@@ -36,7 +36,6 @@ import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { ReportEndContext } from '../App'
 import { scale } from 'chroma-js'
-import { usePageContextForChat } from '../chat/store/useChatStore'
 import Alert from '@mui/material/Alert'
 import BugTable from '../bugs/BugTable'
 import Divider from '@mui/material/Divider'
@@ -53,9 +52,6 @@ export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_period: {} })
   const [bugsURL, setBugsURL] = React.useState('')
-  const { setPageContextForChat, unsetPageContextForChat } =
-    usePageContextForChat()
-
   const [filterModel, setFilterModel] = useStableJSONQueryParam('filters')
   const [period, setPeriod] = useQueryParam('period', StringParam)
   const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
@@ -159,42 +155,6 @@ export function JobAnalysis(props) {
   useEffect(() => {
     fetchData()
   }, [filterModel, period, props.release])
-
-  // Update page context for chat
-  useEffect(() => {
-    if (!isLoaded || !analysis) return
-
-    setPageContextForChat({
-      page: 'job-analysis',
-      url: window.location.href,
-      instructions: `The user is viewing job analysis for multiple jobs matching specific filters.
-        You can use your database query tools to answer additional questions about the jobs being viewed.
-        When querying the database, apply the same filters shown in the context, especially the variant filters.`,
-      suggestions: [
-        'What are the most common test failures across these jobs?',
-        {
-          prompt: 'job-run-analysis',
-          label: 'Analyze a Failed Job',
-        },
-      ],
-      data: {
-        release: props.release,
-        filters: filterModel,
-      },
-    })
-
-    // Cleanup: Clear context when component unmounts
-    return () => {
-      unsetPageContextForChat()
-    }
-  }, [
-    isLoaded,
-    analysis,
-    filterModel,
-    props.release,
-    setPageContextForChat,
-    unsetPageContextForChat,
-  ])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
@@ -38,7 +39,7 @@ import (
 const (
 	explanationNoRegression         = "No significant regressions found"
 	ComponentReportCacheKeyPrefix   = "ComponentReport~"
-	TestDetailsReportCacheKeyPrefix = "TestDetailsReport~"
+	TestDetailsReportCacheKeyPrefix = "TestDetailsReportV2~"
 )
 
 type GeneratorType string
@@ -159,11 +160,13 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions reqopts.RequestOptions, dbc *db.DB, releaseConfigs []v1.Release, baseURL string) ComponentReportGenerator {
 	slices.Sort(reqOptions.Capabilities) // normalize ordering so cache keys match
 	generator := ComponentReportGenerator{
-		dataProvider:   provider,
-		ReqOptions:     reqOptions,
-		dbc:            dbc,
-		releaseConfigs: releaseConfigs,
-		baseURL:        baseURL,
+		dataProvider:            provider,
+		jobRunTestStatusFetcher: (*ComponentReportGenerator).getJobRunTestStatus,
+		multiTestStatusBackoff:  defaultMultiTestStatusQueryBackoff(),
+		ReqOptions:              reqOptions,
+		dbc:                     dbc,
+		releaseConfigs:          releaseConfigs,
+		baseURL:                 baseURL,
 	}
 	generator.initializeMiddleware()
 	return generator
@@ -176,12 +179,14 @@ func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions 
 // is marshalled for the cache key and should be changed when the object being
 // cached changes in a way that will no longer be compatible with any prior cached version.
 type ComponentReportGenerator struct {
-	dataProvider   dataprovider.DataProvider
-	dbc            *db.DB
-	ReqOptions     reqopts.RequestOptions
-	middlewares    middleware.List
-	releaseConfigs []v1.Release
-	baseURL        string
+	dataProvider            dataprovider.DataProvider
+	jobRunTestStatusFetcher func(*ComponentReportGenerator, context.Context) (crstatus.TestJobRunStatuses, []error)
+	multiTestStatusBackoff  wait.Backoff
+	dbc                     *db.DB
+	ReqOptions              reqopts.RequestOptions
+	middlewares             middleware.List
+	releaseConfigs          []v1.Release
+	baseURL                 string
 }
 
 type GeneratorCacheKey struct {
