@@ -31,6 +31,9 @@ func PrintUpgradeJSONReportFromDB(w http.ResponseWriter, req *http.Request, dbc 
 		"column_names": sets.List(variantColumns),
 		"tests":        tests,
 	}
+	if links := lifecycleLinks(release, lifecycleTests); links != nil {
+		summary["links"] = links
+	}
 
 	result, err := json.Marshal(summary)
 	if err != nil {

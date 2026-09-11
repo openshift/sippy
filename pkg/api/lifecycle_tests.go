@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -126,4 +128,53 @@ func lifecycleTestsForRelease(release string) lifecycleTestSelection {
 	selection.ProductUpgradeTestName = productUpgradeTestName
 
 	return selection
+}
+
+// nameEqualsFilter is the DataGrid filter shape sippy-ng's filterFor helper (sippy-ng/src/
+// helpers.jsx) produces for a "name equals <value>" filter, used to build a /api/tests link
+// scoped to a single exact test name.
+type nameEqualsFilter struct {
+	Items []nameEqualsFilterItem `json:"items"`
+}
+
+type nameEqualsFilterItem struct {
+	ColumnField   string `json:"columnField"`
+	OperatorValue string `json:"operatorValue"`
+	Value         string `json:"value"`
+}
+
+// lifecycleLinks returns HATEOAS links for a lifecycle product release's install, upgrade,
+// health, and per-product-test endpoints, letting a client navigate a product's responses
+// without constructing query strings itself. It returns nil for a non-product release (sel.
+// ProductInstallTestName == "").
+func lifecycleLinks(release string, sel lifecycleTestSelection) map[string]string {
+	if sel.ProductInstallTestName == "" {
+		return nil
+	}
+
+	releaseQuery := url.Values{"release": {release}}.Encode()
+
+	return map[string]string{
+		"install":              "/api/install?" + releaseQuery,
+		"upgrade":              "/api/upgrade?" + releaseQuery,
+		"health":               "/api/health?" + releaseQuery,
+		"product_install_test": testsLink(releaseQuery, sel.ProductInstallTestName),
+		"product_upgrade_test": testsLink(releaseQuery, sel.ProductUpgradeTestName),
+	}
+}
+
+// testsLink builds a /api/tests link filtered to a single exact test name, appending the
+// release query already built by lifecycleLinks so it isn't re-encoded per call.
+func testsLink(releaseQuery, testName string) string {
+	filterJSON, err := json.Marshal(nameEqualsFilter{
+		Items: []nameEqualsFilterItem{{ColumnField: "name", OperatorValue: "equals", Value: testName}},
+	})
+	if err != nil {
+		// nameEqualsFilter holds only strings; Marshal cannot fail.
+		return ""
+	}
+
+	filterQuery := url.Values{"filter": {string(filterJSON)}}.Encode()
+
+	return "/api/tests?" + releaseQuery + "&" + filterQuery
 }

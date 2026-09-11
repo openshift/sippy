@@ -35,6 +35,9 @@ func PrintInstallJSONReportFromDB(w http.ResponseWriter, dbc *db.DB, release str
 		"column_names": sets.List(variantColumns),
 		"tests":        tests,
 	}
+	if links := lifecycleLinks(release, lifecycleTests); links != nil {
+		summary["links"] = links
+	}
 
 	result, err := json.Marshal(summary)
 	if err != nil {
