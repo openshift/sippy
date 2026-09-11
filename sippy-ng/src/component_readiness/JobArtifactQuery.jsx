@@ -752,26 +752,38 @@ export default function JobArtifactQuery(props) {
                     <SelectingCheckbox jobRunID={row.job_run_id} />
                   </TableCell>
                   <TableCell className="cr-artifacts-jobname">
-                    <LaunderedLink
-                      address={row.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    {row.url ? (
+                      <LaunderedLink
+                        address={row.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Tooltip title={row.job_name + ' ' + row.job_run_id}>
+                          {row.job_name}/{row.job_run_id}
+                        </Tooltip>
+                      </LaunderedLink>
+                    ) : (
                       <Tooltip title={row.job_name + ' ' + row.job_run_id}>
-                        {row.job_name}/{row.job_run_id}
+                        <span>
+                          {row.job_name}/{row.job_run_id}
+                        </span>
                       </Tooltip>
-                    </LaunderedLink>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Tooltip title={new Date(row.start_time).toUTCString()}>
                       <div className="test-name">
-                        <LaunderedLink
-                          address={row.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {relativeTime(new Date(row.start_time), new Date())}
-                        </LaunderedLink>
+                        {row.url ? (
+                          <LaunderedLink
+                            address={row.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {relativeTime(new Date(row.start_time), new Date())}
+                          </LaunderedLink>
+                        ) : (
+                          relativeTime(new Date(row.start_time), new Date())
+                        )}
                       </div>
                     </Tooltip>
                   </TableCell>

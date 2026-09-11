@@ -2,6 +2,7 @@ package jobrunscan
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -10,13 +11,17 @@ import (
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/api/option"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-// These tests require real GCP and database credentials. They are skipped
-// unless the necessary environment variables are set. To run:
+// These tests exercise the ReEvaluator's write path (BQ, GCS, Postgres label
+// updates) against real infrastructure. They verify that symptom evaluation
+// produces correct results and that idempotent re-runs are stable. They require
+// real GCP and database credentials and are skipped unless the necessary
+// environment variables are set. To run:
 //
 //	GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json \
 //	BIGQUERY_PROJECT=my-project \
@@ -25,12 +30,10 @@ import (
 //	SIPPY_DATABASE_DSN=postgresql://user:pass@host:5432/dbname \
 //	PROW_JOB_BUILD_ID=1234567890 \
 //	go test -v -run TestReEvaluate ./pkg/api/jobrunscan/
-
-/* Example of invoking the API:
-   curl -X POST http://localhost:8080/api/jobs/runs/reevaluate \
-        -H 'Content-Type: application/json' \
-        -d '{"prow_job_build_ids": ["2061603073523978240"], "dry_run": true}'
-*/
+//
+// These tests call ReEvaluator methods directly, not through the async batch
+// pipeline. The async pipeline (HTTP submit, River processing, status polling)
+// is tested in pkg/sippyserver/workqueue/symptomre/e2e_test.go.
 
 func functionalTestReEvaluator(t *testing.T) *ReEvaluator {
 	t.Helper()
@@ -68,14 +71,14 @@ func functionalTestReEvaluator(t *testing.T) *ReEvaluator {
 	}
 	dbc := &db.DB{DB: gormDB}
 
-	return NewReEvaluator(bqC, gcsC, gcsBucket, dbc, nil, jobartifacts.NewManager(ctx), false)
+	return NewReEvaluator(bqC, gcsC, gcsBucket, dbc, nil, jobartifacts.NewManager(ctx))
 }
 
 func TestReEvaluateEndToEnd(t *testing.T) {
 	re := functionalTestReEvaluator(t)
 	buildID := os.Getenv("PROW_JOB_BUILD_ID")
 
-	results, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID})
+	results, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("re-evaluation failed: %v", err)
 	}
@@ -98,11 +101,11 @@ func TestReEvaluateIdempotent(t *testing.T) {
 	buildID := os.Getenv("PROW_JOB_BUILD_ID")
 
 	// Run twice
-	results1, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID})
+	results1, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("first re-evaluation failed: %v", err)
 	}
-	results2, err := re.ReEvaluateJobRuns(context.Background(), []string{buildID})
+	results2, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
 	if err != nil {
 		t.Fatalf("second re-evaluation failed: %v", err)
 	}
@@ -117,4 +120,20 @@ func TestReEvaluateIdempotent(t *testing.T) {
 	if !sameStrings(r1.LabelsApplied, r2.LabelsApplied) {
 		t.Errorf("labels applied differ: %v vs %v", r1.LabelsApplied, r2.LabelsApplied)
 	}
+}
+
+// reEvaluateJobRuns re-evaluates all symptom matches for the specified job runs.
+func reEvaluateJobRuns(ctx context.Context, r *ReEvaluator, prowJobBuildIDs []string, dryRun bool) ([]ReEvaluationResult, error) {
+	symptoms, err := r.loadActiveSymptoms(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("loading symptoms: %w", err)
+	}
+	logrus.WithField("activeSymptoms", len(symptoms)).Debug("symptom reEval: loaded active symptoms")
+
+	results := make([]ReEvaluationResult, 0, len(prowJobBuildIDs))
+	for _, buildID := range prowJobBuildIDs {
+		result := r.reEvaluateOne(ctx, buildID, symptoms, dryRun)
+		results = append(results, result)
+	}
+	return results, nil
 }

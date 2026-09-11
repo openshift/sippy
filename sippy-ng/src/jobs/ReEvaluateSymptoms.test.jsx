@@ -6,37 +6,44 @@ import userEvent from '@testing-library/user-event'
 
 beforeEach(() => {
   vi.restoreAllMocks()
+  vi.useFakeTimers({ shouldAdvanceTime: true })
   import.meta.env.VITE_API_URL = ''
 })
 
-function mockFetchResponses(...responses) {
-  const iter = responses[Symbol.iterator]()
-  global.fetch = vi.fn(() => {
-    const next = iter.next()
-    if (next.done) throw new Error('unexpected extra fetch call')
-    return Promise.resolve(next.value)
-  })
-}
+afterEach(() => {
+  vi.useRealTimers()
+})
 
-function successResponse(buildID) {
+function submitResponse(batchID, requested) {
   return {
     ok: true,
-    status: 200,
+    status: 202,
     json: () =>
       Promise.resolve({
-        results: [{ prow_job_build_id: buildID, status: 'success' }],
+        batch_id: batchID,
+        requested,
+        links: { status: `/api/jobs/runs/reevaluate/${batchID}` },
       }),
   }
 }
 
-function errorResponse(buildID, status) {
+function statusResponse(batchID, overrides = {}) {
+  const defaults = {
+    batch_id: batchID,
+    status: 'pending',
+    requested: 1,
+    enqueued: 1,
+    deduped: 0,
+    completed: 0,
+    failed: 0,
+    running: 0,
+    pending: 1,
+    items: [],
+  }
   return {
     ok: true,
     status: 200,
-    json: () =>
-      Promise.resolve({
-        results: [{ prow_job_build_id: buildID, status }],
-      }),
+    json: () => Promise.resolve({ ...defaults, ...overrides }),
   }
 }
 
@@ -65,28 +72,81 @@ describe('ReEvaluateButton', () => {
     expect(screen.getByRole('button')).toBeDisabled()
   })
 
-  it('shows progress bar during execution', async () => {
-    let resolveSecond
-    const deferredSecond = new Promise((r) => {
-      resolveSecond = r
-    })
+  it('submits a single batch POST with all IDs', async () => {
     global.fetch = vi
       .fn()
-      .mockResolvedValueOnce(successResponse('1'))
-      .mockReturnValueOnce(deferredSecond.then(() => successResponse('2')))
+      .mockResolvedValueOnce(submitResponse('batch-abc', 3))
+      .mockResolvedValue(
+        statusResponse('batch-abc', {
+          status: 'complete',
+          requested: 3,
+          completed: 3,
+          pending: 0,
+        })
+      )
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2', '3']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button'))
+    })
+
+    // Verify the submit call sent all IDs in one request.
+    const submitCall = global.fetch.mock.calls[0]
+    const body = JSON.parse(submitCall[1].body)
+    expect(body.prow_job_build_ids).toEqual(['1', '2', '3'])
+    expect(submitCall[1].method).toBe('POST')
+  })
+
+  it('shows progress bar during polling', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-1', 2))
+      .mockResolvedValueOnce(
+        statusResponse('batch-1', {
+          status: 'running',
+          requested: 2,
+          completed: 1,
+          failed: 0,
+          running: 1,
+          pending: 0,
+        })
+      )
+      .mockResolvedValue(
+        statusResponse('batch-1', {
+          status: 'complete',
+          requested: 2,
+          completed: 2,
+          failed: 0,
+          running: 0,
+          pending: 0,
+        })
+      )
+
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
       userEvent.click(screen.getByRole('button'))
     })
 
+    // After submit, progress bar should appear.
     await waitFor(() => {
       expect(screen.getByRole('progressbar')).toBeInTheDocument()
+      expect(screen.getByText(/0\/2 completed/)).toBeInTheDocument()
+    })
+
+    // Advance to first poll.
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+
+    await waitFor(() => {
       expect(screen.getByText(/1\/2 completed/)).toBeInTheDocument()
     })
 
+    // Advance to second poll (terminal).
     await act(async () => {
-      resolveSecond()
+      vi.advanceTimersByTime(2500)
     })
 
     await waitFor(() => {
@@ -96,12 +156,28 @@ describe('ReEvaluateButton', () => {
     })
   })
 
-  it('shows success snackbar when all runs succeed', async () => {
-    mockFetchResponses(successResponse('1'), successResponse('2'))
+  it('shows success snackbar when batch completes', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-ok', 2))
+      .mockResolvedValue(
+        statusResponse('batch-ok', {
+          status: 'complete',
+          requested: 2,
+          completed: 2,
+          failed: 0,
+          pending: 0,
+        })
+      )
+
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
       userEvent.click(screen.getByRole('button'))
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
     })
 
     await waitFor(() => {
@@ -113,124 +189,75 @@ describe('ReEvaluateButton', () => {
     })
   })
 
-  it('shows error snackbar on rewrite_error (inconsistent state)', async () => {
-    mockFetchResponses(
-      errorResponse('1', 'rewrite_error'),
-      errorResponse('1', 'rewrite_error')
-    )
-    render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
+  it('shows error snackbar when all items fail', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-fail', 2))
+      .mockResolvedValue(
+        statusResponse('batch-fail', {
+          status: 'failed',
+          requested: 2,
+          completed: 0,
+          failed: 2,
+          pending: 0,
+        })
+      )
 
-    await act(async () => {
-      userEvent.click(screen.getByRole('button'))
-    })
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          /failed during rewrite and may be in an inconsistent state/
-        )
-      ).toBeInTheDocument()
-    })
-  })
-
-  it('shows error snackbar when all runs are missing_error', async () => {
-    mockFetchResponses(errorResponse('1', 'missing_error'))
-    render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
-
-    await act(async () => {
-      userEvent.click(screen.getByRole('button'))
-    })
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('None of the selected job run(s) were found in Sippy')
-      ).toBeInTheDocument()
-    })
-  })
-
-  it('retries eval_error and rewrite_error once', async () => {
-    mockFetchResponses(errorResponse('1', 'eval_error'), successResponse('1'))
-    render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
-
-    await act(async () => {
-      userEvent.click(screen.getByRole('button'))
-    })
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Successfully re-evaluated 1/)
-      ).toBeInTheDocument()
-    })
-    expect(global.fetch).toHaveBeenCalledTimes(2)
-  })
-
-  it('does not retry missing_error', async () => {
-    mockFetchResponses(errorResponse('1', 'missing_error'))
-    render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
-
-    await act(async () => {
-      userEvent.click(screen.getByRole('button'))
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText(/were found in Sippy/)).toBeInTheDocument()
-    })
-    expect(global.fetch).toHaveBeenCalledTimes(1)
-  })
-
-  it('shows warning snackbar on partial success', async () => {
-    mockFetchResponses(
-      successResponse('1'),
-      errorResponse('2', 'eval_error'),
-      errorResponse('2', 'eval_error')
-    )
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
       userEvent.click(screen.getByRole('button'))
     })
 
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+
     await waitFor(() => {
       expect(
-        screen.getByText(/Re-evaluated 1 job run\(s\)/)
+        screen.getByText(/Re-evaluation failed for all 2/)
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('shows warning snackbar on partial failure', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-partial', 3))
+      .mockResolvedValue(
+        statusResponse('batch-partial', {
+          status: 'complete',
+          requested: 3,
+          completed: 2,
+          failed: 1,
+          pending: 0,
+        })
+      )
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2', '3']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button'))
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Re-evaluated 2 job run\(s\)/)
       ).toBeInTheDocument()
       expect(screen.getByText(/1 failed/)).toBeInTheDocument()
     })
   })
 
-  it('sends one request per build ID', async () => {
-    mockFetchResponses(
-      successResponse('1'),
-      successResponse('2'),
-      successResponse('3')
-    )
-    render(<ReEvaluateButton prowJobBuildIDs={['1', '2', '3']} />)
+  it('shows error snackbar when submit fails', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(httpErrorResponse(503, 'Service Unavailable'))
 
-    await act(async () => {
-      userEvent.click(screen.getByRole('button'))
-    })
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(3)
-    })
-    const sentIDs = global.fetch.mock.calls.map((call) => {
-      const body = JSON.parse(call[1].body)
-      expect(body.prow_job_build_ids).toHaveLength(1)
-      return body.prow_job_build_ids[0]
-    })
-    expect(sentIDs.sort()).toEqual(['1', '2', '3'])
-  })
-
-  it('treats 503 as eval_error and retries', async () => {
-    mockFetchResponses(
-      httpErrorResponse(503, 'Service Unavailable'),
-      httpErrorResponse(503, 'Service Unavailable'),
-      httpErrorResponse(503, 'Service Unavailable'),
-      httpErrorResponse(503, 'Service Unavailable'),
-      httpErrorResponse(503, 'Service Unavailable'),
-      httpErrorResponse(503, 'Service Unavailable')
-    )
-    render(<ReEvaluateButton prowJobBuildIDs={['1', '2', '3']} />)
+    render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
 
     await act(async () => {
       userEvent.click(screen.getByRole('button'))
@@ -238,10 +265,225 @@ describe('ReEvaluateButton', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Re-evaluation failed for all 3/)
+        screen.getByText(/Re-evaluation failed: Service Unavailable/)
       ).toBeInTheDocument()
-      expect(screen.getByText(/Service Unavailable/)).toBeInTheDocument()
     })
-    expect(global.fetch).toHaveBeenCalledTimes(6)
+  })
+
+  it('shows force refresh link when forceRefreshURL is provided', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-link', 1))
+      .mockResolvedValue(
+        statusResponse('batch-link', {
+          status: 'complete',
+          requested: 1,
+          completed: 1,
+          failed: 0,
+          pending: 0,
+        })
+      )
+
+    render(
+      <ReEvaluateButton prowJobBuildIDs={['1']} forceRefreshURL="/some/url" />
+    )
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button'))
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Reload with fresh data')).toBeInTheDocument()
+    })
+  })
+
+  it('continues polling until terminal status', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-poll', 3))
+      .mockResolvedValueOnce(
+        statusResponse('batch-poll', {
+          status: 'running',
+          requested: 3,
+          completed: 0,
+          running: 2,
+          pending: 1,
+        })
+      )
+      .mockResolvedValueOnce(
+        statusResponse('batch-poll', {
+          status: 'running',
+          requested: 3,
+          completed: 1,
+          running: 1,
+          pending: 1,
+        })
+      )
+      .mockResolvedValue(
+        statusResponse('batch-poll', {
+          status: 'complete',
+          requested: 3,
+          completed: 3,
+          pending: 0,
+        })
+      )
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2', '3']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button'))
+    })
+
+    // First poll: running
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+    await waitFor(() => {
+      expect(screen.getByText(/0\/3 completed/)).toBeInTheDocument()
+    })
+
+    // Second poll: 1 completed
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+    await waitFor(() => {
+      expect(screen.getByText(/1\/3 completed/)).toBeInTheDocument()
+    })
+
+    // Third poll: terminal
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Successfully re-evaluated 3/)
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('shows cancel button during polling', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-cancel', 2))
+      .mockResolvedValue(
+        statusResponse('batch-cancel', {
+          status: 'running',
+          requested: 2,
+          completed: 0,
+          running: 2,
+          pending: 0,
+        })
+      )
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    })
+  })
+
+  it('cancels batch and shows info snackbar', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-cancel2', 2))
+      .mockResolvedValueOnce(
+        statusResponse('batch-cancel2', {
+          status: 'running',
+          requested: 2,
+          completed: 1,
+          running: 1,
+          pending: 0,
+        })
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            batch_id: 'batch-cancel2',
+            status: 'cancelled',
+            requested: 2,
+            completed: 1,
+            failed: 0,
+            running: 0,
+            pending: 1,
+            items: [],
+          }),
+      })
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+
+    // Wait for first poll so cancel button appears.
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    })
+
+    // Click cancel.
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Batch cancelled\. 1 job run\(s\) completed/)
+      ).toBeInTheDocument()
+    })
+
+    // Verify the DELETE call was made.
+    const deleteCall = global.fetch.mock.calls.find(
+      (call) => call[1]?.method === 'DELETE'
+    )
+    expect(deleteCall).toBeDefined()
+    expect(deleteCall[0]).toContain('batch-cancel2')
+  })
+
+  it('stops polling and shows error after 5 consecutive poll failures', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-err', 2))
+      // All subsequent polls fail.
+      .mockRejectedValue(new Error('network error'))
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+
+    // Advance through 5 poll intervals to trigger 5 consecutive failures.
+    for (let i = 0; i < 5; i++) {
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+    }
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /Lost connection to batch status after 5 failed attempts/
+        )
+      ).toBeInTheDocument()
+    })
+
+    // Button should be re-enabled after polling stops.
+    expect(
+      screen.getByRole('button', { name: /Re-evaluate/ })
+    ).not.toBeDisabled()
   })
 })

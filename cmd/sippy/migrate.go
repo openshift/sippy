@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	sippymigrate "github.com/openshift/sippy/pkg/db/migrate"
 	"github.com/openshift/sippy/pkg/flags"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
 )
 
 func init() {
@@ -29,6 +30,21 @@ func init() {
 			t := f.GetPinnedTime()
 			if err := dbc.UpdateSchema(t); err != nil {
 				return errors.WithMessage(err, "could not migrate db")
+			}
+
+			// River (work queue) schema is managed separately from Sippy's
+			// golang-migrate migrations. The API server needs the river_job
+			// table to enqueue async batches, so it must exist after migrate.
+			// The daemon also runs this at startup as a fallback for local dev.
+			ctx := cmd.Context()
+			pgxPool, err := workqueue.NewPgxV5Pool(ctx, f.DSN)
+			if err != nil {
+				return errors.WithMessage(err, "could not create pgx/v5 pool for River migration")
+			}
+			defer pgxPool.Close()
+
+			if err := workqueue.MigrateRiverSchema(ctx, pgxPool); err != nil {
+				return errors.WithMessage(err, "could not run River migrations")
 			}
 
 			return nil
