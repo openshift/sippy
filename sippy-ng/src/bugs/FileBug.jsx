@@ -54,6 +54,8 @@ export default function FileBug({
   labels = [],
   jiraComponentID,
   jiraComponentName,
+  jiraProject = 'OCPBUGS',
+  jiraProjectID = '10325',
   version,
   setHasBeenTriaged,
   url,
@@ -94,7 +96,11 @@ See the [sippy test details|${url}] for additional context.
     const defaultDescription = context || defaultText
 
     const defaultAffectsVersions = []
-    if (version) defaultAffectsVersions.push(version)
+    // PROJQUAY versions are named quay-v3.18.N, so the release name (e.g.
+    // "quay-3.18") would be rejected by Jira; leave it for the user to fill in.
+    if (version && jiraProject === 'OCPBUGS') {
+      defaultAffectsVersions.push(version)
+    }
 
     setFormData({
       summary: defaultSummary,
@@ -183,6 +189,7 @@ See the [sippy test details|${url}] for additional context.
     }
 
     const bugData = {
+      project: jiraProject,
       summary: formData.summary,
       description: formData.description,
       components: formData.components,
@@ -317,6 +324,7 @@ See the [sippy test details|${url}] for additional context.
                   testName={testName}
                   component={component}
                   capability={capability}
+                  jiraProjectID={jiraProjectID}
                   jiraComponentID={String(jiraComponentID)}
                   labels={formData.labels}
                   context={formData.description}
@@ -591,6 +599,8 @@ FileBug.propTypes = {
   labels: PropTypes.array,
   jiraComponentID: PropTypes.number,
   jiraComponentName: PropTypes.string,
+  jiraProject: PropTypes.string,
+  jiraProjectID: PropTypes.string,
   version: PropTypes.string,
   setHasBeenTriaged: PropTypes.func.isRequired,
   url: PropTypes.string.isRequired,

@@ -25,8 +25,11 @@ import {
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
+import {
+  jiraProjectForRelease,
+  pathForExactTestAnalysisWithFilter,
+} from '../helpers'
 import { Link } from 'react-router-dom'
-import { pathForExactTestAnalysisWithFilter } from '../helpers'
 import { ReleasesContext, SippyCapabilitiesContext } from '../App'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
@@ -378,6 +381,8 @@ View the [test details report|${document.location.href}] for additional context.
       url: window.location.href,
     }
 
+    const jiraProject = jiraProjectForRelease(sampleRelease)
+
     if (writeEndpointsEnabled) {
       return (
         <FileBug
@@ -386,6 +391,8 @@ View the [test details report|${document.location.href}] for additional context.
           version={sampleRelease}
           jiraComponentID={Number(data.jira_component_id)}
           jiraComponentName={data.jira_component}
+          jiraProject={jiraProject.key}
+          jiraProjectID={jiraProject.pid}
           setHasBeenTriaged={setHasBeenTriaged}
         />
       )
@@ -393,6 +400,7 @@ View the [test details report|${document.location.href}] for additional context.
       return (
         <BugButton
           {...commonProps}
+          jiraProjectID={jiraProject.pid}
           jiraComponentID={String(data.jira_component_id)}
         />
       )
