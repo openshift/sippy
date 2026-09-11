@@ -53,11 +53,11 @@ import TestPassRateCharts from './TestPassRateCharts'
 import TestRegressionsTable from './TestRegressionsTable'
 import TestTable from './TestTable'
 
-export function TestAnalysis(props) {
+export function TestAnalysis({ test: testProp = '', ...props }) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
-  const [testName = props.test] = useQueryParam('test', SafeStringParam)
+  const [testName = testProp] = useQueryParam('test', SafeStringParam)
   const [period = 'default'] = useQueryParam('period', StringParam)
   const [filterModel, setFilterModel] = useStableJSONQueryParam('filters', {
     items: [
@@ -489,10 +489,6 @@ export function TestAnalysis(props) {
       </Container>
     </Fragment>
   )
-}
-
-TestAnalysis.defaultProps = {
-  test: '',
 }
 
 TestAnalysis.propTypes = {

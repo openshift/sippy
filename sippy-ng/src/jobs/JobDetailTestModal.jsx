@@ -7,14 +7,17 @@ import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import TestTable from '../tests/TestTable'
 
-export default function JobDetailTestModal(props) {
+export default function JobDetailTestModal({
+  item = { failedTestNames: [], prowLink: '' },
+  ...props
+}) {
   const filterModel = {
     linkOperator: 'or',
     items: [],
   }
 
-  if (props.item.failedTestNames) {
-    props.item.failedTestNames.slice(0, 25).forEach((test, index) => {
+  if (item.failedTestNames) {
+    item.failedTestNames.slice(0, 25).forEach((test, index) => {
       filterModel.items.push({
         id: index,
         columnField: 'name',
@@ -40,14 +43,12 @@ export default function JobDetailTestModal(props) {
         </DialogTitle>
         <DialogContent>
           <Container size="xl">
-            <Typography variant="h4">
-              {props.item.name || props.item.job}
-            </Typography>
+            <Typography variant="h4">{item.name || item.job}</Typography>
             <Divider />
 
             <Button
               target="_blank"
-              href={props.item.prowLink}
+              href={item.prowLink}
               variant="contained"
               color="primary"
               style={{ marginTop: 20, marginBottom: 20 }}
@@ -75,14 +76,6 @@ export default function JobDetailTestModal(props) {
       </Dialog>
     </Fragment>
   )
-}
-
-JobDetailTestModal.defaultProps = {
-  item: {
-    failedTestNames: [],
-    prowLink: '',
-  },
-  classes: {},
 }
 
 JobDetailTestModal.propTypes = {
