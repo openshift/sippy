@@ -212,7 +212,7 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
                   )}
                 </div>
                 <GridToolbarFilterMenu
-                  linkOperatorDisabled={true}
+                  logicOperatorDisabled={true}
                   standalone={true}
                   filterModel={filterModel || { items: [] }}
                   setFilterModel={setFilterModelSafe}
@@ -266,7 +266,7 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
                       {
                         items: [
                           ...filterModel.items.filter(
-                            (f) => f.columnField === 'variants'
+                            (f) => f.field === 'variants'
                           ),
                         ],
                       },
@@ -291,7 +291,7 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
                       {
                         items: [
                           ...filterModel.items.filter(
-                            (f) => f.columnField === 'variants'
+                            (f) => f.field === 'variants'
                           ),
                         ],
                       },
@@ -316,7 +316,7 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
                       {
                         items: [
                           ...filterModel.items.filter(
-                            (f) => f.columnField === 'variants'
+                            (f) => f.field === 'variants'
                           ),
                         ],
                       },
@@ -406,7 +406,9 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
               </Typography>
               <TestTable
                 simpleLoading={true}
-                pageSize={5}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 5 } },
+                }}
                 hideControls={true}
                 collapse={false}
                 release={props.release}

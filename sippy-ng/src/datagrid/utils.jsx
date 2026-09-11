@@ -70,7 +70,7 @@ export function filterRemoveItem(filter, index) {
   currentItems.splice(index, 1)
   return {
     items: currentItems,
-    linkOperator: filter.linkOperator,
+    logicOperator: filter.logicOperator,
   }
 }
 
@@ -78,14 +78,14 @@ export function filterIsEmpty(filter) {
   return (
     !filter ||
     filter.items.length === 0 ||
-    (filter.items.length === 1 && filter.items[0].columnField === '')
+    (filter.items.length === 1 && filter.items[0].field === '')
   )
 }
 
 export function filterItemRenderValue(item) {
   let value = item.value
   let tooltip = null
-  if (item.columnField === 'timestamp' && item.value !== '') {
+  if (item.field === 'timestamp' && item.value !== '') {
     let date = new Date(item.value)
     value = format(utcToZonedTime(date, 'UTC'), "yyyy-MM-dd HH:mm 'UTC'", {
       timeZone: 'Etc/UTC',
@@ -106,9 +106,7 @@ export function filterTooltip(filter) {
 
     return (
       <li key={`filter-${index}`}>
-        {`${item.columnField}${item.not ? ' not ' : ' '}${
-          item.operatorValue
-        } ${value}`}
+        {`${item.field}${item.not ? ' not ' : ' '}${item.operator} ${value}`}
         {description ? `(${description})` : ''}
       </li>
     )
@@ -118,7 +116,7 @@ export function filterTooltip(filter) {
     <Fragment>
       Current filters:
       <ul>{items}</ul>
-      Link operator: {filter.linkOperator}
+      Link operator: {filter.logicOperator}
     </Fragment>
   )
 }
@@ -134,7 +132,7 @@ export function filterList(filter, setFilter) {
     let { value, description } = filterItemRenderValue(item)
     let listItem = (
       <ListItemText>
-        {`${item.columnField} ${item.not ? 'not ' : ''} ${item.operatorValue} `}
+        {`${item.field} ${item.not ? 'not ' : ''} ${item.operator} `}
         {value}
       </ListItemText>
     )

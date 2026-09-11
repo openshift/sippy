@@ -87,8 +87,8 @@ export const getColumns = (config, _openBugzillaDialog) => {
       filterable: true,
       flex: 1.25,
       type: 'date',
-      valueGetter: (params) => {
-        return params.value ? new Date(params.value) : null
+      valueGetter: (value) => {
+        return value ? new Date(value) : null
       },
       renderCell: (params) => {
         if (!params.value) {
@@ -408,7 +408,7 @@ function JobTable({
   pageSize: defaultPageSize = 25,
   period: defaultPeriod = 'default',
   briefTable = false,
-  rowsPerPageOptions = [5, 10, 25, 50, 100],
+  pageSizeOptions = [5, 10, 25, 50, 100],
   filterModel: defaultFilterModel = { items: [] },
   sortField: defaultSortField = 'current_pass_percentage',
   sort: defaultSort = 'asc',
@@ -488,11 +488,11 @@ function JobTable({
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
+    const newItems = filterModel.items.filter((f) => f.field !== 'name')
     newItems.push({
       id: 99,
-      columnField: 'name',
-      operatorValue: 'contains',
+      field: 'name',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -526,7 +526,7 @@ function JobTable({
   const addFilters = (filter) => {
     const currentFilters = filterModel.items.filter((item) => {
       for (let i = 0; i < filter.length; i++) {
-        if (filter[i].columnField === item.columnField) {
+        if (filter[i].field === item.field) {
           return false
         }
       }
@@ -541,7 +541,7 @@ function JobTable({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -578,13 +578,13 @@ function JobTable({
     jobs = jobs.map((job, id) => {
       return {
         id: id,
-        columnField: 'name',
-        operatorValue: 'equals',
+        field: 'name',
+        operator: 'equals',
         value: job.name,
       }
     })
     return safeEncodeURIComponent(
-      JSON.stringify({ items: jobs, linkOperator: 'or' })
+      JSON.stringify({ items: jobs, logicOperator: 'or' })
     )
   }
 
@@ -630,7 +630,7 @@ function JobTable({
       {pageTitle()}
       <DataGrid
         className={gridClasses.root}
-        components={{ Toolbar: hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
@@ -648,16 +648,16 @@ function JobTable({
         disableColumnFilter={briefTable}
         disableColumnMenu={true}
         checkboxSelection={!briefTable && !hideControls}
-        onSelectionModelChange={(rows) => setSelectedJobs(rows)}
-        rowsPerPageOptions={rowsPerPageOptions}
-        pageSize={pageSize}
-        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+        onRowSelectionModelChange={(rows) => setSelectedJobs(rows)}
+        pageSizeOptions={pageSizeOptions}
+        paginationModel={{ pageSize, page: 0 }}
+        onPaginationModelChange={(model) => setPageSize(model.pageSize)}
         getRowClassName={(params) =>
           classes[
             'row-percent-' + Math.round(params.row.current_pass_percentage)
           ]
         }
-        componentsProps={{
+        slotProps={{
           toolbar: {
             bookmarks: bookmarks,
             views: gridView.views,
@@ -698,7 +698,7 @@ JobTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
 }
 

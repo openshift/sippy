@@ -53,15 +53,15 @@ export default function FeatureGates({
     let filterItems = {
       items: [
         {
-          columnField: 'enabled',
+          field: 'enabled',
           not: true,
-          operatorValue: 'has entry containing',
+          operator: 'has entry containing',
           value: 'Default:Hypershift',
         },
         {
-          columnField: 'enabled',
+          field: 'enabled',
           not: true,
-          operatorValue: 'has entry containing',
+          operator: 'has entry containing',
           value: 'Default:SelfManagedHA',
         },
       ],
@@ -71,13 +71,13 @@ export default function FeatureGates({
     if (major) {
       filterItems.items.push(
         {
-          columnField: 'first_seen_in_major',
-          operatorValue: '=',
+          field: 'first_seen_in_major',
+          operator: '=',
           value: String(major),
         },
         {
-          columnField: 'first_seen_in_minor',
-          operatorValue: '>=',
+          field: 'first_seen_in_minor',
+          operator: '>=',
           value: String(minor),
         }
       )
@@ -89,15 +89,15 @@ export default function FeatureGates({
     if (!props.release) return []
     let filterItems = [
       {
-        columnField: 'enabled',
+        field: 'enabled',
         not: true,
-        operatorValue: 'has entry containing',
+        operator: 'has entry containing',
         value: 'Default:Hypershift',
       },
       {
-        columnField: 'enabled',
+        field: 'enabled',
         not: true,
-        operatorValue: 'has entry containing',
+        operator: 'has entry containing',
         value: 'Default:SelfManagedHA',
       },
     ]
@@ -106,13 +106,13 @@ export default function FeatureGates({
     if (major) {
       filterItems.push(
         {
-          columnField: 'first_seen_in_major',
-          operatorValue: '=',
+          field: 'first_seen_in_major',
+          operator: '=',
           value: String(major),
         },
         {
-          columnField: 'first_seen_in_minor',
-          operatorValue: '<=',
+          field: 'first_seen_in_minor',
+          operator: '<=',
           value: String(minor),
         }
       )
@@ -138,8 +138,8 @@ export default function FeatureGates({
       name: 'Default:Hypershift',
       model: [
         {
-          columnField: 'enabled',
-          operatorValue: 'has entry',
+          field: 'enabled',
+          operator: 'has entry',
           value: 'Default:Hypershift',
         },
       ],
@@ -148,8 +148,8 @@ export default function FeatureGates({
       name: 'Default:SelfManagedHA',
       model: [
         {
-          columnField: 'enabled',
-          operatorValue: 'has entry',
+          field: 'enabled',
+          operator: 'has entry',
           value: 'Default:SelfManagedHA',
         },
       ],
@@ -158,14 +158,14 @@ export default function FeatureGates({
       name: 'TechPreview:SelfManagedHA',
       model: [
         {
-          columnField: 'enabled',
-          operatorValue: 'has entry',
+          field: 'enabled',
+          operator: 'has entry',
           value: 'TechPreviewNoUpgrade:SelfManagedHA',
         },
         {
-          columnField: 'enabled',
+          field: 'enabled',
           not: true,
-          operatorValue: 'has entry',
+          operator: 'has entry',
           value: 'Default:SelfManagedHA',
         },
       ],
@@ -174,14 +174,14 @@ export default function FeatureGates({
       name: 'TechPreview:Hypershift',
       model: [
         {
-          columnField: 'enabled',
-          operatorValue: 'has entry',
+          field: 'enabled',
+          operator: 'has entry',
           value: 'TechPreviewNoUpgrade:Hypershift',
         },
         {
-          columnField: 'enabled',
+          field: 'enabled',
           not: true,
-          operatorValue: 'has entry',
+          operator: 'has entry',
           value: 'Default:Hypershift',
         },
       ],
@@ -197,6 +197,8 @@ export default function FeatureGates({
     'pageSize',
     NumberParam
   )
+
+  const [page, setPage] = React.useState(0)
 
   const [sort = sortProp, setSort] = useQueryParam('sort', StringParam)
 
@@ -215,13 +217,11 @@ export default function FeatureGates({
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'feature_gate'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'feature_gate')
     newItems.push({
       id: 99,
-      columnField: 'feature_gate',
-      operatorValue: 'contains',
+      field: 'feature_gate',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -233,7 +233,7 @@ export default function FeatureGates({
   const addFilters = (filter) => {
     const currentFilters = filterModel.items.filter((item) => {
       for (let i = 0; i < filter.length; i++) {
-        if (filter[i].columnField === item.columnField) {
+        if (filter[i].field === item.field) {
           return false
         }
       }
@@ -248,7 +248,7 @@ export default function FeatureGates({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -383,20 +383,23 @@ export default function FeatureGates({
         )}
         <DataGrid
           loading={!isLoaded}
-          components={{ Toolbar: GridToolbar }}
+          slots={{ toolbar: GridToolbar }}
           rows={rows}
           columns={columns}
           getRowHeight={() => 'auto'}
           autoHeight={true}
-          rowsPerPageOptions={[10, 25, 50]}
+          pageSizeOptions={[10, 25, 50]}
           sortModel={[
             {
               field: sortField,
               sort: sort,
             },
           ]}
-          pageSize={pageSize}
-          onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+          paginationModel={{ page, pageSize }}
+          onPaginationModelChange={(model) => {
+            setPage(model.page)
+            setPageSize(model.pageSize)
+          }}
           sortingOrder={['desc', 'asc']}
           filterMode="server"
           sortingMode="server"
@@ -406,10 +409,10 @@ export default function FeatureGates({
               cursor: 'pointer',
             },
           }}
-          disableSelectionOnClick
+          disableRowSelectionOnClick
           filterModel={filterModel}
           onRowClick={onRowClick}
-          componentsProps={{
+          slotProps={{
             toolbar: {
               bookmarks: bookmarks,
               columns: columns,
@@ -438,5 +441,5 @@ FeatureGates.propTypes = {
   pageSize: PropTypes.number,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
 }
