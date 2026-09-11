@@ -2,6 +2,14 @@ package infrafailure
 
 import "testing"
 
+// The DB-backed behavior of the exported SubtractInfraFailureFromSummaries (it
+// subtracts a run's contribution from the summary tables without touching the
+// InfraFailure label) requires a real PostgreSQL instance and is exercised by the
+// integration test TestSubtractInfraFailureFromSummaries in
+// test/integration/infrafailure_test.go. The applier's compile-time wiring in
+// pkg/api/labels.NewApplier also pins its partition-key-aware signature.
+// The unit tests below cover the parts that do not need a database.
+
 // The DB-backed behavior of RecordInfraFailure and RecordInfraFailureWithOutcome
 // (label gating, summary subtraction, idempotency, and the per-run outcome
 // classification) requires a real PostgreSQL instance and is exercised by the
