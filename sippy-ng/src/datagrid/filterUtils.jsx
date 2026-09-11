@@ -66,7 +66,8 @@ export function applyFilterModel(rows, filterModel, columns = null) {
     )
 
     // Apply AND/OR logic
-    const logicOperator = filterModel.logicOperator || 'and'
+    const logicOperator =
+      filterModel.logicOperator || filterModel.linkOperator || 'and'
     return logicOperator === 'and'
       ? results.every((r) => r)
       : results.some((r) => r)

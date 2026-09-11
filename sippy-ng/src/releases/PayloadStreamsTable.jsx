@@ -133,6 +133,7 @@ function PayloadStreamsTable({
     'pageSize',
     NumberParam
   )
+  const [page, setPage] = React.useState(0)
 
   const requestSearch = (searchValue) => {
     const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
@@ -231,8 +232,11 @@ function PayloadStreamsTable({
       autoHeight={true}
       disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      paginationModel={{ pageSize, page: 0 }}
-      onPaginationModelChange={(model) => setPageSize(model.pageSize)}
+      paginationModel={{ pageSize, page }}
+      onPaginationModelChange={(model) => {
+        setPageSize(model.pageSize)
+        setPage(model.page)
+      }}
       pageSizeOptions={[]}
       getRowClassName={(params) =>
         params.row.forced === true

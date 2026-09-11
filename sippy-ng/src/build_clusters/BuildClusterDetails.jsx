@@ -17,9 +17,7 @@ export default function BuildClusterDetails(props) {
             </Typography>
             <JobRunsTable
               useCurrentRelease
-              initialState={{
-                pagination: { paginationModel: { pageSize: 10 } },
-              }}
+              pageSize={10}
               filterModel={{
                 items: [
                   filterFor('cluster', 'equals', props.cluster),
