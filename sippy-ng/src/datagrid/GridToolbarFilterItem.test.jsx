@@ -21,8 +21,8 @@ function renderItem(props = {}) {
     id: 0,
     columns: [lifecycleColumn],
     filterModel: {
-      columnField: 'lifecycle',
-      operatorValue: 'equals',
+      field: 'lifecycle',
+      operator: 'equals',
       value: '',
       not: false,
     },
@@ -55,8 +55,8 @@ describe('GridToolbarFilterItem values-restricted column', () => {
     const setFilterModel = vi.fn()
     renderItem({
       filterModel: {
-        columnField: 'lifecycle',
-        operatorValue: '!=',
+        field: 'lifecycle',
+        operator: '!=',
         value: 'blocking',
         not: false,
       },
@@ -64,9 +64,9 @@ describe('GridToolbarFilterItem values-restricted column', () => {
     })
     await userEvent.click(screen.getByTestId('not-0'))
     expect(setFilterModel).toHaveBeenCalledWith({
-      columnField: 'lifecycle',
+      field: 'lifecycle',
       not: true,
-      operatorValue: '!=',
+      operator: '!=',
       value: 'blocking',
     })
   })

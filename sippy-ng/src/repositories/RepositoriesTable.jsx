@@ -50,7 +50,7 @@ function RepositoriesTable({
   hideControls = false,
   pageSize = 25,
   view: viewDefault = 'Default',
-  rowsPerPageOptions = [5, 10, 25, 50, 100],
+  pageSizeOptions = [5, 10, 25, 50, 100],
   briefTable = false,
   filterModel: filterModelDefault = { items: [] },
   sortField: sortFieldDefault = 'worst_premerge_job_failures',
@@ -85,6 +85,11 @@ function RepositoriesTable({
     StringParam
   )
   const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
+
+  const [paginationModel, setPaginationModel] = React.useState({
+    page: 0,
+    pageSize,
+  })
 
   const views = {
     Default: {
@@ -270,7 +275,7 @@ function RepositoriesTable({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -289,11 +294,11 @@ function RepositoriesTable({
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'repo')
+    const newItems = filterModel.items.filter((f) => f.field !== 'repo')
     newItems.push({
       id: 99,
-      columnField: 'repo',
-      operatorValue: 'contains',
+      field: 'repo',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -306,7 +311,7 @@ function RepositoriesTable({
     <Fragment>
       <DataGrid
         className={gridClasses.root}
-        components={{ Toolbar: hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         density="compact"
         columns={gridView.columns}
@@ -314,8 +319,9 @@ function RepositoriesTable({
         rowHeight={100}
         disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        pageSize={pageSize}
-        rowsPerPageOptions={rowsPerPageOptions}
+        paginationModel={paginationModel}
+        onPaginationModelChange={setPaginationModel}
+        pageSizeOptions={pageSizeOptions}
         getRowClassName={(params) =>
           classes[
             'row-percent-' + Math.round(params.row.worst_premerge_job_failures)
@@ -335,7 +341,7 @@ function RepositoriesTable({
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             doSearch: requestSearch,
             searchField: 'repo',
@@ -368,7 +374,7 @@ RepositoriesTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
 }
 

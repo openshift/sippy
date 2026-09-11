@@ -200,8 +200,8 @@ function ReleasePayloadTable({
       headerName: 'Time',
       flex: 2,
       type: 'date',
-      valueGetter: (params) => {
-        return params.value ? new Date(params.value) : null
+      valueGetter: (value) => {
+        return value ? new Date(value) : null
       },
       renderCell: (params) => {
         if (!params.value) {
@@ -312,14 +312,14 @@ function ReleasePayloadTable({
     NumberParam
   )
 
+  const [page, setPage] = React.useState(0)
+
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -338,7 +338,7 @@ function ReleasePayloadTable({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -408,16 +408,19 @@ function ReleasePayloadTable({
 
   return (
     <DataGrid
-      components={{ Toolbar: hideControls ? '' : GridToolbar }}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       rowHeight={70}
       autoHeight={true}
       disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={[5, 10, 25, 50, 100]}
+      paginationModel={{ page, pageSize }}
+      onPaginationModelChange={(model) => {
+        setPage(model.page)
+        setPageSize(model.pageSize)
+      }}
+      pageSizeOptions={[5, 10, 25, 50, 100]}
       getRowClassName={(params) =>
         params.row.forced === true
           ? classes.rowPhaseForced
@@ -433,7 +436,7 @@ function ReleasePayloadTable({
         },
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),

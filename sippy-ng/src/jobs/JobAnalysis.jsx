@@ -221,11 +221,11 @@ export function JobAnalysis(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = testFilter.items.filter((f) => f.columnField !== 'name')
+    const newItems = testFilter.items.filter((f) => f.field !== 'name')
     newItems.push({
       id: 99,
-      columnField: 'name',
-      operatorValue: 'contains',
+      field: 'name',
+      operator: 'contains',
       value: searchValue,
     })
     setTestFilter({ ...testFilter, items: newItems })
@@ -280,14 +280,14 @@ export function JobAnalysis(props) {
     const newFilters = []
     filterModel &&
       filterModel.items.forEach((filter) => {
-        if (filter.columnField !== 'timestamp') {
+        if (filter.field !== 'timestamp') {
           newFilters.push(filter)
         }
       })
     newFilters.push(...hourFilter(newOffset, startDate))
     setFilterModel({
       items: newFilters,
-      linkOperator: filterModel ? filterModel.linkOperator : 'and',
+      logicOperator: filterModel ? filterModel.logicOperator : 'and',
     })
     setDayOffset(newOffset)
   }
@@ -298,7 +298,7 @@ export function JobAnalysis(props) {
     const newFilters = []
     filterModel &&
       filterModel.items.forEach((filter) => {
-        if (filter.columnField !== 'timestamp') {
+        if (filter.field !== 'timestamp') {
           newFilters.push(filter)
         }
       })
@@ -309,7 +309,7 @@ export function JobAnalysis(props) {
 
     setFilterModel({
       items: newFilters,
-      linkOperator: filterModel ? filterModel.linkOperator : 'and',
+      logicOperator: filterModel ? filterModel.logicOperator : 'and',
     })
     setPeriod(newPeriod)
   }
@@ -323,7 +323,7 @@ export function JobAnalysis(props) {
 
     let newFilters = []
     filterModel.items.forEach((filter) => {
-      if (!jobRunFilters.includes(filter.columnField)) {
+      if (!jobRunFilters.includes(filter.field)) {
         newFilters.push(filter)
       }
     })
@@ -331,7 +331,7 @@ export function JobAnalysis(props) {
     return {
       items: newFilters,
       not: filterModel.not,
-      linkOperator: filterModel.linkOperator,
+      logicOperator: filterModel.logicOperator,
     }
   }
 
@@ -452,7 +452,9 @@ export function JobAnalysis(props) {
               <JobTable
                 view="Variants"
                 hideControls={true}
-                pageSize={5}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 5 } },
+                }}
                 release={props.release}
                 filterModel={filterModel}
               />
@@ -540,17 +542,19 @@ export function JobAnalysis(props) {
                       Select tests to chart
                     </Typography>
                     <DataGrid
-                      components={{ Toolbar: GridToolbar }}
+                      slots={{ toolbar: GridToolbar }}
                       columns={columns}
                       rows={allTests}
-                      pageSize={10}
+                      initialState={{
+                        pagination: { paginationModel: { pageSize: 10 } },
+                      }}
                       rowHeight={60}
                       autoHeight={true}
                       filterModel={testFilter}
-                      selectionModel={selectionModel}
-                      onSelectionModelChange={(m) => updateSelectionModel(m)}
+                      rowSelectionModel={selectionModel}
+                      onRowSelectionModelChange={(m) => updateSelectionModel(m)}
                       checkboxSelection
-                      componentsProps={{
+                      slotProps={{
                         toolbar: {
                           columns: columns,
                           filterModel: testFilter,

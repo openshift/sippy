@@ -521,7 +521,7 @@ export default function RecentTestFailures(props) {
               setRowsPerPage(parseInt(e.target.value, 10))
               setPage(0)
             }}
-            rowsPerPageOptions={[5, 10, 25]}
+            pageSizeOptions={[5, 10, 25]}
           />
         </TableContainer>
       )}

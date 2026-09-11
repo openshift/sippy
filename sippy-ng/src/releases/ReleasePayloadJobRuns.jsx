@@ -114,9 +114,9 @@ function ReleasePayloadJobRuns({
                           e.stopPropagation()
                           addFilters([
                             {
-                              columnField: 'labels',
+                              field: 'labels',
                               not: false,
-                              operatorValue: 'has entry',
+                              operator: 'has entry',
                               value: labelId,
                             },
                           ])
@@ -191,13 +191,11 @@ function ReleasePayloadJobRuns({
   )
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -216,7 +214,7 @@ function ReleasePayloadJobRuns({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -337,9 +335,9 @@ function ReleasePayloadJobRuns({
                       onClick={() => {
                         addFilters([
                           {
-                            columnField: 'labels',
+                            field: 'labels',
                             not: false,
-                            operatorValue: 'has entry',
+                            operator: 'has entry',
                             value: labelId,
                           },
                         ])
@@ -377,16 +375,16 @@ function ReleasePayloadJobRuns({
   return (
     <>
       <DataGrid
-        components={{ Toolbar: hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={columns}
         autoHeight={true}
         getRowClassName={(params) => classes['rowPhase' + params.row.state]}
         disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        pageSize={pageSize}
-        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        paginationModel={{ pageSize, page: 0 }}
+        onPaginationModelChange={(model) => setPageSize(model.pageSize)}
+        pageSizeOptions={[5, 10, 25, 50]}
         filterMode="server"
         sortingMode="server"
         sortingOrder={['desc', 'asc']}
@@ -397,7 +395,7 @@ function ReleasePayloadJobRuns({
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             columns: columns,
             clearSearch: () => requestSearch(''),

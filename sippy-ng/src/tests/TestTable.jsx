@@ -132,7 +132,7 @@ function TestTable({
   pageSize: pageSizeProp = 25,
   period: periodProp = 'default',
   view: viewProp = 'Passing',
-  rowsPerPageOptions = [5, 10, 25, 50, 100],
+  pageSizeOptions = [5, 10, 25, 50, 100],
   briefTable = false,
   simpleLoading = false,
   filterModel: filterModelProp = { items: [] },
@@ -170,6 +170,8 @@ function TestTable({
     NumberParam
   )
 
+  const [page, setPage] = React.useState(0)
+
   const [cookies, _setCookie] = useCookies(['testTableDBSource'])
   const testTableDBSource = cookies['testTableDBSource']
 
@@ -181,8 +183,8 @@ function TestTable({
 
     const filtersEqual = (f1, f2) => {
       return (
-        f1.columnField === f2.columnField &&
-        f1.operatorValue === f2.operatorValue &&
+        f1.field === f2.field &&
+        f1.operator === f2.operator &&
         f1.value === f2.value &&
         f1.not === f2.not
       )
@@ -1051,17 +1053,17 @@ function TestTable({
 
   const requestSearch = (searchValue) => {
     const existingFilter = filterModel.items.find(
-      (f) => f.columnField === 'name' && f.operatorValue === 'contains'
+      (f) => f.field === 'name' && f.operator === 'contains'
     )
     if (existingFilter && existingFilter.value === searchValue) {
       return
     }
     setSearching(true)
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
+    const newItems = filterModel.items.filter((f) => f.field !== 'name')
     newItems.push({
       id: 99,
-      columnField: 'name',
-      operatorValue: 'contains',
+      field: 'name',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -1096,7 +1098,7 @@ function TestTable({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -1124,7 +1126,7 @@ function TestTable({
       )}
       <StyledDataGrid
         loading={isSearching}
-        components={{ Toolbar: hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
@@ -1135,9 +1137,12 @@ function TestTable({
         }
         getRowHeight={() => (collapse ? 100 : 'auto')}
         disableColumnFilter={briefTable}
-        pageSize={pageSize}
-        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-        rowsPerPageOptions={rowsPerPageOptions}
+        paginationModel={{ page, pageSize }}
+        onPaginationModelChange={(model) => {
+          setPage(model.page)
+          setPageSize(model.pageSize)
+        }}
+        pageSizeOptions={pageSizeOptions}
         checkboxSelection={false}
         filterMode="server"
         sortingMode="server"
@@ -1171,7 +1176,7 @@ function TestTable({
 
           return rowClass.join(' ')
         }}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             bookmarks: bookmarks,
             views: gridView.views,
@@ -1211,7 +1216,7 @@ TestTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
   onDataLoaded: PropTypes.func,
 }

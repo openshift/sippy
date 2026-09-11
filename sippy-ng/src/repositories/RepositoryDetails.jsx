@@ -71,7 +71,9 @@ export default function RepositoryDetails(props) {
                   view="Pull Requests"
                   sortField="average_retests_to_merge"
                   sort="desc"
-                  pageSize={5}
+                  initialState={{
+                    pagination: { paginationModel: { pageSize: 5 } },
+                  }}
                   hideControls={true}
                   release={props.release}
                   filterModel={{
@@ -104,7 +106,9 @@ export default function RepositoryDetails(props) {
                 </Typography>
                 <PullRequestsTable
                   view="Summary"
-                  pageSize={5}
+                  initialState={{
+                    pagination: { paginationModel: { pageSize: 5 } },
+                  }}
                   hideControls={true}
                   release={props.release}
                   filterModel={{
@@ -123,7 +127,9 @@ export default function RepositoryDetails(props) {
                 <Typography variant="h6">Recent Reverts</Typography>
                 <PullRequestsTable
                   view="Summary"
-                  pageSize={5}
+                  initialState={{
+                    pagination: { paginationModel: { pageSize: 5 } },
+                  }}
                   hideControls={true}
                   release={props.release}
                   filterModel={{

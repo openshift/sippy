@@ -33,7 +33,7 @@ function BuildClusterTable({
   hideControls = false,
   pageSize: pageSizeProp = 25,
   period: periodProp = 'default',
-  rowsPerPageOptions = [5, 10, 25, 50, 100],
+  pageSizeOptions = [5, 10, 25, 50, 100],
   filterModel: filterModelProp = { items: [] },
   ...props
 }) {
@@ -56,6 +56,8 @@ function BuildClusterTable({
     'pageSize',
     NumberParam
   )
+
+  const [page, setPage] = React.useState(0)
 
   const [filterModel = filterModelProp, setFilterModel] = useQueryParam(
     'filters',
@@ -114,7 +116,7 @@ function BuildClusterTable({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -174,15 +176,18 @@ function BuildClusterTable({
   return (
     <DataGrid
       className={gridClasses.root}
-      components={{ Toolbar: hideControls ? '' : GridToolbar }}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       autoHeight={true}
       disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={rowsPerPageOptions}
+      paginationModel={{ page, pageSize }}
+      onPaginationModelChange={(model) => {
+        setPage(model.page)
+        setPageSize(model.pageSize)
+      }}
+      pageSizeOptions={pageSizeOptions}
       checkboxSelection={false}
       filterMode="server"
       sortingMode="server"
@@ -197,7 +202,7 @@ function BuildClusterTable({
       getRowClassName={(params) =>
         classes['row-percent-' + Math.round(params.row.current_pass_percentage)]
       }
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           period: period,
@@ -225,7 +230,7 @@ BuildClusterTable.propTypes = {
   hideControls: PropTypes.bool,
   pageSize: PropTypes.number,
   period: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   sort: PropTypes.string,
   sortField: PropTypes.string,
   filterModel: PropTypes.object,

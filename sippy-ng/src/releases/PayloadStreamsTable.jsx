@@ -135,13 +135,11 @@ function PayloadStreamsTable({
   )
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -160,7 +158,7 @@ function PayloadStreamsTable({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -226,16 +224,16 @@ function PayloadStreamsTable({
 
   return (
     <DataGrid
-      components={{ Toolbar: hideControls ? '' : GridToolbar }}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       rowHeight={70}
       autoHeight={true}
       disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={[]}
+      paginationModel={{ pageSize, page: 0 }}
+      onPaginationModelChange={(model) => setPageSize(model.pageSize)}
+      pageSizeOptions={[]}
       getRowClassName={(params) =>
         params.row.forced === true
           ? classes.rowPhaseForced
@@ -251,7 +249,7 @@ function PayloadStreamsTable({
         },
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),

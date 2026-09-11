@@ -85,14 +85,14 @@ function ReleasePayloadPullRequests({
     NumberParam
   )
 
+  const [page, setPage] = React.useState(0)
+
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -111,7 +111,7 @@ function ReleasePayloadPullRequests({
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -181,15 +181,18 @@ function ReleasePayloadPullRequests({
 
   return (
     <DataGrid
-      components={{ Toolbar: hideControls ? '' : GridToolbar }}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       autoHeight={true}
       disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={[5, 10, 25, 50]}
+      paginationModel={{ page, pageSize }}
+      onPaginationModelChange={(model) => {
+        setPage(model.page)
+        setPageSize(model.pageSize)
+      }}
+      pageSizeOptions={[5, 10, 25, 50]}
       getRowClassName={(params) => classes['rowPhase' + params.row.phase]}
       filterMode="server"
       sortingMode="server"
@@ -201,7 +204,7 @@ function ReleasePayloadPullRequests({
         },
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),
