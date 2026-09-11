@@ -11,7 +11,15 @@ import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-function PayloadTestFailures(props) {
+function PayloadTestFailures({
+  hideControls = false,
+  pageSize: defaultPageSize = 25,
+  briefTable = false,
+  filterModel: defaultFilterModel = { items: [] },
+  sortField: defaultSortField = 'kind',
+  sort: defaultSort = 'asc',
+  ...props
+}) {
   const { classes } = props
 
   // Most things not filterable here, as we are not querying them directly from db,
@@ -80,16 +88,16 @@ function PayloadTestFailures(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    defaultFilterModel
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = defaultSortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = defaultPageSize, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
@@ -204,12 +212,12 @@ function PayloadTestFailures(props) {
           </Tooltip>
         </Typography>
         <DataGrid
-          components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+          components={{ Toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
           columns={columns}
           autoHeight={true}
           rowHeight={125}
-          disableColumnFilter={props.briefTable}
+          disableColumnFilter={briefTable}
           disableColumnMenu={true}
           pageSize={pageSize}
           onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
@@ -242,18 +250,6 @@ function PayloadTestFailures(props) {
       </Card>
     </Grid>
   )
-}
-
-PayloadTestFailures.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'kind',
-  sort: 'asc',
 }
 
 PayloadTestFailures.propTypes = {

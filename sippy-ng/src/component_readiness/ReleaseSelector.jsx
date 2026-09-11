@@ -40,21 +40,21 @@ function ReleaseSelector(props) {
   const releases = useContext(ReleasesContext)
   const [versions, setVersions] = useState({})
   const {
-    label,
+    label = 'Version',
     setStartTime,
     startTime,
     setEndTime,
     endTime,
     version,
     onChange,
-    pullRequestSupport,
+    pullRequestSupport = false,
     pullRequestOrg,
     setPullRequestOrg,
     pullRequestRepo,
     setPullRequestRepo,
     pullRequestNumber,
     setPullRequestNumber,
-    payloadSupport,
+    payloadSupport = false,
     payloadTags,
     setPayloadTags,
   } = props
@@ -380,12 +380,6 @@ ReleaseSelector.propTypes = {
   payloadSupport: PropTypes.bool,
   payloadTags: PropTypes.string,
   setPayloadTags: PropTypes.func,
-}
-
-ReleaseSelector.defaultProps = {
-  label: 'Version',
-  pullRequestSupport: false,
-  payloadSupport: false,
 }
 
 export default ReleaseSelector

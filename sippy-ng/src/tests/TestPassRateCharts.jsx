@@ -6,7 +6,10 @@ import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-export default function TestPassRateCharts(props) {
+export default function TestPassRateCharts({
+  grouping = 'variants',
+  ...props
+}) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [groupedData, setGroupedData] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
@@ -16,7 +19,7 @@ export default function TestPassRateCharts(props) {
     Promise.all([
       fetch(
         `${import.meta.env.VITE_API_URL}/api/tests/analysis/${
-          props.grouping
+          grouping
         }?release=${props.release}&test=${props.test}&filter=${filter}`
       ),
     ])
@@ -35,7 +38,7 @@ export default function TestPassRateCharts(props) {
           'Could not retrieve test analysis for ' +
             props.release +
             +' ' +
-            props.grouping +
+            grouping +
             ' , ' +
             error
         )
@@ -57,8 +60,8 @@ export default function TestPassRateCharts(props) {
           <Card className="test-failure-card" elevation={5}>
             <Typography variant="h5">
               Pass Rate By{' '}
-              {props.grouping.charAt(0).toUpperCase() +
-                props.grouping.substr(1).toLowerCase()}
+              {grouping.charAt(0).toUpperCase() +
+                grouping.substr(1).toLowerCase()}
             </Typography>
             <CircularProgress color="inherit" />
           </Card>
@@ -77,8 +80,8 @@ export default function TestPassRateCharts(props) {
           <Card className="test-failure-card" elevation={5}>
             <Typography variant="h5">
               Pass Rate By{' '}
-              {props.grouping.charAt(0).toUpperCase() +
-                props.grouping.substr(1).toLowerCase()}
+              {grouping.charAt(0).toUpperCase() +
+                grouping.substr(1).toLowerCase()}
             </Typography>
             <Typography>No analysis available for this test.</Typography>
           </Card>
@@ -158,18 +161,14 @@ export default function TestPassRateCharts(props) {
         <Card className="test-failure-card" elevation={5}>
           <Typography variant="h5">
             Pass Rate By{' '}
-            {props.grouping.charAt(0).toUpperCase() +
-              props.grouping.substr(1).toLowerCase()}
+            {grouping.charAt(0).toUpperCase() +
+              grouping.substr(1).toLowerCase()}
           </Typography>
           <Line data={chart} options={options} height={80} />
         </Card>
       </Grid>
     </Fragment>
   )
-}
-
-TestPassRateCharts.defaultProps = {
-  grouping: 'variants',
 }
 
 TestPassRateCharts.propTypes = {

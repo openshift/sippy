@@ -16,7 +16,12 @@ import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 /**
  * Feature gates is the landing page for feature gates.
  */
-export default function FeatureGates(props) {
+export default function FeatureGates({
+  pageSize: pageSizeProp = 25,
+  sortField: sortFieldProp = 'unique_test_count',
+  sort: sortProp = 'asc',
+  ...props
+}) {
   const navigate = useNavigate()
 
   const { release, releases } = props
@@ -183,17 +188,17 @@ export default function FeatureGates(props) {
     },
   ]
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldProp, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeProp, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
 
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortProp, setSort] = useQueryParam('sort', StringParam)
 
   const updateSortModel = (model) => {
     if (model.length === 0) {
@@ -424,13 +429,6 @@ export default function FeatureGates(props) {
       </Container>
     </Fragment>
   )
-}
-
-FeatureGates.defaultProps = {
-  pageSize: 25,
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  sortField: 'unique_test_count',
-  sort: 'asc',
 }
 
 FeatureGates.propTypes = {

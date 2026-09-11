@@ -207,7 +207,12 @@ Row.propTypes = {
   release: PropTypes.string.isRequired,
 }
 
-export default function TestByVariantTable(props) {
+export default function TestByVariantTable({
+  briefTable = false,
+  colorScale = [60, 100],
+  excludedVariants = ['never-stable', 'aggregated'],
+  ...props
+}) {
   const [cookies, setCookie] = useCookies(['testDetailShowFull'])
   const cookie =
     cookies['testDetailShowFull'] || cookies['testDetailShowFull'] === 'true'
@@ -252,7 +257,7 @@ export default function TestByVariantTable(props) {
 
   const nameColumn = (
     <TableCell
-      className={`col-name ${props.briefTable ? 'col-hide' : ''}`}
+      className={`col-name ${briefTable ? 'col-hide' : ''}`}
       sx={{ zIndex: 1099 }}
     >
       <FormGroup row>
@@ -277,7 +282,7 @@ export default function TestByVariantTable(props) {
         <Table stickyHeader>
           <TableHead>
             <TableRow>
-              {props.briefTable ? '' : nameColumn}
+              {briefTable ? '' : nameColumn}
               {props.data.column_names.map((column, idx) => {
                 const variantInfo = parseVariantName(column)
                 return (
@@ -297,12 +302,12 @@ export default function TestByVariantTable(props) {
           <TableBody>
             {Object.keys(props.data.tests).map((test) => (
               <Row
-                briefTable={props.briefTable}
-                colorScale={props.colorScale}
+                briefTable={briefTable}
+                colorScale={colorScale}
                 showFull={showFull}
                 key={test}
                 testName={test}
-                excludedVariants={props.excludedVariants}
+                excludedVariants={excludedVariants}
                 columnNames={props.data.column_names}
                 results={props.data.tests[test]}
                 release={props.release}
@@ -313,12 +318,6 @@ export default function TestByVariantTable(props) {
       </TableContainer>
     </Paper>
   )
-}
-
-TestByVariantTable.defaultProps = {
-  briefTable: false,
-  colorScale: [60, 100],
-  excludedVariants: ['never-stable', 'aggregated'],
 }
 
 TestByVariantTable.propTypes = {

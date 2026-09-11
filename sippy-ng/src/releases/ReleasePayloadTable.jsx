@@ -35,7 +35,16 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-function ReleasePayloadTable(props) {
+function ReleasePayloadTable({
+  limit = 0,
+  hideControls = false,
+  pageSize: pageSizeDefault = 25,
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'release_time',
+  sort: sortDefault = 'desc',
+  ...props
+}) {
   const theme = useTheme()
   const classes = useStyles(theme)
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
@@ -90,7 +99,7 @@ function ReleasePayloadTable(props) {
       headerName: 'Forced',
       align: 'center',
       flex: 0.75,
-      hide: props.briefTable,
+      hide: briefTable,
       renderCell: (params) => {
         if (params.value === true) {
           if (params.row.phase === 'Accepted') {
@@ -121,7 +130,7 @@ function ReleasePayloadTable(props) {
       field: 'reject_reason',
       headerName: 'Reject reasons',
       flex: 1.5,
-      hide: props.briefTable,
+      hide: briefTable,
       renderCell: (params) => {
         let display_reasons = []
 
@@ -178,13 +187,13 @@ function ReleasePayloadTable(props) {
       field: 'architecture',
       headerName: 'Architecture',
       flex: 1.5,
-      hide: props.briefTable,
+      hide: briefTable,
     },
     {
       field: 'stream',
       headerName: 'Stream',
       flex: 1.5,
-      hide: props.briefTable,
+      hide: briefTable,
     },
     {
       field: 'release_time',
@@ -210,7 +219,7 @@ function ReleasePayloadTable(props) {
       field: 'kubernetes_version',
       headerName: 'Kubernetes version',
       flex: 1.5,
-      hide: props.briefTable,
+      hide: briefTable,
     },
     {
       field: 'current_os_version',
@@ -219,7 +228,7 @@ function ReleasePayloadTable(props) {
       renderCell: (params) => {
         return <a href={params.row.current_os_url}>{params.value}</a>
       },
-      hide: props.briefTable,
+      hide: briefTable,
     },
     {
       field: 'os_diff_url',
@@ -241,7 +250,7 @@ function ReleasePayloadTable(props) {
           )
         }
       },
-      hide: props.briefTable,
+      hide: briefTable,
     },
     {
       field: 'previous_os_version',
@@ -252,7 +261,7 @@ function ReleasePayloadTable(props) {
           return <a href={params.row.previous_os_url}>{params.value}</a>
         }
       },
-      hide: props.briefTable,
+      hide: briefTable,
     },
     {
       field: 'failed_job_names',
@@ -289,16 +298,16 @@ function ReleasePayloadTable(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeDefault, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
@@ -358,8 +367,8 @@ function ReleasePayloadTable(props) {
       queryString += '&release=' + safeEncodeURIComponent(props.release)
     }
 
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
+    if (limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(limit)
     }
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
@@ -399,12 +408,12 @@ function ReleasePayloadTable(props) {
 
   return (
     <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      components={{ Toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       rowHeight={70}
       autoHeight={true}
-      disableColumnFilter={props.briefTable}
+      disableColumnFilter={briefTable}
       disableColumnMenu={true}
       pageSize={pageSize}
       onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
@@ -437,18 +446,6 @@ function ReleasePayloadTable(props) {
       }}
     />
   )
-}
-
-ReleasePayloadTable.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'release_time',
-  sort: 'desc',
 }
 
 ReleasePayloadTable.propTypes = {
