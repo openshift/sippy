@@ -38,17 +38,91 @@ func TestLifecycleProduct(t *testing.T) {
 	}
 }
 
-func TestLifecycleTestsForRelease(t *testing.T) {
-	ocpNames := []string{
-		testidentification.InstallTestName,
-		testidentification.NewInstallTestName,
-		testidentification.InstallTestNamePrefix,
-		testidentification.OperatorInstallPrefix,
-		testidentification.UpgradeTestName,
-		testidentification.OperatorUpgradePrefix,
-		testidentification.CVOAcknowledgesUpgradeTest,
+func TestOpenshiftLifecycleTests(t *testing.T) {
+	tests := []struct {
+		name   string
+		useNew bool
+		want   lifecycleTestSelection
+	}{
+		{
+			name:   "legacy",
+			useNew: false,
+			want: lifecycleTestSelection{
+				InstallExactNames: sets.New(testidentification.InstallTestName),
+				InstallPrefixes:   sets.New(testidentification.OperatorInstallPrefix),
+				UpgradeExactNames: sets.New(testidentification.UpgradeTestName),
+				UpgradePrefixes:   sets.New(testidentification.OperatorUpgradePrefix),
+				UpgradeSubstrings: sets.New(
+					testidentification.OperatorsUpgradedTest,
+					testidentification.APIsRemainAvailTest,
+					testidentification.MachineConfigsUpgradedTest,
+					testidentification.CVOAcknowledgesUpgradeTest,
+				),
+				HealthInstallTestName: testidentification.InstallTestName,
+				HealthUpgradeTestName: testidentification.UpgradeTestName,
+				HealthInfraTestName:   testidentification.InfrastructureTestName,
+			},
+		},
+		{
+			name:   "modern",
+			useNew: true,
+			want: lifecycleTestSelection{
+				InstallExactNames: sets.New[string](),
+				InstallPrefixes: sets.New(
+					testidentification.OperatorInstallPrefix,
+					testidentification.InstallTestNamePrefix,
+				),
+				UpgradeExactNames: sets.New(testidentification.UpgradeTestName),
+				UpgradePrefixes:   sets.New(testidentification.OperatorUpgradePrefix),
+				UpgradeSubstrings: sets.New(
+					testidentification.OperatorsUpgradedTest,
+					testidentification.APIsRemainAvailTest,
+					testidentification.MachineConfigsUpgradedTest,
+					testidentification.CVOAcknowledgesUpgradeTest,
+				),
+				HealthInstallTestName: testidentification.NewInstallTestName,
+				HealthUpgradeTestName: testidentification.UpgradeTestName,
+				HealthInfraTestName:   testidentification.NewInfrastructureTestName,
+			},
+		},
 	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := openshiftLifecycleTests(tt.useNew)
+
+			if !got.InstallExactNames.Equal(tt.want.InstallExactNames) {
+				t.Errorf("InstallExactNames = %v, want %v", sets.List(got.InstallExactNames), sets.List(tt.want.InstallExactNames))
+			}
+			if !got.InstallPrefixes.Equal(tt.want.InstallPrefixes) {
+				t.Errorf("InstallPrefixes = %v, want %v", sets.List(got.InstallPrefixes), sets.List(tt.want.InstallPrefixes))
+			}
+			if !got.UpgradeExactNames.Equal(tt.want.UpgradeExactNames) {
+				t.Errorf("UpgradeExactNames = %v, want %v", sets.List(got.UpgradeExactNames), sets.List(tt.want.UpgradeExactNames))
+			}
+			if !got.UpgradePrefixes.Equal(tt.want.UpgradePrefixes) {
+				t.Errorf("UpgradePrefixes = %v, want %v", sets.List(got.UpgradePrefixes), sets.List(tt.want.UpgradePrefixes))
+			}
+			if !got.UpgradeSubstrings.Equal(tt.want.UpgradeSubstrings) {
+				t.Errorf("UpgradeSubstrings = %v, want %v", sets.List(got.UpgradeSubstrings), sets.List(tt.want.UpgradeSubstrings))
+			}
+			if got.HealthInstallTestName != tt.want.HealthInstallTestName {
+				t.Errorf("HealthInstallTestName = %q, want %q", got.HealthInstallTestName, tt.want.HealthInstallTestName)
+			}
+			if got.HealthUpgradeTestName != tt.want.HealthUpgradeTestName {
+				t.Errorf("HealthUpgradeTestName = %q, want %q", got.HealthUpgradeTestName, tt.want.HealthUpgradeTestName)
+			}
+			if got.HealthInfraTestName != tt.want.HealthInfraTestName {
+				t.Errorf("HealthInfraTestName = %q, want %q", got.HealthInfraTestName, tt.want.HealthInfraTestName)
+			}
+			if got.ProductInstallTestName != "" || got.ProductUpgradeTestName != "" {
+				t.Errorf("ProductInstallTestName = %q, ProductUpgradeTestName = %q, want both empty", got.ProductInstallTestName, got.ProductUpgradeTestName)
+			}
+		})
+	}
+}
+
+func TestLifecycleTestsForRelease(t *testing.T) {
 	ocpLegacySelection := lifecycleTestSelection{
 		InstallExactNames: sets.New(testidentification.InstallTestName),
 		InstallPrefixes:   sets.New(testidentification.OperatorInstallPrefix),
@@ -98,31 +172,51 @@ func TestLifecycleTestsForRelease(t *testing.T) {
 			want:    ocpLegacySelection,
 		},
 		{
-			name:    "quay-3.18 uses generic sig-quay lifecycle names",
+			name:    "quay-3.18 appends sig-quay lifecycle names to the modern OpenShift selection",
 			release: "quay-3.18",
 			want: lifecycleTestSelection{
-				InstallExactNames:     sets.New("[sig-quay] install should succeed"),
-				InstallPrefixes:       sets.New[string](),
-				UpgradeExactNames:     sets.New("[sig-quay] upgrade should succeed"),
-				UpgradePrefixes:       sets.New[string](),
-				UpgradeSubstrings:     sets.New[string](),
-				HealthInstallTestName: "[sig-quay] install should succeed",
-				HealthUpgradeTestName: "[sig-quay] upgrade should succeed",
-				HealthInfraTestName:   testidentification.InfrastructureTestName,
+				InstallExactNames: sets.New("[sig-quay] install should succeed"),
+				InstallPrefixes: sets.New(
+					testidentification.OperatorInstallPrefix,
+					testidentification.InstallTestNamePrefix,
+				),
+				UpgradeExactNames: sets.New(testidentification.UpgradeTestName, "[sig-quay] upgrade should succeed"),
+				UpgradePrefixes:   sets.New(testidentification.OperatorUpgradePrefix),
+				UpgradeSubstrings: sets.New(
+					testidentification.OperatorsUpgradedTest,
+					testidentification.APIsRemainAvailTest,
+					testidentification.MachineConfigsUpgradedTest,
+					testidentification.CVOAcknowledgesUpgradeTest,
+				),
+				HealthInstallTestName:  testidentification.NewInstallTestName,
+				HealthUpgradeTestName:  testidentification.UpgradeTestName,
+				HealthInfraTestName:    testidentification.NewInfrastructureTestName,
+				ProductInstallTestName: "[sig-quay] install should succeed",
+				ProductUpgradeTestName: "[sig-quay] upgrade should succeed",
 			},
 		},
 		{
-			name:    "quay-3.19 uses generic sig-quay lifecycle names",
+			name:    "quay-3.19 appends sig-quay lifecycle names to the modern OpenShift selection",
 			release: "quay-3.19",
 			want: lifecycleTestSelection{
-				InstallExactNames:     sets.New("[sig-quay] install should succeed"),
-				InstallPrefixes:       sets.New[string](),
-				UpgradeExactNames:     sets.New("[sig-quay] upgrade should succeed"),
-				UpgradePrefixes:       sets.New[string](),
-				UpgradeSubstrings:     sets.New[string](),
-				HealthInstallTestName: "[sig-quay] install should succeed",
-				HealthUpgradeTestName: "[sig-quay] upgrade should succeed",
-				HealthInfraTestName:   testidentification.InfrastructureTestName,
+				InstallExactNames: sets.New("[sig-quay] install should succeed"),
+				InstallPrefixes: sets.New(
+					testidentification.OperatorInstallPrefix,
+					testidentification.InstallTestNamePrefix,
+				),
+				UpgradeExactNames: sets.New(testidentification.UpgradeTestName, "[sig-quay] upgrade should succeed"),
+				UpgradePrefixes:   sets.New(testidentification.OperatorUpgradePrefix),
+				UpgradeSubstrings: sets.New(
+					testidentification.OperatorsUpgradedTest,
+					testidentification.APIsRemainAvailTest,
+					testidentification.MachineConfigsUpgradedTest,
+					testidentification.CVOAcknowledgesUpgradeTest,
+				),
+				HealthInstallTestName:  testidentification.NewInstallTestName,
+				HealthUpgradeTestName:  testidentification.UpgradeTestName,
+				HealthInfraTestName:    testidentification.NewInfrastructureTestName,
+				ProductInstallTestName: "[sig-quay] install should succeed",
+				ProductUpgradeTestName: "[sig-quay] upgrade should succeed",
 			},
 		},
 		{
@@ -195,14 +289,11 @@ func TestLifecycleTestsForRelease(t *testing.T) {
 			if got.HealthInfraTestName != tt.want.HealthInfraTestName {
 				t.Errorf("HealthInfraTestName = %q, want %q", got.HealthInfraTestName, tt.want.HealthInfraTestName)
 			}
-
-			if lifecycleProduct(tt.release) != "" {
-				for _, name := range ocpNames {
-					if got.InstallExactNames.Has(name) || got.InstallPrefixes.Has(name) ||
-						got.UpgradeExactNames.Has(name) || got.UpgradePrefixes.Has(name) || got.UpgradeSubstrings.Has(name) {
-						t.Errorf("product selection unexpectedly contains OCP name %q", name)
-					}
-				}
+			if got.ProductInstallTestName != tt.want.ProductInstallTestName {
+				t.Errorf("ProductInstallTestName = %q, want %q", got.ProductInstallTestName, tt.want.ProductInstallTestName)
+			}
+			if got.ProductUpgradeTestName != tt.want.ProductUpgradeTestName {
+				t.Errorf("ProductUpgradeTestName = %q, want %q", got.ProductUpgradeTestName, tt.want.ProductUpgradeTestName)
 			}
 		})
 	}

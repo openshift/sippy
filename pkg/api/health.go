@@ -47,6 +47,16 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	if upgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, lifecycleTests.HealthUpgradeTestName, excludedVariants); found {
 		indicators["upgrade"] = upgradeIndicator
 	}
+	if lifecycleTests.ProductInstallTestName != "" {
+		if productInstallIndicator, found := query.TestReportExcludeVariants(dbc, release, lifecycleTests.ProductInstallTestName, excludedInstallVariants); found {
+			indicators["productInstall"] = productInstallIndicator
+		}
+	}
+	if lifecycleTests.ProductUpgradeTestName != "" {
+		if productUpgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, lifecycleTests.ProductUpgradeTestName, excludedVariants); found {
+			indicators["productUpgrade"] = productUpgradeIndicator
+		}
+	}
 
 	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
 	// the percentage of time that all tests passed. We should probably fix that.

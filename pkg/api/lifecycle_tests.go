@@ -11,6 +11,10 @@ import (
 
 // lifecycleTestSelection is the set of testcase names, prefixes, and substrings the install,
 // upgrade, and release health endpoints use to select install/upgrade test results for a release.
+// The selection is additive: OpenShift install/upgrade rows are always present. For a product
+// release, ProductInstallTestName and ProductUpgradeTestName are also set (and already folded
+// into the Install/Upgrade exact-name sets above) so the release health endpoint can report them
+// as separate indicators; they are "" for a non-product release.
 type lifecycleTestSelection struct {
 	InstallExactNames sets.Set[string]
 	InstallPrefixes   sets.Set[string]
@@ -22,6 +26,9 @@ type lifecycleTestSelection struct {
 	HealthInstallTestName string
 	HealthUpgradeTestName string
 	HealthInfraTestName   string
+
+	ProductInstallTestName string
+	ProductUpgradeTestName string
 }
 
 // useNewInstallTest decides which install test name to use based on releases. For
@@ -59,33 +66,15 @@ func lifecycleProduct(release string) string {
 	return product
 }
 
-// lifecycleTestsForRelease returns the testcase selection used by the install, upgrade, and
-// release health endpoints for the given release. Synthetic "<product>-<version>" releases whose
-// product is in testidentification.LifecycleProducts select the "[sig-<product>] install/upgrade
-// should succeed" testcases emitted by that product's deploy/upgrade CI steps instead of the
-// OpenShift install/upgrade tests.
-func lifecycleTestsForRelease(release string) lifecycleTestSelection {
-	if product := lifecycleProduct(release); product != "" {
-		sig := "[sig-" + product + "] "
-		return lifecycleTestSelection{
-			InstallExactNames: sets.New(sig + testidentification.LifecycleInstallTestName),
-			InstallPrefixes:   sets.New[string](),
-
-			UpgradeExactNames: sets.New(sig + testidentification.LifecycleUpgradeTestName),
-			UpgradePrefixes:   sets.New[string](),
-			UpgradeSubstrings: sets.New[string](),
-
-			HealthInstallTestName: sig + testidentification.LifecycleInstallTestName,
-			HealthUpgradeTestName: sig + testidentification.LifecycleUpgradeTestName,
-			HealthInfraTestName:   testidentification.InfrastructureTestName,
-		}
-	}
-
+// openshiftLifecycleTests returns the OpenShift install/upgrade testcase selection. useNew
+// selects the modern install testcase names used from release 4.11 onward; false selects the
+// legacy names used by earlier releases.
+func openshiftLifecycleTests(useNew bool) lifecycleTestSelection {
 	installExactNames := sets.New[string]()
 	installPrefixes := sets.New(testidentification.OperatorInstallPrefix)
 	healthInstallTestName := testidentification.InstallTestName
 	infraTestName := testidentification.InfrastructureTestName
-	if useNewInstallTest(release) {
+	if useNew {
 		installPrefixes.Insert(testidentification.InstallTestNamePrefix)
 		healthInstallTestName = testidentification.NewInstallTestName
 		infraTestName = testidentification.NewInfrastructureTestName
@@ -110,4 +99,31 @@ func lifecycleTestsForRelease(release string) lifecycleTestSelection {
 		HealthUpgradeTestName: testidentification.UpgradeTestName,
 		HealthInfraTestName:   infraTestName,
 	}
+}
+
+// lifecycleTestsForRelease returns the testcase selection used by the install, upgrade, and
+// release health endpoints for the given release. The selection is additive: OpenShift rows are
+// always present. Synthetic "<product>-<version>" releases whose product is in
+// testidentification.LifecycleProducts also append the "[sig-<product>] install/upgrade should
+// succeed" testcases emitted by that product's deploy/upgrade CI steps alongside the OpenShift
+// rows. Product CI runs on modern OpenShift hosts, and useNewInstallTest cannot parse a synthetic
+// release like "quay-3.18", so product releases always use the modern OpenShift selection.
+func lifecycleTestsForRelease(release string) lifecycleTestSelection {
+	product := lifecycleProduct(release)
+	if product == "" {
+		return openshiftLifecycleTests(useNewInstallTest(release))
+	}
+
+	selection := openshiftLifecycleTests(true)
+
+	sig := "[sig-" + product + "] "
+	productInstallTestName := sig + testidentification.LifecycleInstallTestName
+	productUpgradeTestName := sig + testidentification.LifecycleUpgradeTestName
+
+	selection.InstallExactNames.Insert(productInstallTestName)
+	selection.UpgradeExactNames.Insert(productUpgradeTestName)
+	selection.ProductInstallTestName = productInstallTestName
+	selection.ProductUpgradeTestName = productUpgradeTestName
+
+	return selection
 }
