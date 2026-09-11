@@ -49,6 +49,11 @@ const (
 )
 
 var (
+	// LifecycleProducts is the opt-in allowlist of synthetic "<product>-<version>" release products whose
+	// CI emits the "[sig-<product>] install/upgrade should succeed" lifecycle testcases. Releases whose
+	// product is not listed keep the OpenShift install/upgrade test selection.
+	LifecycleProducts = sets.New("quay")
+
 	// DefaultExcludedVariants is used to exclude particular variants in reporting
 	DefaultExcludedVariants = []string{"aggregated", "never-stable"}
 

@@ -47,26 +47,23 @@ func useNewInstallTest(release string) bool {
 	return true
 }
 
-// lifecycleProduct returns the product name for a synthetic "<product>-<version>" release, e.g.
-// "acm-2.14" (-> "acm"), or "" for a bare OpenShift release like "4.21" or "4.10" that has no
-// "-" separator, or for an OpenShift release variant like "4.21-okd" or "5.0-okd" whose text
-// before the "-" is itself a release number rather than a product name.
+// lifecycleProduct returns the product name for a synthetic "<product>-<version>" release whose
+// product is in testidentification.LifecycleProducts, e.g. "quay-3.18" (-> "quay"). It returns ""
+// for a bare OpenShift release like "4.21" or "4.10" that has no "-" separator, or for any release
+// whose product is not opted into the lifecycle allowlist.
 func lifecycleProduct(release string) string {
 	product, _, found := strings.Cut(release, "-")
-	if !found {
-		return ""
-	}
-	major, _, _ := strings.Cut(product, ".")
-	if _, err := strconv.Atoi(major); err == nil {
+	if !found || !testidentification.LifecycleProducts.Has(product) {
 		return ""
 	}
 	return product
 }
 
 // lifecycleTestsForRelease returns the testcase selection used by the install, upgrade, and
-// release health endpoints for the given release. Synthetic "<product>-<version>" releases select
-// the "[sig-<product>] install/upgrade should succeed" testcases emitted by that product's
-// deploy/upgrade CI steps instead of the OpenShift install/upgrade tests.
+// release health endpoints for the given release. Synthetic "<product>-<version>" releases whose
+// product is in testidentification.LifecycleProducts select the "[sig-<product>] install/upgrade
+// should succeed" testcases emitted by that product's deploy/upgrade CI steps instead of the
+// OpenShift install/upgrade tests.
 func lifecycleTestsForRelease(release string) lifecycleTestSelection {
 	if product := lifecycleProduct(release); product != "" {
 		sig := "[sig-" + product + "] "

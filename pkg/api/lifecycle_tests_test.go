@@ -16,12 +16,17 @@ func TestLifecycleProduct(t *testing.T) {
 		{release: "", want: ""},
 		{release: "4.21", want: ""},
 		{release: "quay-3.18", want: "quay"},
-		{release: "acm-2.14", want: "acm"},
-		{release: "-3.18", want: ""},
+		{release: "quay-3.19", want: "quay"},
 		{release: "quay-", want: "quay"},
+		{release: "acm-2.14", want: ""},
+		{release: "-3.18", want: ""},
 		{release: "4.21-okd", want: ""},
 		{release: "5.0-okd", want: ""},
-		{release: "aro-stage", want: "aro"},
+		{release: "aro-stage", want: ""},
+		{release: "rosa-integration", want: ""},
+		{release: "ocp-hypershift", want: ""},
+		{release: "mcp-0.5", want: ""},
+		{release: "rrp-integration", want: ""},
 	}
 
 	for _, tt := range tests {
@@ -42,6 +47,22 @@ func TestLifecycleTestsForRelease(t *testing.T) {
 		testidentification.UpgradeTestName,
 		testidentification.OperatorUpgradePrefix,
 		testidentification.CVOAcknowledgesUpgradeTest,
+	}
+
+	ocpLegacySelection := lifecycleTestSelection{
+		InstallExactNames: sets.New(testidentification.InstallTestName),
+		InstallPrefixes:   sets.New(testidentification.OperatorInstallPrefix),
+		UpgradeExactNames: sets.New(testidentification.UpgradeTestName),
+		UpgradePrefixes:   sets.New(testidentification.OperatorUpgradePrefix),
+		UpgradeSubstrings: sets.New(
+			testidentification.OperatorsUpgradedTest,
+			testidentification.APIsRemainAvailTest,
+			testidentification.MachineConfigsUpgradedTest,
+			testidentification.CVOAcknowledgesUpgradeTest,
+		),
+		HealthInstallTestName: testidentification.InstallTestName,
+		HealthUpgradeTestName: testidentification.UpgradeTestName,
+		HealthInfraTestName:   testidentification.InfrastructureTestName,
 	}
 
 	tests := []struct {
@@ -74,21 +95,7 @@ func TestLifecycleTestsForRelease(t *testing.T) {
 		{
 			name:    "4.10 uses legacy install name",
 			release: "4.10",
-			want: lifecycleTestSelection{
-				InstallExactNames: sets.New(testidentification.InstallTestName),
-				InstallPrefixes:   sets.New(testidentification.OperatorInstallPrefix),
-				UpgradeExactNames: sets.New(testidentification.UpgradeTestName),
-				UpgradePrefixes:   sets.New(testidentification.OperatorUpgradePrefix),
-				UpgradeSubstrings: sets.New(
-					testidentification.OperatorsUpgradedTest,
-					testidentification.APIsRemainAvailTest,
-					testidentification.MachineConfigsUpgradedTest,
-					testidentification.CVOAcknowledgesUpgradeTest,
-				),
-				HealthInstallTestName: testidentification.InstallTestName,
-				HealthUpgradeTestName: testidentification.UpgradeTestName,
-				HealthInfraTestName:   testidentification.InfrastructureTestName,
-			},
+			want:    ocpLegacySelection,
 		},
 		{
 			name:    "quay-3.18 uses generic sig-quay lifecycle names",
@@ -119,70 +126,44 @@ func TestLifecycleTestsForRelease(t *testing.T) {
 			},
 		},
 		{
-			name:    "acm-2.14 uses generic sig-acm lifecycle names",
+			name:    "acm-2.14 is not on the lifecycle allowlist and uses legacy install name",
 			release: "acm-2.14",
-			want: lifecycleTestSelection{
-				InstallExactNames:     sets.New("[sig-acm] install should succeed"),
-				InstallPrefixes:       sets.New[string](),
-				UpgradeExactNames:     sets.New("[sig-acm] upgrade should succeed"),
-				UpgradePrefixes:       sets.New[string](),
-				UpgradeSubstrings:     sets.New[string](),
-				HealthInstallTestName: "[sig-acm] install should succeed",
-				HealthUpgradeTestName: "[sig-acm] upgrade should succeed",
-				HealthInfraTestName:   testidentification.InfrastructureTestName,
-			},
+			want:    ocpLegacySelection,
 		},
 		{
 			name:    "4.21-okd is an OpenShift release, not a product, and uses legacy install name",
 			release: "4.21-okd",
-			want: lifecycleTestSelection{
-				InstallExactNames: sets.New(testidentification.InstallTestName),
-				InstallPrefixes:   sets.New(testidentification.OperatorInstallPrefix),
-				UpgradeExactNames: sets.New(testidentification.UpgradeTestName),
-				UpgradePrefixes:   sets.New(testidentification.OperatorUpgradePrefix),
-				UpgradeSubstrings: sets.New(
-					testidentification.OperatorsUpgradedTest,
-					testidentification.APIsRemainAvailTest,
-					testidentification.MachineConfigsUpgradedTest,
-					testidentification.CVOAcknowledgesUpgradeTest,
-				),
-				HealthInstallTestName: testidentification.InstallTestName,
-				HealthUpgradeTestName: testidentification.UpgradeTestName,
-				HealthInfraTestName:   testidentification.InfrastructureTestName,
-			},
+			want:    ocpLegacySelection,
 		},
 		{
 			name:    "5.0-okd is an OpenShift release, not a product, and uses legacy install name",
 			release: "5.0-okd",
-			want: lifecycleTestSelection{
-				InstallExactNames: sets.New(testidentification.InstallTestName),
-				InstallPrefixes:   sets.New(testidentification.OperatorInstallPrefix),
-				UpgradeExactNames: sets.New(testidentification.UpgradeTestName),
-				UpgradePrefixes:   sets.New(testidentification.OperatorUpgradePrefix),
-				UpgradeSubstrings: sets.New(
-					testidentification.OperatorsUpgradedTest,
-					testidentification.APIsRemainAvailTest,
-					testidentification.MachineConfigsUpgradedTest,
-					testidentification.CVOAcknowledgesUpgradeTest,
-				),
-				HealthInstallTestName: testidentification.InstallTestName,
-				HealthUpgradeTestName: testidentification.UpgradeTestName,
-				HealthInfraTestName:   testidentification.InfrastructureTestName,
-			},
+			want:    ocpLegacySelection,
 		},
 		{
-			name:    "aro-stage uses generic sig-aro lifecycle names",
+			name:    "aro-stage is not on the lifecycle allowlist and uses legacy install name",
 			release: "aro-stage",
-			want: lifecycleTestSelection{
-				InstallExactNames:     sets.New("[sig-aro] install should succeed"),
-				InstallPrefixes:       sets.New[string](),
-				UpgradeExactNames:     sets.New("[sig-aro] upgrade should succeed"),
-				UpgradePrefixes:       sets.New[string](),
-				UpgradeSubstrings:     sets.New[string](),
-				HealthInstallTestName: "[sig-aro] install should succeed",
-				HealthUpgradeTestName: "[sig-aro] upgrade should succeed",
-				HealthInfraTestName:   testidentification.InfrastructureTestName,
-			},
+			want:    ocpLegacySelection,
+		},
+		{
+			name:    "rosa-integration is not on the lifecycle allowlist and uses legacy install name",
+			release: "rosa-integration",
+			want:    ocpLegacySelection,
+		},
+		{
+			name:    "ocp-hypershift is not on the lifecycle allowlist and uses legacy install name",
+			release: "ocp-hypershift",
+			want:    ocpLegacySelection,
+		},
+		{
+			name:    "mcp-0.5 is not on the lifecycle allowlist and uses legacy install name",
+			release: "mcp-0.5",
+			want:    ocpLegacySelection,
+		},
+		{
+			name:    "rrp-integration is not on the lifecycle allowlist and uses legacy install name",
+			release: "rrp-integration",
+			want:    ocpLegacySelection,
 		},
 	}
 
