@@ -581,10 +581,6 @@ export function JobAnalysis(props) {
   )
 }
 
-JobAnalysis.defaultProps = {
-  job: '',
-}
-
 JobAnalysis.propTypes = {
   release: PropTypes.string.isRequired,
   job: PropTypes.string,

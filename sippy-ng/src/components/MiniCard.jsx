@@ -23,7 +23,7 @@ const useStyles = makeStyles({
   }),
 })
 
-export default function MiniCard(props) {
+export default function MiniCard({ tooltip = '', ...props }) {
   const classes = useStyles(props)
   const theme = useTheme()
 
@@ -78,9 +78,9 @@ export default function MiniCard(props) {
   )
 
   // Wrap in tooltip if we have one
-  if (props.tooltip !== undefined) {
+  if (tooltip !== undefined) {
     card = (
-      <Tooltip title={props.tooltip} placement="top">
+      <Tooltip title={tooltip} placement="top">
         {card}
       </Tooltip>
     )
@@ -96,13 +96,6 @@ export default function MiniCard(props) {
   } else {
     return card
   }
-}
-
-MiniCard.defaultProps = {
-  flakes: 0,
-  success: 0,
-  fail: 0,
-  tooltip: '',
 }
 
 MiniCard.propTypes = {

@@ -43,7 +43,11 @@ const useStyles = makeStyles((theme) => ({
  * filters. In the MIT licensed version, they only permit a single filter on a table. Our
  * component can do multiple filters, as well as adding the concept of a "not" modifier.
  */
-export default function GridToolbarFilterMenu(props) {
+export default function GridToolbarFilterMenu({
+  standalone = false,
+  linkOperatorDisabled = false,
+  ...props
+}) {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = React.useState(null)
   const [models, setModels] = React.useState(props.filterModel.items || [])
@@ -225,7 +229,7 @@ export default function GridToolbarFilterMenu(props) {
         <Button
           aria-describedby={id}
           color="primary"
-          variant={props.standalone ? 'contained' : 'text'}
+          variant={standalone ? 'contained' : 'text'}
           onClick={handleClick}
         >
           <Badge badgeContent={filterItems} color="primary">
@@ -281,9 +285,7 @@ export default function GridToolbarFilterMenu(props) {
           >
             <Add />
           </Fab>
-          {models.length > 1 && !props.linkOperatorDisabled
-            ? linkOperatorForm
-            : ''}
+          {models.length > 1 && !linkOperatorDisabled ? linkOperatorForm : ''}
           <Button variant="contained" color="primary" onClick={handleClose}>
             Filter
           </Button>
@@ -291,11 +293,6 @@ export default function GridToolbarFilterMenu(props) {
       </Popover>
     </Fragment>
   )
-}
-
-GridToolbarFilterItem.defaultProps = {
-  standalone: false,
-  linkOperatorDisabled: false,
 }
 
 GridToolbarFilterMenu.propTypes = {

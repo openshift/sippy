@@ -22,7 +22,15 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-function PayloadStreamsTable(props) {
+function PayloadStreamsTable({
+  hideControls = false,
+  pageSize: defaultPageSize = 25,
+  briefTable = false,
+  filterModel: defaultFilterModel = { items: [] },
+  sortField: defaultSortField = 'release_time',
+  sort: defaultSort = 'desc',
+  ...props
+}) {
   const theme = useTheme()
   const classes = useStyles(theme)
 
@@ -76,7 +84,7 @@ function PayloadStreamsTable(props) {
       field: 'stream',
       headerName: 'Stream',
       flex: 1.5,
-      hide: props.briefTable,
+      hide: briefTable,
       renderCell: (params) => {
         return (
           <Link
@@ -112,16 +120,16 @@ function PayloadStreamsTable(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    defaultFilterModel
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = defaultSortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = defaultPageSize, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
@@ -218,12 +226,12 @@ function PayloadStreamsTable(props) {
 
   return (
     <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      components={{ Toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       rowHeight={70}
       autoHeight={true}
-      disableColumnFilter={props.briefTable}
+      disableColumnFilter={briefTable}
       disableColumnMenu={true}
       pageSize={pageSize}
       onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
@@ -256,18 +264,6 @@ function PayloadStreamsTable(props) {
       }}
     />
   )
-}
-
-PayloadStreamsTable.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'release_time',
-  sort: 'desc',
 }
 
 PayloadStreamsTable.propTypes = {

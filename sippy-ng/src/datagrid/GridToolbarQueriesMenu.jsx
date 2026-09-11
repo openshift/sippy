@@ -4,11 +4,13 @@ import CheckIcon from '@mui/icons-material/Check'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-export default function GridToolbarQueriesMenu(props) {
+export default function GridToolbarQueriesMenu({
+  initialFilters = [],
+  allowedFilters = [],
+  ...props
+}) {
   const [anchorEl, setAnchorEl] = React.useState(null)
-  const [selectedFilters, setSelectedFilters] = React.useState(
-    props.initialFilters
-  )
+  const [selectedFilters, setSelectedFilters] = React.useState(initialFilters)
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget)
@@ -38,7 +40,7 @@ export default function GridToolbarQueriesMenu(props) {
 
   const menuItems = () => {
     const filters = []
-    for (const [, filter] of props.allowedFilters.entries()) {
+    for (const [, filter] of allowedFilters.entries()) {
       filters.push(
         <MenuItem
           key={'filter-' + filter.filter}
@@ -86,11 +88,6 @@ export default function GridToolbarQueriesMenu(props) {
       </Menu>
     </Fragment>
   )
-}
-
-GridToolbarQueriesMenu.defaultProps = {
-  initialFilters: [],
-  allowedFilters: [],
 }
 
 GridToolbarQueriesMenu.propTypes = {

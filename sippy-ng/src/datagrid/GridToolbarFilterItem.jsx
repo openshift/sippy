@@ -46,7 +46,7 @@ const operatorValues = {
  * GridToolbarFilterItem represents a single filter used by GridToolbarFilterMenu, consisting
  * of a column field, operator, value, and optional not modifier.
  */
-export default function GridToolbarFilterItem(props) {
+export default function GridToolbarFilterItem({ columns = [], ...props }) {
   const classes = useStyles()
 
   let columnType = 'string'
@@ -55,7 +55,7 @@ export default function GridToolbarFilterItem(props) {
   let disabled = false
   let valueGetter = null
   let values = null
-  props.columns.forEach((col) => {
+  columns.forEach((col) => {
     if (col.field === props.filterModel.columnField) {
       columnType = col.type || 'string'
       autocomplete = col.autocomplete || ''
@@ -261,7 +261,7 @@ export default function GridToolbarFilterItem(props) {
           id={`columnField-${props.id}`}
           autoWidth
         >
-          {props.columns
+          {columns
             .filter(
               (col) => col.filterable === undefined || col.filterable === true
             )
@@ -329,11 +329,6 @@ export default function GridToolbarFilterItem(props) {
       <FormControl variant="standard">{inputField()}</FormControl>
     </Grid>
   )
-}
-
-GridToolbarFilterItem.defaultProps = {
-  columns: [],
-  errors: [],
 }
 
 GridToolbarFilterItem.propTypes = {

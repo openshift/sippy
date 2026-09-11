@@ -403,7 +403,18 @@ const useStyles = makeStyles((_theme) => ({
  * including current and previous pass percentages, net improvement, and
  * bug links.
  */
-function JobTable(props) {
+function JobTable({
+  hideControls = false,
+  pageSize: defaultPageSize = 25,
+  period: defaultPeriod = 'default',
+  briefTable = false,
+  rowsPerPageOptions = [5, 10, 25, 50, 100],
+  filterModel: defaultFilterModel = { items: [] },
+  sortField: defaultSortField = 'current_pass_percentage',
+  sort: defaultSort = 'asc',
+  view: defaultView = 'Default',
+  ...props
+}) {
   const { classes } = props
   const gridClasses = useStyles()
   const [fetchError, setFetchError] = React.useState('')
@@ -411,29 +422,29 @@ function JobTable(props) {
   const [rows, setRows] = React.useState([])
   const [selectedJobs, setSelectedJobs] = React.useState([])
 
-  const [view = props.view, setView] = useQueryParam('view', StringParam)
+  const [view = defaultView, setView] = useQueryParam('view', StringParam)
 
-  const [period = props.period, setPeriod] = useQueryParam(
+  const [period = defaultPeriod, setPeriod] = useQueryParam(
     'period',
     StringParam
   )
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    defaultFilterModel
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = defaultSortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = defaultPageSize, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
 
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
   const [_jobDetails, _setJobDetails] = React.useState({ bugs: [] })
 
@@ -615,7 +626,7 @@ function JobTable(props) {
       {pageTitle()}
       <DataGrid
         className={gridClasses.root}
-        components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+        components={{ Toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
@@ -630,11 +641,11 @@ function JobTable(props) {
         // Sorting:
         onSortModelChange={(m) => updateSortModel(m)}
         sortingMode="server"
-        disableColumnFilter={props.briefTable}
+        disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        checkboxSelection={!props.briefTable && !props.hideControls}
+        checkboxSelection={!briefTable && !hideControls}
         onSelectionModelChange={(rows) => setSelectedJobs(rows)}
-        rowsPerPageOptions={props.rowsPerPageOptions}
+        rowsPerPageOptions={rowsPerPageOptions}
         pageSize={pageSize}
         onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
         getRowClassName={(params) =>
@@ -664,24 +675,10 @@ function JobTable(props) {
           },
         }}
       />
-      {props.briefTable || props.hideControls ? '' : detailsButton}
-      {props.briefTable || props.hideControls ? '' : copyButton}
+      {briefTable || hideControls ? '' : detailsButton}
+      {briefTable || hideControls ? '' : copyButton}
     </Container>
   )
-}
-
-JobTable.defaultProps = {
-  hideControls: false,
-  pageSize: 25,
-  period: 'default',
-  briefTable: false,
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  filterModel: {
-    items: [],
-  },
-  sortField: 'current_pass_percentage',
-  sort: 'asc',
-  view: 'Default',
 }
 
 JobTable.propTypes = {

@@ -12,7 +12,15 @@ import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-function PayloadStreamTestFailures(props) {
+function PayloadStreamTestFailures({
+  hideControls = false,
+  pageSize: pageSizeDefault = 25,
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'kind',
+  sort: sortDefault = 'asc',
+  ...props
+}) {
   const { classes } = props
 
   // Most things not filterable here, as we are not querying them directly from db,
@@ -101,16 +109,16 @@ function PayloadStreamTestFailures(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeDefault, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
@@ -232,11 +240,11 @@ function PayloadStreamTestFailures(props) {
           </Tooltip>
         </Typography>
         <DataGrid
-          components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+          components={{ Toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
           columns={columns}
           autoHeight={true}
-          disableColumnFilter={props.briefTable}
+          disableColumnFilter={briefTable}
           disableColumnMenu={true}
           pageSize={pageSize}
           onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
@@ -269,18 +277,6 @@ function PayloadStreamTestFailures(props) {
       </Card>
     </Grid>
   )
-}
-
-PayloadStreamTestFailures.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'kind',
-  sort: 'asc',
 }
 
 PayloadStreamTestFailures.propTypes = {

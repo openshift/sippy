@@ -28,7 +28,15 @@ const useStyles = makeStyles((_theme) => ({
   },
 }))
 
-function BuildClusterTable(props) {
+function BuildClusterTable({
+  briefTable = false,
+  hideControls = false,
+  pageSize: pageSizeProp = 25,
+  period: periodProp = 'default',
+  rowsPerPageOptions = [5, 10, 25, 50, 100],
+  filterModel: filterModelProp = { items: [] },
+  ...props
+}) {
   const gridClasses = useStyles()
   const { classes } = props
 
@@ -37,22 +45,19 @@ function BuildClusterTable(props) {
   const [error, setError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
 
-  const [period = props.period, setPeriod] = useQueryParam(
-    'period',
-    StringParam
-  )
+  const [period = periodProp, setPeriod] = useQueryParam('period', StringParam)
   const [sortField = props.sortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeProp, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const [filterModel = filterModelProp, setFilterModel] = useQueryParam(
     'filters',
     SafeJSONParam
   )
@@ -169,15 +174,15 @@ function BuildClusterTable(props) {
   return (
     <DataGrid
       className={gridClasses.root}
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      components={{ Toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       autoHeight={true}
-      disableColumnFilter={props.briefTable}
+      disableColumnFilter={briefTable}
       disableColumnMenu={true}
       pageSize={pageSize}
       onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={props.rowsPerPageOptions}
+      rowsPerPageOptions={rowsPerPageOptions}
       checkboxSelection={false}
       filterMode="server"
       sortingMode="server"
@@ -213,17 +218,6 @@ function BuildClusterTable(props) {
 export default withStyles(generateClasses(BUILD_CLUSTER_THRESHOLDS))(
   BuildClusterTable
 )
-
-BuildClusterTable.defaultProps = {
-  briefTable: false,
-  hideControls: false,
-  pageSize: 25,
-  period: 'default',
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  filterModel: {
-    items: [],
-  },
-}
 
 BuildClusterTable.propTypes = {
   briefTable: PropTypes.bool,
