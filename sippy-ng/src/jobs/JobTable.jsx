@@ -611,7 +611,11 @@ function JobTable({
     </Button>
   )
 
-  const gridView = new GridView(getColumns(props), getViews(props), view)
+  const gridView = new GridView(
+    getColumns({ ...props, briefTable }),
+    getViews({ ...props, briefTable }),
+    view
+  )
 
   const selectView = (v) => {
     setLoaded(false)
