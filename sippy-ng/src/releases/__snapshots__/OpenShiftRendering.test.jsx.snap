@@ -1,0 +1,2011 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`OpenShift rendering matches base > Install page for 4.21 1`] = `
+<div>
+  <nav
+    aria-label="breadcrumb"
+    class="MuiTypography-root MuiTypography-body1 MuiBreadcrumbs-root css-63vwl1-MuiTypography-root-MuiBreadcrumbs-root"
+  >
+    <ol
+      class="MuiBreadcrumbs-ol css-4pdmu4-MuiBreadcrumbs-ol"
+    >
+      <li
+        class="MuiBreadcrumbs-li"
+      >
+        <a
+          data-discover="true"
+          href="/release/4.21"
+        >
+          Overview
+        </a>
+      </li>
+      <li
+        aria-hidden="true"
+        class="MuiBreadcrumbs-separator css-1wuw8dw-MuiBreadcrumbs-separator"
+      >
+        /
+      </li>
+      <li
+        class="MuiBreadcrumbs-li"
+      >
+        <p
+          class="MuiTypography-root MuiTypography-body1 css-ahj2mt-MuiTypography-root"
+        >
+          Install
+        </p>
+      </li>
+    </ol>
+  </nav>
+  <div
+    class="MuiGrid-root css-vj1n65-MuiGrid-root"
+  >
+    <h4
+      class="MuiTypography-root MuiTypography-h4 MuiTypography-alignCenter css-149xwtl-MuiTypography-root"
+      style="margin: 10px;"
+    >
+      Install health for 
+      4.21
+    </h4>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-container MuiGrid-spacing-xs-3 css-8wqzlf-MuiGrid-root"
+  >
+    <div
+      class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-6wsulr-MuiGrid-root"
+    >
+      <a
+        class="MuiBox-root css-0"
+        data-discover="true"
+        href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20infrastructure%22%7D%5D%7D"
+      >
+        <div
+          aria-label="How often install fails due to infrastructure failures."
+          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-12 makeStyles-summaryCard-13 css-1s8a157-MuiPaper-root-MuiCard-root"
+          data-mui-internal-clone-element="true"
+          style="background-color: rgb(46, 125, 50);"
+        >
+          <div
+            class="MuiCardContent-root makeStyles-cardContent-11 css-46bh2p-MuiCardContent-root"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              Infrastructure
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-testid="InfoIcon"
+                focusable="false"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+                />
+              </svg>
+            </h6>
+            <div
+              align="center"
+            >
+              <div
+                style="width: 70%;"
+              />
+              <h3
+                class="MuiBox-root css-0"
+              >
+                100
+                % (
+                2251
+                 runs)
+                <br />
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+                <br />
+                0
+                % (
+                0
+                 runs)
+              </h3>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-6wsulr-MuiGrid-root"
+    >
+      <a
+        class="MuiBox-root css-0"
+        data-discover="true"
+        href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20configuration%22%7D%5D%7D"
+      >
+        <div
+          aria-label="How often the install configuration check completes successfully."
+          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-12 makeStyles-summaryCard-14 css-1s8a157-MuiPaper-root-MuiCard-root"
+          data-mui-internal-clone-element="true"
+          style="background-color: rgb(46, 125, 50);"
+        >
+          <div
+            class="MuiCardContent-root makeStyles-cardContent-11 css-46bh2p-MuiCardContent-root"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              Install-Config
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-testid="InfoIcon"
+                focusable="false"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+                />
+              </svg>
+            </h6>
+            <div
+              align="center"
+            >
+              <div
+                style="width: 70%;"
+              />
+              <h3
+                class="MuiBox-root css-0"
+              >
+                100
+                % (
+                1171
+                 runs)
+                <br />
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+                <br />
+                0
+                % (
+                0
+                 runs)
+              </h3>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-6wsulr-MuiGrid-root"
+    >
+      <a
+        class="MuiBox-root css-0"
+        data-discover="true"
+        href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20cluster%20bootstrap%22%7D%5D%7D"
+      >
+        <div
+          aria-label="How often bootstrap completes successfully."
+          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-12 makeStyles-summaryCard-15 css-1s8a157-MuiPaper-root-MuiCard-root"
+          data-mui-internal-clone-element="true"
+          style="background-color: rgb(46, 125, 50);"
+        >
+          <div
+            class="MuiCardContent-root makeStyles-cardContent-11 css-46bh2p-MuiCardContent-root"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              Bootstrap
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-testid="InfoIcon"
+                focusable="false"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+                />
+              </svg>
+            </h6>
+            <div
+              align="center"
+            >
+              <div
+                style="width: 70%;"
+              />
+              <h3
+                class="MuiBox-root css-0"
+              >
+                100
+                % (
+                1228
+                 runs)
+                <br />
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+                <br />
+                0
+                % (
+                0
+                 runs)
+              </h3>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-6wsulr-MuiGrid-root"
+    >
+      <a
+        class="MuiBox-root css-0"
+        data-discover="true"
+        href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20other%22%7D%5D%7D"
+      >
+        <div
+          aria-label="How often install fails because other reasons."
+          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-12 makeStyles-summaryCard-16 css-1s8a157-MuiPaper-root-MuiCard-root"
+          data-mui-internal-clone-element="true"
+          style="background-color: rgb(46, 125, 50);"
+        >
+          <div
+            class="MuiCardContent-root makeStyles-cardContent-11 css-46bh2p-MuiCardContent-root"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              Install Other
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-testid="InfoIcon"
+                focusable="false"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+                />
+              </svg>
+            </h6>
+            <div
+              align="center"
+            >
+              <div
+                style="width: 70%;"
+              />
+              <h3
+                class="MuiBox-root css-0"
+              >
+                100
+                % (
+                1285
+                 runs)
+                <br />
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+                <br />
+                0
+                % (
+                0
+                 runs)
+              </h3>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div
+      class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-6wsulr-MuiGrid-root"
+    >
+      <a
+        class="MuiBox-root css-0"
+        data-discover="true"
+        href="/install/4.21"
+      >
+        <div
+          aria-label="How often the install completes successfully."
+          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-12 makeStyles-summaryCard-17 css-1s8a157-MuiPaper-root-MuiCard-root"
+          data-mui-internal-clone-element="true"
+          style="background-color: rgb(46, 125, 50);"
+        >
+          <div
+            class="MuiCardContent-root makeStyles-cardContent-11 css-46bh2p-MuiCardContent-root"
+          >
+            <h6
+              class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+            >
+              Install
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-testid="InfoIcon"
+                focusable="false"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+                />
+              </svg>
+            </h6>
+            <div
+              align="center"
+            >
+              <div
+                style="width: 70%;"
+              />
+              <h3
+                class="MuiBox-root css-0"
+              >
+                100
+                % (
+                1057
+                 runs)
+                <br />
+                <svg
+                  aria-hidden="true"
+                  class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                  data-icon="ArrowUpwardRoundedIcon"
+                  data-testid="ArrowUpwardRoundedIcon"
+                  focusable="false"
+                  style="stroke: green; stroke-width: 3; color: green;"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                  />
+                </svg>
+                <br />
+                0
+                % (
+                0
+                 runs)
+              </h3>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+  <div
+    class="MuiGrid-root css-vj1n65-MuiGrid-root"
+  />
+</div>
+`;
+
+exports[`OpenShift rendering matches base > InstallTopLevelIndicators for 4.21 1`] = `
+<div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="MuiBox-root css-0"
+      data-discover="true"
+      href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20infrastructure%22%7D%5D%7D"
+    >
+      <div
+        aria-label="How often install fails due to infrastructure failures."
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-6 css-1s8a157-MuiPaper-root-MuiCard-root"
+        data-mui-internal-clone-element="true"
+        style="background-color: rgb(46, 125, 50);"
+      >
+        <div
+          class="MuiCardContent-root makeStyles-cardContent-4 css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+          >
+            Infrastructure
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+              data-testid="InfoIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+              />
+            </svg>
+          </h6>
+          <div
+            align="center"
+          >
+            <div
+              style="width: 70%;"
+            />
+            <h3
+              class="MuiBox-root css-0"
+            >
+              100
+              % (
+              2251
+               runs)
+              <br />
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+              <br />
+              0
+              % (
+              0
+               runs)
+            </h3>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="MuiBox-root css-0"
+      data-discover="true"
+      href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20configuration%22%7D%5D%7D"
+    >
+      <div
+        aria-label="How often the install configuration check completes successfully."
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-7 css-1s8a157-MuiPaper-root-MuiCard-root"
+        data-mui-internal-clone-element="true"
+        style="background-color: rgb(46, 125, 50);"
+      >
+        <div
+          class="MuiCardContent-root makeStyles-cardContent-4 css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+          >
+            Install-Config
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+              data-testid="InfoIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+              />
+            </svg>
+          </h6>
+          <div
+            align="center"
+          >
+            <div
+              style="width: 70%;"
+            />
+            <h3
+              class="MuiBox-root css-0"
+            >
+              100
+              % (
+              1171
+               runs)
+              <br />
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+              <br />
+              0
+              % (
+              0
+               runs)
+            </h3>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="MuiBox-root css-0"
+      data-discover="true"
+      href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20cluster%20bootstrap%22%7D%5D%7D"
+    >
+      <div
+        aria-label="How often bootstrap completes successfully."
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-8 css-1s8a157-MuiPaper-root-MuiCard-root"
+        data-mui-internal-clone-element="true"
+        style="background-color: rgb(46, 125, 50);"
+      >
+        <div
+          class="MuiCardContent-root makeStyles-cardContent-4 css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+          >
+            Bootstrap
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+              data-testid="InfoIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+              />
+            </svg>
+          </h6>
+          <div
+            align="center"
+          >
+            <div
+              style="width: 70%;"
+            />
+            <h3
+              class="MuiBox-root css-0"
+            >
+              100
+              % (
+              1228
+               runs)
+              <br />
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+              <br />
+              0
+              % (
+              0
+               runs)
+            </h3>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="MuiBox-root css-0"
+      data-discover="true"
+      href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20other%22%7D%5D%7D"
+    >
+      <div
+        aria-label="How often install fails because other reasons."
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-9 css-1s8a157-MuiPaper-root-MuiCard-root"
+        data-mui-internal-clone-element="true"
+        style="background-color: rgb(46, 125, 50);"
+      >
+        <div
+          class="MuiCardContent-root makeStyles-cardContent-4 css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+          >
+            Install Other
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+              data-testid="InfoIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+              />
+            </svg>
+          </h6>
+          <div
+            align="center"
+          >
+            <div
+              style="width: 70%;"
+            />
+            <h3
+              class="MuiBox-root css-0"
+            >
+              100
+              % (
+              1285
+               runs)
+              <br />
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+              <br />
+              0
+              % (
+              0
+               runs)
+            </h3>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-4 MuiGrid-grid-md-2 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="MuiBox-root css-0"
+      data-discover="true"
+      href="/install/4.21"
+    >
+      <div
+        aria-label="How often the install completes successfully."
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-summaryCard-5 makeStyles-summaryCard-10 css-1s8a157-MuiPaper-root-MuiCard-root"
+        data-mui-internal-clone-element="true"
+        style="background-color: rgb(46, 125, 50);"
+      >
+        <div
+          class="MuiCardContent-root makeStyles-cardContent-4 css-46bh2p-MuiCardContent-root"
+        >
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-2ulfj5-MuiTypography-root"
+          >
+            Install
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+              data-testid="InfoIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+              />
+            </svg>
+          </h6>
+          <div
+            align="center"
+          >
+            <div
+              style="width: 70%;"
+            />
+            <h3
+              class="MuiBox-root css-0"
+            >
+              100
+              % (
+              1057
+               runs)
+              <br />
+              <svg
+                aria-hidden="true"
+                class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-i4bv87-MuiSvgIcon-root"
+                data-icon="ArrowUpwardRoundedIcon"
+                data-testid="ArrowUpwardRoundedIcon"
+                focusable="false"
+                style="stroke: green; stroke-width: 3; color: green;"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M13 19V7.83l4.88 4.88c.39.39 1.03.39 1.42 0 .39-.39.39-1.02 0-1.41l-6.59-6.59a.9959.9959 0 0 0-1.41 0l-6.6 6.58c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L11 7.83V19c0 .55.45 1 1 1s1-.45 1-1z"
+                />
+              </svg>
+              <br />
+              0
+              % (
+              0
+               runs)
+            </h3>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+`;
+
+exports[`OpenShift rendering matches base > TopLevelIndicators for 4.10 with legacy infrastructure test name 1`] = `
+<div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-19 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/tests/4.10/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-sippy%5D%20infrastructure%20should%20work%22%7D%5D%7D"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-18 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="CloudIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Infrastructure
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            90
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            20
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-20 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-19n6lqg"
+            />
+            <div
+              class="MuiBox-root css-1q0r1hp"
+            />
+            <div
+              class="MuiBox-root css-zj8v3k"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            10.0
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            80
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-19 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/install/4.10"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-18 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="InstallDesktopIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M20 17H4V5h8V3H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h4v2h8v-2h4c1.1 0 2-.9 2-2v-3h-2v3z"
+            />
+            <path
+              d="m17 14 5-5-1.41-1.41L18 10.17V3h-2v7.17l-2.59-2.58L12 9z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Install
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            90
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            20
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-20 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-19n6lqg"
+            />
+            <div
+              class="MuiBox-root css-1q0r1hp"
+            />
+            <div
+              class="MuiBox-root css-zj8v3k"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            10.0
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            80
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-19 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/upgrade/4.10"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-18 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="UpgradeIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M16 18v2H8v-2h8zM11 7.99V16h2V7.99h3L12 4 8 7.99h3z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Upgrade
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            90
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            20
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-20 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-19n6lqg"
+            />
+            <div
+              class="MuiBox-root css-1q0r1hp"
+            />
+            <div
+              class="MuiBox-root css-zj8v3k"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            10.0
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            80
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-19 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/tests/4.10/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-sippy%5D%20openshift-tests%20should%20work%22%7D%5D%7D"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-18 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="VerifiedIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m23 12-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82L8.6 22.5l3.4-1.47 3.4 1.46 1.89-3.19 3.61-.82-.34-3.69L23 12zm-12.91 4.72-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Tests
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            90
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            20
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-20 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-19n6lqg"
+            />
+            <div
+              class="MuiBox-root css-1q0r1hp"
+            />
+            <div
+              class="MuiBox-root css-zj8v3k"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            10.0
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            80
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+`;
+
+exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21 1`] = `
+<div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-2 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20infrastructure%22%7D%5D%7D"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-1 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="CloudIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Infrastructure
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            100
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            2251
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-3 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-157patp"
+            />
+            <div
+              class="MuiBox-root css-1quhe83"
+            />
+            <div
+              class="MuiBox-root css-18nu7h4"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            99.8
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            0
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-2 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/install/4.21"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-1 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="InstallDesktopIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M20 17H4V5h8V3H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h4v2h8v-2h4c1.1 0 2-.9 2-2v-3h-2v3z"
+            />
+            <path
+              d="m17 14 5-5-1.41-1.41L18 10.17V3h-2v7.17l-2.59-2.58L12 9z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Install
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            100
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            1057
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-3 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-v0rnr6"
+            />
+            <div
+              class="MuiBox-root css-tucor8"
+            />
+            <div
+              class="MuiBox-root css-18nu7h4"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            99.7
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            0
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-2 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/upgrade/4.21"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-1 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="UpgradeIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M16 18v2H8v-2h8zM11 7.99V16h2V7.99h3L12 4 8 7.99h3z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Upgrade
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            100
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            2821
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-3 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-32lrxj"
+            />
+            <div
+              class="MuiBox-root css-1qnvelk"
+            />
+            <div
+              class="MuiBox-root css-18nu7h4"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            99.8
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            0
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-2 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/tests/4.21/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-sippy%5D%20openshift-tests%20should%20work%22%7D%5D%7D"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-1 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="VerifiedIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m23 12-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82L8.6 22.5l3.4-1.47 3.4 1.46 1.89-3.19 3.61-.82-.34-3.69L23 12zm-12.91 4.72-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Tests
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            100
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            3049
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-3 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-13s9ta6"
+            />
+            <div
+              class="MuiBox-root css-1w5m5v8"
+            />
+            <div
+              class="MuiBox-root css-18nu7h4"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            99.7
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            0
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+`;
+
+exports[`OpenShift rendering matches base > TopLevelIndicators for 4.21-okd with legacy infrastructure test name 1`] = `
+<div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-22 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/tests/4.21-okd/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22install%20should%20succeed%3A%20infrastructure%22%7D%5D%7D"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-21 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="CloudIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Infrastructure
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            90
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            20
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-23 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-19n6lqg"
+            />
+            <div
+              class="MuiBox-root css-1q0r1hp"
+            />
+            <div
+              class="MuiBox-root css-zj8v3k"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            10.0
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            80
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-22 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/install/4.21-okd"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-21 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="InstallDesktopIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M20 17H4V5h8V3H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h4v2h8v-2h4c1.1 0 2-.9 2-2v-3h-2v3z"
+            />
+            <path
+              d="m17 14 5-5-1.41-1.41L18 10.17V3h-2v7.17l-2.59-2.58L12 9z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Install
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            90
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            20
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-23 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-19n6lqg"
+            />
+            <div
+              class="MuiBox-root css-1q0r1hp"
+            />
+            <div
+              class="MuiBox-root css-zj8v3k"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            10.0
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            80
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-22 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/upgrade/4.21-okd"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-21 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="UpgradeIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M16 18v2H8v-2h8zM11 7.99V16h2V7.99h3L12 4 8 7.99h3z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Upgrade
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            90
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            20
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-23 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-19n6lqg"
+            />
+            <div
+              class="MuiBox-root css-1q0r1hp"
+            />
+            <div
+              class="MuiBox-root css-zj8v3k"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            10.0
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            80
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div
+    class="MuiGrid-root MuiGrid-item MuiGrid-grid-sm-6 MuiGrid-grid-md-3 css-13i4rnv-MuiGrid-root"
+  >
+    <a
+      class="makeStyles-cardLink-22 MuiBox-root css-0"
+      data-discover="true"
+      data-mui-internal-clone-element="true"
+      href="/tests/4.21-okd/details?filters=%7B%22items%22%3A%5B%7B%22columnField%22%3A%22name%22%2C%22operatorValue%22%3A%22equals%22%2C%22value%22%3A%22%5Bsig-sippy%5D%20openshift-tests%20should%20work%22%7D%5D%7D"
+    >
+      <div
+        class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation5 MuiCard-root makeStyles-indicatorCard-21 css-1s8a157-MuiPaper-root-MuiCard-root"
+      >
+        <div
+          class="MuiBox-root css-1coeexk"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1oenr2n-MuiSvgIcon-root"
+            data-testid="VerifiedIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m23 12-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82L8.6 22.5l3.4-1.47 3.4 1.46 1.89-3.19 3.61-.82-.34-3.69L23 12zm-12.91 4.72-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z"
+            />
+          </svg>
+          <h6
+            class="MuiTypography-root MuiTypography-h6 css-ssm9q9-MuiTypography-root"
+          >
+            Tests
+          </h6>
+        </div>
+        <div
+          class="MuiBox-root css-1wn58un"
+        >
+          <h2
+            class="MuiTypography-root MuiTypography-h2 css-njy5um-MuiTypography-root"
+          >
+            90
+            %
+          </h2>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            20
+             runs
+          </span>
+        </div>
+        <div
+          class="MuiBox-root css-8ziurz"
+        >
+          <div
+            class="makeStyles-stackedBar-23 MuiBox-root css-0"
+          >
+            <div
+              class="MuiBox-root css-19n6lqg"
+            />
+            <div
+              class="MuiBox-root css-1q0r1hp"
+            />
+            <div
+              class="MuiBox-root css-zj8v3k"
+            />
+          </div>
+        </div>
+        <div
+          class="MuiBox-root css-1a9re40"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-4b67si-MuiSvgIcon-root"
+            data-testid="ArrowDropUpIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="m7 14 5-5 5 5z"
+            />
+          </svg>
+          <p
+            class="MuiTypography-root MuiTypography-body2 css-zi4hnd-MuiTypography-root"
+          >
+            +
+            10.0
+            %
+          </p>
+          <span
+            class="MuiTypography-root MuiTypography-caption css-ol7wxs-MuiTypography-root"
+          >
+            vs prev (
+            80
+            %)
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+`;
+
+exports[`OpenShift rendering matches base > Upgrades page for 4.21 1`] = `
+<div>
+  <nav
+    aria-label="breadcrumb"
+    class="MuiTypography-root MuiTypography-body1 MuiBreadcrumbs-root css-63vwl1-MuiTypography-root-MuiBreadcrumbs-root"
+  >
+    <ol
+      class="MuiBreadcrumbs-ol css-4pdmu4-MuiBreadcrumbs-ol"
+    >
+      <li
+        class="MuiBreadcrumbs-li"
+      >
+        <a
+          data-discover="true"
+          href="/release/4.21"
+        >
+          Overview
+        </a>
+      </li>
+      <li
+        aria-hidden="true"
+        class="MuiBreadcrumbs-separator css-1wuw8dw-MuiBreadcrumbs-separator"
+      >
+        /
+      </li>
+      <li
+        class="MuiBreadcrumbs-li"
+      >
+        <p
+          class="MuiTypography-root MuiTypography-body1 css-ahj2mt-MuiTypography-root"
+        >
+          Upgrades
+        </p>
+      </li>
+    </ol>
+  </nav>
+  <div
+    class="MuiGrid-root css-vj1n65-MuiGrid-root"
+  >
+    <h4
+      class="MuiTypography-root MuiTypography-h4 MuiTypography-alignCenter css-149xwtl-MuiTypography-root"
+      style="margin: 10px;"
+    >
+      Upgrade health for 
+      4.21
+    </h4>
+  </div>
+</div>
+`;

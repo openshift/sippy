@@ -22,11 +22,25 @@ function indicator(overrides = {}) {
   }
 }
 
-function renderIndicators(release, indicators) {
+// productLinks mirrors the HATEOAS links /api/health returns for a product release
+// (pkg/api/lifecycle_tests.go lifecycleLinks); only their presence matters here.
+const productLinks = {
+  install: '/api/install?release=quay-3.18',
+  upgrade: '/api/upgrade?release=quay-3.18',
+  health: '/api/health?release=quay-3.18',
+  product_install_test: '/api/tests?release=quay-3.18',
+  product_upgrade_test: '/api/tests?release=quay-3.18',
+}
+
+function renderIndicators(release, indicators, links) {
   return render(
     <ThemeProvider theme={theme}>
       <MemoryRouter>
-        <InstallTopLevelIndicators release={release} indicators={indicators} />
+        <InstallTopLevelIndicators
+          release={release}
+          indicators={indicators}
+          links={links}
+        />
       </MemoryRouter>
     </ThemeProvider>
   )
@@ -42,11 +56,17 @@ describe('InstallTopLevelIndicators', () => {
   })
 
   it('quay release renders Quay Install and returned OCP phase cards despite the version gate', () => {
-    renderIndicators('quay-3.18', {
-      productInstall: indicator({ name: '[sig-quay] install should succeed' }),
-      bootstrap: indicator({ name: '[sig-quay] bootstrap should succeed' }),
-      installConfig: indicator({ name: '[sig-quay] config should succeed' }),
-    })
+    renderIndicators(
+      'quay-3.18',
+      {
+        productInstall: indicator({
+          name: '[sig-quay] install should succeed',
+        }),
+        bootstrap: indicator({ name: '[sig-quay] bootstrap should succeed' }),
+        installConfig: indicator({ name: '[sig-quay] config should succeed' }),
+      },
+      productLinks
+    )
 
     expect(screen.getByText('Quay Install')).toBeInTheDocument()
     expect(screen.getByText('Bootstrap')).toBeInTheDocument()
@@ -54,9 +74,15 @@ describe('InstallTopLevelIndicators', () => {
   })
 
   it('quay release without phase data renders only Quay Install', () => {
-    renderIndicators('quay-3.18', {
-      productInstall: indicator({ name: '[sig-quay] install should succeed' }),
-    })
+    renderIndicators(
+      'quay-3.18',
+      {
+        productInstall: indicator({
+          name: '[sig-quay] install should succeed',
+        }),
+      },
+      productLinks
+    )
 
     expect(screen.getByText('Quay Install')).toBeInTheDocument()
     expect(screen.queryByText('Bootstrap')).not.toBeInTheDocument()
@@ -65,14 +91,20 @@ describe('InstallTopLevelIndicators', () => {
     expect(screen.queryByText('Install Other')).not.toBeInTheDocument()
   })
 
-  it('quay release with OpenShift indicators but no productInstall renders nothing', () => {
-    const { container } = renderIndicators('quay-3.18', {
-      install: indicator(),
-      infrastructure: indicator({
-        name: 'install should succeed: infrastructure',
-      }),
-    })
+  it('quay release with OpenShift indicators but no productInstall data yet still renders the OpenShift cards', () => {
+    renderIndicators(
+      'quay-3.18',
+      {
+        install: indicator(),
+        infrastructure: indicator({
+          name: 'install should succeed: infrastructure',
+        }),
+      },
+      productLinks
+    )
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('OpenShift Install')).toBeInTheDocument()
+    expect(screen.getByText('Infrastructure')).toBeInTheDocument()
+    expect(screen.queryByText('Quay Install')).not.toBeInTheDocument()
   })
 })

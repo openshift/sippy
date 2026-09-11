@@ -49,7 +49,7 @@ export default function TopLevelIndicators(props) {
   })
 
   let newInstall = useNewInstallTests(props.release)
-  const isProduct = Boolean(props.indicators.productInstall)
+  const isProduct = Boolean(props.links)
 
   if (noData || (!newInstall && !isProduct)) {
     return <></>
@@ -181,4 +181,5 @@ export default function TopLevelIndicators(props) {
 TopLevelIndicators.propTypes = {
   release: PropTypes.string,
   indicators: PropTypes.object,
+  links: PropTypes.object,
 }
