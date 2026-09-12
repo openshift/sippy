@@ -7,7 +7,11 @@ import {
 } from '../constants'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
-import { pathForTestByVariant, useNewInstallTests } from '../helpers'
+import {
+  pathForTestByVariant,
+  productLabelFor,
+  useNewInstallTests,
+} from '../helpers'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp'
 import CloudIcon from '@mui/icons-material/Cloud'
@@ -171,7 +175,14 @@ export default function TopLevelIndicators(props) {
 
   // Hide this if there's no data
   let noData = true
-  ;['infrastructure', 'install', 'tests', 'upgrade'].forEach((indicator) => {
+  ;[
+    'infrastructure',
+    'install',
+    'tests',
+    'upgrade',
+    'productInstall',
+    'productUpgrade',
+  ].forEach((indicator) => {
     let ind = props.indicators[indicator]
     if (ind && (ind.current_runs !== 0 || ind.previous_runs !== 0)) {
       noData = false
@@ -180,11 +191,38 @@ export default function TopLevelIndicators(props) {
   if (noData) {
     return <></>
   }
-  let newInstall = useNewInstallTests(props.release)
+  const newInstall = useNewInstallTests(props.release)
+
+  const isProduct = Boolean(props.links)
+  const productLabel = productLabelFor(props.release)
 
   const hasComponentReadiness =
     props.releases?.release_attrs?.[props.release]?.capabilities
       ?.componentReadiness
+
+  let infrastructureLink
+  let infrastructureTooltip
+  if (isProduct) {
+    infrastructureLink = pathForTestByVariant(
+      props.release,
+      props.indicators.infrastructure?.name
+    )
+    infrastructureTooltip =
+      props.indicators.infrastructure?.name ===
+      'install should succeed: infrastructure'
+        ? 'How often install fails due to infrastructure failures.'
+        : "How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
+  } else {
+    infrastructureLink = pathForTestByVariant(
+      props.release,
+      newInstall
+        ? 'install should succeed: infrastructure'
+        : '[sig-sippy] infrastructure should work'
+    )
+    infrastructureTooltip = newInstall
+      ? 'How often install fails due to infrastructure failures.'
+      : "How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
+  }
 
   return (
     <Fragment>
@@ -194,20 +232,13 @@ export default function TopLevelIndicators(props) {
           <CloudIcon sx={{ fontSize: 28, color: 'text.secondary' }} />,
           props.indicators.infrastructure,
           INFRASTRUCTURE_THRESHOLDS,
-          pathForTestByVariant(
-            props.release,
-            newInstall
-              ? 'install should succeed: infrastructure'
-              : '[sig-sippy] infrastructure should work'
-          ),
-          newInstall
-            ? 'How often install fails due to infrastructure failures.'
-            : "How often we get to the point of running the installer. This is judged by whether a kube-apiserver is available, it's not perfect, but it's very close."
+          infrastructureLink,
+          infrastructureTooltip
         )}
 
       {props.indicators.install &&
         renderIndicatorCard(
-          'Install',
+          isProduct ? 'OpenShift Install' : 'Install',
           <InstallDesktopIcon sx={{ fontSize: 28, color: 'text.secondary' }} />,
           props.indicators.install,
           INSTALL_THRESHOLDS,
@@ -217,12 +248,38 @@ export default function TopLevelIndicators(props) {
 
       {props.indicators.upgrade &&
         renderIndicatorCard(
-          'Upgrade',
+          isProduct ? 'OpenShift Upgrade' : 'Upgrade',
           <UpgradeIcon sx={{ fontSize: 28, color: 'text.secondary' }} />,
           props.indicators.upgrade,
           UPGRADE_THRESHOLDS,
           '/upgrade/' + props.release,
           'How often an upgrade that is started completes successfully.'
+        )}
+
+      {props.indicators.productInstall &&
+        renderIndicatorCard(
+          `${productLabel} Install`,
+          <InstallDesktopIcon sx={{ fontSize: 28, color: 'text.secondary' }} />,
+          props.indicators.productInstall,
+          INSTALL_THRESHOLDS,
+          pathForTestByVariant(
+            props.release,
+            props.indicators.productInstall.name
+          ),
+          `How often the ${productLabel} install completes successfully.`
+        )}
+
+      {props.indicators.productUpgrade &&
+        renderIndicatorCard(
+          `${productLabel} Upgrade`,
+          <UpgradeIcon sx={{ fontSize: 28, color: 'text.secondary' }} />,
+          props.indicators.productUpgrade,
+          UPGRADE_THRESHOLDS,
+          pathForTestByVariant(
+            props.release,
+            props.indicators.productUpgrade.name
+          ),
+          `How often a ${productLabel} upgrade that is started completes successfully.`
         )}
 
       {props.indicators.tests &&
@@ -251,4 +308,5 @@ TopLevelIndicators.propTypes = {
   release: PropTypes.string,
   indicators: PropTypes.object,
   releases: PropTypes.object,
+  links: PropTypes.object,
 }

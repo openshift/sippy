@@ -3,8 +3,6 @@ package api
 import (
 	"math"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/montanaflynn/stats"
@@ -19,29 +17,6 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-// useNewInstallTest decides which install test name to use based on releases. For
-// release 4.11 and above, it uses the new install test names
-func useNewInstallTest(release string) bool {
-	digits := strings.Split(release, ".")
-	if len(digits) < 2 {
-		return false
-	}
-	major, err := strconv.Atoi(digits[0])
-	if err != nil {
-		return false
-	}
-	minor, err := strconv.Atoi(digits[1])
-	if err != nil {
-		return false
-	}
-	if major < 4 {
-		return false
-	} else if major == 4 && minor < 11 {
-		return false
-	}
-	return true
-}
-
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
 func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
@@ -52,14 +27,9 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 
 	indicators := make(map[string]apitype.Test)
 
-	infraTestName := testidentification.InfrastructureTestName
-	installTestName := testidentification.InstallTestName
-	if useNewInstallTest(release) {
-		infraTestName = testidentification.NewInfrastructureTestName
-		installTestName = testidentification.NewInstallTestName
-	}
+	lifecycleTests := lifecycleTestsForRelease(release)
 
-	if infraIndicator, found := query.TestReportExcludeVariants(dbc, release, infraTestName, excludedVariants); found {
+	if infraIndicator, found := query.TestReportExcludeVariants(dbc, release, lifecycleTests.HealthInfraTestName, excludedVariants); found {
 		indicators["infrastructure"] = infraIndicator
 	}
 	if installConfigIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants); found {
@@ -71,11 +41,21 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	if installOtherIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants); found {
 		indicators["installOther"] = installOtherIndicator
 	}
-	if installIndicator, found := query.TestReportExcludeVariants(dbc, release, installTestName, excludedInstallVariants); found {
+	if installIndicator, found := query.TestReportExcludeVariants(dbc, release, lifecycleTests.HealthInstallTestName, excludedInstallVariants); found {
 		indicators["install"] = installIndicator
 	}
-	if upgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.UpgradeTestName, excludedVariants); found {
+	if upgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, lifecycleTests.HealthUpgradeTestName, excludedVariants); found {
 		indicators["upgrade"] = upgradeIndicator
+	}
+	if lifecycleTests.ProductInstallTestName != "" {
+		if productInstallIndicator, found := query.TestReportExcludeVariants(dbc, release, lifecycleTests.ProductInstallTestName, excludedInstallVariants); found {
+			indicators["productInstall"] = productInstallIndicator
+		}
+	}
+	if lifecycleTests.ProductUpgradeTestName != "" {
+		if productUpgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, lifecycleTests.ProductUpgradeTestName, excludedVariants); found {
+			indicators["productUpgrade"] = productUpgradeIndicator
+		}
 	}
 
 	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
@@ -114,13 +94,20 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// TODO: use or remove this logic
 	var warnings []string
 
-	RespondWithJSON(http.StatusOK, w, apitype.Health{
+	RespondWithJSON(http.StatusOK, w, releaseHealthResponse(release, lifecycleTests, indicators, lastUpdated, currStats, prevStats, warnings))
+}
+
+// releaseHealthResponse builds the /api/health response body from data the handler has already
+// fetched, adding the product lifecycle links (lifecycleLinks) when release is a product release.
+func releaseHealthResponse(release string, lifecycleTests lifecycleTestSelection, indicators map[string]apitype.Test, lastUpdated time.Time, currStats, prevStats sippyprocessingv1.Statistics, warnings []string) apitype.Health {
+	return apitype.Health{
 		Indicators:  indicators,
 		LastUpdated: lastUpdated,
 		Current:     currStats,
 		Previous:    prevStats,
 		Warnings:    warnings,
-	})
+		Links:       lifecycleLinks(release, lifecycleTests),
+	}
 }
 
 func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats sippyprocessingv1.Statistics) {
