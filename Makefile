@@ -8,9 +8,9 @@ CHECK := $(foreach dep,$(DEPS),\
         $(if $(shell which $(dep)),"$(dep) found",$(error "Missing $(dep) in PATH")))
 endif
 
-GIT_COMMIT := $(shell git rev-parse --short HEAD)
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-GIT_TREE_STATE := $(if $(shell git status --porcelain),dirty,clean)
+GIT_TREE_STATE := $(if $(shell git status --porcelain 2>/dev/null),dirty,clean)
 LDFLAGS := -ldflags "-X github.com/openshift/sippy/pkg/version.commitFromGit=$(GIT_COMMIT) -X github.com/openshift/sippy/pkg/version.buildDate=$(BUILD_DATE) -X github.com/openshift/sippy/pkg/version.gitTreeState=$(GIT_TREE_STATE)"
 
 all: test build
@@ -32,6 +32,9 @@ sippy: builddir
 
 sippy-daemon: builddir
 	go build $(LDFLAGS) -mod=vendor ./cmd/sippy-daemon/...
+
+sippy-cover: builddir
+	go build $(LDFLAGS) -cover -coverpkg=./cmd/...,./pkg/... -mod=vendor -o ./sippy-cover ./cmd/sippy
 
 test: builddir npm
 ifeq ($(ARTIFACT_DIR),)
