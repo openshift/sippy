@@ -33,7 +33,7 @@ func (r *Runner) Run(ctx context.Context, options Options) Result {
 	releases = normalizeReleases(releases)
 	if options.Release != "" {
 		if !containsRelease(releases, options.Release) {
-			err := fmt.Errorf("release %q was not found in release definitions or historical Prow jobs", options.Release)
+			err := fmt.Errorf("release %q was not found in active release definitions", options.Release)
 			for _, check := range options.Checks {
 				result.Summaries = append(result.Summaries, operationalSummary(check, options.Release, options.Date, err))
 			}
