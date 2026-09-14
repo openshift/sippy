@@ -636,6 +636,55 @@ func TestLookbackLogic(t *testing.T) {
 	}
 }
 
+func TestDetermineVariantsToCheck(t *testing.T) {
+	tests := []struct {
+		name        string
+		featureGate string
+		topologies  sets.Set[string]
+		want        []JobVariant
+	}{
+		{
+			name:        "generic gate with Hypershift topology gets default hypershift variants",
+			featureGate: "NetworkSegmentation",
+			topologies:  sets.New("Hypershift"),
+			want:        RequiredHypershiftJobVariants,
+		},
+		{
+			name:        "AWS gate with Hypershift topology gets filtered hypershift variants",
+			featureGate: "AWSServiceLBNetworkSecurityGroup",
+			topologies:  sets.New("Hypershift"),
+			want:        []JobVariant{{Cloud: "aws", Architecture: "amd64", Topology: "external"}},
+		},
+		{
+			name:        "generic gate with SelfManagedHA topology gets default self-managed variants",
+			featureGate: "NetworkSegmentation",
+			topologies:  sets.New("SelfManagedHA"),
+			want:        RequiredSelfManagedJobVariants,
+		},
+		{
+			name:        "generic gate with both topologies gets both variant sets",
+			featureGate: "NetworkSegmentation",
+			topologies:  sets.New("Hypershift", "SelfManagedHA"),
+			want:        append(RequiredHypershiftJobVariants, RequiredSelfManagedJobVariants...),
+		},
+		{
+			name:        "non-hypershift platform gate excluded from hypershift",
+			featureGate: "NutanixFeature",
+			topologies:  sets.New("Hypershift"),
+			want:        nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := determineVariantsToCheck(tt.featureGate, tt.topologies)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("determineVariantsToCheck(%q) =\n  %+v\nwant:\n  %+v", tt.featureGate, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestMatchesParsedVariant(t *testing.T) {
 	tests := []struct {
 		name    string

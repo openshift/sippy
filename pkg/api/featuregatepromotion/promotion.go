@@ -247,7 +247,11 @@ func determineVariantsToCheck(featureGate string, topologies sets.Set[string]) [
 	var variants []JobVariant
 
 	if topologies.Has("Hypershift") && !NonHypershiftPlatforms.MatchString(featureGate) {
-		variants = append(variants, FilterVariants(featureGate, RequiredHypershiftJobVariants)...)
+		hypershiftPlatformVariants := FilterVariants(featureGate, RequiredHypershiftJobVariants)
+		if len(hypershiftPlatformVariants) == 0 {
+			hypershiftPlatformVariants = RequiredHypershiftJobVariants
+		}
+		variants = append(variants, hypershiftPlatformVariants...)
 	}
 
 	if topologies.Has("SelfManagedHA") {
