@@ -254,8 +254,13 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 
 	partKeys, err := query.LookupProwJobRunPartitionKeys(r.db.DB, jobRunID)
 	if err != nil {
-		result.Status = ReEvalEvalError
-		result.Error = fmt.Sprintf("looking up partition keys for job run %s: %v", buildID, err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			result.Status = ReEvalMissingError
+			result.Error = fmt.Sprintf("no job run %q found in the DB", buildID)
+		} else {
+			result.Status = ReEvalEvalError
+			result.Error = fmt.Sprintf("looking up partition keys for job run %s: %v", buildID, err)
+		}
 		return result
 	}
 
@@ -265,11 +270,12 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			result.Status = ReEvalMissingError
-			result.Error = fmt.Sprintf("job run %s not found in database", buildID)
+			result.Error = fmt.Sprintf("job run %q not found (after partition lookup succeeded)", buildID)
 		} else {
 			result.Status = ReEvalEvalError
 			result.Error = fmt.Sprintf("looking up job run %s: %v", buildID, res.Error)
 		}
+
 		return result
 	}
 

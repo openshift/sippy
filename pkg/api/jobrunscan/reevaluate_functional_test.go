@@ -77,8 +77,9 @@ func functionalTestReEvaluator(t *testing.T) *ReEvaluator {
 func TestReEvaluateEndToEnd(t *testing.T) {
 	re := functionalTestReEvaluator(t)
 	buildID := os.Getenv("PROW_JOB_BUILD_ID")
+	dryRun := os.Getenv("DRY_RUN") == "true"
 
-	results, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
+	results, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, dryRun)
 	if err != nil {
 		t.Fatalf("re-evaluation failed: %v", err)
 	}
@@ -99,13 +100,14 @@ func TestReEvaluateEndToEnd(t *testing.T) {
 func TestReEvaluateIdempotent(t *testing.T) {
 	re := functionalTestReEvaluator(t)
 	buildID := os.Getenv("PROW_JOB_BUILD_ID")
+	dryRun := os.Getenv("DRY_RUN") == "true"
 
 	// Run twice
-	results1, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
+	results1, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, dryRun)
 	if err != nil {
 		t.Fatalf("first re-evaluation failed: %v", err)
 	}
-	results2, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, false)
+	results2, err := reEvaluateJobRuns(context.Background(), re, []string{buildID}, dryRun)
 	if err != nil {
 		t.Fatalf("second re-evaluation failed: %v", err)
 	}
