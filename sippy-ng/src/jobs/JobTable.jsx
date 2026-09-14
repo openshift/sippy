@@ -21,7 +21,7 @@ import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 const bookmarks = [
   { name: 'New jobs (no previous runs)', model: [BOOKMARKS.NEW_JOBS] },
@@ -94,14 +94,14 @@ export const getColumns = (config, _openBugzillaDialog) => {
         if (!params.value) {
           return (
             <Tooltip title="Job has not passed within the report window">
-              <Fragment>-</Fragment>
+              <span>-</span>
             </Tooltip>
           )
         }
 
         return (
           <Tooltip title={params.value.toLocaleString()}>
-            <Fragment>{relativeTime(params.value, new Date())}</Fragment>
+            <span>{relativeTime(params.value, new Date())}</span>
           </Tooltip>
         )
       },
