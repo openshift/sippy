@@ -223,6 +223,7 @@ export function JobStackedChart(props) {
         },
       },
     },
+    onClick: handleClick,
     scales: {
       x: {
         grid: {
@@ -256,7 +257,6 @@ export function JobStackedChart(props) {
       data={resultChart}
       options={options}
       height={120}
-      getElementAtEvent={handleClick}
     />
   )
 }
