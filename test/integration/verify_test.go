@@ -66,6 +66,7 @@ func TestVerifyDailyRowsProductionSemanticsAndMismatches(t *testing.T) {
 	release := "pseudo-with-data"
 	date := civil.Date{Year: 2026, Month: 8, Day: 25}
 	start := date.In(time.UTC)
+	intutil.CreateReleaseDefinition(t, dbc, release, 4, 20)
 	job := intutil.CreateProwJob(t, dbc, "daily-job", release, nil)
 	test := intutil.CreateTest(t, dbc, "daily test")
 	suite := intutil.CreateSuite(t, dbc, "suite")
