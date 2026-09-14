@@ -2403,7 +2403,7 @@ periodic-ci-RedHatQE-interop-testing-cnv-4.18-cnv-odf-ocp4.18-lp-interop-cnv-odf
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-acm-cnv-ocp-4.22-p2p-lp-interop-aws:
+periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--2spoke-mig--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -2427,12 +2427,15 @@ periodic-ci-RedHatQE-interop-testing-master-acm-cnv-ocp-4.22-p2p-lp-interop-aws:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-acm-virt-ocp4.22-p2p-cclm-liv-mig-lp-interop-aws:
+periodic-ci-RedHatQE-interop-testing-master-acm-virt--p2p--ocp-4.22-lpMainline-lp-interop-cr--n1-upgrade--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: default
+    FromRelease: "4.22"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "22"
     Installer: ipi
     JobTier: candidate
     LayeredProduct: lp-interop--acm-virt
@@ -2450,7 +2453,7 @@ periodic-ci-RedHatQE-interop-testing-master-acm-virt-ocp4.22-p2p-cclm-liv-mig-lp
     SecurityMode: default
     Suite: unknown
     Topology: ha
-    Upgrade: none
+    Upgrade: micro
 periodic-ci-RedHatQE-interop-testing-master-cnv-odf-ocp-4.20-lp-interop-cnv-component-readiness-aws-ipi-ocp420:
     Aggregation: none
     Architecture: amd64
