@@ -1883,12 +1883,15 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job:          "periodic-ci-RedHatQE-interop-testing-master-acm-cnv-ocp-4.22-p2p-lp-interop-aws",
+			job:          "periodic-ci-RedHatQE-interop-testing-master-acm-virt--p2p--ocp-4.22-lpMainline-lp-interop-cr--n1-upgrade--aws",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
 				VariantRelease:          "4.22",
 				VariantReleaseMajor:     "4",
 				VariantReleaseMinor:     "22",
+				VariantFromRelease:      "4.22",
+				VariantFromReleaseMajor: "4",
+				VariantFromReleaseMinor: "22",
 				VariantArch:             "amd64",
 				VariantInstaller:        "ipi",
 				VariantPlatform:         "aws",
@@ -1899,7 +1902,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantOwner:            "mpiit",
 				VariantSuite:            "unknown",
 				VariantTopology:         "ha",
-				VariantUpgrade:          VariantNoValue,
+				VariantUpgrade:          "micro",
 				VariantAggregation:      VariantNoValue,
 				VariantFeatureSet:       VariantDefaultValue,
 				VariantNetworkAccess:    VariantDefaultValue,
@@ -1912,7 +1915,7 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job:          "periodic-ci-RedHatQE-interop-testing-master-acm-virt-ocp4.22-p2p-cclm-liv-mig-lp-interop-aws",
+			job:          "periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--2spoke-mig--aws",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
 				VariantRelease:          "4.22",
