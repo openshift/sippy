@@ -303,7 +303,7 @@ func makeStatusHandler(querier *StatusQuerier) http.HandlerFunc {
 			return
 		}
 
-		resp, err := querier.Query(req.Context(), batchID)
+		resp, err := querier.GetUpdated(req.Context(), batchID)
 		if err != nil {
 			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]string{
 				"message": err.Error(),

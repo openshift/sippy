@@ -141,7 +141,7 @@ func TestFunctionalStatusQuerier(t *testing.T) {
 		result, err := submitter.Submit(ctx, []string{"status-1", "status-2"}, false)
 		require.NoError(t, err, "Submit should succeed")
 
-		resp, err := querier.Query(context.Background(), result.BatchID)
+		resp, err := querier.GetUpdated(context.Background(), result.BatchID)
 		require.NoError(t, err, "Query should succeed for existing batch")
 		require.NotNil(t, resp, "response should be non-nil for existing batch")
 		assert.Equal(t, result.BatchID, resp.BatchID, "response batch ID should match")
@@ -155,7 +155,7 @@ func TestFunctionalStatusQuerier(t *testing.T) {
 	})
 
 	t.Run("query non-existent batch returns nil", func(t *testing.T) {
-		resp, err := querier.Query(context.Background(), uuid.New())
+		resp, err := querier.GetUpdated(context.Background(), uuid.New())
 		require.NoError(t, err, "Query should not error for unknown batch ID")
 		assert.Nil(t, resp, "response should be nil for non-existent batch")
 	})
@@ -356,7 +356,7 @@ func TestFunctionalQueryLazyCompletion(t *testing.T) {
 			setRiverJobState(t, gormDB, *item.RiverJobID, "completed")
 		}
 
-		resp, err := querier.Query(ctx, batchID)
+		resp, err := querier.GetUpdated(ctx, batchID)
 		require.NoError(t, err, "Query should succeed")
 		assert.Equal(t, workqueue.BatchStatusComplete, resp.Status,
 			"batch should transition to complete when all items completed")
@@ -375,7 +375,7 @@ func TestFunctionalQueryLazyCompletion(t *testing.T) {
 		setRiverJobState(t, gormDB, *items[0].RiverJobID, "discarded")
 		setRiverJobState(t, gormDB, *items[1].RiverJobID, "cancelled")
 
-		resp, err := querier.Query(ctx, batchID)
+		resp, err := querier.GetUpdated(ctx, batchID)
 		require.NoError(t, err, "Query should succeed")
 		assert.Equal(t, workqueue.BatchStatusFailed, resp.Status,
 			"batch should transition to failed when all items failed")
@@ -390,7 +390,7 @@ func TestFunctionalQueryLazyCompletion(t *testing.T) {
 		setRiverJobState(t, gormDB, *items[1].RiverJobID, "completed")
 		setRiverJobState(t, gormDB, *items[2].RiverJobID, "discarded")
 
-		resp, err := querier.Query(ctx, batchID)
+		resp, err := querier.GetUpdated(ctx, batchID)
 		require.NoError(t, err, "Query should succeed")
 		assert.Equal(t, workqueue.BatchStatusComplete, resp.Status,
 			"batch with at least one success should be complete, not failed")
@@ -404,7 +404,7 @@ func TestFunctionalQueryLazyCompletion(t *testing.T) {
 		setRiverJobState(t, gormDB, *items[0].RiverJobID, "completed")
 		// items[1] stays in its initial state (available/pending)
 
-		resp, err := querier.Query(ctx, batchID)
+		resp, err := querier.GetUpdated(ctx, batchID)
 		require.NoError(t, err, "Query should succeed")
 		assert.Equal(t, workqueue.BatchStatusRunning, resp.Status,
 			"batch should stay running while items are still pending")
@@ -417,11 +417,11 @@ func TestFunctionalQueryLazyCompletion(t *testing.T) {
 
 		setRiverJobState(t, gormDB, *items[0].RiverJobID, "completed")
 
-		resp1, err := querier.Query(ctx, batchID)
+		resp1, err := querier.GetUpdated(ctx, batchID)
 		require.NoError(t, err, "first Query should succeed")
 		assert.Equal(t, workqueue.BatchStatusComplete, resp1.Status)
 
-		resp2, err := querier.Query(ctx, batchID)
+		resp2, err := querier.GetUpdated(ctx, batchID)
 		require.NoError(t, err, "second Query should succeed")
 		assert.Equal(t, workqueue.BatchStatusComplete, resp2.Status,
 			"repeated Query should return same status")
@@ -474,7 +474,7 @@ func TestFunctionalBatchCanceller(t *testing.T) {
 		setRiverJobState(t, gormDB, *items[0].RiverJobID, "completed")
 
 		querier := NewStatusQuerier(gormDB)
-		_, err := querier.Query(ctx, batchID)
+		_, err := querier.GetUpdated(ctx, batchID)
 		require.NoError(t, err, "Query to trigger lazy completion should succeed")
 
 		_, err = canceller.Cancel(ctx, batchID)
@@ -567,7 +567,7 @@ func TestFunctionalRecordedOutput(t *testing.T) {
 			require.NoError(t, gormDB.Create(&batch).Error)
 			require.NoError(t, gormDB.Create(&BatchItem{BatchID: batch.ID, ItemKey: expected.ProwJobBuildID, RiverJobID: &inserted.Job.ID}).Error)
 			querier := NewStatusQuerier(gormDB)
-			pending, err := querier.Query(ctx, batch.ID)
+			pending, err := querier.GetUpdated(ctx, batch.ID)
 			require.NoError(t, err)
 			require.Len(t, pending.Items, 1)
 			require.Empty(t, pending.Items[0].Result)
@@ -578,7 +578,7 @@ func TestFunctionalRecordedOutput(t *testing.T) {
 				require.NoError(t, client.Stop(stopCtx))
 			}()
 			require.Eventually(t, func() bool {
-				response, err := querier.Query(ctx, batch.ID)
+				response, err := querier.GetUpdated(ctx, batch.ID)
 				return err == nil && len(response.Items) == 1 && response.Items[0].State == tc.state
 			}, 10*time.Second, 50*time.Millisecond)
 			// A second batch linked after completion reads the same recorded output.
@@ -586,7 +586,7 @@ func TestFunctionalRecordedOutput(t *testing.T) {
 			require.NoError(t, gormDB.Create(&late).Error)
 			require.NoError(t, gormDB.Create(&BatchItem{BatchID: late.ID, ItemKey: expected.ProwJobBuildID, RiverJobID: &inserted.Job.ID}).Error)
 			for _, id := range []uuid.UUID{batch.ID, late.ID} {
-				response, err := querier.Query(ctx, id)
+				response, err := querier.GetUpdated(ctx, id)
 				require.NoError(t, err)
 				require.Len(t, response.Items, 1)
 				var got apijobrunscan.ReEvaluationResult

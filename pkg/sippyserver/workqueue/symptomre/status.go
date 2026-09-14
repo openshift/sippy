@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
@@ -23,11 +24,11 @@ func NewStatusQuerier(gormDB *gorm.DB) *StatusQuerier {
 	return &StatusQuerier{gormDB: gormDB}
 }
 
-// Query loads a batch and its items, joining with river_job to get current
+// GetUpdated loads a batch and its items, joining with river_job to get current
 // states. It performs lazy completion detection: when all items have reached
 // a terminal state, the batch is marked complete (or failed if all items
 // failed) and completed_at is set. This is idempotent.
-func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchStatusResponse, error) {
+func (q *StatusQuerier) GetUpdated(ctx context.Context, batchID uuid.UUID) (*BatchStatusResponse, error) {
 	db := q.gormDB.WithContext(ctx)
 
 	var batch Batch
@@ -38,6 +39,33 @@ func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchSta
 		return nil, fmt.Errorf("loading batch %s: %w", batchID, err)
 	}
 
+	itemStatus, resp, err := queryItemStatus(db, batch)
+	if err != nil {
+		return resp, err
+	}
+
+	// Lazy completion: if batch is running/processing and all items are terminal,
+	// update the batch status.
+	if batch.Status == workqueue.BatchStatusRunning || batch.Status == workqueue.BatchStatusProcessing {
+		if itemStatus == workqueue.BatchStatusComplete || itemStatus == workqueue.BatchStatusFailed {
+			now := time.Now()
+			if err := db.Model(&Batch{}).
+				Where("id = ? and status = ?", batchID, batch.Status).
+				Updates(map[string]interface{}{
+					"status":       itemStatus,
+					"completed_at": now,
+				}).Error; err != nil {
+				// updating the status in the DB is optional hygiene, really
+				log.WithError(err).Warnf("failed updating batch %s completion", batchID)
+			}
+			resp.Status = itemStatus
+		}
+	}
+
+	return resp, nil
+}
+
+func queryItemStatus(db *gorm.DB, batch Batch) (workqueue.BatchStatus, *BatchStatusResponse, error) {
 	var items []ItemStatus
 	if err := db.Raw(`
 		SELECT bi.item_key, rj.metadata->'output' AS result,
@@ -50,12 +78,13 @@ func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchSta
 		map[string]interface{}{
 			"notEnqueued": ItemStateNotEnqueued,
 			"orphaned":    ItemStateOrphaned,
-			"batchID":     batchID,
+			"batchID":     batch.ID,
 		}).Scan(&items).Error; err != nil {
-		return nil, fmt.Errorf("querying batch items for %s: %w", batchID, err)
+		return "", nil, fmt.Errorf("querying batch items for %s: %w", batch.ID, err)
 	}
 
 	counts := classifyItemStates(items)
+	itemStatus := workqueue.OverallStatus(counts)
 
 	resp := &BatchStatusResponse{
 		BatchID: batch.ID,
@@ -71,25 +100,7 @@ func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchSta
 		},
 		Items: items,
 	}
-
-	// Lazy completion: if batch is running/processing and all items are terminal,
-	// update the batch status.
-	if batch.Status == workqueue.BatchStatusRunning || batch.Status == workqueue.BatchStatusProcessing {
-		derived := workqueue.OverallStatus(counts)
-		if derived == workqueue.BatchStatusComplete || derived == workqueue.BatchStatusFailed {
-			now := time.Now()
-			if err := db.Model(&Batch{}).Where("id = ? and status = ?", batchID, batch.Status).
-				Updates(map[string]interface{}{
-					"status":       derived,
-					"completed_at": now,
-				}).Error; err != nil {
-				return nil, fmt.Errorf("updating batch %s completion: %w", batchID, err)
-			}
-			resp.Status = derived
-		}
-	}
-
-	return resp, nil
+	return itemStatus, resp, nil
 }
 
 // classifyItemStates aggregates a slice of ItemStatus into counts by
