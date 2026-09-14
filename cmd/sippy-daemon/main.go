@@ -164,22 +164,12 @@ func NewSippyDaemonCommand() *cobra.Command {
 	return cmd
 }
 
-// setupRiverProcess creates and configures the River work queue process for
-// async symptom re-evaluation. It creates a pgx/v5 pool, runs River migrations,
-// registers workers, and returns a DaemonProcess adapter.
-// TODO: [lmeyer] I'd like to disentangle the process definition from the workers definition but
-// that seems hard; punting until we need to add unrelated workers in the future.
+// setupRiverProcess creates and configures the River work queue process for async symptom re-evaluation.
+// It creates a pgx/v5 pool, registers River workers, and returns a DaemonProcess adapter.
 func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, bigQueryClient *bigquery.Client, gcsClient *storage.Client, cacheClient cache.Cache) (sippyserver.DaemonProcess, error) {
 	pgxPool, err := workqueue.NewPgxV5Pool(ctx, f.DBFlags.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("creating pgx/v5 pool for River: %w", err)
-	}
-
-	// River schema is also migrated by "sippy migrate" so the API server can
-	// enqueue jobs. The daemon runs it too in case it starts before or without
-	// the migrate step (e.g. local development), otherwise the daemon exits.
-	if err := workqueue.MigrateRiverSchema(ctx, pgxPool); err != nil {
-		return nil, err
 	}
 
 	artifactMgr := jobartifacts.NewManager(ctx)
@@ -187,6 +177,10 @@ func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, big
 		bigQueryClient, gcsClient, f.GoogleCloudFlags.StorageBucket,
 		dbc, cacheClient, artifactMgr,
 	)
+
+	// TODO: [lmeyer] I'd like to disentangle the client definition from the workers definition but
+	// that seems hard when one worker needs the client to reference another; punting until we need
+	// to add unrelated workers in the future.
 
 	workers := river.NewWorkers()
 	batchWorker := symptomre.NewProcessBatchWorker(reEvaluator, dbc.DB)
