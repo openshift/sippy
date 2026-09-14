@@ -108,6 +108,7 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-interop-opp-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-opp--ocp-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
@@ -133,6 +134,7 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
         OR j.prowjob_job_name LIKE 'release-%%'
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-interop-opp-%%'
+		OR j.prowjob_job_name LIKE 'periodic-ci-%%-opp--ocp-%%'
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
@@ -565,6 +567,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-oadp-", "oadp"},
 		{"-lp-chaos-", "mpict"},    // MPEX Integrity Engineering Chaos Team
 		{"-interop-opp-", "mpiit"}, // MPEX Integrity Engineering Interop Team (OPP)
+		{"-opp--ocp-", "mpiit"},    // MPEX Integrity Engineering Interop Team (OPP) - new naming
 		{"-lp-interop-", "mpiit"},  // MPEX Integrity Engineering Interop Team
 		{"-lp-ocp-compat-", "lp"},  // Layered Product Teams
 	}
@@ -1394,7 +1397,8 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-coo-", "lp-interop-coo"},
 		{"-acm-cnv-", "lp-interop--acm-virt"},
 		{"-acm-virt-", "lp-interop--acm-virt"},
-		{"-interop-opp-", "lp-interop--OPP"},
+		{"-opp--ocp-", "lp-interop--OPP"},    // New OPP jobs in RedHatQE/interop-testing
+		{"-interop-opp-", "lp-interop--OPP"}, // Old OPP jobs in stolostron/policy-collection (deprecated)
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},
