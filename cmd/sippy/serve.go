@@ -199,21 +199,17 @@ func NewServeCommand() *cobra.Command {
 			)
 
 			// Wire up async symptom re-evaluation (insert-only River client).
-			pgxPool, err := workqueue.NewPgxV5Pool(context.Background(), f.DBFlags.DSN)
-			if err != nil {
-				log.WithError(err).Warn("unable to create pgx/v5 pool for River, async re-evaluation will be unavailable")
+			if pgxPool, err := workqueue.NewPgxV5Pool(context.Background(), f.DBFlags.DSN); err != nil {
+				log.WithError(err).Fatal("unable to create pgx/v5 pool for River work queues")
+			} else if riverClient, err := workqueue.NewInsertOnlyClient(pgxPool); err != nil {
+				pgxPool.Close()
+				log.WithError(err).Fatal("unable to create insert-only River client")
 			} else {
-				riverClient, err := workqueue.NewInsertOnlyClient(pgxPool)
-				if err != nil {
-					log.WithError(err).Warn("unable to create insert-only River client, async re-evaluation will be unavailable")
-					pgxPool.Close()
-				} else {
-					server.SetSymptomReEvaluation(
-						symptomre.NewSubmitter(dbc.DB, riverClient),
-						symptomre.NewStatusQuerier(dbc.DB),
-						symptomre.NewBatchCanceller(dbc.DB, riverClient),
-					)
-				}
+				server.SetSymptomReEvaluation(
+					symptomre.NewSubmitter(dbc.DB, riverClient),
+					symptomre.NewStatusQuerier(dbc.DB),
+					symptomre.NewBatchCanceller(dbc.DB, riverClient),
+				)
 			}
 
 			if f.APIFlags.MetricsAddr != "" {
