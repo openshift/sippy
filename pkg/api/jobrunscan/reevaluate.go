@@ -169,11 +169,11 @@ func (r *ReEvaluator) RefreshSymptomCache(ctx context.Context) (string, error) {
 // ErrPermanent wraps errors that should not be retried by River.
 var ErrPermanent = errors.New("permanent failure")
 
-// ReEvaluateOneFromCache re-evaluates a single job run using cached symptoms.
+// ReEvaluateRunSymptoms re-evaluates a single job run using cached symptoms.
 // Returns the evaluation result alongside any error that triggers River retries.
 // Permanent failures (e.g. missing job run) are wrapped with ErrPermanent so
 // the River worker can cancel instead of retrying.
-func (r *ReEvaluator) ReEvaluateOneFromCache(ctx context.Context, prowJobBuildID string, dryRun bool) (*ReEvaluationResult, error) {
+func (r *ReEvaluator) ReEvaluateRunSymptoms(ctx context.Context, prowJobBuildID string, dryRun bool) (*ReEvaluationResult, error) {
 	r.symptoms.mu.RLock()
 	symptoms := r.symptoms.symptoms
 	loaded := r.symptoms.loaded

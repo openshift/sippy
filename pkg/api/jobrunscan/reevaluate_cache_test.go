@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestReEvaluateOneFromCacheResult(t *testing.T) {
+func TestReEvaluateRunSymptomsResult(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		loaded    bool
@@ -22,7 +22,7 @@ func TestReEvaluateOneFromCacheResult(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &ReEvaluator{symptoms: symptomCache{loaded: tc.loaded, symptoms: tc.symptoms}}
-			result, err := r.ReEvaluateOneFromCache(context.Background(), "invalid", true)
+			result, err := r.ReEvaluateRunSymptoms(context.Background(), "invalid", true)
 			if tc.wantError {
 				require.Error(t, err)
 			} else {

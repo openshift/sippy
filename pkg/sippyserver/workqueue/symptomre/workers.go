@@ -153,7 +153,7 @@ type ReevaluateWorker struct {
 // NewReevaluateWorker creates a ReevaluateWorker that delegates to the
 // ReEvaluator's cached evaluation method.
 func NewReevaluateWorker(reEvaluator *jobrunscan.ReEvaluator) *ReevaluateWorker {
-	return &ReevaluateWorker{reEval: reEvaluator.ReEvaluateOneFromCache}
+	return &ReevaluateWorker{reEval: reEvaluator.ReEvaluateRunSymptoms}
 }
 
 // Work re-evaluates symptoms for a single job run. Transient errors trigger
