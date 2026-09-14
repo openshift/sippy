@@ -355303,7 +355303,7 @@ periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-3-18-nightly-4-2
     ContainerRuntime: runc
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: sdn
     NetworkAccess: default
@@ -355327,7 +355327,7 @@ periodic-ci-quay-quay-redhat-3.18-gcp-ocp422-e2e-install-gcp-gcs-3-18-nightly-4-
     ContainerRuntime: runc
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: sdn
     NetworkAccess: default
