@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/jackc/pgx/v5"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/api/jobrunscan"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -131,14 +132,15 @@ func NewSippyDaemonCommand() *cobra.Command {
 			}
 
 			// River work queue process for async symptom re-evaluation.
-			riverProcess, err := setupRiverProcess(context.Background(), f, dbc, bigQueryClient, gcsClient, cacheClient)
+			riverProcess, riverClient, err := setupRiverProcess(context.Background(), f, dbc, bigQueryClient, gcsClient, cacheClient)
 			if err != nil {
 				return errors.WithMessage(err, "couldn't set up River work queue")
 			}
 			processes = append(processes, riverProcess)
 
 			// Periodic cleanup of old completed batches and stale non-terminal batches.
-			processes = append(processes, symptomre.NewBatchCleanupProcess(dbc.DB))
+			canceller := symptomre.NewBatchCanceller(dbc.DB, riverClient)
+			processes = append(processes, symptomre.NewBatchCleanupProcess(dbc.DB, canceller))
 
 			daemonServer := sippyserver.NewDaemonServer(processes)
 
@@ -165,11 +167,12 @@ func NewSippyDaemonCommand() *cobra.Command {
 }
 
 // setupRiverProcess creates and configures the River work queue process for async symptom re-evaluation.
-// It creates a pgx/v5 pool, registers River workers, and returns a DaemonProcess adapter.
-func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, bigQueryClient *bigquery.Client, gcsClient *storage.Client, cacheClient cache.Cache) (sippyserver.DaemonProcess, error) {
+// It creates a pgx/v5 pool, registers River workers, and returns a DaemonProcess adapter
+// along with the River client for use by other processes.
+func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, bigQueryClient *bigquery.Client, gcsClient *storage.Client, cacheClient cache.Cache) (sippyserver.DaemonProcess, *river.Client[pgx.Tx], error) {
 	pgxPool, err := workqueue.NewPgxV5Pool(ctx, f.DBFlags.DSN)
 	if err != nil {
-		return nil, fmt.Errorf("creating pgx/v5 pool for River: %w", err)
+		return nil, nil, fmt.Errorf("creating pgx/v5 pool for River: %w", err)
 	}
 
 	artifactMgr := jobartifacts.NewManager(ctx)
@@ -202,14 +205,14 @@ func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, big
 	}
 	riverClient, err := workqueue.NewWorkerClient(pgxPool, workers, riverConfig)
 	if err != nil {
-		return nil, fmt.Errorf("creating River worker client: %w", err)
+		return nil, nil, fmt.Errorf("creating River worker client: %w", err)
 	}
 
 	// The ProcessBatchWorker needs the River client to insert individual jobs.
 	// Wire it after client creation to avoid a circular dependency.
 	batchWorker.SetRiverClient(riverClient)
 
-	return workqueue.NewRiverProcess(pgxPool, riverClient, reEvaluator), nil
+	return workqueue.NewRiverProcess(pgxPool, riverClient, reEvaluator), riverClient, nil
 }
 
 func main() {

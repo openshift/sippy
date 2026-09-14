@@ -175,8 +175,8 @@ func TestFunctionalBatchCleanup(t *testing.T) {
 		require.NoError(t, gormDB.Create(&BatchItem{BatchID: batchID, ItemKey: "cleanup-1"}).Error,
 			"test batch item creation should succeed")
 
-		process := NewBatchCleanupProcess(gormDB)
-		deleted, err := process.deleteCompletedBatches()
+		process := NewBatchCleanupProcess(gormDB, nil)
+		deleted, err := process.deleteCompletedBatches(context.Background())
 		require.NoError(t, err, "deleteCompletedBatches should succeed")
 		assert.GreaterOrEqual(t, deleted, int64(1), "at least one old batch should be deleted")
 
@@ -193,8 +193,8 @@ func TestFunctionalBatchCleanup(t *testing.T) {
 			Status: workqueue.BatchStatusComplete, CompletedAt: &oneDayAgo,
 		}).Error, "test batch creation should succeed")
 
-		process := NewBatchCleanupProcess(gormDB)
-		_, err := process.deleteCompletedBatches()
+		process := NewBatchCleanupProcess(gormDB, nil)
+		_, err := process.deleteCompletedBatches(context.Background())
 		require.NoError(t, err, "deleteCompletedBatches should succeed")
 
 		var count int64
@@ -202,7 +202,7 @@ func TestFunctionalBatchCleanup(t *testing.T) {
 		assert.Equal(t, int64(1), count, "recently completed batch should be preserved")
 	})
 
-	t.Run("marks stale non-terminal batches as failed", func(t *testing.T) {
+	t.Run("cancels stale non-terminal batches", func(t *testing.T) {
 		batchID := uuid.New()
 		require.NoError(t, gormDB.Create(&Batch{
 			ID: batchID, RequestedCount: 1, Status: workqueue.BatchStatusPending,
@@ -211,14 +211,24 @@ func TestFunctionalBatchCleanup(t *testing.T) {
 		require.NoError(t, gormDB.Model(&Batch{}).Where("id = ?", batchID).
 			Update("created_at", twoDaysAgo).Error, "backdating batch created_at should succeed")
 
-		process := NewBatchCleanupProcess(gormDB)
-		failed, err := process.failStaleBatches()
-		require.NoError(t, err, "failStaleBatches should succeed")
-		assert.GreaterOrEqual(t, failed, int64(1), "at least one stale batch should be marked failed")
+		process := NewBatchCleanupProcess(gormDB, nil)
+		// Wire a test cancel function that marks the batch cancelled in the DB
+		// (simulating what BatchCanceller does without requiring a River client).
+		process.cancelStale = func(ctx context.Context, id uuid.UUID) error {
+			now := time.Now().UTC()
+			return gormDB.Model(&Batch{}).Where("id = ?", id).Updates(map[string]interface{}{
+				"status":       workqueue.BatchStatusCancelled,
+				"completed_at": now,
+			}).Error
+		}
+
+		cancelled, err := process.cancelStaleBatches(context.Background())
+		require.NoError(t, err, "cancelStaleBatches should succeed")
+		assert.GreaterOrEqual(t, cancelled, 1, "at least one stale batch should be cancelled")
 
 		var batch Batch
 		require.NoError(t, gormDB.Take(&batch, "id = ?", batchID).Error, "batch should still exist")
-		assert.Equal(t, workqueue.BatchStatusFailed, batch.Status, "stale batch should be marked failed")
+		assert.Equal(t, workqueue.BatchStatusCancelled, batch.Status, "stale batch should be cancelled")
 		assert.NotNil(t, batch.CompletedAt, "stale batch should have completed_at set")
 	})
 }

@@ -29,10 +29,10 @@ func TestRetentionConstants(t *testing.T) {
 }
 
 func TestNewBatchCleanupProcess(t *testing.T) {
-	// NewBatchCleanupProcess requires a *gorm.DB, but we can verify the
-	// struct is created with default retention values by passing nil.
-	// The process won't be started, so a nil DB is safe here.
-	p := NewBatchCleanupProcess(nil)
+	// NewBatchCleanupProcess requires a *gorm.DB and *BatchCanceller, but we
+	// can verify the struct is created with default retention values by passing
+	// nil for both. The process won't be started, so nil values are safe here.
+	p := NewBatchCleanupProcess(nil, nil)
 	if p == nil {
 		t.Fatal("NewBatchCleanupProcess returned nil")
 	}
@@ -44,7 +44,7 @@ func TestNewBatchCleanupProcess(t *testing.T) {
 	}
 }
 
-// NOTE: Testing deleteCompletedBatches and failStaleBatches requires a real
+// NOTE: Testing deleteCompletedBatches and cancelStaleBatches requires a real
 // PostgreSQL database because the project conventions prohibit mocking storage
 // clients. These methods execute GORM queries that cannot be meaningfully tested
 // without a database connection. Integration tests using testcontainers-go
