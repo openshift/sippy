@@ -2,6 +2,8 @@ package symptomre
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -482,10 +484,10 @@ func TestFunctionalReevaluateWorker(t *testing.T) {
 		var calledID string
 		var calledDryRun bool
 		worker := &ReevaluateWorker{
-			reEval: func(_ context.Context, prowJobBuildID string, dryRun bool) error {
+			reEval: func(_ context.Context, prowJobBuildID string, dryRun bool) (*apijobrunscan.ReEvaluationResult, error) {
 				calledID = prowJobBuildID
 				calledDryRun = dryRun
-				return nil
+				return nil, nil
 			},
 		}
 
@@ -505,8 +507,8 @@ func TestFunctionalReevaluateWorker(t *testing.T) {
 
 	t.Run("propagates errors from reEvalFunc", func(t *testing.T) {
 		worker := &ReevaluateWorker{
-			reEval: func(_ context.Context, _ string, _ bool) error {
-				return fmt.Errorf("simulated evaluation failure")
+			reEval: func(_ context.Context, _ string, _ bool) (*apijobrunscan.ReEvaluationResult, error) {
+				return nil, fmt.Errorf("simulated evaluation failure")
 			},
 		}
 
@@ -518,4 +520,69 @@ func TestFunctionalReevaluateWorker(t *testing.T) {
 		assert.Contains(t, err.Error(), "simulated evaluation failure",
 			"error message should come from reEvalFunc")
 	})
+}
+
+func TestFunctionalRecordedOutput(t *testing.T) {
+	gormDB, cleanup := functionalTestSetup(t)
+	defer cleanup()
+	ctx := context.Background()
+	pool, err := workqueue.NewPgxV5Pool(ctx, os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN"))
+	require.NoError(t, err)
+	defer pool.Close()
+	for _, tc := range []struct {
+		name    string
+		status  apijobrunscan.ReEvalStatus
+		evalErr error
+		state   string
+	}{
+		{"success", apijobrunscan.ReEvalSuccess, nil, ItemStateCompleted},
+		{"permanent failure", apijobrunscan.ReEvalMissingError, apijobrunscan.ErrPermanent, ItemStateCancelled},
+		{"exhausted retries", apijobrunscan.ReEvalEvalError, errors.New("scan failed"), ItemStateDiscarded},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			queue := "output_test_" + uuid.NewString()
+			expected := apijobrunscan.ReEvaluationResult{ProwJobBuildID: uuid.NewString(), Status: tc.status, SymptomsEvaluated: 2, SymptomsMatched: []string{"example"}, Links: map[string]string{"symptom:example": "/api/jobs/symptoms/example"}}
+			if tc.evalErr != nil {
+				expected.Error = tc.evalErr.Error()
+			}
+			workers := river.NewWorkers()
+			river.AddWorker(workers, &ReevaluateWorker{reEval: func(_ context.Context, id string, dryRun bool) (*apijobrunscan.ReEvaluationResult, error) {
+				return &expected, tc.evalErr
+			}})
+			client, err := workqueue.NewWorkerClient(pool, workers, &river.Config{Queues: map[string]river.QueueConfig{queue: {MaxWorkers: 1}}})
+			require.NoError(t, err)
+			inserted, err := client.Insert(ctx, ReevaluateJobRunArgs{ProwJobBuildID: expected.ProwJobBuildID, DryRun: true}, &river.InsertOpts{Queue: queue, MaxAttempts: 1})
+			require.NoError(t, err)
+			batch := Batch{ID: uuid.New(), RequestedCount: 1, Status: workqueue.BatchStatusRunning}
+			require.NoError(t, gormDB.Create(&batch).Error)
+			require.NoError(t, gormDB.Create(&BatchItem{BatchID: batch.ID, ItemKey: expected.ProwJobBuildID, RiverJobID: &inserted.Job.ID}).Error)
+			querier := NewStatusQuerier(gormDB)
+			pending, err := querier.Query(ctx, batch.ID)
+			require.NoError(t, err)
+			require.Len(t, pending.Items, 1)
+			require.Empty(t, pending.Items[0].Result)
+			require.NoError(t, client.Start(ctx))
+			defer func() {
+				stopCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+				require.NoError(t, client.Stop(stopCtx))
+			}()
+			require.Eventually(t, func() bool {
+				response, err := querier.Query(ctx, batch.ID)
+				return err == nil && len(response.Items) == 1 && response.Items[0].State == tc.state
+			}, 10*time.Second, 50*time.Millisecond)
+			// A second batch linked after completion reads the same recorded output.
+			late := Batch{ID: uuid.New(), RequestedCount: 1, Status: workqueue.BatchStatusRunning}
+			require.NoError(t, gormDB.Create(&late).Error)
+			require.NoError(t, gormDB.Create(&BatchItem{BatchID: late.ID, ItemKey: expected.ProwJobBuildID, RiverJobID: &inserted.Job.ID}).Error)
+			for _, id := range []uuid.UUID{batch.ID, late.ID} {
+				response, err := querier.Query(ctx, id)
+				require.NoError(t, err)
+				require.Len(t, response.Items, 1)
+				var got apijobrunscan.ReEvaluationResult
+				require.NoError(t, json.Unmarshal(response.Items[0].Result, &got))
+				assert.Equal(t, expected, got)
+			}
+		})
+	}
 }

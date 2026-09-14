@@ -40,7 +40,7 @@ func (q *StatusQuerier) Query(ctx context.Context, batchID uuid.UUID) (*BatchSta
 
 	var items []ItemStatus
 	if err := db.Raw(`
-		SELECT bi.item_key,
+		SELECT bi.item_key, rj.metadata->'output' AS result,
 		       CASE WHEN bi.river_job_id IS NULL THEN @notEnqueued
 		            WHEN rj.id IS NULL THEN @orphaned
 		            ELSE rj.state::text END AS state

@@ -141,7 +141,7 @@ func (w *ProcessBatchWorker) finalizeBatch(batchID uuid.UUID, enqueued, deduped 
 // symptoms from the cached symptom definitions. Extracting this as a function
 // type field lets tests substitute a stub without requiring a full ReEvaluator
 // (which needs GCS and BigQuery credentials).
-type reEvalFunc func(ctx context.Context, prowJobBuildID string, dryRun bool) error
+type reEvalFunc func(ctx context.Context, prowJobBuildID string, dryRun bool) (*jobrunscan.ReEvaluationResult, error)
 
 // ReevaluateWorker handles individual ReevaluateJobRunArgs River jobs by
 // delegating to the ReEvaluator's cached symptom evaluation.
@@ -158,9 +158,14 @@ func NewReevaluateWorker(reEvaluator *jobrunscan.ReEvaluator) *ReevaluateWorker 
 
 // Work re-evaluates symptoms for a single job run. Transient errors trigger
 // River's retry logic (up to MaxAttemptsPerItem attempts with exponential
-// backoff). Permanent errors (e.g. missing job run) cancel the job immediately.
+// backoff). Results are recorded by River when the attempt finishes. Permanent errors (e.g. missing job run) cancel the job immediately.
 func (w *ReevaluateWorker) Work(ctx context.Context, job *river.Job[ReevaluateJobRunArgs]) error {
-	err := w.reEval(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
+	result, err := w.reEval(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
+	if result != nil {
+		if outputErr := river.RecordOutput(ctx, result); outputErr != nil {
+			return fmt.Errorf("recording re-evaluation output: %w", outputErr)
+		}
+	}
 	if err != nil && errors.Is(err, jobrunscan.ErrPermanent) {
 		return river.JobCancel(err)
 	}

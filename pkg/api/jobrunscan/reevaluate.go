@@ -170,31 +170,31 @@ func (r *ReEvaluator) RefreshSymptomCache(ctx context.Context) (string, error) {
 var ErrPermanent = errors.New("permanent failure")
 
 // ReEvaluateOneFromCache re-evaluates a single job run using cached symptoms.
-// Returns an error if evaluation fails, which triggers River's retry logic.
+// Returns the evaluation result alongside any error that triggers River retries.
 // Permanent failures (e.g. missing job run) are wrapped with ErrPermanent so
 // the River worker can cancel instead of retrying.
-func (r *ReEvaluator) ReEvaluateOneFromCache(ctx context.Context, prowJobBuildID string, dryRun bool) error {
+func (r *ReEvaluator) ReEvaluateOneFromCache(ctx context.Context, prowJobBuildID string, dryRun bool) (*ReEvaluationResult, error) {
 	r.symptoms.mu.RLock()
 	symptoms := r.symptoms.symptoms
 	loaded := r.symptoms.loaded
 	r.symptoms.mu.RUnlock()
 
 	if !loaded {
-		return fmt.Errorf("symptom cache not initialized; RefreshSymptomCache must be called first")
+		return nil, fmt.Errorf("symptom cache not initialized; RefreshSymptomCache must be called first")
 	}
 	if len(symptoms) == 0 {
 		log.Warn("symptom reEval: no active symptoms after filtering; nothing to evaluate")
-		return nil
+		return &ReEvaluationResult{ProwJobBuildID: prowJobBuildID, Status: ReEvalSuccess}, nil
 	}
 
 	result := r.reEvaluateOne(ctx, prowJobBuildID, symptoms, dryRun)
 	switch result.Status {
 	case ReEvalSuccess:
-		return nil
+		return &result, nil
 	case ReEvalMissingError:
-		return fmt.Errorf("%w: %s", ErrPermanent, result.Error)
+		return &result, fmt.Errorf("%w: %s", ErrPermanent, result.Error)
 	default:
-		return fmt.Errorf("re-evaluation of %s failed (%s): %s", prowJobBuildID, result.Status, result.Error)
+		return &result, fmt.Errorf("re-evaluation of %s failed (%s): %s", prowJobBuildID, result.Status, result.Error)
 	}
 }
 

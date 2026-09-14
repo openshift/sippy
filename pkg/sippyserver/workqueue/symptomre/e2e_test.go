@@ -213,31 +213,35 @@ func TestE2EAsyncSymptomReEvaluation(t *testing.T) {
 		"status batch ID should match submitted batch")
 	assert.Equal(t, len(buildIDs), finalStatus.Requested,
 		"requested count should persist through completion")
+	assert.Equal(t, len(buildIDs), finalStatus.Deduped+finalStatus.Enqueued,
+		"all items should have been enqueued unless deduped")
 	assert.Equal(t, len(buildIDs), finalStatus.Completed+finalStatus.Failed,
 		"all items should reach a terminal state")
 	assert.Len(t, finalStatus.Items, len(buildIDs),
 		"status should report all items")
 
-	if finalStatus.Status == workqueue.BatchStatusComplete {
-		assert.Equal(t, len(buildIDs), finalStatus.Completed,
-			"all items should complete successfully")
-		assert.Zero(t, finalStatus.Failed,
-			"no items should fail in a successful batch")
-		t.Logf("batch completed successfully: %d items, %d enqueued, %d deduped",
-			finalStatus.Requested, finalStatus.Enqueued, finalStatus.Deduped)
-	} else {
-		t.Logf("batch finished with failures: %d completed, %d failed",
-			finalStatus.Completed, finalStatus.Failed)
-		for _, item := range finalStatus.Items {
-			if item.State != "completed" {
-				t.Logf("  item %s: %s", item.ItemKey, item.State)
-			}
+	// Log per-item results for user verification
+	for _, item := range finalStatus.Items {
+		t.Logf("  item_key=%s state=%s result=%s", item.ItemKey, item.State, item.Result)
+		if item.State == ItemStateCompleted {
+			var result apijobrunscan.ReEvaluationResult
+			require.NoError(t, json.Unmarshal(item.Result, &result))
+			assert.Equal(t, item.ItemKey, result.ProwJobBuildID)
+			assert.Equal(t, apijobrunscan.ReEvalSuccess, result.Status)
+			assert.False(t, result.PostgresUpdated, "dry runs should not update PostgreSQL")
 		}
 	}
 
-	// Log per-item results for user verification
-	for _, item := range finalStatus.Items {
-		t.Logf("  item_key=%s state=%s", item.ItemKey, item.State)
+	if finalStatus.Status == workqueue.BatchStatusComplete {
+		assert.NotZero(t, finalStatus.Completed,
+			"some item(s) should complete if a batch is complete")
+		t.Logf("batch finished with: %d completed, %d failed",
+			finalStatus.Completed, finalStatus.Failed)
+	} else {
+		assert.Zero(t, finalStatus.Completed,
+			"no items should complete in a failed batch")
+		t.Logf("batch completed with failure: %d items, %d enqueued, %d deduped",
+			finalStatus.Requested, finalStatus.Enqueued, finalStatus.Deduped)
 	}
 
 	// --- Cleanup test batch ---

@@ -5,6 +5,7 @@
 package symptomre
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,8 +64,9 @@ type BatchStatusResponse struct {
 
 // ItemStatus reports the state of a single item within a batch.
 type ItemStatus struct {
-	ItemKey string `gorm:"column:item_key" json:"item_key"`
-	State   string `gorm:"column:state"    json:"state"`
+	Result  json.RawMessage `gorm:"column:result;type:jsonb" json:"result,omitempty"`
+	ItemKey string          `gorm:"column:item_key" json:"item_key"`
+	State   string          `gorm:"column:state"    json:"state"`
 }
 
 // ItemState represents the resolved state of a batch item. Most values come

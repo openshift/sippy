@@ -148,6 +148,13 @@ do not deduplicate against real runs.
 
 **Retries:** Individual per-run jobs retry up to 3 times with exponential backoff via River.
 
+**Results:** Batch status responses include a `result` per item with the latest recorded
+`ReEvaluationResult` (matched symptoms, labels, write counts, errors, and job-run/symptom links).
+The worker uses `river.RecordOutput` to save JSON in `river_job.metadata.output` when an attempt
+completes. Retries replace output when they record a new result. The status query reads that output
+through its River job join, so deduplicated items share the same result. Items omit `result` if no
+recorded output exists.
+
 **Cleanup:** A background process deletes completed batches after 7 days and stale non-terminal
 batches after 24 hours.
 
