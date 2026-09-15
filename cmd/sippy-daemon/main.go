@@ -99,12 +99,12 @@ func NewSippyDaemonCommand() *cobra.Command {
 				Command:     "sippy-daemon",
 				Environment: bqlabel.EnvDaemon,
 			}
-			bigQueryClient, err := f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+			bigQueryClient, err := f.BigQueryFlags.GetBigQueryClient(cmd.Context(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
 			if err != nil {
 				return errors.WithMessage(err, "couldn't get bigquery client")
 			}
 
-			gcsClient, err := gcs.NewGCSClient(context.TODO(),
+			gcsClient, err := gcs.NewGCSClient(cmd.Context(),
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.GoogleCloudFlags.OAuthClientCredentialFile,
 			)
@@ -116,7 +116,7 @@ func NewSippyDaemonCommand() *cobra.Command {
 
 			// PR commenting process (optional, gated by flag).
 			if f.GithubCommenterFlags.CommentProcessing {
-				githubClient := github.New(context.TODO(), github.OpenshiftOrg)
+				githubClient := github.New(cmd.Context(), github.OpenshiftOrg)
 				ghCommenter, err := commenter.NewGitHubCommenter(githubClient,
 					dbc, f.GithubCommenterFlags.ExcludeReposCommenting, f.GithubCommenterFlags.IncludeReposCommenting)
 				if err != nil {
@@ -132,7 +132,7 @@ func NewSippyDaemonCommand() *cobra.Command {
 			}
 
 			// River work queue process for async symptom re-evaluation.
-			riverProcess, riverClient, err := setupRiverProcess(context.Background(), f, dbc, bigQueryClient, gcsClient, cacheClient)
+			riverProcess, riverClient, err := setupRiverProcess(cmd.Context(), f, dbc, bigQueryClient, gcsClient, cacheClient)
 			if err != nil {
 				return errors.WithMessage(err, "couldn't set up River work queue")
 			}
