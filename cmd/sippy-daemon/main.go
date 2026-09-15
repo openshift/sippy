@@ -7,9 +7,16 @@ import (
 	"os"
 	"time"
 
+	"cloud.google.com/go/storage"
+	"github.com/jackc/pgx/v5"
+	"github.com/openshift/sippy/pkg/api/jobartifacts"
+	"github.com/openshift/sippy/pkg/api/jobrunscan"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/riverqueue/river"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -20,6 +27,8 @@ import (
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue/symptomre"
 	"github.com/openshift/sippy/pkg/version"
 )
 
@@ -74,44 +83,44 @@ func NewSippyDaemonCommand() *cobra.Command {
 				return errors.WithMessage(err, "error validating options")
 			}
 
+			// Shared clients used by multiple daemon processes.
+			dbc, err := f.DBFlags.GetDBClient()
+			if err != nil {
+				return errors.WithMessage(err, "couldn't get DB client")
+			}
+
+			cacheClient, err := f.CacheFlags.GetCacheClient()
+			if err != nil {
+				return errors.WithMessage(err, "couldn't get cache client")
+			}
+
+			opCtx := bqlabel.OperationalContext{
+				App:         bqlabel.AppSippy,
+				Command:     "sippy-daemon",
+				Environment: bqlabel.EnvDaemon,
+			}
+			bigQueryClient, err := f.BigQueryFlags.GetBigQueryClient(cmd.Context(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+			if err != nil {
+				return errors.WithMessage(err, "couldn't get bigquery client")
+			}
+
+			gcsClient, err := gcs.NewGCSClient(cmd.Context(),
+				f.GoogleCloudFlags.ServiceAccountCredentialFile,
+				f.GoogleCloudFlags.OAuthClientCredentialFile,
+			)
+			if err != nil {
+				return errors.WithMessage(err, "couldn't get GCS client")
+			}
+
 			processes := make([]sippyserver.DaemonProcess, 0)
 
+			// PR commenting process (optional, gated by flag).
 			if f.GithubCommenterFlags.CommentProcessing {
-				dbc, err := f.DBFlags.GetDBClient()
-				if err != nil {
-					return err
-				}
-
-				githubClient := github.New(context.TODO(), github.OpenshiftOrg)
+				githubClient := github.New(cmd.Context(), github.OpenshiftOrg)
 				ghCommenter, err := commenter.NewGitHubCommenter(githubClient,
 					dbc, f.GithubCommenterFlags.ExcludeReposCommenting, f.GithubCommenterFlags.IncludeReposCommenting)
 				if err != nil {
 					log.WithError(err).Error("CRITICAL error initializing GitHub commenter which prevents PR commenting")
-					return nil
-				}
-
-				cacheClient, err := f.CacheFlags.GetCacheClient()
-				if err != nil {
-					return errors.WithMessage(err, "couldn't get cache client")
-				}
-
-				opCtx := bqlabel.OperationalContext{
-					App:         bqlabel.AppSippy,
-					Command:     "sippy-daemon",
-					Environment: bqlabel.EnvDaemon,
-				}
-				var bigQueryClient *bigquery.Client
-				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
-				if err != nil {
-					return errors.WithMessage(err, "couldn't get bigquery client")
-				}
-
-				gcsClient, err := gcs.NewGCSClient(context.TODO(),
-					f.GoogleCloudFlags.ServiceAccountCredentialFile,
-					f.GoogleCloudFlags.OAuthClientCredentialFile,
-				)
-				if err != nil {
-					log.WithError(err).Error("CRITICAL error getting GCS client which prevents PR commenting")
 					return nil
 				}
 
@@ -121,6 +130,17 @@ func NewSippyDaemonCommand() *cobra.Command {
 				// could  lower to 3 seconds if we need, most writes likely won't have to delete
 				processes = append(processes, sippyserver.NewWorkProcessor(dbc, bigQueryClient, gcsClient.Bucket(f.GoogleCloudFlags.StorageBucket), cacheClient, ghCommenter, 10, 5*time.Minute, 5*time.Second, f.GithubCommenterFlags.CommentProcessingDryRun))
 			}
+
+			// River work queue process for async symptom re-evaluation.
+			riverProcess, riverClient, err := setupRiverProcess(cmd.Context(), f, dbc, bigQueryClient, gcsClient, cacheClient)
+			if err != nil {
+				return errors.WithMessage(err, "couldn't set up River work queue")
+			}
+			processes = append(processes, riverProcess)
+
+			// Periodic cleanup of old completed batches and stale non-terminal batches.
+			canceller := symptomre.NewBatchCanceller(dbc.DB, riverClient)
+			processes = append(processes, symptomre.NewBatchCleanupProcess(dbc.DB, canceller))
 
 			daemonServer := sippyserver.NewDaemonServer(processes)
 
@@ -144,6 +164,55 @@ func NewSippyDaemonCommand() *cobra.Command {
 
 	f.BindFlags(cmd.Flags())
 	return cmd
+}
+
+// setupRiverProcess creates and configures the River work queue process for async symptom re-evaluation.
+// It creates a pgx/v5 pool, registers River workers, and returns a DaemonProcess adapter
+// along with the River client for use by other processes.
+func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, bigQueryClient *bigquery.Client, gcsClient *storage.Client, cacheClient cache.Cache) (sippyserver.DaemonProcess, *river.Client[pgx.Tx], error) {
+	pgxPool, err := workqueue.NewPgxV5Pool(ctx, f.DBFlags.DSN)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating pgx/v5 pool for River: %w", err)
+	}
+
+	artifactMgr := jobartifacts.NewManager(ctx)
+	reEvaluator := jobrunscan.NewReEvaluator(
+		bigQueryClient, gcsClient, f.GoogleCloudFlags.StorageBucket,
+		dbc, cacheClient, artifactMgr,
+	)
+
+	// TODO: [lmeyer] I'd like to disentangle the client definition from the workers definition but
+	// that seems hard when one worker needs the client to reference another; punting until we need
+	// to add unrelated workers in the future.
+
+	workers := river.NewWorkers()
+	batchWorker := symptomre.NewProcessBatchWorker(reEvaluator, dbc.DB)
+	reEvalWorker := symptomre.NewReevaluateWorker(reEvaluator)
+	river.AddWorker(workers, batchWorker)
+	river.AddWorker(workers, reEvalWorker)
+
+	riverConfig := &river.Config{
+		Queues: map[string]river.QueueConfig{
+			symptomre.BatchQueue: {MaxWorkers: 1},
+			symptomre.ItemQueue:  {MaxWorkers: 12},
+		},
+		// Keep terminal River jobs for 8 days, slightly longer than the 7-day
+		// batch retention so status queries on recent batches can still resolve
+		// individual job outcomes via the LEFT JOIN on river_job.
+		CompletedJobRetentionPeriod: 8 * 24 * time.Hour,
+		CancelledJobRetentionPeriod: 8 * 24 * time.Hour,
+		DiscardedJobRetentionPeriod: 8 * 24 * time.Hour,
+	}
+	riverClient, err := workqueue.NewWorkerClient(pgxPool, workers, riverConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating River worker client: %w", err)
+	}
+
+	// The ProcessBatchWorker needs the River client to insert individual jobs.
+	// Wire it after client creation to avoid a circular dependency.
+	batchWorker.SetRiverClient(riverClient)
+
+	return workqueue.NewRiverProcess(pgxPool, riverClient, reEvaluator), riverClient, nil
 }
 
 func main() {

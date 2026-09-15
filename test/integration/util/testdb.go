@@ -175,6 +175,15 @@ func createTemplateDB(baseDSN string) error {
 // a *db.DB connected to it. The database is dropped when the test finishes.
 func NewTestDB(t *testing.T, pc *PostgresContainer) *db.DB {
 	t.Helper()
+	dbc, _ := NewTestDBWithDSN(t, pc)
+	return dbc
+}
+
+// NewTestDBWithDSN also returns the cloned database's DSN for tests that need
+// another driver, such as River's pgx/v5 pool. Close extra connections with
+// t.Cleanup so they are closed before the database is dropped.
+func NewTestDBWithDSN(t *testing.T, pc *PostgresContainer) (*db.DB, string) {
+	t.Helper()
 
 	dbName := fmt.Sprintf("test_%s_%d", sanitize(t.Name()), time.Now().UnixNano())
 
@@ -204,7 +213,7 @@ func NewTestDB(t *testing.T, pc *PostgresContainer) *db.DB {
 		dropTestDB(t, pc.baseDSN, dbName)
 	})
 
-	return dbc
+	return dbc, testDSN
 }
 
 func dropTestDB(t *testing.T, dsn, dbName string) {

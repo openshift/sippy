@@ -1,0 +1,152 @@
+version: "2"
+
+linters:
+  default: all
+
+  disable:
+    # disabled, but which we should enable with discussion
+    - wrapcheck # checks that errors are wrapped; currently not done anywhere
+
+    # disabled because we're not compliant, but which we should think about
+    - exhaustruct # checks that properties in structs are exhaustively defined; may be a good idea
+    - testpackage # requires tests in test packages like `river_test`
+
+    # disabled because it's deprecated, and `default: all` already enables its
+    # replacement (`gomodguard_v2`)
+    - gomodguard
+
+    # disabled because they're annoying/bad
+    - cyclop # screams into the void at "cyclomatic complexity"
+    - funcorder # very particular about where unexported functions can go, lots of churn.
+    - funlen # screams when functions are more than 60 lines long; what are we even doing here guys
+    - goconst # wants repeated test strings and other obvious literals to be constants; lots of churn.
+    - interfacebloat # we do in fact want >10 methods on the Adapter interface or wherever we see fit.
+    - gocognit # yells that "cognitive complexity" is too high; why
+    - gocyclo # ANOTHER "cyclomatic complexity" checker (see also "cyclop" and "gocyclo")
+    - godox # bans TODO statements; total non-starter at the moment
+    - err113 # wants all errors to be defined as variables at the package level; quite obnoxious
+    - maintidx # ANOTHER ANOTHER "cyclomatic complexity" lint (see also "cyclop" and "gocyclo")
+    - mnd # detects "magic numbers", which it defines as any number; annoying
+    - nestif # yells when if blocks are nested; what planet do these people come from?
+    - noinlineerr # disallows `if err := ...`; because why miss an opportunity to leak variables out of scope?
+    - ireturn # bans returning interfaces; questionable as is, but also buggy as hell; very, very annoying
+    - lll # restricts maximum line length; annoying
+    - nlreturn # requires a blank line before returns; annoying
+    - unqueryvet # bans all use of `SELECT *`; just ... sigh
+    - wsl # a bunch of style/whitespace stuff; annoying
+    - wsl_v5 # a second version of the first annoying wsl; how nice
+
+  settings:
+    depguard:
+      rules:
+        all:
+          files: ["$all"]
+          deny:
+            - desc: Use `github.com/google/uuid` package for UUIDs instead.
+              pkg: github.com/xtgo/uuid
+        not-test:
+          files: ["!$test"]
+          deny:
+            - desc: Don't use `dbadaptertest` package outside of test environments.
+              pkg: github.com/riverqueue/river/internal/dbadaptertest
+            - desc: Don't use `riverinternaltest` package outside of test environments.
+              pkg: github.com/riverqueue/river/internal/riverinternaltest
+
+        # The next two blocks have the same intent: don't allow testsignal,
+        # which is used in non-test code, to have non-stdlib dependencies.
+        # Previously, we ran into a problem where it was accidentally importing
+        # riversharedtest, which was importing Goleak, Testify, YAML (through
+        # Testify), etc. which added 10 kB overhead to all binaries built with
+        # River. testsignal does use testutil, so the second block makes sure
+        # that testutil has no stdlib dependencies so that testsignal doesn't
+        # pick one up transitively.
+        testsignal-no-test-deps:
+          files:
+            - "**/testsignal/*.go"
+            - "!$test"
+          allow:
+            - $gostd
+            - "github.com/riverqueue/river/rivershared/util/testutil$"
+        testutil-no-test-deps:
+          files:
+            - "**/util/testutil/*.go"
+            - "!$test"
+          allow:
+            - $gostd
+
+    forbidigo:
+      forbid:
+        - msg: Use `require` variants instead.
+          pattern: ^assert\.
+        - msg: Use `Func` suffix for function variables instead.
+          pattern: Fn\b
+        - msg: Use built-in `max` function instead.
+          pattern: \bmath\.Max\b
+        - msg: Use built-in `min` function instead.
+          pattern: \bmath\.Min\b
+
+    gomoddirectives:
+      replace-local: true
+
+    gosec:
+      excludes:
+        - G404 # use of non-crypto random; overly broad for our use case
+
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
+
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+
+    testifylint:
+      enable-all: true
+      disable:
+        - go-require
+
+    varnamelen:
+      ignore-names:
+        - db
+        - eg
+        - f
+        - i
+        - id
+        - j
+        - mu
+        - r
+        - sb # common convention for string builder
+        - t
+        - tb
+        - tt # common convention for table tests
+        - tx
+        - w
+        - wg
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: (.+)\.go$
+        text: Error return value of .(\w+\.Rollback(.*)). is not checked
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+
+  settings:
+    gci:
+      sections:
+        - Standard
+        - Default
+        - Prefix(github.com/riverqueue)
+        - Prefix(riverqueue.com/riverpro)
