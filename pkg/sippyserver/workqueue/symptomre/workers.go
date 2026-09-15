@@ -71,7 +71,11 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 	}
 
 	enqueued, deduped, err := w.fanOutItems(ctx, batchID, items, batch.DryRun)
-	if err != nil {
+	if err != nil { // attempt to mark the batch failed so client retries ASAP
+		if err2 := w.gormDB.Model(&Batch{}).Where("id = ?", batchID).
+			Update("status", workqueue.BatchStatusFailed).Error; err2 != nil {
+			logger.WithError(err2).Errorf("couldn't update batch %s status after failed fanout", batchID)
+		}
 		return err
 	}
 
