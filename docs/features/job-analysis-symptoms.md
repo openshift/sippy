@@ -58,7 +58,8 @@ Symptoms and labels are created and managed through:
 
 - **Sippy REST API** - full CRUD at `/api/jobs/symptoms` and `/api/jobs/labels`.
 - **JAQ UI** - the Job Artifact Query dialog (available from test details and job runs pages) can
-  define a query, match it against job runs, and save it as a symptom definition.
+  define a query, match it against job runs, and save it as a symptom definition. New labels can
+  include one or more associated Jira issue keys.
 - **Seed data** - `cmd/sippy/seed_data.go` bootstraps built-in label/symptom definitions.
 - **Client library** - `pkg/sippyclient/jobrunscan/` provides a Go client used by the cloud function
   and CLI tools.
@@ -109,6 +110,8 @@ Labels are relevant in several Sippy pages:
 - JAQ dialog - symptom management and label display.
 - Component Readiness test details - failed sample runs are summarized by label, with links to see sample-release job runs filtered by any label.
 - Component Readiness triage details - failed runs across the triage's regressions are summarized by label with links to label-filtered job-runs.
+- Label detail views and Component Readiness label tables link associated Jira issues from each
+  label definition. The Spyglass HTML summary includes the same issue links.
 - Re-evaluation controls - button in the JAQ dialog action bar. Triggers retroactive symptom
   matching for selected (or all visible) job runs in the dialog (requires SSO authentication
   via the write-enabled deployment).
@@ -140,7 +143,7 @@ removed, re-evaluating produces the correct result. Manually-applied labels (tho
 
 | Path | Contents |
 |------|----------|
-| `pkg/db/models/jobrunscan/` | Data models: `Symptom`, `Label`, `Metadata` structs and their Postgres table mappings. |
+| `pkg/db/models/jobrunscan/` | Data models: `Symptom`, `Label`, `Metadata` structs and their Postgres table mappings. Label definitions include associated Jira issue keys in `bugs`. |
 | `pkg/db/models/job_labels.go` | `JobRunLabel` - BigQuery row schema for the `job_labels` table. |
 | `pkg/db/models/prow.go` | `ProwJobRun.Labels` - the label array stored in Postgres. |
 | `pkg/db/models/triage.go` | `TriageSymptom` - junction table linking symptoms to triage records. |
@@ -154,7 +157,8 @@ removed, re-evaluating produces the correct result. Manually-applied labels (tho
 | `pkg/dataloader/prowloader/prow.go` | `GatherLabelsFromBQ` - reads labels from BQ during fetchdata. |
 | `pkg/api/componentreadiness/regressiontracker.go` | `SyncTriageSymptoms` - links symptoms to triage records. |
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
-| `sippy-ng/src/component_readiness/JobArtifactQuery.js` | JAQ dialog including symptom creation UI. |
+| `sippy-ng/src/component_readiness/JobArtifactQuery.jsx` | JAQ dialog including symptom creation UI. |
+| `sippy-ng/src/components/JiraBugLinks.jsx` | Jira key validation, normalization, and link rendering for labels. |
 | `sippy-ng/src/component_readiness/TriageSymptomLabels.jsx` | Failed-run label summary used on Component Readiness test and triage details pages. |
 | `sippy-ng/src/component_readiness/TestDetailsReport.jsx` | Builds the test details label summary from failed sample job runs. |
 | `sippy-ng/src/component_readiness/Triage.jsx` | Builds the triage label summary from stored regression job runs. |
@@ -183,7 +187,7 @@ documentation.
 | Store | What | Purpose |
 |-------|------|---------|
 | PostgreSQL `job_run_symptoms` | Symptom definitions | Authoritative source for symptom rules. |
-| PostgreSQL `job_run_labels` | Label definitions | Authoritative source for label metadata. |
+| PostgreSQL `job_run_labels` | Label definitions and associated Jira keys | Authoritative source for label metadata. |
 | PostgreSQL `prow_job_runs.labels` | Applied label IDs per job run | Sippy queries and UI display. |
 | PostgreSQL `release_job_runs.labels` | Applied label IDs per payload job run | Sippy queries and UI display. |
 | PostgreSQL `triage_symptoms` | Symptom↔triage associations | Triage UI symptom summaries. |

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"net/url"
 	"path"
 	"sort"
 	"strings"
@@ -20,7 +21,10 @@ import (
 	h "maragu.dev/gomponents/html"
 )
 
-const BucketLabelsPrefix = "artifacts/job_labels/"
+const (
+	BucketLabelsPrefix = "artifacts/job_labels/"
+	jiraIssueURLPrefix = "https://redhat.atlassian.net/browse/"
+)
 
 // JobRunBucketLabelContainer is a schema-specifying container for writing a label file to the prow bucket.
 // for incompatible schema changes just add another version with a different type and tag
@@ -308,8 +312,26 @@ func labelSection(instances []JobRunBucketLabelContainer) g.Node {
 			h.Span(h.Class("label-name"), g.Text(firstLabel.Label.LabelTitle)),
 		),
 		g.If(firstLabel.Label.Explanation != "", markDownEl),
+		g.If(len(firstLabel.Label.Bugs) > 0, jiraBugLinks(firstLabel.Label.Bugs)),
 		g.Group(matchInstances(instances)),
 	)
+}
+
+// jiraBugLinks renders the Jira issues associated with a label.
+func jiraBugLinks(bugs []string) g.Node {
+	links := make([]g.Node, 0, len(bugs)*2-1)
+	for i, bug := range bugs {
+		if i > 0 {
+			links = append(links, g.Text(", "))
+		}
+		links = append(links, h.A(
+			h.Href(jiraIssueURLPrefix+url.PathEscape(bug)),
+			h.Target("_blank"),
+			h.Rel("noopener noreferrer"),
+			g.Text(bug),
+		))
+	}
+	return h.P(g.Text("Bugs: "), g.Group(links))
 }
 
 // matchInstances generates elements for all match instances
