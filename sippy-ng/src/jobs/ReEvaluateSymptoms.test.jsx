@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import ReEvaluateButton from './ReEvaluateSymptoms'
 import userEvent from '@testing-library/user-event'
@@ -11,6 +11,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  cleanup()
   vi.useRealTimers()
 })
 
@@ -451,9 +452,18 @@ describe('ReEvaluateButton', () => {
     )
     expect(deleteCall).toBeDefined()
     expect(deleteCall[0]).toContain('batch-cancel2')
+    expect(
+      screen.getByRole('button', { name: /Re-evaluate/ })
+    ).not.toBeDisabled()
+    expect(global.fetch).toHaveBeenCalledTimes(3)
+    await act(async () => {
+      vi.advanceTimersByTime(10000)
+    })
+    expect(global.fetch).toHaveBeenCalledTimes(3)
   })
 
   it('stops polling and shows error after 5 consecutive poll failures', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     global.fetch = vi
       .fn()
       .mockResolvedValueOnce(submitResponse('batch-err', 2))
@@ -466,12 +476,20 @@ describe('ReEvaluateButton', () => {
       userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
     })
 
-    // Advance through 5 poll intervals to trigger 5 consecutive failures.
-    for (let i = 0; i < 5; i++) {
+    // Four failures must leave the run active.
+    for (let i = 0; i < 4; i++) {
       await act(async () => {
         vi.advanceTimersByTime(2500)
       })
     }
+
+    expect(global.fetch).toHaveBeenCalledTimes(5)
+    expect(screen.getByRole('button', { name: /Re-evaluate/ })).toBeDisabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
 
     await waitFor(() => {
       expect(
@@ -482,6 +500,105 @@ describe('ReEvaluateButton', () => {
     })
 
     // Button should be re-enabled after polling stops.
+    expect(
+      screen.getByRole('button', { name: /Re-evaluate/ })
+    ).not.toBeDisabled()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(global.fetch).toHaveBeenCalledTimes(6)
+    await act(async () => {
+      vi.advanceTimersByTime(10000)
+    })
+    expect(global.fetch).toHaveBeenCalledTimes(6)
+  })
+
+  it.each(['complete', 'failed', 'cancelled'])(
+    'stops polling when the batch is %s',
+    async (status) => {
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce(submitResponse('batch-terminal', 1))
+        .mockResolvedValue(
+          statusResponse('batch-terminal', {
+            status,
+            completed: status === 'complete' ? 1 : 0,
+            failed: status === 'failed' ? 1 : 0,
+            pending: 0,
+          })
+        )
+      render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
+      await act(async () => {
+        userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+      expect(
+        screen.getByRole('button', { name: /Re-evaluate/ })
+      ).not.toBeDisabled()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+      await act(async () => {
+        vi.advanceTimersByTime(10000)
+      })
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+    }
+  )
+
+  it('clears the polling interval on unmount', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-unmount', 1))
+      .mockResolvedValue(statusResponse('batch-unmount'))
+    const { unmount } = render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+
+    unmount()
+    await act(async () => {
+      vi.advanceTimersByTime(10000)
+    })
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('resets consecutive poll errors after a successful poll', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-recover', 1))
+    for (let i = 0; i < 4; i++) {
+      global.fetch.mockRejectedValueOnce(new Error('network error'))
+    }
+    global.fetch
+      .mockResolvedValueOnce(statusResponse('batch-recover'))
+      .mockRejectedValue(new Error('network error'))
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+    // Four errors, one success, then four more errors must keep polling.
+    for (let i = 0; i < 9; i++) {
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+    }
+    expect(global.fetch).toHaveBeenCalledTimes(10)
+    expect(screen.getByRole('button', { name: /Re-evaluate/ })).toBeDisabled()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500)
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Lost connection to batch status after 5 failed attempts.'
+    )
     expect(
       screen.getByRole('button', { name: /Re-evaluate/ })
     ).not.toBeDisabled()
