@@ -44,6 +44,9 @@ func NewSubmitter(gormDB *gorm.DB, riverClient *river.Client[pgx.Tx]) *Submitter
 // transactions: if the GORM write succeeds but the River insert fails, the
 // batch remains in "pending" status until resubmitted or cleaned up.
 func (s *Submitter) Submit(ctx context.Context, prowJobBuildIDs []string, dryRun bool) (*SubmitResult, error) {
+	if len(prowJobBuildIDs) == 0 {
+		return nil, fmt.Errorf("no prowJobBuildIDs provided")
+	}
 	batchID := uuid.New()
 	batch := Batch{
 		ID:             batchID,
