@@ -462,6 +462,85 @@ describe('ReEvaluateButton', () => {
     expect(global.fetch).toHaveBeenCalledTimes(3)
   })
 
+  it('prevents duplicate cancellation requests while cancellation is pending', async () => {
+    let resolveCancel
+    const cancelRequest = new Promise((resolve) => {
+      resolveCancel = resolve
+    })
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-cancel-pending', 1))
+      .mockReturnValueOnce(cancelRequest)
+      .mockResolvedValue(
+        statusResponse('batch-cancel-pending', { status: 'cancelled' })
+      )
+
+    render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+    await act(async () => {
+      userEvent.click(cancelButton)
+    })
+    expect(cancelButton).toBeDisabled()
+    await act(async () => {
+      userEvent.click(cancelButton)
+      userEvent.click(cancelButton)
+    })
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      '/api/jobs/runs/reevaluate/batch-cancel-pending',
+      expect.objectContaining({ method: 'DELETE' })
+    )
+
+    await act(async () => {
+      resolveCancel(
+        statusResponse('batch-cancel-pending', { status: 'cancelled' })
+      )
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Batch cancelled.')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Cancel failed')
+    expect(
+      screen.queryByRole('button', { name: 'Cancel' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('stops the run and shows an error after a failed cancellation', async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(submitResponse('batch-cancel-retry', 1))
+      .mockResolvedValueOnce(httpErrorResponse(503, 'Service Unavailable'))
+    render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+    })
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+    await act(async () => {
+      userEvent.click(cancelButton)
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Cancel failed: Service Unavailable'
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Cancel' })
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Re-evaluate/ })
+    ).not.toBeDisabled()
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      '/api/jobs/runs/reevaluate/batch-cancel-retry',
+      expect.objectContaining({ method: 'DELETE' })
+    )
+    await act(async () => {
+      vi.advanceTimersByTime(10000)
+    })
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+  })
+
   it('stops polling and shows error after 5 consecutive poll failures', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     global.fetch = vi

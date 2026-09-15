@@ -112,6 +112,7 @@ export default function ReEvaluateButton({
   disabled = false,
 }) {
   const [running, setRunning] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [progress, setProgress] = useState(null)
   const [snackbar, setSnackbar] = useState(null)
   const pollTimerRef = useRef(null)
@@ -210,6 +211,7 @@ export default function ReEvaluateButton({
             handleBatchComplete(statusData)
           }
         } catch (err) {
+          if (pollTimerRef.current == null) return
           consecutiveErrorsRef.current += 1
           console.error('Error polling batch status:', err)
           if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_POLL_ERRORS) {
@@ -259,7 +261,9 @@ export default function ReEvaluateButton({
   }
 
   const handleCancel = async () => {
-    if (!batchIDRef.current) return
+    if (!batchIDRef.current || cancelling) return
+    setCancelling(true)
+    stopPolling()
     try {
       const statusData = await cancelBatch(batchIDRef.current)
       handleBatchComplete({
@@ -270,10 +274,13 @@ export default function ReEvaluateButton({
         status: 'cancelled',
       })
     } catch (err) {
+      setRunning(false)
       setSnackbar({
         severity: 'error',
         message: `Cancel failed: ${err.message}`,
       })
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -298,7 +305,12 @@ export default function ReEvaluateButton({
             {progress.completed > 0 && ` (${progress.completed} succeeded)`}
             {progress.failed > 0 && `, ${progress.failed} failed`}
           </Typography>
-          <Button size="small" color="warning" onClick={handleCancel}>
+          <Button
+            size="small"
+            color="warning"
+            onClick={handleCancel}
+            disabled={cancelling}
+          >
             Cancel
           </Button>
         </Stack>
