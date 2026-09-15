@@ -2688,6 +2688,37 @@ func TestVariantSyncer(t *testing.T) {
 	}
 }
 
+func TestClusterDataNetworkStackVariant(t *testing.T) {
+	variantSyncer := OCPVariantLoader{config: &v1.SippyConfig{}}
+	tests := []struct {
+		name         string
+		job          string
+		variantsFile map[string]string
+		expected     string
+	}{
+		{
+			name: "metal KMS dual suffix uses cluster data network stack",
+			job:  "periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-encryption-kms-2-dual",
+			variantsFile: map[string]string{
+				"Release":      "5.1",
+				"NetworkStack": "Dual",
+			},
+			expected: "dual",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			variants := variantSyncer.CalculateVariantsForJob(
+				logrus.WithField("source", "TestClusterDataNetworkStackVariant"),
+				tt.job,
+				tt.variantsFile,
+			)
+			assert.Equal(t, tt.expected, variants[VariantNetworkStack])
+		})
+	}
+}
+
 func TestSyntheticReleaseVariants(t *testing.T) {
 	config := &v1.SippyConfig{
 		Releases: map[string]v1.ReleaseConfig{
