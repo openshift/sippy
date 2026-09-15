@@ -227,6 +227,17 @@ documentation.
 | PostgreSQL `workqueue_symptom_re_batch_items` | Per-job-run items within a batch | Tracks individual re-evaluation status and results. |
 | PostgreSQL `river_job` (River) | Queued background jobs | River's internal table for job scheduling, retries, and deduplication. |
 
+## Integration testing
+
+`test/integration/symptom_re_test.go` covers batch submission, fan-out, status, cancellation,
+cleanup, and recorded River output for symptom re-evaluation. It runs with `make integration` using
+the shared testcontainers PostgreSQL instance and isolated test databases, writing to a local
+`integration-junit.xml` file. To run these tests alone:
+
+```sh
+go test ./test/integration -run '^TestSymptomRe' -count=1 -v
+```
+
 ## Status
 
 The symptoms pipeline (definition → detection → labeling → display) is fully operational.

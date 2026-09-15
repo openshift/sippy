@@ -44,7 +44,7 @@ func TestNewBatchCleanupProcess(t *testing.T) {
 	}
 }
 
-// NOTE: Testing deleteCompletedBatches and cancelStaleBatches requires a real
+// NOTE: Testing DeleteCompletedBatches and CancelStaleBatches requires a real
 // PostgreSQL database because the project conventions prohibit mocking storage
 // clients. These methods execute GORM queries that cannot be meaningfully tested
 // without a database connection. Integration tests using testcontainers-go

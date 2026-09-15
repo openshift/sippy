@@ -1,22 +1,23 @@
-package symptomre
+package integration
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue/symptomre"
+	intutil "github.com/openshift/sippy/test/integration/util"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	apijobrunscan "github.com/openshift/sippy/pkg/api/jobrunscan"
@@ -25,69 +26,33 @@ import (
 	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
 )
 
-// These functional tests require a real PostgreSQL instance. They are skipped
-// unless the SIPPY_FUNCTIONAL_TEST_DSN environment variable is set. To run:
-//
-//	SIPPY_FUNCTIONAL_TEST_DSN=postgresql://postgres:password@localhost:5432/postgres \
-//	go test -v -run TestFunctional ./pkg/sippyserver/workqueue/symptomre/
-//
-// The tests create and clean up their own tables (workqueue_symptom_re_batches,
-// workqueue_symptom_re_batch_items) and run River migrations for the river_job
-// table that StatusQuerier joins against.
-//
-// ReevaluateWorker is tested via its function-field seam (reEvalFunc)
-// without requiring GCS or BigQuery credentials.
-
-// functionalTestSetup creates a pgx/v5 pool, runs River migrations, creates a
-// GORM DB, and auto-migrates the Batch/BatchItem tables. It returns the GORM
-// DB, a cleanup function, and a context. The test is skipped if the DSN env
-// var is not set.
-func functionalTestSetup(t *testing.T) (*gorm.DB, func()) {
+// symptomReTestSetup adds River and batch tables to an isolated test database.
+// The River pool is closed before the shared helper drops the database.
+func symptomReTestSetup(t *testing.T) (*gorm.DB, *pgxpool.Pool) {
 	t.Helper()
-
-	dsn := os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN")
-	if dsn == "" {
-		t.Skip("Set SIPPY_FUNCTIONAL_TEST_DSN to run functional tests")
-	}
-
+	dbc, dsn := intutil.NewTestDBWithDSN(t, pgContainer)
 	ctx := context.Background()
-
 	pool, err := workqueue.NewPgxV5Pool(ctx, dsn)
 	require.NoError(t, err, "pgx/v5 pool creation should succeed")
-
+	t.Cleanup(pool.Close)
 	migrator, err := rivermigrate.New(riverpgxv5.New(pool), nil)
 	require.NoError(t, err, "River migrator creation should succeed")
 	_, err = migrator.Migrate(ctx, rivermigrate.DirectionUp, nil)
 	require.NoError(t, err, "River schema migration should succeed")
-
-	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	require.NoError(t, err, "GORM connection should open")
-	require.NoError(t, gormDB.AutoMigrate(&Batch{}, &BatchItem{}, &jobrunscanmodels.Symptom{}),
+	require.NoError(t, dbc.DB.AutoMigrate(&symptomre.Batch{}, &symptomre.BatchItem{}, &jobrunscanmodels.Symptom{}),
 		"table auto-migration should succeed")
-
-	cleanup := func() {
-		gormDB.Exec("DELETE FROM workqueue_symptom_re_batch_items")
-		gormDB.Exec("DELETE FROM workqueue_symptom_re_batches")
-		pool.Close()
-	}
-
-	return gormDB, cleanup
+	return dbc.DB, pool
 }
 
-func TestFunctionalSubmitter(t *testing.T) {
-	gormDB, cleanup := functionalTestSetup(t)
-	defer cleanup()
+func TestSymptomReSubmitter(t *testing.T) {
+	gormDB, pool := symptomReTestSetup(t)
 
 	ctx := context.Background()
-	dsn := os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN")
-	pool, err := workqueue.NewPgxV5Pool(ctx, dsn)
-	require.NoError(t, err, "pgx/v5 pool for River client should succeed")
-	defer pool.Close()
 
 	riverClient, err := workqueue.NewInsertOnlyClient(pool)
 	require.NoError(t, err, "insert-only River client should be created")
 
-	submitter := NewSubmitter(gormDB, riverClient)
+	submitter := symptomre.NewSubmitter(gormDB, riverClient)
 
 	tests := []struct {
 		name   string
@@ -105,13 +70,13 @@ func TestFunctionalSubmitter(t *testing.T) {
 			assert.NotEqual(t, uuid.Nil, result.BatchID, "batch ID should be non-nil")
 			assert.Equal(t, len(tc.jobIDs), result.Requested, "requested count should match input length")
 
-			var batch Batch
+			var batch symptomre.Batch
 			require.NoError(t, gormDB.Take(&batch, "id = ?", result.BatchID).Error, "batch row should exist in DB")
 			assert.Equal(t, workqueue.BatchStatusPending, batch.Status, "new batch should be pending")
 			assert.Equal(t, len(tc.jobIDs), batch.RequestedCount, "batch requested count should match")
 			assert.Equal(t, tc.dryRun, batch.DryRun, "batch dry_run flag should propagate")
 
-			var items []BatchItem
+			var items []symptomre.BatchItem
 			require.NoError(t, gormDB.Where("batch_id = ?", result.BatchID).Find(&items).Error, "batch items should load")
 			assert.Len(t, items, len(tc.jobIDs), "item count should match input length")
 			for _, item := range items {
@@ -121,21 +86,16 @@ func TestFunctionalSubmitter(t *testing.T) {
 	}
 }
 
-func TestFunctionalStatusQuerier(t *testing.T) {
-	gormDB, cleanup := functionalTestSetup(t)
-	defer cleanup()
+func TestSymptomReStatusQuerier(t *testing.T) {
+	gormDB, pool := symptomReTestSetup(t)
 
 	ctx := context.Background()
-	dsn := os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN")
-	pool, err := workqueue.NewPgxV5Pool(ctx, dsn)
-	require.NoError(t, err, "pgx/v5 pool for River client should succeed")
-	defer pool.Close()
 
 	riverClient, err := workqueue.NewInsertOnlyClient(pool)
 	require.NoError(t, err, "insert-only River client should be created")
 
-	submitter := NewSubmitter(gormDB, riverClient)
-	querier := NewStatusQuerier(gormDB)
+	submitter := symptomre.NewSubmitter(gormDB, riverClient)
+	querier := symptomre.NewStatusQuerier(gormDB)
 
 	t.Run("query existing batch shows pending items", func(t *testing.T) {
 		result, err := submitter.Submit(ctx, []string{"status-1", "status-2"}, false)
@@ -150,7 +110,7 @@ func TestFunctionalStatusQuerier(t *testing.T) {
 		assert.Equal(t, 2, resp.Pending, "all items should be pending before daemon processing")
 		assert.Len(t, resp.Items, 2, "all items should appear in status response")
 		for _, item := range resp.Items {
-			assert.Equal(t, ItemStateNotEnqueued, item.State, "each item should be in not_enqueued state")
+			assert.Equal(t, symptomre.ItemStateNotEnqueued, item.State, "each item should be in not_enqueued state")
 		}
 	})
 
@@ -161,84 +121,75 @@ func TestFunctionalStatusQuerier(t *testing.T) {
 	})
 }
 
-func TestFunctionalBatchCleanup(t *testing.T) {
-	gormDB, cleanup := functionalTestSetup(t)
-	defer cleanup()
+func TestSymptomReBatchCleanup(t *testing.T) {
+	gormDB, pool := symptomReTestSetup(t)
+	riverClient, err := workqueue.NewInsertOnlyClient(pool)
+	require.NoError(t, err)
+	canceller := symptomre.NewBatchCanceller(gormDB, riverClient)
 
 	t.Run("deletes completed batches older than retention", func(t *testing.T) {
 		batchID := uuid.New()
 		eightDaysAgo := time.Now().UTC().Add(-8 * 24 * time.Hour)
-		require.NoError(t, gormDB.Create(&Batch{
+		require.NoError(t, gormDB.Create(&symptomre.Batch{
 			ID: batchID, RequestedCount: 1,
 			Status: workqueue.BatchStatusComplete, CompletedAt: &eightDaysAgo,
 		}).Error, "test batch creation should succeed")
-		require.NoError(t, gormDB.Create(&BatchItem{BatchID: batchID, ItemKey: "cleanup-1"}).Error,
+		require.NoError(t, gormDB.Create(&symptomre.BatchItem{BatchID: batchID, ItemKey: "cleanup-1"}).Error,
 			"test batch item creation should succeed")
 
-		process := NewBatchCleanupProcess(gormDB, nil)
-		deleted, err := process.deleteCompletedBatches(context.Background())
-		require.NoError(t, err, "deleteCompletedBatches should succeed")
+		process := symptomre.NewBatchCleanupProcess(gormDB, canceller)
+		deleted, err := process.DeleteCompletedBatches(context.Background())
+		require.NoError(t, err, "DeleteCompletedBatches should succeed")
 		assert.GreaterOrEqual(t, deleted, int64(1), "at least one old batch should be deleted")
 
 		var count int64
-		gormDB.Model(&Batch{}).Where("id = ?", batchID).Count(&count)
+		require.NoError(t, gormDB.Model(&symptomre.Batch{}).Where("id = ?", batchID).Count(&count).Error)
 		assert.Zero(t, count, "completed batch older than retention should be removed")
 	})
 
 	t.Run("preserves recent completed batches", func(t *testing.T) {
 		batchID := uuid.New()
 		oneDayAgo := time.Now().UTC().Add(-24 * time.Hour)
-		require.NoError(t, gormDB.Create(&Batch{
+		require.NoError(t, gormDB.Create(&symptomre.Batch{
 			ID: batchID, RequestedCount: 1,
 			Status: workqueue.BatchStatusComplete, CompletedAt: &oneDayAgo,
 		}).Error, "test batch creation should succeed")
 
-		process := NewBatchCleanupProcess(gormDB, nil)
-		_, err := process.deleteCompletedBatches(context.Background())
-		require.NoError(t, err, "deleteCompletedBatches should succeed")
+		process := symptomre.NewBatchCleanupProcess(gormDB, canceller)
+		_, err := process.DeleteCompletedBatches(context.Background())
+		require.NoError(t, err, "DeleteCompletedBatches should succeed")
 
 		var count int64
-		gormDB.Model(&Batch{}).Where("id = ?", batchID).Count(&count)
+		require.NoError(t, gormDB.Model(&symptomre.Batch{}).Where("id = ?", batchID).Count(&count).Error)
 		assert.Equal(t, int64(1), count, "recently completed batch should be preserved")
 	})
 
 	t.Run("cancels stale non-terminal batches", func(t *testing.T) {
 		batchID := uuid.New()
-		require.NoError(t, gormDB.Create(&Batch{
+		require.NoError(t, gormDB.Create(&symptomre.Batch{
 			ID: batchID, RequestedCount: 1, Status: workqueue.BatchStatusPending,
 		}).Error, "test batch creation should succeed")
 		twoDaysAgo := time.Now().UTC().Add(-2 * 24 * time.Hour)
-		require.NoError(t, gormDB.Model(&Batch{}).Where("id = ?", batchID).
+		require.NoError(t, gormDB.Model(&symptomre.Batch{}).Where("id = ?", batchID).
 			Update("created_at", twoDaysAgo).Error, "backdating batch created_at should succeed")
 
-		process := NewBatchCleanupProcess(gormDB, nil)
-		// Wire a test cancel function that marks the batch cancelled in the DB
-		// (simulating what BatchCanceller does without requiring a River client).
-		process.cancelStale = func(ctx context.Context, id uuid.UUID) error {
-			now := time.Now().UTC()
-			return gormDB.Model(&Batch{}).Where("id = ?", id).Updates(map[string]interface{}{
-				"status":       workqueue.BatchStatusCancelled,
-				"completed_at": now,
-			}).Error
-		}
+		process := symptomre.NewBatchCleanupProcess(gormDB, canceller)
 
-		cancelled, err := process.cancelStaleBatches(context.Background())
-		require.NoError(t, err, "cancelStaleBatches should succeed")
+		cancelled, err := process.CancelStaleBatches(context.Background())
+		require.NoError(t, err, "CancelStaleBatches should succeed")
 		assert.GreaterOrEqual(t, cancelled, 1, "at least one stale batch should be cancelled")
 
-		var batch Batch
+		var batch symptomre.Batch
 		require.NoError(t, gormDB.Take(&batch, "id = ?", batchID).Error, "batch should still exist")
 		assert.Equal(t, workqueue.BatchStatusCancelled, batch.Status, "stale batch should be cancelled")
 		assert.NotNil(t, batch.CompletedAt, "stale batch should have completed_at set")
 	})
 }
 
-func TestFunctionalProcessBatchWorker(t *testing.T) {
-	gormDB, cleanup := functionalTestSetup(t)
-	defer cleanup()
+func TestSymptomReProcessBatchWorker(t *testing.T) {
+	gormDB, pool := symptomReTestSetup(t)
 
 	ctx := context.Background()
-	dsn := os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN")
 
 	// Create a ReEvaluator with a real DB but nil cloud clients.
 	// Only RefreshSymptomCache is called, which queries the symptoms table
@@ -246,25 +197,21 @@ func TestFunctionalProcessBatchWorker(t *testing.T) {
 	dbc := &db.DB{DB: gormDB}
 	reEvaluator := apijobrunscan.NewReEvaluator(nil, nil, "", dbc, nil, nil)
 
-	pool, err := workqueue.NewPgxV5Pool(ctx, dsn)
-	require.NoError(t, err, "pgx/v5 pool for River client should succeed")
-	defer pool.Close()
-
 	riverClient, err := workqueue.NewInsertOnlyClient(pool)
 	require.NoError(t, err, "River client creation should succeed")
 
-	worker := NewProcessBatchWorker(reEvaluator, gormDB)
+	worker := symptomre.NewProcessBatchWorker(reEvaluator, gormDB)
 	worker.SetRiverClient(riverClient)
 
-	submitter := NewSubmitter(gormDB, riverClient)
+	submitter := symptomre.NewSubmitter(gormDB, riverClient)
 	suffix := uuid.New().String()[:8]
 	result, err := submitter.Submit(ctx, []string{"batch-work-1-" + suffix, "batch-work-2-" + suffix}, false)
 	require.NoError(t, err, "Submit should succeed")
 
-	job := &river.Job[ProcessBatchArgs]{Args: ProcessBatchArgs{BatchID: result.BatchID}}
+	job := &river.Job[symptomre.ProcessBatchArgs]{Args: symptomre.ProcessBatchArgs{BatchID: result.BatchID}}
 	require.NoError(t, worker.Work(ctx, job), "ProcessBatchWorker.Work should succeed")
 
-	var items []BatchItem
+	var items []symptomre.BatchItem
 	require.NoError(t, gormDB.Where("batch_id = ?", result.BatchID).Find(&items).Error,
 		"batch items should load after processing")
 	assert.Len(t, items, 2, "should have two batch items")
@@ -272,7 +219,7 @@ func TestFunctionalProcessBatchWorker(t *testing.T) {
 		assert.NotNil(t, item.RiverJobID, "item should have river_job_id populated after batch processing")
 	}
 
-	var batch Batch
+	var batch symptomre.Batch
 	require.NoError(t, gormDB.Take(&batch, "id = ?", result.BatchID).Error,
 		"batch should still exist after processing")
 	assert.Equal(t, workqueue.BatchStatusRunning, batch.Status,
@@ -285,7 +232,7 @@ func TestFunctionalProcessBatchWorker(t *testing.T) {
 // ProcessBatchWorker to fan out River jobs, and returns the batch ID and
 // the resulting batch items (with populated RiverJobIDs). The batch will
 // be in BatchStatusRunning after this call.
-func submitAndFanOut(ctx context.Context, t *testing.T, gormDB *gorm.DB, riverClient *river.Client[pgx.Tx], n int) (uuid.UUID, []BatchItem) {
+func submitAndFanOut(ctx context.Context, t *testing.T, gormDB *gorm.DB, riverClient *river.Client[pgx.Tx], n int) (uuid.UUID, []symptomre.BatchItem) {
 	t.Helper()
 
 	dbc := &db.DB{DB: gormDB}
@@ -297,16 +244,16 @@ func submitAndFanOut(ctx context.Context, t *testing.T, gormDB *gorm.DB, riverCl
 		jobIDs[i] = fmt.Sprintf("item-%d-%s", i, suffix)
 	}
 
-	submitter := NewSubmitter(gormDB, riverClient)
+	submitter := symptomre.NewSubmitter(gormDB, riverClient)
 	result, err := submitter.Submit(ctx, jobIDs, false)
 	require.NoError(t, err, "Submit should succeed")
 
-	worker := NewProcessBatchWorker(reEvaluator, gormDB)
+	worker := symptomre.NewProcessBatchWorker(reEvaluator, gormDB)
 	worker.SetRiverClient(riverClient)
-	job := &river.Job[ProcessBatchArgs]{Args: ProcessBatchArgs{BatchID: result.BatchID}}
+	job := &river.Job[symptomre.ProcessBatchArgs]{Args: symptomre.ProcessBatchArgs{BatchID: result.BatchID}}
 	require.NoError(t, worker.Work(ctx, job), "ProcessBatchWorker.Work should succeed")
 
-	var items []BatchItem
+	var items []symptomre.BatchItem
 	require.NoError(t, gormDB.Where("batch_id = ?", result.BatchID).Find(&items).Error,
 		"loading fan-out items should succeed")
 	for _, item := range items {
@@ -322,7 +269,7 @@ func setRiverJobState(t *testing.T, gormDB *gorm.DB, riverJobID int64, state str
 	t.Helper()
 	var result *gorm.DB
 	switch state {
-	case ItemStateCompleted, ItemStateCancelled, ItemStateDiscarded:
+	case symptomre.ItemStateCompleted, symptomre.ItemStateCancelled, symptomre.ItemStateDiscarded:
 		result = gormDB.Exec(
 			"UPDATE river_job SET state = ?::river_job_state, finalized_at = NOW() WHERE id = ?",
 			state, riverJobID)
@@ -335,19 +282,14 @@ func setRiverJobState(t *testing.T, gormDB *gorm.DB, riverJobID int64, state str
 	require.Equal(t, int64(1), result.RowsAffected, "exactly one river_job row should be updated")
 }
 
-func TestFunctionalQueryLazyCompletion(t *testing.T) {
-	gormDB, cleanup := functionalTestSetup(t)
-	defer cleanup()
+func TestSymptomReQueryLazyCompletion(t *testing.T) {
+	gormDB, pool := symptomReTestSetup(t)
 
 	ctx := context.Background()
-	dsn := os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN")
-	pool, err := workqueue.NewPgxV5Pool(ctx, dsn)
-	require.NoError(t, err, "pgx/v5 pool should succeed")
-	defer pool.Close()
 
 	riverClient, err := workqueue.NewInsertOnlyClient(pool)
 	require.NoError(t, err, "River client should be created")
-	querier := NewStatusQuerier(gormDB)
+	querier := symptomre.NewStatusQuerier(gormDB)
 
 	t.Run("all completed triggers batch completion", func(t *testing.T) {
 		batchID, items := submitAndFanOut(ctx, t, gormDB, riverClient, 3)
@@ -364,7 +306,7 @@ func TestFunctionalQueryLazyCompletion(t *testing.T) {
 		assert.Zero(t, resp.Failed, "no items should be failed")
 		assert.Zero(t, resp.Pending, "no items should be pending")
 
-		var batch Batch
+		var batch symptomre.Batch
 		require.NoError(t, gormDB.Take(&batch, "id = ?", batchID).Error)
 		assert.NotNil(t, batch.CompletedAt, "completed_at should be set")
 	})
@@ -428,19 +370,14 @@ func TestFunctionalQueryLazyCompletion(t *testing.T) {
 	})
 }
 
-func TestFunctionalBatchCanceller(t *testing.T) {
-	gormDB, cleanup := functionalTestSetup(t)
-	defer cleanup()
+func TestSymptomReBatchCanceller(t *testing.T) {
+	gormDB, pool := symptomReTestSetup(t)
 
 	ctx := context.Background()
-	dsn := os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN")
-	pool, err := workqueue.NewPgxV5Pool(ctx, dsn)
-	require.NoError(t, err, "pgx/v5 pool should succeed")
-	defer pool.Close()
 
 	riverClient, err := workqueue.NewInsertOnlyClient(pool)
 	require.NoError(t, err, "River client should be created")
-	canceller := NewBatchCanceller(gormDB, riverClient)
+	canceller := symptomre.NewBatchCanceller(gormDB, riverClient)
 
 	t.Run("cancel running batch", func(t *testing.T) {
 		batchID, _ := submitAndFanOut(ctx, t, gormDB, riverClient, 2)
@@ -451,13 +388,13 @@ func TestFunctionalBatchCanceller(t *testing.T) {
 		assert.Equal(t, workqueue.BatchStatusCancelled, resp.Status,
 			"batch should be cancelled")
 
-		var batch Batch
+		var batch symptomre.Batch
 		require.NoError(t, gormDB.Take(&batch, "id = ?", batchID).Error)
 		assert.Equal(t, workqueue.BatchStatusCancelled, batch.Status)
 		assert.NotNil(t, batch.CompletedAt, "completed_at should be set on cancellation")
 	})
 
-	t.Run("cancel already-cancelled batch returns ErrBatchTerminal", func(t *testing.T) {
+	t.Run("cancel already-cancelled batch returns symptomre.ErrBatchTerminal", func(t *testing.T) {
 		batchID, _ := submitAndFanOut(ctx, t, gormDB, riverClient, 1)
 
 		_, err := canceller.Cancel(ctx, batchID)
@@ -465,21 +402,21 @@ func TestFunctionalBatchCanceller(t *testing.T) {
 
 		_, err = canceller.Cancel(ctx, batchID)
 		require.Error(t, err, "second Cancel should fail")
-		assert.ErrorIs(t, err, ErrBatchTerminal,
-			"cancelling an already-cancelled batch should return ErrBatchTerminal")
+		assert.ErrorIs(t, err, symptomre.ErrBatchTerminal,
+			"cancelling an already-cancelled batch should return symptomre.ErrBatchTerminal")
 	})
 
-	t.Run("cancel completed batch returns ErrBatchTerminal", func(t *testing.T) {
+	t.Run("cancel completed batch returns symptomre.ErrBatchTerminal", func(t *testing.T) {
 		batchID, items := submitAndFanOut(ctx, t, gormDB, riverClient, 1)
 		setRiverJobState(t, gormDB, *items[0].RiverJobID, "completed")
 
-		querier := NewStatusQuerier(gormDB)
+		querier := symptomre.NewStatusQuerier(gormDB)
 		_, err := querier.GetUpdated(ctx, batchID)
 		require.NoError(t, err, "Query to trigger lazy completion should succeed")
 
 		_, err = canceller.Cancel(ctx, batchID)
 		require.Error(t, err, "Cancel should fail for completed batch")
-		assert.ErrorIs(t, err, ErrBatchTerminal)
+		assert.ErrorIs(t, err, symptomre.ErrBatchTerminal)
 	})
 
 	t.Run("cancel non-existent batch returns nil", func(t *testing.T) {
@@ -489,65 +426,18 @@ func TestFunctionalBatchCanceller(t *testing.T) {
 	})
 }
 
-func TestFunctionalReevaluateWorker(t *testing.T) {
-	t.Run("delegates to reEvalFunc with correct args", func(t *testing.T) {
-		var calledID string
-		var calledDryRun bool
-		worker := &ReevaluateWorker{
-			reEval: func(_ context.Context, prowJobBuildID string, dryRun bool) (*apijobrunscan.ReEvaluationResult, error) {
-				calledID = prowJobBuildID
-				calledDryRun = dryRun
-				return nil, nil
-			},
-		}
-
-		job := &river.Job[ReevaluateJobRunArgs]{
-			Args: ReevaluateJobRunArgs{
-				ProwJobBuildID: "test-build-42",
-				DryRun:         true,
-			},
-		}
-		err := worker.Work(context.Background(), job)
-		require.NoError(t, err, "Work should succeed when reEvalFunc returns nil")
-		assert.Equal(t, "test-build-42", calledID,
-			"prowJobBuildID should be forwarded to reEvalFunc")
-		assert.True(t, calledDryRun,
-			"dryRun flag should be forwarded to reEvalFunc")
-	})
-
-	t.Run("propagates errors from reEvalFunc", func(t *testing.T) {
-		worker := &ReevaluateWorker{
-			reEval: func(_ context.Context, _ string, _ bool) (*apijobrunscan.ReEvaluationResult, error) {
-				return nil, fmt.Errorf("simulated evaluation failure")
-			},
-		}
-
-		job := &river.Job[ReevaluateJobRunArgs]{
-			Args: ReevaluateJobRunArgs{ProwJobBuildID: "fail-build"},
-		}
-		err := worker.Work(context.Background(), job)
-		assert.Error(t, err, "Work should propagate reEvalFunc errors for River retry")
-		assert.Contains(t, err.Error(), "simulated evaluation failure",
-			"error message should come from reEvalFunc")
-	})
-}
-
-func TestFunctionalRecordedOutput(t *testing.T) {
-	gormDB, cleanup := functionalTestSetup(t)
-	defer cleanup()
+func TestSymptomReRecordedOutput(t *testing.T) {
+	gormDB, pool := symptomReTestSetup(t)
 	ctx := context.Background()
-	pool, err := workqueue.NewPgxV5Pool(ctx, os.Getenv("SIPPY_FUNCTIONAL_TEST_DSN"))
-	require.NoError(t, err)
-	defer pool.Close()
 	for _, tc := range []struct {
 		name    string
 		status  apijobrunscan.ReEvalStatus
 		evalErr error
 		state   string
 	}{
-		{"success", apijobrunscan.ReEvalSuccess, nil, ItemStateCompleted},
-		{"permanent failure", apijobrunscan.ReEvalMissingError, apijobrunscan.ErrPermanent, ItemStateCancelled},
-		{"exhausted retries", apijobrunscan.ReEvalEvalError, errors.New("scan failed"), ItemStateDiscarded},
+		{"success", apijobrunscan.ReEvalSuccess, nil, symptomre.ItemStateCompleted},
+		{"permanent failure", apijobrunscan.ReEvalMissingError, apijobrunscan.ErrPermanent, symptomre.ItemStateCancelled},
+		{"exhausted retries", apijobrunscan.ReEvalEvalError, errors.New("scan failed"), symptomre.ItemStateDiscarded},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			queue := "output_test_" + uuid.NewString()
@@ -556,17 +446,17 @@ func TestFunctionalRecordedOutput(t *testing.T) {
 				expected.Error = tc.evalErr.Error()
 			}
 			workers := river.NewWorkers()
-			river.AddWorker(workers, &ReevaluateWorker{reEval: func(_ context.Context, id string, dryRun bool) (*apijobrunscan.ReEvaluationResult, error) {
+			river.AddWorker(workers, &symptomre.ReevaluateWorker{Reevaluate: func(_ context.Context, id string, dryRun bool) (*apijobrunscan.ReEvaluationResult, error) {
 				return &expected, tc.evalErr
 			}})
 			client, err := workqueue.NewWorkerClient(pool, workers, &river.Config{Queues: map[string]river.QueueConfig{queue: {MaxWorkers: 1}}})
 			require.NoError(t, err)
-			inserted, err := client.Insert(ctx, ReevaluateJobRunArgs{ProwJobBuildID: expected.ProwJobBuildID, DryRun: true}, &river.InsertOpts{Queue: queue, MaxAttempts: 1})
+			inserted, err := client.Insert(ctx, symptomre.ReevaluateJobRunArgs{ProwJobBuildID: expected.ProwJobBuildID, DryRun: true}, &river.InsertOpts{Queue: queue, MaxAttempts: 1})
 			require.NoError(t, err)
-			batch := Batch{ID: uuid.New(), RequestedCount: 1, Status: workqueue.BatchStatusRunning}
+			batch := symptomre.Batch{ID: uuid.New(), RequestedCount: 1, Status: workqueue.BatchStatusRunning}
 			require.NoError(t, gormDB.Create(&batch).Error)
-			require.NoError(t, gormDB.Create(&BatchItem{BatchID: batch.ID, ItemKey: expected.ProwJobBuildID, RiverJobID: &inserted.Job.ID}).Error)
-			querier := NewStatusQuerier(gormDB)
+			require.NoError(t, gormDB.Create(&symptomre.BatchItem{BatchID: batch.ID, ItemKey: expected.ProwJobBuildID, RiverJobID: &inserted.Job.ID}).Error)
+			querier := symptomre.NewStatusQuerier(gormDB)
 			pending, err := querier.GetUpdated(ctx, batch.ID)
 			require.NoError(t, err)
 			require.Len(t, pending.Items, 1)
@@ -582,9 +472,9 @@ func TestFunctionalRecordedOutput(t *testing.T) {
 				return err == nil && len(response.Items) == 1 && response.Items[0].State == tc.state
 			}, 10*time.Second, 50*time.Millisecond)
 			// A second batch linked after completion reads the same recorded output.
-			late := Batch{ID: uuid.New(), RequestedCount: 1, Status: workqueue.BatchStatusRunning}
+			late := symptomre.Batch{ID: uuid.New(), RequestedCount: 1, Status: workqueue.BatchStatusRunning}
 			require.NoError(t, gormDB.Create(&late).Error)
-			require.NoError(t, gormDB.Create(&BatchItem{BatchID: late.ID, ItemKey: expected.ProwJobBuildID, RiverJobID: &inserted.Job.ID}).Error)
+			require.NoError(t, gormDB.Create(&symptomre.BatchItem{BatchID: late.ID, ItemKey: expected.ProwJobBuildID, RiverJobID: &inserted.Job.ID}).Error)
 			for _, id := range []uuid.UUID{batch.ID, late.ID} {
 				response, err := querier.GetUpdated(ctx, id)
 				require.NoError(t, err)

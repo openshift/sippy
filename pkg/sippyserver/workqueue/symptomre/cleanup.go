@@ -84,14 +84,14 @@ func (p *BatchCleanupProcess) Run(ctx context.Context) {
 // runCleanup performs a single cleanup pass, removing completed batches older
 // than the retention period and cancelling stale non-terminal batches.
 func (p *BatchCleanupProcess) runCleanup(ctx context.Context) {
-	deleted, err := p.deleteCompletedBatches(ctx)
+	deleted, err := p.DeleteCompletedBatches(ctx)
 	if err != nil {
 		log.WithError(err).Error("batch cleanup: failed to delete completed batches")
 	} else if deleted > 0 {
 		log.WithField("count", deleted).Info("batch cleanup: deleted old completed batches")
 	}
 
-	cancelled, err := p.cancelStaleBatches(ctx)
+	cancelled, err := p.CancelStaleBatches(ctx)
 	if err != nil {
 		log.WithError(err).Error("batch cleanup: failed to cancel stale batches")
 	} else if cancelled > 0 {
@@ -99,9 +99,9 @@ func (p *BatchCleanupProcess) runCleanup(ctx context.Context) {
 	}
 }
 
-// deleteCompletedBatches removes batches that have a non-null completed_at
+// DeleteCompletedBatches removes batches that have a non-null completed_at
 // timestamp older than the configured retention period.
-func (p *BatchCleanupProcess) deleteCompletedBatches(ctx context.Context) (int64, error) {
+func (p *BatchCleanupProcess) DeleteCompletedBatches(ctx context.Context) (int64, error) {
 	cutoff := time.Now().UTC().Add(-p.completedRetention)
 	result := p.db.WithContext(ctx).
 		Where("completed_at IS NOT NULL AND completed_at < ?", cutoff).
@@ -112,12 +112,12 @@ func (p *BatchCleanupProcess) deleteCompletedBatches(ctx context.Context) (int64
 	return result.RowsAffected, nil
 }
 
-// cancelStaleBatches finds batches stuck in non-terminal statuses (pending,
+// CancelStaleBatches finds batches stuck in non-terminal statuses (pending,
 // processing, running) past the stale timeout and cancels them, including
 // any in-flight River jobs. This preserves history for the frontend (which
-// would otherwise see a 404) and lets deleteCompletedBatches remove them
+// would otherwise see a 404) and lets DeleteCompletedBatches remove them
 // after the normal retention period.
-func (p *BatchCleanupProcess) cancelStaleBatches(ctx context.Context) (int, error) {
+func (p *BatchCleanupProcess) CancelStaleBatches(ctx context.Context) (int, error) {
 	cutoff := time.Now().UTC().Add(-p.staleTimeout)
 	staleStatuses := []workqueue.BatchStatus{
 		workqueue.BatchStatusPending,

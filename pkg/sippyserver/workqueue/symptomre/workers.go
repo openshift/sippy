@@ -146,30 +146,30 @@ func (w *ProcessBatchWorker) finalizeBatch(batchID uuid.UUID, enqueued, deduped 
 	return nil
 }
 
-// reEvalFunc is the function signature for re-evaluating a single job run's
-// symptoms from the cached symptom definitions. Extracting this as a function
-// type field lets tests substitute a stub without requiring a full ReEvaluator
-// (which needs GCS and BigQuery credentials).
-type reEvalFunc func(ctx context.Context, prowJobBuildID string, dryRun bool) (*jobrunscan.ReEvaluationResult, error)
+// ReevaluateFunc evaluates a job run against cached symptom definitions. A dry
+// run returns results without persisting labels. This seam allows worker tests
+// to exercise River behavior without GCS or BigQuery credentials.
+type ReevaluateFunc func(ctx context.Context, prowJobBuildID string, dryRun bool) (*jobrunscan.ReEvaluationResult, error)
 
 // ReevaluateWorker handles individual ReevaluateJobRunArgs River jobs by
 // delegating to the ReEvaluator's cached symptom evaluation.
 type ReevaluateWorker struct {
 	river.WorkerDefaults[ReevaluateJobRunArgs]
-	reEval reEvalFunc
+	// Reevaluate supplies the single-run evaluation and must be set before Work.
+	Reevaluate ReevaluateFunc
 }
 
 // NewReevaluateWorker creates a ReevaluateWorker that delegates to the
 // ReEvaluator's cached evaluation method.
 func NewReevaluateWorker(reEvaluator *jobrunscan.ReEvaluator) *ReevaluateWorker {
-	return &ReevaluateWorker{reEval: reEvaluator.ReEvaluateRunSymptoms}
+	return &ReevaluateWorker{Reevaluate: reEvaluator.ReEvaluateRunSymptoms}
 }
 
 // Work re-evaluates symptoms for a single job run. Transient errors trigger
 // River's retry logic (up to MaxAttemptsPerItem attempts with exponential
 // backoff). Results are recorded by River when the attempt finishes. Permanent errors (e.g. missing job run) cancel the job immediately.
 func (w *ReevaluateWorker) Work(ctx context.Context, job *river.Job[ReevaluateJobRunArgs]) error {
-	result, err := w.reEval(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
+	result, err := w.Reevaluate(ctx, job.Args.ProwJobBuildID, job.Args.DryRun)
 	if result != nil {
 		if outputErr := river.RecordOutput(ctx, result); outputErr != nil {
 			return fmt.Errorf("recording re-evaluation output: %w", outputErr)
