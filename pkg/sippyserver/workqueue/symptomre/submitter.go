@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/sippyserver/workqueue"
@@ -59,7 +60,8 @@ func (s *Submitter) Submit(ctx context.Context, prowJobBuildIDs []string, dryRun
 		}
 	}
 
-	if err := s.gormDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	db := s.gormDB.WithContext(ctx)
+	if err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&batch).Error; err != nil {
 			return fmt.Errorf("creating batch: %w", err)
 		}
@@ -72,6 +74,11 @@ func (s *Submitter) Submit(ctx context.Context, prowJobBuildIDs []string, dryRun
 	}
 
 	if _, err := s.riverClient.Insert(ctx, ProcessBatchArgs{BatchID: batchID}, nil); err != nil {
+		log.WithError(err).Errorf("enqueuing process-batch job for batch %s", batchID)
+		batch.Status = workqueue.BatchStatusCancelled
+		if err2 := db.Save(&batch).Error; err2 != nil {
+			log.WithError(err2).Errorf("cancelling batch %s for failed river insert", batchID)
+		}
 		return nil, fmt.Errorf("enqueuing process-batch job for batch %s: %w", batchID, err)
 	}
 
