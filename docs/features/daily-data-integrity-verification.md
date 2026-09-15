@@ -12,10 +12,10 @@ sippy verify [--date YYYY-MM-DD] [--check CHECK]... [--release RELEASE]
 `--date` defaults to the UTC calendar day before yesterday. `--check` may be
 repeated and accepts `bq-completeness`, `daily-totals`, and
 `cumulative-summaries`; omitting it runs all three. `--release` limits every
-selected check to one release. Without it, the command checks every release
-definition and every non-empty, non-deleted historical release discovered in
-`prow_jobs`. There is intentionally no active-release filter, so this can
-include pseudo-releases with no data on the selected day.
+selected check to one active release definition. Without it, the command checks
+every non-empty, non-deleted release definition. Historical or retired releases
+that remain only in `prow_jobs` are not included in the default recent-data
+verification scope.
 
 ## Checks
 
