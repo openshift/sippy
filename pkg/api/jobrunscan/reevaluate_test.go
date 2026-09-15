@@ -206,12 +206,17 @@ func TestJobRunPathFromURL(t *testing.T) {
 	}{
 		{
 			name: "standard URL",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn/1234567890",
+			want: "logs/periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn/1234567890/",
+		},
+		{
+			name: "legacy bucket URL",
 			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn/1234567890",
 			want: "logs/periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn/1234567890/",
 		},
 		{
 			name: "URL with trailing slash",
-			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/some-job/999/",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/some-job/999/",
 			want: "logs/some-job/999/",
 		},
 		{

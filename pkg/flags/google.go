@@ -46,4 +46,4 @@ func (f *GoogleCloudFlags) Validate() error {
 	return nil
 }
 
-const DefaultGoogleStorageBucket = "test-platform-results"
+const DefaultGoogleStorageBucket = "test-platform-results-public"

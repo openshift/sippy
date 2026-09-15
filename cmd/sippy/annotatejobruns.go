@@ -193,6 +193,7 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 				bigQueryClient,
 				cacheOpts,
 				gcsClient,
+				f.GoogleCloudFlags.StorageBucket,
 				dbc,
 				cacheClient,
 				f.Execute,

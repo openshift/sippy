@@ -22,7 +22,7 @@ import (
 	  We do not want these trying to run during CI; skip tests with required environment variables that are not set.
 */
 
-const GcsBucketRoot = "test-platform-results"
+const GcsBucketRoot = "test-platform-results-public"
 
 func GetDbHandle(t *testing.T) *db.DB {
 	dbLogLevel := os.Getenv("TEST_DB_LOG_LEVEL") // e.g. "info" or "silent"

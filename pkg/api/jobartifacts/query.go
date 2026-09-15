@@ -122,15 +122,9 @@ func (q *JobArtifactQuery) getJobRun(jobRunID int64) (JobRun, error) {
 	}
 	jobRunResponse.URL = url
 
-	const marker = "/" + util.GcsBucketRoot + "/"
-	pathStart := strings.Index(url, marker)
-	if pathStart == -1 {
-		return jobRunResponse, fmt.Errorf("job run %d URL %s does not include bucket root %q", jobRunID, url, util.GcsBucketRoot)
-	}
-
-	jobRunPath := url[pathStart+len(marker):]
-	if !strings.HasSuffix(jobRunPath, "/") {
-		jobRunPath += "/" // ensure the path looks like a bucket "object prefix"
+	jobRunPath := util.GCSObjectPrefixFromURL(url)
+	if jobRunPath == "" {
+		return jobRunResponse, fmt.Errorf("job run %d URL %s is not a prow gs URL", jobRunID, url)
 	}
 	jobRunResponse.BucketPath = jobRunPath
 	return jobRunResponse, nil

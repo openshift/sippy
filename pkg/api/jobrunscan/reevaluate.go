@@ -268,7 +268,7 @@ func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRunID int64, symp
 		}
 
 		q := &jobartifacts.JobArtifactQuery{
-			GcsBucket:      r.gcsClient.Bucket(util.GcsBucketRoot),
+			GcsBucket:      r.gcsClient.Bucket(r.gcsBucket),
 			DbClient:       r.db,
 			Cache:          r.cache,
 			JobRunIDs:      []int64{jobRunID},
@@ -630,18 +630,9 @@ func mergeLabels(manualLabels []string, bqLabels []models.JobRunLabel) []string 
 	return merged.UnsortedList()
 }
 
-// jobRunPathFromURL extracts the GCS path from a ProwJobRun URL.
+// jobRunPathFromURL extracts the GCS object prefix from a ProwJobRun URL.
 func jobRunPathFromURL(url string) string {
-	const marker = "/" + util.GcsBucketRoot + "/"
-	pathStart := strings.Index(url, marker)
-	if pathStart == -1 {
-		return ""
-	}
-	path := url[pathStart+len(marker):]
-	if !strings.HasSuffix(path, "/") {
-		path += "/"
-	}
-	return path
+	return util.GCSObjectPrefixFromURL(url)
 }
 
 // uniqueSymptomsMatched returns the sorted distinct symptom IDs from the matches.
