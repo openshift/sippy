@@ -731,6 +731,15 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 	}
 
 	pulls := pl.fetchPullRequestData(pj.Spec.Refs, path)
+	var duration time.Duration
+	if pj.Status.CompletionTime != nil {
+		duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
+	}
+
+	return assembleJobRunResult(pj, id, dbProwJob, tests, failures, flakes, overallResult, pulls, []string(pl.labelsCache[pj.Status.BuildID]), duration), nil
+}
+
+func assembleJobRunResult(pj *prow.ProwJob, id uint64, dbProwJob *models.ProwJob, tests []pgwriter.TestRow, failures, flakes int, overallResult sippyprocessingv1.JobOverallResult, pulls []pgwriter.PullRequestRow, labels []string, duration time.Duration) *pgwriter.JobRunResult {
 
 	var pullAssocs []pgwriter.PullRequestAssocRow
 	for _, pull := range pulls {
@@ -754,11 +763,6 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 		})
 	}
 
-	var duration time.Duration
-	if pj.Status.CompletionTime != nil {
-		duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
-	}
-
 	return &pgwriter.JobRunResult{
 		Run: pgwriter.RunRow{
 			ID:             uint(id),
@@ -773,13 +777,13 @@ func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, i
 			TestFailures:   failures,
 			TestFlakes:     flakes,
 			Succeeded:      overallResult == sippyprocessingv1.JobSucceeded,
-			Labels:         []string(pl.labelsCache[pj.Status.BuildID]),
+			Labels:         labels,
 		},
 		Annotations:      annotations,
 		PullRequests:     pulls,
 		PullRequestAssoc: pullAssocs,
 		Tests:            tests,
-	}, nil
+	}
 }
 
 func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-chan *pgwriter.JobRunResult) {
@@ -901,6 +905,30 @@ func (pl *ProwLoader) fetchPullRequestData(refs *prow.Refs, pjPath string) []pgw
 	return pulls
 }
 
+// pullRequestDataFromProw uses only metadata embedded in prowjob.json. It is
+// intentionally independent of live GitHub and risk-comment processing.
+func pullRequestDataFromProw(refs *prow.Refs) []pgwriter.PullRequestRow {
+	if refs == nil {
+		return nil
+	}
+
+	var pulls []pgwriter.PullRequestRow
+	for _, pr := range refs.Pulls {
+		link := pr.Link
+		if link == "" && refs.Org != "" && refs.Repo != "" && pr.Number > 0 {
+			link = fmt.Sprintf("https://github.com/%s/%s/pull/%d", refs.Org, refs.Repo, pr.Number)
+		}
+		if link == "" || pr.SHA == "" {
+			continue
+		}
+		pulls = append(pulls, pgwriter.PullRequestRow{
+			Org: refs.Org, Repo: refs.Repo, Link: link, SHA: pr.SHA,
+			Author: pr.Author, Title: pr.Title, Number: pr.Number,
+		})
+	}
+	return pulls
+}
+
 func (pl *ProwLoader) prefetchLabels(prowJobs []prow.ProwJob) (map[string]pq.StringArray, error) {
 	buildIDs := make([]string, 0, len(prowJobs))
 	var earliest time.Time
@@ -1006,6 +1034,52 @@ func gatherLabelsBatch(ctx context.Context, bqClient *bqcachedclient.Client, bui
 	return result, nil
 }
 
+// GatherLabelsForRunFromBQ reads the authoritative labels for one build from
+// its exact prowjob_start date partition. A missing row is a successful empty
+// label set; query or iteration failures are returned to the caller.
+func GatherLabelsForRunFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, buildID string, startDate civil.Date) ([]string, error) {
+	if bqClient == nil {
+		return nil, fmt.Errorf("BigQuery labels source is %w", ErrDependencyNotConfigured)
+	}
+	dataset := os.Getenv(LabelsDatasetEnv)
+	if dataset == "" {
+		dataset = bqClient.Dataset
+	}
+	sql, params := singleRunLabelsQuery(dataset, buildID, startDate)
+	q := bqClient.Query(ctx, bqlabel.ProwLoaderJobLabels, sql)
+	q.Parameters = params
+
+	type row struct {
+		Labels []string `bigquery:"labels"`
+	}
+	it, err := q.Read(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("labels query from BigQuery for build ID %s: %w", buildID, err)
+	}
+	var r row
+	if err := it.Next(&r); err != nil {
+		if err == iterator.Done {
+			return []string{}, nil
+		}
+		return nil, fmt.Errorf("labels iteration from BigQuery for build ID %s: %w", buildID, err)
+	}
+	return r.Labels, nil
+}
+
+func singleRunLabelsQuery(dataset, buildID string, startDate civil.Date) (string, []bigquery.QueryParameter) {
+	table := fmt.Sprintf("`%s.%s`", dataset, LabelsTableName)
+	return `
+		SELECT ARRAY_AGG(DISTINCT label ORDER BY label ASC) AS labels
+		FROM ` + table + `
+		WHERE prowjob_build_id = @BuildID
+		  AND DATE(prowjob_start) = @StartDate
+		HAVING COUNT(*) > 0
+	`, []bigquery.QueryParameter{
+			{Name: "BuildID", Value: buildID},
+			{Name: "StartDate", Value: startDate},
+		}
+}
+
 type testCaseKey struct {
 	SuiteName string
 	TestName  string
@@ -1020,7 +1094,14 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		log.Warningf("failed to get junit test suites: %s", err.Error())
 		return nil, 0, 0, "", err
 	}
+	return pl.prowJobRunTestsFromSuites(pj, id, prowJobID, prowJobRelease, suites)
+}
 
+func (pl *ProwLoader) prowJobRunTestsFromSuites(pj *prow.ProwJob, id, prowJobID uint, prowJobRelease string, suites *junit.TestSuites) ([]pgwriter.TestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
+	return prowJobRunTestsFromSuites(pl.syntheticTestManager, pj, id, prowJobID, prowJobRelease, suites)
+}
+
+func prowJobRunTestsFromSuites(syntheticTestManager synthetictests.SyntheticTestManager, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease string, suites *junit.TestSuites) ([]pgwriter.TestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
 	testCases := make(map[testCaseKey]*types.TestCaseEntry)
 	for _, suite := range suites.Suites {
 		if !db.IsSuiteImportable(suite.Name) {
@@ -1031,7 +1112,7 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	}
 
 	oldTestCases := slices.Collect(maps.Values(testCases))
-	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, oldTestCases, pl.syntheticTestManager)
+	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, oldTestCases, syntheticTestManager)
 
 	if !db.IsSuiteImportable(syntheticSuite.Name) {
 		return nil, 0, 0, "", fmt.Errorf("synthetic suite %q is missing from the importable list", syntheticSuite.Name)

@@ -55,6 +55,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybq "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/cumulativesummary"
 	"github.com/openshift/sippy/pkg/db/dailysummary"
@@ -121,6 +122,7 @@ func NewServer(
 		enableWriteAPIs:      enableWriteEndpoints,
 		jiraClient:           jiraClient,
 	}
+	server.jobRunImporter = prowloader.NewSingleRunImporter(dbClient, gcsClient, bigQueryClient, gcsBucket, syntheticTestManager)
 
 	if crDataProvider != nil {
 		go func() {
@@ -181,6 +183,7 @@ type Server struct {
 	enableWriteAPIs      bool
 	jiraClient           *jira.Client
 	rateLimiters         map[string]*rateLimiter
+	jobRunImporter       jobRunImporter
 }
 
 // getReleases returns release data via the configured data provider.
@@ -2639,6 +2642,13 @@ func (s *Server) Serve() {
 			Description:  "Returns a report of job runs",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobRunsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/import",
+			Description:  "Imports one completed Prow job run from GCS",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonImportJobRun,
 		},
 		{
 			EndpointPath: "/api/jobs/runs/risk_analysis",
