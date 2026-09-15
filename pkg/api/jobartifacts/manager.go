@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -222,7 +221,7 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 		artifacts = append(artifacts, JobRunArtifact{
 			JobRunID:     strconv.FormatInt(jobRunID, 10),
 			ArtifactPath: relativeArtifactPath(path, strconv.FormatInt(jobRunID, 10)),
-			ArtifactURL:  fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, path),
+			ArtifactURL:  ArtifactURLFor(query.GcsBucket.BucketName(), path),
 			Error:        fmt.Sprintf("request did not complete within %s", artifactQueryTimeout),
 			TimedOut:     true,
 		})

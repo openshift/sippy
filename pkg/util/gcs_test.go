@@ -34,6 +34,21 @@ func TestGCSObjectPathFromURL(t *testing.T) {
 			want: "pr-logs/pull/openshift_sippy/1/pull-ci-openshift-sippy-main-images/123",
 		},
 		{
+			name: "example.com /gs/ fixture",
+			url:  "https://example.com/gs/test-platform-results-public/logs/job/1",
+			want: "logs/job/1",
+		},
+		{
+			name: "non-prow /gs/ after unrelated prefix",
+			url:  "x/gs/other/logs/job/1",
+			want: "",
+		},
+		{
+			name: "non-prow /gs/ nested in path",
+			url:  "https://example.com/x/gs/other/logs/job/1",
+			want: "",
+		},
+		{
 			name: "no gs path",
 			url:  "https://example.com/some/other/path",
 			want: "",

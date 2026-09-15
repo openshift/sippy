@@ -10,6 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestArtifactURLFor(t *testing.T) {
+	got := ArtifactURLFor("test-platform-results-public", "logs/some-job/123/build-log.txt")
+	want := "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results-public/logs/some-job/123/build-log.txt"
+	assert.Equal(t, want, got)
+}
+
 // convenience test setup method, glob and matcher are optional
 func baseTestingJAQ(t *testing.T, pathGlob string, matcher ContentMatcher) *JobArtifactQuery {
 	return &JobArtifactQuery{

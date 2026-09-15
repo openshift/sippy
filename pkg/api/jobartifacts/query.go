@@ -176,7 +176,7 @@ func (q *JobArtifactQuery) getFileContentMatches(ctx context.Context, jobRunID i
 	artifact.JobRunID = strconv.FormatInt(jobRunID, 10)
 	artifact.ArtifactPath = relativeArtifactPath(attrs.Name, artifact.JobRunID)
 	artifact.ArtifactContentType = attrs.ContentType
-	artifact.ArtifactURL = ArtifactURLFor(attrs.Name)
+	artifact.ArtifactURL = ArtifactURLFor(q.GcsBucket.BucketName(), attrs.Name)
 	if q.ContentMatcher == nil { // no matching requested
 		return
 	}
@@ -196,9 +196,9 @@ func (q *JobArtifactQuery) getFileContentMatches(ctx context.Context, jobRunID i
 	return
 }
 
-// ArtifactURLFor returns the public gcsweb URL for an artifact given its path in the bucket.
-func ArtifactURLFor(path string) string {
-	return fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, path)
+// ArtifactURLFor returns the public gcsweb URL for an artifact in the given bucket.
+func ArtifactURLFor(bucket, path string) string {
+	return fmt.Sprintf(artifactURLFmt, bucket, path)
 }
 
 // OpenArtifactReader opens a reader on an artifact, transparently handling compressed archives.

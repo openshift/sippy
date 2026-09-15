@@ -123,6 +123,7 @@ func readBucketJSONLabels(
 			continue // skip invalid or mis-versioned labels
 		}
 		container.V1.JobRunPath = jobRunPath
+		container.V1.Bucket = bucket.BucketName()
 
 		labelMap[container.V1.Label.ID] = append(labelMap[container.V1.Label.ID], container)
 	}
@@ -332,7 +333,7 @@ func matchInstance(label *JobRunBucketLabel) g.Node {
 			infoRow("Symptom:", g.Text(label.Symptom.Summary)),
 			infoRow("Matched file:",
 				h.A(
-					h.Href(jobartifacts.ArtifactURLFor(label.FileMatch)),
+					h.Href(jobartifacts.ArtifactURLFor(label.Bucket, label.FileMatch)),
 					h.Target("_blank"),
 					h.Class("info-value code"), g.Text(relativePath),
 				),
