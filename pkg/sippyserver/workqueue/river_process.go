@@ -29,11 +29,12 @@ func NewRiverProcess(pool *pgxpool.Pool, client *river.Client[pgx.Tx], reEvaluat
 	}
 }
 
-// Run starts the River client and blocks until ctx is cancelled. It performs
+// Run starts the River client and blocks until ctx is canceled. It performs
 // an initial symptom cache warm-up (non-fatal on failure since the cache is
 // refreshed when the first batch arrives) and a graceful shutdown with a
-// 30-second timeout.
+// 9-second timeout.
 func (p *RiverProcess) Run(ctx context.Context) {
+	defer p.pool.Close()
 	if _, err := p.reEvaluator.RefreshSymptomCache(ctx); err != nil {
 		log.WithError(err).Warn("workqueue: initial symptom cache warm-up failed; cache will refresh on first batch")
 	}
@@ -46,7 +47,8 @@ func (p *RiverProcess) Run(ctx context.Context) {
 
 	<-ctx.Done()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// daemon server gives 10s grace period, warn if we don't finish in 9
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 9*time.Second)
 	defer cancel()
 	if err := p.client.Stop(shutdownCtx); err != nil {
 		log.WithError(err).Error("workqueue: error stopping River client")
@@ -58,5 +60,4 @@ func (p *RiverProcess) Run(ctx context.Context) {
 	case <-shutdownCtx.Done():
 		log.Warn("workqueue: shutdown deadline exceeded; closing pool with workers still running")
 	}
-	p.pool.Close()
 }
