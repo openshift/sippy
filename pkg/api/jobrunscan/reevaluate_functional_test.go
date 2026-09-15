@@ -21,7 +21,7 @@ import (
 //	GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json \
 //	BIGQUERY_PROJECT=my-project \
 //	BIGQUERY_DATASET=ci_analysis_us \
-//	GCS_BUCKET=test-platform-results \
+//	GCS_BUCKET=test-platform-results-public \
 //	SIPPY_DATABASE_DSN=postgresql://user:pass@host:5432/dbname \
 //	PROW_JOB_BUILD_ID=1234567890 \
 //	go test -v -run TestReEvaluate ./pkg/api/jobrunscan/
