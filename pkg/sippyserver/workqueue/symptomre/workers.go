@@ -54,15 +54,20 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 	if err := w.gormDB.Take(&batch, "id = ?", batchID).Error; err != nil {
 		return fmt.Errorf("loading batch %s: %w", batchID, err)
 	}
+	if batch.Status != workqueue.BatchStatusPending { // e.g. canceled before we reach it
+		return fmt.Errorf("will not process batch %s in state %s", batchID, batch.Status)
+	}
 
 	var items []BatchItem
 	if err := w.gormDB.Where("batch_id = ?", batchID).Find(&items).Error; err != nil {
 		return fmt.Errorf("loading batch items for %s: %w", batchID, err)
 	}
 
-	if err := w.gormDB.Model(&Batch{}).Where("id = ?", batchID).
-		Update("status", workqueue.BatchStatusProcessing).Error; err != nil {
-		return fmt.Errorf("updating batch %s to processing: %w", batchID, err)
+	if res := w.gormDB.Model(&Batch{}).Where("id = ? AND status = ?", batchID, batch.Status).
+		Update("status", workqueue.BatchStatusProcessing); res.Error != nil {
+		return fmt.Errorf("updating batch %s status to processing: %w", batchID, res.Error)
+	} else if res.RowsAffected == 0 {
+		return fmt.Errorf("will not process batch %s; it was changed asynchronously", batchID)
 	}
 
 	enqueued, deduped, err := w.fanOutItems(ctx, batchID, items, batch.DryRun)
