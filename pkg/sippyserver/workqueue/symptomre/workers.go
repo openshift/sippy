@@ -50,8 +50,13 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 	logger := log.WithField("batchID", batchID)
 	logger.Info("symptom reEval: processing batch")
 
+	// spin off a subworker with a context-ified DB that can be canceled
+	db := w.gormDB.WithContext(ctx)
+	ctxWorker := *w
+	ctxWorker.gormDB = db
+
 	var batch Batch
-	if err := w.gormDB.Take(&batch, "id = ?", batchID).Error; err != nil {
+	if err := db.Take(&batch, "id = ?", batchID).Error; err != nil {
 		return fmt.Errorf("loading batch %s: %w", batchID, err)
 	}
 	if batch.Status != workqueue.BatchStatusPending { // e.g. canceled before we reach it
@@ -59,27 +64,27 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 	}
 
 	var items []BatchItem
-	if err := w.gormDB.Where("batch_id = ?", batchID).Find(&items).Error; err != nil {
+	if err := db.Where("batch_id = ?", batchID).Find(&items).Error; err != nil {
 		return fmt.Errorf("loading batch items for %s: %w", batchID, err)
 	}
 
-	if res := w.gormDB.Model(&Batch{}).Where("id = ? AND status = ?", batchID, batch.Status).
+	if res := db.Model(&Batch{}).Where("id = ? AND status = ?", batchID, batch.Status).
 		Update("status", workqueue.BatchStatusProcessing); res.Error != nil {
 		return fmt.Errorf("updating batch %s status to processing: %w", batchID, res.Error)
 	} else if res.RowsAffected == 0 {
 		return fmt.Errorf("will not process batch %s; it was changed asynchronously", batchID)
 	}
 
-	enqueued, deduped, err := w.fanOutItems(ctx, batchID, items, batch.DryRun)
+	enqueued, deduped, err := ctxWorker.fanOutItems(ctx, batchID, items, batch.DryRun)
 	if err != nil { // attempt to mark the batch failed so client retries ASAP
-		if err2 := w.gormDB.Model(&Batch{}).Where("id = ?", batchID).
+		if err2 := db.Model(&Batch{}).Where("id = ?", batchID).
 			Update("status", workqueue.BatchStatusFailed).Error; err2 != nil {
 			logger.WithError(err2).Errorf("couldn't update batch %s status after failed fanout", batchID)
 		}
 		return err
 	}
 
-	if err := w.finalizeBatch(batchID, enqueued, deduped); err != nil {
+	if err := ctxWorker.finalizeBatch(batchID, enqueued, deduped); err != nil {
 		return err
 	}
 

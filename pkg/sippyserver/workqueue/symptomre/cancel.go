@@ -16,12 +16,12 @@ import (
 )
 
 // ErrBatchTerminal indicates the batch is already in a terminal status and
-// cannot be cancelled. The handler maps this to 409 Conflict.
+// cannot be canceled. The handler maps this to 409 Conflict.
 var ErrBatchTerminal = errors.New("batch is already in a terminal status")
 
 // BatchCanceller cancels in-flight symptom re-evaluation batches by
 // requesting cancellation of their River jobs and marking the batch as
-// cancelled. Jobs that have already completed are left alone.
+// canceled. Jobs that have already completed are left alone.
 type BatchCanceller struct {
 	gormDB      *gorm.DB
 	riverClient *river.Client[pgx.Tx]
@@ -36,11 +36,13 @@ func NewBatchCanceller(gormDB *gorm.DB, riverClient *river.Client[pgx.Tx]) *Batc
 }
 
 // Cancel attempts to cancel all non-completed River jobs in a batch and marks
-// the batch as cancelled. Returns the batch status response after cancellation.
+// the batch as canceled. Returns the batch status response after cancellation.
 // Returns nil if the batch does not exist.
 func (c *BatchCanceller) Cancel(ctx context.Context, batchID uuid.UUID) (*BatchStatusResponse, error) {
+	db := c.gormDB.WithContext(ctx) // enable canceling the context
+
 	var batch Batch
-	if err := c.gormDB.Take(&batch, "id = ?", batchID).Error; err != nil {
+	if err := db.Take(&batch, "id = ?", batchID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -54,11 +56,11 @@ func (c *BatchCanceller) Cancel(ctx context.Context, batchID uuid.UUID) (*BatchS
 	}
 
 	var items []BatchItem
-	if err := c.gormDB.Where("batch_id = ?", batchID).Find(&items).Error; err != nil {
+	if err := db.Where("batch_id = ?", batchID).Find(&items).Error; err != nil {
 		return nil, fmt.Errorf("loading batch items for %s: %w", batchID, err)
 	}
 
-	cancelled := 0
+	canceled := 0
 	for _, item := range items {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("cancellation interrupted: %w", ctx.Err())
@@ -67,29 +69,30 @@ func (c *BatchCanceller) Cancel(ctx context.Context, batchID uuid.UUID) (*BatchS
 			continue
 		}
 		if _, err := c.riverClient.JobCancel(ctx, *item.RiverJobID); err != nil {
+			// cancellation is best-effort; if a job keeps running, it only wastes some resources. just log it.
 			log.WithFields(log.Fields{
 				"batchID":    batchID,
 				"riverJobID": *item.RiverJobID,
 			}).WithError(err).Warn("batch cancel: failed to cancel River job (may already be complete)")
 			continue
 		}
-		cancelled++
+		canceled++
 	}
 
 	now := time.Now()
-	if err := c.gormDB.Model(&Batch{}).Where("id = ?", batchID).Updates(map[string]interface{}{
+	if err := db.Model(&Batch{}).Where("id = ?", batchID).Updates(map[string]interface{}{
 		"status":       workqueue.BatchStatusCancelled,
 		"completed_at": now,
 	}).Error; err != nil {
-		return nil, fmt.Errorf("updating batch %s to cancelled: %w", batchID, err)
+		return nil, fmt.Errorf("updating batch %s to canceled: %w", batchID, err)
 	}
 
 	log.WithFields(log.Fields{
 		"batchID":        batchID,
-		"riverCancelled": cancelled,
+		"riverCancelled": canceled,
 		"totalItems":     len(items),
-	}).Info("batch cancel: batch cancelled")
+	}).Info("batch cancel: batch canceled")
 
-	querier := NewStatusQuerier(c.gormDB)
+	querier := NewStatusQuerier(db)
 	return querier.GetUpdated(ctx, batchID)
 }
