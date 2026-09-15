@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"io/fs"
 	"net/http"
 	"os"
@@ -123,7 +122,7 @@ func NewServeCommand() *cobra.Command {
 						opCtx.Environment = env
 						opCtx.Operator = string(env)
 					}
-					bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+					bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(cmd.Context(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
 					if err != nil {
 						return errors.WithMessage(err, "couldn't get bigquery client")
 					}
@@ -139,7 +138,7 @@ func NewServeCommand() *cobra.Command {
 				return err
 			}
 
-			gcsClient, err = gcs.NewGCSClient(context.TODO(),
+			gcsClient, err = gcs.NewGCSClient(cmd.Context(),
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.GoogleCloudFlags.OAuthClientCredentialFile,
 			)
@@ -163,7 +162,7 @@ func NewServeCommand() *cobra.Command {
 
 			var variantManager testidentification.VariantManager
 			if bigQueryClient != nil {
-				variantManager = f.ModeFlags.GetVariantManager(context.Background(), bigQueryClient)
+				variantManager = f.ModeFlags.GetVariantManager(cmd.Context(), bigQueryClient)
 			}
 			views, err := f.ComponentReadinessFlags.ParseViewsFile()
 			if err != nil {
@@ -199,7 +198,7 @@ func NewServeCommand() *cobra.Command {
 			)
 
 			// Wire up async symptom re-evaluation (insert-only River client).
-			if pgxPool, err := workqueue.NewPgxV5Pool(context.Background(), f.DBFlags.DSN); err != nil {
+			if pgxPool, err := workqueue.NewPgxV5Pool(cmd.Context(), f.DBFlags.DSN); err != nil {
 				log.WithError(err).Fatal("unable to create pgx/v5 pool for River work queues")
 			} else if riverClient, err := workqueue.NewInsertOnlyClient(pgxPool); err != nil {
 				pgxPool.Close()
@@ -215,7 +214,7 @@ func NewServeCommand() *cobra.Command {
 			if f.APIFlags.MetricsAddr != "" {
 				// Do an immediate metrics update
 				err = metrics.RefreshMetricsDB(
-					context.Background(),
+					cmd.Context(),
 					dbc,
 					bigQueryClient,
 					crDataProvider,
@@ -235,7 +234,7 @@ func NewServeCommand() *cobra.Command {
 						case <-ticker.C:
 							log.Info("tick")
 							err := metrics.RefreshMetricsDB(
-								context.Background(),
+								cmd.Context(),
 								dbc,
 								bigQueryClient,
 								crDataProvider,
