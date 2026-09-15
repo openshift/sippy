@@ -46,7 +46,7 @@ const operatorValues = {
  * GridToolbarFilterItem represents a single filter used by GridToolbarFilterMenu, consisting
  * of a column field, operator, value, and optional not modifier.
  */
-export default function GridToolbarFilterItem(props) {
+export default function GridToolbarFilterItem({ columns = [], ...props }) {
   const classes = useStyles()
 
   let columnType = 'string'
@@ -55,8 +55,8 @@ export default function GridToolbarFilterItem(props) {
   let disabled = false
   let valueGetter = null
   let values = null
-  props.columns.forEach((col) => {
-    if (col.field === props.filterModel.columnField) {
+  columns.forEach((col) => {
+    if (col.field === props.filterModel.field) {
       columnType = col.type || 'string'
       autocomplete = col.autocomplete || ''
       release = col.release || ''
@@ -71,26 +71,25 @@ export default function GridToolbarFilterItem(props) {
   // since there's nothing meaningful to contain/start with/end with.
   const operators = values ? ['equals', '!='] : operatorValues[columnType]
 
-  const updateColumnField = (e) => {
+  const updateField = (e) => {
     props.setFilterModel({
-      columnField: e.target.value,
-      operatorValue: '',
+      field: e.target.value,
+      operator: '',
       value: '',
     })
   }
 
-  const columnFieldError =
-    props.filterModel.errors && props.filterModel.errors.includes('columnField')
-  const operatorValueError =
-    props.filterModel.errors &&
-    props.filterModel.errors.includes('operatorValue')
+  const fieldError =
+    props.filterModel.errors && props.filterModel.errors.includes('field')
+  const operatorError =
+    props.filterModel.errors && props.filterModel.errors.includes('operator')
   const valueError =
     props.filterModel.errors && props.filterModel.errors.includes('value')
 
   const inputField = () => {
     if (
-      props.filterModel.operatorValue === 'is empty' ||
-      props.filterModel.operatorValue === 'is not empty'
+      props.filterModel.operator === 'is empty' ||
+      props.filterModel.operator === 'is not empty'
     ) {
       return ''
     }
@@ -107,9 +106,9 @@ export default function GridToolbarFilterItem(props) {
             value={props.filterModel.value}
             onChange={(e) =>
               props.setFilterModel({
-                columnField: props.filterModel.columnField,
+                field: props.filterModel.field,
                 not: props.filterModel.not,
-                operatorValue: props.filterModel.operatorValue,
+                operator: props.filterModel.operator,
                 value: e.target.value,
               })
             }
@@ -136,7 +135,6 @@ export default function GridToolbarFilterItem(props) {
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <DateTimePicker
                 disabled={disabled}
-                showTodayButton
                 disableFuture
                 label="Value"
                 format="yyyy-MM-dd HH:mm 'UTC'"
@@ -149,19 +147,17 @@ export default function GridToolbarFilterItem(props) {
                 onChange={(e) => {
                   if (e && isValid(e)) {
                     props.setFilterModel({
-                      columnField: props.filterModel.columnField,
+                      field: props.filterModel.field,
                       not: props.filterModel.not,
-                      operatorValue: props.filterModel.operatorValue,
+                      operator: props.filterModel.operator,
                       value: e.toISOString(),
                     })
                   }
                 }}
-                renderInput={(props) => (
-                  <TextField variant="standard" {...props} />
-                )}
+                slotProps={{ textField: { variant: 'standard' } }}
               />
             </LocalizationProvider>
-            <FormHelperText error={operatorValueError}>Required</FormHelperText>
+            <FormHelperText error={operatorError}>Required</FormHelperText>
           </Fragment>
         )
       default:
@@ -172,7 +168,7 @@ export default function GridToolbarFilterItem(props) {
               <GridToolbarClientAutocomplete
                 error={valueError}
                 disabled={disabled}
-                field={props.filterModel.columnField}
+                field={props.filterModel.field}
                 id={`value-${props.id}`}
                 label="Value"
                 value={props.filterModel.value}
@@ -180,9 +176,9 @@ export default function GridToolbarFilterItem(props) {
                 valueGetter={valueGetter}
                 onChange={(value) =>
                   props.setFilterModel({
-                    columnField: props.filterModel.columnField,
+                    field: props.filterModel.field,
                     not: props.filterModel.not,
-                    operatorValue: props.filterModel.operatorValue,
+                    operator: props.filterModel.operator,
                     value: value,
                   })
                 }
@@ -200,9 +196,9 @@ export default function GridToolbarFilterItem(props) {
                 release={release}
                 onChange={(value) =>
                   props.setFilterModel({
-                    columnField: props.filterModel.columnField,
+                    field: props.filterModel.field,
                     not: props.filterModel.not,
-                    operatorValue: props.filterModel.operatorValue,
+                    operator: props.filterModel.operator,
                     value: value,
                   })
                 }
@@ -216,14 +212,14 @@ export default function GridToolbarFilterItem(props) {
                 variant="standard"
                 disabled={disabled}
                 inputProps={{ 'data-testid': `value-${props.id}` }}
-                error={operatorValueError}
+                error={operatorError}
                 id={`value-${props.id}`}
                 label="Value"
                 onChange={(e) =>
                   props.setFilterModel({
-                    columnField: props.filterModel.columnField,
+                    field: props.filterModel.field,
                     not: props.filterModel.not,
-                    operatorValue: props.filterModel.operatorValue,
+                    operator: props.filterModel.operator,
                     value: e.target.value,
                   })
                 }
@@ -248,33 +244,33 @@ export default function GridToolbarFilterItem(props) {
         <Button startIcon={<Close />} onClick={props.destroy} />
       )}
       <FormControl variant="standard">
-        <InputLabel id={`columnFieldLabel-${props.id}`}>Field</InputLabel>
+        <InputLabel id={`fieldLabel-${props.id}`}>Field</InputLabel>
         <Select
           variant="standard"
           disabled={disabled}
-          inputProps={{ 'data-testid': `columnField-${props.id}` }}
-          error={columnFieldError}
-          value={props.filterModel.columnField}
-          onChange={updateColumnField}
+          inputProps={{ 'data-testid': `field-${props.id}` }}
+          error={fieldError}
+          value={props.filterModel.field}
+          onChange={updateField}
           className={classes.selector}
-          labelId={`columnFieldLabel-${props.id}`}
-          id={`columnField-${props.id}`}
+          labelId={`fieldLabel-${props.id}`}
+          id={`field-${props.id}`}
           autoWidth
         >
-          {props.columns
+          {columns
             .filter(
               (col) => col.filterable === undefined || col.filterable === true
             )
             .map((col) =>
               col.disabled &&
-              props.filterModel.columnField !== col.field ? undefined : (
+              props.filterModel.field !== col.field ? undefined : (
                 <MenuItem key={col.field} value={col.field}>
                   {col.headerName ? col.headerName : col.field}
                 </MenuItem>
               )
             )}
         </Select>
-        <FormHelperText error={columnFieldError}>Required</FormHelperText>
+        <FormHelperText error={fieldError}>Required</FormHelperText>
       </FormControl>
       <FormControl variant="standard">
         <InputLabel shrink id={`notLabel-${props.id}`}>
@@ -288,9 +284,9 @@ export default function GridToolbarFilterItem(props) {
           checked={props.filterModel.not}
           onChange={(e) =>
             props.setFilterModel({
-              columnField: props.filterModel.columnField,
+              field: props.filterModel.field,
               not: e.target.checked,
-              operatorValue: props.filterModel.operatorValue,
+              operator: props.filterModel.operator,
               value: props.filterModel.value,
             })
           }
@@ -298,24 +294,24 @@ export default function GridToolbarFilterItem(props) {
         />
       </FormControl>
       <FormControl variant="standard">
-        <InputLabel id={`operatorValueLabel-${props.id}`}>Operator</InputLabel>
+        <InputLabel id={`operatorLabel-${props.id}`}>Operator</InputLabel>
         <Select
           variant="standard"
           disabled={disabled}
-          inputProps={{ 'data-testid': `operatorValue-${props.id}` }}
-          error={operatorValueError}
+          inputProps={{ 'data-testid': `operator-${props.id}` }}
+          error={operatorError}
           onChange={(e) =>
             props.setFilterModel({
-              columnField: props.filterModel.columnField,
+              field: props.filterModel.field,
               not: props.filterModel.not,
-              operatorValue: e.target.value,
+              operator: e.target.value,
               value: props.filterModel.value,
             })
           }
-          value={props.filterModel.operatorValue}
+          value={props.filterModel.operator}
           className={classes.selector}
-          labelId={`operatorValueLabel-${props.id}`}
-          id={`operatorValue-${props.id}`}
+          labelId={`operatorLabel-${props.id}`}
+          id={`operator-${props.id}`}
           autoWidth
         >
           {operators.map((operator, index) => (
@@ -324,16 +320,11 @@ export default function GridToolbarFilterItem(props) {
             </MenuItem>
           ))}
         </Select>
-        <FormHelperText error={operatorValueError}>Required</FormHelperText>
+        <FormHelperText error={operatorError}>Required</FormHelperText>
       </FormControl>
       <FormControl variant="standard">{inputField()}</FormControl>
     </Grid>
   )
-}
-
-GridToolbarFilterItem.defaultProps = {
-  columns: [],
-  errors: [],
 }
 
 GridToolbarFilterItem.propTypes = {

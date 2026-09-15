@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"encoding/json"
 	"testing"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -379,6 +380,79 @@ func TestFilterableNumerical(t *testing.T) {
 				t.Fatalf("unexpected result, got %v, expected %v", result, tc.expected)
 			}
 
+		})
+	}
+}
+
+func TestFilterUnmarshalJSON(t *testing.T) {
+	cases := []struct {
+		name             string
+		input            string
+		expectedField    string
+		expectedOperator Operator
+		expectedValue    string
+		expectedNot      bool
+		expectedLink     LinkOperator
+	}{
+		{
+			name:             "MUI X v5 field names (columnField/operatorValue/linkOperator)",
+			input:            `{"items":[{"columnField":"name","operatorValue":"contains","value":"aws"}],"linkOperator":"and"}`,
+			expectedField:    "name",
+			expectedOperator: OperatorContains,
+			expectedValue:    "aws",
+			expectedLink:     LinkOperatorAnd,
+		},
+		{
+			name:             "MUI X v7 field names (field/operator/logicOperator)",
+			input:            `{"items":[{"field":"name","operator":"contains","value":"aws"}],"logicOperator":"and"}`,
+			expectedField:    "name",
+			expectedOperator: OperatorContains,
+			expectedValue:    "aws",
+			expectedLink:     LinkOperatorAnd,
+		},
+		{
+			name:             "v5 names take precedence when both present",
+			input:            `{"items":[{"columnField":"v5field","field":"v7field","operatorValue":"equals","operator":"contains","value":"test"}],"linkOperator":"or","logicOperator":"and"}`,
+			expectedField:    "v5field",
+			expectedOperator: OperatorEquals,
+			expectedValue:    "test",
+			expectedLink:     LinkOperatorOr,
+		},
+		{
+			name:             "not modifier preserved with v7 names",
+			input:            `{"items":[{"field":"variants","not":true,"operator":"has entry","value":"never-stable"}]}`,
+			expectedField:    "variants",
+			expectedOperator: OperatorHasEntry,
+			expectedValue:    "never-stable",
+			expectedNot:      true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var f Filter
+			if err := json.Unmarshal([]byte(tc.input), &f); err != nil {
+				t.Fatalf("unmarshal error: %v", err)
+			}
+			if len(f.Items) != 1 {
+				t.Fatalf("expected 1 item, got %d", len(f.Items))
+			}
+			item := f.Items[0]
+			if item.Field != tc.expectedField {
+				t.Errorf("field: got %q, want %q", item.Field, tc.expectedField)
+			}
+			if item.Operator != tc.expectedOperator {
+				t.Errorf("operator: got %q, want %q", item.Operator, tc.expectedOperator)
+			}
+			if item.Value != tc.expectedValue {
+				t.Errorf("value: got %q, want %q", item.Value, tc.expectedValue)
+			}
+			if item.Not != tc.expectedNot {
+				t.Errorf("not: got %v, want %v", item.Not, tc.expectedNot)
+			}
+			if tc.expectedLink != "" && f.LinkOperator != tc.expectedLink {
+				t.Errorf("linkOperator: got %q, want %q", f.LinkOperator, tc.expectedLink)
+			}
 		})
 	}
 }

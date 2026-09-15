@@ -8,13 +8,11 @@ import '@testing-library/jest-dom'
  * API).
  */
 function requestSearch(filterModel, searchField, searchValue) {
-  const newItems = filterModel.items.filter(
-    (f) => f.columnField !== searchField
-  )
+  const newItems = filterModel.items.filter((f) => f.field !== searchField)
   newItems.push({
     id: 99,
-    columnField: searchField,
-    operatorValue: 'contains',
+    field: searchField,
+    operator: 'contains',
     value: searchValue,
   })
   return {
@@ -26,16 +24,14 @@ function requestSearch(filterModel, searchField, searchValue) {
 describe('JobRunsTable requestSearch logic', () => {
   it('replaces an existing job filter immutably', () => {
     const original = {
-      items: [
-        { id: 1, columnField: 'job', operatorValue: 'contains', value: 'old' },
-      ],
+      items: [{ id: 1, field: 'job', operator: 'contains', value: 'old' }],
     }
     const result = requestSearch(original, 'job', 'new-query')
     expect(result.items).toHaveLength(1)
     expect(result.items[0]).toEqual({
       id: 99,
-      columnField: 'job',
-      operatorValue: 'contains',
+      field: 'job',
+      operator: 'contains',
       value: 'new-query',
     })
     expect(original.items).toHaveLength(1)
@@ -47,21 +43,21 @@ describe('JobRunsTable requestSearch logic', () => {
       items: [
         {
           id: 1,
-          columnField: 'cluster',
-          operatorValue: 'contains',
+          field: 'cluster',
+          operator: 'contains',
           value: 'build01',
         },
         {
           id: 2,
-          columnField: 'job',
-          operatorValue: 'contains',
+          field: 'job',
+          operator: 'contains',
           value: 'old',
         },
       ],
     }
     const result = requestSearch(original, 'job', 'new-query')
     expect(result.items).toHaveLength(2)
-    expect(result.items[0].columnField).toBe('cluster')
+    expect(result.items[0].field).toBe('cluster')
     expect(result.items[0].value).toBe('build01')
     expect(result.items[1].value).toBe('new-query')
   })
@@ -79,8 +75,8 @@ describe('JobRunsTable requestSearch logic', () => {
       items: [
         {
           id: 99,
-          columnField: 'job',
-          operatorValue: 'contains',
+          field: 'job',
+          operator: 'contains',
           value: 'prev',
         },
       ],

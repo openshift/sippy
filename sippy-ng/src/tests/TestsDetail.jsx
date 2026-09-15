@@ -15,10 +15,10 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function TestsDetails(props) {
+export default function TestsDetails({ test = [], ...props }) {
   const classes = useStyles()
 
-  const [names = props.test, setNames] = useQueryParam('test', ArrayParam)
+  const [names = test, setNames] = useQueryParam('test', ArrayParam)
   const [query, setQuery] = React.useState('')
 
   const [fetchError, setFetchError] = React.useState('')
@@ -103,10 +103,6 @@ export default function TestsDetails(props) {
       <TestByVariantTable release={props.release} data={data} />
     </Fragment>
   )
-}
-
-TestsDetails.defaultProps = {
-  test: [],
 }
 
 TestsDetails.propTypes = {
