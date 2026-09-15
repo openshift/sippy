@@ -62,6 +62,14 @@ func TestDateTimeNameComparisons(t *testing.T) {
 			expectedResult: `artifacts/e2e-metal/cluster-data_20260915-120000.json`,
 		},
 		{
+			name: "plain with non-timestamped noise",
+			names: []string{
+				`artifacts/e2e-metal/cluster-data.json`,
+				`artifacts/e2e-metal/cluster-data_backup.json`,
+			},
+			expectedResult: `artifacts/e2e-metal/cluster-data.json`,
+		},
+		{
 			name: "reversed",
 			names: []string{`https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/origin-ci-test/pr-logs/pull/27731/pull-ci-openshift-origin-master-e2e-aws-ovn-upgrade/1626951434970861568/artifacts/e2e-aws-ovn-upgrade/openshift-e2e-test/artifacts/junit/cluster-data_20230218-153052.json`,
 				`https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/origin-ci-test/pr-logs/pull/27731/pull-ci-openshift-origin-master-e2e-aws-ovn-upgrade/1626951434970861568/artifacts/e2e-aws-ovn-upgrade/openshift-e2e-test/artifacts/junit/cluster-data_20230218-180228.json`},

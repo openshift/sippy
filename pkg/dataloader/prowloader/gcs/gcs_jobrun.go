@@ -22,7 +22,7 @@ const (
 	GlobEventsJSON    = "**/gather-extra/artifacts/events.json"
 	GlobIntervalsJSON = "**e2e-events*.json"
 	GlobTimelinesJSON = "**e2e-timelines*.json"
-	GlobClusterData   = "**/cluster-data{.json,_*.json}"
+	GlobClusterData   = "**/cluster-data{.json,_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9].json}"
 )
 
 var defaultRiskAnalysisSummaryFileRegEx *regexp.Regexp

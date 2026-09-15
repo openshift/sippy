@@ -616,7 +616,17 @@ func findMostRecentDateTimeMatch(names []string) string {
 		}
 	}
 
+	// No timestamped cluster-data match was found. Fall back to a plain
+	// cluster-data.json if one is present so it is used rather than dropped when
+	// a non-timestamped sibling (e.g. cluster-data_backup.json) is also present.
+	// This mirrors the two artifact shapes GlobClusterData discovers:
+	// cluster-data.json and cluster-data_<YYYYMMDD-HHMMSS>.json.
 	if currMatchDateTime == nil {
+		for _, name := range names {
+			if name == "cluster-data.json" || strings.HasSuffix(name, "/cluster-data.json") {
+				return name
+			}
+		}
 		return ""
 	}
 	return currMatchDateTime.Name
