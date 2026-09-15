@@ -25,11 +25,14 @@ An individual filter is JSON, in the following format:
 
 ```json
 {
-  "columnName": "name",
-  "operatorValue": "contains",
+  "field": "name",
+  "operator": "contains",
   "value": "aws"
 }
 ```
+
+The legacy field names `columnField`/`operatorValue` (from MUI X v5) are
+also accepted for backward compatibility with existing bookmarks and links.
 
 - String operators are: contains, starts with, ends with, equals, is empty, is not empty.
 - Numerical operators are: =, !=, <, <=, >, >=
@@ -40,35 +43,37 @@ contain aws:
 
 ```json
 {
-  "columnName": "name",
+  "field": "name",
   "not": true,
-  "operatorValue": "contains",
+  "operator": "contains",
   "value": "aws"
 }
 ```
 
-A composed filter consists of one or more filters, along with a link operator. A link operator is either `and` or `or`.
+A composed filter consists of one or more filters, along with a logic operator. A logic operator is either `and` or `or`.
 
 Example:
 
 ```json
 {
-  "linkOperator": "and",
+  "logicOperator": "and",
   "items": [
     {
-      "columnName": "name",
-      "operatorValue": "contains",
+      "field": "name",
+      "operator": "contains",
       "value": "aws"
     },
     {
-      "columnName": "name",
+      "field": "name",
       "not": true,
-      "operatorValue": "contains",
+      "operator": "contains",
       "value": "upgrade"
     }
   ]
 }
 ```
+
+The legacy top-level field `linkOperator` is also accepted.
 
 The filter should be URI encoded json in the `filter` parameter.
 
