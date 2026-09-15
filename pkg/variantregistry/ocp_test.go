@@ -2828,6 +2828,16 @@ func TestReleaseVersionFromVariants(t *testing.T) {
 			expectedVersion: "4.22",
 		},
 		{
+			name: "malformed FromRelease falls back to major/minor",
+			variants: map[string]string{
+				VariantRelease:      "4.22",
+				VariantFromRelease:  "not-a-release",
+				VariantReleaseMajor: "4",
+				VariantReleaseMinor: "20",
+			},
+			expectedVersion: "4.20",
+		},
+		{
 			name: "synthetic release falls back to major/minor",
 			variants: map[string]string{
 				VariantRelease:      "rosa-stage",
@@ -2871,6 +2881,23 @@ func TestReleaseVersionFromVariants(t *testing.T) {
 			assert.Equal(t, tt.expectedVersion, result.Original())
 		})
 	}
+}
+
+func TestReleaseVersionFromVariantFilePreservesMalformedFromRelease(t *testing.T) {
+	log := logrus.WithField("test", "TestReleaseVersionFromVariantFilePreservesMalformedFromRelease")
+	result := releaseVersionFromVariantFile(log,
+		map[string]string{
+			VariantRelease:     "4.22",
+			VariantFromRelease: "not-a-release",
+		},
+		map[string]string{
+			VariantRelease:      "rosa-stage",
+			VariantReleaseMajor: "4",
+			VariantReleaseMinor: "20",
+		})
+
+	require.NotNil(t, result)
+	assert.Equal(t, "4.20", result.Original())
 }
 
 func TestNetworkStackUsesEffectiveReleaseBeforeVariantMerge(t *testing.T) {

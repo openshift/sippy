@@ -1333,12 +1333,12 @@ func setContainerRuntime(jLog logrus.FieldLogger, variants map[string]string, jo
 }
 
 func releaseVersionFromVariants(jLog logrus.FieldLogger, variants map[string]string) *version.Version {
-	for _, release := range []string{variants[VariantFromRelease], variants[VariantRelease]} {
-		if release != "" {
-			if v, err := version.NewVersion(release); err == nil {
-				return v
-			}
-		}
+	release := variants[VariantFromRelease]
+	if release == "" {
+		release = variants[VariantRelease]
+	}
+	if v, err := version.NewVersion(release); err == nil {
+		return v
 	}
 
 	// Synthetic releases will not be able to determine the release version using the VariantRelease or VariantFromRelease
@@ -1358,12 +1358,12 @@ func releaseVersionFromVariants(jLog logrus.FieldLogger, variants map[string]str
 // Cluster data takes priority when it provides a release, because map iteration order must not
 // influence version-dependent merge decisions.
 func releaseVersionFromVariantFile(jLog logrus.FieldLogger, variantFile, jobVariants map[string]string) *version.Version {
-	for _, release := range []string{variantFile[VariantFromRelease], variantFile[VariantRelease]} {
-		if release != "" {
-			if v, err := version.NewVersion(release); err == nil {
-				return v
-			}
-		}
+	release := variantFile[VariantFromRelease]
+	if release == "" {
+		release = variantFile[VariantRelease]
+	}
+	if v, err := version.NewVersion(release); err == nil {
+		return v
 	}
 
 	return releaseVersionFromVariants(jLog, jobVariants)
