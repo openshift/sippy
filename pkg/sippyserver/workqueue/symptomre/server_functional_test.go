@@ -52,7 +52,7 @@ import (
 //	GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json \
 //	GCS_BUCKET=test-platform-results \
 //	PROW_JOB_BUILD_ID=2061603073523978240 \
-//	go test -v -run TestE2E -timeout 5m ./pkg/sippyserver/workqueue/symptomre/
+//	go test -v -run TestFunc -timeout 5m ./pkg/sippyserver/workqueue/symptomre/
 //
 // This test always runs with dry_run=true. It does not configure a BigQuery client, so non-dry-run
 // evaluation would fail. Full write-path testing (BQ, GCS, Postgres label updates) is covered by
@@ -68,7 +68,7 @@ import (
    curl http://localhost:8080/api/jobs/runs/reevaluate/<batch_id>
 */
 
-func TestE2EAsyncSymptomReEvaluation(t *testing.T) {
+func TestFunctionalAsyncSymptomReEvaluation(t *testing.T) {
 	dsn := os.Getenv("SIPPY_DATABASE_DSN")
 	credFile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	gcsBucket := os.Getenv("GCS_BUCKET")
