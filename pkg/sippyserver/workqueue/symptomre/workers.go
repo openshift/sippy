@@ -111,6 +111,8 @@ func (w *ProcessBatchWorker) fanOutItems(ctx context.Context, batchID uuid.UUID,
 		}
 	}
 
+	// TODO: if we ever migrate gorm to use the same pgx version as river does,
+	// it should in theory be possible to wrap all this in a transaction for data integrity.
 	results, err := w.riverClient.InsertMany(ctx, params)
 	if err != nil {
 		return 0, 0, fmt.Errorf("inserting re-evaluation jobs for batch %s: %w", batchID, err)
