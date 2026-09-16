@@ -41,8 +41,10 @@ func NewSubmitter(gormDB *gorm.DB, riverClient *river.Client[pgx.Tx]) *Submitter
 // Submit creates a batch specification and enqueues a River job for daemon
 // processing. The batch and item rows are written via GORM (pgx/v4); the
 // River job is inserted via the River client (pgx/v5). These are separate
-// transactions: if the GORM write succeeds but the River insert fails, the
-// batch remains in "pending" status until resubmitted or cleaned up.
+// transactions, so the data can end up inconsistent: if the GORM write
+// succeeds but the River insert fails, attempt to change batch state to
+// "cancelled" so clients know to retry, and if that also fails, the batch
+// remains in "pending" status until cleaned up.
 func (s *Submitter) Submit(ctx context.Context, prowJobBuildIDs []string, dryRun bool) (*SubmitResult, error) {
 	if len(prowJobBuildIDs) == 0 {
 		return nil, fmt.Errorf("no prowJobBuildIDs provided")
