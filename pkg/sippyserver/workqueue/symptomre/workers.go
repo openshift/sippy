@@ -131,10 +131,9 @@ func (w *ProcessBatchWorker) fanOutItems(ctx context.Context, batchID uuid.UUID,
 		} else {
 			enqueued++
 		}
-		if err := w.gormDB.Model(&BatchItem{}).Where("id = ?", items[i].ID).
-			Update("river_job_id", riverJobID).Error; err != nil {
-			return 0, 0, fmt.Errorf("updating batch item %d river_job_id: %w", items[i].ID, err)
-		}
+	}
+	if err := w.gormDB.Save(&items).Error; err != nil {
+		return 0, 0, fmt.Errorf("updating batch item river_job_ids: %w", err)
 	}
 
 	return enqueued, deduped, nil
