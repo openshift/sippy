@@ -294471,7 +294471,7 @@ periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -294809,7 +294809,7 @@ periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-ovn-upi:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -294881,7 +294881,7 @@ periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-ovn-upi-serial:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -295001,7 +295001,7 @@ periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-static-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -299893,7 +299893,7 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -300231,7 +300231,7 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-ovn-upi:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -300303,7 +300303,7 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-ovn-upi-serial:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -300423,7 +300423,7 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-static-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -306883,7 +306883,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -307293,7 +307293,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-techpreview-seri
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -307317,7 +307317,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-techpreview-seri
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -307341,7 +307341,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-upi:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -307413,7 +307413,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-upi-serial:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -307605,7 +307605,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-static-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -321305,7 +321305,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -321811,7 +321811,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-techpreview-seria
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -321835,7 +321835,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-techpreview-seria
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -321859,7 +321859,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-upi:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -321931,7 +321931,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-upi-serial:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -322123,7 +322123,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-static-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -328845,7 +328845,7 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -329351,7 +329351,7 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-techpreview-seria
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -329375,7 +329375,7 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-techpreview-seria
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -329399,7 +329399,7 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-upi:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -329471,7 +329471,7 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-upi-serial:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: upi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -329663,7 +329663,7 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-static-ovn:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -355332,6 +355332,30 @@ periodic-ci-quarkus-qe-quarkus-openshift-interop-main-quarkus-ocp4.19-lp-interop
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-aws-ocp50-e2e-install-aws-s3-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-nightly:
     Aggregation: none
     Architecture: amd64
@@ -356714,6 +356738,24 @@ periodic-ci-quay-quay-tests-master-quay-osd-ocp-quay-e2e-tests-quay314-osd-ocp41
     Topology: ha
     Upgrade: none
 periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quay317-performance-test:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-load-smoke:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
