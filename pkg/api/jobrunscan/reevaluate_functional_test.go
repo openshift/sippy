@@ -33,7 +33,7 @@ import (
 //
 // These tests call ReEvaluator methods directly, not through the async batch
 // pipeline. The async pipeline (HTTP submit, River processing, status polling)
-// is tested in pkg/sippyserver/workqueue/symptomre/e2e_test.go.
+// is tested in pkg/sippyserver/workqueue/symptomre/server_functional_test.go.
 
 func functionalTestReEvaluator(t *testing.T) *ReEvaluator {
 	t.Helper()
