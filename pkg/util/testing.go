@@ -46,7 +46,7 @@ func GetDbHandle(t *testing.T) *db.DB {
 	return dbc
 }
 
-func GetGcsBucket(t *testing.T) *storage.BucketHandle {
+func GetGcsClient(t *testing.T) *storage.Client {
 	pathToGcsCredentials := os.Getenv("TEST_GCS_CREDS_PATH")
 	if pathToGcsCredentials == "" {
 		t.Skip("TEST_GCS_CREDS_PATH environment variable is not set; skipping GCS tests")
@@ -55,7 +55,11 @@ func GetGcsBucket(t *testing.T) *storage.BucketHandle {
 	if err != nil {
 		logrus.WithError(err).Fatalf("CRITICAL error getting GCS client with credentials at %s", pathToGcsCredentials)
 	}
-	return gcsClient.Bucket(GcsBucketRoot)
+	return gcsClient
+}
+
+func GetGcsBucket(t *testing.T) *storage.BucketHandle {
+	return GetGcsClient(t).Bucket(GcsBucketRoot)
 }
 
 type PseudoCache struct {

@@ -25,7 +25,7 @@ import (
 const artifactURLFmt = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s"
 
 type JobArtifactQuery struct {
-	GcsBucket *storage.BucketHandle
+	GcsClient *storage.Client
 	DbClient  *db.DB
 	cache.Cache
 	JobRunIDs      []int64
@@ -45,15 +45,19 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 			return jobRunResponse, err
 		}
 
-		fileAttrs, truncated, err := q.getJobRunFiles(jobRunResponse.BucketPath)
+		fileAttrs, truncated, err := q.getJobRunFiles(jobRunResponse.GCSBucket, jobRunResponse.BucketPath)
 		if err != nil {
 			logger.WithError(err).Error("could not find job artifact files")
 			return jobRunResponse, err
 		}
 		jobRunResponse.ArtifactListTruncated = truncated
-		jobRunResponse.Artifacts, jobRunResponse.IsFinal = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, fileAttrs)
+		jobRunResponse.Artifacts, jobRunResponse.IsFinal = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, jobRunResponse.GCSBucket, fileAttrs)
 	} else if !jobRunResponse.IsFinal { // cache hit but it's not final; re-query missing artifacts
-		fileAttrs, truncated, err := q.getJobRunFiles(jobRunResponse.BucketPath)
+		if err := ensureJobBucket(&jobRunResponse); err != nil {
+			logger.WithError(err).Error("could not resolve job GCS bucket")
+			return jobRunResponse, err
+		}
+		fileAttrs, truncated, err := q.getJobRunFiles(jobRunResponse.GCSBucket, jobRunResponse.BucketPath)
 		if err != nil {
 			logger.WithError(err).Error("could not find job artifact files")
 			return jobRunResponse, err
@@ -63,7 +67,7 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 		// now filter to just the ones needed to fill out the response
 		completedArtifacts, requeryAttrs := separateCompletedAndRequeries(jobRunResponse.Artifacts, fileAttrs)
 		var newArtifacts []JobRunArtifact
-		newArtifacts, jobRunResponse.IsFinal = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, requeryAttrs)
+		newArtifacts, jobRunResponse.IsFinal = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, jobRunResponse.GCSBucket, requeryAttrs)
 		jobRunResponse.Artifacts = append(completedArtifacts, newArtifacts...)
 	}
 
@@ -127,10 +131,22 @@ func (q *JobArtifactQuery) getJobRun(jobRunID int64) (JobRun, error) {
 		return jobRunResponse, fmt.Errorf("job run %d URL %s is not a prow gs URL", jobRunID, url)
 	}
 	jobRunResponse.BucketPath = jobRunPath
+	jobRunResponse.GCSBucket = jobRunModel.GCSBucket
+	if err := ensureJobBucket(&jobRunResponse); err != nil {
+		return jobRunResponse, err
+	}
 	return jobRunResponse, nil
 }
 
-func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]*storage.ObjectAttrs, bool, error) {
+func ensureJobBucket(jobRun *JobRun) error {
+	jobRun.GCSBucket = util.ResolveGCSBucket(jobRun.GCSBucket, jobRun.URL, "")
+	if jobRun.GCSBucket == "" {
+		return fmt.Errorf("job run %s has no GCS bucket recorded", jobRun.ID)
+	}
+	return nil
+}
+
+func (q *JobArtifactQuery) getJobRunFiles(gcsBucket, jobRunPath string) ([]*storage.ObjectAttrs, bool, error) {
 	files := []*storage.ObjectAttrs{}
 	truncated := false
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -142,7 +158,7 @@ func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]*storage.ObjectA
 	if q.PathGlob != "" {
 		gcsQuery.MatchGlob = jobRunPath + q.PathGlob
 	}
-	iter := q.GcsBucket.Objects(ctx, gcsQuery)
+	iter := q.GcsClient.Bucket(gcsBucket).Objects(ctx, gcsQuery)
 	for {
 		attrs, err := iter.Next()
 		if err != nil {
@@ -172,16 +188,16 @@ func relativeArtifactPath(bucketPath, jobRunID string) string {
 	return bucketPath[start+len(marker):]
 }
 
-func (q *JobArtifactQuery) getFileContentMatches(ctx context.Context, jobRunID int64, attrs *storage.ObjectAttrs) (artifact JobRunArtifact) {
+func (q *JobArtifactQuery) getFileContentMatches(ctx context.Context, jobRunID int64, gcsBucket string, attrs *storage.ObjectAttrs) (artifact JobRunArtifact) {
 	artifact.JobRunID = strconv.FormatInt(jobRunID, 10)
 	artifact.ArtifactPath = relativeArtifactPath(attrs.Name, artifact.JobRunID)
 	artifact.ArtifactContentType = attrs.ContentType
-	artifact.ArtifactURL = ArtifactURLFor(q.GcsBucket.BucketName(), attrs.Name)
+	artifact.ArtifactURL = ArtifactURLFor(gcsBucket, attrs.Name)
 	if q.ContentMatcher == nil { // no matching requested
 		return
 	}
 
-	reader, closer, err := OpenArtifactReader(ctx, q.GcsBucket.Object(attrs.Name), attrs.ContentType)
+	reader, closer, err := OpenArtifactReader(ctx, q.GcsClient.Bucket(gcsBucket).Object(attrs.Name), attrs.ContentType)
 	defer closer()
 	if err != nil {
 		artifact.Error = err.Error()

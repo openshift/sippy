@@ -59,7 +59,6 @@ type JobRunAnnotator struct {
 	bqClient         *bqclient.Client
 	cacheOptions     cache.RequestOptions
 	gcsClient        *storage.Client
-	gcsBucket        string
 	dbClient         *db.DB
 	cache            cache.Cache
 	execute          bool
@@ -84,7 +83,6 @@ func NewJobRunAnnotator(
 	bqClient *bqclient.Client,
 	cacheOptions cache.RequestOptions,
 	gcsClient *storage.Client,
-	gcsBucket string,
 	dbClient *db.DB,
 	cacheClient cache.Cache,
 	execute bool,
@@ -109,7 +107,6 @@ func NewJobRunAnnotator(
 		bqClient:         bqClient,
 		cacheOptions:     cacheOptions,
 		gcsClient:        gcsClient,
-		gcsBucket:        gcsBucket,
 		dbClient:         dbClient,
 		cache:            cacheClient,
 		execute:          execute,
@@ -354,7 +351,7 @@ func (j JobRunAnnotator) filterJobRunByArtifact(ctx context.Context, jobRunIDs [
 	}
 
 	q := &jobartifacts.JobArtifactQuery{
-		GcsBucket:      j.gcsClient.Bucket(j.gcsBucket),
+		GcsClient:      j.gcsClient,
 		DbClient:       j.dbClient,
 		Cache:          j.cache,
 		JobRunIDs:      []int64{},

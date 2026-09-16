@@ -68,6 +68,78 @@ func TestGCSObjectPathFromURL(t *testing.T) {
 	}
 }
 
+func TestGCSBucketFromURL(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{
+			name: "legacy bucket",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/some-job/123",
+			want: "test-platform-results",
+		},
+		{
+			name: "public bucket",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/some-job/123",
+			want: "test-platform-results-public",
+		},
+		{
+			name: "origin-ci-test",
+			url:  "https://example.com/gs/origin-ci-test/logs/job/1",
+			want: "origin-ci-test",
+		},
+		{
+			name: "unrecognized URL",
+			url:  "https://example.com/some/other/path",
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GCSBucketFromURL(tt.url); got != tt.want {
+				t.Errorf("GCSBucketFromURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveGCSBucket(t *testing.T) {
+	const fallback = "configured-default"
+	tests := []struct {
+		name   string
+		stored string
+		jobURL string
+		want   string
+	}{
+		{
+			name:   "stored bucket wins",
+			stored: "origin-ci-test",
+			jobURL: "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/job/1",
+			want:   "origin-ci-test",
+		},
+		{
+			name:   "URL when stored empty",
+			stored: "",
+			jobURL: "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/job/1",
+			want:   "test-platform-results",
+		},
+		{
+			name:   "fallback when stored and URL empty",
+			stored: "",
+			jobURL: "https://example.com/not-prow",
+			want:   fallback,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ResolveGCSBucket(tt.stored, tt.jobURL, fallback); got != tt.want {
+				t.Errorf("ResolveGCSBucket() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGCSObjectPrefixFromURL(t *testing.T) {
 	tests := []struct {
 		name string
