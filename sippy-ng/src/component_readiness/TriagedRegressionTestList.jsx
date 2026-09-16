@@ -1,7 +1,9 @@
 import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
+import { CheckCircle } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { filterRegressionsByLabel } from './TriageSymptomLabels'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
+import { makeStyles } from '@mui/styles'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime, SafeJSONParam } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
@@ -10,7 +12,14 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
+const useStyles = makeStyles({
+  forceClosedTooltip: {
+    whiteSpace: 'pre-line',
+  },
+})
+
 export default function TriagedRegressionTestList(props) {
+  const classes = useStyles()
   const [activeRow, setActiveRow] = useQueryParam(
     'regressedModalTestRow',
     NumberParam,
@@ -183,6 +192,43 @@ export default function TriagedRegressionTestList(props) {
           <div className="last-failure">
             {relativeTime(lastFailureDate, new Date())}
           </div>
+        )
+      },
+    },
+    {
+      field: 'force_closed',
+      headerName: 'Force Closed',
+      flex: 8,
+      filterable: true,
+      sortable: false,
+      valueGetter: (params) => (params.row.force_closed ? 'Yes' : 'No'),
+      renderCell: (params) => {
+        if (!params.row.force_closed) {
+          return null
+        }
+        const details = [
+          params.row.force_closed_reason
+            ? `Reason: ${params.row.force_closed_reason}`
+            : null,
+          params.row.force_closed_by
+            ? `By: ${params.row.force_closed_by}`
+            : null,
+          params.row.force_closed_by_triage_id
+            ? `Triage: ${params.row.force_closed_by_triage_id}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join('\n')
+        return (
+          <Tooltip
+            title={
+              <span className={classes.forceClosedTooltip}>
+                {details || 'Force closed'}
+              </span>
+            }
+          >
+            <CheckCircle color="success" />
+          </Tooltip>
         )
       },
     },
