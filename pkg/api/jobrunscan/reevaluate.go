@@ -279,10 +279,13 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 		return result
 	}
 
-	matches, err := r.evaluateSymptoms(ctx, jobRunID, symptoms)
+	matches, err := r.evaluateSymptoms(ctx, jobRunModel, symptoms)
 	if err != nil {
-		result.Status = ReEvalEvalError
 		result.Error = err.Error()
+		result.Status = ReEvalEvalError
+		if errors.Is(err, errJobRunMissing) {
+			result.Status = ReEvalMissingError
+		}
 		return result
 	}
 	result.SymptomsMatched = uniqueSymptomsMatched(matches)
@@ -334,25 +337,34 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	return result
 }
 
-// evaluateSymptoms runs one artifact query per symptom for the given job run.
-func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRunID int64, symptoms []jobrunscan.Symptom) ([]symptomMatch, error) {
-	var matches []symptomMatch
-	mgr := r.artifactMgr
+var errJobRunMissing = fmt.Errorf("job run not found in bucket")
 
+// evaluateSymptoms runs one artifact query per symptom for the given job run.
+func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRun *models.ProwJobRun, symptoms []jobrunscan.Symptom) ([]symptomMatch, error) {
+
+	mgr := r.artifactMgr
+	q := &jobartifacts.JobArtifactQuery{
+		GcsClient: r.gcsClient,
+		DbClient:  r.db,
+		Cache:     r.cache,
+		JobRunIDs: []int64{int64(jobRun.ID)}, //nolint:gosec // G115: id is a PostgreSQL serial, always within int64 range
+	}
+
+	// check whether the job has been pruned or is otherwise missing before expecting to find symptoms
+	q.PathGlob = "finished.json" // should be present in any prow job
+	if pruneTest := mgr.Query(ctx, q); len(pruneTest.Errors) > 0 {
+		return nil, fmt.Errorf("testing for job %d presence in bucket: %q", jobRun.ID, pruneTest.Errors[0].Error)
+	} else if len(pruneTest.JobRuns) < 1 || len(pruneTest.JobRuns[0].Artifacts) < 1 {
+		return nil, errJobRunMissing
+	}
+
+	var matches []symptomMatch
 	for _, symptom := range symptoms {
-		contentMatcher, err := ContentMatcherForSymptom(symptom.SymptomContent)
-		if err != nil {
+		q.PathGlob = symptom.FilePattern
+		var err error
+		if q.ContentMatcher, err = ContentMatcherForSymptom(symptom.SymptomContent); err != nil {
 			log.WithError(err).WithField("symptom", symptom.ID).Warn("symptom reEval: skipping symptom due to matcher error")
 			continue
-		}
-
-		q := &jobartifacts.JobArtifactQuery{
-			GcsClient:      r.gcsClient,
-			DbClient:       r.db,
-			Cache:          r.cache,
-			JobRunIDs:      []int64{jobRunID},
-			PathGlob:       symptom.FilePattern,
-			ContentMatcher: contentMatcher,
 		}
 
 		queryResult := mgr.Query(ctx, q)
@@ -363,7 +375,7 @@ func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRunID int64, symp
 				}
 				matched := false
 				textMatch := ""
-				if contentMatcher == nil {
+				if q.ContentMatcher == nil {
 					// "none" matcher: file existence is a match
 					matched = true
 				} else if text, ok := a.Matched(); ok {
