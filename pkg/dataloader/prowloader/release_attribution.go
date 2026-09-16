@@ -75,8 +75,11 @@ func (a *ReleaseAttributor) Match(pj *prow.ProwJob) string {
 		if !ok {
 			continue
 		}
-		if enabled, ok := cfg.Jobs[jobName]; ok && enabled {
-			return release
+		if enabled, ok := cfg.Jobs[jobName]; ok {
+			if enabled {
+				return release
+			}
+			continue
 		}
 		for _, re := range a.releaseRegexps[release] {
 			if re.MatchString(jobName) {
