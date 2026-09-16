@@ -253585,6 +253585,58 @@ periodic-ci-openshift-release-main-ci-4.22-e2e-azure-runc-upgrade:
     Suite: unknown
     Topology: ha
     Upgrade: micro
+periodic-ci-openshift-release-main-ci-4.22-e2e-gcd-ovn:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: GCPSovereignCloudInstall
+    Component: Installer
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: gcd
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-ci-4.22-e2e-gcd-ovn-techpreview:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: GCPSovereignCloudInstall
+    Component: Installer
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: gcd
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-ci-4.22-e2e-gcp-cilium:
     Aggregation: none
     Architecture: amd64
