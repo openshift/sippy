@@ -202,6 +202,8 @@ func setupRiverProcess(ctx context.Context, f *SippyDaemonFlags, dbc *db.DB, big
 		CompletedJobRetentionPeriod: 8 * 24 * time.Hour,
 		CancelledJobRetentionPeriod: 8 * 24 * time.Hour,
 		DiscardedJobRetentionPeriod: 8 * 24 * time.Hour,
+		// default job timeout is one minute; some operations might get close to that, so bump this to 5
+		JobTimeout: 5 * time.Minute,
 	}
 	riverClient, err := workqueue.NewWorkerClient(pgxPool, workers, riverConfig)
 	if err != nil {
