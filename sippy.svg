@@ -76,4 +76,18 @@
 </g>
 <g>
 </g>
+<!-- Silly party hat -->
+<g>
+	<path style="fill:#7E57C2;stroke:#4527A0;stroke-width:4;stroke-linejoin:round;" d="M183.5,116.5l96.3-88.2l50.7,80.9L183.5,116.5z"/>
+	<path style="fill:#5E35B1;" d="M279.8,28.3l50.7,80.9l-38.8,1.9L279.8,28.3z"/>
+	<path style="fill:#FFD54F;" d="M229.8,74.1l16.7-15.3l48.9,52.1l-30.2,1.5L229.8,74.1z"/>
+	<g style="fill:#80DEEA;">
+		<circle cx="219.2" cy="94.1" r="8.7"/>
+		<circle cx="275.8" cy="68.8" r="9.8"/>
+	</g>
+	<path style="fill:#FFCA28;stroke:#F9A825;stroke-width:4;stroke-linejoin:round;" d="M176.2,107.8l159.3-7.8l2.1,30.1l-157.5,9.5L176.2,107.8z"/>
+	<circle style="fill:#4527A0;" cx="280.7" cy="18.7" r="18.7"/>
+	<circle style="fill:#80DEEA;" cx="280.7" cy="18.7" r="14.1"/>
+	<circle style="fill:#E0F7FA;" cx="275.7" cy="13.7" r="4.3"/>
+</g>
 </svg>
