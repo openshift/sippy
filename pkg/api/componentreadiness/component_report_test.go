@@ -2,7 +2,6 @@
 package componentreadiness
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -14,14 +13,14 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func fakeComponentAndCapabilityGetter(test crtest.KeyWithVariants, stats crstatus.TestStatus) (string, []string) {
+func fakeComponentAndCapabilityGetter(stats crstatus.TestStatus) (string, []string) {
 	name := stats.TestName
 	known := map[string]struct {
 		component    string
@@ -52,8 +51,8 @@ var (
 		PityFactor:     5,
 		MinimumFailure: 3,
 	}
-	defaultColumnGroupByVariants    = sets.NewString(strings.Split(DefaultColumnGroupBy, ",")...)
-	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
+	defaultColumnGroupByVariants    = sets.New(strings.Split(DefaultColumnGroupBy, ",")...)
+	defaultDBGroupByVariants        = sets.New(strings.Split(DefaultDBGroupBy, ",")...)
 	defaultComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
 			VariantOption: reqopts.Variants{
@@ -78,7 +77,7 @@ var (
 			AdvancedOption: flakeFailAdvancedOption,
 		},
 	}
-	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
+	installerColumnGroupByVariants           = sets.New("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
 			VariantOption: reqopts.Variants{
@@ -126,6 +125,7 @@ var (
 					TestID:     "2",
 				},
 			},
+			IncludeAllTests: true,
 			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
@@ -156,6 +156,12 @@ var (
 	}
 )
 
+func withTestKey(key crtest.KeyWithVariants, status crstatus.TestStatus) crstatus.TestStatus {
+	status.TestID = key.TestID
+	status.Variants = key.Variants
+	return status
+}
+
 func filterColumnIDByDefault(id crtest.ColumnIdentification) crtest.ColumnIdentification {
 	ret := crtest.ColumnIdentification{Variants: map[string]string{}}
 	for _, variant := range strings.Split(DefaultDBGroupBy, ",") {
@@ -180,10 +186,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Installer":    "ipi",
 		},
 	}
-	awsAMD64OVNTestBytes, err := json.Marshal(awsAMD64OVNTest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVNTest")
-	}
+	awsAMD64OVNTestKey := awsAMD64OVNTest.Encode()
 	awsAMD64SDNTest := crtest.KeyWithVariants{
 		TestID: "2",
 		Variants: map[string]string{
@@ -197,10 +200,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Installer":    "ipi",
 		},
 	}
-	awsAMD64SDNTestBytes, err := json.Marshal(awsAMD64SDNTest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64SDNTest")
-	}
+	awsAMD64SDNTestKey := awsAMD64SDNTest.Encode()
 	awsAMD64SDNInstallerUPITest := crtest.KeyWithVariants{
 		TestID: "2",
 		Variants: map[string]string{
@@ -214,10 +214,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Installer":    "upi",
 		},
 	}
-	awsAMD64SDNInstallerUPITestBytes, err := json.Marshal(awsAMD64SDNInstallerUPITest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64SDNInstallerUPITest")
-	}
+	awsAMD64SDNInstallerUPITestKey := awsAMD64SDNInstallerUPITest.Encode()
 	awsAMD64OVN2Test := crtest.KeyWithVariants{
 		TestID: "3",
 		Variants: map[string]string{
@@ -227,10 +224,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Upgrade":      "upgrade-micro",
 		},
 	}
-	awsAMD64OVN2TestBytes, err := json.Marshal(awsAMD64OVN2Test)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVN2Test")
-	}
+	awsAMD64OVN2TestKey := awsAMD64OVN2Test.Encode()
 	awsAMD64OVNInstallerIPITest := crtest.KeyWithVariants{
 		TestID: "1",
 		Variants: map[string]string{
@@ -244,13 +238,10 @@ func TestGenerateComponentReport(t *testing.T) {
 			"Installer":    "ipi",
 		},
 	}
-	awsAMD64OVNVariantsTestBytes, err := json.Marshal(awsAMD64OVNInstallerIPITest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVNInstallerIPITest")
-	}
+	awsAMD64OVNVariantsTestKey := awsAMD64OVNInstallerIPITest.Encode()
 	awsAMD64OVNBaseTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -259,7 +250,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNBaseTestStats50Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -268,7 +259,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNBaseTestStatsVariants90Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard", "fips"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -277,7 +268,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -286,7 +277,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStats85Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -295,7 +286,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStats50Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -304,7 +295,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStatsTiny := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   3,
 			FlakeCount:   0,
@@ -313,7 +304,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVNSampleTestStatsVariants90Percent := crstatus.TestStatus{
 		TestName: "test 1",
-		Variants: []string{"standard", "fips"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -322,7 +313,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64SDNBaseTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 2",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -331,7 +322,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64SDNBaseTestStats50Percent := crstatus.TestStatus{
 		TestName: "test 2",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -340,7 +331,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64SDNSampleTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 2",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -349,7 +340,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVN2BaseTestStats90Percent := crstatus.TestStatus{
 		TestName: "test 3",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
@@ -358,7 +349,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	}
 	awsAMD64OVN2SampleTestStats80Percent := crstatus.TestStatus{
 		TestName: "test 3",
-		Variants: []string{"standard"},
+		Variants: nil,
 		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
@@ -451,12 +442,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test no significant and missing data",
 			generator: defaultComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats85Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -497,14 +488,14 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test with both improvement and regression",
 			generator: defaultComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2BaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey:  withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64OVN2TestKey: withTestKey(awsAMD64OVN2Test, awsAMD64OVN2BaseTestStats90Percent),
+				awsAMD64SDNTestKey:  withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2SampleTestStats80Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey:  withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats50Percent),
+				awsAMD64OVN2TestKey: withTestKey(awsAMD64OVN2Test, awsAMD64OVN2SampleTestStats80Percent),
+				awsAMD64SDNTestKey:  withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -627,12 +618,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "component page test no significant and missing data",
 			generator: componentPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -669,12 +660,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "component page test with both improvement and regression",
 			generator: componentPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats50Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -711,12 +702,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "capability page test no significant and missing data",
 			generator: capabilityPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -740,12 +731,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "capability page test with both improvement and regression",
 			generator: capabilityPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats50Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -769,12 +760,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "test page test no significant and missing data",
 			generator: testPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -798,12 +789,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "test page test with both improvement and regression",
 			generator: testPageGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats50Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -838,12 +829,12 @@ func TestGenerateComponentReport(t *testing.T) {
 				},
 			},
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats85Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -935,12 +926,12 @@ func TestGenerateComponentReport(t *testing.T) {
 				},
 			},
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats85Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -977,12 +968,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test minimum failure no regression",
 			generator: defaultComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStatsTiny,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey: withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStatsTiny),
+				awsAMD64SDNTestKey: withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -1019,12 +1010,12 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test group by installer",
 			generator: groupByInstallerComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNVariantsTestBytes):     awsAMD64OVNBaseTestStatsVariants90Percent,
-				string(awsAMD64SDNInstallerUPITestBytes): awsAMD64SDNBaseTestStats90Percent,
+				awsAMD64OVNVariantsTestKey:     withTestKey(awsAMD64OVNInstallerIPITest, awsAMD64OVNBaseTestStatsVariants90Percent),
+				awsAMD64SDNInstallerUPITestKey: withTestKey(awsAMD64SDNInstallerUPITest, awsAMD64SDNBaseTestStats90Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNVariantsTestBytes):     awsAMD64OVNSampleTestStatsVariants90Percent,
-				string(awsAMD64SDNInstallerUPITestBytes): awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNVariantsTestKey:     withTestKey(awsAMD64OVNInstallerIPITest, awsAMD64OVNSampleTestStatsVariants90Percent),
+				awsAMD64SDNInstallerUPITestKey: withTestKey(awsAMD64SDNInstallerUPITest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -1065,14 +1056,14 @@ func TestGenerateComponentReport(t *testing.T) {
 			name:      "top page test with both improvement and regression flake as failure",
 			generator: flakeFailComponentReportGenerator,
 			baseStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2BaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNBaseTestStats50Percent,
+				awsAMD64OVNTestKey:  withTestKey(awsAMD64OVNTest, awsAMD64OVNBaseTestStats90Percent),
+				awsAMD64OVN2TestKey: withTestKey(awsAMD64OVN2Test, awsAMD64OVN2BaseTestStats90Percent),
+				awsAMD64SDNTestKey:  withTestKey(awsAMD64SDNTest, awsAMD64SDNBaseTestStats50Percent),
 			},
 			sampleStatus: map[string]crstatus.TestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2SampleTestStats80Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNSampleTestStats90Percent,
+				awsAMD64OVNTestKey:  withTestKey(awsAMD64OVNTest, awsAMD64OVNSampleTestStats50Percent),
+				awsAMD64OVN2TestKey: withTestKey(awsAMD64OVN2Test, awsAMD64OVN2SampleTestStats80Percent),
+				awsAMD64SDNTestKey:  withTestKey(awsAMD64SDNTest, awsAMD64SDNSampleTestStats90Percent),
 			},
 			expectedReport: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
@@ -1217,6 +1208,18 @@ func TestGenerateComponentReport(t *testing.T) {
 						report.Rows[ir].Columns[ic].RegressedTests[it].FisherExact = nil
 
 					}
+
+					if tc.generator.includeAllTests() {
+						// Level 4 (testId set): AllTests should be a superset of RegressedTests
+						assert.GreaterOrEqual(t, len(report.Rows[ir].Columns[ic].AllTests),
+							len(report.Rows[ir].Columns[ic].RegressedTests),
+							"AllTests should be a superset of RegressedTests for row %d col %d", ir, ic)
+					} else {
+						// Levels 1-3: AllTests is not populated to avoid response bloat
+						assert.Empty(t, report.Rows[ir].Columns[ic].AllTests,
+							"AllTests should be empty at non-test-level for row %d col %d", ir, ic)
+					}
+					report.Rows[ir].Columns[ic].AllTests = nil
 				}
 			}
 			assert.Equal(t, tc.expectedReport, report, "expected report %+v, got %+v", tc.expectedReport, report)
@@ -1566,12 +1569,13 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
-		baseStats := map[string][]crstatus.TestJobRunRows{}
-		sampleStats := map[string][]crstatus.TestJobRunRows{}
+		rawBaseStats := map[string][]crstatus.TestJobRunRows{}
+		rawSampleStats := map[string][]crstatus.TestJobRunRows{}
 		for _, testStats := range tc.baseRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
+				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("base-%s-s-%d", testStats.job, i),
 					Count: crtest.Count{
 						TotalCount:   1,
 						SuccessCount: 1,
@@ -1579,14 +1583,16 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
-					Count:   crtest.Count{TotalCount: 1},
+				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("base-%s-f-%d", testStats.job, i),
+					Count:        crtest.Count{TotalCount: 1},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
+				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("base-%s-fl-%d", testStats.job, i),
 					Count: crtest.Count{
 						TotalCount: 1,
 						FlakeCount: 1,
@@ -1596,8 +1602,9 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		}
 		for _, testStats := range tc.sampleRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
+				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("sample-%s-s-%d", testStats.job, i),
 					Count: crtest.Count{
 						TotalCount:   1,
 						SuccessCount: 1,
@@ -1605,14 +1612,16 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
-					Count:   crtest.Count{TotalCount: 1},
+				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("sample-%s-f-%d", testStats.job, i),
+					Count:        crtest.Count{TotalCount: 1},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob: testStats.job,
+				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
+					ProwJob:      testStats.job,
+					ProwJobRunID: fmt.Sprintf("sample-%s-fl-%d", testStats.job, i),
 					Count: crtest.Count{
 						TotalCount: 1,
 						FlakeCount: 1,
@@ -1620,6 +1629,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				})
 			}
 		}
+		baseStats := crstatus.SummarizeTestJobRuns(rawBaseStats)
+		sampleStats := crstatus.SummarizeTestJobRuns(rawSampleStats)
 
 		t.Run(tc.name, func(t *testing.T) {
 			tc.generator.initializeMiddleware()
@@ -1857,6 +1868,57 @@ func Test_componentReportGenerator_analyze(t *testing.T) {
 				assert.Nil(t, testAnalysis.FisherExact)
 			}
 
+		})
+	}
+}
+
+func TestGetNewCellStatusOrderIndependent(t *testing.T) {
+	testID := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
+			Component:  "component",
+			Capability: "cap",
+			TestName:   "test",
+		},
+	}
+	makeStats := func(s crtest.Status) testdetails.TestComparison {
+		return testdetails.TestComparison{ReportStatus: s}
+	}
+	statusForOrder := func(first, second crtest.Status) crtest.Status {
+		cell := getNewCellStatus(testID, makeStats(first), nil, false)
+		cell = getNewCellStatus(testID, makeStats(second), &cell, false)
+		return cell.status
+	}
+
+	tests := []struct {
+		name   string
+		first  crtest.Status
+		second crtest.Status
+		want   crtest.Status
+	}{
+		{
+			name:   "NotSignificant and MissingBasis",
+			first:  crtest.NotSignificant,
+			second: crtest.MissingBasis,
+			want:   crtest.NotSignificant,
+		},
+		{
+			name:   "NotSignificant and MissingSample",
+			first:  crtest.NotSignificant,
+			second: crtest.MissingSample,
+			want:   crtest.MissingSample,
+		},
+		{
+			name:   "NotSignificant and SignificantImprovement",
+			first:  crtest.NotSignificant,
+			second: crtest.SignificantImprovement,
+			want:   crtest.SignificantImprovement,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, statusForOrder(tt.first, tt.second))
+			assert.Equal(t, tt.want, statusForOrder(tt.second, tt.first))
 		})
 	}
 }

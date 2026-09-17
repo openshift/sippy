@@ -39,7 +39,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			FROM pg_inherits
 			JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
 			JOIN pg_class child ON pg_inherits.inhrelid = child.oid
-			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 		`).Scan(&partitionCount).Error
 		require.NoError(t, err)
 		assert.Greater(t, partitionCount, int64(0), "should have created partitions")
@@ -96,7 +96,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			FROM pg_inherits
 			JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
 			JOIN pg_class child ON pg_inherits.inhrelid = child.oid
-			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 		`).Scan(&attachedPartitions).Error
 		require.NoError(t, err)
 
@@ -155,9 +155,9 @@ func TestPartitionLifecycle(t *testing.T) {
 
 	t.Run("CleanupPartitions orchestrates detach and drop", func(t *testing.T) {
 		// Create partitions at different ages:
-		// 1. Recent (within 100 days) - should NOT be detached
-		// 2. Old (105 days) - should be detached but NOT dropped
-		// 3. Very old (115 days) - should be dropped
+		// 1. Recent (within 365 days) - should not be detached
+		// 2. Old (370 days) - should be detached, then dropped by cleanup
+		// 3. Very old (380 days) - detached before cleanup, then dropped by cleanup
 		releases := []string{"4.18"}
 
 		// Recent data
@@ -166,21 +166,22 @@ func TestPartitionLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		require.Greater(t, count, 0, "should create recent partitions")
 
-		// Old data (will be detached)
-		oldDate := time.Now().AddDate(0, 0, -105)
+		// Old data (will be detached and dropped by cleanup)
+		oldDate := time.Now().AddDate(0, 0, -370)
 		count, err = dbc.EnsurePartitions(releases, oldDate, oldDate.AddDate(0, 0, 1), false)
 		require.NoError(t, err)
 		require.Greater(t, count, 0, "should create old partitions")
 
-		// Very old data (will be dropped)
-		veryOldDate := time.Now().AddDate(0, 0, -115)
+		// Very old data (will be detached before cleanup and dropped by cleanup)
+		veryOldDate := time.Now().AddDate(0, 0, -380)
 		count, err = dbc.EnsurePartitions(releases, veryOldDate, veryOldDate.AddDate(0, 0, 1), false)
 		require.NoError(t, err)
 		require.Greater(t, count, 0, "should create very old partitions")
 
-		// First detach the very old partitions so they can be dropped
-		_, err = dbc.DetachOldPartitions(110, false)
+		// First detach only the very old partitions so cleanup exercises both paths.
+		detachedBeforeCleanup, err := dbc.DetachOldPartitions(375, false)
 		require.NoError(t, err)
+		require.Greater(t, detachedBeforeCleanup, 0, "should detach the very old partitions before cleanup")
 
 		// Diagnostic: Check partition bounds before cleanup
 		type partitionDiagnostic struct {
@@ -198,7 +199,7 @@ func TestPartitionLifecycle(t *testing.T) {
 					0 AS level
 				FROM pg_class c
 				JOIN pg_namespace n ON n.oid = c.relnamespace
-				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 				  AND n.nspname = 'public'
 
 				UNION ALL
@@ -248,8 +249,20 @@ func TestPartitionLifecycle(t *testing.T) {
 
 		// Verify cleanup occurred
 		t.Logf("Cleanup results: detached=%d, dropped=%d", detached, dropped)
+		assert.Greater(t, detached, 0, "should detach old attached partitions")
 		assert.Greater(t, dropped, 0, "should drop very old detached partitions")
-		assert.GreaterOrEqual(t, detached, 0, "may detach old partitions")
+
+		for _, expiredDate := range []time.Time{oldDate, veryOldDate} {
+			var expiredPartitionCount int64
+			err = dbc.DB.Raw(`
+				SELECT COUNT(*)
+				FROM pg_tables
+				WHERE schemaname = 'public'
+				  AND tablename LIKE ?
+			`, "%"+expiredDate.Format("2006_01_02")+"%").Scan(&expiredPartitionCount).Error
+			require.NoError(t, err)
+			assert.Zero(t, expiredPartitionCount, "expired partitions for %s should be dropped", expiredDate.Format("2006-01-02"))
+		}
 
 		// Check what happened to recent partitions after cleanup
 		var recentAfterCleanup []partitionDiagnostic
@@ -261,7 +274,7 @@ func TestPartitionLifecycle(t *testing.T) {
 					0 AS level
 				FROM pg_class c
 				JOIN pg_namespace n ON n.oid = c.relnamespace
-				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 				  AND n.nspname = 'public'
 
 				UNION ALL
@@ -336,7 +349,7 @@ func TestPartitionLifecycle(t *testing.T) {
 				SELECT c.oid, c.relname AS table_name
 				FROM pg_class c
 				JOIN pg_namespace n ON n.oid = c.relnamespace
-				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+				WHERE c.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 				  AND n.nspname = 'public'
 				UNION ALL
 				SELECT child.oid, child.relname
@@ -369,7 +382,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			SELECT COUNT(*)
 			FROM pg_inherits
 			JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
-			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 		`).Scan(&partitionCountBefore).Error
 		require.NoError(t, err)
 
@@ -384,7 +397,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			SELECT COUNT(*)
 			FROM pg_inherits
 			JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
-			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs', 'test_analysis_by_job_by_dates')
+			WHERE parent.relname IN ('prow_job_run_tests', 'prow_job_run_test_outputs')
 		`).Scan(&partitionCountAfter).Error
 		require.NoError(t, err)
 

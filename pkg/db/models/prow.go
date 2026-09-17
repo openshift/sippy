@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 
@@ -11,18 +12,29 @@ import (
 
 type ProwKind string
 
+// VariantCombination assigns an integer ID to each unique variants array,
+// enabling efficient GROUP BY in matviews. Populated via a trigger on prow_jobs.
+type VariantCombination struct {
+	ID       uint           `gorm:"primaryKey"`
+	Variants pq.StringArray `gorm:"type:text[];uniqueIndex:idx_variant_combinations_variants;not null"`
+}
+
 // ProwJob represents a prow job and stores data about its variants, associated bugs, etc.
 type ProwJob struct {
 	gorm.Model
 
-	Kind        ProwKind
-	Name        string         `gorm:"unique"`
-	Release     string         `gorm:"index"`
-	Variants    pq.StringArray `gorm:"type:text[];index:idx_prow_jobs_variants,type:gin"`
-	TestGridURL string
+	Kind     ProwKind
+	Name     string         `gorm:"unique"`
+	Release  string         `gorm:"index"`
+	Variants pq.StringArray `gorm:"type:text[]"`
+	// VariantCombinationID references variant_combinations.id, maintained by a
+	// BEFORE INSERT/UPDATE trigger. NULL only when Variants is NULL.
+	VariantCombinationID *uint `gorm:"column:variant_combination_id"`
+	VariantCombination   *VariantCombination
+	TestGridURL          string
 	// Bugs maps to all the bugs we scanned and found this prowjob name mentioned in the description or any comment.
-	Bugs    []Bug        `gorm:"many2many:bug_jobs;"`
-	JobRuns []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
+	Bugs    []Bug `gorm:"many2many:bug_jobs;"`
+	JobRuns []ProwJobRun
 }
 
 // IDName is a partial struct to query limited fields we need for caching. Can be used
@@ -33,14 +45,29 @@ type IDName struct {
 	Name string `gorm:"unique"`
 }
 
+// ProwJobRunIDMap maps a Prow build ID to the partition keys for prow_job_runs.
+// Populated on ingest via pgwriter; used for partition-pruned lookups after
+// prow_job_runs is partitioned (see docs/plans/trt-2709-job-run-id-mapping.md).
+type ProwJobRunIDMap struct {
+	ID             uint      `gorm:"primaryKey"`
+	ProwJobRelease string    `gorm:"not null"`
+	Timestamp      time.Time `gorm:"not null"`
+}
+
+// TableName overrides GORM's default pluralization, which would use prow_job_run_id_maps.
+func (ProwJobRunIDMap) TableName() string { return "prow_job_run_id_map" }
+
+// ProwJobRun represents a single execution of a ProwJob.
+// Table is partitioned (LIST by prow_job_release, RANGE by timestamp) -
+// schema managed by migration 000001, not AutoMigrate.
 type ProwJobRun struct {
 	gorm.Model
 
 	// ProwJob is a link to the prow job this run belongs to.
 	ProwJob   ProwJob
 	ProwJobID uint `gorm:"index"`
-	// Used for partitioning (denormalized for prow_job_run_tests)
-	ProwJobRelease string `gorm:"index:idx_prow_job_runs_release_timestamp"`
+	// LIST partition key (denormalized from prow_jobs.release)
+	ProwJobRelease string `gorm:"primaryKey;index:idx_prow_job_runs_release_timestamp"`
 
 	// Cluster is the cluster where the prow job was run.
 	Cluster string
@@ -48,44 +75,49 @@ type ProwJobRun struct {
 	GCSBucket    string
 	URL          string
 	TestFailures int
-	Tests        []ProwJobRunTest
-	PullRequests []ProwPullRequest      `gorm:"many2many:prow_job_run_prow_pull_requests;constraint:OnDelete:CASCADE;"`
-	Annotations  []ProwJobRunAnnotation `gorm:"constraint:OnDelete:CASCADE;"`
+	TestFlakes   int                    `gorm:"not null;default:0"`
+	Tests        []ProwJobRunTest       `gorm:"foreignKey:ProwJobRunID,ProwJobRunRelease,ProwJobRunTimestamp;references:ID,ProwJobRelease,Timestamp"`
+	PullRequests []ProwPullRequest      `gorm:"many2many:prow_job_run_prow_pull_requests;joinForeignKey:ProwJobRunID,ProwJobRunRelease,ProwJobRunTimestamp;joinReferences:ProwPullRequestID"`
+	Annotations  []ProwJobRunAnnotation `gorm:"foreignKey:ProwJobRunID,ProwJobRunRelease,ProwJobRunTimestamp;references:ID,ProwJobRelease,Timestamp"`
 	Failed       bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
 	// KnownFailure is true if the job run failed, but we found a bug that is likely related already filed.
-	KnownFailure  bool
-	Succeeded     bool
-	Timestamp     time.Time `gorm:"index;index:idx_prow_job_runs_timestamp_date,expression:DATE(timestamp AT TIME ZONE 'UTC');index:idx_prow_job_runs_release_timestamp"`
+	KnownFailure bool
+	Succeeded    bool
+	// RANGE partition key
+	Timestamp     time.Time `gorm:"primaryKey;index;index:idx_prow_job_runs_release_timestamp"`
 	Duration      time.Duration
-	OverallResult v1.JobOverallResult `gorm:"index"`
-	// Labels stores the IDs of labels applied to this job run
-	// This is populated from symptom detection or manual annotation
-	Labels pq.StringArray `gorm:"type:text[];index:idx_prow_job_runs_labels,type:gin" json:"labels"`
+	OverallResult v1.JobOverallResult
+	Labels        pq.StringArray `gorm:"type:text[]" json:"labels"`
 	// used to pass the TestCount in via the api, we have the actual tests in the db and can calculate it here so don't persist
 	TestCount   int         `gorm:"-"`
 	ClusterData ClusterData `gorm:"-"`
+	DeletedAt   gorm.DeletedAt
 }
 
 // ProwJobRunProwPullRequest is the explicit join table for the many-to-many relationship
-// between ProwJobRun and ProwPullRequest. Release and timestamp are denormalized from
-// ProwJobRun for query optimization.
+// between ProwJobRun and ProwPullRequest.
+// Table is partitioned (LIST by prow_job_run_release, RANGE by prow_job_run_timestamp) -
+// schema managed by migration 000001, not AutoMigrate.
 type ProwJobRunProwPullRequest struct {
 	ProwJobRunID        uint      `gorm:"primaryKey"`
-	ProwPullRequestID   uint      `gorm:"primaryKey"`
-	ProwJobRunRelease   string    `gorm:"index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
-	ProwJobRunTimestamp time.Time `gorm:"index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
+	ProwPullRequestID   uint      `gorm:"primaryKey;index:idx_prow_job_run_prow_pull_requests_prow_pull_request_id"`
+	ProwJobRunRelease   string    `gorm:"primaryKey;index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
+	ProwJobRunTimestamp time.Time `gorm:"primaryKey;index:idx_prow_job_run_prow_pull_requests_release_timestamp"`
 }
 
 // ProwJobRunAnnotation stores a single key-value annotation for a ProwJobRun.
+// Table is partitioned (LIST by prow_job_run_release, RANGE by prow_job_run_timestamp) -
+// schema managed by migration 000001, not AutoMigrate.
 type ProwJobRunAnnotation struct {
 	gorm.Model
-	ProwJobRunID        uint   `gorm:"index;uniqueIndex:idx_prow_job_run_annotations_key"`
+	ProwJobRunID        uint   `gorm:"uniqueIndex:idx_prow_job_run_annotations_key"`
 	Key                 string `gorm:"uniqueIndex:idx_prow_job_run_annotations_key"`
 	Value               string
-	ProwJobRunRelease   string    `gorm:"index:idx_prow_job_run_annotations_release_timestamp"`
-	ProwJobRunTimestamp time.Time `gorm:"index:idx_prow_job_run_annotations_release_timestamp"`
+	ProwJobRunRelease   string    `gorm:"primaryKey;uniqueIndex:idx_prow_job_run_annotations_key;index:idx_prow_job_run_annotations_release_timestamp"`
+	ProwJobRunTimestamp time.Time `gorm:"primaryKey;uniqueIndex:idx_prow_job_run_annotations_key;index:idx_prow_job_run_annotations_release_timestamp"`
+	DeletedAt           gorm.DeletedAt
 }
 
 type Test struct {
@@ -101,7 +133,7 @@ type Test struct {
 type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint
-	ProwJobRun   ProwJobRun
+	ProwJobRun   ProwJobRun `gorm:"foreignKey:ProwJobRunID,ProwJobRunRelease,ProwJobRunTimestamp;references:ID,ProwJobRelease,Timestamp"`
 	// used for variants
 	// skips joining on ProwJobRunID just to get ProwJobID
 	ProwJobID uint
@@ -116,6 +148,7 @@ type ProwJobRunTest struct {
 	Suite     Suite
 	Status    int
 	Duration  float64
+	Lifecycle string `gorm:"default:blocking"`
 	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt
 
@@ -146,16 +179,62 @@ type Suite struct {
 	Name string `gorm:"uniqueIndex"`
 }
 
-type TestAnalysisByJobByDate struct {
-	Date     time.Time `gorm:"index:test_release_date,unique"`
-	TestID   uint      `gorm:"index:test_release_date,unique"`
-	Release  string    `gorm:"index:test_release_date,unique"`
-	JobName  string    `gorm:"index:test_release_date,unique"`
-	TestName string
-	Runs     int
-	Passes   int
-	Flakes   int
-	Failures int
+// TestDailyTotal stores pre-aggregated daily test results.
+// Table is partitioned (LIST by release, RANGE by date) -
+// schema managed by migration 000006, not AutoMigrate.
+type TestDailyTotal struct {
+	Release               string     `gorm:"column:release;not null;uniqueIndex:idx_test_daily_totals_key,priority:1"`
+	Date                  civil.Date `gorm:"column:date;type:date;not null;uniqueIndex:idx_test_daily_totals_key,priority:2"`
+	TestID                uint       `gorm:"column:test_id;not null;uniqueIndex:idx_test_daily_totals_key,priority:3"`
+	SuiteID               uint       `gorm:"column:suite_id;not null;default:0;uniqueIndex:idx_test_daily_totals_key,priority:4"`
+	Lifecycle             string     `gorm:"column:lifecycle;not null;default:blocking;uniqueIndex:idx_test_daily_totals_key,priority:5"`
+	ProwJobID             uint       `gorm:"column:prow_job_id;not null;uniqueIndex:idx_test_daily_totals_key,priority:6"`
+	Successes             int32      `gorm:"column:successes;not null;default:0"`
+	Failures              int32      `gorm:"column:failures;not null;default:0"`
+	Flakes                int32      `gorm:"column:flakes;not null;default:0"`
+	Runs                  int32      `gorm:"column:runs;not null;default:0"`
+	FirstFailureTimestamp *time.Time `gorm:"column:first_failure_timestamp"`
+	LastFailureTimestamp  *time.Time `gorm:"column:last_failure_timestamp"`
+	FirstSuccessTimestamp *time.Time `gorm:"column:first_success_timestamp"`
+	LastSuccessTimestamp  *time.Time `gorm:"column:last_success_timestamp"`
+}
+
+// TestCumulativeSummary stores running totals of test_daily_totals values,
+// ordered by date. Any date range [start, end] can be computed as
+// cumulative(end) - cumulative(start-1). Keyed by immutable fields only
+// (no variant_combination_id) so variant changes do not invalidate the data.
+// Entities are carried forward on days with no data so the chain is unbroken.
+// Table is partitioned (LIST by release, RANGE by date) -
+// schema managed by migration 000006, not AutoMigrate.
+type TestCumulativeSummary struct {
+	Release              string     `gorm:"column:release;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:1"`
+	Date                 civil.Date `gorm:"column:date;type:date;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:2"`
+	TestID               uint       `gorm:"column:test_id;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:3"`
+	SuiteID              uint       `gorm:"column:suite_id;not null;default:0;uniqueIndex:idx_test_cumulative_summaries_key,priority:4"`
+	Lifecycle            string     `gorm:"column:lifecycle;not null;default:blocking;uniqueIndex:idx_test_cumulative_summaries_key,priority:5"`
+	ProwJobID            uint       `gorm:"column:prow_job_id;not null;uniqueIndex:idx_test_cumulative_summaries_key,priority:6;index:idx_test_cumulative_summaries_prow_job_id"`
+	PrefixSumSuccesses   int64      `gorm:"column:prefix_sum_successes;not null;default:0"`
+	PrefixSumFailures    int64      `gorm:"column:prefix_sum_failures;not null;default:0"`
+	PrefixSumFlakes      int64      `gorm:"column:prefix_sum_flakes;not null;default:0"`
+	PrefixSumRuns        int64      `gorm:"column:prefix_sum_runs;not null;default:0"`
+	PrefixMaxLastFailure *time.Time `gorm:"column:prefix_max_last_failure"`
+	PrefixMaxLastSuccess *time.Time `gorm:"column:prefix_max_last_success"`
+}
+
+// ProwGARawTestDatum stores raw BigQuery test results for GA release windows.
+// Fetched once per GA date and persisted for query-time aggregation.
+// Each (release, window_days) pair holds results aggregated over a different lookback
+// period (e.g. 1, 30, or 90 days before GA).
+type ProwGARawTestDatum struct {
+	Release    string `gorm:"not null;index:idx_prow_ga_raw_release_window"`
+	WindowDays int    `gorm:"not null;default:30;index:idx_prow_ga_raw_release_window"`
+	TestID     uint   `gorm:"not null"`
+	ProwJobID  uint   `gorm:"not null"`
+	SuiteID    uint   `gorm:"not null;default:0"`
+	Passes     int64  `gorm:"not null;default:0"`
+	Failures   int64  `gorm:"not null;default:0"`
+	Flakes     int64  `gorm:"not null;default:0"`
+	Runs       int64  `gorm:"not null;default:0"`
 }
 
 // Bug represents a Jira bug.
@@ -187,11 +266,11 @@ type ProwPullRequest struct {
 	Model
 
 	// Org is something like kubernetes or k8s.io
-	Org string `json:"org"`
+	Org string `json:"org" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 	// Repo is something like test-infra
-	Repo string `json:"repo"`
+	Repo string `json:"repo" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 
-	Number int    `json:"number"`
+	Number int    `json:"number" gorm:"index:idx_prow_pull_requests_org_repo_number"`
 	Author string `json:"author"`
 	Title  string `json:"title,omitempty"`
 

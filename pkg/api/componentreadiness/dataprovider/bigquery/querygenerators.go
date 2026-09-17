@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -268,6 +269,14 @@ func buildKeyTestFilterClause(tableAlias string) string {
 func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, releaseFilter string, keyTestNames []string) (string, []bigquery.QueryParameter) {
 	var commonParams []bigquery.QueryParameter
 
+	// The release column clustering optimization only works for ci_analysis_us where the
+	// column is populated by ci-to-bigquery. ci_analysis_qe has a NULL release column,
+	// we're not entirely sure why, but the instance is deprecated and will be deleted soon,
+	// so we do not want to overly invest in fixing it.
+	if strings.HasSuffix(dataset, "ci_analysis_qe") {
+		releaseFilter = ""
+	}
+
 	// Create the deduped_testcases CTE - this is the source of truth for all subsequent CTEs
 	dedupedCTE := fmt.Sprintf(`deduped_testcases_with_rownum AS (
 			SELECT
@@ -400,7 +409,7 @@ func BuildComponentReportQuery(
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON junit_data.variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			client.Dataset, cleanV, cleanV, cleanV, cleanV)
 	}
-	for _, v := range reqOptions.VariantOption.DBGroupBy.List() {
+	for _, v := range sets.List(reqOptions.VariantOption.DBGroupBy) {
 		v = param.Cleanse(v)
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
@@ -412,7 +421,6 @@ func BuildComponentReportQuery(
 	}
 
 	// WARNING: returning additional columns from this query will require explicit parsing in deserializeRowToTestStatus
-	// TODO: jira_component and jira_component_id appear to not be used? Could save bigquery costs if we remove them.
 	// TODO: last_failure here explicitly uses success_val not adjusted_success_val, this ensures we
 	// show the last time the test failed, not flaked. if you enable the flakes as failures feature (which is
 	// non default today), the last failure time will be wrong which can impact things like failed fix detection.
@@ -539,8 +547,6 @@ func BuildComponentReportQuery(
 // If key test names are configured in the view's advanced options, when any of these tests fail in a job,
 // all other test failures in that job are excluded from regression analysis. Only the highest priority
 // (earliest in the list) key test will be included for each affected job.
-// TODO: I think we're querying more than we need here, there are a lot of long columns returned in this query that are
-// never used, test name, component, file path, url, etc.
 func buildTestDetailsQuery(
 	client *bqcachedclient.Client,
 	testIDOpts []reqopts.TestIdentification,
@@ -566,7 +572,7 @@ func buildTestDetailsQuery(
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			client.Dataset, v, v, v, v)
 	}
-	for _, v := range c.VariantOption.DBGroupBy.List() {
+	for _, v := range sets.List(c.VariantOption.DBGroupBy) {
 		v = param.Cleanse(v)
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
@@ -598,9 +604,7 @@ func buildTestDetailsQuery(
 					SELECT
 						cm.id AS test_id,
 						ANY_VALUE(test_name) AS test_name,
-						ANY_VALUE(testsuite) AS test_suite,
 						%s
-						file_path,
 						ANY_VALUE(variant_registry_job_name) AS prowjob_name,
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
@@ -608,7 +612,6 @@ func buildTestDetailsQuery(
 						ANY_VALUE(junit.prowjob_url) AS prowjob_url,
 						ANY_VALUE(junit.prowjob_build_id) AS prowjob_run_id,
 						ANY_VALUE(junit.prowjob_start) AS prowjob_start,
-						ANY_VALUE(cm.capabilities) as capabilities,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
 						ANY_VALUE(agg_labels.job_labels) AS job_labels,
@@ -651,6 +654,13 @@ func buildTestDetailsQuery(
 
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)
+		if len(c.Lifecycles) > 0 {
+			queryString += ` AND COALESCE(NULLIF(junit.lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)`
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  "Lifecycles",
+				Value: c.Lifecycles,
+			})
+		}
 		// Only set sample release when PR and payload options are not set
 		if c.SampleRelease.PayloadOptions == nil && c.SampleRelease.PullRequestOptions == nil {
 			queryString += ` AND jv_Release.variant_value = @SampleRelease`
@@ -795,8 +805,6 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	// INFO[2024-04-22T13:31:23.123-03:00] flake_count = %!s(int64=0)
 	// INFO[2024-04-22T13:31:23.124-03:00] component = Cluster Version Operator
 	// INFO[2024-04-22T13:31:23.124-03:00] capabilities = [Other]
-	// INFO[2024-04-22T13:31:23.124-03:00] jira_component = Cluster Version Operator
-	// INFO[2024-04-22T13:31:23.124-03:00] jira_component_id = 12367602000000000/1000000000
 	// INFO[2024-04-22T13:31:23.124-03:00] test_name = [sig-storage] [Serial] Volume metrics Ephemeral should create volume metrics in Volume Manager [Suite:openshift/conformance/serial] [Suite:k8s]
 	// INFO[2024-04-22T13:31:23.124-03:00] test_suite = openshift-tests
 	tid := crtest.KeyWithVariants{
@@ -846,7 +854,9 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 		}
 	}
 
-	return tid.KeyOrDie(), cts, nil
+	cts.TestID = tid.TestID
+	cts.Variants = tid.Variants
+	return tid.Encode(), cts, nil
 }
 
 // sortedKeys is a helper that sorts the keys of a variant group map for consistent ordering.
@@ -915,7 +925,8 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		},
 	}...)
 
-	baseStatus, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery)
+	rawRows, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery)
+	baseStatus := crstatus.SummarizeTestJobRuns(rawRows)
 	return crstatus.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
@@ -1010,7 +1021,8 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		}...)
 	}
 
-	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery)
+	rawRows, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery)
+	sampleStatus := crstatus.SummarizeTestJobRuns(rawRows)
 
 	return crstatus.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
@@ -1125,7 +1137,7 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 	}
 
 	// Serialize the test key once only so we don't have to keep recalculating
-	cts.TestKeyStr = cts.TestKey.KeyOrDie()
+	cts.TestKeyStr = cts.TestKey.Encode()
 
 	return cts, nil
 }

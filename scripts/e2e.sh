@@ -155,7 +155,7 @@ else
 
     # start postgresql in a container:
     echo "Starting new sippy postgresql container: $PSQL_CONTAINER"
-    $DOCKER run --name $PSQL_CONTAINER -e POSTGRES_PASSWORD=password -p $PSQL_PORT:5432 -d quay.io/enterprisedb/postgresql
+    $DOCKER run --name $PSQL_CONTAINER -e POSTGRES_PASSWORD=password -p $PSQL_PORT:5432 -d docker.io/library/postgres:18.4
 
     # start redis in a container:
     echo "Starting new sippy redis container: $REDIS_CONTAINER"

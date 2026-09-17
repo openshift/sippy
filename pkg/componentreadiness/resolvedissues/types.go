@@ -3,26 +3,20 @@ package resolvedissues
 import (
 	"encoding/json"
 
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/openshift/sippy/pkg/variantregistry"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var TriageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantPlatform, variantregistry.VariantArch, variantregistry.VariantNetwork,
 	variantregistry.VariantTopology, variantregistry.VariantFeatureSet, variantregistry.VariantUpgrade,
 	variantregistry.VariantSuite, variantregistry.VariantInstaller})
 
-func buildTriageMatchVariants(in []string) sets.String {
+func buildTriageMatchVariants(in []string) sets.Set[string] {
 	if len(in) < 1 {
 		return nil
 	}
 
-	set := sets.NewString()
-
-	for _, l := range in {
-		set.Insert(l)
-	}
-
-	return set
+	return sets.New(in...)
 }
 
 type TriagedIssueKey struct {

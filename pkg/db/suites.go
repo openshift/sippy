@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/db/models"
 )
@@ -31,6 +32,7 @@ var testSuites = []string{
 	"stage/parallel",
 	"prod/parallel",
 	"aro-hcp-tests",
+	"github.com/stolostron/capi-tests/test",
 
 	// ROSA
 	"OSD e2e suite",
@@ -57,7 +59,9 @@ var testSuites = []string{
 	"step graph",
 	"telco-verification",
 	"github.com/openshift/console-operator/test/e2e",
+	"github.com/openshift/cluster-monitoring-operator/test/e2e",
 	"prowjob-junit",
+	"mcpchecker",
 	"OLM-Catalog-Validation",
 	"insights-operator-tests",
 	"CNV-lp-interop",
@@ -73,45 +77,31 @@ var testSuites = []string{
 	"ServiceMesh-lp-interop",
 	"OpenshiftPipelines-lp-interop",
 	"tracing-uiplugin",
+	"TLSSecurityScan",
 }
 
 // testSuitePatterns are regular expressions for suite names that should be imported
-// without listing every literal name. Invalid patterns panic at process start.
+// without listing every literal name. These are applied after job selection (i.e.
+// a job must already be configured for ingestion); they filter which suites within
+// an ingested job's JUnit artifacts are imported. Invalid patterns panic at process start.
 var testSuitePatterns = []*regexp.Regexp{
 	// LP interop naming: `lp-interop--<product>--<suffix>`.
 	regexp.MustCompile(`^lp-chaos--`),
 	regexp.MustCompile(`^lp-interop--`),
 	regexp.MustCompile(`^lp-ocp-compat--`),
+	// Playwright e2e tests (e.g. Quay) use spec filenames as suite names.
+	regexp.MustCompile(`\.spec\.ts$`),
 }
 
-// GetSuiteID retrieves or creates a suite by name if it matches the import criteria
-// (either in the explicit testSuites list or matches a dynamic pattern).
-// Returns the suite ID on success, nil if the suite should not be imported or on error.
-func GetSuiteID(db *gorm.DB, name string) *uint {
-	if name == "" {
-		return nil
-	}
+var testSuiteSet = sets.New[string](testSuites...)
 
-	// Check if this suite should be imported
-	if !isSuiteImportable(name) {
-		return nil
-	}
-
-	// Get existing or create new suite
-	return getOrCreateSuite(db, name)
-}
-
-// isSuiteImportable checks if a suite name should be imported based on
+// IsSuiteImportable checks if a suite name should be imported based on
 // the explicit testSuites list or dynamic patterns.
-func isSuiteImportable(name string) bool {
-	// Check explicit list
-	for _, s := range testSuites {
-		if s == name {
-			return true
-		}
+func IsSuiteImportable(name string) bool {
+	if testSuiteSet.Has(name) {
+		return true
 	}
 
-	// Check patterns
 	for _, re := range testSuitePatterns {
 		if re.MatchString(name) {
 			return true

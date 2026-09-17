@@ -40,8 +40,10 @@ func (rt *ReleasesTool) GetHandler() func(ctx context.Context, request mcp.CallT
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		log.Debug("Handling get_releases tool call")
 
-		// Get releases from BigQuery (never force refresh for MCP)
-		releases, err := api.GetReleases(ctx, rt.deps.BigQueryClient, false)
+		releases, err := api.GetReleasesFromDB(ctx, rt.deps.DBClient)
+		if err != nil && rt.deps.BigQueryClient != nil {
+			releases, err = api.GetReleasesFromBigQuery(ctx, rt.deps.BigQueryClient)
+		}
 		if err != nil {
 			log.WithError(err).Error("error querying releases")
 			return rt.CreateErrorResponse(fmt.Errorf("error querying releases: %w", err))
@@ -50,13 +52,8 @@ func (rt *ReleasesTool) GetHandler() func(ctx context.Context, request mcp.CallT
 		// Get last updated time from database if available
 		var lastUpdated time.Time
 		if rt.deps.DBClient != nil && rt.deps.DBClient.DB != nil {
-			type LastUpdatedQuery struct {
-				Max time.Time
-			}
-			var result LastUpdatedQuery
-			// Assume our last update is the last time we inserted a prow job run.
-			if err := rt.deps.DBClient.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&result).Error; err == nil {
-				lastUpdated = result.Max
+			if t, err := api.GetLastUpdateTime(rt.deps.DBClient); err == nil {
+				lastUpdated = t
 			}
 		}
 

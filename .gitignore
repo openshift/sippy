@@ -18,6 +18,7 @@ __pycache__/
 *.py[cod]
 e2e-coverage*
 junit.xml
+integration-junit.xml
 
 
 # APM dependencies

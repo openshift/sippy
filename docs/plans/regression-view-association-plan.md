@@ -80,7 +80,6 @@ Lookup order:
 |------|------------|----------|
 | `RegressionRedirect.js` | Regression | Prefers `-main` view key, falls back to `getTestDetailsLink` |
 | `ComponentReadinessIndicator.js` | Regression | Uses <code>getTestDetailsLink(links, \`${release}-main\`)</code> |
-| `Triage.js` | Regressed test (chat context) | Uses `getTestDetailsLink(rt.links, view)` |
 | `TriagedRegressionTestList.js` | Regressed test (per-view columns) | Passes `viewName` from column loop to `generateTestDetailsReportLink` |
 
 ### 9.3 Two link formats
@@ -168,7 +167,6 @@ All 6 cross-compare views already have `regression_tracking.enabled: true` in `c
 | `sippy-ng/src/component_readiness/CompReadyUtils.js` | `getTestDetailsLink` utility, `viewName` param on `generateTestDetailsReportLink` |
 | `sippy-ng/src/component_readiness/RegressionRedirect.js` | Uses `getTestDetailsLink`, prefers `-main` view |
 | `sippy-ng/src/component_readiness/ComponentReadinessIndicator.js` | Uses `getTestDetailsLink` with `${release}-main` |
-| `sippy-ng/src/component_readiness/Triage.js` | Uses `getTestDetailsLink` for chat context |
 | `sippy-ng/src/component_readiness/TriagedRegressionTestList.js` | Passes `viewName` to `generateTestDetailsReportLink` |
 | `sippy-ng/src/component_readiness/TriagePotentialMatches.js` | View dropdown replaces base/sample release dropdowns |
 

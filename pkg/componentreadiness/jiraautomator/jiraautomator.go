@@ -25,10 +25,10 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
@@ -62,7 +62,7 @@ type JiraAutomator struct {
 	// When the number of red cells of a column is over this threshold, a jira card will be created for the
 	// Variant (column) based jira component. No other jira cards will be created per component row.
 	columnThresholds        map[Variant]int
-	includeComponents       sets.String
+	includeComponents       sets.Set[string]
 	jiraAccount             string
 	dryRun                  bool
 	variantToJiraComponents map[Variant]JiraComponent
@@ -77,7 +77,7 @@ func NewJiraAutomator(
 	views []crview.View,
 	releases []v1.Release,
 	sippyURL, jiraAccount string,
-	includeComponents sets.String,
+	includeComponents sets.Set[string],
 	columnThresholds map[Variant]int,
 	dryRun bool,
 	variantToJiraComponents map[Variant]JiraComponent,
@@ -279,7 +279,8 @@ func (j JiraAutomator) getComponentReadinessURLsForView(view crview.View) (strin
 		values.Add("sampleStartTime", reportOpts.SampleRelease.Start.UTC().Format(time.RFC3339))
 		values.Add("sampleEndTime", reportOpts.SampleRelease.End.UTC().Format(time.RFC3339))
 	}
-	values.Add("columnGroupBy", strings.Join(reportOpts.VariantOption.ColumnGroupBy.List(), ","))
+	values.Add("columnGroupBy", strings.Join(sets.List(reportOpts.VariantOption.ColumnGroupBy),
+		","))
 	for name, variants := range reportOpts.VariantOption.IncludeVariants {
 		for _, v := range variants {
 			values.Add("includeVariant", fmt.Sprintf("%s:%s", name, v))
@@ -336,7 +337,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crview.View, compon
 		description += "\n * Please use this card as a placeholder for all the regressed tests for your component. A separate issue should be created for each regressed test and linked to this issue. Please only close this issue when all known regressed tests are believed fixed.\n"
 		description += "\n * Please do not remove 'Release Blocker' label. The bot will automatically add it back if any regressed tests continue showing for the component.\n"
 
-		summary := fmt.Sprintf("Component Readiness: %s test regressed", component.Component)
+		summary := fmt.Sprintf("%s test regressed", component.Component)
 
 		fileBugRequest := util.FileBugRequest{Description: description, Summary: summary, Components: []string{component.Component}, AffectsVersions: []string{view.SampleRelease.Name}, Labels: []string{jiratype.LabelJiraAutomator}, Project: component.Project}
 		issue, err := util.PopulateJiraIssue(j.jiraClient, fileBugRequest, "")

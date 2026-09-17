@@ -10,26 +10,23 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/lib/pq"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/exp/maps"
-	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/openshift/sippy/pkg/apis/api"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-const (
-	releaseTagsTable = "release_tags"
-	succeeded        = "Succeeded"
-	failed           = "Failed"
-)
+const failed = "Failed"
 
 type ReleaseLoader struct {
 	// context in a struct violates golang best practices; but the releaseloader lifecycle is
@@ -83,101 +80,544 @@ func (r *ReleaseLoader) Errors() []error {
 	return r.errors
 }
 
+type tagWithStream struct {
+	Tag    ReleaseTag
+	Stream ReleaseStream
+}
+
+const maxHTTPConcurrency = 10
+
 func (r *ReleaseLoader) Load() {
-	for _, project := range r.projects {
-		projectName := project.GetName()
-		for _, rs := range buildReleaseStreams(r.releases, r.architectures, project) {
-			log.Infof("Fetching releaseStream %s from %s release controller...", rs.Name, projectName)
-			for _, tag := range r.fetchReleaseTags(rs) {
-				mReleaseTag := models.ReleaseTag{}
-				r.db.DB.Table(releaseTagsTable).Where(`"release_tag" = ?`, tag.Name).Find(&mReleaseTag)
-				// expect Phase to be populated if the record is present
-				if len(mReleaseTag.Phase) > 0 {
-					if mReleaseTag.Phase != tag.Phase {
-						log.Warningf("Phase change detected (%q to %q) -- updating tag %s...", mReleaseTag.Phase, tag.Phase, tag.Name)
-						mReleaseTag.Phase = tag.Phase
-						mReleaseTag.Forced = true
-						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
-							log.WithError(err).Errorf("error updating release tag")
-							r.errors = append(r.errors, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
-						}
-					}
-					continue
-				}
+	st := time.Now()
 
-				log.Infof("Fetching tag %s from %s release controller...", tag.Name, projectName)
-				releaseTag := r.buildReleaseTag(rs, tag)
+	allTags := r.fetchAllStreamTags()
+	if len(allTags) == 0 {
+		return
+	}
 
-				if releaseTag == nil {
-					continue
-				}
+	tagsToProcess, err := r.updatePhaseChangesAndFindNewTags(allTags)
+	if err != nil {
+		r.errors = append(r.errors, errors.Wrap(err, "error processing release tags"))
+		return
+	}
 
-				if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
-					r.errors = append(r.errors, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
-				}
+	builtTags := r.fetchTagDetails(tagsToProcess)
+
+	r.applyBulkLabels(builtTags)
+
+	if err := r.resolveAllPullRequests(builtTags); err != nil {
+		r.errors = append(r.errors, errors.Wrap(err, "error resolving pull requests"))
+		return
+	}
+
+	if err := r.bulkWriteReleaseTags(builtTags); err != nil {
+		r.errors = append(r.errors, errors.Wrap(err, "error bulk writing release tags"))
+	}
+
+	log.WithFields(log.Fields{
+		"fetched": len(allTags),
+		"new":     len(builtTags),
+		"elapsed": time.Since(st),
+	}).Info("release loading complete")
+}
+
+func (r *ReleaseLoader) fetchAllStreamTags() []tagWithStream {
+	work := make(chan ReleaseStream)
+	results := make(chan tagWithStream, 100)
+
+	go func() {
+		defer close(work)
+		for _, project := range r.projects {
+			for _, rs := range buildReleaseStreams(r.releases, r.architectures, project) {
+				work <- rs
 			}
 		}
+	}()
+
+	var wg sync.WaitGroup
+	for range maxHTTPConcurrency {
+		wg.Go(func() {
+			for rs := range work {
+				for _, tag := range r.fetchReleaseTags(rs) {
+					results <- tagWithStream{Tag: tag, Stream: rs}
+				}
+			}
+		})
 	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var allTags []tagWithStream
+	for ts := range results {
+		allTags = append(allTags, ts)
+	}
+	return allTags
+}
+
+func (r *ReleaseLoader) fetchTagDetails(tagsToProcess []tagWithStream) []*models.ReleaseTag {
+	work := make(chan tagWithStream)
+	go func() {
+		defer close(work)
+		for _, ts := range tagsToProcess {
+			work <- ts
+		}
+	}()
+
+	results := make(chan *models.ReleaseTag, 100)
+	var wg sync.WaitGroup
+	for range maxHTTPConcurrency {
+		wg.Go(func() {
+			for ts := range work {
+				log.WithField("tag", ts.Tag.Name).Info("fetching tag details from release controller")
+				if rt := r.buildReleaseTag(ts.Stream, ts.Tag); rt != nil {
+					results <- rt
+				}
+			}
+		})
+	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var built []*models.ReleaseTag
+	for rt := range results {
+		built = append(built, rt)
+	}
+	return built
+}
+
+func (r *ReleaseLoader) updatePhaseChangesAndFindNewTags(allTags []tagWithStream) ([]tagWithStream, error) {
+	sqlDB, err := r.db.DB.DB()
+	if err != nil {
+		return nil, fmt.Errorf("getting sql.DB: %w", err)
+	}
+	conn, err := stdlib.AcquireConn(sqlDB)
+	if err != nil {
+		return nil, fmt.Errorf("acquiring pgx conn: %w", err)
+	}
+	defer func() {
+		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
+			log.WithError(err).Error("failed to release pgx conn")
+		}
+	}()
+
+	cleanup, err := db.CopyToTempTable(r.ctx, conn, "tmp_release_tags", allTags,
+		[]db.TempColumn[tagWithStream]{
+			{Name: "tag_name", Type: "text NOT NULL", Value: func(ts *tagWithStream) any { return ts.Tag.Name }},
+			{Name: "phase", Type: "text NOT NULL", Value: func(ts *tagWithStream) any { return ts.Tag.Phase }},
+		},
+	)
+	defer cleanup()
+	if err != nil {
+		return nil, err
+	}
+
+	updateTag, err := conn.Exec(r.ctx, `
+		UPDATE release_tags rt
+		SET phase = tmp.phase, forced = true, updated_at = NOW()
+		FROM tmp_release_tags tmp
+		WHERE rt.release_tag = tmp.tag_name
+		  AND rt.deleted_at IS NULL
+		  AND rt.phase != ''
+		  AND rt.phase != tmp.phase
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("bulk updating phase changes: %w", err)
+	}
+
+	rows, err := conn.Query(r.ctx, `
+		SELECT DISTINCT tmp.tag_name
+		FROM tmp_release_tags tmp
+		LEFT JOIN release_tags rt ON rt.release_tag = tmp.tag_name AND rt.deleted_at IS NULL
+		WHERE rt.id IS NULL
+		  AND tmp.phase IN ('Accepted', 'Rejected')
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("querying new tags: %w", err)
+	}
+	newTagNames := sets.New[string]()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scanning new tag name: %w", err)
+		}
+		newTagNames.Insert(name)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating new tags: %w", err)
+	}
+
+	var result []tagWithStream
+	for _, ts := range allTags {
+		if newTagNames.Has(ts.Tag.Name) {
+			result = append(result, ts)
+		}
+	}
+
+	log.WithFields(log.Fields{
+		"total":         len(allTags),
+		"new":           len(result),
+		"phase_changed": updateTag.RowsAffected(),
+	}).Info("processed release tags")
+
+	return result, nil
 }
 
 func (r *ReleaseLoader) buildReleaseTag(rs ReleaseStream, tag ReleaseTag) *models.ReleaseTag {
-	// Skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
-	if tag.Phase != api.PayloadAccepted && tag.Phase != api.PayloadRejected {
-		return nil
-	}
 	releaseDetails := r.fetchReleaseDetails(rs, tag)
 	if releaseDetails == nil {
 		return nil
 	}
-	releaseTag := r.releaseDetailsToDB(rs, tag, *releaseDetails)
+	return r.releaseDetailsToDB(rs, tag, *releaseDetails)
+}
 
-	// Tags do disappear; it would be weird if the phase had regressed somehow, but check anyway
-	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
+func (r *ReleaseLoader) resolveAllPullRequests(tags []*models.ReleaseTag) error {
+	var allPRs []models.ReleasePullRequest
+	for _, tag := range tags {
+		allPRs = append(allPRs, tag.PullRequests...)
+	}
+	if len(allPRs) == 0 {
 		return nil
 	}
 
-	releaseTag.PullRequests = r.resolveReleasePullRequests(releaseTag.PullRequests)
+	sqlDB, err := r.db.DB.DB()
+	if err != nil {
+		return fmt.Errorf("getting sql.DB: %w", err)
+	}
+	conn, err := stdlib.AcquireConn(sqlDB)
+	if err != nil {
+		return fmt.Errorf("acquiring pgx conn: %w", err)
+	}
+	defer func() {
+		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
+			log.WithError(err).Error("failed to release pgx conn")
+		}
+	}()
 
-	return releaseTag
-}
+	cleanup, err := db.CopyToTempTable(r.ctx, conn, "tmp_release_prs", allPRs,
+		[]db.TempColumn[models.ReleasePullRequest]{
+			{Name: "url", Type: "text NOT NULL", Value: func(pr *models.ReleasePullRequest) any { return pr.URL }},
+			{Name: "name", Type: "text NOT NULL", Value: func(pr *models.ReleasePullRequest) any { return pr.Name }},
+			{Name: "description", Type: "text NOT NULL DEFAULT ''", Value: func(pr *models.ReleasePullRequest) any { return pr.Description }},
+			{Name: "pull_request_id", Type: "text NOT NULL DEFAULT ''", Value: func(pr *models.ReleasePullRequest) any { return pr.PullRequestID }},
+			{Name: "bug_url", Type: "text NOT NULL DEFAULT ''", Value: func(pr *models.ReleasePullRequest) any { return pr.BugURL }},
+		},
+	)
+	defer cleanup()
+	if err != nil {
+		return fmt.Errorf("populating tmp_release_prs: %w", err)
+	}
 
-// look up DB records for PRs if they already exist.
-func (r *ReleaseLoader) resolveReleasePullRequests(pullRequests []models.ReleasePullRequest) []models.ReleasePullRequest {
-	if len(pullRequests) == 0 {
-		return pullRequests
+	upsertTag, err := conn.Exec(r.ctx, `
+		INSERT INTO release_pull_requests (url, name, description, pull_request_id, bug_url, created_at, updated_at)
+		SELECT DISTINCT ON (tmp.url, tmp.name) tmp.url, tmp.name, tmp.description, tmp.pull_request_id, tmp.bug_url, NOW(), NOW()
+		FROM tmp_release_prs tmp
+		ON CONFLICT (url, name) DO UPDATE SET
+			description     = EXCLUDED.description,
+			pull_request_id = EXCLUDED.pull_request_id,
+			bug_url         = EXCLUDED.bug_url,
+			updated_at      = NOW()
+		WHERE release_pull_requests.description     IS DISTINCT FROM EXCLUDED.description
+		   OR release_pull_requests.pull_request_id IS DISTINCT FROM EXCLUDED.pull_request_id
+		   OR release_pull_requests.bug_url         IS DISTINCT FROM EXCLUDED.bug_url
+	`)
+	if err != nil {
+		return fmt.Errorf("upserting release pull requests: %w", err)
 	}
 
 	type prKey struct{ url, name string }
-	prMap := make(map[prKey]models.ReleasePullRequest, len(pullRequests))
+	prIDs := make(map[prKey]uint)
+	rows, err := conn.Query(r.ctx, `
+		SELECT rp.id, rp.url, rp.name
+		FROM release_pull_requests rp
+		INNER JOIN tmp_release_prs tmp ON rp.url = tmp.url AND rp.name = tmp.name
+		WHERE rp.deleted_at IS NULL
+	`)
+	if err != nil {
+		return fmt.Errorf("fetching resolved PR IDs: %w", err)
+	}
+	for rows.Next() {
+		var id uint
+		var prURL, prName string
+		if err := rows.Scan(&id, &prURL, &prName); err != nil {
+			rows.Close()
+			return fmt.Errorf("scanning resolved PR ID: %w", err)
+		}
+		prIDs[prKey{prURL, prName}] = id
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterating resolved PR IDs: %w", err)
+	}
 
-	// make one query to find all listed PRs
-	orConditions := make([]string, 0, len(pullRequests))
-	args := make([]any, 0, len(pullRequests)*2)
-	for _, pr := range pullRequests {
-		key := prKey{pr.URL, pr.Name}
-		if _, exists := prMap[key]; !exists {
-			prMap[key] = pr
-			orConditions = append(orConditions, "(url = ? AND name = ?)")
-			args = append(args, key.url, key.name)
+	for _, tag := range tags {
+		for i, pr := range tag.PullRequests {
+			if id, ok := prIDs[prKey{pr.URL, pr.Name}]; ok {
+				tag.PullRequests[i].ID = id
+			}
 		}
 	}
 
-	// update all PRs found in the DB
-	for _, pr := range bulkFetchPRsFromTbl(r.db, orConditions, args) {
-		prMap[prKey{pr.URL, pr.Name}] = pr
-	}
+	log.WithFields(log.Fields{
+		"total":    len(allPRs),
+		"upserted": upsertTag.RowsAffected(),
+	}).Info("resolved pull requests across all tags")
 
-	return maps.Values(prMap)
+	return nil
 }
 
-// bulkFetchPRsFromTbl is a batch query to find existing PRs; as a function variable to allow mocking in tests
-var bulkFetchPRsFromTbl = func(dbConn *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
-	var pullRequests []models.ReleasePullRequest
-	if err := dbConn.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
-		// this shouldn't happen and managing it would be too much of a pain
-		log.WithError(err).Fatalf("error fetching release pull requests")
+// bulkWriteReleaseTags inserts release tags and their associations
+// (repositories, job runs, PR join table) using COPY + SQL on a single pgx
+// connection. PRs must already exist in release_pull_requests (ensured by
+// resolveAllPullRequests).
+func (r *ReleaseLoader) bulkWriteReleaseTags(tags []*models.ReleaseTag) error {
+	if len(tags) == 0 {
+		return nil
 	}
-	return pullRequests
+
+	sqlDB, err := r.db.DB.DB()
+	if err != nil {
+		return fmt.Errorf("getting sql.DB: %w", err)
+	}
+	conn, err := stdlib.AcquireConn(sqlDB)
+	if err != nil {
+		return fmt.Errorf("acquiring pgx conn: %w", err)
+	}
+	defer func() {
+		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
+			log.WithError(err).Error("failed to release pgx conn")
+		}
+	}()
+
+	tx, err := conn.Begin(r.ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(r.ctx) //nolint:errcheck
+
+	if err := r.insertReleaseTags(tx, tags); err != nil {
+		return err
+	}
+	if err := r.insertReleaseRepositories(tx, tags); err != nil {
+		return err
+	}
+	if err := r.insertReleaseJobRuns(tx, tags); err != nil {
+		return err
+	}
+	if err := r.insertReleaseTagPullRequests(tx, tags); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(r.ctx); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
+	}
+
+	log.WithField("tags", len(tags)).Info("bulk-wrote release tags and associations via COPY")
+	return nil
+}
+
+func (r *ReleaseLoader) insertReleaseTags(conn db.PgxSession, tags []*models.ReleaseTag) error {
+	cleanup, err := db.CopyToTempTable(r.ctx, conn, "tmp_release_tags_insert", tags,
+		[]db.TempColumn[*models.ReleaseTag]{
+			{Name: "tag_name", Type: "text NOT NULL", Value: func(t **models.ReleaseTag) any { return (*t).ReleaseTag }},
+			{Name: "release", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).Release }},
+			{Name: "stream", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).Stream }},
+			{Name: "architecture", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).Architecture }},
+			{Name: "phase", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).Phase }},
+			{Name: "forced", Type: "boolean NOT NULL DEFAULT false", Value: func(t **models.ReleaseTag) any { return (*t).Forced }},
+			{Name: "release_time", Type: "timestamptz NOT NULL DEFAULT '0001-01-01'", Value: func(t **models.ReleaseTag) any { return (*t).ReleaseTime }},
+			{Name: "previous_release_tag", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).PreviousReleaseTag }},
+			{Name: "kubernetes_version", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).KubernetesVersion }},
+			{Name: "current_os_version", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).CurrentOSVersion }},
+			{Name: "previous_os_version", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).PreviousOSVersion }},
+			{Name: "current_os_url", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).CurrentOSURL }},
+			{Name: "previous_os_url", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).PreviousOSURL }},
+			{Name: "os_diff_url", Type: "text NOT NULL DEFAULT ''", Value: func(t **models.ReleaseTag) any { return (*t).OSDiffURL }},
+		},
+	)
+	defer cleanup()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(r.ctx, `
+		INSERT INTO release_tags (
+			release_tag, release, stream, architecture, phase, forced,
+			release_time, previous_release_tag, kubernetes_version,
+			current_os_version, previous_os_version, current_os_url,
+			previous_os_url, os_diff_url, created_at, updated_at
+		)
+		SELECT
+			tag_name, release, stream, architecture, phase, forced,
+			release_time, previous_release_tag, kubernetes_version,
+			current_os_version, previous_os_version, current_os_url,
+			previous_os_url, os_diff_url, NOW(), NOW()
+		FROM tmp_release_tags_insert
+	`)
+	return err
+}
+
+func (r *ReleaseLoader) insertReleaseRepositories(conn db.PgxSession, tags []*models.ReleaseTag) error {
+	type repoRow struct {
+		tagName string
+		name    string
+		head    string
+		diffURL string
+	}
+	var repos []repoRow
+	for _, t := range tags {
+		for _, repo := range t.Repositories {
+			repos = append(repos, repoRow{t.ReleaseTag, repo.Name, repo.Head, repo.DiffURL})
+		}
+	}
+	cleanup, err := db.CopyToTempTable(r.ctx, conn, "tmp_release_repos", repos,
+		[]db.TempColumn[repoRow]{
+			{Name: "tag_name", Type: "text NOT NULL", Value: func(r *repoRow) any { return r.tagName }},
+			{Name: "name", Type: "text NOT NULL DEFAULT ''", Value: func(r *repoRow) any { return r.name }},
+			{Name: "head", Type: "text NOT NULL DEFAULT ''", Value: func(r *repoRow) any { return r.head }},
+			{Name: "diff_url", Type: "text NOT NULL DEFAULT ''", Value: func(r *repoRow) any { return r.diffURL }},
+		},
+	)
+	defer cleanup()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(r.ctx, `
+		INSERT INTO release_repositories (release_tag_id, name, repository_head, diff_url, created_at, updated_at)
+		SELECT rt.id, tmp.name, tmp.head, tmp.diff_url, NOW(), NOW()
+		FROM tmp_release_repos tmp
+		INNER JOIN release_tags rt ON rt.release_tag = tmp.tag_name AND rt.deleted_at IS NULL
+	`)
+	return err
+}
+
+func (r *ReleaseLoader) insertReleaseJobRuns(conn db.PgxSession, tags []*models.ReleaseTag) error {
+	type jobRunRow struct {
+		tagName        string
+		prowJobRunID   uint
+		jobName        string
+		kind           string
+		state          string
+		transitionTime time.Time
+		retries        int
+		url            string
+		upgradesFrom   string
+		upgradesTo     string
+		upgrade        bool
+		labels         pq.StringArray
+	}
+	var jobRuns []jobRunRow
+	for _, t := range tags {
+		for _, jr := range t.JobRuns {
+			jobRuns = append(jobRuns, jobRunRow{
+				tagName: t.ReleaseTag, prowJobRunID: jr.Name,
+				jobName: jr.JobName, kind: jr.Kind, state: jr.State,
+				transitionTime: jr.TransitionTime, retries: jr.Retries,
+				url: jr.URL, upgradesFrom: jr.UpgradesFrom,
+				upgradesTo: jr.UpgradesTo, upgrade: jr.Upgrade,
+				labels: jr.Labels,
+			})
+		}
+	}
+	cleanup, err := db.CopyToTempTable(r.ctx, conn, "tmp_release_job_runs", jobRuns,
+		[]db.TempColumn[jobRunRow]{
+			{Name: "tag_name", Type: "text NOT NULL", Value: func(jr *jobRunRow) any { return jr.tagName }},
+			{Name: "prow_job_run_id", Type: "bigint NOT NULL", Value: func(jr *jobRunRow) any { return jr.prowJobRunID }},
+			{Name: "job_name", Type: "text NOT NULL DEFAULT ''", Value: func(jr *jobRunRow) any { return jr.jobName }},
+			{Name: "kind", Type: "text NOT NULL DEFAULT ''", Value: func(jr *jobRunRow) any { return jr.kind }},
+			{Name: "state", Type: "text NOT NULL DEFAULT ''", Value: func(jr *jobRunRow) any { return jr.state }},
+			{Name: "transition_time", Type: "timestamptz NOT NULL DEFAULT '0001-01-01'", Value: func(jr *jobRunRow) any { return jr.transitionTime }},
+			{Name: "retries", Type: "integer NOT NULL DEFAULT 0", Value: func(jr *jobRunRow) any { return jr.retries }},
+			{Name: "url", Type: "text NOT NULL DEFAULT ''", Value: func(jr *jobRunRow) any { return jr.url }},
+			{Name: "upgrades_from", Type: "text NOT NULL DEFAULT ''", Value: func(jr *jobRunRow) any { return jr.upgradesFrom }},
+			{Name: "upgrades_to", Type: "text NOT NULL DEFAULT ''", Value: func(jr *jobRunRow) any { return jr.upgradesTo }},
+			{Name: "upgrade", Type: "boolean NOT NULL DEFAULT false", Value: func(jr *jobRunRow) any { return jr.upgrade }},
+			{Name: "labels", Type: "text[]", Value: func(jr *jobRunRow) any { return jr.labels }},
+		},
+	)
+	defer cleanup()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(r.ctx, `
+		INSERT INTO release_job_runs (
+			release_tag_id, prow_job_run_id, job_name, kind, state,
+			transition_time, retries, url, upgrades_from, upgrades_to,
+			upgrade, labels, created_at, updated_at
+		)
+		SELECT
+			rt.id, tmp.prow_job_run_id, tmp.job_name, tmp.kind, tmp.state,
+			tmp.transition_time, tmp.retries, tmp.url, tmp.upgrades_from,
+			tmp.upgrades_to, tmp.upgrade, tmp.labels, NOW(), NOW()
+		FROM tmp_release_job_runs tmp
+		INNER JOIN release_tags rt ON rt.release_tag = tmp.tag_name AND rt.deleted_at IS NULL
+		ON CONFLICT (prow_job_run_id) DO UPDATE SET
+			release_tag_id  = EXCLUDED.release_tag_id,
+			job_name        = EXCLUDED.job_name,
+			kind            = EXCLUDED.kind,
+			state           = EXCLUDED.state,
+			transition_time = EXCLUDED.transition_time,
+			retries         = EXCLUDED.retries,
+			url             = EXCLUDED.url,
+			upgrades_from   = EXCLUDED.upgrades_from,
+			upgrades_to     = EXCLUDED.upgrades_to,
+			upgrade         = EXCLUDED.upgrade,
+			labels          = EXCLUDED.labels,
+			updated_at      = NOW()
+		WHERE release_job_runs.release_tag_id  IS DISTINCT FROM EXCLUDED.release_tag_id
+		   OR release_job_runs.job_name        IS DISTINCT FROM EXCLUDED.job_name
+		   OR release_job_runs.kind            IS DISTINCT FROM EXCLUDED.kind
+		   OR release_job_runs.state           IS DISTINCT FROM EXCLUDED.state
+		   OR release_job_runs.transition_time IS DISTINCT FROM EXCLUDED.transition_time
+		   OR release_job_runs.retries         IS DISTINCT FROM EXCLUDED.retries
+		   OR release_job_runs.url             IS DISTINCT FROM EXCLUDED.url
+		   OR release_job_runs.upgrades_from   IS DISTINCT FROM EXCLUDED.upgrades_from
+		   OR release_job_runs.upgrades_to     IS DISTINCT FROM EXCLUDED.upgrades_to
+		   OR release_job_runs.upgrade         IS DISTINCT FROM EXCLUDED.upgrade
+		   OR release_job_runs.labels          IS DISTINCT FROM EXCLUDED.labels
+	`)
+	return err
+}
+
+func (r *ReleaseLoader) insertReleaseTagPullRequests(conn db.PgxSession, tags []*models.ReleaseTag) error {
+	type joinRow struct {
+		tagName string
+		prID    uint
+	}
+	var joins []joinRow
+	for _, t := range tags {
+		for _, pr := range t.PullRequests {
+			if pr.ID != 0 {
+				joins = append(joins, joinRow{t.ReleaseTag, pr.ID})
+			}
+		}
+	}
+	cleanup, err := db.CopyToTempTable(r.ctx, conn, "tmp_release_tag_prs", joins,
+		[]db.TempColumn[joinRow]{
+			{Name: "tag_name", Type: "text NOT NULL", Value: func(j *joinRow) any { return j.tagName }},
+			{Name: "pr_id", Type: "bigint NOT NULL", Value: func(j *joinRow) any { return j.prID }},
+		},
+	)
+	defer cleanup()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(r.ctx, `
+		INSERT INTO release_tag_pull_requests (release_tag_id, release_pull_request_id)
+		SELECT rt.id, tmp.pr_id
+		FROM tmp_release_tag_prs tmp
+		INNER JOIN release_tags rt ON rt.release_tag = tmp.tag_name AND rt.deleted_at IS NULL
+		ON CONFLICT (release_tag_id, release_pull_request_id) DO NOTHING
+	`)
+	return err
 }
 
 func (r *ReleaseLoader) fetchReleaseDetails(rs ReleaseStream, tag ReleaseTag) *ReleaseDetails {
@@ -264,7 +704,7 @@ func (r *ReleaseLoader) releaseDetailsToDB(rs ReleaseStream, tag ReleaseTag, det
 		release.Repositories = changelog.Repositories()
 		release.PullRequests = changelog.PullRequests()
 	}
-	release.JobRuns = r.releaseJobRunsToDB(details, release.ReleaseTime)
+	release.JobRuns = r.buildJobRuns(details)
 
 	// set forced flag
 	failedBlocking := false
@@ -373,8 +813,10 @@ func parseChangeLogJSON(releaseTag string, changeLogJSON ChangeLog) models.Relea
 	return releaseChangeLogJSON
 }
 
-func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime time.Time) []models.ReleaseJobRun {
-	rows := make([]models.ReleaseJobRun, 0)
+// buildJobRuns converts release details into ReleaseJobRun models without
+// fetching labels from BigQuery. Labels are applied separately by
+// applyBulkLabels during Load().
+func (r *ReleaseLoader) buildJobRuns(details ReleaseDetails) []models.ReleaseJobRun {
 	results := make(map[uint]models.ReleaseJobRun)
 
 	recordResultsFrom := func(element, resultKind string) {
@@ -382,7 +824,7 @@ func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime t
 			for platform, jobResult := range jobs {
 				id, err := idFromURL(jobResult.URL)
 				if id == 0 || err != nil {
-					log.WithFields(map[string]interface{}{
+					log.WithFields(log.Fields{
 						"id":         id,
 						"releaseTag": details.Name,
 						"url":        jobResult.URL,
@@ -399,7 +841,7 @@ func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime t
 					State:          jobResult.State,
 					URL:            jobResult.URL,
 					Retries:        jobResult.Retries,
-					TransitionTime: jobResult.TransitionTime, // release-controller does not seem to have this
+					TransitionTime: jobResult.TransitionTime,
 				}
 			}
 		}
@@ -407,12 +849,11 @@ func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime t
 	recordResultsFrom("blockingJobs", "Blocking")
 	recordResultsFrom("informingJobs", "Informing")
 
-	// For all upgrades, update the row for the corresponding prow job.
 	for _, upgrade := range append(details.UpgradesTo, details.UpgradesFrom...) {
 		for _, run := range upgrade.History {
 			id, err := idFromURL(run.URL)
 			if id == 0 || err != nil {
-				log.WithFields(map[string]interface{}{
+				log.WithFields(log.Fields{
 					"id":         id,
 					"releaseTag": details.Name,
 					"url":        run.URL,
@@ -430,41 +871,51 @@ func (r *ReleaseLoader) releaseJobRunsToDB(details ReleaseDetails, releaseTime t
 		}
 	}
 
-	// Fetch labels from BigQuery for all job runs in a single bulk query
-	if r.bqClient != nil && !releaseTime.IsZero() {
-		buildIDToJobRun := make(map[string]uint, len(results))
-		for id, result := range results {
-			buildID := extractBuildIDFromURL(result.URL)
-			if buildID != "" {
-				buildIDToJobRun[buildID] = id
-			}
-		}
-
-		buildIDs := make([]string, 0, len(buildIDToJobRun))
-		for buildID := range buildIDToJobRun {
-			buildIDs = append(buildIDs, buildID)
-		}
-
-		labelsByBuildID, err := prowloader.GatherLabelsFromBQ(r.ctx, r.bqClient, buildIDs, releaseTime)
-		if err != nil {
-			log.WithError(err).Warning("failed to fetch bulk labels from BigQuery")
-			r.errors = append(r.errors, fmt.Errorf("GatherBulkLabelsFromBQ: %w", err))
-		}
-		for buildID, labels := range labelsByBuildID {
-			if id, ok := buildIDToJobRun[buildID]; ok {
-				if result, ok := results[id]; ok {
-					result.Labels = labels
-					results[id] = result
-				}
-			}
-		}
-	}
-
+	rows := make([]models.ReleaseJobRun, 0, len(results))
 	for _, result := range results {
 		rows = append(rows, result)
 	}
-
 	return rows
+}
+
+// applyBulkLabels fetches labels from BigQuery for all job runs across all
+// tags in a single query, then distributes them back.
+func (r *ReleaseLoader) applyBulkLabels(tags []*models.ReleaseTag) {
+	if r.bqClient == nil || len(tags) == 0 {
+		return
+	}
+
+	var buildIDs []string
+	var earliestTime time.Time
+	for _, tag := range tags {
+		for _, jr := range tag.JobRuns {
+			if jr.Name != 0 {
+				buildIDs = append(buildIDs, strconv.FormatUint(uint64(jr.Name), 10))
+			}
+		}
+		if !tag.ReleaseTime.IsZero() && (earliestTime.IsZero() || tag.ReleaseTime.Before(earliestTime)) {
+			earliestTime = tag.ReleaseTime
+		}
+	}
+	if len(buildIDs) == 0 || earliestTime.IsZero() {
+		return
+	}
+
+	labelsByBuildID, err := prowloader.GatherLabelsFromBQ(r.ctx, r.bqClient, buildIDs, earliestTime)
+	if err != nil {
+		log.WithError(err).Warning("failed to fetch bulk labels from BigQuery")
+		r.errors = append(r.errors, fmt.Errorf("GatherLabelsFromBQ: %w", err))
+		return
+	}
+
+	for _, tag := range tags {
+		for i := range tag.JobRuns {
+			buildID := strconv.FormatUint(uint64(tag.JobRuns[i].Name), 10)
+			if labels, ok := labelsByBuildID[buildID]; ok {
+				tag.JobRuns[i].Labels = labels
+			}
+		}
+	}
 }
 
 func idFromURL(prowURL string) (uint, error) {
@@ -515,7 +966,7 @@ func (rs *ReleaseStream) baseReleaseStreamURL() string {
 
 // buildReleaseStreams builds relevant release streams for specified releases that belong to the project.
 func buildReleaseStreams(releases map[string]v1.Release, architectures []string, project PayloadProject) []ReleaseStream {
-	releaseStreams := make([]ReleaseStream, 0, len(releases)*len(project.GetStreams()))
+	releaseStreams := make([]ReleaseStream, 0, len(releases)*len(project.GetStreams())*len(architectures))
 	for release, config := range releases {
 		if project.IsProjectRelease(config) {
 			for _, stream := range project.GetStreams() {

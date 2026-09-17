@@ -2,7 +2,6 @@ package releasefallback
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -16,8 +15,8 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	apiCache "github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 )
@@ -59,10 +58,10 @@ type ReleaseFallback struct {
 	log                        log.FieldLogger
 	reqOptions                 reqopts.RequestOptions
 
-	// baseOverrideStatus maps test key, to job name, to the result rows for that job.
+	// baseOverrideStatus maps test key, to job name, to the result summaries for that job.
 	// This is used in test details reports, and in the typical API case will only contain one
 	// test ID, but when cache priming for a view, we may have multiple.
-	baseOverrideStatus map[string]map[string][]crstatus.TestJobRunRows
+	baseOverrideStatus map[string]map[string][]crstatus.TestDetailsSummary
 	baseOverrideMutex  sync.Mutex // Mutex to protect the map
 	releaseConfigs     []v1.Release
 }
@@ -71,8 +70,7 @@ func (r *ReleaseFallback) Analyze(_ crtest.Identification, _ *testdetails.TestCo
 	return false, nil
 }
 
-func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants,
-	_, _ chan map[string]crstatus.TestStatus, errCh chan error) {
+func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -81,7 +79,7 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 			r.log.Infof("Context canceled while fetching fallback query status")
 			return
 		default:
-			errs := r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Name, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
+			errs := r.getFallbackBaseQueryStatus(ctx, r.reqOptions.BaseRelease.Name, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
 			if len(errs) > 0 {
 				for _, err := range errs {
 					errCh <- err
@@ -102,8 +100,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *
 		TestID:   testKey.TestID,
 		Variants: testKey.Variants,
 	}
-	testIDBytes, _ := json.Marshal(testIDVariantsKey)
-	testKeyStr := string(testIDBytes)
+	testKeyStr := testIDVariantsKey.Encode()
 
 	if r.cachedFallbackTestStatuses == nil {
 		// In the test details path, this map is not initialized and we have no work to do for pre analysis.
@@ -171,9 +168,8 @@ func (r *ReleaseFallback) PostAnalysis(testKey crtest.Identification, testStats 
 }
 
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
-	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time) []error {
-	generator := newFallbackTestQueryReleasesGenerator(r.dataProvider, r.reqOptions, allJobVariants, release, start, end, r.releaseConfigs)
+	generator := newFallbackTestQueryReleasesGenerator(r.dataProvider, r.reqOptions, release, start, end, r.releaseConfigs)
 
 	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*FallbackReleases](
 		ctx, r.dataProvider.Cache(), r.reqOptions.CacheOption,
@@ -189,7 +185,7 @@ func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	return nil
 }
 
-func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
+func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
 	r.log.Infof("Querying fallback override test statuses for %d test ID options", len(r.reqOptions.TestIDOptions))
 
 	// Lookup all release dates, we're going to need them
@@ -215,7 +211,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 		}
 		releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = append(releaseToTestIDOptions[testIDOpts.BaseOverrideRelease], testIDOpts)
 	}
-	r.baseOverrideStatus = map[string]map[string][]crstatus.TestJobRunRows{}
+	r.baseOverrideStatus = map[string]map[string][]crstatus.TestDetailsSummary{}
 
 	// Now we'll do one concurrent query for each release that has some fallback tests:
 	for release, testIDOpts := range releaseToTestIDOptions {
@@ -241,32 +237,22 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 				fallbackReqOpts.BaseRelease.End = *end
 				fallbackReqOpts.TestIDOptions = testIDOpts
 
-				baseStatus, bsErrs := r.dataProvider.QueryBaseJobRunTestStatus(ctx, fallbackReqOpts, allJobVariants)
+				baseStatus, bsErrs := r.dataProvider.QueryBaseJobRunTestStatus(ctx, fallbackReqOpts)
 
 				for _, bsErr := range bsErrs {
 					errCh <- bsErr
 				}
 
-				// Now that we've queried all the results for a fallback release, we need to chop them up into
-				// per test -> job -> result rows.
-
-				// We have a struct where the statuses are mapped by prowjob to all rows results for that prowjob,
-				// with multiple tests intermingled in that layer.
-				// Build out a new struct where these are split up by test ID.
-				// split the status on test ID, and pass only that tests data in for reporting:
 				r.baseOverrideMutex.Lock()
-				for jobName, rows := range baseStatus {
-					for _, row := range rows {
-						testKeyStr := row.TestKeyStr
+				for jobName, summaries := range baseStatus {
+					for _, summary := range summaries {
+						testKeyStr := summary.TestKeyStr
 						if _, ok := r.baseOverrideStatus[testKeyStr]; !ok {
-							r.log.Infof("added test key: " + testKeyStr)
-							r.baseOverrideStatus[testKeyStr] = map[string][]crstatus.TestJobRunRows{}
-						}
-						if r.baseOverrideStatus[testKeyStr][jobName] == nil {
-							r.baseOverrideStatus[testKeyStr][jobName] = []crstatus.TestJobRunRows{}
+							r.log.WithField("testKey", testKeyStr).Debug("added test key")
+							r.baseOverrideStatus[testKeyStr] = map[string][]crstatus.TestDetailsSummary{}
 						}
 						r.baseOverrideStatus[testKeyStr][jobName] =
-							append(r.baseOverrideStatus[testKeyStr][jobName], row)
+							append(r.baseOverrideStatus[testKeyStr][jobName], summary)
 					}
 				}
 
@@ -281,7 +267,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {
 	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
-	testKeyStr := testKey.KeyOrDie()
+	testKeyStr := testKey.Encode()
 	if _, ok := r.baseOverrideStatus[testKeyStr]; ok {
 		status.BaseOverrideStatus = r.baseOverrideStatus[testKeyStr]
 	}
@@ -297,7 +283,6 @@ func (r *ReleaseFallback) TestDetailsAnalyze(report *testdetails.Report) error {
 type fallbackTestQueryReleasesGenerator struct {
 	dataProvider               dataprovider.DataProvider
 	cacheOption                apiCache.RequestOptions
-	allJobVariants             crtest.JobVariants
 	BaseRelease                string
 	BaseStart                  time.Time
 	BaseEnd                    time.Time
@@ -310,7 +295,6 @@ type fallbackTestQueryReleasesGenerator struct {
 func newFallbackTestQueryReleasesGenerator(
 	provider dataprovider.DataProvider,
 	reqOptions reqopts.RequestOptions,
-	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time,
 	releaseConfigs []v1.Release,
 ) fallbackTestQueryReleasesGenerator {
@@ -318,7 +302,6 @@ func newFallbackTestQueryReleasesGenerator(
 	generator := fallbackTestQueryReleasesGenerator{
 		dataProvider:   provider,
 		cacheOption:    reqOptions.CacheOption,
-		allJobVariants: allJobVariants,
 		BaseRelease:    release,
 		BaseStart:      start,
 		BaseEnd:        end,
@@ -334,12 +317,13 @@ type fallbackTestQueryReleasesGeneratorCacheKey struct {
 	BaseStart   time.Time
 	BaseEnd     time.Time
 	// VariantDBGroupBy is the only field within VariantOption that is used here
-	VariantDBGroupBy sets.String
+	VariantDBGroupBy sets.Set[string]
 	// CRTimeRoundingFactor is used by GetReleaseDatesFromBigQuery
 	CRTimeRoundingFactor time.Duration
 	CRTimeRoundingOffset time.Duration
 	// KeyTestNames affects the BuildComponentReportQuery results via filtering logic
 	KeyTestNames []string
+	DataSource   string `json:",omitempty"`
 }
 
 // getCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -354,6 +338,7 @@ func (f *fallbackTestQueryReleasesGenerator) getCacheKey() fallbackTestQueryRele
 		CRTimeRoundingFactor: f.ReqOptions.CacheOption.CRTimeRoundingFactor,
 		CRTimeRoundingOffset: f.ReqOptions.CacheOption.CRTimeRoundingOffset,
 		KeyTestNames:         f.ReqOptions.AdvancedOption.KeyTestNames,
+		DataSource:           f.ReqOptions.DataSource,
 	}
 }
 
@@ -461,7 +446,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.
 	fallbackReqOpts.BaseRelease.Start = start
 	fallbackReqOpts.BaseRelease.End = end
 
-	baseStatus, errs := f.dataProvider.QueryBaseTestStatus(ctx, fallbackReqOpts, f.allJobVariants)
+	baseStatus, errs := f.dataProvider.QueryBaseTestStatus(ctx, fallbackReqOpts)
 	if len(errs) > 0 {
 		return crstatus.ReportTestStatus{}, errs
 	}

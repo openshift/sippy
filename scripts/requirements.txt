@@ -1,3 +1,2 @@
-argparse
 sqlalchemy
 psycopg2

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -18,8 +17,6 @@ import (
 
 	resources "github.com/openshift/sippy"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
-	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
-	pgprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -70,7 +67,7 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.ConfigFlags.BindFlags(flagSet)
 	f.APIFlags.BindFlags(flagSet)
 	f.JiraFlags.BindFlags(flagSet)
-	flagSet.StringVar(&f.DataProvider, "data-provider", "bigquery", "Data provider for component readiness: bigquery, postgres")
+	flagSet.StringVar(&f.DataProvider, "data-provider", "default", "Data provider: default, bigquery, or postgres")
 }
 
 func (f *ServerFlags) Validate() error {
@@ -110,7 +107,7 @@ func NewServeCommand() *cobra.Command {
 			var gcsClient *storage.Client
 			var crDataProvider dataprovider.DataProvider
 			switch f.DataProvider {
-			case "bigquery":
+			case "default", "bigquery":
 				if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
 					opCtx := bqlabel.OperationalContext{
 						App:     bqlabel.AppSippy,
@@ -132,16 +129,12 @@ func NewServeCommand() *cobra.Command {
 					if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
 						bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 					}
-
-					crDataProvider = bqprovider.NewBigQueryProvider(bigQueryClient)
 				}
+			}
 
-			case "postgres":
-				crDataProvider = pgprovider.NewPostgresProvider(dbc, cacheClient)
-				log.Info("Using Postgres data provider for component readiness")
-
-			default:
-				return fmt.Errorf("unknown --data-provider %q, must be bigquery or postgres", f.DataProvider)
+			crDataProvider, err = flags.NewDataProvider(f.DataProvider, bigQueryClient, dbc, cacheClient)
+			if err != nil {
+				return err
 			}
 
 			gcsClient, err = gcs.NewGCSClient(context.TODO(),
@@ -200,7 +193,6 @@ func NewServeCommand() *cobra.Command {
 				views,
 				config,
 				f.APIFlags.EnableWriteEndpoints,
-				f.APIFlags.ChatAPIURL,
 				jiraClient,
 			)
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -15,8 +16,8 @@ import (
 
 func TestGenerateTestDetailsURL(t *testing.T) {
 	// Define releases with GA dates for all tests
-	ga419 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	ga420 := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	ga419 := civil.Date{Year: 2025, Month: 1, Day: 1}
+	ga420 := civil.Date{Year: 2025, Month: 6, Day: 1}
 	releases := []v1.Release{
 		{
 			Release: "4.19",
@@ -79,6 +80,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Platform:aws"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(url, "/api/component_readiness/test_details"))
@@ -98,6 +100,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{},
 			"",
+			"",
 		)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "testID cannot be empty")
@@ -116,6 +119,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			"",
 			[]string{"Architecture:amd64", "InvalidVariant", "Platform:aws"},
+			"",
 			"",
 		)
 		require.NoError(t, err)
@@ -141,6 +145,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			// Use variants in non-alphabetical order to test sorting
 			[]string{"Topology:ha", "Architecture:amd64", "Platform:aws", "Network:ovn"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 
@@ -161,6 +166,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"component-example",
 			"capability-example",
 			[]string{"Architecture:amd64", "Platform:aws"},
+			"",
 			"",
 		)
 		require.NoError(t, err)
@@ -196,6 +202,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Architecture:amd64", "Platform:aws"},
 			"4.17", // Different from view's base release
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -272,6 +279,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 				"FeatureSet:default",
 			},
 			"4.18",
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -361,6 +369,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 
@@ -434,6 +443,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Platform:aws"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 
@@ -482,6 +492,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Platform:aws"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -516,6 +527,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			[]string{"Platform:aws"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -544,6 +556,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"",
 			"",
 			[]string{"Platform:aws"},
+			"",
 			"",
 		)
 		require.NoError(t, err)
@@ -576,6 +589,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			"capability-example",
 			[]string{"Platform:aws", "Architecture:amd64"},
 			"",
+			"",
 		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
@@ -603,6 +617,46 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Contains(t, url, "baseEndTime=")
 		assert.Contains(t, url, "sampleStartTime=")
 		assert.Contains(t, url, "sampleEndTime=")
+	})
+
+	t.Run("dataSource parameter is included when set", func(t *testing.T) {
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"https://sippy.example.com",
+			"",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			reqopts.TestFilters{},
+			"",
+			"",
+			[]string{"Platform:aws"},
+			"",
+			"postgres",
+		)
+		require.NoError(t, err)
+		assert.Contains(t, url, "dataSource=postgres")
+	})
+
+	t.Run("dataSource parameter is omitted when empty", func(t *testing.T) {
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"https://sippy.example.com",
+			"",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			reqopts.TestFilters{},
+			"",
+			"",
+			[]string{"Platform:aws"},
+			"",
+			"",
+		)
+		require.NoError(t, err)
+		assert.NotContains(t, url, "dataSource")
 	})
 
 }

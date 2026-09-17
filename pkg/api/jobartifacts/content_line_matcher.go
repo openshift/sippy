@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/openshift/sippy/pkg/util/param"
-	"github.com/openshift/sippy/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // ContentLineMatcher is an interface for matching lines in a text artifact file.
@@ -179,7 +179,7 @@ func (m *lineMatcher) GetMatches(reader *bufio.Reader) (MatchedContent, error) {
 func ParseLineMatcherParams(req *http.Request) (beforeContext, afterContext, maxMatches int, errs map[string]error) {
 	errs = map[string]error{}
 	params := map[string]int{}
-	for name := range sets.NewString("beforeContext", "afterContext", "maxFileMatches") {
+	for name := range sets.New("beforeContext", "afterContext", "maxFileMatches") {
 		if value, err := param.ReadUint(req, name, maxFileMatches); err != nil {
 			errs[name] = err
 		} else {

@@ -105,3 +105,43 @@ func TestDynamicSuitePatternMatching(t *testing.T) {
 		})
 	}
 }
+
+func TestIsSuiteImportableMcpchecker(t *testing.T) {
+	if !IsSuiteImportable("mcpchecker") {
+		t.Fatal("expected mcpchecker suite to be importable for OCPMCP-308 JUnit ingestion")
+	}
+}
+
+func TestIsSuiteImportableKnownAndUnknown(t *testing.T) {
+	if !IsSuiteImportable("openshift-tests") {
+		t.Fatal("expected openshift-tests to remain importable")
+	}
+	if IsSuiteImportable("not-a-real-suite") {
+		t.Fatal("expected unknown suite to be rejected")
+	}
+}
+
+func TestIsSuiteImportablePlaywrightSpec(t *testing.T) {
+	importable := []string{
+		"api/api-v1-advanced-features.spec.ts",
+		"organization/autoprune-policies.spec.ts",
+		"usage-logs.spec.ts",
+	}
+	for _, s := range importable {
+		if !IsSuiteImportable(s) {
+			t.Fatalf("expected Playwright suite %q to be importable", s)
+		}
+	}
+
+	rejected := []string{
+		"spec.ts",          // no dot prefix
+		"foo.spec.tsx",     // wrong extension
+		"foo.spec.ts.bak",  // suffix after .spec.ts
+		"some-other-suite", // unrelated name
+	}
+	for _, s := range rejected {
+		if IsSuiteImportable(s) {
+			t.Fatalf("expected %q to be rejected", s)
+		}
+	}
+}

@@ -34,7 +34,12 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-centralindia-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-e2e-parallel-ocp-nightly: true
+      periodic-ci-Azure-ARO-HCP-main-capz-e2e-production: true
       branch-ci-Azure-ARO-HCP-main-e2e-prod-e2e-parallel: true
+  capi-qe:
+    synthetic: true
+    jobs:
+      periodic-ci-stolostron-capi-tests-configure-prow-mgmt-periodics-capz-e2e: true
   aro-classic-integration:
     synthetic: true
     jobs:
@@ -64,25 +69,52 @@ releases:
     jobs:
       periodic-ci-openshift-release-main-osd-conformance-aws-k8s-conformance: true
     regexp:
-      # rosa-e2e managed service validation + OCM FVT (current and future versioned jobs)
-      - "^periodic-ci-openshift-online-rosa-e2e-main-.*"
+      # rosa-e2e managed service validation nightlies (all run against staging OCM)
+      - "^periodic-ci-openshift-online-rosa-e2e-main-periodics-.*"
+      # rosa-e2e upgrade tests
+      - "^periodic-ci-openshift-online-rosa-e2e-main-upgrade-.*"
+      # OCM FVT staging
+      - "^periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-.*-staging-.*"
       # ROSA Gap Analysis (all versions)
       - "^periodic-ci-openshift-online-rosa-gap-analysis-main-.*"
       # ROSA HCP conformance (all versions)
       - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-hcp-ovn$"
       # ROSA Classic/STS conformance (all versions)
       - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-sts-ovn$"
+      # SRE operator e2e tests via Prow (staging, STS + GCP)
+      - "^periodic-ci-openshift-.*-(master|main)-(rosa-sts|osd-gcp)-e2e-promotion-stage$"
+      # HyperShift CI sector tests (staging)
+      - "^periodic-ci-openshift-online-rosa-e2e-main-hypershift-ci-.*-staging-.*"
+      # ROSA CLI e2e tests
+      - "^periodic-ci-openshift-rosa-master-e2e-rosa-.*"
+      # Terraform provider RHCS e2e tests
+      - "^periodic-ci-terraform-redhat-terraform-provider-rhcs-main-e2e-rosa-.*"
+      # CAPA e2e tests (uses underscore separator: rosa-e2e-main_capa-e2e)
+      - "^periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-.*"
   rosa-integration:
     synthetic: true
-    jobs: {}
+    regexp:
+      # OCM FVT integration
+      - "^periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-.*-integration-.*"
+      # SRE operator e2e tests via Prow (integration, STS + GCP)
+      - "^periodic-ci-openshift-.*-(master|main)-(rosa-sts|osd-gcp)-e2e-promotion-int$"
+      # HyperShift CI sector tests (integration)
+      - "^periodic-ci-openshift-online-rosa-e2e-main-hypershift-ci-.*-integration-.*"
   rosa-production:
     synthetic: true
-    jobs: {}
+    jobs:
+      # ROSA CLI e2e tests targeting production (exact match takes priority over rosa-stage regex)
+      periodic-ci-openshift-rosa-master-e2e-rosa-hcp-advanced-prod-critical-high-f3: true
+      periodic-ci-openshift-rosa-master-e2e-rosa-sts-advanced-prod-critical-high-f3: true
+      periodic-ci-openshift-rosa-master-e2e-rosa-sts-upgrade-y-stream-prod-f3: true
+    regexp:
+      # OCM FVT production
+      - "^periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-.*-production-.*"
   rrp-integration:
     synthetic: true
     jobs:
-      periodic-ci-openshift-online-rosa-regional-platform-main-nightly-ephemeral: true
-      periodic-ci-openshift-online-rosa-regional-platform-main-nightly-integration: true
+      periodic-ci-openshift-online-rosa-hyperfleet-main-nightly-ephemeral: true
+      periodic-ci-openshift-online-rosa-hyperfleet-main-nightly-integration: true
   automation:
     synthetic: true
     jobs:
@@ -90,7 +122,18 @@ releases:
       periodic-ci-openshift-hypershift-main-periodic-review-agent: true
       periodic-ci-openshift-release-main-claude-payload-agent: true
       periodic-prow-auto-sippy-config-generator: true
+  mcp-0.5:
+    synthetic: true
+    regexp:
+      - "^periodic-ci-openshift-openshift-mcp-server-release-0\\.5-.*"
   ocp-hypershift:
     synthetic: true
     regexp:
       - "^periodic-ci-openshift-hypershift-.*-periodics-hcm-.*"
+  quay-3.18:
+    synthetic: true
+    jobs:
+      periodic-ci-quay-quay-redhat-3.18-gcp-ocp422-e2e-install-gcp-gcs-3-18-nightly-4-22: false
+      periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-3-18-nightly-4-22: false
+    regexp:
+      - "^periodic-ci-quay-quay-redhat-3\\.18-.*-e2e-install-.*"

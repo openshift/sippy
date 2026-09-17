@@ -435,7 +435,7 @@ provide context for interpreting the regressions below.
 
 - Table is sorted by percentage descending (already sorted by the API).
 
-**Component:** `sippy-ng/src/component_readiness/TriageSymptoms.js`
+**Component:** `sippy-ng/src/component_readiness/TriageSymptomLabels.jsx`
 
 A dedicated component renders the symptoms table. It receives
 `symptomSummaries`, `symptomFilter`, and `setSymptomFilter` props.

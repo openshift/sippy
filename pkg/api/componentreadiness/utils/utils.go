@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -11,7 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
@@ -59,51 +60,42 @@ func NormalizeProwJobName(prowName string) string {
 	return prowName
 }
 
-// DeserializeTestKey helps us workaround the limitations of a struct as a map key, where
-// we instead serialize a very small struct to json for a unit test key that includes test
-// ID and a specific set of variants. This function deserializes back to a struct.
-func DeserializeTestKey(stats crstatus.TestStatus, testKeyStr string) (crtest.Identification, error) {
-	var testKey crtest.KeyWithVariants
-	err := json.Unmarshal([]byte(testKeyStr), &testKey)
-	if err != nil {
-		logrus.WithError(err).Errorf("trying to unmarshel %s", testKeyStr)
-		return crtest.Identification{}, err
-	}
+// IdentificationFromStatus reconstructs an Identification from the TestStatus fields.
+func IdentificationFromStatus(stats crstatus.TestStatus) crtest.Identification {
 	testID := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
 			Component: stats.Component,
 			TestName:  stats.TestName,
 			TestSuite: stats.TestSuite,
-			TestID:    testKey.TestID,
+			TestID:    stats.TestID,
 		},
 		ColumnIdentification: crtest.ColumnIdentification{
-			Variants: testKey.Variants,
+			Variants: stats.Variants,
 		},
 	}
 	// Take the first cap for now. When we reach to a cell with specific capability, we will override the value.
 	if len(stats.Capabilities) > 0 {
 		testID.Capability = stats.Capabilities[0]
 	}
-	return testID, nil
+	return testID
 }
 
 // VariantsMapToStringSlice converts the map form of variants to a string slice
 // where each variant is formatted key:value.
 func VariantsMapToStringSlice(variants map[string]string) []string {
-	vs := []string{}
+	vs := make([]string, 0, len(variants))
 	for k, v := range variants {
-		vs = append(vs, fmt.Sprintf("%s:%s", k, v))
+		vs = append(vs, crtest.VariantKeyValueToString(k, v))
 	}
 	return vs
 }
 
-// VariantsStringSliceToMap converts a slice of "key:value" strings to a map
+// VariantsStringSliceToMap converts a slice of "key:value" strings to a map.
 func VariantsStringSliceToMap(variants []string) map[string]string {
-	variantMap := make(map[string]string)
+	variantMap := make(map[string]string, len(variants))
 	for _, variant := range variants {
-		parts := strings.SplitN(variant, ":", 2)
-		if len(parts) == 2 {
-			variantMap[parts[0]] = parts[1]
+		if k, v := crtest.VariantStringToKeyValue(variant); k != "" {
+			variantMap[k] = v
 		}
 	}
 	return variantMap
@@ -186,10 +178,10 @@ func addAdvancedOptionsParams(params url.Values, advancedOptions reqopts.Advance
 // addVariantOptionsParams adds variant options to URL parameters
 func addVariantOptionsParams(params url.Values, variantOptions reqopts.Variants) {
 	if variantOptions.ColumnGroupBy != nil {
-		params.Add("columnGroupBy", strings.Join(variantOptions.ColumnGroupBy.List(), ","))
+		params.Add("columnGroupBy", strings.Join(sets.List(variantOptions.ColumnGroupBy), ","))
 	}
 	if variantOptions.DBGroupBy != nil {
-		params.Add("dbGroupBy", strings.Join(variantOptions.DBGroupBy.List(), ","))
+		params.Add("dbGroupBy", strings.Join(sets.List(variantOptions.DBGroupBy), ","))
 	}
 
 	// Add include variants
@@ -273,6 +265,7 @@ func GenerateTestDetailsURL(
 	capability string,
 	variants []string,
 	baseReleaseOverride string,
+	dataSource string,
 ) (string, error) {
 
 	if testID == "" {
@@ -305,6 +298,10 @@ func GenerateTestDetailsURL(
 		params.Add("view", viewName)
 	}
 
+	if dataSource != "" {
+		params.Add("dataSource", dataSource)
+	}
+
 	// Always generate full URL with all parameters
 	params.Add("testId", testID)
 
@@ -322,8 +319,8 @@ func GenerateTestDetailsURL(
 	}
 
 	// Add test filter parameters
-	for _, cap := range testFilters.Capabilities {
-		params.Add("testCapabilities", cap)
+	for _, testCap := range testFilters.Capabilities {
+		params.Add("testCapabilities", testCap)
 	}
 	for _, lifecycle := range testFilters.Lifecycles {
 		params.Add("testLifecycles", lifecycle)
@@ -337,6 +334,22 @@ func GenerateTestDetailsURL(
 
 	u.RawQuery = params.Encode()
 	return u.String(), nil
+}
+
+// GAWindows lists the distinct lookback periods (in days) for which GA base
+// data is fetched from BigQuery and stored in prow_ga_raw_test_data.
+var GAWindows = []int{1, 30, 90}
+
+// GAWindowStart returns the first day of a GA base window with the given
+// lookback period.
+func GAWindowStart(gaDate civil.Date, windowDays int) civil.Date {
+	return gaDate.AddDays(-windowDays)
+}
+
+// GAWindowEnd returns the exclusive end of the GA base window (the day after
+// the GA date).
+func GAWindowEnd(gaDate civil.Date) civil.Date {
+	return gaDate.AddDays(1)
 }
 
 // EnqueueAsync is a helper function to asynchronously enqueue something (like errors) on a channel from a synchronous context.

@@ -14,13 +14,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -133,11 +133,13 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 		promReportTypes := buildPromReportTypes(releases)
 
 		// Get last updated job run
-		var lastUpdated time.Time
-		if r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated); r.Error != nil {
-			return errors.Wrapf(r.Error, "could not fetch last updated time")
+		lastUpdated, err := api.GetLastUpdateTime(dbc)
+		if err != nil {
+			return errors.Wrapf(err, "could not fetch last updated time")
 		}
-		hoursSinceLastUpdate.WithLabelValues().Set(time.Since(lastUpdated).Hours())
+		if !lastUpdated.IsZero() {
+			hoursSinceLastUpdate.WithLabelValues().Set(time.Since(lastUpdated).Hours())
+		}
 
 		for _, pType := range promReportTypes {
 			// start, boundary and end will just be defaults
@@ -243,7 +245,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, provider datapr
 	releaseStatus := getReleaseStatus(releases, view.SampleRelease.Name)
 	for _, row := range report.Rows {
 		totalRegressedTestsByComponent := 0
-		uniqueRegressedTestsByComponent := sets.NewString()
+		uniqueRegressedTestsByComponent := sets.New[string]()
 		for _, col := range row.Columns {
 			// Calculate total number of regressions by component, this can include a test multiple times
 			// if it's regressed in multiple NURP's.
@@ -276,9 +278,13 @@ func updateComponentReadinessMetricsForView(ctx context.Context, provider datapr
 }
 
 func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
+	release, err := query.CurrentActiveRelease(dbc)
+	if err != nil {
+		return err
+	}
 	for _, period := range []string{"current", "twoDay"} {
 		start, boundary, end := util.PeriodToDates(period, reportEnd)
-		result, err := query.BuildClusterHealth(dbc, start, boundary, end)
+		result, err := query.BuildClusterHealth(dbc, release, start, boundary, end)
 		if err != nil {
 			return err
 		}

@@ -384,10 +384,7 @@ func (j JobRunAnnotator) filterJobRunByArtifact(ctx context.Context, jobRunIDs [
 	return resultIDs, nil
 }
 
-// bulkInsertVariants inserts all new job variants in batches.
 func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, inserts []models.JobRunLabel) error {
-	var batchSize = 500
-
 	if !j.execute {
 		jobsStr := ""
 		for _, jobRun := range inserts {
@@ -397,15 +394,22 @@ func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, insert
 		return nil
 	}
 
-	table := j.bqClient.BQ.Dataset(j.bqClient.Dataset).Table(jobAnnotationTable)
-	inserter := table.Inserter()
-	for i := 0; i < len(inserts); i += batchSize {
+	return BulkInsertJobRunLabels(ctx, j.bqClient.BQ, j.bqClient.Dataset, jobAnnotationTable, inserts, 500)
+}
+
+// BulkInsertJobRunLabels inserts job run labels into BigQuery in batches.
+func BulkInsertJobRunLabels(ctx context.Context, bqClient *bigquery.Client, dataset, table string,
+	labels []models.JobRunLabel, batchSize int) error {
+
+	t := bqClient.Dataset(dataset).Table(table)
+	inserter := t.Inserter()
+	for i := 0; i < len(labels); i += batchSize {
 		end := i + batchSize
-		if end > len(inserts) {
-			end = len(inserts)
+		if end > len(labels) {
+			end = len(labels)
 		}
 
-		if err := inserter.Put(ctx, inserts[i:end]); err != nil {
+		if err := inserter.Put(ctx, labels[i:end]); err != nil {
 			return err
 		}
 		log.Infof("added %d new job label rows", end-i)

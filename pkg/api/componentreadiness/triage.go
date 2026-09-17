@@ -43,9 +43,8 @@ func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 }
 
 func ListTriages(dbc *db.DB, req *http.Request) ([]models.Triage, error) {
-	var triages []models.Triage
-	var err error
-	triages, err = query.ListTriages(dbc)
+	view := req.URL.Query().Get("view")
+	triages, err := query.ListTriages(dbc, view)
 	for i := range triages {
 		injectHATEOASLinks(&triages[i], sippyapi.GetBaseURL(req))
 	}
@@ -316,6 +315,20 @@ func ListRegressions(dbc *db.DB, release string, views []crview.View, releases [
 	}
 
 	// Add HATEOAS links to each regression
+	for i := range regressions {
+		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, crTimeRoundingOffset, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
+	}
+
+	return regressions, err
+}
+
+// GetRegressionsForTest returns regressions matching a specific test name, optionally filtered by release.
+func GetRegressionsForTest(dbc *db.DB, release, testName string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
+	regressions, err := query.GetRegressionsForTest(dbc, release, testName)
+	if err != nil {
+		return nil, err
+	}
+
 	for i := range regressions {
 		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, crTimeRoundingOffset, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
 	}
@@ -859,6 +872,7 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 		regression.Capability,
 		regression.Variants,
 		regression.BaseRelease,
+		"",
 	)
 }
 

@@ -1,34 +1,43 @@
 package featuregateloader
 
 import (
+	"context"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io"
+	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
+	gh "github.com/google/go-github/v45/github"
+	"github.com/jackc/pgx/v4/stdlib"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"gorm.io/gorm/clause"
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
+const (
+	repoOwner       = "openshift"
+	repoName        = "api"
+	featureGatePath = "payload-manifests/featuregates"
+)
+
 type FeatureGateLoader struct {
+	ctx            context.Context
 	dbc            *db.DB
+	ghClient       *gh.Client
 	errs           []error
 	releaseConfigs []v1.Release
 }
 
-func New(dbc *db.DB, configs []v1.Release) *FeatureGateLoader {
+func New(ctx context.Context, dbc *db.DB, ghClient *gh.Client, configs []v1.Release) *FeatureGateLoader {
 	return &FeatureGateLoader{
+		ctx:            ctx,
 		dbc:            dbc,
+		ghClient:       ghClient,
 		releaseConfigs: configs,
 	}
 }
@@ -38,27 +47,11 @@ func (l *FeatureGateLoader) Name() string {
 }
 
 func (l *FeatureGateLoader) Load() {
-	dbFeatureGates, err := getFeatureGatesForReleases(l.getTargetReleases())
-	if err != nil {
-		l.errs = append(l.errs, errors.Wrapf(err, "error querying feature gates for releases"))
-		return
-	}
+	releases := l.getTargetReleases()
+	dbFeatureGates := l.getFeatureGatesFromGitHub(releases)
 
-	tx := l.dbc.DB.Clauses(clause.OnConflict{
-		// Composite key
-		Columns: []clause.Column{
-			{Name: "release"},
-			{Name: "topology"},
-			{Name: "feature_set"},
-			{Name: "feature_gate"},
-		},
-		// Only update the "status" field:
-		DoUpdates: clause.AssignmentColumns([]string{"status"}),
-	}).
-		CreateInBatches(dbFeatureGates, 500)
-
-	if tx.Error != nil {
-		l.errs = append(l.errs, errors.Wrap(tx.Error, "error loading feature gates"))
+	if err := l.upsertFeatureGates(dbFeatureGates); err != nil {
+		l.errs = append(l.errs, fmt.Errorf("error upserting feature gates: %w", err))
 	}
 }
 
@@ -74,131 +67,189 @@ func (l *FeatureGateLoader) getTargetReleases() []string {
 		}
 	}
 
-	log.Infof("Found %d target releases from db: %s", len(targetReleases), strings.Join(targetReleases, ","))
+	log.WithFields(log.Fields{
+		"releases": strings.Join(targetReleases, ","),
+		"count":    len(targetReleases),
+	}).Info("found target releases for feature gates")
 	return targetReleases
 }
 
-func getFeatureGatesForReleases(releases []string) ([]models.FeatureGate, error) {
+func (l *FeatureGateLoader) getFeatureGatesFromGitHub(releases []string) []models.FeatureGate {
 	if len(releases) == 0 {
-		log.Infof("no releases found to load feature gates")
-		return nil, nil
+		log.Info("no releases found to load feature gates")
+		return nil
 	}
-
-	tempDir, err := os.MkdirTemp("", "openshift-api-*")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create temp directory")
-	}
-	defer os.RemoveAll(tempDir)
-
-	cloneStart := time.Now()
-	log.Infof("Cloning API repo into: %s", tempDir)
-	// Clone the repository to the temporary directory
-	repo, err := git.PlainClone(tempDir, false, &git.CloneOptions{
-		URL:      "https://github.com/openshift/api.git",
-		Progress: os.Stdout,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to clone repo")
-	}
-	// Fetch remotes
-	err = repo.Fetch(&git.FetchOptions{
-		RefSpecs: []config.RefSpec{"refs/*:refs/*", "HEAD:refs/heads/HEAD"},
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch remotes")
-	}
-	log.Infof("Successfully cloned repo into %s after %+v", tempDir, time.Since(cloneStart))
 
 	var dbFeatureGates []models.FeatureGate
 	for _, release := range releases {
-		log.Infof("Processing release %s", release)
-		if err := switchBranch(repo, fmt.Sprintf("release-%s", release)); err != nil {
-			return nil, errors.Wrapf(err, "couldn't switch to release-%s branch", release)
-		}
-		releaseFGs, err := listFeatureGates(release, tempDir)
+		rLog := log.WithField("release", release)
+		rLog.Info("fetching feature gates from GitHub")
+
+		branch := fmt.Sprintf("release-%s", release)
+		fgs, err := l.fetchFeatureGatesForBranch(release, branch)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to list feature gates for %s", release)
+			l.errs = append(l.errs, fmt.Errorf("failed to fetch feature gates for release %s: %w", release, err))
+			continue
 		}
-		dbFeatureGates = append(dbFeatureGates, releaseFGs...)
-		log.Infof("Finished with %s", release)
+		dbFeatureGates = append(dbFeatureGates, fgs...)
+		rLog.WithField("count", len(fgs)).Info("finished processing release")
 	}
 
-	return dbFeatureGates, nil
+	return dbFeatureGates
 }
 
-func listFeatureGates(release, tmpDir string) ([]models.FeatureGate, error) {
-	targetDir := filepath.Join(tmpDir, "payload-manifests/featuregates")
+func (l *FeatureGateLoader) fetchFeatureGatesForBranch(release, branch string) ([]models.FeatureGate, error) {
+	opts := &gh.RepositoryContentGetOptions{Ref: branch}
+	_, entries, _, err := l.ghClient.Repositories.GetContents(l.ctx, repoOwner, repoName, featureGatePath, opts)
+	if err != nil {
+		return nil, fmt.Errorf("listing directory for branch %s: %w", branch, err)
+	}
+
 	var dbFeatureGates []models.FeatureGate
+	for _, entry := range entries {
+		if entry.GetType() != "file" {
+			continue
+		}
 
-	err := filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
+		topology, featureSet, valid := parseFeatureGateFilename(entry.GetName())
+		if !valid {
+			continue
+		}
+
+		downloadURL := entry.GetDownloadURL()
+		if downloadURL == "" {
+			l.errs = append(l.errs, fmt.Errorf("feature gate file %s on branch %s has no download URL", entry.GetName(), branch))
+			continue
+		}
+
+		data, err := l.downloadFile(downloadURL)
 		if err != nil {
-			return err
+			l.errs = append(l.errs, fmt.Errorf("failed to download %s: %w", entry.GetName(), err))
+			continue
 		}
-		if isFeatureGateFile(info) {
-			featureGates, err := processFeatureGateFile(path, release, info.Name())
-			if err != nil {
-				return err
-			}
-			dbFeatureGates = append(dbFeatureGates, featureGates...)
-		}
-		return nil
-	})
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to get feature gates: %w", err)
+		var fg FeatureGate
+		if err := yaml.Unmarshal(data, &fg); err != nil {
+			l.errs = append(l.errs, fmt.Errorf("failed to unmarshal YAML from %s: %w", entry.GetName(), err))
+			continue
+		}
+
+		dbFeatureGates = append(dbFeatureGates, convertAPIToDB(fg, release, topology, featureSet, downloadURL)...)
 	}
+
 	return dbFeatureGates, nil
 }
 
-// isFeatureGateFile checks if the file follows the expected naming pattern
-func isFeatureGateFile(info os.FileInfo) bool {
-	return !info.IsDir() && strings.HasPrefix(info.Name(), "featureGate-") && strings.HasSuffix(info.Name(), ".yaml")
-}
+func (l *FeatureGateLoader) downloadFile(downloadURL string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(l.ctx, 30*time.Second)
+	defer cancel()
 
-func processFeatureGateFile(path, release, filename string) ([]models.FeatureGate, error) {
-	topology, featureSet, valid := parseFeatureGateFilename(filename)
-	if !valid {
-		log.Infof("Skipping malformed filename: %s", filename)
-		return nil, nil
-	}
-
-	data, err := os.ReadFile(path)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
+		return nil, fmt.Errorf("creating request for %s: %w", downloadURL, err)
+	}
+	resp, err := l.ghClient.Client().Do(req) //nolint:gosec // URL comes from GitHub Contents API response
+	if err != nil {
+		return nil, fmt.Errorf("HTTP GET %s: %w", downloadURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %s from %s", resp.Status, downloadURL)
 	}
 
-	var fg FeatureGate
-	if err := yaml.Unmarshal(data, &fg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal YAML from %s: %w", path, err)
-	}
-
-	return convertAPIToDB(fg, release, topology, featureSet, path), nil
+	return io.ReadAll(io.LimitReader(resp.Body, 10<<20))
 }
+
+var featureGateTempCols = []db.TempColumn[models.FeatureGate]{
+	{Name: "release", Type: "text NOT NULL", Value: func(fg *models.FeatureGate) any { return fg.Release }},
+	{Name: "topology", Type: "text NOT NULL", Value: func(fg *models.FeatureGate) any { return fg.Topology }},
+	{Name: "feature_set", Type: "text NOT NULL", Value: func(fg *models.FeatureGate) any { return fg.FeatureSet }},
+	{Name: "feature_gate", Type: "text NOT NULL", Value: func(fg *models.FeatureGate) any { return fg.FeatureGate }},
+	{Name: "status", Type: "text NOT NULL", Value: func(fg *models.FeatureGate) any { return fg.Status }},
+}
+
+func (l *FeatureGateLoader) upsertFeatureGates(featureGates []models.FeatureGate) error {
+	if len(featureGates) == 0 {
+		return nil
+	}
+
+	st := time.Now()
+	sqlDB, err := l.dbc.DB.DB()
+	if err != nil {
+		return fmt.Errorf("getting sql.DB: %w", err)
+	}
+	conn, err := stdlib.AcquireConn(sqlDB)
+	if err != nil {
+		return fmt.Errorf("acquiring pgx conn: %w", err)
+	}
+	defer func() {
+		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
+			log.WithError(err).Error("failed to release pgx conn")
+		}
+	}()
+
+	cleanup, err := db.CopyToTempTable(l.ctx, conn, "tmp_feature_gates", featureGates, featureGateTempCols)
+	if err != nil {
+		return fmt.Errorf("COPY tmp_feature_gates: %w", err)
+	}
+	defer cleanup()
+
+	log.WithFields(log.Fields{
+		"rows":    len(featureGates),
+		"elapsed": time.Since(st),
+	}).Info("COPY into temp table complete")
+
+	st = time.Now()
+	upsertTag, err := conn.Exec(l.ctx, `
+		INSERT INTO feature_gates (release, topology, feature_set, feature_gate, status, created_at, updated_at)
+		SELECT release, topology, feature_set, feature_gate, status, NOW(), NOW()
+		FROM tmp_feature_gates
+		ON CONFLICT (release, topology, feature_set, feature_gate) DO UPDATE SET
+			status     = EXCLUDED.status,
+			updated_at = NOW()
+	`)
+	if err != nil {
+		return fmt.Errorf("upserting feature_gates: %w", err)
+	}
+	log.WithFields(log.Fields{
+		"rows":    upsertTag.RowsAffected(),
+		"elapsed": time.Since(st),
+	}).Info("upsert into feature_gates complete")
+
+	return nil
+}
+
+var featureGateFilenameRe = regexp.MustCompile(
+	`^featureGate-(?:\d+-\d+-)?(?P<topology>[^-]+)-(?P<featureSet>[^-]+)\.yaml$`,
+)
 
 // parseFeatureGateFilename extracts topology and feature set from the filename.
 // Handles both old format (featureGate-{topology}-{featureSet}.yaml) and
 // new versioned format (featureGate-{majorStart}-{majorEnd}-{topology}-{featureSet}.yaml).
 func parseFeatureGateFilename(filename string) (string, string, bool) {
-	parts := strings.Split(strings.TrimSuffix(filename, ".yaml"), "-")
-	if len(parts) < 3 {
+	m := featureGateFilenameRe.FindStringSubmatch(filename)
+	if m == nil {
 		return "", "", false
 	}
-	return parts[len(parts)-2], parts[len(parts)-1], true
+	return m[featureGateFilenameRe.SubexpIndex("topology")],
+		m[featureGateFilenameRe.SubexpIndex("featureSet")], true
 }
 
-// convertAPIToDB converts the parsed feature gate data into db models
 func convertAPIToDB(fg FeatureGate, release, topology, featureSet, path string) []models.FeatureGate {
 	var dbFeatureGates []models.FeatureGate
-	fgLogger := log.WithField("release", release).
-		WithField("topology", topology).
-		WithField("featureSet", featureSet).
-		WithField("path", path)
+	fgLogger := log.WithFields(log.Fields{
+		"release":    release,
+		"topology":   topology,
+		"featureSet": featureSet,
+		"path":       path,
+	})
 
-	fgLogger.Info("Found feature gate configuration file")
+	fgLogger.Info("found feature gate configuration file")
 
 	for _, entry := range fg.Status.FeatureGates {
 		for _, enabled := range entry.Enabled {
-			fgLogger.WithField("featureGate", enabled.Name).Debugf("Found enabled feature gate")
+			fgLogger.WithField("featureGate", enabled.Name).Debug("found enabled feature gate")
 			dbFeatureGates = append(dbFeatureGates, models.FeatureGate{
 				Release:     release,
 				Topology:    topology,
@@ -208,7 +259,7 @@ func convertAPIToDB(fg FeatureGate, release, topology, featureSet, path string) 
 			})
 		}
 		for _, disabled := range entry.Disabled {
-			fgLogger.WithField("featureGate", disabled.Name).Debugf("Found disabled feature gate")
+			fgLogger.WithField("featureGate", disabled.Name).Debug("found disabled feature gate")
 			dbFeatureGates = append(dbFeatureGates, models.FeatureGate{
 				Release:     release,
 				Topology:    topology,
@@ -219,20 +270,4 @@ func convertAPIToDB(fg FeatureGate, release, topology, featureSet, path string) 
 		}
 	}
 	return dbFeatureGates
-}
-
-func switchBranch(repo *git.Repository, branchName string) error {
-	wt, err := repo.Worktree()
-	if err != nil {
-		return fmt.Errorf("failed to get worktree: %w", err)
-	}
-
-	err = wt.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branchName)),
-		Force:  true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to checkout branch %s: %w", branchName, err)
-	}
-	return nil
 }

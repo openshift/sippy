@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	gosort "sort"
 	"strconv"
@@ -12,28 +12,22 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/pkg/errors"
+	"cloud.google.com/go/civil"
+	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	bq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/html/installhtml"
 	"github.com/openshift/sippy/pkg/util/param"
-)
-
-const (
-	testReport7dMatView          = "prow_test_report_7d_matview"
-	testReport2dMatView          = "prow_test_report_2d_matview"
-	testReport7dCollapsedMatView = "prow_test_report_7d_collapsed_matview"
-	testReport2dCollapsedMatView = "prow_test_report_2d_collapsed_matview"
-	payloadFailedTests14dMatView = "payload_test_failures_14d_matview"
 )
 
 func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubstrings []string, dbc *db.DB) {
@@ -211,7 +205,7 @@ LIMIT 500`
 	return outputs, nil
 }
 
-func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[string]float64, error) {
+func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[civil.Date]float64, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {
 		for _, f := range filters.Items {
@@ -348,7 +342,7 @@ func PrintTestsJSONFromDB(
 
 	result, err := spec.buildTestsResultsFromPostgres(req.Context(), dbc, cacheClient)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		RespondWithError(w, "error building test report", err)
 		return
 	}
 
@@ -360,6 +354,24 @@ func PrintTestsJSONFromDB(
 	RespondWithJSON(http.StatusOK, w, testsResult)
 }
 
+// QueryTestResults queries test results using the same logic as the /api/tests
+// endpoint but without requiring an HTTP request. This allows internal callers
+// (such as promotion readiness) to reuse the exact same query path and filters.
+func QueryTestResults(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, release string, f *filter.Filter) ([]apitype.Test, error) {
+	spec := &TestResultsSpec{
+		Release:        release,
+		Period:         "default",
+		Collapse:       false,
+		IncludeOverall: false,
+		Filter:         f,
+	}
+	result, err := spec.buildTestsResultsFromPostgres(ctx, dbc, cacheClient)
+	if err != nil {
+		return nil, err
+	}
+	return result.TestsAPIResult, nil
+}
+
 func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http.Request, bqc *bq.Client) {
 	spec, ok := makeTestsResultsSpec(w, req, release)
 	if !ok {
@@ -368,7 +380,7 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 
 	result, err := spec.buildTestsResultsFromBigQuery(req.Context(), bqc)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
+		RespondWithError(w, "error building test report", err)
 		return
 	}
 
@@ -381,37 +393,72 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 }
 
 func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, error) {
+	return GetJobRunTestsCountByLookbackAt(dbc, lookbackDays, civil.DateOf(time.Now().UTC()))
+}
+
+func GetJobRunTestsCountByLookbackAt(dbc *db.DB, lookbackDays int, today civil.Date) (int64, int64, error) {
+	if dbc == nil {
+		return -1, -1, errors.New("database connection is required")
+	}
 	if lookbackDays < 1 {
-		return -1, -1, errors.New("Lookback Days must be greater than zero")
-	}
-	// Calculate the truncated time
-	now := time.Now().UTC()
-	truncatedTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -lookbackDays)
-
-	type counts = struct {
-		JobRunsCount int64 `json:"job_runs_count"`
-		TestIDsCount int64 `json:"test_ids_count"`
+		return -1, -1, errors.New("lookback days must be greater than zero")
 	}
 
-	queryCounts := counts{}
+	startMinusOne := today.AddDays(-lookbackDays - 1)
+
 	timeStart := time.Now()
+	log.WithField("lookbackDays", lookbackDays).Info("starting lookback count queries")
 
-	log.Infof("Starting tests count query for lookback: %d", lookbackDays)
-
-	err := dbc.DB.Table("prow_job_run_tests").
-		Select("count(distinct prow_job_run_id) as job_runs_count, count(distinct test_id) as test_ids_count").
-		Where("prow_job_run_timestamp > ?", truncatedTime).
-		Scan(&queryCounts).
-		Error
-
-	timeFinish := time.Now()
-	log.Infof("Finished tests count query for lookback: %d, duration: %s", lookbackDays, timeFinish.Sub(timeStart).String())
-
+	// Count job runs from prow_job_runs (one row per run, much smaller than prow_job_run_tests).
+	release, err := query.CurrentActiveRelease(dbc)
 	if err != nil {
-		return -1, -1, err
+		return -1, -1, fmt.Errorf("determining current release: %w", err)
+	}
+	var jobRunsCount int64
+	err = dbc.DB.Table("prow_job_runs").
+		Where("prow_job_release = ?", release).
+		Where("timestamp > ? AND deleted_at IS NULL", today.AddDays(-lookbackDays).In(time.UTC)).
+		Count(&jobRunsCount).
+		Error
+	if err != nil {
+		return -1, -1, fmt.Errorf("counting job runs: %w", err)
 	}
 
-	return queryCounts.JobRunsCount, queryCounts.TestIDsCount, nil
+	// Count distinct tests using cumulative summaries for the active release.
+	var testIDs []int64
+	err = dbc.DB.Raw(`
+		WITH end_sums AS (
+		  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
+		  FROM test_cumulative_summaries
+		  WHERE release = ? AND date = ?
+		  GROUP BY test_id
+		),
+		start_sums AS (
+		  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
+		  FROM test_cumulative_summaries
+		  WHERE release = ? AND date = ?
+		  GROUP BY test_id
+		)
+		SELECT e.test_id
+		FROM end_sums e
+		LEFT JOIN start_sums s ON s.test_id = e.test_id
+		WHERE (e.total_runs - COALESCE(s.total_runs, 0)) > 0`,
+		release, today, release, startMinusOne).
+		Scan(&testIDs).
+		Error
+	if err != nil {
+		return -1, -1, fmt.Errorf("counting test IDs for release %s: %w", release, err)
+	}
+	testIDsCount := int64(len(testIDs))
+
+	log.WithFields(log.Fields{
+		"lookbackDays": lookbackDays,
+		"jobRunsCount": jobRunsCount,
+		"testIDsCount": testIDsCount,
+		"duration":     time.Since(timeStart),
+	}).Info("finished lookback count queries")
+
+	return jobRunsCount, testIDsCount, nil
 }
 
 type TestResultsSpec struct {
@@ -427,156 +474,97 @@ type testResults struct {
 const testResultsCacheDuration = time.Hour
 
 func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) (testResults, error) {
-	matview := testReport7dMatView
-	if spec.Period == "twoDay" {
-		matview = testReport2dMatView
-	}
+	sample, base := query.PeriodsForReportType(v1.ReportType(spec.Period))
 
 	generator := func(ctx context.Context) (testResults, []error) {
-		return spec.buildTestsResultsPGGenerator(ctx, dbc, matview)
+		return spec.buildTestsResultsPGGenerator(ctx, dbc, sample, base)
 	}
-	result, errs := GetDataFromCacheOrMatview(ctx, cacheClient,
+	result, errs := GetDataFromCacheOrGenerate(ctx, cacheClient, cache.RequestOptions{Expiry: testResultsCacheDuration},
 		NewCacheSpec(spec, "PostgresTestsResults~", nil),
-		matview, testResultsCacheDuration,
 		generator,
 		testResults{},
 	)
 	if errs != nil {
-		return result, fmt.Errorf("error(s) querying test results: %v", errs)
+		return result, errors.Join(errs...)
 	}
 	return result, nil
 }
 
-// variantFiltersCoveredByCollapsedMatview returns true if all variant filter items
-// are "NOT has entry" exclusions for values that are already pre-excluded in the
-// collapsed matview. When true, these filters can be dropped and the collapsed
-// matview used directly.
-// variantFiltersCoveredByCollapsedMatview returns true if the variant filters
-// exactly match the exclusions baked into the collapsed matview. Every filter
-// item must be a "NOT has entry" for one of the pre-excluded values, and every
-// pre-excluded value must have a corresponding filter item.
-func variantFiltersCoveredByCollapsedMatview(variantFilter *filter.Filter) bool {
-	if variantFilter == nil || len(variantFilter.Items) == 0 {
-		return false
-	}
-
-	matched := make(map[string]bool)
-	for _, item := range variantFilter.Items {
-		if !item.Not || item.Operator != filter.OperatorHasEntry {
-			return false
-		}
-		found := false
-		for _, excluded := range db.CollapsedVariantExclusions {
-			if item.Value == excluded {
-				matched[excluded] = true
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return len(matched) == len(db.CollapsedVariantExclusions)
-}
-
-func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, dbc *db.DB, matview string) (result testResults, errs []error) {
+func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, dbc *db.DB, sample, base query.DateRange) (result testResults, errs []error) {
 	now := time.Now()
 
-	// Test results are generated by using two subqueries, which need to be filtered separately. Once during
-	// pre-processing where we're evaluating summed variant results, and in post-processing after we've
-	// assembled our final temporary table.
-	var nameFilter, variantFilter, processedFilter *filter.Filter
+	var nameFilter, variantFilter, processedFilter, lifecycleFilter *filter.Filter
 	if spec.Filter != nil {
-		var rawFilter *filter.Filter
-		rawFilter, processedFilter = spec.Filter.Split([]string{"name", "variants"})
-		nameFilter, variantFilter = rawFilter.Split([]string{"name"})
+		var nameVariantsAndLifecycle *filter.Filter
+		nameVariantsAndLifecycle, processedFilter = spec.Filter.Split([]string{"name", "variants", "lifecycle"})
+		var variantsAndLifecycle *filter.Filter
+		nameFilter, variantsAndLifecycle = nameVariantsAndLifecycle.Split([]string{"name"})
+		variantFilter, lifecycleFilter = variantsAndLifecycle.Split([]string{"variants"})
 	}
 
-	// When collapsing and the variant filters are only the default exclusions (never-stable,
-	// aggregated), use the pre-filtered collapsed matview which has these exclusions baked in
-	// and the GROUP BY pre-computed. This reduces query time from ~5s to ~430ms.
-	useCollapsedMatview := spec.Collapse && variantFiltersCoveredByCollapsedMatview(variantFilter)
-	if useCollapsedMatview {
-		collapsedMatview := testReport7dCollapsedMatView
-		if spec.Period == "twoDay" {
-			collapsedMatview = testReport2dCollapsedMatView
-		}
-		matview = collapsedMatview
-	}
+	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id", "lifecycles"}
 
-	rawQuery := dbc.DB.WithContext(ctx).
-		Table(matview).
-		Where("release = ?", spec.Release)
-
-	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
-	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id"}
-	var variantColumns []string
+	var finalResults *gorm.DB
+	workMem := "4MB"
 	if spec.Collapse {
-		if useCollapsedMatview {
-			rawQuery = rawQuery.Select(strings.Join(append(testMetadataColumns, query.QueryTestFields), ","))
-		} else {
-			rawQuery = rawQuery.Select(strings.Join(append(testMetadataColumns, query.QueryTestSummer), ",")).Group(strings.Join(testMetadataColumns, ","))
-		}
-	} else {
-		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, spec.Release, matview)
-		variantColumns = []string{
-			"suite_name", "variants",
-			"delta_from_working_average", "working_average", "working_standard_deviation",
-			"delta_from_passing_average", "passing_average", "passing_standard_deviation",
-			"delta_from_flake_average", "flake_average", "flake_standard_deviation",
-		}
-	}
+		workMem = "16MB"
 
-	// Apply name and variant filters via dimension table lookups rather than directly on
-	// the matview. Running ILIKE against the small tests table (~36K rows) and joining by
-	// ID is much faster than running ILIKE against the large matview (~700K+ rows per release).
-	if nameFilter != nil && len(nameFilter.Items) > 0 {
-		testSubquery := nameFilter.ToSQL(dbc.DB.Model(&models.Test{}).Select("id"), apitype.Test{})
-		rawQuery = rawQuery.Where("id IN (?)", testSubquery)
-	}
-	// Variant filters are already applied in the collapsed matview; only apply them
-	// when using the base matview.
-	if !useCollapsedMatview && variantFilter != nil && len(variantFilter.Items) > 0 {
-		rawQuery = variantFilter.ToSQL(rawQuery, apitype.Test{})
+		collapsedQuery, err := query.TestReportQueryCollapsed(dbc, spec.Release, sample, base, variantFilter, nameFilter, lifecycleFilter)
+		if err != nil {
+			errs = append(errs, err)
+			return
+		}
+		collapsedColumns := append(testMetadataColumns, query.QueryTestFields)
+		rawQuery := dbc.DB.WithContext(ctx).
+			Table("(?) AS r", collapsedQuery).
+			Select(strings.Join(collapsedColumns, ","))
+
+		// Collapsed path: inner query only has counts, so the outer layer computes
+		// percentages and net improvements via QueryTestSummarizer.
+		selectColumns := append(testMetadataColumns, query.QueryTestSummarizer)
+		processedResults := dbc.DB.Table("(?) as results", rawQuery).
+			Select(strings.Join(selectColumns, ",")).
+			Where("current_runs > 0 or previous_runs > 0")
+		finalResults = dbc.DB.Table("(?) as final_results", processedResults)
+	} else {
+		rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(dbc, spec.Release, sample, base, nameFilter, variantFilter, processedFilter, lifecycleFilter)
+		if err != nil {
+			errs = append(errs, err)
+			return
+		}
+		processedFilter = remainingFilter
+		finalResults = dbc.DB.Table("(?) as final_results", rawQuery)
 	}
 
 	testReports := make([]apitype.Test, 0)
-	// FIXME: Add test id to matview, for now generate with ROW_NUMBER OVER
-	selectColumns := []string{"ROW_NUMBER() OVER() as id"}
-	selectColumns = append(selectColumns, testMetadataColumns...)
-	selectColumns = append(selectColumns, variantColumns...)
-	selectColumns = append(selectColumns, query.QueryTestSummarizer)
-	processedResults := dbc.DB.Table("(?) as results", rawQuery).
-		Select(strings.Join(selectColumns, ",")).
-		Where("current_runs > 0 or previous_runs > 0")
 
-	finalResults := dbc.DB.Table("(?) as final_results", processedResults)
 	if processedFilter != nil {
 		finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
 	}
 
-	frr := finalResults.Scan(&testReports)
-	if frr.Error != nil {
-		log.WithError(finalResults.Error).Error("error querying test reports")
+	// The global connection-level work_mem (128MB) causes the planner to
+	// choose sort-based plans for the large GROUP BY in the prefix sum join.
+	// A lower work_mem lets it choose parallel HashAggregates that fit in
+	// memory. SET LOCAL is scoped to the transaction. All scan paths use
+	// tx.Table() to ensure the query runs on the same connection.
+	scanErr := dbc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SET LOCAL work_mem = '" + workMem + "'").Error; err != nil {
+			return err
+		}
+		return tx.Table("(?) AS q", finalResults).Scan(&testReports).Error
+	})
+	if scanErr != nil {
+		log.WithError(scanErr).Error("error querying test reports")
 		result.TestsAPIResult = []apitype.Test{}
-		errs = append(errs, frr.Error)
+		errs = append(errs, scanErr)
 		return
 	}
 
-	// Produce a special "overall" test that has a summary of all the selected tests.
+	// Produce a special "overall" test that has a summary of all the selected tests
+	// by aggregating the already-scanned results in Go, avoiding a second full query.
 	var overallTest *apitype.Test
 	if spec.IncludeOverall {
-		finalResults := dbc.DB.Table("(?) as final_results", finalResults)
-		finalResults = finalResults.Select(query.QueryTestSummer)
-		summaryResult := dbc.DB.Table("(?) as overall", finalResults).Select(query.QueryTestSummarizer)
-		overallTest = &apitype.Test{
-			ID:   math.MaxInt32,
-			Name: "Overall",
-		}
-		// TODO: column open_bugs does not exist here?
-		summaryResult.Scan(overallTest)
+		overallTest = computeOverallTest(testReports)
 	}
 
 	elapsed := time.Since(now)
@@ -588,6 +576,42 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	result.TestsAPIResult = testReports
 	result.Test = overallTest
 	return
+}
+
+func safePercent(numerator, denominator int) float64 {
+	if denominator == 0 {
+		return 0
+	}
+	return float64(numerator) * 100.0 / float64(denominator)
+}
+
+func computeOverallTest(testReports []apitype.Test) *apitype.Test {
+	overall := &apitype.Test{
+		Name: "Overall",
+	}
+	for _, t := range testReports {
+		overall.CurrentRuns += t.CurrentRuns
+		overall.CurrentSuccesses += t.CurrentSuccesses
+		overall.CurrentFailures += t.CurrentFailures
+		overall.CurrentFlakes += t.CurrentFlakes
+		overall.PreviousRuns += t.PreviousRuns
+		overall.PreviousSuccesses += t.PreviousSuccesses
+		overall.PreviousFailures += t.PreviousFailures
+		overall.PreviousFlakes += t.PreviousFlakes
+	}
+	overall.CurrentPassPercentage = safePercent(overall.CurrentSuccesses, overall.CurrentRuns)
+	overall.CurrentFailurePercentage = safePercent(overall.CurrentFailures, overall.CurrentRuns)
+	overall.CurrentFlakePercentage = safePercent(overall.CurrentFlakes, overall.CurrentRuns)
+	overall.CurrentWorkingPercentage = safePercent(overall.CurrentSuccesses+overall.CurrentFlakes, overall.CurrentRuns)
+	overall.PreviousPassPercentage = safePercent(overall.PreviousSuccesses, overall.PreviousRuns)
+	overall.PreviousFailurePercentage = safePercent(overall.PreviousFailures, overall.PreviousRuns)
+	overall.PreviousFlakePercentage = safePercent(overall.PreviousFlakes, overall.PreviousRuns)
+	overall.PreviousWorkingPercentage = safePercent(overall.PreviousSuccesses+overall.PreviousFlakes, overall.PreviousRuns)
+	overall.NetFailureImprovement = overall.PreviousFailurePercentage - overall.CurrentFailurePercentage
+	overall.NetFlakeImprovement = overall.PreviousFlakePercentage - overall.CurrentFlakePercentage
+	overall.NetWorkingImprovement = overall.CurrentWorkingPercentage - overall.PreviousWorkingPercentage
+	overall.NetImprovement = overall.CurrentPassPercentage - overall.PreviousPassPercentage
+	return overall
 }
 
 type testResultsBQ struct {
@@ -607,7 +631,7 @@ func (spec *TestResultsSpec) buildTestsResultsFromBigQuery(ctx context.Context, 
 		generator,
 		testResultsBQ{})
 	if errs != nil {
-		return result, fmt.Errorf("error(s) querying test results: %v", errs)
+		return result, errors.Join(errs...)
 	}
 	return result, nil
 }
@@ -620,7 +644,17 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	// assembled our final temporary table.
 	var rawFilter, processedFilter *filter.Filter
 	if spec.Filter != nil {
-		rawFilter, processedFilter = spec.Filter.Split([]string{"name", "variants"})
+		var lifecycleFilter *filter.Filter
+		lifecycleFilter, processedFilter = spec.Filter.Split([]string{"lifecycle"})
+		if len(lifecycleFilter.Items) > 0 {
+			// junit_7day_comparison/junit_2day_comparison are materialized BigQuery tables
+			// populated outside this repo and have no lifecycle column, unlike the Postgres
+			// cumulative summary tables. Fail clearly rather than silently ignoring the filter.
+			return testResultsBQ{}, []error{&ValidationError{
+				Message: "lifecycle filter is not supported for the BigQuery-backed tests report",
+			}}
+		}
+		rawFilter, processedFilter = processedFilter.Split([]string{"name", "variants"})
 	}
 	table := "junit_7day_comparison"
 	if spec.Period == "twoDay" {
@@ -661,7 +695,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	),
 	candidate_query AS (
 		SELECT
-			ROW_NUMBER() OVER() as id,
 			test_id,
 			name,
 			jira_component,
@@ -692,7 +725,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 		GROUP BY test_id, testsuite),
 	unfiltered_candidate_query AS (
 		SELECT
-			ROW_NUMBER() OVER() as id,
 			cm.cm_id as test_id,
 			name,
 			jira_component,
@@ -753,7 +785,6 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 		}
 
 		overallTest = &overallReports[0]
-		overallTest.ID = math.MaxInt32
 		overallTest.Name = "Overall"
 	}
 
@@ -786,7 +817,7 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 		}
 		if err != nil {
 			log.WithError(err).Error("error parsing test result from bigquery")
-			errs = append(errs, errors.Wrap(err, "error parsing test result from bigquery"))
+			errs = append(errs, pkgerrors.Wrap(err, "error parsing test result from bigquery"))
 			continue
 		}
 		result = append(result, row)
@@ -794,64 +825,44 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 	return result, errs
 }
 
-// GetTestCapabilitiesFromDB returns a sorted list of capabilities from the BQ component_mapping_latest table
-func GetTestCapabilitiesFromDB(ctx context.Context, bqClient *bq.Client) ([]string, error) {
-	if bqClient == nil || bqClient.BQ == nil {
+// GetTestCapabilitiesFromDB returns a sorted list of distinct capabilities from the test_ownerships table.
+func GetTestCapabilitiesFromDB(ctx context.Context, dbc *db.DB) ([]string, error) {
+	if dbc == nil || dbc.DB == nil {
 		return []string{}, nil
 	}
-
-	qFmt := "SELECT ARRAY_AGG(DISTINCT capability ORDER BY capability) AS capabilities FROM `%s.component_mapping_latest`, UNNEST(capabilities) AS capability"
-	q := bqClient.Query(ctx, bqlabel.TestCapabilities, fmt.Sprintf(qFmt, bqClient.Dataset))
-
-	log.Infof("Fetching test capabilities with:\n%s\n", q.Q)
-
-	it, err := q.Read(ctx)
+	var capabilities []string
+	err := dbc.DB.WithContext(ctx).
+		Raw(`SELECT DISTINCT unnest(capabilities) AS capability FROM test_ownerships WHERE capabilities IS NOT NULL ORDER BY capability`).
+		Pluck("capability", &capabilities).Error
 	if err != nil {
-		log.WithError(err).Error("error querying test capabilities from bigquery")
-		return []string{}, err
+		log.WithError(err).Error("error querying test capabilities from database")
+		return []string{}, pkgerrors.Wrap(err, "error querying test capabilities from database")
 	}
-
-	var row struct {
-		Capabilities []string `bigquery:"capabilities"`
-	}
-	err = it.Next(&row)
-	if err != nil {
-		log.WithError(err).Error("error retrieving test capabilities from bigquery")
-		return []string{}, errors.Wrap(err, "error retrieving test capabilities from bigquery")
-	}
-
-	return row.Capabilities, nil
+	return capabilities, nil
 }
 
-// GetTestLifecyclesFromDB returns a sorted list of lifecycles from the BQ junit table
-func GetTestLifecyclesFromDB(ctx context.Context, bqClient *bq.Client) ([]string, error) {
-	if bqClient == nil || bqClient.BQ == nil {
+// GetTestLifecyclesFromDB returns a sorted list of distinct test lifecycle values
+// derived from the JobTier variant in variant_combinations.
+func GetTestLifecyclesFromDB(ctx context.Context, dbc *db.DB) ([]string, error) {
+	if dbc == nil || dbc.DB == nil {
 		return []string{}, nil
 	}
-
-	// Query recent data (last 7 days) to satisfy partition filter requirement on modified_time
-	qFmt := `SELECT ARRAY_AGG(DISTINCT lifecycle ORDER BY lifecycle) AS lifecycles
-		FROM %s.junit
-		WHERE modified_time >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 7 DAY)
-		AND lifecycle IS NOT NULL AND lifecycle != ''`
-	q := bqClient.Query(ctx, bqlabel.TestLifecycles, fmt.Sprintf(qFmt, bqClient.Dataset))
-
-	log.Infof("Fetching test lifecycles with:\n%s\n", q.Q)
-
-	it, err := q.Read(ctx)
+	var pairs []string
+	err := dbc.DB.WithContext(ctx).
+		Raw(`SELECT DISTINCT unnest(variants) AS pair FROM variant_combinations`).
+		Pluck("pair", &pairs).Error
 	if err != nil {
-		log.WithError(err).Error("error querying test lifecycles from bigquery")
-		return []string{}, err
+		log.WithError(err).Error("error querying test lifecycles from database")
+		return []string{}, pkgerrors.Wrap(err, "error querying test lifecycles from database")
 	}
 
-	var row struct {
-		Lifecycles []string `bigquery:"lifecycles"`
+	var lifecycles []string
+	for _, pair := range pairs {
+		key, val, ok := strings.Cut(pair, ":")
+		if ok && key == "JobTier" && val != "" {
+			lifecycles = append(lifecycles, val)
+		}
 	}
-	err = it.Next(&row)
-	if err != nil {
-		log.WithError(err).Error("error retrieving test lifecycles from bigquery")
-		return []string{}, errors.Wrap(err, "error retrieving test lifecycles from bigquery")
-	}
-
-	return row.Lifecycles, nil
+	gosort.Strings(lifecycles)
+	return lifecycles, nil
 }

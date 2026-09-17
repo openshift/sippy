@@ -11,6 +11,7 @@ import (
 	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -180,7 +181,7 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 				return errors.WithMessage(err, "couldn't get DB client")
 			}
 
-			allVariants, errs := componentreadiness.GetJobVariants(ctx, bqprovider.NewBigQueryProvider(bigQueryClient))
+			allVariants, errs := componentreadiness.GetJobVariants(ctx, bqprovider.NewBigQueryProvider(bigQueryClient), reqopts.RequestOptions{})
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get job variants: %v", errs)
 			}

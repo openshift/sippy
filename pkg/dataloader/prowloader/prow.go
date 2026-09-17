@@ -5,20 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
@@ -27,11 +28,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/db/query"
 
 	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/apis/junit"
@@ -39,7 +39,9 @@ import (
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/pgwriter"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/testconversion"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/types"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
@@ -47,7 +49,6 @@ import (
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // gcsPathStrip is used to strip out everything but the path, i.e. match "/view/gs/origin-ci-test/"
@@ -55,32 +56,24 @@ import (
 var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
 
 type ProwLoader struct {
-	ctx                          context.Context
-	dbc                          *db.DB
-	errors                       []error
-	githubClient                 *github.Client
-	bigQueryClient               *bqcachedclient.Client
-	maxConcurrency               int
-	prowJobCache                 map[string]*models.ProwJob
-	prowJobCacheLock             sync.RWMutex
-	prowJobRunCache              map[uint]bool
-	prowJobRunCacheLock          sync.RWMutex
-	prowJobRunTestCache          map[string]uint
-	prowJobRunTestCacheLock      sync.RWMutex
-	variantManager               testidentification.VariantManager
-	suiteCache                   map[string]*uint
-	suiteCacheLock               sync.RWMutex
-	syntheticTestManager         synthetictests.SyntheticTestManager
-	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides
-	releases                     []string
-	releaseSet                   map[string]bool
-	config                       *v1config.SippyConfig
-	ghCommenter                  *commenter.GitHubCommenter
-	jobsImportedCount            atomic.Int32
-	jobsProcessedCount           atomic.Int32
-	gcsClient                    *storage.Client
-	promPusher                   *push.Pusher
-	loadSince                    *time.Time
+	ctx                  context.Context
+	dbc                  *db.DB
+	errors               []error
+	githubClient         *github.Client
+	bigQueryClient       *bqcachedclient.Client
+	maxConcurrency       int
+	prowJobCache         map[string]*models.ProwJob
+	variantManager       testidentification.VariantManager
+	syntheticTestManager synthetictests.SyntheticTestManager
+	releases             []string
+	releaseAttributor    *ReleaseAttributor
+	config               *v1config.SippyConfig
+	ghCommenter          *commenter.GitHubCommenter
+	gcsClient            *storage.Client
+	promPusher           *push.Pusher
+	loadSince            *time.Time
+	labelsCache          map[string]pq.StringArray
+	currentDate          civil.Date
 }
 
 func New(
@@ -98,27 +91,28 @@ func New(
 	loadSince *time.Time,
 	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides) *ProwLoader {
 
+	releaseAttributor := NewReleaseAttributor(releases, config, syntheticReleaseJobOverrides)
 	return &ProwLoader{
-		ctx:                          ctx,
-		dbc:                          dbc,
-		gcsClient:                    gcsClient,
-		githubClient:                 githubClient,
-		bigQueryClient:               bigQueryClient,
-		maxConcurrency:               10,
-		prowJobRunCache:              loadProwJobRunCache(dbc),
-		prowJobCache:                 loadProwJobCache(dbc),
-		prowJobRunTestCache:          make(map[string]uint),
-		suiteCache:                   make(map[string]*uint),
-		syntheticTestManager:         syntheticTestManager,
-		syntheticReleaseJobOverrides: syntheticReleaseJobOverrides,
-		variantManager:               variantManager,
-		releases:                     releases,
-		releaseSet:                   toSet(releases),
-		config:                       config,
-		ghCommenter:                  ghCommenter,
-		promPusher:                   promPusher,
-		loadSince:                    loadSince,
+		ctx:                  ctx,
+		dbc:                  dbc,
+		gcsClient:            gcsClient,
+		githubClient:         githubClient,
+		bigQueryClient:       bigQueryClient,
+		maxConcurrency:       50,
+		syntheticTestManager: syntheticTestManager,
+		variantManager:       variantManager,
+		releases:             releases,
+		releaseAttributor:    releaseAttributor,
+		config:               config,
+		ghCommenter:          ghCommenter,
+		promPusher:           promPusher,
+		loadSince:            loadSince,
+		currentDate:          civil.DateOf(time.Now().UTC()),
 	}
+}
+
+func (pl *ProwLoader) matchRelease(pj *prow.ProwJob) string {
+	return pl.releaseAttributor.Match(pj)
 }
 
 const DefaultLookbackDays = 14
@@ -131,15 +125,7 @@ func resolveFrom(since *time.Time, to time.Time) time.Time {
 }
 
 func (pl *ProwLoader) resolveLoadSince() time.Time {
-	return resolveFrom(pl.loadSince, time.Now())
-}
-
-func toSet(items []string) map[string]bool {
-	s := make(map[string]bool, len(items))
-	for _, item := range items {
-		s[item] = true
-	}
-	return s
+	return resolveFrom(pl.loadSince, time.Now().UTC())
 }
 
 var clusterDataDateTimeName = regexp.MustCompile(`cluster-data_(?P<DATE>.*)-(?P<TIME>.*).json`)
@@ -160,32 +146,17 @@ type DateTimeName struct {
 	Time string
 }
 
-func loadProwJobCache(dbc *db.DB) map[string]*models.ProwJob {
+func loadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 	prowJobCache := map[string]*models.ProwJob{}
 	var allJobs []*models.ProwJob
-	dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
+	if err := dbc.DB.Model(&models.ProwJob{}).Find(&allJobs).Error; err != nil {
+		return nil, fmt.Errorf("loading prow job cache: %w", err)
+	}
 	for _, j := range allJobs {
-		if _, ok := prowJobCache[j.Name]; !ok {
-			prowJobCache[j.Name] = j
-		}
+		prowJobCache[j.Name] = j
 	}
 	log.Infof("job cache created with %d entries from database", len(prowJobCache))
-	return prowJobCache
-}
-
-// Cache the IDs of all known ProwJobRuns. Will be used to skip job run and test
-// results we've already processed.
-// TODO: over 800k in our db now, should we only cache those within last two weeks?
-func loadProwJobRunCache(dbc *db.DB) map[uint]bool {
-	prowJobRunCache := map[uint]bool{} // value is unused, just hashing
-	knownJobRuns := []models.ProwJobRun{}
-	ids := make([]uint, 0)
-	dbc.DB.Select("id").Find(&knownJobRuns).Pluck("id", &ids)
-	for _, kjr := range ids {
-		prowJobRunCache[kjr] = true
-	}
-
-	return prowJobRunCache
+	return prowJobCache, nil
 }
 
 func (pl *ProwLoader) Name() string {
@@ -196,22 +167,46 @@ func (pl *ProwLoader) Errors() []error {
 	return pl.errors
 }
 
+// partitionStartDate computes the start of the date range for which partitions must
+// exist to accommodate the given prowJobs. loadSince (minus a 1 day grace period, since
+// bq imports based on modified time which can include job_run_start_time a day earlier,
+// see https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473)
+// is the default start date, extended earlier if any job's StartTime precedes it.
+//
+// That grace period covers the common case, but some jobs (e.g. ones Prow eventually marks
+// as aborted after getting stuck) can report a StartTime days before their completion time,
+// which is what the BQ query actually filters on. So the start bound is extended to the
+// earliest job we're actually about to write, to guarantee a partition exists for every row.
+func partitionStartDate(loadSince time.Time, prowJobs []prow.ProwJob) time.Time {
+	startDate := loadSince.AddDate(0, 0, -1)
+	for i := range prowJobs {
+		if st := prowJobs[i].Status.StartTime; !st.IsZero() && st.Before(startDate) {
+			startDate = st
+		}
+	}
+	return startDate
+}
+
 // ensurePartitions creates necessary partitions for partitioned tables.
 // It uses the release list from pl.releases and determines the date range based on:
-//   - pl.loadSince if available, otherwise looks back one week
+//   - pl.loadSince if available, otherwise looks back DefaultLookbackDays days, plus a 1 day grace period
+//   - the earliest prowJobs StartTime, in case it falls outside the above window
 //   - Creates partitions 2 days forward from now
-func (pl *ProwLoader) ensurePartitions() error {
-	startDate := pl.resolveLoadSince()
+func (pl *ProwLoader) ensurePartitions(prowJobs []prow.ProwJob) error {
+	defaultStartDate := pl.resolveLoadSince().AddDate(0, 0, -1)
+	startDate := partitionStartDate(pl.resolveLoadSince(), prowJobs)
+	if startDate.Before(defaultStartDate) {
+		log.Warnf("extending partition start date to %s to cover outlier job StartTime (default was %s)",
+			startDate.Format("2006-01-02"), defaultStartDate.Format("2006-01-02"))
+	}
 
 	// Create partitions 2 days forward from now
-	endDate := time.Now().AddDate(0, 0, 2)
+	endDate := time.Now().UTC().AddDate(0, 0, 2)
 
 	log.Infof("Ensuring partitions for releases %v from %s to %s",
 		pl.releases, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	// https://github.com/openshift/sippy/blob/main/pkg/dataloader/prowloader/prow.go#L473 bq imports based on modified time which can include job_run_start_time a day earlier
-	// add grace to ensure we have a valid partition for new dbs.
-	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate.AddDate(0, 0, -1), endDate, false)
+	count, err := pl.dbc.EnsurePartitions(pl.releases, startDate, endDate, false)
 	if err != nil {
 		return fmt.Errorf("failed to ensure partitions: %w", err)
 	}
@@ -224,11 +219,6 @@ func (pl *ProwLoader) Load() {
 	start := time.Now()
 
 	log.Infof("started loading prow jobs to DB...")
-
-	// Update unmerged PR statuses in case any have merged
-	if err := pl.syncPRStatus(); err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error in syncPRStatus"))
-	}
 
 	// Grab the ProwJob definitions from prow or CI bigquery. Note that these are the Kube
 	// ProwJob CRDs, not our sippy db model ProwJob.
@@ -254,59 +244,94 @@ func (pl *ProwLoader) Load() {
 	}
 
 	// Ensure we have partitions for the new data
-	if err := pl.ensurePartitions(); err != nil {
+	if err := pl.ensurePartitions(prowJobs); err != nil {
 		pl.errors = append(pl.errors, errors.Wrap(err, "failed to ensure partitions"))
 		return
 	}
 
-	// Clean up old partitions (detach partitions older than 100 days, drop detached partitions older than 110 days)
+	// Clean up partitions older than the configured retention period.
 	if detached, dropped, err := pl.dbc.CleanupPartitions(false); err != nil {
 		log.WithError(err).Warning("failed to cleanup old partitions, continuing with load")
-		// Don't fail the entire load if partition cleanup fails
 	} else {
 		log.Infof("Partition cleanup complete: detached %d, dropped %d", detached, dropped)
 	}
 
+	// Carry forward cumulative summaries to tomorrow for any release that
+	// doesn't already have data for that date. This must run after
+	// ensurePartitions so the target partition exists.
+	if err := pgwriter.CarryForwardCumulativeSummaries(pl.ctx, pl.dbc, pl.currentDate, pl.releases); err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error in cumulative summary carry-forward"))
+		return
+	}
+
+	// Pre-fetch labels for all jobs in bulk instead of one BQ query per job.
+	if lc, err := pl.prefetchLabels(prowJobs); err == nil {
+		pl.labelsCache = lc
+	} else {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error pre-fetching labels from BigQuery"))
+	}
+
+	prowLoaderQueriedMetricGauge.Set(float64(len(prowJobs)))
+
+	// Match jobs to releases and bulk-upsert ProwJob definitions before
+	// the concurrent processing loop. The prowJobCache is read-only after
+	// this point.
+	entries, err := pl.preprocessProwJobs(pl.ctx, prowJobs)
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error preprocessing prow jobs"))
+		return
+	}
+
+	fetchCtx, cancelFetch := context.WithCancel(pl.ctx)
+	defer cancelFetch()
+
 	queue := make(chan *prow.ProwJob)
-	errsCh := make(chan error, len(prowJobs))
-	total := len(prowJobs)
+	results := make(chan *pgwriter.JobRunResult, len(entries))
+	fetchErrsCh := make(chan error, len(entries))
 
-	// Producer to keep feeding the queue
-	go prowJobsProducer(pl.ctx, queue, prowJobs)
+	go func() {
+		defer close(queue)
+		for i := range entries {
+			select {
+			case queue <- entries[i]:
+			case <-fetchCtx.Done():
+				return
+			}
+		}
+	}()
 
-	// Start pl.maxConcurrency consumers
-	var wg sync.WaitGroup
+	var fetchWg sync.WaitGroup
 	for i := 0; i < pl.maxConcurrency; i++ {
-		wg.Add(1)
+		fetchWg.Add(1)
 		go func(ctx context.Context) {
-			defer wg.Done()
-			for job := range queue {
+			defer fetchWg.Done()
+			for pj := range queue {
 				if err := ctx.Err(); err != nil {
-					errsCh <- err
-					log.WithError(err).Warningf("consumer exiting, got error")
 					break
 				}
-				if err := pl.processProwJob(ctx, job); err != nil {
-					errsCh <- err
-					log.WithError(err).Warningf("couldn't import job %s/%s, continuing", job.Spec.Job, job.Status.BuildID)
+				result, err := pl.fetchJobRunResult(ctx, pj)
+				if err != nil {
+					fetchErrsCh <- err
+					log.WithError(err).WithField("job", pj.Spec.Job).WithField("buildID", pj.Status.BuildID).
+						Warning("couldn't fetch job, continuing")
+					continue
 				}
-				pl.jobsImportedCount.Add(1)
-				log.Infof("%d of %d job runs processed", pl.jobsImportedCount.Load(), total)
+				if result != nil {
+					results <- result
+				}
 			}
-		}(pl.ctx)
+		}(fetchCtx)
 	}
+	go func() {
+		fetchWg.Wait()
+		close(results)
+		close(fetchErrsCh)
+	}()
 
-	wg.Wait()
-	close(errsCh)
-	for err := range errsCh {
+	pl.accumulateAndWriteJobRuns(pl.ctx, results)
+
+	for err := range fetchErrsCh {
 		pl.errors = append(pl.errors, err)
-	}
-
-	// load the test analysis by job data into tables partitioned by day, letting bigquery do the
-	// heavy lifting for us.
-	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
-	if err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
 	}
 
 	if len(pl.errors) > 0 {
@@ -315,395 +340,182 @@ func (pl *ProwLoader) Load() {
 	log.Infof("finished importing new job runs in %+v", time.Since(start))
 
 	if pl.promPusher != nil {
-		prowLoaderQueriedMetricGauge.Set(float64(pl.jobsImportedCount.Load()))
 		pl.promPusher.Collector(prowLoaderQueriedMetricGauge)
-		prowLoaderProcessedMetricGauge.Set(float64(pl.jobsProcessedCount.Load()))
 		pl.promPusher.Collector(prowLoaderProcessedMetricGauge)
 	}
 }
 
-func prowJobsProducer(ctx context.Context, queue chan *prow.ProwJob, jobs []prow.ProwJob) {
-	defer close(queue)
-	for i := range jobs {
-		select {
-		case queue <- &jobs[i]:
-		case <-ctx.Done():
-			return
-		}
-	}
+// isPayloadPresubmit returns true if the prow job is a /payload sub-job.
+func isPayloadPresubmit(pj *prow.ProwJob) bool {
+	_, hasAnnotation := pj.Annotations["releaseJobName"]
+	return hasAnnotation && pj.Spec.Refs != nil
 }
 
-// tempBQTestAnalysisByJobForDate is a dupe type to work around date parsing issues.
-type tempBQTestAnalysisByJobForDate struct {
-	Date     civil.Date
-	TestID   uint
-	Release  string
-	TestName string `bigquery:"test_name"`
-	JobName  string `bigquery:"job_name"`
-	Runs     int
-	Passes   int
-	Flakes   int
-	Failures int
-}
-
-// getTestAnalysisByJobFromToDates uses the last daily report date to calculate the
-// date range we should request from bigquery for import. We don't want to import
-// the prior day if jobs are still running, so if we're not at least 8 hours into
-// the current day (UTC), we will keep waiting to import yesterday. Once we cross
-// that threshold we will import. (assume hourly imports)
-// If our most recent import is yesterday, we're done for the day.
-// If the lastDailySummary is empty, this implies a new database, and we'll do an initial
-// bulk load.
-//
-// Returns a slice of day strings YYYY-MM-DD in ascending order. We'll import a day at
-// a time, with a separate transaction for each. If something goes wrong we can fail and
-// pick up at that date the next time.
-//
-// At present in prod, each day takes about 20 minutes
-func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time, loadSince *time.Time) []string {
-	to := now.UTC().Add(-32 * time.Hour)
-
-	// If this is a new db, do an initial larger import:
-	if lastDailySummary.IsZero() {
-		return DaysBetween(resolveFrom(loadSince, to), to)
+// preprocessProwJobs matches each BigQuery prow job to a release, filters out
+// already-processed runs and non-terminal states, bulk-upserts ProwJob
+// definitions, and returns only entries that need GCS fetching.
+func (pl *ProwLoader) preprocessProwJobs(ctx context.Context, prowJobs []prow.ProwJob) ([]*prow.ProwJob, error) {
+	type candidate struct {
+		pj      *prow.ProwJob
+		release string
+		id      uint64
 	}
 
-	ldsStr := lastDailySummary.UTC().Format("2006-01-02")
-	if ldsStr == to.Format("2006-01-02") {
-		return []string{}
-	}
-	from := lastDailySummary.UTC().Add(24 * time.Hour)
-	return DaysBetween(from, to)
-}
+	var candidates []candidate
+	seenJobs := sets.New[string]()
+	var jobDefs []models.ProwJob
+	var candidateIDs []uint
 
-// DaysBetween returns a slice of strings representing each day in YYYY-MM-DD format between two dates
-func DaysBetween(start, end time.Time) []string {
-	var days []string
+	for i := range prowJobs {
+		pj := &prowJobs[i]
 
-	// Normalize times to midnight to count full days
-	start = start.Truncate(24 * time.Hour)
-	end = end.Truncate(24 * time.Hour)
-
-	// Ensure start is before or equal to end
-	if end.Before(start) {
-		start, end = end, start
-	}
-
-	// Iterate from start to end date
-	for d := start; !d.After(end); d = d.Add(24 * time.Hour) {
-		days = append(days, d.Format("2006-01-02"))
-	}
-
-	return days
-}
-
-// NextDay takes a date string in YYYY-MM-DD format and returns the date string for the following day.
-func NextDay(dateStr string) (string, error) {
-	// Parse the input date string
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return "", fmt.Errorf("invalid date format: %v", err)
-	}
-
-	// Add one day to the parsed date
-	nextDay := date.Add(24 * time.Hour)
-
-	// Format the next day back to YYYY-MM-DD
-	return nextDay.Format("2006-01-02"), nil
-}
-
-// loadDailyTestAnalysisByJob loads test analysis data into partitioned tables in postgres, one per
-// day. The data is calculated by querying bigquery to do the heavy lifting for us. Each day is committed
-// transactionally so the process is safe to interrupt and resume later. The process takes about 20 minutes
-// per day at the time of writing, so an initial load for all releases can be quite time consuming.
-func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
-
-	// Figure out our last imported daily summary.
-	var lastDailySummary time.Time
-	row := pl.dbc.DB.Table("test_analysis_by_job_by_dates").Select("MAX(date)").Row()
-
-	// Ignoring error, the function below handles the zero time if needed: (new db)
-	_ = row.Scan(&lastDailySummary)
-
-	importDates := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now(), pl.loadSince)
-	if len(importDates) == 0 {
-		log.Info("test analysis summary already completed today")
-		return nil
-	}
-	log.Infof("importing test analysis by job for dates: %v", importDates)
-
-	jobCache, err := query.LoadProwJobCache(pl.dbc)
-	if err != nil {
-		log.WithError(err).Error("error loading job cache")
-		return err
-	}
-
-	testCache, err := query.LoadTestCache(pl.dbc, []string{})
-	if err != nil {
-		log.WithError(err).Error("error loading test cache")
-		return err
-	}
-
-	for _, dateToImport := range importDates {
-		dLog := log.WithField("date", dateToImport)
-
-		dLog.Infof("Loading test analysis by job daily summaries")
-
-		q := pl.bigQueryClient.Query(ctx, bqlabel.ProwLoaderTestAnalysis, fmt.Sprintf(`WITH
-  deduped_testcases AS (
-  SELECT
-    junit.*,
-    ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY CASE WHEN flake_count > 0 THEN 0 WHEN success_val > 0 THEN 1 ELSE 2 END ) AS row_num,
-    jobs. prowjob_job_name AS variant_registry_job_name,
-    jobs.org,
-    jobs.repo,
-    jobs.pr_number,
-    jobs.pr_sha,
-    CASE
-      WHEN flake_count > 0 THEN 0
-      ELSE success_val
-  END
-    AS adjusted_success_val,
-    CASE
-      WHEN flake_count > 0 THEN 1
-      ELSE 0
-  END
-    AS adjusted_flake_count
-  FROM
-    %s.junit
-  INNER JOIN
-    %s.jobs jobs
-  ON
-    junit.prowjob_build_id = jobs.prowjob_build_id
-    AND DATE(jobs.prowjob_start) <= DATE(@DateToImport)
-  WHERE
-    DATE(junit.modified_time) = DATE(@DateToImport)
-    AND skipped = FALSE )
-SELECT
-  test_name,
-  DATE(modified_time) AS date,
-  prowjob_name AS job_name,
-  branch AS release,
-  COUNT(*) AS runs,
-  SUM(adjusted_success_val) AS passes,
-  SUM(adjusted_flake_count) AS flakes,
-FROM
-  deduped_testcases
-WHERE
-  row_num = 1
-  AND branch IN UNNEST(@Releases)
-GROUP BY
-  test_name,
-  date,
-  release,
-  prowjob_name
-ORDER BY
-  date,
-  test_name,
-  prowjob_name
-`, pl.bigQueryClient.Dataset, pl.bigQueryClient.Dataset))
-		q.Parameters = []bigquery.QueryParameter{
-			{
-				Name:  "DateToImport",
-				Value: dateToImport,
-			},
-			{
-				Name:  "Releases",
-				Value: pl.releases,
-			},
-		}
-		it, err := q.Read(ctx)
-		if err != nil {
-			dLog.WithError(err).Error("error querying test analysis from bigquery")
-			return err
-		}
-
-		insertRows := []models.TestAnalysisByJobByDate{}
-		for {
-			row := tempBQTestAnalysisByJobForDate{}
-			err := it.Next(&row)
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				log.WithError(err).Error("error parsing prowjob from bigquery")
-				return err
-			}
-			psqlDate := pgtype.Date{}
-			err = psqlDate.Set(row.Date.String())
-			if err != nil {
-				return err
-			}
-
-			// Skip jobs and tests we don't know about in our postgres db:
-			test, ok := testCache[row.TestName]
-			if !ok {
-				continue
-			}
-
-			if _, ok := jobCache[row.JobName]; !ok {
-				continue
-			}
-			// we have to infer failures due to the bigquery query we leveraged:
-			failures := row.Runs - row.Passes - row.Flakes
-
-			// convert to a db row for postgres insertion:
-			psqlRow := models.TestAnalysisByJobByDate{
-				Date:     row.Date.In(time.UTC),
-				TestID:   test.ID,
-				Release:  row.Release,
-				TestName: row.TestName,
-				JobName:  row.JobName,
-				Runs:     row.Runs,
-				Passes:   row.Passes,
-				Flakes:   row.Flakes,
-				Failures: failures,
-			}
-			insertRows = append(insertRows, psqlRow)
-		}
-		st := time.Now()
-		dLog.Infof("inserting %d rows", len(insertRows))
-		err = pl.dbc.DB.Transaction(func(tx *gorm.DB) error {
-			err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 2000).Error
-			if err != nil {
-				log.WithError(err).Error("error inserting rows")
-			}
-			return err
-		})
-		if err != nil {
-			return err
-		}
-		dLog.Infof("insert complete after %s", time.Since(st))
-	}
-	return nil
-}
-
-func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) error {
-	pjLog := log.WithFields(log.Fields{
-		"job":     pj.Spec.Job,
-		"buildID": pj.Status.BuildID,
-	})
-
-	// Synthetic release claims take priority over all other matching.
-	if release, ok := pl.syntheticReleaseJobOverrides.Lookup(pj.Spec.Job); ok {
-
-		// make sure this is a known release
-		// default loads all known releases but
-		// explicit release can also be specified
-		// we should not process unknown releases
-		// in that case
-		if pl.releaseSet[release] {
-			if err := pl.prowJobToJobRun(ctx, pj, release); err != nil {
-				err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
-				pjLog.WithError(err).Warning("prow import error")
-				return err
-			}
-		} else {
-			log.Warningf("known release not found for release %q", release)
-		}
-		return nil
-	}
-
-	for _, release := range pl.releases {
-		cfg, ok := pl.config.Releases[release]
-		if !ok {
-			log.Warningf("configuration not found for release %q", release)
+		if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
 			continue
 		}
 
-		if val, ok := cfg.Jobs[pj.Spec.Job]; val && ok {
-			if err := pl.prowJobToJobRun(ctx, pj, release); err != nil {
-				err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
-				pjLog.WithError(err).Warning("prow import error")
-				return err
-			}
-			return nil
+		release := pl.matchRelease(pj)
+		if release == "" {
+			continue
 		}
 
-		for _, expr := range cfg.Regexp {
-			re, err := regexp.Compile(expr)
-			if err != nil {
-				err = errors.Wrap(err, "invalid regex in configuration")
-				log.WithError(err).Errorf("config regex error")
-				continue
-			}
-
-			if re.MatchString(pj.Spec.Job) {
-				if err := pl.prowJobToJobRun(ctx, pj, release); err != nil {
-					err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
-					pjLog.WithError(err).Warning("prow import error")
-					return err
-				}
-				return nil
-			}
-		}
-	}
-
-	pjLog.Debugf("no match for release in sippy configuration, skipping")
-	return nil
-}
-
-func (pl *ProwLoader) syncPRStatus() error {
-	if pl.githubClient == nil {
-		log.Infof("No GitHub client, skipping PR sync")
-		return nil
-	}
-
-	pulls := make([]models.ProwPullRequest, 0)
-	if res := pl.dbc.DB.
-		Table("prow_pull_requests").
-		Where("merged_at IS NULL").Scan(&pulls); res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-		return errors.Wrap(res.Error, "could not fetch prow_pull_requests")
-	}
-
-	for _, pr := range pulls {
-		logger := log.WithField("org", pr.Org).
-			WithField("repo", pr.Repo).
-			WithField("number", pr.Number).
-			WithField("sha", pr.SHA)
-
-		// first check to see if this pr has recently closed (indicating it may have merged)
-		recentMergedAt, mergeCommitSha, err := pl.githubClient.IsPrRecentlyMerged(pr.Org, pr.Repo, pr.Number)
-
-		// the client should have logged the error, we want
-		// to see if we are rate limited or not, if so return
-		// otherwise keep processing
+		id, err := strconv.ParseUint(pj.Status.BuildID, 10, 63)
 		if err != nil {
-			if pl.githubClient.IsWithinRateLimitThreshold() {
-				return err
-			}
+			continue
 		}
 
-		if recentMergedAt != nil {
-			// we have the recentMergedAt but, we don't know if it is associated with this SHA so do
-			// the SHA specific verification
-			if mergeCommitSha != nil && *mergeCommitSha == pr.SHA {
-				if pr.MergedAt != recentMergedAt {
-					pr.MergedAt = recentMergedAt
-					if res := pl.dbc.DB.Save(pr); res.Error != nil {
-						logger.WithError(res.Error).Errorf("unexpected error updating pull request %s (%s)", pr.Link, pr.SHA)
-						continue
+		candidates = append(candidates, candidate{pj: pj, release: release, id: id})
+		candidateIDs = append(candidateIDs, uint(id))
+
+		if seenJobs.Has(pj.Spec.Job) {
+			continue
+		}
+		seenJobs.Insert(pj.Spec.Job)
+
+		variantJobName := pj.Spec.Job
+		isPayload := isPayloadPresubmit(pj)
+		if isPayload {
+			variantJobName = pj.Annotations["releaseJobName"]
+		}
+
+		variants := pl.variantManager.IdentifyVariants(variantJobName)
+		if isPayload {
+			for vi, v := range variants {
+				parts := strings.SplitN(v, ":", 2)
+				if len(parts) == 2 {
+					if _, isRel := pl.config.Releases[parts[1]]; isRel {
+						variants[vi] = parts[0] + ":" + models.ReleasePresubmits
+						break
 					}
 				}
 			}
+		}
 
-			// if we see that any sha has merged for this pr then we should clear out any risk analysis pending comment records
-			// if we don't get them here we will catch them before writing the risk analysis comment
-			// but, we should clean up here if possible
-			pendingComments, err := pl.ghCommenter.QueryPRPendingComments(pr.Org, pr.Repo, pr.Number, models.CommentTypeRiskAnalysis)
+		testGridURL := ""
+		if !isPayload {
+			testGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
+		}
 
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				logger.WithError(err).Error("Unable to fetch pending comments ")
-			}
+		jobDefs = append(jobDefs, models.ProwJob{
+			Name:        pj.Spec.Job,
+			Kind:        models.ProwKind(pj.Spec.Type),
+			Release:     release,
+			Variants:    variants,
+			TestGridURL: testGridURL,
+		})
+	}
 
-			for _, pc := range pendingComments {
-				pcp := pc
-				pl.ghCommenter.ClearPendingRecord(pcp.Org, pcp.Repo, pcp.PullNumber, pcp.SHA, models.CommentTypeRiskAnalysis, &pcp)
-			}
+	newIDs, err := pl.findNewJobRunIDs(ctx, candidateIDs)
+	if err != nil {
+		return nil, fmt.Errorf("finding new job run IDs: %w", err)
+	}
+
+	var entries []*prow.ProwJob
+	for _, c := range candidates {
+		if newIDs.Has(uint(c.id)) {
+			entries = append(entries, c.pj)
 		}
 	}
 
-	return nil
+	log.WithFields(log.Fields{
+		"total":      len(prowJobs),
+		"candidates": len(candidates),
+		"new":        len(entries),
+	}).Info("filtered prow jobs for processing")
+
+	log.WithField("jobs", len(jobDefs)).Info("bulk upserting ProwJob definitions")
+	const prowJobBatchSize = 100
+	for i := 0; i < len(jobDefs); i += prowJobBatchSize {
+		batch := jobDefs[i:min(i+prowJobBatchSize, len(jobDefs))]
+		if err := pl.dbc.DB.WithContext(ctx).Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "name"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"kind", "release", "variants", "test_grid_url", "updated_at",
+			}),
+		}).Create(&batch).Error; err != nil {
+			return nil, fmt.Errorf("upserting ProwJob batch: %w", err)
+		}
+	}
+
+	cache, err := loadProwJobCache(pl.dbc)
+	if err != nil {
+		return nil, err
+	}
+	pl.prowJobCache = cache
+	return entries, nil
+}
+
+func (pl *ProwLoader) findNewJobRunIDs(ctx context.Context, candidateIDs []uint) (sets.Set[uint], error) {
+	if len(candidateIDs) == 0 {
+		return nil, nil
+	}
+
+	sqlDB, err := pl.dbc.DB.DB()
+	if err != nil {
+		return nil, fmt.Errorf("getting sql.DB: %w", err)
+	}
+	conn, err := stdlib.AcquireConn(sqlDB)
+	if err != nil {
+		return nil, fmt.Errorf("acquiring pgx conn: %w", err)
+	}
+	defer func() {
+		if err := stdlib.ReleaseConn(sqlDB, conn); err != nil {
+			log.WithError(err).Error("failed to release pgx conn")
+		}
+	}()
+
+	cleanup, err := db.CopyToTempTable(ctx, conn, "tmp_candidate_ids", candidateIDs,
+		[]db.TempColumn[uint]{
+			{Name: "id", Type: "bigint NOT NULL", Value: func(id *uint) any { return *id }},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	rows, err := conn.Query(ctx, `
+		SELECT t.id FROM tmp_candidate_ids t
+		LEFT JOIN prow_job_run_id_map m ON m.id = t.id
+		WHERE m.id IS NULL
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("querying new job run IDs: %w", err)
+	}
+	var newIDs []uint
+	for rows.Next() {
+		var id uint
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scanning new job run ID: %w", err)
+		}
+		newIDs = append(newIDs, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating new job run IDs: %w", err)
+	}
+
+	return sets.New(newIDs...), nil
 }
 
 func fetchJobsJSON(prowURL string) ([]byte, error) {
@@ -726,8 +538,8 @@ func jobsJSONToProwJobs(jobJSON []byte) ([]prow.ProwJob, error) {
 func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	if releaseConfig, ok := pl.config.Releases[release]; ok {
 		dashboard := "redhat-openshift-ocp-release-" + release
-		blockingJobs := sets.NewString(releaseConfig.BlockingJobs...)
-		informingJobs := sets.NewString(releaseConfig.InformingJobs...)
+		blockingJobs := sets.New(releaseConfig.BlockingJobs...)
+		informingJobs := sets.New(releaseConfig.InformingJobs...)
 		jobType := ""
 		if blockingJobs.Has(jobName) {
 			jobType = "blocking"
@@ -872,134 +684,69 @@ func mostRecentDateTimeName(one, two DateTimeName) DateTimeName {
 	return two
 }
 
-func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, release string) error {
+func (pl *ProwLoader) fetchJobRunResult(ctx context.Context, pj *prow.ProwJob) (*pgwriter.JobRunResult, error) {
 	pjLog := log.WithFields(log.Fields{
 		"job":     pj.Spec.Job,
 		"buildID": pj.Status.BuildID,
 		"start":   pj.Status.StartTime,
 	})
 
-	if pj.Status.State == prow.PendingState || pj.Status.State == prow.TriggeredState {
-		pjLog.Infof("skipping, job not in a terminal state yet")
-		return nil
-	}
-
-	id, err := strconv.ParseUint(pj.Status.BuildID, 0, 64)
+	id, err := strconv.ParseUint(pj.Status.BuildID, 10, 63)
 	if err != nil {
 		pjLog.Warningf("skipping, couldn't parse build ID: %+v", err)
-		return nil
+		return nil, nil
 	}
 
-	pjLog.Infof("starting processing")
+	dbProwJob, ok := pl.prowJobCache[pj.Spec.Job]
+	if !ok {
+		pjLog.Warningf("skipping, ProwJob not found in cache")
+		return nil, nil
+	}
 
-	// find all files here then pass to getClusterData
-	// and prowJobRunTestsFromGCS
-	// add more regexes if we require more
-	// results from scanning for file names
 	path, err := GetGCSPathForProwJobURL(pjLog, pj.Status.URL)
 	if err != nil {
 		pjLog.WithError(err).WithField("prowJobURL", pj.Status.URL).Error("error getting GCS path for prow job URL")
-		return err
+		return nil, err
 	}
+
 	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
 	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-	allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultJunitFile()})
+	junitMatches, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobJunitXML)
 	if err != nil {
-		return errors.Wrap(err, "error finding junit file")
+		return nil, errors.Wrap(err, "error finding junit files")
 	}
 
-	var junitMatches []string
-	if len(allMatches) > 0 {
-		junitMatches = allMatches[0]
-	}
-
-	// Lock the whole prow job block to avoid trying to create the pj multiple times concurrently\
-	// (resulting in a DB error)
-	pl.prowJobCacheLock.Lock()
-	dbProwJob, err := pl.createOrUpdateProwJob(ctx, pj, release, pjLog)
-	pl.prowJobCacheLock.Unlock()
+	result, err := pl.buildJobRunResult(ctx, pj, id, path, junitMatches, dbProwJob)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	pl.prowJobRunCacheLock.RLock()
-	_, ok := pl.prowJobRunCache[uint(id)]
-	pl.prowJobRunCacheLock.RUnlock()
-	if ok {
-		pjLog.Infof("processing complete; job run was already processed")
-		return nil
-	}
-
-	pjLog.Info("processing GCS bucket")
-	if err := pl.processGCSBucketJobRun(ctx, pj, id, path, junitMatches, dbProwJob); err != nil {
-		return err
-	}
-
-	pl.jobsProcessedCount.Add(1)
-	pjLog.Infof("processing complete")
-	return nil
+	return result, nil
 }
 
-func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJob, release string, pjLog *log.Entry) (*models.ProwJob, error) {
-	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
-	if !foundProwJob {
-		pjLog.Info("creating new ProwJob")
-		dbProwJob = &models.ProwJob{
-			Name:        pj.Spec.Job,
-			Kind:        models.ProwKind(pj.Spec.Type),
-			Release:     release,
-			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job),
-			TestGridURL: pl.generateTestGridURL(release, pj.Spec.Job).String(),
-		}
-		err := pl.dbc.DB.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
-		if err != nil {
-			return nil, errors.Wrapf(err, "error loading prow job into db: %s", pj.Spec.Job)
-		}
-		pl.prowJobCache[pj.Spec.Job] = dbProwJob
-	} else {
-		saveDB := false
-		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job)
-		if !reflect.DeepEqual(newVariants, []string(dbProwJob.Variants)) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
-			dbProwJob.Kind = models.ProwKind(pj.Spec.Type)
-			dbProwJob.Variants = newVariants
-			saveDB = true
-		}
-		if dbProwJob.Release != release {
-			dbProwJob.Release = release
-			saveDB = true
-		}
-		if len(dbProwJob.TestGridURL) == 0 {
-			dbProwJob.TestGridURL = pl.generateTestGridURL(release, pj.Spec.Job).String()
-			if len(dbProwJob.TestGridURL) > 0 {
-				saveDB = true
-			}
-		}
-		if saveDB {
-			if res := pl.dbc.DB.WithContext(ctx).Save(&dbProwJob); res.Error != nil {
-				return nil, res.Error
-			}
-		}
-	}
-	return dbProwJob, nil
-}
-
-func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJob, id uint64, path string, junitMatches []string, dbProwJob *models.ProwJob) error {
-	tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), dbProwJob.ID, dbProwJob.Release, path, junitMatches)
+func (pl *ProwLoader) buildJobRunResult(ctx context.Context, pj *prow.ProwJob, id uint64, path string, junitMatches []string, dbProwJob *models.ProwJob) (*pgwriter.JobRunResult, error) {
+	tests, failures, flakes, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), dbProwJob.ID, dbProwJob.Release, path, junitMatches)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
+	pulls := pl.fetchPullRequestData(pj.Spec.Refs, path)
 
-	labelResult, err := GatherLabelsFromBQ(ctx, pl.bigQueryClient, []string{pj.Status.BuildID}, pj.Status.StartTime)
-	if err != nil {
-		return err
+	var pullAssocs []pgwriter.PullRequestAssocRow
+	for _, pull := range pulls {
+		pullAssocs = append(pullAssocs, pgwriter.PullRequestAssocRow{
+			ProwJobRunID:        uint(id),
+			Link:                pull.Link,
+			SHA:                 pull.SHA,
+			ProwJobRunRelease:   dbProwJob.Release,
+			ProwJobRunTimestamp: pj.Status.StartTime,
+		})
 	}
-	labels := labelResult[pj.Status.BuildID] // result could be empty but nil labels is fine
 
-	var annotations []models.ProwJobRunAnnotation
+	var annotations []pgwriter.AnnotationRow
 	for k, v := range pj.Annotations {
-		annotations = append(annotations, models.ProwJobRunAnnotation{
+		annotations = append(annotations, pgwriter.AnnotationRow{
+			ProwJobRunID:        uint(id),
 			Key:                 k,
 			Value:               v,
 			ProwJobRunRelease:   dbProwJob.Release,
@@ -1012,14 +759,11 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 		duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
 	}
 
-	err = pl.dbc.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(&models.ProwJobRun{
-			Model: gorm.Model{
-				ID: uint(id),
-			},
+	return &pgwriter.JobRunResult{
+		Run: pgwriter.RunRow{
+			ID:             uint(id),
 			Cluster:        pj.Spec.Cluster,
 			Duration:       duration,
-			ProwJob:        *dbProwJob,
 			ProwJobID:      dbProwJob.ID,
 			ProwJobRelease: dbProwJob.Release,
 			URL:            pj.Status.URL,
@@ -1027,38 +771,64 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 			Timestamp:      pj.Status.StartTime,
 			OverallResult:  overallResult,
 			TestFailures:   failures,
+			TestFlakes:     flakes,
 			Succeeded:      overallResult == sippyprocessingv1.JobSucceeded,
-			Labels:         labels,
-			Annotations:    annotations,
-		}).Error; err != nil {
-			return err
-		}
+			Labels:         []string(pl.labelsCache[pj.Status.BuildID]),
+		},
+		Annotations:      annotations,
+		PullRequests:     pulls,
+		PullRequestAssoc: pullAssocs,
+		Tests:            tests,
+	}, nil
+}
 
-		for _, pull := range pulls {
-			if err := tx.Create(&models.ProwJobRunProwPullRequest{
-				ProwJobRunID:        uint(id),
-				ProwPullRequestID:   pull.ID,
-				ProwJobRunRelease:   dbProwJob.Release,
-				ProwJobRunTimestamp: pj.Status.StartTime,
-			}).Error; err != nil {
-				return err
-			}
-		}
-		return nil
+func (pl *ProwLoader) accumulateAndWriteJobRuns(ctx context.Context, results <-chan *pgwriter.JobRunResult) {
+	pl.accumulateAndWrite(ctx, results, func(ctx context.Context, batch []pgwriter.JobRunResult) error {
+		return pgwriter.Write(ctx, pl.dbc, pl.currentDate, batch)
 	})
-	if err != nil {
-		return err
-	}
-	// Looks like sometimes, we might be getting duplicate entries from bigquery:
-	pl.prowJobRunCacheLock.Lock()
-	pl.prowJobRunCache[uint(id)] = true
-	pl.prowJobRunCacheLock.Unlock()
+}
 
-	err = pl.dbc.DB.WithContext(ctx).Debug().CreateInBatches(tests, 1000).Error
-	if err != nil {
-		return err
+func (pl *ProwLoader) accumulateAndWrite(ctx context.Context, results <-chan *pgwriter.JobRunResult, writeBatch func(context.Context, []pgwriter.JobRunResult) error) {
+	const flushThreshold = 100
+	var (
+		batch  []pgwriter.JobRunResult
+		total  int
+		failed int
+	)
+
+	flush := func(msg string) {
+		if err := writeBatch(ctx, batch); err != nil {
+			log.WithError(err).WithField("batchSize", len(batch)).Warning(msg)
+			failed += len(batch)
+			pl.errors = append(pl.errors, fmt.Errorf("error writing job run batch: %w", err))
+		} else {
+			total += len(batch)
+		}
+		batch = batch[:0]
 	}
-	return nil
+
+	for result := range results {
+		batch = append(batch, *result)
+		if ctx.Err() != nil {
+			break
+		}
+		if len(batch) >= flushThreshold {
+			flush("batch write failed, continuing with remaining batches")
+		}
+	}
+	if len(batch) > 0 {
+		flush("final batch write failed")
+	}
+
+	if total > 0 || failed > 0 {
+		entry := log.WithField("succeeded", total).WithField("failed", failed)
+		if failed > 0 {
+			entry.Warning("job run batch processing completed with errors")
+		} else {
+			entry.Info("all job run batches committed")
+		}
+	}
+	prowLoaderProcessedMetricGauge.Set(float64(total))
 }
 
 func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, error) {
@@ -1080,28 +850,17 @@ func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, 
 	return path, nil
 }
 
-func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []models.ProwPullRequest {
+func (pl *ProwLoader) fetchPullRequestData(refs *prow.Refs, pjPath string) []pgwriter.PullRequestRow {
 	if refs == nil || pl.githubClient == nil {
-		if refs == nil {
-			log.Debug("findOrAddPullRequests nil refs")
-		} else {
-			log.Debug("findOrAddPullRequests nil githubclient")
-		}
 		return nil
 	}
 
-	pulls := make([]models.ProwPullRequest, 0)
-
+	var pulls []pgwriter.PullRequestRow
 	for _, pr := range refs.Pulls {
-
-		// title and link are not filled in via bigquery
-		// so get them from github if missing
-
 		mergedAt, err := pl.githubClient.GetPRSHAMerged(refs.Org, refs.Repo, pr.Number, pr.SHA)
 		if err != nil {
 			log.WithError(err).Warningf("could not fetch pull request status from GitHub; org=%q repo=%q number=%q sha=%q", refs.Org, refs.Repo, pr.Number, pr.SHA)
 		} else {
-			// pr should be cached from lookup above
 			if pr.Title == "" {
 				ghTitle, err := pl.githubClient.GetPRTitle(refs.Org, refs.Repo, pr.Number)
 				if err != nil {
@@ -1121,63 +880,83 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []mo
 		}
 
 		if pr.Link == "" {
-			log.Debugf("findOrAddPullRequests skipping empty link for sha: %s", pr.SHA)
+			log.WithField("sha", pr.SHA).Debug("skipping pull request with empty link")
 			continue
 		}
 
-		// any concerns if we are missing title?
-
-		// create / update any presubmit comment records
 		pl.ghCommenter.UpdatePendingCommentRecords(refs.Org, refs.Repo, pr.Number, pr.SHA, models.CommentTypeRiskAnalysis, mergedAt, pjPath)
 
-		pull := models.ProwPullRequest{}
-		res := pl.dbc.DB.Where("link = ? and sha = ?", pr.Link, pr.SHA).First(&pull)
-
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			pull.MergedAt = mergedAt
-			pull.Org = refs.Org
-			pull.Repo = refs.Repo
-			pull.Link = pr.Link
-			pull.SHA = pr.SHA
-			pull.Author = pr.Author
-			pull.Title = pr.Title
-			pull.Number = pr.Number
-			res := pl.dbc.DB.Save(&pull)
-			if res.Error != nil {
-				log.WithError(res.Error).Warningf("could not save pull request %s (%s)", pr.Link, pr.SHA)
-				continue
-			}
-
-		} else if res.Error != nil {
-			log.WithError(res.Error).Errorf("unexpected error looking for pull request %s (%s)", pr.Link, pr.SHA)
-			continue
-		}
-
-		if pull.MergedAt == nil || *pull.MergedAt != *mergedAt {
-			pull.MergedAt = mergedAt
-			if res := pl.dbc.DB.Save(pull); res.Error != nil {
-				log.WithError(res.Error).Errorf("unexpected error updating pull request %s (%s)", pr.Link, pr.SHA)
-				continue
-			}
-		}
-
-		pulls = append(pulls, pull)
+		pulls = append(pulls, pgwriter.PullRequestRow{
+			Org:      refs.Org,
+			Repo:     refs.Repo,
+			Link:     pr.Link,
+			SHA:      pr.SHA,
+			Author:   pr.Author,
+			Title:    pr.Title,
+			Number:   pr.Number,
+			MergedAt: mergedAt,
+		})
 	}
 
 	return pulls
 }
 
+func (pl *ProwLoader) prefetchLabels(prowJobs []prow.ProwJob) (map[string]pq.StringArray, error) {
+	buildIDs := make([]string, 0, len(prowJobs))
+	var earliest time.Time
+	for i := range prowJobs {
+		buildIDs = append(buildIDs, prowJobs[i].Status.BuildID)
+		if earliest.IsZero() || prowJobs[i].Status.StartTime.Before(earliest) {
+			earliest = prowJobs[i].Status.StartTime
+		}
+	}
+
+	log.WithField("count", len(buildIDs)).Info("pre-fetching labels from BigQuery in bulk")
+	start := time.Now()
+	labels, err := GatherLabelsFromBQ(pl.ctx, pl.bigQueryClient, buildIDs, earliest)
+	if err != nil {
+		return nil, fmt.Errorf("pre-fetching %d labels from BigQuery: %w", len(buildIDs), err)
+	}
+	log.WithField("count", len(labels)).WithField("duration", time.Since(start)).Info("pre-fetched labels from BigQuery")
+	return labels, nil
+}
+
 const LabelsDatasetEnv = "JOB_LABELS_DATASET"
 const LabelsTableName = "job_labels"
 
-// GatherLabelsFromBQ queries BigQuery for labels for multiple job runs in a single query.
+// BigQuery HTTP request body limit is ~10MB; 50k build IDs stays well under that.
+const labelsBatchSize = 50000
+
+// GatherLabelsFromBQ queries BigQuery for labels for multiple job runs.
+// Large ID lists are automatically batched to avoid exceeding BigQuery's request size limit.
 // The startTime is used to constrain the scan to recent date partitions.
-// Returns a map of buildID → labels.
+// Returns a map of buildID → labels. If a batch fails, the returned map contains
+// labels from previously completed batches and the error is also returned.
 func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, buildIDs []string, startTime time.Time) (map[string]pq.StringArray, error) {
 	if bqClient == nil || len(buildIDs) == 0 {
 		return nil, nil
 	}
 
+	result := make(map[string]pq.StringArray, len(buildIDs))
+	totalBatches := (len(buildIDs) + labelsBatchSize - 1) / labelsBatchSize
+
+	for i := 0; i < len(buildIDs); i += labelsBatchSize {
+		batch := buildIDs[i:min(i+labelsBatchSize, len(buildIDs))]
+		batchNum := i/labelsBatchSize + 1
+
+		log.WithField("batch", batchNum).WithField("totalBatches", totalBatches).WithField("batchSize", len(batch)).Info("querying BigQuery labels batch")
+
+		batchResult, err := gatherLabelsBatch(ctx, bqClient, batch, startTime)
+		if err != nil {
+			return result, err
+		}
+		maps.Copy(result, batchResult)
+	}
+
+	return result, nil
+}
+
+func gatherLabelsBatch(ctx context.Context, bqClient *bqcachedclient.Client, buildIDs []string, startTime time.Time) (map[string]pq.StringArray, error) {
 	dataset := os.Getenv(LabelsDatasetEnv)
 	if dataset == "" {
 		dataset = bqClient.Dataset
@@ -1227,151 +1006,115 @@ func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, bu
 	return result, nil
 }
 
-func (pl *ProwLoader) findOrAddTest(name string) (uint, error) {
-	pl.prowJobRunTestCacheLock.RLock()
-	if id, ok := pl.prowJobRunTestCache[name]; ok {
-		pl.prowJobRunTestCacheLock.RUnlock()
-		return id, nil
-	}
-	pl.prowJobRunTestCacheLock.RUnlock()
-
-	pl.prowJobRunTestCacheLock.Lock()
-	defer pl.prowJobRunTestCacheLock.Unlock()
-	test := &models.Test{}
-	pl.dbc.DB.Where("name = ?", name).Find(&test)
-	if test.ID == 0 {
-		test.Name = name
-		tx := pl.dbc.DB.Save(test)
-		if tx.Error != nil {
-			log.WithError(tx.Error).Warningf("failed to create test %q", name)
-			return 0, tx.Error
-		}
-	}
-
-	pl.prowJobRunTestCache[name] = test.ID
-	return test.ID, nil
+type testCaseKey struct {
+	SuiteName string
+	TestName  string
 }
 
-func (pl *ProwLoader) findSuite(name string) *uint {
-	if name == "" {
-		return nil
-	}
-
-	pl.suiteCacheLock.RLock()
-	if id, ok := pl.suiteCache[name]; ok {
-		pl.suiteCacheLock.RUnlock()
-		return id
-	}
-	pl.suiteCacheLock.RUnlock()
-
-	pl.suiteCacheLock.Lock()
-	defer pl.suiteCacheLock.Unlock()
-	id := db.GetSuiteID(pl.dbc.DB, name)
-	pl.suiteCache[name] = id
-	return id
-}
-
-func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
-	failures := 0
-
+func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id, prowJobID uint, prowJobRelease, path string, junitPaths []string) ([]pgwriter.TestRow, int, int, sippyprocessingv1.JobOverallResult, error) {
 	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
 	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 	gcsJobRun.SetGCSJunitPaths(junitPaths)
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(ctx)
 	if err != nil {
 		log.Warningf("failed to get junit test suites: %s", err.Error())
-		return []*models.ProwJobRunTest{}, 0, "", err
+		return nil, 0, 0, "", err
 	}
-	testCases := make(map[string]*models.ProwJobRunTest)
+
+	testCases := make(map[testCaseKey]*types.TestCaseEntry)
 	for _, suite := range suites.Suites {
-		suiteID := pl.findSuite(suite.Name)
-		if suiteID == nil {
+		if !db.IsSuiteImportable(suite.Name) {
 			log.Infof("skipping suite %q as it's not listed for import", suite.Name)
 			continue
 		}
-
-		pl.extractTestCases(suite, suiteID, testCases, prowJobRelease, pj.Status.StartTime)
+		extractTestCases(suite, testCases)
 	}
 
-	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, testCases, pl.syntheticTestManager)
+	oldTestCases := slices.Collect(maps.Values(testCases))
+	syntheticSuite, jobResult := testconversion.ConvertProwJobRunToSyntheticTests(*pj, oldTestCases, pl.syntheticTestManager)
 
-	suiteID := pl.findSuite(syntheticSuite.Name)
-	if suiteID == nil {
-		// this shouldn't happen but if it does we want to know
-		panic("synthetic suite is missing from the database")
+	if !db.IsSuiteImportable(syntheticSuite.Name) {
+		return nil, 0, 0, "", fmt.Errorf("synthetic suite %q is missing from the importable list", syntheticSuite.Name)
 	}
-	pl.extractTestCases(syntheticSuite, suiteID, testCases, prowJobRelease, pj.Status.StartTime)
+	extractTestCases(syntheticSuite, testCases)
 	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
 
-	results := make([]*models.ProwJobRunTest, 0)
-	for k := range testCases {
-		if testidentification.IsIgnoredTest(k) {
+	failures := 0
+	flakes := 0
+	results := make([]pgwriter.TestRow, 0, len(testCases))
+	for _, tc := range testCases {
+		if testidentification.IsIgnoredTest(tc.TestName) {
 			continue
 		}
-
-		testCases[k].ProwJobRunID = id
-		testCases[k].ProwJobID = prowJobID
-		testCases[k].ProwJobRunRelease = prowJobRelease
-		testCases[k].ProwJobRunTimestamp = pj.Status.StartTime
-		results = append(results, testCases[k])
-		if testCases[k].Status == 12 {
+		results = append(results, pgwriter.TestRow{
+			ProwJobRunID:        id,
+			ProwJobID:           prowJobID,
+			ProwJobRunTimestamp: pj.Status.StartTime,
+			ProwJobRunRelease:   prowJobRelease,
+			TestName:            tc.TestName,
+			SuiteName:           tc.SuiteName,
+			Status:              tc.Status,
+			Duration:            tc.Duration,
+			Output:              tc.Output,
+			Lifecycle:           tc.Lifecycle,
+		})
+		switch tc.Status {
+		case int(sippyprocessingv1.TestStatusFailure):
 			failures++
+		case int(sippyprocessingv1.TestStatusFlake):
+			flakes++
 		}
 	}
 
-	return results, failures, jobResult, nil
+	return results, failures, flakes, jobResult, nil
 }
 
-func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, testCases map[string]*models.ProwJobRunTest, prowJobRelease string, prowJobStartTime time.Time) {
-
+func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.TestCaseEntry) {
 	for _, tc := range suite.TestCases {
 		if testidentification.IsIgnoredTest(tc.Name) {
 			continue
 		}
 		status := sippyprocessingv1.TestStatusFailure
-		var failureOutput *models.ProwJobRunTestOutput
+		var output *string
 		switch {
 		case tc.SkipMessage != nil:
 			continue
 		case tc.FailureOutput == nil:
 			status = sippyprocessingv1.TestStatusSuccess
 		default:
-			failureOutput = &models.ProwJobRunTestOutput{
-				Output:                  tc.FailureOutput.Output,
-				ProwJobRunTestTimestamp: prowJobStartTime,
-				ProwJobRunTestRelease:   prowJobRelease,
-			}
+			output = &tc.FailureOutput.Output
 		}
 
-		// Cache key should always have the suite name, so we don't combine
-		// a pass and a fail from two different suites to generate a flake.
-		testCacheKey := fmt.Sprintf("%s.%s", suite.Name, tc.Name)
+		key := testCaseKey{SuiteName: suite.Name, TestName: tc.Name}
 
-		if existing, ok := testCases[testCacheKey]; !ok {
-			testID, err := pl.findOrAddTest(tc.Name)
-			if err != nil {
-				log.WithError(err).Warningf("could not find or create test %q", tc.Name)
-				continue
-			}
-
-			testCases[testCacheKey] = &models.ProwJobRunTest{
-				TestID:               testID,
-				SuiteID:              suiteID,
-				Status:               int(status),
-				Duration:             tc.Duration,
-				ProwJobRunTestOutput: failureOutput,
+		if existing, ok := testCases[key]; !ok {
+			testCases[key] = &types.TestCaseEntry{
+				TestName:  tc.Name,
+				SuiteName: suite.Name,
+				Status:    int(status),
+				Duration:  tc.Duration,
+				Output:    output,
+				Lifecycle: normalizeLifecycle(tc.Lifecycle),
 			}
 		} else if (existing.Status == int(sippyprocessingv1.TestStatusFailure) && status == sippyprocessingv1.TestStatusSuccess) ||
 			(existing.Status == int(sippyprocessingv1.TestStatusSuccess) && status == sippyprocessingv1.TestStatusFailure) {
-			// One pass among failures makes this a flake
 			existing.Status = int(sippyprocessingv1.TestStatusFlake)
-			if existing.ProwJobRunTestOutput == nil {
-				existing.ProwJobRunTestOutput = failureOutput
+			if existing.Output == nil {
+				existing.Output = output
 			}
 		}
 	}
 
 	for _, c := range suite.Children {
-		pl.extractTestCases(c, suiteID, testCases, prowJobRelease, prowJobStartTime)
+		extractTestCases(c, testCases)
 	}
+}
+
+// normalizeLifecycle returns the lifecycle value from JUnit XML, defaulting
+// empty/missing values to "blocking" (matches BQ COALESCE behavior).
+func normalizeLifecycle(raw string) string {
+	if raw == "" {
+		return "blocking"
+	}
+	return strings.ToLower(raw)
 }

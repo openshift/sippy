@@ -5,9 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"cloud.google.com/go/civil"
 
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -21,9 +24,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const benchmarkRelease = "4.22"
+const benchmarkRelease = "5.0"
 const benchmarkTestName = "[Monitor:legacy-test-framework-invariants-pathological][sig-arch] events should not repeat pathologically for ns/kube-system"
-const benchmarkJobName = "periodic-ci-openshift-release-main-ci-4.22-e2e-aws-ovn"
+const benchmarkJobName = "periodic-ci-openshift-release-main-ci-5.0-e2e-aws-ovn"
+const benchmarkVariant = "Platform:aws"
+const benchmarkCluster = "build01"
+const benchmarkPROrg = "openshift"
 
 type benchmarkCase struct {
 	name string
@@ -37,6 +43,64 @@ type benchmarkResult struct {
 	avg        time.Duration
 	min        time.Duration
 	max        time.Duration
+}
+
+type validationSnapshot struct {
+	RowCount   int               `json:"row_count"`
+	SpotChecks map[string]string `json:"spot_checks,omitempty"`
+}
+
+type queryCase struct {
+	name string
+	fn   func(dbc *db.DB, asOf time.Time) (validationSnapshot, error)
+}
+
+func sortedMapKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// sortedDateKeys returns the map's civil.Date keys as sorted YYYY-MM-DD strings,
+// which sort chronologically.
+func sortedDateKeys[V any](m map[civil.Date]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k.String())
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func toBenchmarkCases(cases []queryCase, asOf time.Time) []benchmarkCase {
+	out := make([]benchmarkCase, len(cases))
+	for i, qc := range cases {
+		out[i] = benchmarkCase{
+			name: qc.name,
+			fn: func(dbc *db.DB) error {
+				_, err := qc.fn(dbc, asOf)
+				return err
+			},
+		}
+	}
+	return out
+}
+
+func toBenchmarkCaseMap(cases map[string]queryCase, asOf time.Time) map[string]benchmarkCase {
+	out := make(map[string]benchmarkCase, len(cases))
+	for name, qc := range cases {
+		out[name] = benchmarkCase{
+			name: qc.name,
+			fn: func(dbc *db.DB) error {
+				_, err := qc.fn(dbc, asOf)
+				return err
+			},
+		}
+	}
+	return out
 }
 
 func extractConnectionName(dsn string) string {
@@ -117,11 +181,11 @@ func runBenchmarkCase(t *testing.T, dbc *db.DB, bc benchmarkCase, iterations int
 	return result
 }
 
-func getIndividualBenchmarkCases() map[string]benchmarkCase {
-	return map[string]benchmarkCase{
+func getIndividualQueryCases() map[string]queryCase {
+	return map[string]queryCase{
 		"FindTestsByRelease": {
 			name: "FindTestsByRelease",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
 				type testResult struct {
 					ID   uint
 					Name string
@@ -137,108 +201,137 @@ func getIndividualBenchmarkCases() map[string]benchmarkCase {
 					ORDER BY t.name
 					LIMIT 20`, benchmarkRelease, "%events should not repeat%").Scan(&results)
 				if res.Error != nil {
-					return res.Error
+					return validationSnapshot{}, res.Error
 				}
 				log.Printf("Found %d tests matching pattern for release %s", len(results), benchmarkRelease)
 				for _, r := range results {
 					log.Printf("  [%d] %s", r.ID, r.Name)
 				}
-				return nil
+				snap := validationSnapshot{RowCount: len(results)}
+				if len(results) > 0 {
+					snap.SpotChecks = map[string]string{
+						"first_name": results[0].Name,
+					}
+				}
+				return snap, nil
 			},
 		},
 	}
 }
 
-func getBenchmarkCases(asOf time.Time) []benchmarkCase {
-	return []benchmarkCase{
+func allQueryCases() []queryCase {
+	cases := getQueryCases()
+	cases = append(cases, getReportQueryCases()...)
+	for _, qc := range getIndividualQueryCases() {
+		cases = append(cases, qc)
+	}
+	return cases
+}
+
+func getQueryCases() []queryCase {
+	return []queryCase{
 		{
 			name: "TestDurations",
-			fn: func(dbc *db.DB) error {
-				durations, err := query.TestDurations(dbc, benchmarkRelease,
-					benchmarkTestName, nil, nil)
-
-				if err == nil {
-					log.Printf("Found %d test durations", len(durations))
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
+				durations, err := query.TestDurations(dbc, benchmarkRelease, benchmarkTestName, nil, nil)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-
-				return err
+				log.Printf("Found %d test durations", len(durations))
+				snap := validationSnapshot{RowCount: len(durations)}
+				if len(durations) > 0 {
+					snap.SpotChecks = map[string]string{
+						"keys": strings.Join(sortedDateKeys(durations), ","),
+					}
+				}
+				return snap, nil
 			},
 		},
 		{
 			name: "TestOutputs",
-			fn: func(dbc *db.DB) error {
-				testOutputs, err := query.TestOutputs(dbc, benchmarkRelease,
-					benchmarkTestName, nil, nil, 10)
-
-				if err == nil {
-					log.Printf("Found %d test outputs", len(testOutputs))
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
+				testOutputs, err := query.TestOutputs(dbc, benchmarkRelease, benchmarkTestName, nil, nil, 10)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-
-				return err
+				log.Printf("Found %d test outputs", len(testOutputs))
+				return validationSnapshot{RowCount: len(testOutputs)}, nil
 			},
 		},
 		{
 			name: "JobDetails",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
+				asOfDate := civil.DateOf(asOf.UTC())
 				jobRuns, err := api.JobDetailsReport(dbc, benchmarkRelease,
-					benchmarkJobName, asOf)
-
-				if err == nil {
-					log.Printf("Found %d job runs", len(jobRuns))
+					benchmarkJobName, asOfDate.AddDays(-14), asOfDate.AddDays(1))
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-
-				return err
+				log.Printf("Found %d job runs", len(jobRuns))
+				return validationSnapshot{RowCount: len(jobRuns)}, nil
 			},
 		},
 		{
 			name: "TestAnalysisOverall",
-			fn: func(dbc *db.DB) error {
-				results, err := api.GetTestAnalysisOverallFromDB(dbc, nil,
-					benchmarkRelease, benchmarkTestName, asOf)
-
-				if err == nil {
-					for group, rows := range results {
-						log.Printf("TestAnalysisOverall group %s: %d rows", group, len(rows))
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
+				results, err := api.GetTestAnalysisOverallFromDB(dbc, nil, benchmarkRelease, benchmarkTestName, asOf)
+				if err != nil {
+					return validationSnapshot{}, err
+				}
+				for group, rows := range results {
+					log.Printf("TestAnalysisOverall group %s: %d rows", group, len(rows))
+				}
+				snap := validationSnapshot{RowCount: len(results)}
+				if len(results) > 0 {
+					snap.SpotChecks = map[string]string{
+						"keys": strings.Join(sortedMapKeys(results), ","),
 					}
 				}
-
-				return err
+				return snap, nil
 			},
 		},
 		{
 			name: "TestAnalysisByJob",
-			fn: func(dbc *db.DB) error {
-				results, err := api.GetTestAnalysisByJobFromDB(dbc, nil,
-					benchmarkRelease, benchmarkTestName, asOf)
-
-				if err == nil {
-					log.Printf("TestAnalysisByJob: %d groups", len(results))
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
+				results, err := api.GetTestAnalysisByJobFromDB(dbc, nil, benchmarkRelease, benchmarkTestName, asOf)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-
-				return err
+				log.Printf("TestAnalysisByJob: %d groups", len(results))
+				snap := validationSnapshot{RowCount: len(results)}
+				if len(results) > 0 {
+					snap.SpotChecks = map[string]string{
+						"keys": strings.Join(sortedMapKeys(results), ","),
+					}
+				}
+				return snap, nil
 			},
 		},
 		{
 			name: "TestAnalysisByJobWithVariantFilter",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				f := &filter.Filter{
 					Items: []filter.FilterItem{
 						{Field: "variants", Value: "aws", Not: false},
 					},
 				}
-				results, err := api.GetTestAnalysisByJobFromDB(dbc, f,
-					benchmarkRelease, benchmarkTestName, asOf)
-
-				if err == nil {
-					log.Printf("TestAnalysisByJobWithVariantFilter: %d groups", len(results))
+				results, err := api.GetTestAnalysisByJobFromDB(dbc, f, benchmarkRelease, benchmarkTestName, asOf)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-
-				return err
+				log.Printf("TestAnalysisByJobWithVariantFilter: %d groups", len(results))
+				snap := validationSnapshot{RowCount: len(results)}
+				if len(results) > 0 {
+					snap.SpotChecks = map[string]string{
+						"keys": strings.Join(sortedMapKeys(results), ","),
+					}
+				}
+				return snap, nil
 			},
 		},
 		{
 			name: "QueryTestAnalysis",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				analyzeSince := asOf.Add(-14 * 24 * time.Hour)
 				type testResult struct {
 					CurrentSuccesses   int
@@ -246,44 +339,60 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 					CurrentPassPercent float64
 				}
 				var result testResult
-				res := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, benchmarkTestName, []string{benchmarkJobName}, benchmarkRelease)
+				res := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, benchmarkRelease, benchmarkRelease, benchmarkTestName, []string{benchmarkJobName}).Scan(&result)
 				if res.Error != nil {
-					return res.Error
+					return validationSnapshot{}, res.Error
 				}
-				res.Scan(&result)
 				log.Printf("QueryTestAnalysis: runs=%d successes=%d", result.CurrentRuns, result.CurrentSuccesses)
-				return res.Error
+				return validationSnapshot{
+					RowCount: result.CurrentRuns,
+					SpotChecks: map[string]string{
+						"current_successes": strconv.Itoa(result.CurrentSuccesses),
+					},
+				}, nil
 			},
 		},
 		{
 			name: "TestCountsByLookback14",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
 				jobRuns, testIDs, err := api.GetJobRunTestsCountByLookback(dbc, 14)
-				if err == nil {
-					log.Printf("TestCountsByLookback14: %d job runs, %d test IDs", jobRuns, testIDs)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("TestCountsByLookback14: %d job runs, %d test IDs", jobRuns, testIDs)
+				return validationSnapshot{
+					RowCount: int(jobRuns),
+					SpotChecks: map[string]string{
+						"test_ids_count": strconv.FormatInt(testIDs, 10),
+					},
+				}, nil
 			},
 		},
 		{
 			name: "TestCountsByLookback9",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
 				jobRuns, testIDs, err := api.GetJobRunTestsCountByLookback(dbc, 9)
-				if err == nil {
-					log.Printf("TestCountsByLookback9: %d job runs, %d test IDs", jobRuns, testIDs)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("TestCountsByLookback9: %d job runs, %d test IDs", jobRuns, testIDs)
+				return validationSnapshot{
+					RowCount: int(jobRuns),
+					SpotChecks: map[string]string{
+						"test_ids_count": strconv.FormatInt(testIDs, 10),
+					},
+				}, nil
 			},
 		},
 		{
 			name: "TestCountsByLookback14ForRelease",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				type counts struct {
 					JobRunsCount int64
 					TestIDsCount int64
 				}
 				var result counts
-				truncatedTime := time.Now().UTC().AddDate(0, 0, -14).Truncate(24 * time.Hour)
+				truncatedTime := asOf.AddDate(0, 0, -14).Truncate(24 * time.Hour)
 				res := dbc.DB.Raw(`
 					SELECT count(distinct pjrt.prow_job_run_id) as job_runs_count,
 					       count(distinct pjrt.test_id) as test_ids_count
@@ -291,22 +400,27 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 					WHERE pjrt.prow_job_run_timestamp > ?
 					  AND pjrt.prow_job_run_release = ?`, truncatedTime, benchmarkRelease).Scan(&result)
 				if res.Error != nil {
-					return res.Error
+					return validationSnapshot{}, res.Error
 				}
 				log.Printf("TestCountsByLookback14ForRelease %s: %d job runs, %d test IDs",
 					benchmarkRelease, result.JobRunsCount, result.TestIDsCount)
-				return nil
+				return validationSnapshot{
+					RowCount: int(result.JobRunsCount),
+					SpotChecks: map[string]string{
+						"test_ids_count": strconv.FormatInt(result.TestIDsCount, 10),
+					},
+				}, nil
 			},
 		},
 		{
 			name: "TestCountsByLookback9ForRelease",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				type counts struct {
 					JobRunsCount int64
 					TestIDsCount int64
 				}
 				var result counts
-				truncatedTime := time.Now().UTC().AddDate(0, 0, -9).Truncate(24 * time.Hour)
+				truncatedTime := asOf.AddDate(0, 0, -9).Truncate(24 * time.Hour)
 				res := dbc.DB.Raw(`
 					SELECT count(distinct pjrt.prow_job_run_id) as job_runs_count,
 					       count(distinct pjrt.test_id) as test_ids_count
@@ -314,107 +428,194 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 					WHERE pjrt.prow_job_run_timestamp > ?
 					  AND pjrt.prow_job_run_release = ?`, truncatedTime, benchmarkRelease).Scan(&result)
 				if res.Error != nil {
-					return res.Error
+					return validationSnapshot{}, res.Error
 				}
 				log.Printf("TestCountsByLookback9ForRelease %s: %d job runs, %d test IDs",
 					benchmarkRelease, result.JobRunsCount, result.TestIDsCount)
-				return nil
+				return validationSnapshot{
+					RowCount: int(result.JobRunsCount),
+					SpotChecks: map[string]string{
+						"test_ids_count": strconv.FormatInt(result.TestIDsCount, 10),
+					},
+				}, nil
 			},
 		},
 		{
+			name: "FetchJobRunByID",
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
+				var jobRunID int64
+				res := dbc.DB.Table("prow_job_runs").
+					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
+					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
+					Order("prow_job_runs.timestamp DESC").
+					Limit(1).
+					Select("prow_job_runs.id").
+					Scan(&jobRunID)
+				if res.Error != nil {
+					return validationSnapshot{}, res.Error
+				}
+
+				partKeys, err := query.LookupProwJobRunPartitionKeys(dbc.DB, jobRunID)
+				if err != nil {
+					return validationSnapshot{}, err
+				}
+
+				var jobRun models.ProwJobRun
+				res = dbc.DB.Joins("ProwJob").
+					Preload("PullRequests").
+					Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
+					Take(&jobRun, jobRunID)
+				if res.Error != nil {
+					return validationSnapshot{}, res.Error
+				}
+				log.Printf("FetchJobRunByID for run %d: release=%s job=%s",
+					jobRun.ID, jobRun.ProwJobRelease, jobRun.ProwJob.Name)
+				return validationSnapshot{
+					RowCount: 1,
+					SpotChecks: map[string]string{
+						"release":  jobRun.ProwJobRelease,
+						"job_name": jobRun.ProwJob.Name,
+					},
+				}, nil
+			},
+		},
+		{
+			name: "FetchJobRunOnlyNewTests",
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
+				var jobRunID int64
+				res := dbc.DB.Table("prow_job_runs").
+					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
+					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
+					Where("prow_job_runs.prow_job_release = ?", benchmarkRelease).
+					Order("prow_job_runs.timestamp DESC").
+					Limit(1).
+					Select("prow_job_runs.id").
+					Scan(&jobRunID)
+				if res.Error != nil {
+					return validationSnapshot{}, res.Error
+				}
+				if jobRunID == 0 {
+					return validationSnapshot{}, fmt.Errorf("no job run found for %s/%s", benchmarkRelease, benchmarkJobName)
+				}
+
+				jobRun, err := api.FetchJobRun(dbc, jobRunID, true, nil, log.WithField("benchmark", "FetchJobRunOnlyNewTests"))
+				if err != nil {
+					return validationSnapshot{}, err
+				}
+				log.Printf("FetchJobRunOnlyNewTests for run %d: %d new tests", jobRunID, len(jobRun.Tests))
+				return validationSnapshot{RowCount: len(jobRun.Tests)}, nil
+			},
+		},
+	}
+}
+
+func getReportQueryCases() []queryCase {
+	cases := []queryCase{
+		{
 			name: "VariantReports",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				start, boundary, end := util.PeriodToDates("default", asOf)
 				results, err := query.VariantReports(dbc, benchmarkRelease, start, boundary, end)
-				if err == nil {
-					log.Printf("VariantReports: %d variants", len(results))
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("VariantReports: %d variants", len(results))
+				return validationSnapshot{RowCount: len(results)}, nil
 			},
 		},
 		{
 			name: "JobReports",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				start, boundary, end := util.PeriodToDates("default", asOf)
 				results, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, start, boundary, end)
-				if err == nil {
-					log.Printf("JobReports: %d jobs", len(results))
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("JobReports: %d jobs", len(results))
+				return validationSnapshot{RowCount: len(results)}, nil
 			},
 		},
 		{
 			name: "BuildClusterHealth",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				start, boundary, end := util.PeriodToDates("default", asOf)
-				results, err := query.BuildClusterHealth(dbc, start, boundary, end)
-				if err == nil {
-					log.Printf("BuildClusterHealth: %d clusters", len(results))
+				results, err := query.BuildClusterHealth(dbc, benchmarkRelease, start, boundary, end)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("BuildClusterHealth: %d clusters", len(results))
+				return validationSnapshot{RowCount: len(results)}, nil
 			},
 		},
 		{
 			name: "RecentTestFailures",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				period := 7 * 24 * time.Hour
 				previousPeriod := 7 * 24 * time.Hour
 				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
 				result, err := api.GetRecentTestFailures(dbc, benchmarkRelease, period, &previousPeriod, false, &filter.FilterOptions{Filter: &filter.Filter{}}, pagination, asOf)
-				if err == nil {
-					log.Printf("RecentTestFailures: %d rows", result.TotalRows)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("RecentTestFailures: %d rows", result.TotalRows)
+				return validationSnapshot{RowCount: int(result.TotalRows)}, nil
 			},
 		},
 		{
 			name: "PullRequestReport",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
 				results, err := query.PullRequestReport(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease)
-				if err == nil {
-					log.Printf("PullRequestReport: %d PRs", len(results))
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("PullRequestReport: %d PRs", len(results))
+				return validationSnapshot{RowCount: len(results)}, nil
 			},
 		},
 		{
 			name: "RepositoryReport",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				results, err := query.RepositoryReport(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, asOf)
-				if err == nil {
-					log.Printf("RepositoryReport: %d repos", len(results))
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
-			},
-		},
-		{
-			name: "JobsRunsReport",
-			fn: func(dbc *db.DB) error {
-				pagination := &apitype.Pagination{PerPage: 20, Page: 0}
-				result, err := api.JobsRunsReportFromDB(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, pagination, asOf)
-				if err == nil {
-					log.Printf("JobsRunsReport: %d rows", result.TotalRows)
-				}
-				return err
+				log.Printf("RepositoryReport: %d repos", len(results))
+				return validationSnapshot{RowCount: len(results)}, nil
 			},
 		},
 		{
 			name: "ProwJobHistoricalTestCounts",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
 				var prowJob models.ProwJob
 				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
-					return err
+					return validationSnapshot{}, err
 				}
 				count, err := query.ProwJobHistoricalTestCounts(dbc, prowJob.ID, benchmarkRelease)
-				if err == nil {
-					log.Printf("ProwJobHistoricalTestCounts for %s: %d", benchmarkJobName, count)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("ProwJobHistoricalTestCounts for %s: %d", benchmarkJobName, count)
+				return validationSnapshot{RowCount: count}, nil
+			},
+		},
+		{
+			name: "ProwJobRunCount",
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
+				var prowJob models.ProwJob
+				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
+					return validationSnapshot{}, err
+				}
+				count, err := query.ProwJobRunCount(dbc, prowJob.ID, benchmarkRelease, asOf.Add(-14*24*time.Hour))
+				if err != nil {
+					return validationSnapshot{}, err
+				}
+				log.Printf("ProwJobRunCount for %s: %d", benchmarkJobName, count)
+				return validationSnapshot{RowCount: count}, nil
 			},
 		},
 		{
 			name: "JobRunTestCount",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
 				var result struct {
 					ID        int64
 					Timestamp time.Time
@@ -422,30 +623,35 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 				res := dbc.DB.Table("prow_job_runs").
 					Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
 					Where("prow_jobs.name = ? AND prow_jobs.release = ?", benchmarkJobName, benchmarkRelease).
+					Where("prow_job_runs.prow_job_release = ?", benchmarkRelease).
 					Order("prow_job_runs.timestamp DESC").
 					Limit(1).
 					Select("prow_job_runs.id, prow_job_runs.timestamp").
 					Scan(&result)
 				if res.Error != nil {
-					return res.Error
+					return validationSnapshot{}, res.Error
+				}
+				if result.ID == 0 {
+					return validationSnapshot{}, fmt.Errorf("no job run found for %s/%s", benchmarkRelease, benchmarkJobName)
 				}
 				count, err := query.JobRunTestCount(dbc, result.ID, benchmarkRelease, result.Timestamp)
-				if err == nil {
-					log.Printf("JobRunTestCount for run %d: %d tests", result.ID, count)
+				if err != nil {
+					return validationSnapshot{}, err
 				}
-				return err
+				log.Printf("JobRunTestCount for run %d: %d tests", result.ID, count)
+				return validationSnapshot{RowCount: count}, nil
 			},
 		},
 		{
 			name: "IsNewTestQuery",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
 				var testID uint
 				res := dbc.DB.Table("tests").
 					Where("name = ?", benchmarkTestName).
 					Select("id").
 					Scan(&testID)
 				if res.Error != nil {
-					return res.Error
+					return validationSnapshot{}, res.Error
 				}
 				var result struct {
 					Org      string
@@ -456,23 +662,32 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 				}
 				res = dbc.DB.
 					Table("prow_job_run_tests as t").
-					Joins("INNER JOIN prow_job_run_prow_pull_requests as prmap on prmap.prow_job_run_id = t.prow_job_run_id").
+					Joins("INNER JOIN prow_job_run_prow_pull_requests as prmap on prmap.prow_job_run_id = t.prow_job_run_id AND prmap.prow_job_run_release = t.prow_job_run_release").
 					Joins("INNER JOIN prow_pull_requests as prs on prs.id = prmap.prow_pull_request_id").
 					Where("t.test_id = ?", testID).
 					Where("t.prow_job_run_release = ?", benchmarkRelease).
 					Where("merged_at is not null").
 					Select("org, repo, number, sha, merged_at").
+					Order("t.prow_job_run_id, prs.id").
 					Limit(1).Scan(&result)
 				if res.Error != nil {
-					return res.Error
+					return validationSnapshot{}, res.Error
 				}
 				log.Printf("IsNewTestQuery for test %d: found=%v", testID, result.MergedAt != nil)
-				return nil
+				snap := validationSnapshot{}
+				if result.MergedAt != nil {
+					snap.RowCount = 1
+					snap.SpotChecks = map[string]string{
+						"org":  result.Org,
+						"repo": result.Repo,
+					}
+				}
+				return snap, nil
 			},
 		},
 		{
 			name: "TestAnalysisPassRate",
-			fn: func(dbc *db.DB) error {
+			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				type passRate struct {
 					CurrentSuccesses   int
 					CurrentRuns        int
@@ -480,18 +695,77 @@ func getBenchmarkCases(asOf time.Time) []benchmarkCase {
 				}
 				var result passRate
 				res := dbc.DB.Raw(query.QueryTestAnalysis,
-					time.Now().Add(-24*14*time.Hour),
+					asOf.Add(-24*14*time.Hour),
+					benchmarkRelease,
+					benchmarkRelease,
 					benchmarkTestName,
-					[]string{benchmarkJobName},
-					benchmarkRelease).Scan(&result)
+					[]string{benchmarkJobName}).Scan(&result)
 				if res.Error != nil {
-					return res.Error
+					return validationSnapshot{}, res.Error
 				}
 				log.Printf("TestAnalysisPassRate: %d/%d runs (%.1f%%)",
 					result.CurrentSuccesses, result.CurrentRuns, result.CurrentPassPercent)
-				return nil
+				return validationSnapshot{
+					RowCount: result.CurrentRuns,
+					SpotChecks: map[string]string{
+						"current_successes": strconv.Itoa(result.CurrentSuccesses),
+					},
+				}, nil
 			},
 		},
+	}
+	return append(cases, getJobRunsQueryCases()...)
+}
+
+func jobRunsQueryCase(name string, page int, sortField string, sortOrder apitype.Sort, filters func(time.Time) []filter.FilterItem) queryCase {
+	return queryCase{
+		name: name,
+		fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
+			filterItems := []filter.FilterItem{}
+			if filters != nil {
+				filterItems = filters(asOf)
+			}
+			result, err := api.JobsRunsReportFromDB(dbc, &filter.FilterOptions{
+				Filter:    &filter.Filter{Items: filterItems},
+				SortField: sortField,
+				Sort:      sortOrder,
+			}, benchmarkRelease, &apitype.Pagination{PerPage: 20, Page: page}, asOf)
+			if err != nil {
+				return validationSnapshot{}, err
+			}
+			log.Printf("%s: %d rows", name, result.TotalRows)
+			return validationSnapshot{RowCount: int(result.TotalRows)}, nil
+		},
+	}
+}
+
+func getJobRunsQueryCases() []queryCase {
+	return []queryCase{
+		jobRunsQueryCase("JobsRunsReport", 0, "", "", nil),
+		jobRunsQueryCase("JobsRunsReportExactJob", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "job", Operator: filter.OperatorEquals, Value: benchmarkJobName}}
+		}),
+		jobRunsQueryCase("JobsRunsReportVariant", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "variants", Operator: filter.OperatorHasEntry, Value: benchmarkVariant}}
+		}),
+		jobRunsQueryCase("JobsRunsReportCluster", 0, "", "", func(asOf time.Time) []filter.FilterItem {
+			return []filter.FilterItem{
+				{Field: "cluster", Operator: filter.OperatorEquals, Value: benchmarkCluster},
+				{Field: "name", Operator: filter.OperatorStartsWith, Value: "pull-ci", Not: true},
+				{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: asOf.Add(-14 * 24 * time.Hour).Format(time.RFC3339Nano)},
+			}
+		}),
+		jobRunsQueryCase("JobsRunsReportFailedTest", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "failed_test_names", Operator: filter.OperatorHasEntry, Value: benchmarkTestName}}
+		}),
+		jobRunsQueryCase("JobsRunsReportFlakedTest", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "flaked_test_names", Operator: filter.OperatorHasEntry, Value: benchmarkTestName}}
+		}),
+		jobRunsQueryCase("JobsRunsReportPRFilter", 0, "", "", func(_ time.Time) []filter.FilterItem {
+			return []filter.FilterItem{{Field: "pull_request_org", Operator: filter.OperatorEquals, Value: benchmarkPROrg}}
+		}),
+		jobRunsQueryCase("JobsRunsReportPRSort", 0, "pull_request_author", "asc", nil),
+		jobRunsQueryCase("JobsRunsReportSecondPage", 1, "timestamp", "desc", nil),
 	}
 }
 
@@ -533,7 +807,23 @@ func Test_BenchmarkIndividual(t *testing.T) {
 	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()
 	iterations := 3
-	cases := getBenchmarkCases(asOf)
+	cases := toBenchmarkCases(getQueryCases(), asOf)
+
+	var results []benchmarkResult
+	for _, bc := range cases {
+		t.Run(bc.name, func(t *testing.T) {
+			r := runBenchmarkCase(t, dbc, bc, iterations)
+			results = append(results, r)
+		})
+	}
+	printSummaryTable(t, results, connName)
+}
+
+func Test_BenchmarkJobRuns(t *testing.T) {
+	dbc, connName := getBenchmarkDBClient(t)
+	asOf := time.Now().UTC()
+	iterations := 3
+	cases := toBenchmarkCases(getJobRunsQueryCases(), asOf)
 
 	var results []benchmarkResult
 	for _, bc := range cases {
@@ -548,12 +838,35 @@ func Test_BenchmarkIndividual(t *testing.T) {
 func Test_BenchmarkFindTestsByRelease(t *testing.T) {
 	dbc, connName := getBenchmarkDBClient(t)
 	iterations := 1
-	bc, ok := getIndividualBenchmarkCases()["FindTestsByRelease"]
+	asOf := time.Now().UTC()
+	bc, ok := toBenchmarkCaseMap(getIndividualQueryCases(), asOf)["FindTestsByRelease"]
 	if !ok {
 		t.Fatal("benchmark case \"FindTestsByRelease\" not found")
 	}
 
 	r := runBenchmarkCase(t, dbc, bc, iterations)
+	printSummaryTable(t, []benchmarkResult{r}, connName)
+}
+
+func Test_BenchmarkFetchJobRunOnlyNewTests(t *testing.T) {
+	dbc, connName := getBenchmarkDBClient(t)
+	iterations := 3
+	asOf := time.Now().UTC()
+
+	var benchmark benchmarkCase
+	found := false
+	for _, bc := range toBenchmarkCases(getQueryCases(), asOf) {
+		if bc.name == "FetchJobRunOnlyNewTests" {
+			benchmark = bc
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("benchmark case \"FetchJobRunOnlyNewTests\" not found")
+	}
+
+	r := runBenchmarkCase(t, dbc, benchmark, iterations)
 	printSummaryTable(t, []benchmarkResult{r}, connName)
 }
 
@@ -563,14 +876,8 @@ func Test_BenchmarkCombined(t *testing.T) {
 	iterations := 3
 
 	var results []benchmarkResult
-	for _, bc := range getBenchmarkCases(asOf) {
+	for _, bc := range toBenchmarkCases(allQueryCases(), asOf) {
 		t.Run(bc.name, func(t *testing.T) {
-			r := runBenchmarkCase(t, dbc, bc, iterations)
-			results = append(results, r)
-		})
-	}
-	for name, bc := range getIndividualBenchmarkCases() {
-		t.Run(name, func(t *testing.T) {
 			r := runBenchmarkCase(t, dbc, bc, iterations)
 			results = append(results, r)
 		})
@@ -582,7 +889,7 @@ func Test_BenchmarkGroup(t *testing.T) {
 	dbc, connName := getBenchmarkDBClient(t)
 	asOf := time.Now().UTC()
 	iterations := 1
-	cases := getBenchmarkCases(asOf)
+	cases := toBenchmarkCases(getQueryCases(), asOf)
 
 	group := benchmarkResult{name: "group"}
 	for i := 0; i < iterations; i++ {
@@ -690,7 +997,7 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 			name: "MatviewTestReport7d",
 			fn: func(dbc *db.DB) error {
 				results, err := query.TestReportsByVariant(dbc, benchmarkRelease,
-					v1.CurrentReport, []string{benchmarkTestName}, nil)
+					v1.CurrentReport, query.TestNameMatches{Substrings: []string{benchmarkTestName}}, nil, false)
 				if err == nil {
 					log.Printf("MatviewTestReport7d: %d results", len(results))
 				}
@@ -701,7 +1008,7 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 			name: "MatviewTestReport2d",
 			fn: func(dbc *db.DB) error {
 				results, err := query.TestReportsByVariant(dbc, benchmarkRelease,
-					v1.TwoDayReport, []string{benchmarkTestName}, nil)
+					v1.TwoDayReport, query.TestNameMatches{Substrings: []string{benchmarkTestName}}, nil, false)
 				if err == nil {
 					log.Printf("MatviewTestReport2d: %d results", len(results))
 				}
@@ -731,75 +1038,14 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 			},
 		},
 		{
-			name: "MatviewFailedTestsByDay",
+			name: "AggregatedPayloadTestFailures",
 			fn: func(dbc *db.DB) error {
-				var prowJob models.ProwJob
-				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
+				results, err := api.GetPayloadStreamTestFailures(dbc, benchmarkRelease, "nightly", "amd64",
+					&filter.FilterOptions{Filter: &filter.Filter{}}, asOf)
+				if err != nil {
 					return err
 				}
-				type testResult struct {
-					Period   time.Time
-					TestName string
-					Count    int
-				}
-				var results []testResult
-				res := dbc.DB.Table("prow_job_failed_tests_by_day_matview").
-					Select("period, test_name, count").
-					Where("prow_job_id = ?", prowJob.ID).
-					Scan(&results)
-				if res.Error != nil {
-					return res.Error
-				}
-				log.Printf("MatviewFailedTestsByDay: %d results for job %s", len(results), benchmarkJobName)
-				return nil
-			},
-		},
-		{
-			name: "MatviewFailedTestsByHour",
-			fn: func(dbc *db.DB) error {
-				var prowJob models.ProwJob
-				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
-					return err
-				}
-				type testResult struct {
-					Period   time.Time
-					TestName string
-					Count    int
-				}
-				var results []testResult
-				res := dbc.DB.Table("prow_job_failed_tests_by_hour_matview").
-					Select("period, test_name, count").
-					Where("prow_job_id = ?", prowJob.ID).
-					Scan(&results)
-				if res.Error != nil {
-					return res.Error
-				}
-				log.Printf("MatviewFailedTestsByHour: %d results for job %s", len(results), benchmarkJobName)
-				return nil
-			},
-		},
-		{
-			name: "MatviewPayloadTestFailures",
-			fn: func(dbc *db.DB) error {
-				type payloadFailure struct {
-					Release       string
-					Architecture  string
-					Stream        string
-					ProwJobRunID  uint
-					TestID        uint
-					Name          string
-					ProwJobName   string
-					ProwJobRunURL string
-				}
-				var results []payloadFailure
-				res := dbc.DB.Table("payload_test_failures_14d_matview").
-					Where("release = ?", benchmarkRelease).
-					Limit(50).
-					Scan(&results)
-				if res.Error != nil {
-					return res.Error
-				}
-				log.Printf("MatviewPayloadTestFailures: %d results for release %s", len(results), benchmarkRelease)
+				log.Printf("AggregatedPayloadTestFailures: %d test analyses for release %s", len(results), benchmarkRelease)
 				return nil
 			},
 		},
@@ -913,15 +1159,19 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 						{Field: "current_flake_percentage", Operator: filter.OperatorArithmeticEquals, Value: "100", Not: true},
 					},
 				}
+				sample, base := query.PeriodsForReportType(v1.CurrentReport)
+				inner, err := query.TestReportQuery(dbc, benchmarkRelease, sample, base, query.TestNameMatches{})
+				if err != nil {
+					return err
+				}
 				rawQuery := dbc.DB.
-					Table("prow_test_report_7d_matview").
-					Where("release = ?", benchmarkRelease).
+					Table("(?) AS r", inner).
 					Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummer).
 					Group("suite_name, name, jira_component, jira_component_id")
 				rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
 
 				processedResults := dbc.DB.Table("(?) as results", rawQuery).
-					Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
+					Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
 					Where("current_runs > 0 or previous_runs > 0")
 
 				finalResults := dbc.DB.Table("(?) as final_results", processedResults)
@@ -944,7 +1194,7 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 					Filter: &filter.Filter{
 						Items: []filter.FilterItem{
 							{Field: "ran_test_names", Operator: filter.OperatorHasEntry, Value: benchmarkTestName},
-							{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: fmt.Sprintf("%d", asOf.Add(-14*24*time.Hour).UnixMilli())},
+							{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: asOf.Add(-14 * 24 * time.Hour).Format(time.RFC3339Nano)},
 							{Field: "variants", Operator: filter.OperatorHasEntry, Value: "never-stable", Not: true},
 							{Field: "variants", Operator: filter.OperatorHasEntry, Value: "aggregated", Not: true},
 						},
@@ -966,7 +1216,7 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 				filterOpts := &filter.FilterOptions{
 					Filter: &filter.Filter{
 						Items: []filter.FilterItem{
-							{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: fmt.Sprintf("%d", asOf.Add(-14*24*time.Hour).UnixMilli())},
+							{Field: "timestamp", Operator: filter.OperatorArithmeticGreaterThan, Value: asOf.Add(-14 * 24 * time.Hour).Format(time.RFC3339Nano)},
 							{Field: "variants", Operator: filter.OperatorHasEntry, Value: "never-stable", Not: true},
 							{Field: "variants", Operator: filter.OperatorHasEntry, Value: "aggregated", Not: true},
 						},
@@ -984,76 +1234,10 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 	}
 }
 
-func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
+func Test_BenchmarkCumulativeQueryTestsReport(t *testing.T) {
 	dbc, connName := getBenchmarkDBClient(t)
 
-	var source db.PostgresView
-	for _, mv := range db.PostgresMatViews {
-		if mv.Name == "prow_test_report_7d_matview" {
-			source = mv
-			break
-		}
-	}
-	if source.Name == "" {
-		t.Fatal("prow_test_report_7d_matview not found in PostgresMatViews")
-	}
-
-	matviewName := fmt.Sprintf("bench_test_report_7d_%s", strings.ReplaceAll(benchmarkRelease, ".", "_"))
-
-	viewDef := source.Definition
-	for k, v := range source.ReplaceStrings {
-		viewDef = strings.ReplaceAll(viewDef, k, v)
-	}
-	viewDef = strings.ReplaceAll(viewDef, "|||TIMENOW|||", "NOW()")
-
-	const tsPredicate = "prow_job_run_tests.prow_job_run_timestamp >="
-	if !strings.Contains(viewDef, tsPredicate) {
-		t.Fatalf("expected %q in %s definition", tsPredicate, source.Name)
-	}
-	viewDef = strings.Replace(viewDef,
-		tsPredicate,
-		fmt.Sprintf("prow_job_run_tests.prow_job_run_release = '%s'\n    AND %s", benchmarkRelease, tsPredicate),
-		1)
-
-	t.Cleanup(func() {
-		if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-			t.Logf("failed to drop materialized view %s during cleanup: %v", matviewName, err)
-		}
-	})
-	if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-		t.Fatalf("failed to drop pre-existing materialized view %s: %v", matviewName, err)
-	}
-
 	var results []benchmarkResult
-
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "CreateMatview",
-		fn: func(dbc *db.DB) error {
-			if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-				return err
-			}
-			res := dbc.DB.Exec(fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH DATA", matviewName, viewDef))
-			if res.Error != nil {
-				return res.Error
-			}
-			var count int64
-			if err := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matviewName)).Scan(&count).Error; err != nil {
-				return err
-			}
-			log.Printf("CreateMatview: %s populated with %d rows", matviewName, count)
-			return nil
-		},
-	}, 1))
-
-	indexName := fmt.Sprintf("idx_%s", matviewName)
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "CreateIndex",
-		fn: func(dbc *db.DB) error {
-			indexCols := strings.Join(source.IndexColumns, ", ")
-			res := dbc.DB.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, matviewName, indexCols))
-			return res.Error
-		},
-	}, 1))
 
 	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
 		name: "QueryAPITestsReport",
@@ -1071,15 +1255,19 @@ func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
 					{Field: "current_flake_percentage", Operator: filter.OperatorArithmeticEquals, Value: "100", Not: true},
 				},
 			}
+			sample, base := query.PeriodsForReportType(v1.CurrentReport)
+			inner, err := query.TestReportQuery(dbc, benchmarkRelease, sample, base, query.TestNameMatches{})
+			if err != nil {
+				return err
+			}
 			rawQuery := dbc.DB.
-				Table(matviewName).
-				Where("release = ?", benchmarkRelease).
+				Table("(?) AS r", inner).
 				Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummer).
 				Group("suite_name, name, jira_component, jira_component_id")
 			rawQuery = rawFilter.ToSQL(rawQuery, apitype.Test{})
 
 			processedResults := dbc.DB.Table("(?) as results", rawQuery).
-				Select("ROW_NUMBER() OVER() as id, suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
+				Select("suite_name, name, jira_component, jira_component_id, " + query.QueryTestSummarizer).
 				Where("current_runs > 0 or previous_runs > 0")
 
 			finalResults := dbc.DB.Table("(?) as final_results", processedResults)
@@ -1090,132 +1278,10 @@ func Test_BenchmarkSingleReleaseMatview(t *testing.T) {
 			if res.Error != nil {
 				return res.Error
 			}
-			log.Printf("QueryAPITestsReport: %d tests from %s", len(testReports), matviewName)
+			log.Printf("QueryAPITestsReport: %d tests from cumulative summaries", len(testReports))
 			return nil
 		},
 	}, 3))
-
-	printSummaryTable(t, results, connName)
-}
-
-func Test_BenchmarkJobRunsReportMatview(t *testing.T) {
-	dbc, connName := getBenchmarkDBClient(t)
-
-	var source db.PostgresView
-	for _, mv := range db.PostgresMatViews {
-		if mv.Name == "prow_job_runs_report_matview" {
-			source = mv
-			break
-		}
-	}
-	if source.Name == "" {
-		t.Fatal("prow_job_runs_report_matview not found in PostgresMatViews")
-	}
-
-	matviewName := "bench_job_runs_report"
-	viewDef := source.Definition
-	for k, v := range source.ReplaceStrings {
-		viewDef = strings.ReplaceAll(viewDef, k, v)
-	}
-	viewDef = strings.ReplaceAll(viewDef, "|||TIMENOW|||", "NOW()")
-
-	t.Cleanup(func() {
-		if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-			t.Logf("failed to drop materialized view %s during cleanup: %v", matviewName, err)
-		}
-	})
-	if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-		t.Fatalf("failed to drop pre-existing materialized view %s: %v", matviewName, err)
-	}
-
-	iterations := 1
-	var results []benchmarkResult
-
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "CreateMatview",
-		fn: func(dbc *db.DB) error {
-			if err := dbc.DB.Exec(fmt.Sprintf("DROP MATERIALIZED VIEW IF EXISTS %s", matviewName)).Error; err != nil {
-				return err
-			}
-			res := dbc.DB.Exec(fmt.Sprintf("CREATE MATERIALIZED VIEW %s AS %s WITH DATA", matviewName, viewDef))
-			if res.Error != nil {
-				return res.Error
-			}
-			var count int64
-			if err := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matviewName)).Scan(&count).Error; err != nil {
-				return err
-			}
-			log.Printf("CreateMatview: %s populated with %d rows", matviewName, count)
-			return nil
-		},
-	}, iterations))
-
-	indexName := fmt.Sprintf("idx_%s", matviewName)
-	indexCols := strings.Join(source.IndexColumns, ", ")
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "CreateIndex",
-		fn: func(dbc *db.DB) error {
-			dbc.DB.Exec(fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName))
-			res := dbc.DB.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, matviewName, indexCols))
-			return res.Error
-		},
-	}, iterations))
-
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "RefreshConcurrently",
-		fn: func(dbc *db.DB) error {
-			res := dbc.DB.Exec(fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", matviewName))
-			return res.Error
-		},
-	}, iterations))
-
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "QueryByRelease",
-		fn: func(dbc *db.DB) error {
-			var jobRuns []apitype.JobRun
-			res := dbc.DB.Table(matviewName).
-				Where("release = ?", benchmarkRelease).
-				Order("timestamp desc").
-				Limit(100).
-				Scan(&jobRuns)
-			if res.Error != nil {
-				return res.Error
-			}
-			log.Printf("QueryByRelease: %d rows from %s", len(jobRuns), matviewName)
-			return nil
-		},
-	}, iterations))
-
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "QueryByJob",
-		fn: func(dbc *db.DB) error {
-			var jobRuns []apitype.JobRun
-			res := dbc.DB.Table(matviewName).
-				Where("release = ? AND name = ?", benchmarkRelease, benchmarkJobName).
-				Order("timestamp desc").
-				Scan(&jobRuns)
-			if res.Error != nil {
-				return res.Error
-			}
-			log.Printf("QueryByJob: %d rows from %s", len(jobRuns), matviewName)
-			return nil
-		},
-	}, iterations))
-
-	results = append(results, runBenchmarkCase(t, dbc, benchmarkCase{
-		name: "CountWithFailures",
-		fn: func(dbc *db.DB) error {
-			var count int64
-			res := dbc.DB.Table(matviewName).
-				Where("release = ? AND test_failures > 0", benchmarkRelease).
-				Count(&count)
-			if res.Error != nil {
-				return res.Error
-			}
-			log.Printf("CountWithFailures: %d rows from %s", count, matviewName)
-			return nil
-		},
-	}, iterations))
 
 	printSummaryTable(t, results, connName)
 }
@@ -1230,8 +1296,7 @@ func Test_BenchmarkRefreshData(t *testing.T) {
 	r := runBenchmarkCase(t, dbc, benchmarkCase{
 		name: "RefreshData",
 		fn: func(dbc *db.DB) error {
-			sippyserver.RefreshData(dbc, nil, false)
-			return nil
+			return sippyserver.RefreshData(dbc, nil, sippyserver.RefreshOptions{})
 		},
 	}, 1)
 	printSummaryTable(t, []benchmarkResult{r}, connName)

@@ -39,6 +39,12 @@ func TestRegressionCacheLoader(t *testing.T) {
 
 	dbc := util.CreateE2EPostgresConnection(t)
 
+	// PostgreSQL is required: the test body reads releases from Postgres, builds a
+	// Postgres regression store, and queries dbc.DB directly.
+	if dbc == nil {
+		t.Skip("PostgreSQL is required for this regression cache loader test")
+	}
+
 	// Set up Redis cache client
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
@@ -62,16 +68,21 @@ func TestRegressionCacheLoader(t *testing.T) {
 	require.NoError(t, err, "error parsing seed views")
 	require.Greater(t, len(sippyViews.ComponentReadiness), 0, "no views found in seed-views.yaml")
 
-	// Get release configs from BigQuery
-	releaseConfigs, err := api.GetReleasesFromBigQuery(ctx, bqClient)
-	require.NoError(t, err, "error getting releases from bigquery")
+	// Get release configs from PostgreSQL
+	releaseConfigs, err := api.GetReleasesFromDB(ctx, dbc)
+	require.NoError(t, err, "error getting releases from postgres")
 
 	// Build a regression store
 	regressionStore := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
+	// Build the data provider using the default provider selection, which
+	// cascades to whichever backend is configured (BigQuery, Postgres, or both).
+	dataProvider, err := flags.NewDataProvider("default", bqClient, dbc, cacheClient)
+	require.NoError(t, err, "error creating data provider")
+
 	// Create and run the loader
 	loader, err := regressioncacheloader.New(
-		dbc, bqClient,
+		dbc, dataProvider,
 		&configv1.SippyConfig{},
 		sippyViews.ComponentReadiness,
 		releaseConfigs,

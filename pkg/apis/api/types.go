@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"time"
 
-	bq "cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
@@ -107,6 +107,10 @@ func (r Repository) GetNumericalValue(param string) (float64, error) {
 	}
 }
 
+func (r Repository) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
+}
+
 func (r Repository) GetArrayValue(param string) ([]string, error) {
 	return nil, fmt.Errorf("unknown array value field %s", param)
 }
@@ -184,10 +188,20 @@ func (pr PullRequest) GetNumericalValue(param string) (float64, error) {
 		return float64(pr.ID), nil
 	case "number":
 		return float64(pr.Number), nil
-	case "merged_at":
-		return float64(pr.MergedAt.Unix()), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (pr PullRequest) GetTimestampValue(param string) (time.Time, error) {
+	switch param {
+	case "merged_at":
+		if pr.MergedAt != nil {
+			return *pr.MergedAt, nil
+		}
+		return time.Time{}, nil
+	default:
+		return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
 	}
 }
 
@@ -241,6 +255,9 @@ type Job struct {
 	PreviousInfraFails              int     `json:"previous_infra_fails,omitempty"`
 	NetImprovement                  float64 `json:"net_improvement"`
 
+	CurrentAverageDurationMinutes  int `json:"current_average_duration_minutes"`
+	PreviousAverageDurationMinutes int `json:"previous_average_duration_minutes"`
+
 	TestGridURL string `json:"test_grid_url"`
 	OpenBugs    int    `json:"open_bugs"`
 }
@@ -267,6 +284,8 @@ func (job Job) GetFieldType(param string) ColumnType {
 	//nolint:goconst
 	case "test_grid_url":
 		return ColumnTypeString
+	case "last_pass":
+		return ColumnTypeTimestamp
 	default:
 		return ColumnTypeNumerical
 	}
@@ -313,10 +332,24 @@ func (job Job) GetNumericalValue(param string) (float64, error) {
 		return float64(job.OpenBugs), nil
 	case "average_runs_to_merge":
 		return job.AverageRetestsToMerge, nil
-	case "last_pass":
-		return float64(job.LastPass.Unix()), nil
+	case "current_average_duration_minutes":
+		return float64(job.CurrentAverageDurationMinutes), nil
+	case "previous_average_duration_minutes":
+		return float64(job.PreviousAverageDurationMinutes), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (job Job) GetTimestampValue(param string) (time.Time, error) {
+	switch param {
+	case "last_pass":
+		if job.LastPass == nil {
+			return time.Time{}, nil
+		}
+		return *job.LastPass, nil
+	default:
+		return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
 	}
 }
 
@@ -336,7 +369,7 @@ type JobRun struct {
 	Variants              pq.StringArray      `json:"variants" gorm:"type:text[]"`
 	Tags                  pq.StringArray      `json:"tags" gorm:"type:text[]"`
 	TestGridURL           string              `json:"test_grid_url"`
-	ProwID                uint                `json:"prow_id"`
+	ProwID                string              `json:"prow_id"`
 	Job                   string              `json:"job"`
 	Cluster               string              `json:"cluster"`
 	URL                   string              `json:"url"`
@@ -348,7 +381,7 @@ type JobRun struct {
 	InfrastructureFailure bool                `json:"infrastructure_failure"`
 	KnownFailure          bool                `json:"known_failure"`
 	Succeeded             bool                `json:"succeeded"`
-	Timestamp             int                 `json:"timestamp"`
+	Timestamp             time.Time           `json:"timestamp"`
 	OverallResult         v1.JobOverallResult `json:"overall_result"`
 	PullRequestOrg        string              `json:"pull_request_org"`
 	PullRequestRepo       string              `json:"pull_request_repo"`
@@ -387,7 +420,7 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 	case "test_grid_url":
 		return ColumnTypeString
 	case "timestamp":
-		return ColumnTypeNumerical
+		return ColumnTypeTimestamp
 	case "pull_request_org":
 		return ColumnTypeString
 	case "pull_request_repo":
@@ -434,10 +467,17 @@ func (run JobRun) GetNumericalValue(param string) (float64, error) {
 		return float64(run.ID), nil
 	case "test_failures":
 		return float64(run.TestFailures), nil
-	case "timestamp":
-		return float64(run.Timestamp), nil
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (run JobRun) GetTimestampValue(param string) (time.Time, error) {
+	switch param {
+	case "timestamp":
+		return run.Timestamp, nil
+	default:
+		return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
 	}
 }
 
@@ -458,14 +498,14 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 	}
 }
 
-// Test contains the full accounting of a test's history, with a synthetic ID. The format
+// Test contains the full accounting of a test's history. The format
 // of this struct is suitable for use in a data table.
 type Test struct {
-	ID        int            `json:"id,omitempty"`
-	Name      string         `json:"name"`
-	SuiteName string         `json:"suite_name"`
-	Variant   string         `json:"variant,omitempty"`
-	Variants  pq.StringArray `json:"variants" gorm:"type:text[]"`
+	Name       string         `json:"name"`
+	SuiteName  string         `json:"suite_name"`
+	Variant    string         `json:"variant,omitempty"`
+	Variants   pq.StringArray `json:"variants" gorm:"type:text[]"`
+	Lifecycles pq.StringArray `json:"lifecycles,omitempty" gorm:"type:text[]"`
 
 	JiraComponent   string `json:"jira_component"`
 	JiraComponentID int    `json:"jira_component_id"`
@@ -517,6 +557,8 @@ func (test Test) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "variants":
 		return ColumnTypeArray
+	case "lifecycles":
+		return ColumnTypeArray
 	default:
 		return ColumnTypeNumerical
 	}
@@ -536,8 +578,6 @@ func (test Test) GetStringValue(param string) (string, error) {
 // nolint:gocyclo
 func (test Test) GetNumericalValue(param string) (float64, error) {
 	switch param {
-	case "id":
-		return float64(test.ID), nil
 	case "current_successes":
 		return float64(test.CurrentSuccesses), nil
 	case "current_failures":
@@ -603,26 +643,32 @@ func (test Test) GetNumericalValue(param string) (float64, error) {
 	}
 }
 
+func (test Test) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
+}
+
 func (test Test) GetArrayValue(param string) ([]string, error) {
 	switch param {
 	case "tags":
 		return test.Tags, nil
 	case "variants":
 		return test.Variants, nil
+	case "lifecycles":
+		return test.Lifecycles, nil
 	default:
 		return nil, fmt.Errorf("unknown array value field %s", param)
 	}
 }
 
-// TestBQ contains the full accounting of a test's history, with a synthetic ID. The format
+// TestBQ contains the full accounting of a test's history. The format
 // of this struct is suitable for use in a data table.
 type TestBQ struct {
-	ID        int            `json:"id,omitempty" bigquery:"id"`
-	TestID    string         `json:"test_id" bigquery:"test_id"`
-	Name      string         `json:"name" bigquery:"name"`
-	SuiteName string         `json:"suite_name" bigquery:"suite_name"`
-	Variant   string         `json:"variant,omitempty" bigquery:"variant"`
-	Variants  pq.StringArray `json:"variants" gorm:"type:text[]" bigquery:"variants"`
+	TestID     string         `json:"test_id" bigquery:"test_id"`
+	Name       string         `json:"name" bigquery:"name"`
+	SuiteName  string         `json:"suite_name" bigquery:"suite_name"`
+	Variant    string         `json:"variant,omitempty" bigquery:"variant"`
+	Variants   pq.StringArray `json:"variants" gorm:"type:text[]" bigquery:"variants"`
+	Lifecycles pq.StringArray `json:"lifecycles,omitempty" gorm:"type:text[]" bigquery:"lifecycles"`
 
 	JiraComponent   string   `json:"jira_component" bigquery:"jira_component"`
 	JiraComponentID *big.Rat `json:"jira_component_id" bigquery:"jira_component_id"`
@@ -674,6 +720,8 @@ func (test TestBQ) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "variants":
 		return ColumnTypeArray
+	case "lifecycles":
+		return ColumnTypeArray
 	default:
 		return ColumnTypeNumerical
 	}
@@ -693,8 +741,6 @@ func (test TestBQ) GetStringValue(param string) (string, error) {
 // nolint:gocyclo
 func (test TestBQ) GetNumericalValue(param string) (float64, error) {
 	switch param {
-	case "id":
-		return float64(test.ID), nil
 	case "current_successes":
 		return float64(test.CurrentSuccesses), nil
 	case "current_failures":
@@ -760,12 +806,18 @@ func (test TestBQ) GetNumericalValue(param string) (float64, error) {
 	}
 }
 
+func (test TestBQ) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
+}
+
 func (test TestBQ) GetArrayValue(param string) ([]string, error) {
 	switch param {
 	case "tags":
 		return test.Tags, nil
 	case "variants":
 		return test.Variants, nil
+	case "lifecycles":
+		return test.Lifecycles, nil
 	default:
 		return nil, fmt.Errorf("unknown array value field %s", param)
 	}
@@ -837,7 +889,7 @@ type TestFailureAnalysis struct {
 	// BlockerScoreReasons explain to humans why the blocker_score was given.
 	BlockerScoreReasons []string `json:"blocker_score_reasons"`
 
-	// FailedPayloads contains information about where this test failed in a specific rejected payload.
+	// FailedPayloads contains information about where this test failed in a specific payload.
 	FailedPayloads map[string]*FailedPayload `json:"failed_payloads"`
 }
 
@@ -850,21 +902,21 @@ type FailedPayload struct {
 
 // JobPayload represents the payload release tag information for a job run.
 type JobPayload struct {
-	ProwjobJobName string        `json:"prowjob_job_name" bigquery:"prowjob_job_name"`
-	Payload        bq.NullString `json:"payload" bigquery:"release_verify_tag"`
-	ProwjobBuildID string        `json:"prowjob_build_id" bigquery:"prowjob_build_id"`
+	ProwjobJobName string  `json:"prowjob_job_name"`
+	Payload        *string `json:"payload"`
+	ProwjobBuildID string  `json:"prowjob_build_id"`
 }
 
 // CalendarEvent is an API type representing a FullCalendar.io event type, for use
 // with calendering.
 type CalendarEvent struct {
-	Title   string `json:"title"`
-	Start   string `json:"start"`
-	End     string `json:"end"`
-	AllDay  bool   `json:"allDay"`
-	Display string `json:"display,omitempty"`
-	Phase   string `json:"phase"`
-	JIRA    string `json:"jira"`
+	Title   string     `json:"title"`
+	Start   time.Time  `json:"start"`
+	End     *time.Time `json:"end,omitempty"`
+	AllDay  bool       `json:"allDay"`
+	Display string     `json:"display,omitempty"`
+	Phase   string     `json:"phase"`
+	JIRA    string     `json:"jira"`
 }
 
 type BuildClusterHealthAnalysis struct {
@@ -900,8 +952,8 @@ type TestOutputBigQuery struct {
 }
 
 type ReleaseDates struct {
-	GA               *time.Time `json:"ga,omitempty"`
-	DevelopmentStart *time.Time `json:"development_start,omitempty"`
+	GA               *civil.Date `json:"ga,omitempty"`
+	DevelopmentStart *civil.Date `json:"development_start,omitempty"`
 }
 type Release struct { // this is the Release that goes out to the UI
 	Name string `json:"name"`
@@ -912,7 +964,7 @@ type Release struct { // this is the Release that goes out to the UI
 }
 type Releases struct {
 	Releases          []string                `json:"releases"`
-	DeprecatedGADates map[string]time.Time    `json:"ga_dates"`
+	DeprecatedGADates map[string]civil.Date   `json:"ga_dates"`
 	Dates             map[string]ReleaseDates `json:"dates"`
 	LastUpdated       time.Time               `json:"last_updated"`
 	ReleaseAttrs      map[string]Release      `json:"release_attrs"`
@@ -1020,19 +1072,80 @@ type DisruptionReportRow struct {
 	OS                       string  `json:"os"`
 }
 
+type BackendDisruptionRunRow struct {
+	BackendName        string     `json:"backend_name"`
+	DisruptionSeconds  int        `json:"disruption_seconds"`
+	JobName            string     `json:"job_name"`
+	JobRunName         string     `json:"job_run_name"`
+	JobRunStartTime    *time.Time `json:"job_run_start_time"`
+	JobRunEndTime      *time.Time `json:"job_run_end_time"`
+	Cluster            string     `json:"cluster"`
+	ReleaseTag         string     `json:"release_tag"`
+	MasterNodesUpdated string     `json:"master_nodes_updated"`
+	JobRunStatus       string     `json:"job_run_status"`
+}
+
+type BackendDisruptionRunsResult struct {
+	Rows  []BackendDisruptionRunRow `json:"rows"`
+	Links map[string]string         `json:"links,omitempty"`
+}
+
 type SippyViews struct {
 	ComponentReadiness []crview.View `json:"component_readiness" yaml:"component_readiness"`
 }
 
 type FeatureGate struct {
-	ID               int            `json:"id"`
-	FeatureGate      string         `json:"feature_gate"`
-	Release          string         `json:"release"`
-	UniqueTestCount  int64          `json:"unique_test_count"`
-	FirstSeenIn      string         `json:"first_seen_in"`
-	FirstSeenInMajor int64          `json:"first_seen_in_major"`
-	FirstSeenInMinor int64          `json:"first_seen_in_minor"`
-	Enabled          pq.StringArray `json:"enabled" gorm:"type:text[]"`
+	ID               int                   `json:"id"`
+	FeatureGate      string                `json:"feature_gate"`
+	Release          string                `json:"release"`
+	UniqueTestCount  int64                 `json:"unique_test_count"`
+	FirstSeenIn      string                `json:"first_seen_in"`
+	FirstSeenInMajor int64                 `json:"first_seen_in_major"`
+	FirstSeenInMinor int64                 `json:"first_seen_in_minor"`
+	Enabled          pq.StringArray        `json:"enabled" gorm:"type:text[]"`
+	MatchingJobs     []string              `json:"matching_jobs" gorm:"-"`
+	Promotion        *FeatureGatePromotion `json:"promotion,omitempty" gorm:"-"`
+	Links            map[string]string     `json:"links,omitempty" gorm:"-"`
+}
+
+// FeatureGatePromotion represents promotion readiness data included in the detail response.
+type FeatureGatePromotion struct {
+	Sufficient                bool                                  `json:"sufficient"`
+	ResultsByVariant          []FeatureGateVariantResult            `json:"results_by_variant"`
+	CapabilityTestRegressions []FeatureGateCapabilityTestRegression `json:"capability_test_regressions,omitempty"`
+	Warnings                  []string                              `json:"warnings"`
+	Errors                    []string                              `json:"errors"`
+}
+
+// FeatureGateCapabilityTestRegression represents a test in a job owned by this
+// feature gate that has a pass rate below the required threshold.
+type FeatureGateCapabilityTestRegression struct {
+	TestName          string  `json:"test_name"`
+	WorkingPercentage float64 `json:"working_percentage"`
+	Ignored           bool    `json:"ignored"`
+	IgnoredReason     string  `json:"ignored_reason,omitempty"`
+}
+
+// FeatureGateVariantResult represents the promotion readiness for a single variant combination.
+type FeatureGateVariantResult struct {
+	Variants    map[string]string       `json:"variants"`
+	Optional    bool                    `json:"optional"`
+	Sufficient  bool                    `json:"sufficient"`
+	TestResults []FeatureGateTestResult `json:"test_results"`
+	Warnings    []string                `json:"warnings,omitempty"`
+	Errors      []string                `json:"errors,omitempty"`
+}
+
+// FeatureGateTestResult represents the test run statistics for a single test on a single variant.
+type FeatureGateTestResult struct {
+	TestName       string            `json:"test_name"`
+	TotalRuns      int               `json:"total_runs"`
+	SuccessfulRuns int               `json:"successful_runs"`
+	FailedRuns     int               `json:"failed_runs"`
+	FlakedRuns     int               `json:"flaked_runs"`
+	PassPercent    float32           `json:"pass_percent"`
+	Sufficient     bool              `json:"sufficient"`
+	Links          map[string]string `json:"links,omitempty"`
 }
 
 func (fg FeatureGate) GetFieldType(param string) ColumnType {
@@ -1072,6 +1185,10 @@ func (fg FeatureGate) GetNumericalValue(param string) (float64, error) {
 	default:
 		return 0, fmt.Errorf("unknown numerical field %s", param)
 	}
+}
+
+func (fg FeatureGate) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
 }
 
 func (fg FeatureGate) GetArrayValue(param string) ([]string, error) {

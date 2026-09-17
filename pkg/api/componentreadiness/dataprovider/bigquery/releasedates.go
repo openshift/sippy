@@ -2,6 +2,7 @@ package bigquery
 
 import (
 	"context"
+	"time"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
@@ -34,9 +35,10 @@ func (c *releaseDateQuerier) QueryReleaseDates(ctx context.Context) ([]crtest.Re
 	for _, release := range releases {
 		timeRange := crtest.ReleaseTimeRange{Release: release.Release}
 		if release.GADate != nil {
-			prior := util.AdjustReleaseTime(*release.GADate, true, "30", c.reqOptions.CacheOption.CRTimeRoundingFactor, c.reqOptions.CacheOption.CRTimeRoundingOffset)
+			gaTime := release.GADate.In(time.UTC)
+			prior := util.AdjustReleaseTime(gaTime, true, "30", c.reqOptions.CacheOption.CRTimeRoundingFactor, c.reqOptions.CacheOption.CRTimeRoundingOffset)
 			timeRange.Start = &prior
-			timeRange.End = release.GADate
+			timeRange.End = &gaTime
 		}
 		timeRanges = append(timeRanges, timeRange)
 	}

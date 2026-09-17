@@ -32,11 +32,14 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader"
 	"github.com/openshift/sippy/pkg/dataloader/bugloader"
+	"github.com/openshift/sippy/pkg/dataloader/gateststatus"
 	"github.com/openshift/sippy/pkg/dataloader/jiraloader"
 	"github.com/openshift/sippy/pkg/dataloader/loaderwithmetrics"
+	"github.com/openshift/sippy/pkg/dataloader/prmergesyncloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
+	releasedefloader "github.com/openshift/sippy/pkg/dataloader/releasedefloader"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/dataloader/testownershiploader"
 	"github.com/openshift/sippy/pkg/db"
@@ -65,6 +68,12 @@ type LoadFlags struct {
 	LogLevel                string
 	ProwLoadSince           string
 	SkipMatviewRefresh      bool
+	ForceGARefresh          bool
+	// DataProvider selects the component readiness data backend used by the
+	// regression cache loader: "default" (auto-select from the configured
+	// clients), "bigquery", or "postgres" (PostgreSQL-only, requires no BigQuery
+	// credentials). See flags.NewDataProvider for the selection logic.
+	DataProvider string
 }
 
 // want a single total load and refresh time
@@ -99,13 +108,15 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.JiraFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
-	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates"}, "Which data sources to use for data loading")
+	fs.StringArrayVar(&f.Loaders, "loader", []string{"release-definitions", "pr-merge-sync", "prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "ga-test-status"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
 	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
 	fs.StringVar(&f.LogLevel, "log-level", "info", "Log level")
 	fs.StringVar(&f.ProwLoadSince, "prow-load-since", "", "Override how far back to load prow jobs (e.g. 2024-01-15T00:00:00Z or 72h for 72 hours ago)")
 	fs.BoolVar(&f.SkipMatviewRefresh, "skip-matview-refresh", false, "Skip refreshing materialized views after loading")
+	fs.BoolVar(&f.ForceGARefresh, "force-ga-refresh", false, "Force re-population of GA test status data from BigQuery")
+	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider for component readiness regression cache loading: default (auto-select from the configured clients), bigquery, or postgres (PostgreSQL-only, requires no BigQuery credentials)")
 }
 
 // nolint:gocyclo
@@ -151,8 +162,6 @@ func NewLoadCommand() *cobra.Command {
 				cacheClient = nil // error hygiene, since we pass this down to quite a few functions
 			}
 
-			releaseConfigs := []sippyv1.Release{}
-
 			// initializing a bigquery client different from the normal one
 			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "load")
 			bqc, bigqueryErr := bqcachedclient.New(
@@ -163,9 +172,22 @@ func NewLoadCommand() *cobra.Command {
 				if f.CacheFlags.EnablePersistentCaching {
 					bqc = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqc)
 				}
+			}
+
+			// Read release definitions from PG for downstream loader construction.
+			// Falls back to BQ if PG is empty (e.g., first run before the
+			// release-definitions loader has populated the table).
+			releaseConfigs := []sippyv1.Release{}
+			if dbErr == nil {
+				releaseConfigs, err = api.GetReleasesFromDB(context.Background(), dbc)
+				if err != nil {
+					return errors.Wrapf(err, "error querying release definitions from postgres")
+				}
+			}
+			if len(releaseConfigs) == 0 && bigqueryErr == nil {
 				releaseConfigs, err = api.GetReleasesFromBigQuery(context.Background(), bqc)
 				if err != nil {
-					return errors.Wrapf(err, "error querying releases from bq")
+					return errors.Wrapf(err, "error querying releases from bigquery")
 				}
 			}
 
@@ -200,6 +222,17 @@ func NewLoadCommand() *cobra.Command {
 
 			var regressionCacheAdded bool
 			for _, l := range f.Loaders {
+				if l == "release-definitions" {
+					if bigqueryErr != nil {
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents release-definitions loading")
+					}
+					if dbErr != nil {
+						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents release-definitions loading")
+					}
+					rdl := releasedefloader.NewReleaseDefinitionLoader(ctx, dbc, bqc)
+					loaders = append(loaders, rdl)
+				}
+
 				// TODO: remove "component-readiness-cache" and "regression-tracker" once the cronjob
 				// manifests are updated to use "regression-cache".
 				if l == "component-readiness-cache" || l == "regression-tracker" || l == "regression-cache" {
@@ -208,8 +241,17 @@ func NewLoadCommand() *cobra.Command {
 					}
 					regressionCacheAdded = true
 
+					// A BigQuery client error is only fatal here when credentials were
+					// actually provided (i.e. the supplied credentials are broken). When no
+					// BigQuery credentials are configured, allow PG-only mode by passing a nil
+					// BigQuery client to flags.NewDataProvider below and letting its cascade
+					// select an available provider (or return a clear, provider-specific error).
+					bqClient := bqc
 					if bigqueryErr != nil {
-						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents regression-cache loading")
+						if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
+							return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents regression-cache loading")
+						}
+						bqClient = nil
 					}
 					if dbErr != nil {
 						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents regression-cache loading")
@@ -235,8 +277,13 @@ func NewLoadCommand() *cobra.Command {
 					}
 					regressionStore := componentreadiness.NewPostgresRegressionStore(dbc, jiraClient)
 
+					crDataProvider, err := flags.NewDataProvider(f.DataProvider, bqClient, dbc, cacheClient)
+					if err != nil {
+						return errors.Wrap(err, "error creating data provider for regression cache loader")
+					}
+
 					rcl, err := regressioncacheloader.New(
-						dbc, bqc, config, views.ComponentReadiness, releaseConfigs,
+						dbc, crDataProvider, config, views.ComponentReadiness, releaseConfigs,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor,
 						f.ComponentReadinessFlags.CRTimeRoundingOffset,
 						regressionStore,
@@ -252,6 +299,14 @@ func NewLoadCommand() *cobra.Command {
 						return dbErr
 					}
 					loaders = append(loaders, releaseloader.New(ctx, dbc, bqc, f.Releases, f.Architectures, releaseConfigs))
+				}
+
+				if l == "pr-merge-sync" {
+					if dbErr != nil {
+						return dbErr
+					}
+					ghClient := github.New(ctx, github.OpenshiftOrg)
+					loaders = append(loaders, prmergesyncloader.New(ctx, dbc, ghClient))
 				}
 
 				// Prow Loader
@@ -299,9 +354,9 @@ func NewLoadCommand() *cobra.Command {
 						return dbErr
 					}
 					if bigqueryErr != nil {
-						return errors.WithMessage(err, "could not get bigquery client")
+						return errors.WithMessage(bigqueryErr, "could not get bigquery client")
 					}
-					loaders = append(loaders, bugloader.New(dbc, bqc))
+					loaders = append(loaders, bugloader.New(ctx, dbc, bqc))
 				}
 
 				// Load Job Variants into BigQuery
@@ -318,7 +373,7 @@ func NewLoadCommand() *cobra.Command {
 				if l == "sync-variants" {
 					refreshMatviews = true
 					if bigqueryErr != nil {
-						return errors.WithMessage(err, "could not get bigquery client")
+						return errors.WithMessage(bigqueryErr, "could not get bigquery client")
 					}
 					vs, err := variantsyncer.New(dbc, bqc)
 					if err != nil {
@@ -330,8 +385,23 @@ func NewLoadCommand() *cobra.Command {
 				// Feature gates
 				if l == "feature-gates" {
 					refreshMatviews = true
-					fgLoader := featuregateloader.New(dbc, releaseConfigs)
+					if dbErr != nil {
+						return dbErr
+					}
+					ghc := github.New(ctx, github.OpenshiftOrg)
+					fgLoader := featuregateloader.New(ctx, dbc, ghc.APIClient(), releaseConfigs)
 					loaders = append(loaders, fgLoader)
+				}
+
+				if l == "ga-test-status" {
+					refreshMatviews = true
+					if bigqueryErr != nil {
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents ga-test-status loading")
+					}
+					if dbErr != nil {
+						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents ga-test-status loading")
+					}
+					loaders = append(loaders, gateststatus.New(ctx, dbc, bqc, f.ForceGARefresh, f.Releases))
 				}
 
 			}
@@ -347,7 +417,10 @@ func NewLoadCommand() *cobra.Command {
 			log.WithField("elapsed", elapsed).Info("database load complete")
 
 			if refreshMatviews && !f.SkipMatviewRefresh {
-				sippyserver.RefreshData(dbc, cacheClient, false)
+				if err := sippyserver.RefreshData(dbc, cacheClient, sippyserver.RefreshOptions{}); err != nil {
+					log.WithError(err).Error("refresh failed")
+					allErrs = append(allErrs, err)
+				}
 			}
 
 			elapsed = time.Since(start)

@@ -18,5 +18,10 @@ applyTo: "**"
   purpose, data flow, and key code locations; keep them accurate as
   the implementation evolves. If you add a new major feature, create a
   new doc in `docs/features/`.
-* Documentation and code belong in the same PR — never treat a docs update
+* Documentation and code belong in the same PR; never treat a docs update
   as a follow-up task.
+* Do not use em dashes when writing docs. Use commas, parentheses, or periods instead.
+* Files under `pkg/**/jobrunscan**/`, `pkg/**/jobrunannotator**/`, `pkg/api/jobartifacts/**`, and
+  `sippy-ng/src/component_readiness/JobArtifactQuery.js` are part of the symptoms feature documented
+  in `docs/features/job-analysis-symptoms.md`. Update this document when there are changes to data
+  models, API surface, or data flow in the symptoms feature.

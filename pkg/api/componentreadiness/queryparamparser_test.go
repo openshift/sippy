@@ -16,9 +16,9 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var (
@@ -32,8 +32,8 @@ var (
 func TestParseComponentReportRequest(t *testing.T) {
 
 	releases := []v1.Release{
-		{Release: "4.16", Status: "", GADate: util.DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
-		{Release: "4.15", Status: "", GADate: util.DatePtr(2024, 2, 28, 0, 0, 0, 0, time.UTC)},
+		{Release: "4.16", Status: "", GADate: util.CivilDatePtr(2024, time.June, 27)},
+		{Release: "4.15", Status: "", GADate: util.CivilDatePtr(2024, time.February, 28)},
 	}
 
 	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
@@ -91,8 +91,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			"Topology":     {"single"},
 		},
 		// also remove Topology from columnGroupBy and dbGroupBy
-		ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-		DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
+		ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+		DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
 	}
 
 	views := []crview.View{
@@ -113,13 +113,14 @@ func TestParseComponentReportRequest(t *testing.T) {
 		queryParams [][]string
 
 		// expected outputs
-		baseRelease    reqopts.Release
-		sampleRelease  reqopts.Release
-		testIDOption   reqopts.TestIdentification
-		variantOption  reqopts.Variants
-		advancedOption reqopts.Advanced
-		cacheOption    cache.RequestOptions
-		errMessage     string
+		baseRelease     reqopts.Release
+		sampleRelease   reqopts.Release
+		testIDOption    reqopts.TestIdentification
+		variantOption   reqopts.Variants
+		advancedOption  reqopts.Advanced
+		cacheOption     cache.RequestOptions
+		includeAllTests bool
+		errMessage      string
 	}{
 		{
 			name: "normal query params",
@@ -132,6 +133,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"dbGroupBy", "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Installer"},
 				{"ignoreDisruption", "true"},
 				{"ignoreMissing", "false"},
+				{"includeAllTests", "true"},
 				{"minFail", "3"},
 				{"pity", "5"},
 				{"sampleEndTime", "2024-04-11T23:59:59Z"},
@@ -142,9 +144,10 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:ipi"},
 				{"includeVariant", "Installer:upi"},
 			},
+			includeAllTests: true,
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"FeatureSet":   {"default"},
@@ -201,8 +204,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:upi"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"FeatureSet":   {"default"},
@@ -243,8 +246,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"view", "4.17-main"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"FeatureSet":   {"default", "techpreview"},
@@ -295,8 +298,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Topology:single"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
 				// URL params completely replace view's includeVariants
 				IncludeVariants: map[string][]string{
 					"Platform": {"gcp"},
@@ -356,8 +359,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"compareVariant", "Topology:single"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Network", "FeatureSet", "Upgrade", "Installer"),
+				ColumnGroupBy: sets.New("Platform", "Network"),
+				DBGroupBy:     sets.New("Platform", "Network", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64", "arm64"},
 					"Topology":     {"ha"},
@@ -406,8 +409,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"view", "4.17-cross"},
 			},
 			variantOption: reqopts.Variants{
-				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
+				ColumnGroupBy: sets.New("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.New("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"Installer":    {"ipi", "upi"},
@@ -473,6 +476,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				assert.Equal(t, tc.variantOption, options.VariantOption)
 				assert.Equal(t, tc.advancedOption, options.AdvancedOption)
 				assert.Equal(t, tc.cacheOption, options.CacheOption)
+				assert.Equal(t, tc.includeAllTests, options.IncludeAllTests)
 				if tc.errMessage != "" {
 					assert.Error(t, err)
 					assert.True(t, strings.Contains(err.Error(), tc.errMessage))
@@ -491,8 +495,8 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 	roundingOffset := 4 * time.Hour
 
 	releases := []v1.Release{
-		{Release: "4.16", Status: "", GADate: util.DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
-		{Release: "4.17", Status: "", GADate: util.DatePtr(2024, 12, 10, 0, 0, 0, 0, time.UTC)},
+		{Release: "4.16", Status: "", GADate: util.CivilDatePtr(2024, time.June, 27)},
+		{Release: "4.17", Status: "", GADate: util.CivilDatePtr(2024, time.December, 10)},
 	}
 
 	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
@@ -579,6 +583,7 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 		"TestComponent",
 		"TestCapability",
 		[]string{"Architecture:amd64", "Platform:aws"},
+		"",
 		"",
 	)
 	require.NoError(t, err)

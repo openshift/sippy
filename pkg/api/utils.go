@@ -1,55 +1,18 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
-	log "github.com/sirupsen/logrus"
-
-	"github.com/openshift/sippy/pkg/apis/cache"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	bqclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-type releaseGenerator struct {
-	client *bqclient.Client
-}
-
-func (r *releaseGenerator) ListReleases(ctx context.Context) ([]v1.Release, []error) {
-	releases, err := GetReleasesFromBigQuery(ctx, r.client)
-	if err != nil {
-		log.WithError(err).Error("error getting releases from bigquery")
-		return releases, []error{err}
-	}
-	return releases, nil
-}
-
-// GetReleases gets all the releases defined in the BQ Releases table.
-func GetReleases(ctx context.Context, bqc *bqclient.Client, forceRefresh bool) ([]v1.Release, error) {
-	releaseGen := releaseGenerator{bqc}
-
-	var err error
-	rels, errs := GetDataFromCacheOrGenerate[[]v1.Release](
-		ctx,
-		bqc.Cache,
-		cache.RequestOptions{ForceRefresh: forceRefresh},
-		NewCacheSpec(v1.Release{}, "Releases~", nil), // no cache options needed here, global list
-		releaseGen.ListReleases,
-		[]v1.Release{})
-	if len(errs) > 0 {
-		err = errs[0]
-	}
-	return rels, err
-}
-
 // VariantsStringToSet converts comma separated variant string into a set; also validates that the variants are known
-func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString string) (sets.String, error) {
-	variantSet := sets.String{}
+func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString string) (sets.Set[string], error) {
+	variantSet := sets.New[string]()
 	if variantsString == "" {
 		return variantSet, nil
 	}
@@ -57,7 +20,7 @@ func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString strin
 	for _, v := range variants {
 		// ensure the variant is one we've recorded in BQ, not just some random string
 		if _, ok := allJobVariants.Variants[v]; !ok {
-			return variantSet, fmt.Errorf("invalid variant %s in variants string %s", v, variantsString)
+			return variantSet, &ValidationError{Message: fmt.Sprintf("invalid variant %s in variants string %s", v, variantsString)}
 		}
 		variantSet.Insert(v)
 	}
@@ -70,27 +33,27 @@ func VariantListToMap(allJobVariants crtest.JobVariants, variants []string) (map
 	variantsMap := map[string][]string{}
 	var err error
 	for _, variant := range variants {
-		kv := strings.Split(variant, ":")
-		if len(kv) != 2 {
-			err = fmt.Errorf("invalid variant %s in list", variant)
+		key, value := crtest.VariantStringToKeyValue(variant)
+		if key == "" {
+			err = &ValidationError{Message: fmt.Sprintf("invalid variant %s in list", variant)}
 			return variantsMap, err
 		}
 		// ensure the variant name/value is one we've recorded in BQ, not just some random string
-		values, ok := allJobVariants.Variants[kv[0]]
+		values, ok := allJobVariants.Variants[key]
 		if !ok {
-			err = fmt.Errorf("invalid name from list variant %s", variant)
+			err = &ValidationError{Message: fmt.Sprintf("invalid name from list variant %s", variant)}
 			return variantsMap, err
 		}
 		found := false
 		for _, v := range values {
-			if v == kv[1] {
-				variantsMap[kv[0]] = append(variantsMap[kv[0]], kv[1])
+			if v == value {
+				variantsMap[key] = append(variantsMap[key], value)
 				found = true
 				break
 			}
 		}
 		if !found {
-			err = fmt.Errorf("invalid value from list variant %s", variant)
+			err = &ValidationError{Message: fmt.Sprintf("invalid value from list variant %s", variant)}
 			return variantsMap, err
 		}
 	}
@@ -128,12 +91,11 @@ func ValidateVariants(allJobVariants crtest.JobVariants, variantsMap map[string]
 func VariantListToMapWithWarnings(allJobVariants crtest.JobVariants, variants []string) (map[string][]string, []string, error) {
 	variantsMap := map[string][]string{}
 	for _, variant := range variants {
-		kv := strings.Split(variant, ":")
-		if len(kv) != 2 {
-			// This is a fatal error as the format is completely wrong
-			return variantsMap, nil, fmt.Errorf("invalid variant %s in list", variant)
+		key, value := crtest.VariantStringToKeyValue(variant)
+		if key == "" {
+			return variantsMap, nil, &ValidationError{Message: fmt.Sprintf("invalid variant %s in list", variant)}
 		}
-		variantsMap[kv[0]] = append(variantsMap[kv[0]], kv[1])
+		variantsMap[key] = append(variantsMap[key], value)
 	}
 
 	// Validate all variants and collect warnings

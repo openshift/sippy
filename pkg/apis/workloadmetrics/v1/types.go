@@ -178,6 +178,10 @@ func (wm *WorkloadMetricsRow) GetNumericalValue(param string) (float64, error) {
 	}
 }
 
+func (wm *WorkloadMetricsRow) GetTimestampValue(param string) (time.Time, error) {
+	return time.Time{}, fmt.Errorf("unknown timestamp field %s", param)
+}
+
 func (wm *WorkloadMetricsRow) GetArrayValue(param string) ([]string, error) {
 	return nil, fmt.Errorf("unknown array value field %s", param)
 }

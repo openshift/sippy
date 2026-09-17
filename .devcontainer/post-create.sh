@@ -3,8 +3,8 @@ set -eu
 
 echo "==> Installing Go IDE tools..."
 go install golang.org/x/tools/gopls@v0.21.1
-go install github.com/go-delve/delve/cmd/dlv@latest
-go install honnef.co/go/tools/cmd/staticcheck@latest
+go install github.com/go-delve/delve/cmd/dlv@v1.27.1
+go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
 
 echo "==> Downloading Go module dependencies..."
 go mod download
@@ -12,8 +12,12 @@ go mod download
 echo "==> Installing frontend dependencies..."
 make npm
 
-echo "==> Installing Claude Code..."
-curl -fsSL https://claude.ai/install.sh | sh
+if [[ "${SKIP_CLAUDE_INSTALL:-}" != "true" ]]; then
+  echo "==> Installing Claude Code..."
+  curl -fsSL https://claude.ai/install.sh | sh
+else
+  echo "==> Skipping Claude Code install (SKIP_CLAUDE_INSTALL=true)."
+fi
 
 echo "==> Setting up MCP server venv..."
 uv venv --clear mcp/.venv

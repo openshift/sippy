@@ -321,8 +321,8 @@ echo "Waiting for sippy seed job to finish ..."
 ${KUBECTL_CMD} -n sippy-e2e get job sippy-seed-job
 
 set +e
-echo "Waiting up to 300s for the sippy-seed-job to complete..."
-${KUBECTL_CMD} -n sippy-e2e wait --for=condition=complete job/sippy-seed-job --timeout 300s
+echo "Waiting up to 600s for the sippy-seed-job to complete..."
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=complete job/sippy-seed-job --timeout 600s
 seedRetVal=$?
 set -e
 
@@ -338,7 +338,7 @@ if [ ${seedRetVal} -ne 0 ]; then
   ${KUBECTL_CMD} -n sippy-e2e describe pod ${seed_pod}
   echo "=== END SIPPY SEED JOB FAILURE DIAGNOSTICS ==="
   echo
-  echo "ERROR: sippy-seed-job did not complete within 300s"
+  echo "ERROR: sippy-seed-job did not complete within 600s"
   exit 1
 fi
 

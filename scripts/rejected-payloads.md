@@ -19,11 +19,13 @@ Here is the list of known categories:
 
 Use pip to install the following dependencies:
 
-`pip install argparse sqlalchemy`
+`pip install sqlalchemy psycopg2`
 
 or use
 
-`pip install -r requirements.txt`
+`pip install -r scripts/requirements.txt`
+
+`argparse` is included in the Python standard library.
 
 Or if you are on Fedora:
 

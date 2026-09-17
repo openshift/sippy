@@ -14,11 +14,11 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1jira "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 // JiraLoader loads various data sources directly from the Jira API, such as TRT incidents and OCPBUGS components.
@@ -216,7 +216,7 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 	// unseenUnresolvedIssues contains the set of unresolved issues we have in the DB, but didn't see yet from the jira API. At the end,
 	// we'll query to see what happened to the unseen issues. Most likely, we removed the trt-incident label, so we need
 	// to dig into the changelog and find that state transition and consider the incident closed then.
-	unseenUnresolvedIssues := sets.NewString(dbIssues...)
+	unseenUnresolvedIssues := sets.New(dbIssues...)
 	log.Infof("cache populated in %+v with %d records", time.Since(start), len(dbIssues))
 
 	start = time.Now()
@@ -281,7 +281,7 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 	}
 
 	log.Infof("we have %d unseen and unresolved jira incidents", unseenUnresolvedIssues.Len())
-	for _, unseen := range unseenUnresolvedIssues.List() {
+	for _, unseen := range sets.List(unseenUnresolvedIssues) {
 		log.Infof("processing unseen, unresolved jira incidents (trt-incident label removed?)...")
 		issue, err := queryJiraAPI(unseen, authorization)
 		if err != nil {

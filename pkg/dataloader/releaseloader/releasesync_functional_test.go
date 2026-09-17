@@ -12,11 +12,12 @@ import (
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 // TestReleaseJobRunsLabelsFunctional is a functional test for debugging label fetching
 // from BigQuery during release job run processing. It fetches real release details
-// from the release controller and runs releaseJobRunsToDB to populate labels.
+// from the release controller, builds job runs, and applies labels via applyBulkLabels.
 //
 // Required environment variables:
 //
@@ -85,22 +86,25 @@ func TestReleaseJobRunsLabelsFunctional(t *testing.T) {
 		len(details.Results["informingJobs"]),
 	)
 
-	// Run the function under test
 	loader := &ReleaseLoader{ctx: ctx, bqClient: bqClient}
-	jobRuns := loader.releaseJobRunsToDB(details, time.Now().Add(-14*24*time.Hour)) // tags that exist will likely be within 2 weeks
+	tag := &models.ReleaseTag{
+		JobRuns:     loader.buildJobRuns(details),
+		ReleaseTime: time.Now().Add(-14 * 24 * time.Hour),
+	}
+	loader.applyBulkLabels([]*models.ReleaseTag{tag})
 
-	t.Logf("Produced %d job runs", len(jobRuns))
+	t.Logf("Produced %d job runs", len(tag.JobRuns))
 
 	labelsFound := 0
-	for _, jr := range jobRuns {
+	for _, jr := range tag.JobRuns {
 		if len(jr.Labels) > 0 {
 			labelsFound++
 			t.Logf("  %s (build %d): labels=%v", jr.JobName, jr.Name, jr.Labels)
 		}
 	}
 
-	t.Logf("Job runs with labels: %d / %d", labelsFound, len(jobRuns))
+	t.Logf("Job runs with labels: %d / %d", labelsFound, len(tag.JobRuns))
 	if labelsFound == 0 {
-		t.Errorf("No labels found for any job run — set breakpoints in releaseJobRunsToDB or GatherLabelsFromBQ to debug")
+		t.Errorf("No labels found for any job run")
 	}
 }

@@ -2,10 +2,12 @@ package filter
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
@@ -48,6 +50,13 @@ const (
 	OperatorArithmeticLessThanOrEquals    Operator = "<="
 )
 
+// ErrUnsupportedOperator indicates a filter item used an operator that isn't valid for its
+// field. Callers building hand-rolled SQL for a specific field (rather than going through
+// Filter.ToSQL's Filterable-driven dispatch) can wrap this with field-specific context via
+// fmt.Errorf("%w: ...", ErrUnsupportedOperator) so API handlers can classify it as a client
+// error (400) rather than an internal failure.
+var ErrUnsupportedOperator = errors.New("unsupported filter operator")
+
 // Filter is a collection of FilterItem, with a link operator. It is used to chain
 // filters together, for example: where name contains aws and runs > 10.
 type Filter struct {
@@ -73,19 +82,31 @@ func optNot(not bool) string {
 	return ""
 }
 
-// ilikeFilter returns the SQL filter and parameters for ILIKE pattern matching,
-// handling both string fields (using ILIKE directly) and array fields (using unnest with EXISTS).
-func ilikeFilter(field, pattern string, not bool, filterable Filterable, fieldName string) (string, interface{}) {
-	if filterable != nil && filterable.GetFieldType(fieldName) == apitype.ColumnTypeArray {
-		return fmt.Sprintf("%s EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", optNot(not), field), pattern
+// WrapNot wraps a SQL expression in NOT(...) when negated.
+func WrapNot(sql string, not bool) string {
+	if not {
+		return fmt.Sprintf("NOT(%s)", sql)
 	}
-	return fmt.Sprintf("%s %s ILIKE ?", field, optNot(not)), pattern
+	return sql
 }
 
-// applyIlikeFilter applies an ILIKE filter to a GORM DB handle, handling both string and array fields.
-func applyIlikeFilter(db *gorm.DB, field, pattern string, not bool, filterable Filterable, fieldName string) *gorm.DB {
-	filterSQL, params := ilikeFilter(field, pattern, not, filterable, fieldName)
-	return db.Where(filterSQL, params)
+// EscapeLikeMetachars escapes LIKE/ILIKE metacharacters (%, _, \) so they
+// match literally in PostgreSQL pattern expressions.
+func EscapeLikeMetachars(s string) string {
+	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+	return r.Replace(s)
+}
+
+// ilikeFilter returns the SQL filter and parameters for ILIKE pattern matching,
+// handling both string fields (using ILIKE directly) and array fields (using unnest with EXISTS).
+func ilikeFilter(field, pattern string, not bool, filterable Filterable, fieldName string) (string, any) {
+	var sql string
+	if filterable != nil && filterable.GetFieldType(fieldName) == apitype.ColumnTypeArray {
+		sql = fmt.Sprintf("EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", field)
+	} else {
+		sql = fmt.Sprintf("%s ILIKE ?", field)
+	}
+	return WrapNot(sql, not), pattern
 }
 
 func (f FilterItem) isEmptyFilter(field string, filterable Filterable, forBQ bool) string {
@@ -97,138 +118,75 @@ func (f FilterItem) isEmptyFilter(field string, filterable Filterable, forBQ boo
 			sql = fmt.Sprintf("(%s IS NULL or ARRAY_LENGTH(%s) = 0)", field, field)
 		}
 	}
-	if f.Not {
-		return fmt.Sprintf("NOT(%s)", sql)
-	}
-	return sql
+	return WrapNot(sql, f.Not)
 }
 
-func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter string, orParams interface{}) { //nolint
-	field := fmt.Sprintf("%q", f.Field)
-	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
-		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
-	}
-
+// FilterItemToSQL returns a SQL fragment and parameter for a filter item
+// applied to the given column expression. The column is used as-is with no
+// type-aware transformations: ILIKE operators match the column value directly
+// rather than unnesting array elements, and timestamps are not converted to
+// epoch milliseconds. Use FilterFieldToSQL when the column may be an array
+// or timestamp type.
+func (f FilterItem) FilterItemToSQL(column string) (string, any, error) {
+	var sql string
+	var param any
 	switch f.Operator {
 	case OperatorHasEntry:
-		if f.Not {
-			return fmt.Sprintf("%s IS NULL OR ? != ALL(%s)", field, field), f.Value
-		}
-		return fmt.Sprintf("? = ANY(%s)", field), f.Value
+		sql, param = fmt.Sprintf("? = ANY(COALESCE(%s, '{}'))", column), f.Value
 	case OperatorHasEntryContaining, OperatorContains:
-		return ilikeFilter(field, fmt.Sprintf("%%%s%%", f.Value), f.Not, filterable, f.Field)
+		sql, param = fmt.Sprintf("%s ILIKE ?", column), fmt.Sprintf("%%%s%%", EscapeLikeMetachars(f.Value))
 	case OperatorEquals, OperatorArithmeticEquals:
-		if f.Not {
-			return fmt.Sprintf("%s != ?", field), f.Value
-		}
-		return fmt.Sprintf("%s = ?", field), f.Value
+		sql, param = fmt.Sprintf("%s = ?", column), f.Value
 	case OperatorArithmeticGreaterThan:
-		if f.Not {
-			return fmt.Sprintf("%s <= ?", field), f.Value
-		}
-		return fmt.Sprintf("%s > ?", field), f.Value
+		sql, param = fmt.Sprintf("%s > ?", column), f.Value
 	case OperatorArithmeticGreaterThanOrEquals:
-		if f.Not {
-			return fmt.Sprintf("%s < ?", field), f.Value
-		}
-		return fmt.Sprintf("%s >= ?", field), f.Value
+		sql, param = fmt.Sprintf("%s >= ?", column), f.Value
 	case OperatorArithmeticLessThan:
-		if f.Not {
-			return fmt.Sprintf("%s >= ?", field), f.Value
-		}
-		return fmt.Sprintf("%s < ?", field), f.Value
+		sql, param = fmt.Sprintf("%s < ?", column), f.Value
 	case OperatorArithmeticLessThanOrEquals:
-		if f.Not {
-			return fmt.Sprintf("%s > ?", field), f.Value
-		}
-		return fmt.Sprintf("%s <= ?", field), f.Value
+		sql, param = fmt.Sprintf("%s <= ?", column), f.Value
 	case OperatorArithmeticNotEquals:
-		if f.Not {
-			return fmt.Sprintf("%s = ?", field), f.Value
-		}
-		return fmt.Sprintf("%s <> ?", field), f.Value
+		sql, param = fmt.Sprintf("%s <> ?", column), f.Value
 	case OperatorStartsWith:
-		return ilikeFilter(field, fmt.Sprintf("%s%%", f.Value), f.Not, filterable, f.Field)
+		sql, param = fmt.Sprintf("%s ILIKE ?", column), fmt.Sprintf("%s%%", EscapeLikeMetachars(f.Value))
 	case OperatorEndsWith:
-		return ilikeFilter(field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
+		sql, param = fmt.Sprintf("%s ILIKE ?", column), fmt.Sprintf("%%%s", EscapeLikeMetachars(f.Value))
+	case OperatorIsEmpty:
+		sql = fmt.Sprintf("%s IS NULL", column)
+	case OperatorIsNotEmpty:
+		sql = fmt.Sprintf("%s IS NOT NULL", column)
+	default:
+		return "", nil, fmt.Errorf("unsupported operator %q for field %q", f.Operator, f.Field)
+	}
+	return WrapNot(sql, f.Not), param, nil
+}
+
+// FilterFieldToSQL returns a SQL fragment and parameter for a filter item,
+// with array and timestamp type awareness from the filterable.
+func (f FilterItem) FilterFieldToSQL(filterable Filterable) (string, any) {
+	field := fmt.Sprintf("%q", f.Field)
+	// Operators that need array-aware handling delegate to specialized helpers;
+	// all other operators use the common scalar implementation.
+	switch f.Operator {
+	case OperatorHasEntryContaining, OperatorContains:
+		return ilikeFilter(field, fmt.Sprintf("%%%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+	case OperatorStartsWith:
+		return ilikeFilter(field, fmt.Sprintf("%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+	case OperatorEndsWith:
+		return ilikeFilter(field, fmt.Sprintf("%%%s", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
 		return f.isEmptyFilter(field, filterable, false), nil
-	case OperatorIsNotEmpty:
-		return fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)), nil
 	}
 
-	return "UnknownFilterOperator()", nil // cause SQL to fail in obvious way
-}
-
-func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
-	field := fmt.Sprintf("%q", f.Field)
-	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
-		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
+	sql, param, err := f.FilterItemToSQL(field)
+	if err != nil {
+		return "UnknownFilterOperator()", nil
 	}
-
-	switch f.Operator {
-	case OperatorHasEntry:
-		if f.Not {
-			db = db.Where(fmt.Sprintf("%s IS NULL OR ? != ALL(%s)", field, field), f.Value)
-		} else {
-			db = db.Where(fmt.Sprintf("? = ANY(%s)", field), f.Value)
-		}
-	case OperatorHasEntryContaining, OperatorContains:
-		db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s%%", f.Value), f.Not, filterable, f.Field)
-	case OperatorEquals, OperatorArithmeticEquals:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s = ?", field), f.Value)
-		} else {
-			db = db.Where(fmt.Sprintf("%s = ?", field), f.Value)
-		}
-	case OperatorArithmeticGreaterThan:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s > ?", field), f.Value)
-		} else {
-			db = db.Where(fmt.Sprintf("%s > ?", field), f.Value)
-		}
-	case OperatorArithmeticGreaterThanOrEquals:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s >= ?", field), f.Value)
-		} else {
-			db = db.Where(fmt.Sprintf("%s >= ?", field), f.Value)
-		}
-	case OperatorArithmeticLessThan:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s < ?", field), f.Value)
-		} else {
-			db = db.Where(fmt.Sprintf("%s < ?", field), f.Value)
-		}
-	case OperatorArithmeticLessThanOrEquals:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s <= ?", field), f.Value)
-		} else {
-			db = db.Where(fmt.Sprintf("%s <= ?", field), f.Value)
-		}
-	case OperatorArithmeticNotEquals:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s <> ?", field), f.Value)
-		} else {
-			db = db.Where(fmt.Sprintf("%s <> ?", field), f.Value)
-		}
-	case OperatorStartsWith:
-		db = applyIlikeFilter(db, field, fmt.Sprintf("%s%%", f.Value), f.Not, filterable, f.Field)
-	case OperatorEndsWith:
-		db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
-	case OperatorIsEmpty:
-		db = db.Where(f.isEmptyFilter(field, filterable, false))
-	case OperatorIsNotEmpty:
-		db = db.Where(fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)))
-	}
-
-	return db
+	return sql, param
 }
 
 func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, params []bigquery.QueryParameter) { //nolint
 	field := strings.ReplaceAll(fmt.Sprintf("%q", f.Field), "\"", "")
-	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
-		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
-	}
 
 	// Helper to create a parameter
 	paramName := fmt.Sprintf("filterParam%d", paramIndex+1)
@@ -250,6 +208,21 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		}
 		return makeParam(num)
 	}
+	makeTimestampParam := func() []bigquery.QueryParameter {
+		t, err := time.Parse(time.RFC3339Nano, f.Value)
+		if err != nil {
+			log.Errorf("Failed to parse timestamp filter value %q for field %s: %v", f.Value, f.Field, err)
+			return makeParam("NOT A TIMESTAMP: " + f.Value)
+		}
+		return makeParam(t)
+	}
+	isTimestamp := filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp
+	makeArithmeticParam := func() []bigquery.QueryParameter {
+		if isTimestamp {
+			return makeTimestampParam()
+		}
+		return makeNumParam()
+	}
 
 	switch f.Operator {
 	case OperatorHasEntry:
@@ -270,34 +243,34 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		return fmt.Sprintf("%s = @%s", field, paramName), makeParam(f.Value)
 	case OperatorArithmeticEquals:
 		if f.Not {
-			return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s != @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s = @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s = @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticGreaterThan:
 		if f.Not {
-			return fmt.Sprintf("%s <= @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s <= @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s > @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s > @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticGreaterThanOrEquals:
 		if f.Not {
-			return fmt.Sprintf("%s < @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s < @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s >= @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s >= @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticLessThan:
 		if f.Not {
-			return fmt.Sprintf("%s >= @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s >= @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s < @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s < @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticLessThanOrEquals:
 		if f.Not {
-			return fmt.Sprintf("%s > @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s > @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s <= @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s <= @%s", field, paramName), makeArithmeticParam()
 	case OperatorArithmeticNotEquals:
 		if f.Not {
-			return fmt.Sprintf("%s = @%s", field, paramName), makeNumParam()
+			return fmt.Sprintf("%s = @%s", field, paramName), makeArithmeticParam()
 		}
-		return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
+		return fmt.Sprintf("%s != @%s", field, paramName), makeArithmeticParam()
 	case OperatorStartsWith:
 		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(strings.ToLower(f.Value) + "%")
 	case OperatorEndsWith:
@@ -318,6 +291,7 @@ type Filterable interface {
 	GetFieldType(param string) apitype.ColumnType
 	GetStringValue(param string) (string, error)
 	GetNumericalValue(param string) (float64, error)
+	GetTimestampValue(param string) (time.Time, error)
 	GetArrayValue(param string) ([]string, error)
 }
 
@@ -441,16 +415,19 @@ filterOuterLoop:
 }
 
 func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
-
-	orFilters := []string{}
-	orFilterParams := []interface{}{}
+	var orFilters []string
+	var orFilterParams []interface{}
 
 	for _, f := range filters.Items {
+		q, p := f.FilterFieldToSQL(filterable)
 		switch filters.LinkOperator {
 		case LinkOperatorAnd, "":
-			db = f.andFilterToSQL(db, filterable)
+			if p != nil {
+				db = db.Where(q, p)
+			} else {
+				db = db.Where(q)
+			}
 		case LinkOperatorOr:
-			q, p := f.orFilterToSQL(db, filterable)
 			orFilters = append(orFilters, q)
 			if p != nil {
 				orFilterParams = append(orFilterParams, p)
@@ -532,6 +509,13 @@ func (filters Filter) Filter(item Filterable) (bool, error) {
 			result, err = filterNumerical(filter, item)
 			if err != nil {
 				log.Debugf("Could not filter numerical type: %s", err)
+				return false, err
+			}
+		case apitype.ColumnTypeTimestamp:
+			log.Debugf("Column %s is of timestamp type", filter.Field)
+			result, err = filterTimestamp(filter, item)
+			if err != nil {
+				log.Debugf("Could not filter timestamp type: %s", err)
 				return false, err
 			}
 		case apitype.ColumnTypeArray:
@@ -642,6 +626,52 @@ func filterNumerical(filter FilterItem, item Filterable) (bool, error) {
 	}
 }
 
+func filterTimestamp(filter FilterItem, item Filterable) (bool, error) {
+	value, err := item.GetTimestampValue(filter.Field)
+	if err != nil {
+		return false, err
+	}
+
+	switch filter.Operator {
+	case OperatorIsEmpty:
+		return value.IsZero(), nil
+	case OperatorIsNotEmpty:
+		return !value.IsZero(), nil
+	}
+
+	if filter.Value == "" {
+		return true, nil
+	}
+
+	// A zero timestamp means the underlying field is nil/unset. Mimic SQL
+	// NULL semantics: arithmetic comparisons against NULL yield no match.
+	if value.IsZero() {
+		return false, nil
+	}
+
+	comparison, err := time.Parse(time.RFC3339Nano, filter.Value)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse timestamp filter value %q: %w", filter.Value, err)
+	}
+
+	switch filter.Operator {
+	case OperatorArithmeticEquals:
+		return value.Equal(comparison), nil
+	case OperatorArithmeticNotEquals:
+		return !value.Equal(comparison), nil
+	case OperatorArithmeticGreaterThan:
+		return value.After(comparison), nil
+	case OperatorArithmeticLessThan:
+		return value.Before(comparison), nil
+	case OperatorArithmeticGreaterThanOrEquals:
+		return !value.Before(comparison), nil
+	case OperatorArithmeticLessThanOrEquals:
+		return !value.After(comparison), nil
+	default:
+		return false, fmt.Errorf("unknown timestamp field operator %s", filter.Operator)
+	}
+}
+
 func filterArray(filter FilterItem, item Filterable) (bool, error) {
 	list, err := item.GetArrayValue(filter.Field)
 	if err != nil {
@@ -686,6 +716,20 @@ func Compare(a, b Filterable, sortField string) bool {
 		}
 
 		return val1 < val2
+	}
+
+	if kind == apitype.ColumnTypeTimestamp {
+		val1, err := a.GetTimestampValue(sortField)
+		if err != nil {
+			log.Error(err)
+		}
+
+		val2, err := b.GetTimestampValue(sortField)
+		if err != nil {
+			log.Error(err)
+		}
+
+		return val1.Before(val2)
 	}
 
 	return false

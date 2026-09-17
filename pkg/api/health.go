@@ -84,9 +84,9 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		indicators["tests"] = testsIndicator
 	}
 
-	var lastUpdated time.Time
-	if r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated); r.Error != nil {
-		log.WithError(r.Error).Error("error querying last update time")
+	lastUpdated, err := GetLastUpdateTime(dbc)
+	if err != nil {
+		log.WithError(err).Error("error querying last update time")
 		return
 	}
 	log.WithField("lastUpdated", lastUpdated).Info("ran the last update query")

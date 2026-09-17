@@ -7,6 +7,13 @@ break backwards compatability where possible.
 For exact API usage, you can use your browser's web developer tools to
 examine the requests we make.
 
+## Sippy Chat removal
+
+The Sippy Chat API has been removed, including `/api/chat` and its streaming,
+persona, model, prompt, rating, and conversation endpoints. The `chat` capability
+and `--chat-api` server flag are no longer available. The frontend `/chat` and
+nested chat URLs display a transition page directing users to Chai Bot in Slack.
+
 ## Filtering and sorting
 
 ### Filtering
@@ -294,95 +301,95 @@ A summary of runs for job(s). Results contains of the following values for each 
       "name": "periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6",
       "results": [
         {
-          "timestamp": 1628207039000,
+          "timestamp": "2021-08-06T03:43:59Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423429598720299008"
         },
         {
-          "timestamp": 1628045973000,
+          "timestamp": "2021-08-04T03:59:33Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1422754032564310016"
         },
         {
-          "timestamp": 1628198644000,
+          "timestamp": "2021-08-05T21:24:04Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423394362347229184"
         },
         {
-          "timestamp": 1628485392000,
+          "timestamp": "2021-08-09T05:03:12Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424597097709047808"
         },
         {
-          "timestamp": 1628343908000,
+          "timestamp": "2021-08-07T14:25:08Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424003666343366656"
         },
         {
-          "timestamp": 1628325313000,
+          "timestamp": "2021-08-07T09:15:13Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423925674229370880"
         },
         {
-          "timestamp": 1628289649000,
+          "timestamp": "2021-08-06T23:20:49Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423776089259380736"
         },
         {
-          "timestamp": 1628277370000,
+          "timestamp": "2021-08-06T19:56:10Z",
           "result": "S",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423724523844276224"
         },
         {
-          "timestamp": 1628358891000,
+          "timestamp": "2021-08-07T18:34:51Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424066513538650112"
         },
         {
-          "timestamp": 1628190532000,
+          "timestamp": "2021-08-05T19:08:52Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423360364472438784"
         },
         {
-          "timestamp": 1628274962000,
+          "timestamp": "2021-08-06T19:16:02Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423714481237659648"
         },
         {
-          "timestamp": 1627391095000,
+          "timestamp": "2021-07-27T13:24:55Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420007279679246336"
         },
         {
-          "timestamp": 1627473363000,
+          "timestamp": "2021-07-28T12:16:03Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420352338517823488"
         },
         {
-          "timestamp": 1627617630000,
+          "timestamp": "2021-07-30T04:20:30Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420957438630170624"
         },
         {
-          "timestamp": 1627515377000,
+          "timestamp": "2021-07-29T00:56:17Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420528516700573696"
         },
         {
-          "timestamp": 1627396851000,
+          "timestamp": "2021-07-27T15:00:51Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420031423921786880"
         },
         {
-          "timestamp": 1627363991000,
+          "timestamp": "2021-07-27T05:53:11Z",
           "result": "F",
           "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1419893597473345536"
         }
       ]
     }
   ],
-  "start": 1627317573000,
-  "end": 1628508950000
+  "start": "2021-07-26",
+  "end": "2021-08-09"
 }
 ```
 
@@ -395,6 +402,62 @@ A summary of runs for job(s). Results contains of the following values for each 
 | release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
 | job      | String         | Return only jobs containing only containing this value in their name                                                     | N/A                                      |
 | limit    | Integer        | The maximum amount of results to return                                                                                  | N/A                                      |
+
+## Re-evaluate Job Run Symptoms
+
+Endpoint: `POST /api/jobs/runs/reevaluate`
+
+Re-runs all symptom definitions against the artifacts for specified job runs and updates
+BigQuery, GCS, and PostgreSQL with the results. Requires `--enable-write-endpoints`.
+
+### Request
+
+```json
+{
+  "prow_job_build_ids": ["1234567890", "0987654321"],
+  "dry_run": false
+}
+```
+
+Maximum 50 job run IDs per request. IDs must be numeric strings.
+
+### Response (200 OK)
+
+```json
+{
+  "results": [
+    {
+      "prow_job_build_id": "1234567890",
+      "status": "success",
+      "symptoms_evaluated": 42,
+      "symptoms_matched": ["CreatePodSandboxForPodFailedInJournal"],
+      "labels_applied": ["InfraFailure", "NodeProblem"],
+      "bq_entries_written": 2,
+      "gcs_artifacts_written": 2,
+      "postgres_updated": true,
+      "links": {
+        "job_run": "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/.../1234567890",
+        "symptom:CreatePodSandboxForPodFailedInJournal": "http://localhost:8080/api/jobs/symptoms/SomeSymptom"
+      }
+    },
+    {
+      "prow_job_build_id": "0987654321",
+      "status": "missing_error",
+      "error": "job run 0987654321 not found in database"
+    }
+  ],
+  "links": {
+    "self": "http://localhost:8080/api/jobs/runs/reevaluate"
+  }
+}
+```
+
+### Status Values
+
+- `success` - re-evaluation completed and all backends updated.
+- `missing_error` - the job run ID was not found in the database.
+- `eval_error` - artifact scanning failed (timeout, GCS error, database error).
+- `rewrite_error` - scanning succeeded but writing to BQ/GCS/PostgreSQL failed.
 
 ## Tests
 
@@ -409,6 +472,14 @@ Endpoint: `/api/tests`
 | sortField| Field name     | Sort by this field                                                                        |                                                     |
 | sort     | asc / desc     | Sort type, ascending or descending                                                        | "asc" or "desc"                                     |
 | limit    | Integer        | The maximum amount of results to return                                                   | N/A                                                 |
+
+`filter` supports a `lifecycle` field (`equals` or `!=` operators only; other operators return a
+400) to restrict results to a test lifecycle (`blocking` or `informing`). It narrows which
+underlying test runs are aggregated; it is not returned as a field on results, and
+blocking/informing runs for the same test are combined into a single row when no lifecycle filter
+is applied. This filter is only supported against the Postgres-backed report (`/api/tests`); using
+it against `/api/tests/v2` (BigQuery) returns a 400, since the underlying BigQuery comparison
+tables don't carry a lifecycle column.
 
 <details>
 <summary>Example response</summary>
@@ -516,3 +587,138 @@ Endpoint: `/api/tests`
 ```
 
 </details>
+
+## Feature Gates
+
+### List Feature Gates
+
+Endpoint: `/api/feature_gates`
+
+Returns all feature gates and their test counts for a release. Each gate includes
+lightweight HATEOAS links (`ui_detail` and `api_detail`) for navigation.
+
+| Option   | Type   | Description                                              |
+|----------|--------|----------------------------------------------------------|
+| release* | String | The OpenShift release to return results from (e.g., 5.0) |
+| filter   | Filter | Filters the results. See filtering above.                |
+
+### Feature Gate Detail
+
+Endpoint: `/api/feature_gates/{feature_gate}`
+
+Returns a single feature gate with full HATEOAS links for test queries
+(`gate_tests`, `install_tests`, `gate_job_tests`, `ui_detail`).
+The `install_tests` link is only present for gates whose name contains "Install".
+
+The response includes a `promotion` object with promotion readiness data:
+per-variant test pass rates, overall sufficiency, warnings, and errors.
+The promotion evaluation is computed from the same data that the `gate_tests`
+and `install_tests` HATEOAS links point to. Both the links and the promotion
+logic use canonical filter definitions from
+`pkg/api/featuregatepromotion/filters.go`, ensuring they always stay in sync.
+
+| Option        | Type   | Description                                              |
+|---------------|--------|----------------------------------------------------------|
+| release*      | String | The OpenShift release to return results from (e.g., 5.0) |
+| feature_gate  | Path   | The feature gate name (in the URL path)                  |
+
+## Component Readiness Triages
+
+Endpoint: `GET /api/component_readiness/triages`
+
+Lists triage records. Supports an optional `view` query parameter to filter triages
+to those associated with regressions active in the specified component readiness view.
+When `view` is omitted, all triages are returned (original behavior).
+
+### Parameters
+
+| Option | Type   | Description                                                                 | Acceptable values |
+|--------|--------|-----------------------------------------------------------------------------|-------------------|
+| view   | String | Filter triages to those linked to regressions active in this view (e.g., 4.18-main). Optional; omit to return all triages. | N/A               |
+
+Endpoint: `GET /api/component_readiness/triages/{id}`
+
+Returns a single triage record by ID.
+
+Endpoint: `POST /api/component_readiness/triages`
+
+Creates a new triage record.
+
+Endpoint: `PUT /api/component_readiness/triages/{id}`
+
+Updates an existing triage record.
+
+Endpoint: `DELETE /api/component_readiness/triages/{id}`
+
+Deletes a triage record.
+
+Endpoint: `POST /api/component_readiness/triages/{id}/force_close_regressions`
+
+Force closes the open regressions associated with a resolved triage that existed at its
+resolution time (opened strictly before `resolved`). Force closed regressions are excluded from
+the regression reuse window (regressionHysteresisDays), so they are not reopened for unrelated
+failures. This prevents generic tests (for example "install should succeed") from staying open
+for weeks with false "pants on fire" or "failed fix" status.
+
+Each regression is closed at the triage's resolution time and records, directly on the
+regression row, that it was force closed, by which user, for what reason, and the triage that
+drove the action. The operation is idempotent: regressions that opened at or after the
+resolution time, or that are already closed, are left untouched.
+
+The triage must be resolved. If it is not, the endpoint returns `400 Bad Request` with the
+message "Cannot force-close regressions for an unresolved triage. Resolve the triage first."
+This is a write endpoint and requires the `write_endpoints` capability.
+
+### Request body
+
+| Field  | Type   | Description                                              | Required |
+|--------|--------|----------------------------------------------------------|----------|
+| reason | String | The reason the regressions are being force closed.       | Yes      |
+
+`reason` is required and must be non-empty (a blank or whitespace-only value returns
+`400 Bad Request`). A non-numeric or negative triage `id` in the path returns `400 Bad Request`,
+and a triage `id` that does not exist returns `404 Not Found`.
+
+### Response
+
+| Field                   | Type            | Description                                                     |
+|-------------------------|-----------------|-----------------------------------------------------------------|
+| closed_regression_ids   | Array of number | IDs of the regressions that were open and got closed.           |
+| timestamp               | String (time)   | The closed time applied to the regressions (the resolution time). |
+| links                   | Object          | HATEOAS links (`self`, `triage`, `force_close`, `force_close_preview`). |
+
+The regression record returned by `GET /api/component_readiness/regressions/{id}` includes
+`force_closed`, `force_closed_by`, `force_closed_reason`, and `force_closed_by_triage_id`
+directly (no join is required, the data is stored on the regression).
+
+Endpoint: `GET /api/component_readiness/triages/{id}/force_close_preview`
+
+Previews (dry run) what `force_close_regressions` would do for a resolved triage, without
+modifying anything. Use it to review which regressions would close and to spot any that kept
+failing after the claimed resolution before committing. The triage must be resolved; otherwise
+the endpoint returns `400 Bad Request` with the same message as the force close endpoint. A
+non-numeric or negative triage `id` returns `400 Bad Request`, and a triage `id` that does not
+exist returns `404 Not Found`.
+
+### Preview response
+
+| Field           | Type            | Description                                                          |
+|-----------------|-----------------|---------------------------------------------------------------------|
+| triage_id       | Number          | The triage being previewed.                                         |
+| resolved        | String (time)   | The triage's resolution time (the cutoff used for scoping).         |
+| would_close     | Array of object | Open regressions that opened strictly before the resolution time (would close). |
+| would_not_close | Array of object | Regressions opened at or after the resolution time (left untouched). |
+| links           | Object          | HATEOAS links (`self`, `triage`, `force_close`, `force_close_preview`). |
+
+Each regression object in `would_close` / `would_not_close` includes:
+
+| Field                         | Type            | Description                                                     |
+|-------------------------------|-----------------|-----------------------------------------------------------------|
+| regression_id                 | Number          | The regression ID.                                              |
+| test_name                     | String          | The regressed test name.                                        |
+| variants                      | Array of string | The regression's variants.                                      |
+| opened                        | String (time)   | When the regression opened.                                     |
+| closed                        | String (time)   | When the regression closed, if already closed.                  |
+| last_failure_before_resolution| String (time)   | Most recent failing job run at or before the resolution time.   |
+| first_failure_after_resolution| String (time)   | Earliest failing job run after the resolution time, if any (a gap indicator that the test kept failing). |
+| links                         | Object          | HATEOAS links for the regression (`self` points to its detail endpoint). |

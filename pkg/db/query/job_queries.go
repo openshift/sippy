@@ -5,6 +5,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
@@ -12,20 +13,25 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 )
 
-func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
-	prowJobCache := map[string]*models.ProwJob{}
-	var allJobs []*models.ProwJob
-	res := dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
-	if res.Error != nil {
-		return map[string]*models.ProwJob{}, res.Error
-	}
-	for _, j := range allJobs {
-		if _, ok := prowJobCache[j.Name]; !ok {
-			prowJobCache[j.Name] = j
-		}
-	}
-	log.Infof("job cache created with %d entries from database", len(prowJobCache))
-	return prowJobCache, nil
+// ProwJobRunPartitionKeys holds the partition key columns for prow_job_runs.
+// Used for two-step lookups: fetch these lightweight keys first, then load the
+// full row with partition pruning.
+type ProwJobRunPartitionKeys struct {
+	ProwJobRelease string    `gorm:"column:prow_job_release"`
+	Timestamp      time.Time `gorm:"column:timestamp"`
+}
+
+// LookupProwJobRunPartitionKeys fetches the partition keys for a prow_job_run
+// by ID from prow_job_run_id_map. This is the first step of a two-step lookup
+// pattern where the caller then uses these keys to load the full row with
+// partition pruning.
+func LookupProwJobRunPartitionKeys(gormDB *gorm.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
+	var keys ProwJobRunPartitionKeys
+	err := gormDB.Model(&models.ProwJobRunIDMap{}).
+		Select("prow_job_release, timestamp").
+		Where("id = ?", jobRunID).
+		Take(&keys).Error
+	return keys, err
 }
 
 func JobRunTestCount(dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {
@@ -55,27 +61,29 @@ func ProwJobSimilarName(dbc *db.DB, rootName, release string) ([]models.ProwJob,
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	q.Scan(&jobs)
+	if err := q.Scan(&jobs).Error; err != nil {
+		return nil, err
+	}
 
 	return jobs, nil
 }
 
-func ProwJobRunIDs(dbc *db.DB, prowJobID uint) ([]uint, error) {
-	jobIDs := make([]uint, 0)
-	q := dbc.DB.Raw(`SELECT id 
-	FROM prow_job_runs WHERE prow_job_id = ?`, prowJobID)
-	if q.Error != nil {
-		return nil, q.Error
+func ProwJobRunCount(dbc *db.DB, prowJobID uint, release string, since time.Time) (int, error) {
+	var count int64
+	q := dbc.DB.Table("prow_job_runs").
+		Where("prow_job_id = ?", prowJobID).
+		Where("prow_job_release = ?", release).
+		Where("timestamp > ?", since)
+	if err := q.Count(&count).Error; err != nil {
+		return 0, err
 	}
-	q.Scan(&jobIDs)
-
-	return jobIDs, nil
+	return int(count), nil
 }
 
 func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (int, error) {
 
 	var historicalProwJobRunTestCount float64
-	q := dbc.DB.Raw(`SELECT avg(count)
+	q := dbc.DB.Raw(`SELECT COALESCE(avg(count), 0)
 	FROM (SELECT count(*)
 	FROM prow_job_run_tests
 	WHERE prow_job_run_tests.prow_job_id = ?
@@ -87,7 +95,9 @@ func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (in
 		return 0, q.Error
 	}
 
-	q.First(&historicalProwJobRunTestCount)
+	if err := q.First(&historicalProwJobRunTestCount).Error; err != nil {
+		return 0, err
+	}
 
 	return int(historicalProwJobRunTestCount), nil
 }
@@ -106,7 +116,9 @@ func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, st
 		return jobReports, err
 	}
 
-	q.Scan(&jobReports)
+	if err := q.Scan(&jobReports).Error; err != nil {
+		return nil, err
+	}
 	elapsed := time.Since(now)
 	log.Infof("JobReports completed in %s with %d results from db", elapsed, len(jobReports))
 
@@ -118,9 +130,9 @@ func VariantReports(dbc *db.DB, release string, start, boundary, end time.Time) 
 	q := dbc.DB.Raw(`
 WITH results AS (
         select unnest(prow_jobs.variants) as variant,
-                coalesce(count(case when succeeded = true AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_passes,
-                coalesce(count(case when succeeded = false AND timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_fails,
-                coalesce(count(case when timestamp BETWEEN @start AND @boundary then 1 end), 0) as previous_runs,
+                coalesce(count(case when succeeded = true AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_passes,
+                coalesce(count(case when succeeded = false AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_fails,
+                coalesce(count(case when timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_runs,
                 coalesce(count(case when succeeded = true AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_passes,
                 coalesce(count(case when succeeded = false AND timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_fails,        
                 coalesce(count(case when timestamp BETWEEN @boundary AND @end then 1 end), 0) as current_runs
@@ -150,7 +162,9 @@ ORDER BY current_pass_percentage ASC;
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	q.Scan(&variantResults)
+	if err := q.Scan(&variantResults).Error; err != nil {
+		return nil, err
+	}
 	return variantResults, nil
 }
 
@@ -163,7 +177,9 @@ func ListFilteredJobIDs(dbc *db.DB, release string, fil *filter.Filter, start, b
 	}
 
 	jobs := make([]int, 0)
-	q.Pluck("id", &jobs)
+	if err := q.Pluck("id", &jobs).Error; err != nil {
+		return nil, err
+	}
 	log.WithField("jobIDs", jobs).Debug("found job IDs after filtering")
 	return jobs, nil
 }
@@ -180,7 +196,7 @@ func LoadBugsForJobs(dbc *db.DB,
 	timeLimit := "(UPPER(status) IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '14 days') OR " +
 		"(UPPER(status) NOT IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '90 days')"
 	if filterClosed {
-		q = q.Preload("Bugs", timeLimit+" and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
+		q = q.Preload("Bugs", "("+timeLimit+") and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
 	} else {
 		q = q.Preload("Bugs", timeLimit)
 	}

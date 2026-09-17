@@ -2,19 +2,23 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"sort"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -23,6 +27,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient *db.DB) {
@@ -34,7 +39,7 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 	q = q.Joins(`INNER JOIN release_tag_pull_requests ON release_tag_pull_requests.release_pull_request_id = release_pull_requests.id JOIN release_tags on release_tags.id = release_tag_pull_requests.release_tag_id`)
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{"code": http.StatusBadRequest, "message": err.Error()})
 		return
 	}
 	q, err = filter.FilterableDBResult(q, filterOpts, nil)
@@ -47,7 +52,10 @@ func PrintPullRequestsReport(w http.ResponseWriter, req *http.Request, dbClient 
 	}
 
 	prs := make([]models.ReleasePullRequest, 0)
-	q.Find(&prs)
+	if err := q.Find(&prs).Error; err != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		return
+	}
 	RespondWithJSON(http.StatusOK, w, prs)
 }
 
@@ -66,6 +74,19 @@ func ListPayloadJobRuns(dbClient *db.DB, filterOpts *filter.FilterOptions, relea
 
 	res := q.Find(&jobRuns)
 	return jobRuns, res.Error
+}
+
+// testFailureRow is the scan target for the flat-array payload test failure
+// query. Each row represents one test with parallel arrays of release tags,
+// job names, and job run URLs. The caller zips these arrays to build the
+// per-payload failure map.
+type testFailureRow struct {
+	TestID       uint
+	Name         string
+	FailureCount int
+	ReleaseTags  pq.StringArray `gorm:"type:text[]"`
+	JobNames     pq.StringArray `gorm:"type:text[]"`
+	JobRunURLs   pq.StringArray `gorm:"type:text[]"`
 }
 
 // GetPayloadStreamTestFailures loads the most recent payloads for a stream and attempts to search for most commonly
@@ -121,32 +142,51 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 	}
 	logger.WithField("failedPayloads", len(onlyFailedPayloads)).Debug("failed payloads")
 
-	// Query all test failures for the given payload stream in the last two weeks:
-	failedTests := []models.PayloadFailedTest{}
-	q := dbc.DB.Table(payloadFailedTests14dMatView).
-		Where("release = ?", release).
-		Where("architecture = ?", arch).
-		Where("stream = ?", stream).
-		Order("release_tag DESC")
+	subquery := query.GetTestFailuresForPayloadStream(
+		dbc.DB, release, stream, arch, reportEnd, testidentification.OpenShiftTestsName)
+	q := dbc.DB.Table("(?) as test_failures", subquery)
 	q, err = filter.FilterableDBResult(q, filterOpts, nil)
 	if err != nil {
 		return nil, err
 	}
-	q.Find(&failedTests)
-	logger.WithField("failedTestCount", len(failedTests)).Debug("found failed tests")
 
-	// Iterate all failed tests, build structs showing what payloads and jobs it failed in.
-	testNameToAnalysis := map[string]*apitype.TestFailureAnalysis{}
-	processFailedTests(failedTests, testNameToAnalysis)
-	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(testNameToAnalysis))
+	var rows []testFailureRow
+	if err := q.Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	logger.WithField("testCount", len(rows)).Debug("found test failure rows")
 
-	for _, v := range testNameToAnalysis {
-		testFailures = append(testFailures, v)
-		calculateBlockerScore(result.ConsecutiveFailedPayloads, v)
+	testFailures := make([]*apitype.TestFailureAnalysis, 0, len(rows))
+	for _, row := range rows {
+		ta := &apitype.TestFailureAnalysis{
+			Name:                row.Name,
+			ID:                  row.TestID,
+			FailureCount:        row.FailureCount,
+			FailedPayloads:      make(map[string]*apitype.FailedPayload, len(row.ReleaseTags)),
+			BlockerScoreReasons: []string{},
+		}
+		for i, tag := range row.ReleaseTags {
+			fp, ok := ta.FailedPayloads[tag]
+			if !ok {
+				fp = &apitype.FailedPayload{}
+				ta.FailedPayloads[tag] = fp
+			}
+			fp.FailedJobs = append(fp.FailedJobs, row.JobNames[i])
+			fp.FailedJobRuns = append(fp.FailedJobRuns, row.JobRunURLs[i])
+		}
+		calculateBlockerScore(result.ConsecutiveFailedPayloads, ta)
+		testFailures = append(testFailures, ta)
 	}
 
-	// sort so the most likely blocker test failures are first in the slice:
-	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].BlockerScore >= testFailures[j].BlockerScore })
+	sort.Slice(testFailures, func(i, j int) bool {
+		if testFailures[i].BlockerScore != testFailures[j].BlockerScore {
+			return testFailures[i].BlockerScore > testFailures[j].BlockerScore
+		}
+		if testFailures[i].FailureCount != testFailures[j].FailureCount {
+			return testFailures[i].FailureCount > testFailures[j].FailureCount
+		}
+		return testFailures[i].Name < testFailures[j].Name
+	})
 	result.TestFailures = testFailures
 	return result.TestFailures, nil
 }
@@ -156,13 +196,13 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 // certainly a blocker) based on a number of criteria.
 //
 // consecutiveFailedPayloadTags is the list of our current streak of rejected payload tags. If most recent payload
-// was accepted, this list will be empty, and we don't have much processing to do.
+// was not rejected, this list will be empty, and we don't have much processing to do.
 func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.TestFailureAnalysis) {
 	if len(consecutiveFailedPayloadTags) == 0 {
-		// our most recent state is Accepted, could be intermittent, but for the purposes of a blocker
+		// our most recent state is not Rejected, could be intermittent, but for the purposes of a blocker
 		// we have to assume 0.
 		ta.BlockerScore = 0
-		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, "most recent payload was Accepted, test may be failing intermittently but cannot be fully blocking")
+		ta.BlockerScoreReasons = append(ta.BlockerScoreReasons, "most recent payload was not Rejected, test may be failing intermittently but cannot be fully blocking")
 		return
 	}
 
@@ -208,19 +248,18 @@ func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogge
 	}
 
 	payload := &models.ReleaseTag{}
-	dbc.DB.Where("release_tag = ?", payloadTag).First(payload)
-	logger.Infof("got payload: %+v", payload)
-	if payload.ID == 0 {
-		return result.TestFailures, fmt.Errorf("no payload release tag found for: %s", payloadTag)
+	if err := dbc.DB.Where("release_tag = ?", payloadTag).First(payload).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return result.TestFailures, fmt.Errorf("no payload release tag found for: %s", payloadTag)
+		}
+		return nil, fmt.Errorf("error looking up payload release tag %s: %w", payloadTag, err)
 	}
+	logger.Infof("got payload: %+v", payload)
 
 	result.PayloadsAnalyzed = 1
 
-	// Unfortunate, I wanted this to work for any payload, but it looks like we had to resort to using
-	// a matview for the failed tests in the last two weeks.
-
 	// Query all test failures for the given payload stream in the last two weeks:
-	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag)
+	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag, payload.Release, payload.ReleaseTime)
 	if err != nil {
 		logger.WithError(err).Error("unable to list test failures for payload")
 		return nil, err
@@ -243,7 +282,12 @@ func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogge
 	}
 
 	// sort so the most likely blocker test failures are first in the slice:
-	sort.Slice(testFailures, func(i, j int) bool { return testFailures[i].FailureCount >= testFailures[j].FailureCount })
+	sort.Slice(testFailures, func(i, j int) bool {
+		if testFailures[i].FailureCount != testFailures[j].FailureCount {
+			return testFailures[i].FailureCount > testFailures[j].FailureCount
+		}
+		return testFailures[i].Name < testFailures[j].Name
+	})
 	result.TestFailures = testFailures
 
 	return result.TestFailures, nil
@@ -304,7 +348,9 @@ func GetPayloadEvents(dbClient *db.DB, release string, filterOpts *filter.Filter
 		q = q.Where("release_time <= ?", end)
 	}
 
-	q.Scan(&releases)
+	if err := q.Scan(&releases).Error; err != nil {
+		return nil, err
+	}
 
 	return releases, nil
 }
@@ -321,7 +367,7 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "release_tag", apitype.SortDescending)
 	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job run report:" + err.Error()})
+		RespondWithJSON(http.StatusBadRequest, w, map[string]any{"code": http.StatusBadRequest, "message": "Error building releases report: " + err.Error()})
 		return
 	}
 	q, err := filter.FilterableDBResult(releaseFilter(req, dbClient.DB), filterOpts, nil)
@@ -337,9 +383,9 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 
 	// This join looks up the names of failed jobs, if any, and returns them as
 	// a JSON aggregation (i.e. failedJobNames will contain a JSON array).
-	q.Table("release_tags").
+	result := q.Table("release_tags").
 		Select(`release_tags.*, release_job_runs.failed_job_names`).
-		Joins(`LEFT OUTER JOIN 
+		Joins(`LEFT OUTER JOIN
    			(
 				SELECT
 					release_tags.release_tag, array_agg(release_job_runs.job_name ORDER BY release_job_runs.job_name asc) AS failed_job_names
@@ -353,6 +399,10 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 					release_tags.release_tag
 			) release_job_runs using (release_tag)`).
 		Scan(&releases)
+	if result.Error != nil {
+		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": result.Error.Error()})
+		return
+	}
 
 	RespondWithJSON(http.StatusOK, w, releases)
 }
@@ -373,30 +423,30 @@ func ReleaseHealthReports(dbClient *db.DB, release string, reportEnd time.Time) 
 	for _, archStream := range results {
 		phase, count, err := query.GetLastPayloadStatus(dbClient.DB, archStream.Architecture, archStream.Stream, release, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding last %s payload status for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding last %s payload status for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
 		totalPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 		totalAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
 		weekAgo := reportEnd.Add(-7 * 24 * time.Hour)
 		currentWeekPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding %s payload status counts for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 		currentWeekAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo, reportEnd)
 		if err != nil {
-			return apiResults, errors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
+			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
@@ -483,12 +533,10 @@ func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
 		Product:         r.Product.StringVal,
 	}
 	if r.GADate.Valid {
-		gaDate := r.GADate.Date.In(time.UTC)
-		release.GADate = &gaDate
+		release.GADate = &r.GADate.Date
 	}
 	if r.DevelStartDate.IsValid() {
-		develStartDate := r.DevelStartDate.In(time.UTC)
-		release.DevelopmentStartDate = &develStartDate
+		release.DevelopmentStartDate = &r.DevelStartDate
 	}
 	if r.Capabilities != nil {
 		for _, capability := range r.Capabilities {
@@ -498,9 +546,94 @@ func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
 	return release
 }
 
+// GetReleaseRowsFromBigQuery fetches raw release rows from BigQuery's Releases table.
+func GetReleaseRowsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]sippyv1.ReleaseRow, error) {
+	var rows []sippyv1.ReleaseRow
+
+	queryString := fmt.Sprintf("SELECT * FROM `%s` ORDER BY DevelStartDate DESC", client.ReleasesTable)
+
+	q := client.Query(ctx, bqlabel.ReleaseAllReleases, queryString)
+	it, err := q.Read(ctx)
+	if err != nil {
+		log.WithError(err).Error("error querying releases data from bigquery")
+		return rows, err
+	}
+
+	for {
+		r := sippyv1.ReleaseRow{}
+		err := it.Next(&r)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing release row from bigquery")
+			return rows, err
+		}
+		rows = append(rows, r)
+	}
+	return rows, nil
+}
+
+// GetReleaseDatesFromDB derives CR time ranges from release_definitions GA dates.
+func GetReleaseDatesFromDB(ctx context.Context, dbc *db.DB, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, error) {
+	if dbc == nil || dbc.DB == nil {
+		return nil, fmt.Errorf("no database connection available for release dates")
+	}
+	releases, err := GetReleasesFromDB(ctx, dbc)
+	if err != nil {
+		return nil, err
+	}
+	var timeRanges []crtest.ReleaseTimeRange
+	for _, release := range releases {
+		tr := crtest.ReleaseTimeRange{Release: release.Release}
+		if release.GADate != nil {
+			gaTime := release.GADate.In(time.UTC)
+			prior := util.AdjustReleaseTime(gaTime, true, "30", reqOptions.CacheOption.CRTimeRoundingFactor, reqOptions.CacheOption.CRTimeRoundingOffset)
+			tr.Start = &prior
+			tr.End = &gaTime
+		}
+		timeRanges = append(timeRanges, tr)
+	}
+	return timeRanges, nil
+}
+
+// GetReleasesFromDB queries release metadata from the release_definitions table.
+func GetReleasesFromDB(ctx context.Context, dbc *db.DB) ([]sippyv1.Release, error) {
+	if dbc == nil || dbc.DB == nil {
+		return nil, fmt.Errorf("no database connection available for releases")
+	}
+	var defs []models.ReleaseDefinition
+	err := dbc.DB.WithContext(ctx).Order("development_start_date DESC").Find(&defs).Error
+	if err != nil {
+		return nil, fmt.Errorf("querying release definitions: %w", err)
+	}
+	releases := make([]sippyv1.Release, 0, len(defs))
+	for _, def := range defs {
+		releases = append(releases, DefinitionToRelease(def))
+	}
+	return releases, nil
+}
+
+// DefinitionToRelease converts a models.ReleaseDefinition to a sippyv1.Release.
+func DefinitionToRelease(def models.ReleaseDefinition) sippyv1.Release {
+	caps := make(map[sippyv1.ReleaseCapability]bool, len(def.Capabilities))
+	for _, cap := range def.Capabilities {
+		caps[sippyv1.ReleaseCapability(cap)] = true
+	}
+	return sippyv1.Release{
+		Release:              def.Release,
+		Status:               def.Status,
+		GADate:               def.GADate,
+		DevelopmentStartDate: def.DevelopmentStartDate,
+		PreviousRelease:      def.PreviousRelease,
+		Capabilities:         caps,
+		Product:              def.Product,
+	}
+}
+
 // BuildReleasesResponse creates the API response structure for releases
 func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) apitype.Releases {
-	gaDateMap := make(map[string]time.Time)
+	gaDateMap := make(map[string]civil.Date)
 	dateMap := make(map[string]apitype.ReleaseDates)
 	response := apitype.Releases{
 		DeprecatedGADates: gaDateMap,
@@ -533,47 +666,36 @@ func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) ap
 	return response
 }
 
-// PayloadForJobRun returns the payload release tag that was used for a given job run.
-func PayloadForJobRun(ctx context.Context, bigQueryClient *bqcachedclient.Client, jobRunID string) ([]apitype.JobPayload, error) {
-	// Calculate date range: 6 months ago through today
-	now := time.Now()
-	sixMonthsAgo := now.AddDate(0, -6, 0)
-
-	queryStr := fmt.Sprintf(`SELECT prowjob_job_name, release_verify_tag, prowjob_build_id
-		FROM `+"`openshift-gce-devel.ci_analysis_us.jobs`"+` 
-		WHERE prowjob_start BETWEEN DATETIME('%s') AND DATETIME_ADD('%s', INTERVAL 1 DAY) 
-		AND prowjob_build_id = '%s'
-		LIMIT 10`,
-		sixMonthsAgo.Format("2006-01-02"),
-		now.Format("2006-01-02"),
-		jobRunID)
-
-	q := bigQueryClient.Query(ctx, bqlabel.JobRunPayload, queryStr)
-	log.WithFields(log.Fields{
-		"jobRunID":  jobRunID,
-		"dateRange": fmt.Sprintf("%s to %s", sixMonthsAgo.Format("2006-01-02"), now.Format("2006-01-02")),
-		"query":     queryStr,
-	}).Info("Executing BigQuery payload query")
-
-	it, err := bqcachedclient.LoggedRead(ctx, q)
+// GetLastUpdateTime returns the most recent prow_job_runs created_at for the
+// current active release. It uses query.CurrentActiveRelease to identify the
+// release, then queries the most recent created_at scoped to the last 14 days
+// for partition pruning.
+func GetLastUpdateTime(dbc *db.DB) (time.Time, error) {
+	rel, err := query.CurrentActiveRelease(dbc)
 	if err != nil {
-		log.WithError(err).Error("error querying job run payload from bigquery")
-		return nil, fmt.Errorf("error querying job run payload from bigquery: %w", err)
+		return time.Time{}, fmt.Errorf("get current active release: %w", err)
 	}
+	var lastUpdated time.Time
+	if err := dbc.DB.Raw("SELECT COALESCE(MAX(created_at), '0001-01-01') FROM prow_job_runs WHERE prow_job_release = ? AND timestamp > NOW() - INTERVAL '14 days'", rel).
+		Scan(&lastUpdated).Error; err != nil {
+		return time.Time{}, fmt.Errorf("query last update time: %w", err)
+	}
+	return lastUpdated, nil
+}
 
+// PayloadForJobRun returns the payload release tag that was used for a given job run.
+func PayloadForJobRun(dbClient *db.DB, jobRunID string) ([]apitype.JobPayload, error) {
 	var results []apitype.JobPayload
-	for {
-		var row apitype.JobPayload
-		err := it.Next(&row)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.WithError(err).Error("error parsing job run payload from bigquery")
-			return nil, fmt.Errorf("error parsing job run payload from bigquery: %w", err)
-		}
-
-		results = append(results, row)
+	res := dbClient.DB.Table("release_job_runs").
+		Select(`release_job_runs.job_name AS prowjob_job_name,
+			release_tags.release_tag AS payload,
+			release_job_runs.prow_job_run_id AS prowjob_build_id`).
+		Joins("JOIN release_tags ON release_tags.id = release_job_runs.release_tag_id").
+		Where("release_job_runs.prow_job_run_id = ?", jobRunID).
+		Find(&results)
+	if res.Error != nil {
+		log.WithError(res.Error).Error("error querying job run payload from database")
+		return nil, fmt.Errorf("error querying job run payload from database: %w", res.Error)
 	}
 
 	return results, nil

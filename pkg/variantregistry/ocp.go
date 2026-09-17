@@ -24,6 +24,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/releaseoverride"
 	"github.com/openshift/sippy/pkg/util"
 )
@@ -106,9 +107,12 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-interop-opp-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-opp--ocp-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-quay-quay-redhat-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
   GROUP BY prowjob_job_name
 )
@@ -129,9 +133,12 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
         OR j.prowjob_job_name LIKE 'periodic-ci-Azure-ARO-HCP-%%'
         OR j.prowjob_job_name LIKE 'release-%%'
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
+		OR j.prowjob_job_name LIKE 'periodic-ci-%%-interop-opp-%%'
+		OR j.prowjob_job_name LIKE 'periodic-ci-%%-opp--ocp-%%'
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-chaos-%%'
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-quay-quay-redhat-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
       OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
 GROUP BY j.prowjob_job_name, r.prowjob_url, r.successful_start
@@ -215,14 +222,10 @@ ORDER BY j.prowjob_job_name;
 						}
 						bkt := v.gcsClient.Bucket(jlr.GCSBucket.StringVal)
 						gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-						allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
+						clusterMatches, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobClusterData)
 						if err != nil {
 							jLog.WithError(err).Error("error finding cluster data file, proceeding without")
-							allMatches = [][]string{}
-						}
-						var clusterMatches []string
-						if len(allMatches) > 0 {
-							clusterMatches = allMatches[0]
+							clusterMatches = nil
 						}
 						for _, cm := range clusterMatches {
 							// log with the file prefix for easy click/copy to browser:
@@ -262,7 +265,7 @@ ORDER BY j.prowjob_job_name;
 
 	var errs []string
 	for jobName, variants := range variantsByJob {
-		if err := validateSpotCheckVariants(jobName, variants); err != nil {
+		if err := validateComponentCapabilityVariants(jobName, variants); err != nil {
 			errs = append(errs, err.Error())
 		}
 	}
@@ -274,12 +277,12 @@ ORDER BY j.prowjob_job_name;
 	return variantsByJob, nil
 }
 
-// validateSpotCheckVariants returns an error if a job has JobTier=spotcheck without both
-// SpotCheckComponent and SpotCheckCapability defined.
-func validateSpotCheckVariants(jobName string, variants map[string]string) error {
+// validateComponentCapabilityVariants returns an error if a job has a spotcheck JobTier without both
+// Component and Capability defined.
+func validateComponentCapabilityVariants(jobName string, variants map[string]string) error {
 	if strings.HasPrefix(variants[VariantJobTier], "spotcheck-") {
-		if variants[VariantSpotCheckComponent] == "" || variants[VariantSpotCheckCapability] == "" {
-			return fmt.Errorf("job %q has JobTier=%s but is missing SpotCheckComponent or SpotCheckCapability", jobName, variants[VariantJobTier])
+		if variants[VariantComponent] == "" || variants[VariantCapability] == "" {
+			return fmt.Errorf("job %q has JobTier=%s but is missing Component or Capability", jobName, variants[VariantJobTier])
 		}
 	}
 	return nil
@@ -334,6 +337,10 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 				}
 				// OSD GCP is identified as GCP, but we want to keep it in a separate bucket
 				if jnv == "osd-gcp" {
+					continue
+				}
+				// GCD (Google Dedicated Cloud) is identified as GCP, but we want to keep it in a separate bucket
+				if jnv == "gcd" {
 					continue
 				}
 				variants[k] = v
@@ -449,36 +456,36 @@ var (
 )
 
 const (
-	VariantAggregation         = "Aggregation" // aggregated or none
-	VariantArch                = "Architecture"
-	VariantFeatureSet          = "FeatureSet" // techpreview / standard
-	VariantInstaller           = "Installer"  // ipi / upi / assisted
-	VariantNetwork             = "Network"
-	VariantNetworkAccess       = "NetworkAccess" // disconnected / proxy / standard
-	VariantNetworkStack        = "NetworkStack"  // ipv4 / ipv6 / dual
-	VariantOwner               = "Owner"         // eng / osd
-	VariantPlatform            = "Platform"
-	VariantScheduler           = "Scheduler"    // realtime / standard
-	VariantSecurityMode        = "SecurityMode" // fips / default
-	VariantSuite               = "Suite"        // parallel / serial
-	VariantProcedure           = "Procedure"    // for jobs that do a specific procedure on the cluster (etcd scaling, cpu partitioning, etc.), and then optionally run conformance
-	VariantJobTier             = "JobTier"      // specifies rare, blocking, informing, standard jobs
-	VariantTopology            = "Topology"     // ha / single / compact / external
-	VariantUpgrade             = "Upgrade"
-	VariantContainerRuntime    = "ContainerRuntime" // runc / crun
-	VariantCGroupMode          = "CGroupMode"       // v2 / v1
-	VariantRelease             = "Release"
-	VariantReleaseMinor        = "ReleaseMinor"
-	VariantReleaseMajor        = "ReleaseMajor"
-	VariantFromRelease         = "FromRelease"
-	VariantFromReleaseMinor    = "FromReleaseMinor"
-	VariantFromReleaseMajor    = "FromReleaseMajor"
-	VariantLayeredProduct      = "LayeredProduct"
-	VariantOS                  = "OS"
-	VariantSpotCheckComponent  = "SpotCheckComponent"  // component readiness component for spot-check jobs
-	VariantSpotCheckCapability = "SpotCheckCapability" // component readiness capability for spot-check jobs
-	VariantDefaultValue        = "default"
-	VariantNoValue             = "none"
+	VariantAggregation      = "Aggregation" // aggregated or none
+	VariantArch             = "Architecture"
+	VariantFeatureSet       = "FeatureSet" // techpreview / standard
+	VariantInstaller        = "Installer"  // ipi / upi / assisted
+	VariantNetwork          = "Network"
+	VariantNetworkAccess    = "NetworkAccess" // disconnected / proxy / standard
+	VariantNetworkStack     = "NetworkStack"  // ipv4 / ipv6 / dual
+	VariantOwner            = "Owner"         // eng / osd
+	VariantPlatform         = "Platform"
+	VariantScheduler        = "Scheduler"    // realtime / standard
+	VariantSecurityMode     = "SecurityMode" // fips / default
+	VariantSuite            = "Suite"        // parallel / serial
+	VariantProcedure        = "Procedure"    // for jobs that do a specific procedure on the cluster (etcd scaling, cpu partitioning, etc.), and then optionally run conformance
+	VariantJobTier          = "JobTier"      // specifies rare, blocking, informing, standard jobs
+	VariantTopology         = "Topology"     // ha / single / compact / external
+	VariantUpgrade          = "Upgrade"
+	VariantContainerRuntime = "ContainerRuntime" // runc / crun
+	VariantCGroupMode       = "CGroupMode"       // v2 / v1
+	VariantRelease          = "Release"
+	VariantReleaseMinor     = "ReleaseMinor"
+	VariantReleaseMajor     = "ReleaseMajor"
+	VariantFromRelease      = "FromRelease"
+	VariantFromReleaseMinor = "FromReleaseMinor"
+	VariantFromReleaseMajor = "FromReleaseMajor"
+	VariantLayeredProduct   = "LayeredProduct"
+	VariantOS               = "OS"
+	VariantComponent        = "Component"  // jobs with an owning component, used to flag regressions if a tailored job is not passing
+	VariantCapability       = "Capability" // jobs with an owning capability, used to flag regressions if a tailored job is not passing
+	VariantDefaultValue     = "default"
+	VariantNoValue          = "none"
 )
 
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
@@ -504,7 +511,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		setContainerRuntime,
 		setProcedure,
 		setOS,
-		setSpotCheckClassification,
+		setComponentAndCapability,
 		v.setJobTier, // Keep this near last, it relies on other variants like owner
 	} {
 		setter(jLog, variants, jobName)
@@ -550,6 +557,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-online", "service-delivery"},
 		{"-telco5g", "cnf"},
 		{"-perfscale", "perfscale"},
+		{"-ocp-chaos-", "mpict"}, // MPEX Integrity Engineering Chaos Team
 		{"-chaos-", "chaos"},
 		{"-azure-aro-hcp", "aro"},
 		{"-qe", "qe"}, // Keep this one below perfscale
@@ -557,9 +565,11 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-verification-tests", "qe"},
 		{"-openshift-distributed-tracing", "qe"},
 		{"-oadp-", "oadp"},
-		{"-lp-chaos-", "mpict"},   // MPEX Integrity Engineering Chaos Team
-		{"-lp-interop-", "mpiit"}, // MPEX Integrity Engineering Interop Team
-		{"-lp-ocp-compat-", "lp"}, // Layered Product Teams
+		{"-lp-chaos-", "mpict"},    // MPEX Integrity Engineering Chaos Team
+		{"-interop-opp-", "mpiit"}, // MPEX Integrity Engineering Interop Team (OPP)
+		{"-opp--ocp-", "mpiit"},    // MPEX Integrity Engineering Interop Team (OPP) - new naming
+		{"-lp-interop-", "mpiit"},  // MPEX Integrity Engineering Interop Team
+		{"-lp-ocp-compat-", "lp"},  // Layered Product Teams
 	}
 
 	for _, entry := range ownerPatterns {
@@ -700,9 +710,9 @@ func setNetworkStack(_ logrus.FieldLogger, variants map[string]string, jobName s
 }
 
 func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[string]string, jobName string) {
-	// Presubmits on main branch are set as "Presubmits"
+	// Presubmits on main branch use the Presubmits pseudo-release
 	if presubmitRegex.MatchString(jobName) {
-		variants[VariantRelease] = "Presubmits"
+		variants[VariantRelease] = models.ReleasePresubmits
 		return
 	}
 
@@ -751,42 +761,51 @@ func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[st
 	}
 }
 
-// setSpotCheckClassification identifies jobs that should be evaluated as spot-check jobs
-// in Component Readiness. These jobs run infrequently ("rare" tier historically) and
-// must fully pass at least once in the sample window. (with retries if needed)
-// They are intended for stable, non-core functionality that does not need in depth
-// statistical regression monitoring.
-//
-// The SpotCheckComponent and SpotCheckCapability variants control where these synthetic
-// results appear in the component readiness report.
-//
-// Be sure to use real Component names from OCPBUGS.
-func setSpotCheckClassification(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+// componentCapabilityEntry defines a job's component/capability ownership and its
+// optional job tier override. Both setComponentAndCapability and setJobTier
+// reference this shared table so additions stay in sync.
+type componentCapabilityEntry struct {
+	substrings []string
+	component  string
+	capability string
+	jobTier    string // if non-empty, setJobTier uses this instead of the default tier logic
+}
+
+// componentCapabilityPatterns is the single source of truth for job component/capability
+// ownership. Be sure to use real Component names from OCPBUGS.
+var componentCapabilityPatterns = []componentCapabilityEntry{
+	{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning", "spotcheck-30d"},
+	{[]string{"-etcd-scaling"}, "Etcd", "Scaling", "spotcheck-30d"},
+	{[]string{"-aws-ovn-installer-dualstack"}, "Installer", "AWSDualStackInstall", "candidate"},
+	{[]string{"-gcd-"}, "Installer", "GCPSovereignCloudInstall", "standard"},
+	{[]string{"-iso-no-registry"}, "Installer / Agent based installation", "NoRegistryClusterInstall", "candidate"},
+}
+
+// setComponentAndCapability identifies the component and capability owner for a job.
+// These variants indicate a job has an owning component and capability (i.e. feature).
+// This is used for tailored jobs that need to be kept working to validate component
+// features. Can be used in component readiness as a spot check job, or in sippy jobs
+// filtering.
+func setComponentAndCapability(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
-	spotCheckPatterns := []struct {
-		substrings []string
-		component  string
-		capability string
-	}{
-		{[]string{"-cpu-partitioning"}, "Node / Kubelet", "CPU Partitioning"},
-		{[]string{"-etcd-scaling"}, "Etcd", "Scaling"},
-	}
-
-	for _, p := range spotCheckPatterns {
-		allMatch := true
-		for _, sub := range p.substrings {
-			if !strings.Contains(jobNameLower, sub) {
-				allMatch = false
-				break
-			}
-		}
-		if allMatch {
-			variants[VariantSpotCheckComponent] = p.component
-			variants[VariantSpotCheckCapability] = p.capability
+	for _, p := range componentCapabilityPatterns {
+		if allSubstringsMatch(jobNameLower, p.substrings) {
+			variants[VariantComponent] = p.component
+			variants[VariantCapability] = p.capability
 			return
 		}
 	}
+}
+
+// allSubstringsMatch returns true if jobNameLower contains every substring.
+func allSubstringsMatch(jobNameLower string, substrings []string) bool {
+	for _, sub := range substrings {
+		if !strings.Contains(jobNameLower, sub) {
+			return false
+		}
+	}
+	return true
 }
 
 // setJobTier sets the jobTier for a job, with values like this:
@@ -802,13 +821,18 @@ func setSpotCheckClassification(_ logrus.FieldLogger, variants map[string]string
 // Note: blocking/informing/standard tiers may be downgraded to candidate by
 // adjustJobTierBasedOnView if the job's variants don't match the release-main view.
 func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
-	// Jobs classified as spot-check get the spotcheck-30d tier automatically.
-	if _, ok := variants[VariantSpotCheckComponent]; ok {
-		variants[VariantJobTier] = "spotcheck-30d"
-		return
-	}
-
 	jobNameLower := strings.ToLower(jobName)
+
+	// Check componentCapabilityPatterns first for tier overrides (e.g. spotcheck).
+	// setComponentAndCapability already ran, so use its results directly.
+	if variants[VariantComponent] != "" {
+		for _, p := range componentCapabilityPatterns {
+			if p.jobTier != "" && p.component == variants[VariantComponent] && p.capability == variants[VariantCapability] {
+				variants[VariantJobTier] = p.jobTier
+				return
+			}
+		}
+	}
 
 	jobTierPatterns := []struct {
 		substrings []string
@@ -816,6 +840,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 	}{
 		// QE jobs allowlisted for Component Readiness
 		{[]string{"-automated-release"}, "standard"},
+
+		// Chaos team ocp-chaos CR jobs are candidate, not release blocking
+		{[]string{"-ocp-chaos-cr-"}, "candidate"},
 
 		// OVN-Kubernetes BGP Virtualization jobs allowed for Component Readiness
 		{[]string{"-ovn-bgp-virt"}, "standard"},
@@ -840,6 +867,12 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 		// vSphere hybrid-env jobs are not yet stable enough for component readiness
 		{[]string{"-hybrid-env"}, "candidate"},
+
+		// vSphere VCF migration jobs are new and not yet stable enough for component readiness
+		{[]string{"-vcf-migration"}, "candidate"},
+
+		// Nutanix upgrade job not yet stable due to CSI operator conformance failures
+		{[]string{"-e2e-nutanix-upgrade"}, "candidate"},
 
 		// All 4.19/4.20 MCO jobs default to candidate
 		{[]string{"machine-config-operator-release-4.19"}, "candidate"},
@@ -887,8 +920,16 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 		// Only a select few Hypershift jobs are ready for blocking signal, the rest will default to candidate below.
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-aks-ovn-conformance"}, "standard"},
+		// serial-techpreview variant is not yet stable enough for standard tier
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-serial-techpreview"}, "candidate"},
+		// techpreview variant is not yet stable enough for standard tier
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-techpreview"}, "candidate"},
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance"}, "standard"},
-		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-v2-self-managed"}, "standard"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-v2-azure-self-managed"}, "standard"},
+		// Right now, only the e2e-v2-aws job is being promoted, so ensure other jobs sharing
+		// the prefix remain in the candidate tier
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-v2-aws-"}, "candidate"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-v2-aws"}, "standard"},
 
 		// All other Hypershift jobs will default to candidate.
 		{[]string{"periodic-ci-openshift-hypershift-"}, "candidate"},
@@ -946,7 +987,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		variants[VariantJobTier] = "blocking"
 	case util.StrSliceContainsEither(v.config.Releases[release].InformingJobs, jobName, mainJobName):
 		variants[VariantJobTier] = "informing"
-	case release == "Presubmits", v.config.Releases[release].Jobs[jobName], v.config.Releases[release].Jobs[mainJobName]:
+	case release == models.ReleasePresubmits, v.config.Releases[release].Jobs[jobName], v.config.Releases[release].Jobs[mainJobName]:
 		variants[VariantJobTier] = "standard"
 	default:
 		variants[VariantJobTier] = "candidate"
@@ -1124,8 +1165,12 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-azure", "azure"},
 		{"-aks", "azure"},
 		{"-osd-ccs-gcp", "osd-gcp"},
+		{"-gcd-", "gcd"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
+		// iso-no-registry agent baremetal jobs deploy on bare metal
+		// but don't have -metal in their name; match before the generic -metal pattern.
+		{"-iso-no-registry", "metal"},
 		{"-metal", "metal"},
 		{"-nutanix", "nutanix"},
 		{"-openstack", "openstack"},
@@ -1350,6 +1395,9 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-lpga-lp-ocp-compat-cr--servicemesh-", "lp-ocp-compat--servicemesh--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--operator-e2e-", "lp-ocp-compat--serverless--lpGA"},
 		{"-coo-", "lp-interop-coo"},
+		{"-acm-virt-", "lp-interop--acm-virt"},
+		{"-opp--ocp-", "lp-interop--OPP"},    // New OPP jobs in RedHatQE/interop-testing
+		{"-interop-opp-", "lp-interop--OPP"}, // Old OPP jobs in stolostron/policy-collection (deprecated)
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},

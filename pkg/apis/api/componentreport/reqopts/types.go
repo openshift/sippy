@@ -4,11 +4,16 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
-	"github.com/openshift/sippy/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // These types represent report options requested by the user,
 // which need to be serialized as part of caching the report results.
+
+const (
+	DataSourceBigQuery = "bigquery"
+	DataSourcePostgres = "postgres"
+)
 
 // RequestOptions is a struct packaging all the options for a CR request.
 type RequestOptions struct {
@@ -22,10 +27,14 @@ type RequestOptions struct {
 	// SpotCheckJobSamples defines resolved sample windows for spot-check job analysis.
 	// Each entry specifies a tier name, time window, and variant filters to select jobs.
 	SpotCheckJobSamples []SpotCheckJobSampleOpts `json:"spot_check_job_samples,omitempty" yaml:"spot_check_job_samples,omitempty"`
+	IncludeAllTests     bool                     `json:"include_all_tests,omitempty"`
 	// ViewName is the name of the view used for this request, if any.
 	// When generating test details URLs, if a view is present, we include just the view parameter
 	// plus test-specific overrides, rather than expanding all view parameters into the URL.
 	ViewName string `json:"view_name,omitempty" yaml:"view_name,omitempty"`
+	// DataSource controls which backend is used for CR test queries.
+	// Valid values: "" (default, uses BigQuery), DataSourceBigQuery, DataSourcePostgres.
+	DataSource string `json:"data_source,omitempty" yaml:"data_source,omitempty"`
 }
 
 // PullRequest specifies a specific pull request to use as the
@@ -97,8 +106,8 @@ func AnyAreBaseOverrides(opts []TestIdentification) bool {
 }
 
 type Variants struct {
-	ColumnGroupBy       sets.String         `json:"column_group_by" yaml:"column_group_by"`
-	DBGroupBy           sets.String         `json:"db_group_by" yaml:"db_group_by"`
+	ColumnGroupBy       sets.Set[string]    `json:"column_group_by" yaml:"column_group_by"`
+	DBGroupBy           sets.Set[string]    `json:"db_group_by" yaml:"db_group_by"`
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
 	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
 	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`

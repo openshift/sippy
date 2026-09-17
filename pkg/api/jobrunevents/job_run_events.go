@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -15,9 +14,6 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db"
 )
-
-// eventsJSONRegex matches paths like artifacts/*e2e*/gather-extra/artifacts/events.json
-var eventsJSONRegex = regexp.MustCompile(`gather-extra/artifacts/events\.json$`)
 
 // KubeEvent represents a flattened Kubernetes Event for the API response
 type KubeEvent struct {
@@ -76,17 +72,17 @@ func JobRunEvents(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBuck
 	}
 
 	gcsJobRun := gcs.NewGCSJobRun(gcsClient.Bucket(gcsBucket), gcsPath)
-	matches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{eventsJSONRegex})
+	matches, err := gcsJobRun.FindAllMatches(context.TODO(), gcs.GlobEventsJSON)
 	if err != nil {
 		return &EventListResponse{JobRunURL: jobRunURL}, err
 	}
 
-	if len(matches) == 0 || len(matches[0]) == 0 {
+	if len(matches) == 0 {
 		logger.Info("no events.json file found")
 		return &EventListResponse{Items: []KubeEvent{}, JobRunURL: jobRunURL}, nil
 	}
 
-	eventsPath := matches[0][0]
+	eventsPath := matches[0]
 	logger.WithField("events_path", eventsPath).Info("found events.json")
 
 	content, err := gcsJobRun.GetContent(context.TODO(), eventsPath)

@@ -4,7 +4,7 @@
 
 import argparse
 import datetime
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy import ARRAY, Column, DateTime, String
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -24,13 +24,28 @@ class ReleaseTags(base):
     reject_reason_note = Column(String)
     reject_reasons = Column(ARRAY(String))
 
-class PayloadTestFailures(base):
-    __tablename__ = 'payload_test_failures_14d_matview'
-
-    id = Column(String, primary_key=True)
-    release_tag = Column(String)
-    name = Column(String)
-    prow_job_name = Column(DateTime)
+PAYLOAD_TEST_FAILURES_QUERY = text("""
+    SELECT DISTINCT
+        pjrt.id,
+        rt.release_tag,
+        t.name,
+        pj.name as prow_job_name
+    FROM release_tags rt
+    JOIN release_job_runs rjr ON rjr.release_tag_id = rt.id
+                             AND rjr.kind = 'Blocking'
+                             AND rjr.state = 'Failed'
+    JOIN prow_job_runs pjr ON pjr.id = rjr.prow_job_run_id
+                          AND pjr.prow_job_release = :release
+                          AND pjr.timestamp >= :release_time
+    JOIN prow_job_run_tests pjrt ON pjrt.prow_job_run_id = pjr.id
+                                AND pjrt.prow_job_run_timestamp = pjr.timestamp
+                                AND pjrt.prow_job_run_release = :release
+                                AND pjrt.prow_job_run_timestamp >= :release_time
+                                AND pjrt.status = 12
+    JOIN tests t ON t.id = pjrt.test_id
+    JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
+    WHERE rt.release_tag = :tag
+""")
 
 def selectReleases(session, release, stream, architecture, showAll, days):
     selectedTags = []
@@ -85,7 +100,11 @@ def categorizeSingle(session, tag):
     for releaseTag in releaseTags:
 
         # Lookup and display test failures for this payload. If excessive numbers, limit to just a few.
-        test_failures = session.query(PayloadTestFailures).filter(PayloadTestFailures.release_tag == tag).all()
+        test_failures = session.execute(PAYLOAD_TEST_FAILURES_QUERY, {
+            "tag": tag,
+            "release": releaseTag.release,
+            "release_time": releaseTag.release_time,
+        }).fetchall()
         print()
         print("Blocking job test failures in payload: %s" % tag)
         print()

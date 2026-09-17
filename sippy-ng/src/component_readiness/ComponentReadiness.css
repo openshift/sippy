@@ -20,10 +20,9 @@
 }
 
 .cr-comp-read-table {
-  width: auto !important;
+  width: 100% !important;
   margin-top: 0.5em;
   border: 1px solid #eee;
-  table-layout: fixed;
 }
 
 .cr-col-name {

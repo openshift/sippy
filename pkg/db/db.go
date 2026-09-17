@@ -22,13 +22,18 @@ import (
 type SchemaHashType string
 
 const (
-	hashTypeMatView                          SchemaHashType = "matview"
-	hashTypeView                             SchemaHashType = "view"
-	hashTypeMatViewIndex                     SchemaHashType = "matview_index"
-	hashTypeFunction                         SchemaHashType = "function"
-	partitionedTableProwJobRunTests                         = "prow_job_run_tests"
-	partitionedTableProwJobRunTestsOutputs                  = "prow_job_run_test_outputs"
-	partitionedTableTestAnalysisByJobByDates                = "test_analysis_by_job_by_dates"
+	hashTypeMatView                            SchemaHashType = "matview"
+	hashTypeView                               SchemaHashType = "view"
+	hashTypeMatViewIndex                       SchemaHashType = "matview_index"
+	hashTypeFunction                           SchemaHashType = "function"
+	partitionedTableProwJobRuns                               = "prow_job_runs"
+	partitionedTableProwJobRunAnnotations                     = "prow_job_run_annotations"
+	partitionedTableProwJobRunProwPullRequests                = "prow_job_run_prow_pull_requests"
+	partitionedTableProwJobRunTests                           = "prow_job_run_tests"
+	partitionedTableProwJobRunTestsOutputs                    = "prow_job_run_test_outputs"
+	partitionedTableTestDailyTotals                           = "test_daily_totals"
+	partitionedTableTestCumulativeSummaries                   = "test_cumulative_summaries"
+	partitionRetentionDays                                    = 365
 )
 
 type DB struct {
@@ -84,11 +89,19 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 		return nil, err
 	}
 	// Prevent PostgreSQL from generating generic plans for prepared statements.
-	// With 10k+ partitions on tables like test_analysis_by_job_by_dates, generic
-	// plan generation alone can take 17+ minutes as the planner enumerates all
-	// partitions. Custom plans use actual parameter values for partition pruning.
+	// After 5 executions PostgreSQL normally switches to a generic plan that
+	// cannot use parameter values for partition pruning. GORM generates
+	// parameterized queries, so without this setting the planner would scan
+	// all partitions instead of pruning to the relevant ones.
 	pgxConfig.RuntimeParams["plan_cache_mode"] = "force_custom_plan"
 	pgxConfig.RuntimeParams["work_mem"] = "128MB"
+	// Loaders (e.g. pgwriter) COPY batches into temp tables and then join back
+	// against them; the 8MB default leaves too little headroom and trips
+	// "no empty local buffer available" under normal batch sizes.
+	pgxConfig.RuntimeParams["temp_buffers"] = "128MB"
+	pgxConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60s"
+	pgxConfig.RuntimeParams["random_page_cost"] = "1.1"
+	pgxConfig.RuntimeParams["timezone"] = "UTC"
 	if cfg.enablePartitionwise {
 		pgxConfig.RuntimeParams["enable_partitionwise_aggregate"] = "on"
 		pgxConfig.RuntimeParams["enable_partitionwise_join"] = "on"
@@ -121,10 +134,9 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 
 	// Run versioned migrations (golang-migrate) BEFORE AutoMigrate.
-	// This ensures tables like prow_job_run_tests exist before
-	// prow_job_runs trys to create it via AutoMigrate
-	// when we move prow_job_runs to be managed via RunMigrations
-	// we may need GORM AutoMigrate to run first
+	// Partitioned tables (prow_job_runs, prow_job_run_tests, etc.) are
+	// created by migration DDL, not AutoMigrate. AutoMigrate handles
+	// the remaining non-partitioned models.
 	if err := sippymigrate.RunMigrations(d.DB); err != nil {
 		return err
 	}
@@ -135,21 +147,25 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return fmt.Errorf("setup join table ProwJobRun.PullRequests: %w", err)
 	}
 
-	// List of all models to migrate
+	// Models to AutoMigrate. Partitioned tables (ProwJobRun,
+	// ProwJobRunAnnotation, ProwJobRunProwPullRequest, ProwJobRunTest,
+	// ProwJobRunTestOutput, TestDailyTotal, TestCumulativeSummary) are
+	// excluded; their schemas are managed by migration 000001/000006.
 	modelsToMigrate := []any{
+		&models.ReleaseDefinition{},
 		&models.ReleaseTag{},
 		&models.ReleasePullRequest{},
 		&models.ReleaseRepository{},
 		&models.ReleaseJobRun{},
+		&models.ProwGARawTestDatum{},
+		&models.VariantCombination{},
 		&models.ProwJob{},
-		&models.ProwJobRun{},
-		&models.ProwJobRunAnnotation{},
+		&models.ProwJobRunIDMap{},
 		&models.Test{},
 		&models.Suite{},
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
-		&models.ProwJobRunProwPullRequest{},
 		&models.SchemaHash{},
 		&models.PullRequestComment{},
 		&models.JiraIncident{},
@@ -162,17 +178,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.Triage{},
 		&models.TriageSymptom{},
 		&models.AuditLog{},
-		&models.ChatRating{},
-		&models.ChatConversation{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
 	}
 
-	// Currently we need RunMigrations to run prior
-	// to AutoMigrate so that tables GORM depends on exist
-	// prior to AutoMigrate
-	// As we migrate more of the JobRuns based tables the
-	// Dependencies change, and we likely need to run this first
 	for _, model := range modelsToMigrate {
 		if err := d.DB.AutoMigrate(model); err != nil {
 			return err
@@ -184,6 +193,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	if err := ensureTriageSymptomCascade(d.DB); err != nil {
+		return err
+	}
+
+	if err := ensureVariantCombinationTrigger(d.DB); err != nil {
 		return err
 	}
 
@@ -206,9 +219,13 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 // and managed by gopar partition lifecycle management.
 func (d *DB) PartitionedTables() []string {
 	return []string{
+		partitionedTableProwJobRuns,
+		partitionedTableProwJobRunAnnotations,
+		partitionedTableProwJobRunProwPullRequests,
 		partitionedTableProwJobRunTests,
 		partitionedTableProwJobRunTestsOutputs,
-		partitionedTableTestAnalysisByJobByDates,
+		partitionedTableTestDailyTotals,
+		partitionedTableTestCumulativeSummaries,
 	}
 }
 
@@ -230,11 +247,15 @@ func (d *DB) EnsurePartitions(releases []string, startDate, endDate time.Time, d
 	for _, tableName := range d.PartitionedTables() {
 		var dateColumn string
 		switch tableName {
+		case partitionedTableProwJobRuns:
+			dateColumn = "timestamp"
+		case partitionedTableProwJobRunAnnotations, partitionedTableProwJobRunProwPullRequests:
+			dateColumn = "prow_job_run_timestamp"
 		case partitionedTableProwJobRunTests:
 			dateColumn = "prow_job_run_timestamp"
 		case partitionedTableProwJobRunTestsOutputs:
 			dateColumn = "prow_job_run_test_timestamp"
-		case partitionedTableTestAnalysisByJobByDates:
+		case partitionedTableTestDailyTotals, partitionedTableTestCumulativeSummaries:
 			dateColumn = "date"
 		default:
 			log.Warnf("unknown partitioned table: %s", tableName)
@@ -305,23 +326,24 @@ func (d *DB) DetachOldPartitions(retentionDays int, dryRun bool) (int, error) {
 	return totalDetached, nil
 }
 
-// DropDetachedPartitions drops partitions that have been detached for longer than
-// the specified period. This permanently deletes the data.
+// DropDetachedPartitions drops partition tables whose partition date is older than
+// the retention period. Callers should detach matching attached partitions first.
+// This permanently deletes the data.
 //
 // Parameters:
-//   - detachedDays: Minimum age in days since detachment (e.g., 110 means drop partitions detached more than 110 days ago)
+//   - retentionDays: Minimum partition age in days (e.g., 110 removes partitions dated more than 110 days ago)
 //   - dryRun: If true, only preview what would be dropped
 //
 // Returns the total number of partitions dropped across all tables.
-func (d *DB) DropDetachedPartitions(detachedDays int, dryRun bool) (int, error) {
+func (d *DB) DropDetachedPartitions(retentionDays int, dryRun bool) (int, error) {
 	totalDropped := 0
 
 	for _, tableName := range d.PartitionedTables() {
-		log.Infof("Finding detached partitions to drop for %s (detached more than %d days ago)",
-			tableName, detachedDays)
+		log.Infof("Finding detached partitions to drop for %s (older than %d days)",
+			tableName, retentionDays)
 
-		// Get partitions that are detached and older than detached period
-		partitions, err := d.GoparPartitions.GetPartitionsForRemoval(tableName, detachedDays, false)
+		// Include detached partition tables when finding partitions older than the retention period.
+		partitions, err := d.GoparPartitions.GetPartitionsForRemoval(tableName, retentionDays, false)
 		if err != nil {
 			return totalDropped, fmt.Errorf("failed to get detached partitions for removal from %s: %w", tableName, err)
 		}
@@ -346,10 +368,11 @@ func (d *DB) DropDetachedPartitions(detachedDays int, dryRun bool) (int, error) 
 }
 
 // CleanupPartitions performs the full partition lifecycle cleanup:
-// 1. Detaches partitions older than 100 days
-// 2. Drops detached partitions older than 110 days
+// 1. Detaches partitions older than partitionRetentionDays
+// 2. Drops detached partitions older than partitionRetentionDays
 //
-// This provides a 10-day safety window between detachment and permanent deletion.
+// Detached partitions could be held and reattached if needed, but no holding
+// period is configured by default.
 //
 // Parameters:
 //   - dryRun: If true, only preview what would be done
@@ -358,19 +381,19 @@ func (d *DB) DropDetachedPartitions(detachedDays int, dryRun bool) (int, error) 
 func (d *DB) CleanupPartitions(dryRun bool) (detached, dropped int, err error) {
 	log.Info("Starting partition cleanup...")
 
-	// First, drop old detached partitions (110 days)
-	dropped, err = d.DropDetachedPartitions(110, dryRun)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to drop detached partitions: %w", err)
-	}
-	log.Infof("Dropped %d detached partitions", dropped)
-
-	// Then, detach old attached partitions (100 days)
-	detached, err = d.DetachOldPartitions(100, dryRun)
+	// First, detach old attached partitions.
+	detached, err = d.DetachOldPartitions(partitionRetentionDays, dryRun)
 	if err != nil {
 		return detached, dropped, fmt.Errorf("failed to detach old partitions: %w", err)
 	}
 	log.Infof("Detached %d old partitions", detached)
+
+	// Then, drop old detached partitions
+	dropped, err = d.DropDetachedPartitions(partitionRetentionDays, dryRun)
+	if err != nil {
+		return detached, dropped, fmt.Errorf("failed to drop detached partitions: %w", err)
+	}
+	log.Infof("Dropped %d detached partitions", dropped)
 
 	log.Infof("Partition cleanup complete: detached=%d, dropped=%d", detached, dropped)
 	return detached, dropped, nil
@@ -534,6 +557,43 @@ func ensureTriageSymptomCascade(db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+// ensureVariantCombinationTrigger attaches the variant_combination_id
+// trigger to prow_jobs if it does not already exist. The trigger
+// function is created by migration 000003; the table is created by
+// AutoMigrate, so this must run after both.
+//
+// When the trigger is first attached, existing rows are backfilled.
+// In steady state (trigger already exists) this is a single catalog
+// lookup.
+func ensureVariantCombinationTrigger(db *gorm.DB) error {
+	return db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_trigger WHERE tgname = 'trg_prow_jobs_variant_combination'
+			) THEN
+				CREATE TRIGGER trg_prow_jobs_variant_combination
+					BEFORE INSERT OR UPDATE OF variants ON prow_jobs
+					FOR EACH ROW
+					EXECUTE FUNCTION set_variant_combination_id();
+
+				-- Backfill only needed when trigger is first attached (fresh DB
+				-- or recovery); the trigger handles all subsequent rows.
+				INSERT INTO variant_combinations (variants)
+				SELECT DISTINCT variants FROM prow_jobs
+				WHERE variants IS NOT NULL AND variant_combination_id IS NULL
+				ON CONFLICT (variants) DO NOTHING;
+
+				UPDATE prow_jobs
+				SET variant_combination_id = vc.id
+				FROM variant_combinations vc
+				WHERE prow_jobs.variants = vc.variants
+				  AND prow_jobs.variants IS NOT NULL
+				  AND prow_jobs.variant_combination_id IS NULL;
+			END IF;
+		END $$`).Error
 }
 
 func ParseGormLogLevel(logLevel string) (gormlogger.LogLevel, error) {

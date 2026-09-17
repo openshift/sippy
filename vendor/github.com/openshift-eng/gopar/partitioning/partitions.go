@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -1679,34 +1680,66 @@ func (dbp *DB_PARTITIONS) getAttachedLeafPartitions(tableName string) ([]Partiti
 }
 
 // getDetachedLeafPartitions returns PartitionInfo for leaf partitions that were
-// detached from a nested partitioned table. It finds tables whose names start
-// with tableName_ and have an extractable date suffix, then subtracts the
-// set of currently attached leaves.
+// detached from a nested partitioned table. Nested leaf names may use a
+// shortened, hashed table prefix, so they cannot reliably be found by matching
+// tableName alone. Instead, walk the live hierarchy and use the names of its
+// partitioned tables as the authoritative leaf-name prefixes.
 func (dbp *DB_PARTITIONS) getDetachedLeafPartitions(tableName string) ([]PartitionInfo, error) {
-	attached, err := dbp.getAttachedLeafPartitions(tableName)
-	if err != nil {
-		return nil, err
-	}
-	attachedSet := make(map[string]bool, len(attached))
-	for _, p := range attached {
-		attachedSet[p.TableName] = true
-	}
-
-	// Find all tables whose name starts with tableName_ (broad match)
-	likePattern := escapeForLike(tableName) + "\\_%"
 	query := `
-		SELECT tablename
-		FROM pg_tables
-		WHERE schemaname = 'public'
-			AND tablename LIKE $1 ESCAPE '\'
+		WITH RECURSIVE partition_tree AS (
+			SELECT c.oid, c.relname
+			FROM pg_class c
+			JOIN pg_namespace n ON n.oid = c.relnamespace
+			WHERE n.nspname = 'public' AND c.relname = $1
+
+			UNION ALL
+
+			SELECT child.oid, child.relname
+			FROM partition_tree pt
+			JOIN pg_inherits i ON i.inhparent = pt.oid
+			JOIN pg_class child ON child.oid = i.inhrelid
+		), leaf_prefixes AS (
+			SELECT DISTINCT pt.relname
+			FROM partition_tree pt
+			JOIN pg_partitioned_table pp ON pp.partrelid = pt.oid
+		)
+		SELECT
+			t.tablename,
+			t.schemaname,
+			pg_total_relation_size(format('%I.%I', t.schemaname, t.tablename)::regclass) AS size_bytes,
+			pg_size_pretty(pg_total_relation_size(format('%I.%I', t.schemaname, t.tablename)::regclass)) AS size_pretty,
+			COALESCE(s.n_live_tup, 0) AS row_estimate
+		FROM pg_tables t
+		LEFT JOIN pg_stat_user_tables s
+			ON s.schemaname = t.schemaname AND s.relname = t.tablename
+		WHERE t.schemaname = 'public'
+			AND EXISTS (
+				SELECT 1
+				FROM leaf_prefixes p
+				WHERE left(t.tablename, length(p.relname)) = p.relname
+					AND substring(t.tablename FROM length(p.relname) + 1)
+						~ '^_p?[0-9]{4}_[0-9]{2}_[0-9]{2}$'
+			)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM pg_inherits i
+				WHERE i.inhrelid = (format('%I.%I', t.schemaname, t.tablename))::regclass
+			)
 	`
-	rows, err := dbp.db.Query(query, likePattern)
+	rows, err := dbp.db.Query(query, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query candidate tables: %w", err)
 	}
-	candidates, err := scanRows(rows, func(r *sql.Rows) (string, error) {
-		var name string
-		return name, r.Scan(&name)
+	type candidate struct {
+		name        string
+		schema      string
+		sizeBytes   int64
+		sizePretty  string
+		rowEstimate int64
+	}
+	candidates, err := scanRows(rows, func(r *sql.Rows) (candidate, error) {
+		var c candidate
+		return c, r.Scan(&c.name, &c.schema, &c.sizeBytes, &c.sizePretty, &c.rowEstimate)
 	})
 	if err != nil {
 		return nil, err
@@ -1714,22 +1747,25 @@ func (dbp *DB_PARTITIONS) getDetachedLeafPartitions(tableName string) ([]Partiti
 
 	var detached []PartitionInfo
 	now := time.Now()
-	for _, name := range candidates {
-		if attachedSet[name] {
-			continue
-		}
-		date := extractDateFromPartitionName(name)
+	for _, candidate := range candidates {
+		date := extractDateFromPartitionName(candidate.name)
 		if date == nil {
 			continue
 		}
 		age := int(now.Sub(*date).Hours() / 24)
 		detached = append(detached, PartitionInfo{
-			TableName:     name,
-			SchemaName:    "public",
+			TableName:     candidate.name,
+			SchemaName:    candidate.schema,
 			PartitionDate: *date,
 			Age:           age,
+			SizeBytes:     candidate.sizeBytes,
+			SizePretty:    candidate.sizePretty,
+			RowEstimate:   candidate.rowEstimate,
 		})
 	}
+	sort.Slice(detached, func(i, j int) bool {
+		return detached[i].PartitionDate.Before(detached[j].PartitionDate)
+	})
 
 	return detached, nil
 }
