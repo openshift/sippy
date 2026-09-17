@@ -18293,6 +18293,10 @@ releases:
         regexp:
             - ^periodic-ci-quay-quay-redhat-3\.18-.*-e2e-install-.*
         synthetic: true
+    quay-presubmits:
+        regexp:
+            - ^pull-ci-quay-quay-master-.*(aws-s3|gcp-gcs).*$
+        synthetic: true
     rosa-integration:
         regexp:
             - ^periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-.*-integration-.*
