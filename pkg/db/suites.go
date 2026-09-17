@@ -38,6 +38,9 @@ var testSuites = []string{
 	"OSD e2e suite",
 	"ROSA Regional Platform API E2E Suite",
 
+	// GCP HCP
+	"GCP HCP E2E Test Suite",
+
 	// Performance
 	"olmv1-GCP nightly compare",
 
