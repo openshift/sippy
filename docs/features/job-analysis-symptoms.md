@@ -52,6 +52,15 @@ Multiple symptoms can apply the same label; a single symptom can apply multiple 
 
 ## Data Flow
 
+Sippy reads each job's artifacts from the GCS bucket recorded on that job run
+(`ProwJobRun.GCSBucket`, ingested from prow `GCSConfiguration.Bucket`). If the stored
+value is empty, the bucket is parsed from the prow job URL. `--google-storage-bucket`
+is only a fallback for jobs with neither. `JobArtifactQuery` takes a GCS client and
+opens the per-job bucket for listing, reading, and gcsweb links. Symptom re-evaluation
+and `JobRunAnnotator` artifact queries use the same per-job bucket, including GCS
+label writes, so historical jobs in `test-platform-results` (or older buckets) are
+not forced onto the current default.
+
 ### 1. Definition
 
 Symptoms and labels are created and managed through:
@@ -176,7 +185,7 @@ modified, added, or removed, re-evaluating produces the correct result. Manually
 | `pkg/api/jobrunscan/reevaluate.go` | Re-evaluation service: symptom scanning, BQ/GCS/PostgreSQL write logic. |
 | `pkg/sippyserver/job_run_scan.go` | HTTP route handlers delegating to the jobrunscan API package. |
 | `pkg/sippyclient/jobrunscan/` | Go client library for symptom/label APIs (used by cloud function). |
-| `pkg/componentreadiness/jobrunannotator/jobrunannotator.go` | `JobRunAnnotator` - the `annotate-job-runs` tool which can add labels but doesn't (yet) know about symptoms. |
+| `pkg/componentreadiness/jobrunannotator/jobrunannotator.go` | `JobRunAnnotator` - the `annotate-job-runs` tool which can add labels but doesn't (yet) know about symptoms. Artifact queries use the bucket recorded on each job run. |
 | `pkg/componentreadiness/jobrunannotator/prow_bucket.go` | `JobRunBucketLabel`, `WriteHTMLSummaryToBucket` - writes label files and HTML summaries to GCS. Shared with cloud function. |
 | `pkg/api/jobartifacts/` | `JobArtifactQuery`, `ContentMatcher` - the artifact querying and matching engine used by JAQ and symptom evaluation. Results (matched lines per file) are cached by `(jobRunID, pathGlob, matcherKey)` to avoid re-scanning the same job run for the same query; this does **not** cache raw GCS file contents. |
 | `pkg/dataloader/prowloader/prow.go` | `GatherLabelsFromBQ` - reads labels from BQ during fetchdata. |

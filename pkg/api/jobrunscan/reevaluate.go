@@ -106,7 +106,7 @@ type symptomCache struct {
 type ReEvaluator struct {
 	bqClient    *bqclient.Client
 	gcsClient   *storage.Client
-	gcsBucket   string
+	gcsBucket   string // fallback when the job has no stored bucket and the URL does not name one
 	db          *db.DB
 	cache       cache.Cache
 	artifactMgr *jobartifacts.Manager
@@ -347,7 +347,7 @@ func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRunID int64, symp
 		}
 
 		q := &jobartifacts.JobArtifactQuery{
-			GcsBucket:      r.gcsClient.Bucket(util.GcsBucketRoot),
+			GcsClient:      r.gcsClient,
 			DbClient:       r.db,
 			Cache:          r.cache,
 			JobRunIDs:      []int64{jobRunID},
@@ -445,7 +445,7 @@ func (r *ReEvaluator) buildOutputs(matches []symptomMatch, buildID string, jobRu
 				Label:      labelContent,
 				FileMatch:  m.fileMatch,
 				TextMatch:  m.textMatch,
-				Bucket:     r.gcsBucket,
+				Bucket:     util.ResolveGCSBucket(jobRun.GCSBucket, jobRun.URL, r.gcsBucket),
 				JobRunPath: jobRunPath,
 			})
 		}
@@ -487,8 +487,9 @@ func (r *ReEvaluator) clearAndWrite(ctx context.Context, buildID string, jobRun 
 
 	// Clear GCS
 	jobRunPath := jobRunPathFromURL(jobRun.URL)
-	if jobRunPath != "" {
-		if err := r.clearGCSLabels(ctx, jobRunPath); err != nil {
+	gcsBucket := util.ResolveGCSBucket(jobRun.GCSBucket, jobRun.URL, r.gcsBucket)
+	if jobRunPath != "" && gcsBucket != "" {
+		if err := r.clearGCSLabels(ctx, gcsBucket, jobRunPath); err != nil {
 			return fmt.Errorf("clearing GCS labels: %w", err)
 		}
 	}
@@ -508,8 +509,8 @@ func (r *ReEvaluator) clearAndWrite(ctx context.Context, buildID string, jobRun 
 	}
 
 	// Write HTML summary
-	if len(bucketLabels) > 0 && jobRunPath != "" {
-		bucket := r.gcsClient.Bucket(r.gcsBucket)
+	if len(bucketLabels) > 0 && jobRunPath != "" && gcsBucket != "" {
+		bucket := r.gcsClient.Bucket(gcsBucket)
 		if _, err := jobrunannotator.WriteHTMLSummaryToBucket(ctx, bucket, jobRunPath); err != nil {
 			return fmt.Errorf("writing GCS HTML summary: %w", err)
 		}
@@ -546,8 +547,8 @@ func (r *ReEvaluator) clearBQLabels(ctx context.Context, buildID string, startTi
 }
 
 // clearGCSLabels removes all existing label JSON files and the HTML summary from GCS.
-func (r *ReEvaluator) clearGCSLabels(ctx context.Context, jobRunPath string) error {
-	bucket := r.gcsClient.Bucket(r.gcsBucket)
+func (r *ReEvaluator) clearGCSLabels(ctx context.Context, gcsBucket, jobRunPath string) error {
+	bucket := r.gcsClient.Bucket(gcsBucket)
 	labelDir := jobRunPath + jobrunannotator.BucketLabelsPrefix
 
 	it := bucket.Objects(ctx, &storage.Query{
@@ -709,18 +710,9 @@ func mergeLabels(manualLabels []string, bqLabels []models.JobRunLabel) []string 
 	return merged.UnsortedList()
 }
 
-// jobRunPathFromURL extracts the GCS path from a ProwJobRun URL.
+// jobRunPathFromURL extracts the GCS object prefix from a ProwJobRun URL.
 func jobRunPathFromURL(url string) string {
-	const marker = "/" + util.GcsBucketRoot + "/"
-	pathStart := strings.Index(url, marker)
-	if pathStart == -1 {
-		return ""
-	}
-	path := url[pathStart+len(marker):]
-	if !strings.HasSuffix(path, "/") {
-		path += "/"
-	}
-	return path
+	return util.GCSObjectPrefixFromURL(url)
 }
 
 // uniqueSymptomsMatched returns the sorted distinct symptom IDs from the matches.

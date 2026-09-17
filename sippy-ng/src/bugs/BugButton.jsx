@@ -10,7 +10,7 @@ const useStyles = makeStyles((_theme) => ({
   },
 }))
 
-export default function BugButton(props) {
+export default function BugButton({ jiraProjectID = '10325', ...props }) {
   const classes = useStyles()
   const [_open, _setOpen] = useState(false)
 
@@ -26,7 +26,7 @@ See the [sippy test details|${document.location.href}] for additional context.
 
   const handleClick = () => {
     let message = props.context || text
-    let url = `https://redhat.atlassian.net/secure/CreateIssueDetails!init.jspa?pid=10325&issuetype=10016&description=${safeEncodeURIComponent(
+    let url = `https://redhat.atlassian.net/secure/CreateIssueDetails!init.jspa?pid=${jiraProjectID}&issuetype=10016&description=${safeEncodeURIComponent(
       message
     )}`
 
@@ -59,6 +59,7 @@ See the [sippy test details|${document.location.href}] for additional context.
 }
 
 BugButton.propTypes = {
+  jiraProjectID: PropTypes.string,
   jiraComponentID: PropTypes.string,
   component: PropTypes.string,
   capability: PropTypes.string,

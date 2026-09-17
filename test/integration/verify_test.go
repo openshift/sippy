@@ -15,7 +15,7 @@ import (
 	intutil "github.com/openshift/sippy/test/integration/util"
 )
 
-func TestVerifyReleaseEnumerationIncludesHistoricalPseudoReleaseWithoutTargetData(t *testing.T) {
+func TestVerifyReleaseEnumerationUsesActiveReleaseDefinitions(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	intutil.CreateReleaseDefinition(t, dbc, "4.20", 4, 20)
 	intutil.CreateProwJob(t, dbc, "historical-job", "stale-pseudo", nil)
@@ -26,18 +26,16 @@ func TestVerifyReleaseEnumerationIncludesHistoricalPseudoReleaseWithoutTargetDat
 	store := dbverify.NewPostgreSQL(dbc)
 	releases, err := store.Releases(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, []string{"4.20", "stale-pseudo"}, releases)
+	assert.Equal(t, []string{"4.20"}, releases)
 
 	date := civil.Date{Year: 2026, Month: 8, Day: 25}
 	result := (&dbverify.Runner{PostgreSQL: store}).Run(context.Background(), dbverify.Options{
 		Date: date, Checks: []dbverify.Check{dbverify.CheckDailyTotals, dbverify.CheckCumulativeSummaries}, Release: "stale-pseudo",
 	})
 	require.Len(t, result.Summaries, 2)
-	assert.True(t, result.Passed())
 	for _, summary := range result.Summaries {
 		assert.Equal(t, "stale-pseudo", summary.Release)
-		assert.Zero(t, summary.ExpectedRows)
-		assert.Zero(t, summary.ActualRows)
+		assert.Contains(t, summary.Error, "was not found in active release definitions")
 	}
 }
 
@@ -68,6 +66,7 @@ func TestVerifyDailyRowsProductionSemanticsAndMismatches(t *testing.T) {
 	release := "pseudo-with-data"
 	date := civil.Date{Year: 2026, Month: 8, Day: 25}
 	start := date.In(time.UTC)
+	intutil.CreateReleaseDefinition(t, dbc, release, 4, 20)
 	job := intutil.CreateProwJob(t, dbc, "daily-job", release, nil)
 	test := intutil.CreateTest(t, dbc, "daily test")
 	suite := intutil.CreateSuite(t, dbc, "suite")

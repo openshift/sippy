@@ -217,12 +217,17 @@ func TestJobRunPathFromURL(t *testing.T) {
 	}{
 		{
 			name: "standard URL",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn/1234567890",
+			want: "logs/periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn/1234567890/",
+		},
+		{
+			name: "legacy bucket URL",
 			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn/1234567890",
 			want: "logs/periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn/1234567890/",
 		},
 		{
 			name: "URL with trailing slash",
-			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/some-job/999/",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/some-job/999/",
 			want: "logs/some-job/999/",
 		},
 		{
@@ -368,8 +373,8 @@ func TestBuildOutputs(t *testing.T) {
 	if gcs.TextMatch != "dns timeout occurred at 12:34" {
 		t.Errorf("bucket label TextMatch = %q", gcs.TextMatch)
 	}
-	if gcs.Bucket != "test-bucket" {
-		t.Errorf("bucket label Bucket = %q, want %q", gcs.Bucket, "test-bucket")
+	if gcs.Bucket != "test-platform-results" {
+		t.Errorf("bucket label Bucket = %q, want %q", gcs.Bucket, "test-platform-results")
 	}
 	expectedPath := "logs/test-job/12345/"
 	if gcs.JobRunPath != expectedPath {
@@ -460,6 +465,67 @@ func TestComputeSymptomHash(t *testing.T) {
 	hash5 := computeSymptomHash([]jobrunscan.Symptom{})
 	if hash4 != hash5 {
 		t.Errorf("nil and empty should produce the same hash: %s != %s", hash4, hash5)
+	}
+}
+
+func TestBuildOutputsUsesJobBucket(t *testing.T) {
+	matches := []symptomMatch{
+		{
+			symptom: jobrunscan.Symptom{SymptomContent: jobrunscan.SymptomContent{
+				ID:       "DNSTimeout",
+				LabelIDs: []string{"InfraFailure"},
+			}},
+			fileMatch: "artifacts/build-log.txt",
+		},
+	}
+
+	tests := []struct {
+		name       string
+		jobRun     *models.ProwJobRun
+		fallback   string
+		wantBucket string
+	}{
+		{
+			name: "stored bucket wins over URL and fallback",
+			jobRun: &models.ProwJobRun{
+				GCSBucket: "origin-ci-test",
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/job/1",
+			},
+			fallback:   "configured-default",
+			wantBucket: "origin-ci-test",
+		},
+		{
+			name: "URL bucket when stored empty",
+			jobRun: &models.ProwJobRun{
+				URL: "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/job/1",
+			},
+			fallback:   "configured-default",
+			wantBucket: "test-platform-results",
+		},
+		{
+			name: "configured fallback when stored and URL empty",
+			jobRun: &models.ProwJobRun{
+				URL: "https://example.com/not-a-prow-url",
+			},
+			fallback:   "configured-default",
+			wantBucket: "configured-default",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			re := &ReEvaluator{gcsBucket: tt.fallback}
+			_, bucketLabels, err := re.buildOutputs(matches, "1", tt.jobRun)
+			if err != nil {
+				t.Fatalf("buildOutputs() error = %v", err)
+			}
+			if len(bucketLabels) != 1 {
+				t.Fatalf("expected 1 bucket label, got %d", len(bucketLabels))
+			}
+			if bucketLabels[0].Bucket != tt.wantBucket {
+				t.Errorf("bucket = %q, want %q", bucketLabels[0].Bucket, tt.wantBucket)
+			}
+		})
 	}
 }
 

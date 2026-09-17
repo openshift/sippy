@@ -2431,7 +2431,7 @@ func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	}
 
 	q := &jobartifacts.JobArtifactQuery{
-		GcsBucket:      s.gcsClient.Bucket(util.GcsBucketRoot),
+		GcsClient:      s.gcsClient,
 		DbClient:       s.db,
 		Cache:          s.cache,
 		JobRunIDs:      []int64{},

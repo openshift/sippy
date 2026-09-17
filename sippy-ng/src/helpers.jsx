@@ -439,3 +439,18 @@ export function getTestStatus(stats, flake, fail, success) {
       ? fail
       : success
 }
+
+const JIRA_PROJECTS = {
+  OCPBUGS: { key: 'OCPBUGS', pid: '10325' },
+  PROJQUAY: { key: 'PROJQUAY', pid: '10217' },
+}
+
+// jiraProjectForRelease returns the Jira project (key and redhat.atlassian.net
+// project id) that bugs for the given release should be filed into. The quay-*
+// synthetic releases file into PROJQUAY instead of the default OCPBUGS.
+export function jiraProjectForRelease(release) {
+  if (typeof release === 'string' && release.startsWith('quay-')) {
+    return JIRA_PROJECTS.PROJQUAY
+  }
+  return JIRA_PROJECTS.OCPBUGS
+}

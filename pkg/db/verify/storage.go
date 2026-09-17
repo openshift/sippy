@@ -61,10 +61,6 @@ func (p *PostgreSQL) Releases(ctx context.Context) ([]string, error) {
 		SELECT release
 		FROM release_definitions
 		WHERE deleted_at IS NULL AND release <> ''
-		UNION
-		SELECT DISTINCT release
-		FROM prow_jobs
-		WHERE deleted_at IS NULL AND release <> ''
 		ORDER BY release
 	`).Scan(&releases).Error
 	if err != nil {
