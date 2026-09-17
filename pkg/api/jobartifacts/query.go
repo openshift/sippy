@@ -45,7 +45,7 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 			return jobRunResponse, err
 		}
 
-		fileAttrs, truncated, err := q.getJobRunFiles(jobRunResponse.GCSBucket, jobRunResponse.BucketPath)
+		fileAttrs, truncated, err := q.getJobRunFiles(ctx, jobRunResponse.GCSBucket, jobRunResponse.BucketPath)
 		if err != nil {
 			logger.WithError(err).Error("could not find job artifact files")
 			return jobRunResponse, err
@@ -57,7 +57,7 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 			logger.WithError(err).Error("could not resolve job GCS bucket")
 			return jobRunResponse, err
 		}
-		fileAttrs, truncated, err := q.getJobRunFiles(jobRunResponse.GCSBucket, jobRunResponse.BucketPath)
+		fileAttrs, truncated, err := q.getJobRunFiles(ctx, jobRunResponse.GCSBucket, jobRunResponse.BucketPath)
 		if err != nil {
 			logger.WithError(err).Error("could not find job artifact files")
 			return jobRunResponse, err
@@ -146,10 +146,10 @@ func ensureJobBucket(jobRun *JobRun) error {
 	return nil
 }
 
-func (q *JobArtifactQuery) getJobRunFiles(gcsBucket, jobRunPath string) ([]*storage.ObjectAttrs, bool, error) {
+func (q *JobArtifactQuery) getJobRunFiles(ctx context.Context, gcsBucket, jobRunPath string) ([]*storage.ObjectAttrs, bool, error) {
 	files := []*storage.ObjectAttrs{}
 	truncated := false
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 	gcsQuery := &storage.Query{
 		Prefix:     jobRunPath,
@@ -287,7 +287,7 @@ type ContentMatcher interface {
 
 func (q *JobArtifactQuery) CacheKeyForJobRun(jobRunID int64) string {
 	key := map[string]string{
-		"type":     "JAQJobRun~v1",
+		"type":     "JAQJobRun~v2",
 		"id":       strconv.FormatInt(jobRunID, 10),
 		"pathGlob": q.PathGlob,
 	}

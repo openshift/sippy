@@ -51,7 +51,9 @@ func GetGcsClient(t *testing.T) *storage.Client {
 	if pathToGcsCredentials == "" {
 		t.Skip("TEST_GCS_CREDS_PATH environment variable is not set; skipping GCS tests")
 	}
-	gcsClient, err := gcs.NewGCSClient(context.TODO(), pathToGcsCredentials, "")
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	gcsClient, err := gcs.NewGCSClient(ctx, pathToGcsCredentials, "")
 	if err != nil {
 		logrus.WithError(err).Fatalf("CRITICAL error getting GCS client with credentials at %s", pathToGcsCredentials)
 	}

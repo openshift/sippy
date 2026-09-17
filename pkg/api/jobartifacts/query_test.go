@@ -57,7 +57,7 @@ func TestFunctional_ListFiles(t *testing.T) {
 	query := baseTestingJAQ(t, "", nil)
 	jobRun, err := query.getJobRun(1898704060324777984)
 	assert.NoError(t, err)
-	files, truncated, err := query.getJobRunFiles(jobRun.GCSBucket, jobRun.BucketPath)
+	files, truncated, err := query.getJobRunFiles(t.Context(), jobRun.GCSBucket, jobRun.BucketPath)
 	assert.NoError(t, err)
 	assert.True(t, truncated, "expected a lot of files under the job")
 	assert.Equal(t, maxJobFilesToScan, len(files), "expected to receive the max number of files")
@@ -67,7 +67,7 @@ func TestFunctional_FilterFiles(t *testing.T) {
 	query := baseTestingJAQ(t, "artifacts/*e2e*/gather-extra/build-log.txt", nil)
 	jobRun, err := query.getJobRun(1898704060324777984)
 	assert.NoError(t, err)
-	files, truncated, err := query.getJobRunFiles(jobRun.GCSBucket, jobRun.BucketPath)
+	files, truncated, err := query.getJobRunFiles(t.Context(), jobRun.GCSBucket, jobRun.BucketPath)
 	assert.NoError(t, err)
 	assert.False(t, truncated, "expected no need for truncating the file list")
 	assert.Equal(t, 1, len(files), "expected glob to match one file")
@@ -174,12 +174,12 @@ func TestCacheKeyForJobRun(t *testing.T) {
 
 	jobRunID := int64(123456789)
 
-	expectedKey := `{"id":"123456789","pathGlob":"artifacts/*e2e*/gather-extra/build-log.txt","type":"JAQJobRun~v1"}`
+	expectedKey := `{"id":"123456789","pathGlob":"artifacts/*e2e*/gather-extra/build-log.txt","type":"JAQJobRun~v2"}`
 	cacheKey := query.CacheKeyForJobRun(jobRunID)
 	assert.Equal(t, expectedKey, cacheKey, "CacheKeyForJobRun did not return the expected key")
 
 	query.ContentMatcher = NewStringMatcher("ClusterVersion:", 0, 0, maxFileMatches)
-	expectedKey = `{"contentMatcher":"stringLineMatcher: ClusterVersion:","id":"123456789","pathGlob":"artifacts/*e2e*/gather-extra/build-log.txt","type":"JAQJobRun~v1"}`
+	expectedKey = `{"contentMatcher":"stringLineMatcher: ClusterVersion:","id":"123456789","pathGlob":"artifacts/*e2e*/gather-extra/build-log.txt","type":"JAQJobRun~v2"}`
 	cacheKey = query.CacheKeyForJobRun(jobRunID)
 	assert.Equal(t, expectedKey, cacheKey, "CacheKeyForJobRun did not return the expected key")
 }
