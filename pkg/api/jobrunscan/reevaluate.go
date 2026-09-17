@@ -346,7 +346,6 @@ func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRun *models.ProwJ
 	q := &jobartifacts.JobArtifactQuery{
 		GcsClient: r.gcsClient,
 		DbClient:  r.db,
-		Cache:     r.cache,
 		JobRunIDs: []int64{int64(jobRun.ID)}, //nolint:gosec // G115: id is a PostgreSQL serial, always within int64 range
 	}
 
