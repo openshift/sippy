@@ -46,6 +46,29 @@
 		s8.094-2.481,10.902,0.732c3.429,3.924,8.572,6.175,14.109,6.175s10.679-2.251,14.109-6.175c2.808-3.213,7.689-3.541,10.902-0.732
 		c3.213,2.808,3.541,7.689,0.732,10.902C275.379,372.805,265.995,376.982,255.999,376.982z"/>
 </g>
+<g id="sillier-jester-propeller-hat">
+	<path style="fill:#8B5CF6;stroke:#38484A;stroke-width:8;stroke-linejoin:round;" d="M116,169c-3-39-43-82-14-112
+		c29-30,82,33,112,91l5,21H116z"/>
+	<path style="fill:#9BE564;stroke:#38484A;stroke-width:8;stroke-linejoin:round;" d="M190,169c6-68,26-123,66-137
+		c40,14,60,69,66,137H190z"/>
+	<path style="fill:#45D7E8;stroke:#38484A;stroke-width:8;stroke-linejoin:round;" d="M298,169l5-21
+		c30-58,83-121,112-91c29,30-11,73-14,112H298z"/>
+	<circle style="fill:#FFCF4E;stroke:#38484A;stroke-width:7;" cx="101" cy="55" r="18"/>
+	<circle style="fill:#FC7176;stroke:#38484A;stroke-width:7;" cx="415" cy="55" r="18"/>
+	<path style="fill:none;stroke:#38484A;stroke-width:7;stroke-linecap:round;" d="M256,36V21"/>
+	<path style="fill:#FC7176;stroke:#38484A;stroke-width:7;stroke-linejoin:round;" d="M256,21
+		c-25-24-56-20-64-3c12,17,39,21,64,5V21z"/>
+	<path style="fill:#FFB641;stroke:#38484A;stroke-width:7;stroke-linejoin:round;" d="M256,21
+		c25-24,56-20,64-3c-12,17-39,21-64,5V21z"/>
+	<circle style="fill:#FFCF4E;stroke:#38484A;stroke-width:7;" cx="256" cy="21" r="11"/>
+	<path style="fill:#FFCF4E;stroke:#38484A;stroke-width:8;stroke-linejoin:round;" d="M91,166
+		q165-45,330,0l-12,39q-153-31-306,0L91,166z"/>
+	<circle style="fill:#FC7176;" cx="143" cy="172" r="13"/>
+	<circle style="fill:#45D7E8;" cx="201" cy="162" r="13"/>
+	<path style="fill:#8B5CF6;" d="M256,145l15,15l-15,15l-15-15L256,145z"/>
+	<circle style="fill:#FC7176;" cx="311" cy="162" r="13"/>
+	<circle style="fill:#45D7E8;" cx="369" cy="172" r="13"/>
+</g>
 <g>
 </g>
 <g>
