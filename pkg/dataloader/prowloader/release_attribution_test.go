@@ -17,7 +17,7 @@ func TestReleaseAttributor(t *testing.T) {
 	require.NoError(t, overrides.AddExact("synthetic-exact", "rosa-stage"))
 	require.NoError(t, overrides.AddRegexp(`^synthetic-regexp-`, "rosa-stage"))
 	config := &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
-		"4.20":       {Jobs: map[string]bool{"configured": true, "disabled": false}, Regexp: []string{`-4\.20-`}},
+		"4.20":       {Jobs: map[string]bool{"configured": true, "disabled": false, "excluded-4.20-job": false}, Regexp: []string{`-4\.20-`}},
 		"rosa-stage": {Synthetic: true},
 	}}
 	attributor := NewReleaseAttributor([]string{"4.20", "rosa-stage", models.ReleasePresubmits}, config, overrides)
@@ -29,6 +29,7 @@ func TestReleaseAttributor(t *testing.T) {
 	}{
 		{name: "configured exact", job: jobForAttribution("configured", nil, false), want: "4.20"},
 		{name: "configured disabled", job: jobForAttribution("disabled", nil, false), want: ""},
+		{name: "disabled overrides regexp", job: jobForAttribution("excluded-4.20-job", nil, false), want: ""},
 		{name: "configured regexp", job: jobForAttribution("periodic-4.20-e2e", nil, false), want: "4.20"},
 		{name: "synthetic exact has priority", job: jobForAttribution("synthetic-exact", nil, false), want: "rosa-stage"},
 		{name: "synthetic regexp", job: jobForAttribution("synthetic-regexp-job", nil, false), want: "rosa-stage"},
