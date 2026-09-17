@@ -130,7 +130,7 @@ releases:
     synthetic: true
     regexp:
       - "^periodic-ci-openshift-hypershift-.*-periodics-hcm-.*"
-  gcp-hcp:
+  gcp-hcp-main:
     synthetic: true
     jobs:
       periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-platform: true
