@@ -14,3 +14,13 @@ const (
 	BatchStatusFailed     BatchStatus = "failed"
 	BatchStatusCancelled  BatchStatus = "cancelled"
 )
+
+// TerminalBatchStatuses supplies a list of statuses considered terminal (no further progress to be made)
+func TerminalBatchStatuses() []BatchStatus {
+	return []BatchStatus{BatchStatusComplete, BatchStatusFailed, BatchStatusCancelled}
+}
+
+// TerminalBatchStatuses tests whether a status is considered terminal
+func IsTerminalBatchStatus(s BatchStatus) bool {
+	return s == BatchStatusComplete || s == BatchStatusFailed || s == BatchStatusCancelled
+}

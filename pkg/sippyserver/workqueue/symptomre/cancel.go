@@ -49,9 +49,7 @@ func (c *BatchCanceller) Cancel(ctx context.Context, batchID uuid.UUID) (*BatchS
 		return nil, fmt.Errorf("loading batch %s: %w", batchID, err)
 	}
 
-	if batch.Status == workqueue.BatchStatusComplete ||
-		batch.Status == workqueue.BatchStatusFailed ||
-		batch.Status == workqueue.BatchStatusCancelled {
+	if workqueue.IsTerminalBatchStatus(batch.Status) {
 		return nil, fmt.Errorf("%w: batch %s has status %q", ErrBatchTerminal, batchID, batch.Status)
 	}
 
@@ -80,11 +78,14 @@ func (c *BatchCanceller) Cancel(ctx context.Context, batchID uuid.UUID) (*BatchS
 	}
 
 	now := time.Now()
-	if err := db.Model(&Batch{}).Where("id = ?", batchID).Updates(map[string]interface{}{
-		"status":       workqueue.BatchStatusCancelled,
-		"completed_at": now,
-	}).Error; err != nil {
-		return nil, fmt.Errorf("updating batch %s to canceled: %w", batchID, err)
+	if res := db.Model(&Batch{}).Where("id = ? and status not in ?", batchID, workqueue.TerminalBatchStatuses()).
+		Updates(map[string]interface{}{
+			"status":       workqueue.BatchStatusCancelled,
+			"completed_at": now,
+		}); res.Error != nil {
+		return nil, fmt.Errorf("failed to update batch %s to canceled: %w", batchID, res.Error)
+	} else if res.RowsAffected == 0 { // since last queried, it completed
+		return nil, ErrBatchTerminal
 	}
 
 	log.WithFields(log.Fields{

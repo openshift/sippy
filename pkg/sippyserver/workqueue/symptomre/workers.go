@@ -64,27 +64,31 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 	}
 
 	var items []BatchItem
-	if err := db.Where("batch_id = ?", batchID).Find(&items).Error; err != nil {
+	if err := db.Where(&BatchItem{BatchID: batchID}).Find(&items).Error; err != nil {
 		return fmt.Errorf("loading batch items for %s: %w", batchID, err)
 	}
 
-	if res := db.Model(&Batch{}).Where("id = ? AND status = ?", batchID, batch.Status).
-		Update("status", workqueue.BatchStatusProcessing); res.Error != nil {
+	if res := db.Model(&Batch{}).Where(&Batch{ID: batchID, Status: batch.Status}).
+		Updates(&Batch{Status: workqueue.BatchStatusProcessing}); res.Error != nil {
 		return fmt.Errorf("updating batch %s status to processing: %w", batchID, res.Error)
 	} else if res.RowsAffected == 0 {
 		return fmt.Errorf("will not process batch %s; it was changed asynchronously", batchID)
 	}
+	batch.Status = workqueue.BatchStatusProcessing
 
 	enqueued, deduped, err := ctxWorker.fanOutItems(ctx, batchID, items, batch.DryRun)
 	if err != nil { // attempt to mark the batch failed so client retries ASAP
-		if err2 := db.Model(&Batch{}).Where("id = ?", batchID).
-			Update("status", workqueue.BatchStatusFailed).Error; err2 != nil {
-			logger.WithError(err2).Errorf("couldn't update batch %s status after failed fanout", batchID)
+		if res := db.Where(&Batch{ID: batchID, Status: batch.Status}).
+			Updates(&Batch{Status: workqueue.BatchStatusFailed}); res.Error != nil {
+			logger.WithError(res.Error).Errorf("couldn't update batch %s status after failed fanout", batchID)
+		} else if res.RowsAffected == 0 {
+			// lost the status change race; batch could have been canceled during fanout
+			logger.Warnf("didn't update batch %s status after failed fanout; status changed asynchronously", batchID)
 		}
 		return err
 	}
 
-	if err := ctxWorker.finalizeBatch(batchID, enqueued, deduped); err != nil {
+	if err := ctxWorker.finalizeBatch(batch, enqueued, deduped); err != nil {
 		return err
 	}
 
@@ -141,13 +145,16 @@ func (w *ProcessBatchWorker) fanOutItems(ctx context.Context, batchID uuid.UUID,
 
 // finalizeBatch updates the batch row with enqueued/deduped counts and sets
 // status to running.
-func (w *ProcessBatchWorker) finalizeBatch(batchID uuid.UUID, enqueued, deduped int) error {
-	if err := w.gormDB.Model(&Batch{}).Where("id = ?", batchID).Updates(map[string]interface{}{
-		"enqueued_count": enqueued,
-		"deduped_count":  deduped,
-		"status":         workqueue.BatchStatusRunning,
-	}).Error; err != nil {
-		return fmt.Errorf("updating batch %s to running: %w", batchID, err)
+func (w *ProcessBatchWorker) finalizeBatch(batch Batch, enqueued, deduped int) error {
+	if res := w.gormDB.Where(&Batch{ID: batch.ID, Status: batch.Status}).Updates(&Batch{
+		EnqueuedCount: enqueued,
+		DedupedCount:  deduped,
+		Status:        workqueue.BatchStatusRunning,
+	}); res.Error != nil {
+		return fmt.Errorf("failed updating batch %s to running: %w", batch.ID, res.Error)
+	} else if res.RowsAffected == 0 {
+		// may have been canceled in the meantime
+		return fmt.Errorf("batch status changed asynchronously, will not finalize %s", batch.ID)
 	}
 	return nil
 }

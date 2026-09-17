@@ -47,16 +47,16 @@ func (q *StatusQuerier) GetUpdated(ctx context.Context, batchID uuid.UUID) (*Bat
 	// Lazy completion: if batch is running/processing and all items are terminal,
 	// update the batch status.
 	if batch.Status == workqueue.BatchStatusRunning || batch.Status == workqueue.BatchStatusProcessing {
-		if itemStatus == workqueue.BatchStatusComplete || itemStatus == workqueue.BatchStatusFailed {
+		if workqueue.IsTerminalBatchStatus(itemStatus) {
 			now := time.Now()
-			if err := db.Model(&Batch{}).
-				Where("id = ? and status = ?", batchID, batch.Status).
-				Updates(map[string]interface{}{
-					"status":       itemStatus,
-					"completed_at": now,
-				}).Error; err != nil {
+			if res := db.Where(&Batch{ID: batchID, Status: batch.Status}).
+				Updates(&Batch{Status: itemStatus, CompletedAt: &now}); res.Error != nil {
 				// updating the status in the DB is optional hygiene, really
-				log.WithError(err).Warnf("failed updating batch %s completion", batchID)
+				log.WithError(res.Error).Warnf("failed updating batch %s completion", batchID)
+			} else if res.RowsAffected == 0 {
+				// lost an update race; reload and report that status instead
+				resp = nil
+				return q.GetUpdated(ctx, batchID)
 			}
 			resp.Status = itemStatus
 		}
