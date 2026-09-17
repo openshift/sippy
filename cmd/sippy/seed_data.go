@@ -1591,7 +1591,7 @@ func seedReleasePayloads(dbc *db.DB) error {
 				Kind:           jrd.kind,
 				State:          jrd.state,
 				TransitionTime: releaseTime.Add(time.Duration(k) * time.Hour),
-				URL:            fmt.Sprintf("https://prow.ci.openshift.org/view/gs/test-platform-results/logs/%s/%d", jrd.jobName, 90000+i*100+k),
+				URL:            fmt.Sprintf("https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/%s/%d", jrd.jobName, 90000+i*100+k),
 			}
 			if err := dbc.DB.Create(&jobRun).Error; err != nil {
 				return fmt.Errorf("failed to create release job run: %w", err)

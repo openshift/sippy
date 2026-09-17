@@ -1,9 +1,11 @@
 package prowloader
 
 import (
+	"io"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -289,4 +291,19 @@ func TestPartitionStartDate(t *testing.T) {
 			assert.True(t, tt.expected.Equal(partitionStartDate(loadSince, tt.prowJobs)))
 		})
 	}
+}
+
+func TestGetGCSPathForProwJobURL(t *testing.T) {
+	pjLog := logrus.New()
+	pjLog.SetOutput(io.Discard)
+
+	t.Run("example.com /gs/ fixture", func(t *testing.T) {
+		path, err := GetGCSPathForProwJobURL(pjLog, "https://example.com/gs/test-platform-results-public/logs/job/1")
+		assert.NoError(t, err)
+		assert.Equal(t, "logs/job/1", path)
+	})
+	t.Run("rejects non-prow /gs/ after unrelated prefix", func(t *testing.T) {
+		_, err := GetGCSPathForProwJobURL(pjLog, "x/gs/other/logs/job/1")
+		assert.Error(t, err)
+	})
 }

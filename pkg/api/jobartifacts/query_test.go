@@ -10,10 +10,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestArtifactURLFor(t *testing.T) {
+	got := ArtifactURLFor("test-platform-results-public", "logs/some-job/123/build-log.txt")
+	want := "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results-public/logs/some-job/123/build-log.txt"
+	assert.Equal(t, want, got)
+}
+
+func TestEnsureJobBucket(t *testing.T) {
+	t.Run("stored bucket", func(t *testing.T) {
+		jr := JobRun{ID: "1", GCSBucket: "origin-ci-test", URL: "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/job/1"}
+		assert.NoError(t, ensureJobBucket(&jr))
+		assert.Equal(t, "origin-ci-test", jr.GCSBucket)
+	})
+	t.Run("url fallback", func(t *testing.T) {
+		jr := JobRun{ID: "1", URL: "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/job/1"}
+		assert.NoError(t, ensureJobBucket(&jr))
+		assert.Equal(t, "test-platform-results", jr.GCSBucket)
+	})
+	t.Run("missing", func(t *testing.T) {
+		jr := JobRun{ID: "1", URL: "https://example.com/not-prow"}
+		assert.Error(t, ensureJobBucket(&jr))
+	})
+}
+
 // convenience test setup method, glob and matcher are optional
 func baseTestingJAQ(t *testing.T, pathGlob string, matcher ContentMatcher) *JobArtifactQuery {
 	return &JobArtifactQuery{
-		GcsBucket:      util.GetGcsBucket(t),
+		GcsClient:      util.GetGcsClient(t),
 		DbClient:       util.GetDbHandle(t),
 		Cache:          &util.PseudoCache{Cache: map[string][]byte{}},
 		PathGlob:       pathGlob,
@@ -27,11 +50,14 @@ func TestFunctional_JobRunPathFound(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "logs/periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn/1898704060324777984/", jobRun.BucketPath)
 	assert.Equal(t, "periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn", jobRun.JobName)
+	assert.NotEmpty(t, jobRun.GCSBucket, "expected job to record which GCS bucket it came from")
 }
 
 func TestFunctional_ListFiles(t *testing.T) {
 	query := baseTestingJAQ(t, "", nil)
-	files, truncated, err := query.getJobRunFiles("logs/periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn/1898704060324777984/")
+	jobRun, err := query.getJobRun(1898704060324777984)
+	assert.NoError(t, err)
+	files, truncated, err := query.getJobRunFiles(t.Context(), jobRun.GCSBucket, jobRun.BucketPath)
 	assert.NoError(t, err)
 	assert.True(t, truncated, "expected a lot of files under the job")
 	assert.Equal(t, maxJobFilesToScan, len(files), "expected to receive the max number of files")
@@ -39,7 +65,9 @@ func TestFunctional_ListFiles(t *testing.T) {
 
 func TestFunctional_FilterFiles(t *testing.T) {
 	query := baseTestingJAQ(t, "artifacts/*e2e*/gather-extra/build-log.txt", nil)
-	files, truncated, err := query.getJobRunFiles("logs/periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn/1898704060324777984/")
+	jobRun, err := query.getJobRun(1898704060324777984)
+	assert.NoError(t, err)
+	files, truncated, err := query.getJobRunFiles(t.Context(), jobRun.GCSBucket, jobRun.BucketPath)
 	assert.NoError(t, err)
 	assert.False(t, truncated, "expected no need for truncating the file list")
 	assert.Equal(t, 1, len(files), "expected glob to match one file")
@@ -50,13 +78,15 @@ func TestFunctional_FilterContent(t *testing.T) {
 	ctx := context.Background()
 
 	query := baseTestingJAQ(t, "", NewStringMatcher("ClusterVersion:", 0, 0, maxFileMatches))
-	artifact := query.getFileContentMatches(ctx, 1898704060324777984, &storage.ObjectAttrs{Name: filePath})
+	jobRun, err := query.getJobRun(1898704060324777984)
+	assert.NoError(t, err)
+	artifact := query.getFileContentMatches(ctx, 1898704060324777984, jobRun.GCSBucket, &storage.ObjectAttrs{Name: filePath})
 	assert.Empty(t, artifact.Error)
 	assert.False(t, artifact.Truncated, "expected no need for truncating the content matches")
 	assert.Equal(t, 2, len(artifact.Matches), "expected content to match with two lines")
 
 	query.ContentMatcher = NewStringMatcher("error:", 0, 0, maxFileMatches)
-	artifact = query.getFileContentMatches(ctx, 1898704060324777984, &storage.ObjectAttrs{Name: filePath})
+	artifact = query.getFileContentMatches(ctx, 1898704060324777984, jobRun.GCSBucket, &storage.ObjectAttrs{Name: filePath})
 	assert.Empty(t, artifact.Error)
 	assert.True(t, artifact.Truncated, "expected to truncate content matches")
 	assert.Equal(t, maxFileMatches, len(artifact.Matches), "expected content to match with many lines")
@@ -66,7 +96,9 @@ func TestFunctional_GzipContent(t *testing.T) {
 	const filePath = "logs/periodic-ci-openshift-release-master-ci-4.19-e2e-aws-ovn-techpreview/1909930323508989952/artifacts/e2e-aws-ovn-techpreview/gather-extra/artifacts/nodes/ip-10-0-59-177.us-east-2.compute.internal/journal"
 
 	query := baseTestingJAQ(t, "", NewStringMatcher("error", 0, 0, maxFileMatches))
-	artifact := query.getFileContentMatches(context.Background(), 1909930323508989952, &storage.ObjectAttrs{Name: filePath, ContentType: "application/gzip"})
+	jobRun, err := query.getJobRun(1909930323508989952)
+	assert.NoError(t, err)
+	artifact := query.getFileContentMatches(context.Background(), 1909930323508989952, jobRun.GCSBucket, &storage.ObjectAttrs{Name: filePath, ContentType: "application/gzip"})
 	assert.Empty(t, artifact.Error)
 	assert.True(t, artifact.Truncated, "expected a lot of matches")
 	assert.Contains(t,
@@ -142,12 +174,12 @@ func TestCacheKeyForJobRun(t *testing.T) {
 
 	jobRunID := int64(123456789)
 
-	expectedKey := `{"id":"123456789","pathGlob":"artifacts/*e2e*/gather-extra/build-log.txt","type":"JAQJobRun~v1"}`
+	expectedKey := `{"id":"123456789","pathGlob":"artifacts/*e2e*/gather-extra/build-log.txt","type":"JAQJobRun~v2"}`
 	cacheKey := query.CacheKeyForJobRun(jobRunID)
 	assert.Equal(t, expectedKey, cacheKey, "CacheKeyForJobRun did not return the expected key")
 
 	query.ContentMatcher = NewStringMatcher("ClusterVersion:", 0, 0, maxFileMatches)
-	expectedKey = `{"contentMatcher":"stringLineMatcher: ClusterVersion:","id":"123456789","pathGlob":"artifacts/*e2e*/gather-extra/build-log.txt","type":"JAQJobRun~v1"}`
+	expectedKey = `{"contentMatcher":"stringLineMatcher: ClusterVersion:","id":"123456789","pathGlob":"artifacts/*e2e*/gather-extra/build-log.txt","type":"JAQJobRun~v2"}`
 	cacheKey = query.CacheKeyForJobRun(jobRunID)
 	assert.Equal(t, expectedKey, cacheKey, "CacheKeyForJobRun did not return the expected key")
 }

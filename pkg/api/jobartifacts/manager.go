@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -179,7 +178,7 @@ func (m *Manager) jobRunWorker(managerCtx context.Context) {
 }
 
 // QueryJobRunArtifacts scans the content of all matched artifacts for one job, with concurrency and timeouts/cancellation
-func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQuery, jobRunID int64, gcsFiles []*storage.ObjectAttrs) (artifacts []JobRunArtifact, isComplete bool) {
+func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQuery, jobRunID int64, gcsBucket string, gcsFiles []*storage.ObjectAttrs) (artifacts []JobRunArtifact, isComplete bool) {
 	// set up the request/response workflow
 	artifactResponseChan := make(chan artifactResponse) // for responses from the workers
 	remaining := sets.New[string]()                     // keep track of responses still missing
@@ -210,6 +209,7 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 			artifactsChan: artifactResponseChan,
 			ctx:           ctx,
 			jobRunID:      jobRunID,
+			gcsBucket:     gcsBucket,
 		}
 		_ = sendViaChannel(ctx, m.artifactChan, request) // if not sent, will be in remaining
 	}
@@ -222,7 +222,7 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 		artifacts = append(artifacts, JobRunArtifact{
 			JobRunID:     strconv.FormatInt(jobRunID, 10),
 			ArtifactPath: relativeArtifactPath(path, strconv.FormatInt(jobRunID, 10)),
-			ArtifactURL:  fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, path),
+			ArtifactURL:  ArtifactURLFor(gcsBucket, path),
 			Error:        fmt.Sprintf("request did not complete within %s", artifactQueryTimeout),
 			TimedOut:     true,
 		})
@@ -242,8 +242,9 @@ type artifactRequest struct {
 	artifactsChan chan artifactResponse // when processing is done, send response to this channel
 	// putting a context in a struct is normally discouraged; but think of this entire struct as just parameters for a function call
 	// and then it is clear the usage is in the same spirit of passing a context to a function (just via a channel).
-	ctx      context.Context // enable cancellation/timeout of query
-	jobRunID int64
+	ctx       context.Context // enable cancellation/timeout of query
+	jobRunID  int64
+	gcsBucket string
 }
 
 // artifactReponse channels the response for a single artifact that was processed
@@ -266,7 +267,7 @@ func (m *Manager) artifactWorker(managerCtx context.Context) {
 		artLog.Debug("Received request from artifactChan")
 		response := artifactResponse{
 			artifactPath: request.artifactAttrs.Name,
-			artifact:     request.query.getFileContentMatches(request.ctx, request.jobRunID, request.artifactAttrs),
+			artifact:     request.query.getFileContentMatches(request.ctx, request.jobRunID, request.gcsBucket, request.artifactAttrs),
 		}
 
 		expired = sendViaChannel(request.ctx, request.artifactsChan, response)

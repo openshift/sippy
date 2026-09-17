@@ -11,6 +11,7 @@ type JobRun struct {
 	// ID is string because some parsers translate long ints into scientific notation
 	ID         string `json:"id"`
 	URL        string `json:"url"`
+	GCSBucket  string `json:"gcs_bucket"`  // bucket recorded on the job run (not a process-wide default)
 	BucketPath string `json:"bucket_path"` // path to the top of job run content in the bucket
 	JobName    string `json:"job_name"`
 	// NOTE: limited per maxJobFilesToScan, sets Truncated if more files match
