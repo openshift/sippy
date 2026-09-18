@@ -141,6 +141,11 @@ releases:
       periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-3-18-nightly-4-22: false
     regexp:
       - "^periodic-ci-quay-quay-redhat-3\\.18-.*-e2e-install-.*"
+  quay-io:
+    synthetic: true
+    jobs:
+      periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-performance-test: true
+      periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-load-smoke: true
   quay-presubmits:
     synthetic: true
     regexp:

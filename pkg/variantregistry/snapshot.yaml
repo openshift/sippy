@@ -356645,13 +356645,14 @@ periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-
     CGroupMode: v2
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Release: quay-io
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -356663,13 +356664,14 @@ periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-
     CGroupMode: v2
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Release: quay-io
     Scheduler: default
     SecurityMode: default
     Suite: unknown
