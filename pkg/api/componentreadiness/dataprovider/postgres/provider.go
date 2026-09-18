@@ -994,6 +994,7 @@ func (p *PostgresProvider) QuerySpotCheckTestStatus(
 		keyStr := testKey.Encode()
 
 		result[keyStr] = crstatus.TestStatus{
+			TestID:       testID,
 			TestName:     SpotCheckTestName(g.component, g.capability),
 			Component:    g.component,
 			Capabilities: []string{g.capability},
@@ -1090,11 +1091,21 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 		return nil, fmt.Errorf("querying spot-check test details: %w", err)
 	}
 
+	// Parse component and capability from the synthetic test ID to filter
+	// results to only the specific spot-check group being drilled into.
+	_, wantComponent, wantCapability := parseSpotCheckTestID(syntheticTestID)
+
 	result := map[string][]crstatus.TestDetailsSummary{}
 	for _, row := range rows {
 		jobVariants := parseVariants(row.Variants)
 
-		// Filter by requested variants (component/capability/environment)
+		// Filter by component/capability from the synthetic test ID
+		if !strings.EqualFold(jobVariants["Component"], wantComponent) ||
+			!strings.EqualFold(jobVariants["Capability"], wantCapability) {
+			continue
+		}
+
+		// Filter by requested variants (environment dimensions like Platform/Network)
 		if requestedVariants != nil {
 			match := true
 			for k, v := range requestedVariants {
@@ -1143,6 +1154,16 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 	}
 
 	return result, nil
+}
+
+// parseSpotCheckTestID extracts sample name, component, and capability from a
+// synthetic test ID like "spotcheck-30d:etcd:scaling".
+func parseSpotCheckTestID(testID string) (string, string, string) {
+	parts := strings.SplitN(testID, ":", 3)
+	if len(parts) != 3 {
+		return "", "", ""
+	}
+	return parts[0], parts[1], strings.ReplaceAll(parts[2], "-", " ")
 }
 
 // SpotCheckTestID creates a synthetic test ID for a spot-check component/capability group.

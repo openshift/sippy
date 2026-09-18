@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"math/big"
 	"testing"
@@ -4718,6 +4719,284 @@ func filterReportPlaceholders(allTests []crtype.ReportTestSummary) []crtype.Repo
 		}
 	}
 	return actual
+}
+
+// --- Spot-check tests ---
+
+// seedSpotCheckData creates the fixtures for spot-check integration tests:
+//   - Two spot-check jobs with Component/Capability variants
+//   - The [sig-sippy] openshift-tests should work synthetic test
+//   - Job runs with pass/fail results
+func seedSpotCheckData(t *testing.T, dbc *db.DB) spotCheckSeed {
+	t.Helper()
+	release := "4.17"
+
+	// Variant combinations for spot-check jobs
+	vcEtcd := createVariantCombination(t, dbc, []string{
+		"Platform:aws", "Network:ovn", "Component:Etcd", "Capability:Scaling",
+		"JobTier:spotcheck-30d",
+	})
+	vcCPU := createVariantCombination(t, dbc, []string{
+		"Platform:aws", "Network:ovn", "Component:Node / Kubelet", "Capability:CPU Partitioning",
+		"JobTier:spotcheck-30d",
+	})
+
+	// Spot-check prow jobs
+	jobEtcd := createProwJobWithVC(t, dbc, "periodic-ci-etcd-scaling-spot-check", release, vcEtcd)
+	jobCPU := createProwJobWithVC(t, dbc, "periodic-ci-cpu-partitioning-spot-check", release, vcCPU)
+
+	// The synthetic test created by sippy on import
+	syntheticTest := intutil.CreateTest(t, dbc, "[sig-sippy] openshift-tests should work")
+
+	now := time.Now().UTC()
+
+	// Etcd job: 1 pass and 1 fail in the window = healthy (any pass = healthy)
+	etcdRun1 := intutil.CreateProwJobRun(t, dbc, jobEtcd.ID, release,
+		now.Add(-10*24*time.Hour), true, "S", intutil.WithURL("https://prow.ci/etcd-run-1"))
+	createProwJobRunTest(t, dbc, etcdRun1.ID, jobEtcd.ID, syntheticTest.ID, nil,
+		1, release, etcdRun1.Timestamp) // status 1 = pass
+
+	etcdRun2 := intutil.CreateProwJobRun(t, dbc, jobEtcd.ID, release,
+		now.Add(-5*24*time.Hour), false, "F", intutil.WithURL("https://prow.ci/etcd-run-2"))
+	createProwJobRunTest(t, dbc, etcdRun2.ID, jobEtcd.ID, syntheticTest.ID, nil,
+		12, release, etcdRun2.Timestamp) // status 12 = fail
+
+	// CPU partitioning job: 3 failures, 0 passes = ExtremeRegression
+	for i := range 3 {
+		cpuRun := intutil.CreateProwJobRun(t, dbc, jobCPU.ID, release,
+			now.Add(time.Duration(-(20-i*5))*24*time.Hour), false, "F",
+			intutil.WithURL(fmt.Sprintf("https://prow.ci/cpu-run-%d", i+1)))
+		createProwJobRunTest(t, dbc, cpuRun.ID, jobCPU.ID, syntheticTest.ID, nil,
+			12, release, cpuRun.Timestamp) // status 12 = fail
+	}
+
+	return spotCheckSeed{
+		release:       release,
+		vcEtcd:        vcEtcd,
+		vcCPU:         vcCPU,
+		jobEtcd:       jobEtcd,
+		jobCPU:        jobCPU,
+		syntheticTest: syntheticTest,
+	}
+}
+
+type spotCheckSeed struct {
+	release       string
+	vcEtcd        models.VariantCombination
+	vcCPU         models.VariantCombination
+	jobEtcd       models.ProwJob
+	jobCPU        models.ProwJob
+	syntheticTest models.Test
+}
+
+func spotCheckReqOptions(release string) reqopts.RequestOptions {
+	now := time.Now().UTC()
+	return reqopts.RequestOptions{
+		SampleRelease: reqopts.Release{
+			Name:  release,
+			Start: now.Add(-30 * 24 * time.Hour),
+			End:   now.Add(24 * time.Hour), // buffer for test timing
+		},
+		VariantOption: reqopts.Variants{
+			DBGroupBy: sets.New[string]("Platform", "Network"),
+		},
+	}
+}
+
+func TestQuerySpotCheckTestStatus(t *testing.T) {
+	dbc := crTestDB(t)
+	seed := seedSpotCheckData(t, dbc)
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := spotCheckReqOptions(seed.release)
+
+	includeVariants := map[string][]string{
+		"JobTier": {"spotcheck-30d"},
+	}
+
+	result, err := provider.QuerySpotCheckTestStatus(
+		context.Background(), opts, "spotcheck-30d", includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.NoError(t, err)
+	require.NotEmpty(t, result, "expected spot-check results")
+
+	// Find the etcd and cpu-partitioning results
+	var etcdStatus, cpuStatus *crstatus.TestStatus
+	for _, ts := range result {
+		switch ts.Component {
+		case "Etcd":
+			etcdStatus = &ts
+		case "Node / Kubelet":
+			cpuStatus = &ts
+		}
+	}
+
+	// Etcd: 1 pass + 1 fail = 2 total, 1 success
+	require.NotNil(t, etcdStatus, "expected Etcd spot-check result")
+	assert.Equal(t, 2, etcdStatus.TotalCount, "etcd total runs")
+	assert.Equal(t, 1, etcdStatus.SuccessCount, "etcd successes")
+	assert.Equal(t, "Etcd", etcdStatus.Component)
+	assert.Equal(t, []string{"Scaling"}, etcdStatus.Capabilities)
+
+	// CPU partitioning: 3 fails, 0 passes
+	require.NotNil(t, cpuStatus, "expected CPU Partitioning spot-check result")
+	assert.Equal(t, 3, cpuStatus.TotalCount, "cpu total runs")
+	assert.Equal(t, 0, cpuStatus.SuccessCount, "cpu successes")
+	assert.Equal(t, "Node / Kubelet", cpuStatus.Component)
+	assert.Equal(t, []string{"CPU Partitioning"}, cpuStatus.Capabilities)
+}
+
+func TestQuerySpotCheckTestStatus_VariantFilter(t *testing.T) {
+	dbc := crTestDB(t)
+	seed := seedSpotCheckData(t, dbc)
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := spotCheckReqOptions(seed.release)
+
+	// Filter for a JobTier that doesn't match any spot-check jobs
+	includeVariants := map[string][]string{
+		"JobTier": {"periodic-7d"},
+	}
+
+	result, err := provider.QuerySpotCheckTestStatus(
+		context.Background(), opts, "spotcheck-30d", includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.NoError(t, err)
+	assert.Empty(t, result, "non-matching variant filter should return no results")
+}
+
+func TestQuerySpotCheckTestDetails(t *testing.T) {
+	dbc := crTestDB(t)
+	seed := seedSpotCheckData(t, dbc)
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := spotCheckReqOptions(seed.release)
+
+	includeVariants := map[string][]string{
+		"JobTier": {"spotcheck-30d"},
+	}
+
+	t.Run("passing job shows individual runs", func(t *testing.T) {
+		etcdTestID := postgres.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")
+		requestedVariants := map[string]string{
+			"Platform": "aws",
+			"Network":  "ovn",
+		}
+
+		result, err := provider.QuerySpotCheckTestDetails(
+			context.Background(), opts, etcdTestID, includeVariants,
+			requestedVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.NoError(t, err)
+		require.NotEmpty(t, result, "expected detail rows for etcd spot-check")
+
+		// Count total job runs across all normalized job names
+		totalRuns := 0
+		for _, summaries := range result {
+			for _, summary := range summaries {
+				totalRuns += len(summary.JobRuns)
+				assert.Equal(t, etcdTestID, summary.TestKey.TestID)
+			}
+		}
+		assert.Equal(t, 2, totalRuns, "etcd should have 2 job runs (1 pass + 1 fail)")
+	})
+
+	t.Run("failing job shows all failed runs", func(t *testing.T) {
+		cpuTestID := postgres.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning")
+		requestedVariants := map[string]string{
+			"Platform": "aws",
+			"Network":  "ovn",
+		}
+
+		result, err := provider.QuerySpotCheckTestDetails(
+			context.Background(), opts, cpuTestID, includeVariants,
+			requestedVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.NoError(t, err)
+		require.NotEmpty(t, result, "expected detail rows for cpu spot-check")
+
+		totalRuns := 0
+		for _, summaries := range result {
+			for _, summary := range summaries {
+				totalRuns += len(summary.JobRuns)
+				assert.Equal(t, cpuTestID, summary.TestKey.TestID)
+				for _, run := range summary.JobRuns {
+					assert.Equal(t, 0, run.SuccessCount, "all cpu runs should be failures")
+				}
+			}
+		}
+		assert.Equal(t, 3, totalRuns, "cpu should have 3 failed job runs")
+	})
+}
+
+func TestSpotCheckEndToEnd(t *testing.T) {
+	dbc := crTestDB(t)
+	seed := seedSpotCheckData(t, dbc)
+	provider := postgres.NewPostgresProvider(dbc, nil)
+
+	now := time.Now().UTC()
+	sampleStart := now.Add(-30 * 24 * time.Hour)
+	sampleEnd := now.Add(24 * time.Hour)
+
+	opts := reqopts.RequestOptions{
+		SampleRelease: reqopts.Release{
+			Name:  seed.release,
+			Start: sampleStart,
+			End:   sampleEnd,
+		},
+		BaseRelease: reqopts.Release{
+			Name:  seed.release,
+			Start: sampleStart.Add(-30 * 24 * time.Hour),
+			End:   sampleStart,
+		},
+		VariantOption: reqopts.Variants{
+			DBGroupBy:     sets.New[string]("Platform", "Network"),
+			ColumnGroupBy: sets.New[string]("Platform"),
+		},
+		AdvancedOption: reqopts.Advanced{
+			MinimumFailure: 1,
+			Confidence:     95,
+		},
+		SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
+			{
+				Name:            "spotcheck-30d",
+				Release:         reqopts.Release{Start: sampleStart, End: sampleEnd},
+				IncludeVariants: map[string][]string{"JobTier": {"spotcheck-30d"}},
+			},
+		},
+	}
+
+	report, errs := componentreadiness.GetComponentReport(
+		context.Background(), provider, dbc, opts, "")
+	require.Empty(t, errs, "GetComponentReport should not return errors")
+
+	// Find spot-check rows in the report
+	var etcdRow, cpuRow *crtype.ReportRow
+	for i := range report.Rows {
+		if report.Rows[i].Component == "Etcd" {
+			etcdRow = &report.Rows[i]
+		}
+		if report.Rows[i].Component == "Node / Kubelet" {
+			cpuRow = &report.Rows[i]
+		}
+	}
+
+	// Etcd had a pass, so it should be NotSignificant (green)
+	require.NotNil(t, etcdRow, "expected Etcd row in report")
+	foundEtcdSpotCheck := false
+	for _, col := range etcdRow.Columns {
+		if col.Status == crtest.NotSignificant {
+			foundEtcdSpotCheck = true
+		}
+	}
+	assert.True(t, foundEtcdSpotCheck, "Etcd spot-check should show NotSignificant (passed)")
+
+	// CPU partitioning had 3 failures, so it should be ExtremeRegression (red)
+	require.NotNil(t, cpuRow, "expected Node / Kubelet row in report")
+	foundCPURegression := false
+	for _, col := range cpuRow.Columns {
+		if col.Status == crtest.ExtremeRegression {
+			foundCPURegression = true
+		}
+	}
+	assert.True(t, foundCPURegression, "CPU Partitioning spot-check should show ExtremeRegression (3 failures)")
 }
 
 // --- Helpers ---
