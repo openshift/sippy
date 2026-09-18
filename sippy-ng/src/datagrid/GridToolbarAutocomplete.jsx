@@ -60,7 +60,7 @@ export default function GridToolbarAutocomplete({ release = '', ...props }) {
       onClose={() => {
         setOpen(false)
       }}
-      onChange={(e, v) => v && props.onChange(v.name)}
+      onChange={(e, v) => props.onChange(v ? v.name : '')}
       onInputChange={(e, value) => {
         if (e && e.type === 'change') {
           props.onChange(value)

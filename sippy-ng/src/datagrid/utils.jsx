@@ -66,10 +66,8 @@ export function filterRemoveItem(filter, index) {
   if (!filter || filter.items.length === 0) {
     return
   }
-  let currentItems = filter.items
-  currentItems.splice(index, 1)
   return {
-    items: currentItems,
+    items: filter.items.filter((_, i) => i !== index),
     logicOperator: filter.logicOperator,
   }
 }

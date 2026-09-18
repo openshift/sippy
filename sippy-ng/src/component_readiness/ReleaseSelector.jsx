@@ -191,6 +191,20 @@ function ReleaseSelector(props) {
     return <p>Loading Releases...</p>
   }
 
+  // MUI X v7 DatePicker requires a Date object for value, but state may hold
+  // a formatted string from formatLongDate (e.g. "2024-09-05 00:00:00").
+  const parseDateValue = (val) => {
+    if (val instanceof Date) return val
+    if (typeof val === 'string' && val) {
+      const d = new Date(
+        val.includes('Z') || val.includes('+') ? val : val + 'Z'
+      )
+      return isNaN(d.getTime()) ? null : d
+    }
+    if (typeof val === 'number') return new Date(val)
+    return null
+  }
+
   // dateExtract takes a date from the DatePicker and extracts only the year, month, and day.
   // We can then use these 3 things to create a UTC time (regardless of the local browser's TZ).
   const dateExtractor = (descString, e) => {
@@ -278,7 +292,7 @@ function ReleaseSelector(props) {
               disableFuture
               label="From"
               format={dateFormat}
-              value={startTime}
+              value={parseDateValue(startTime)}
               onChange={(e) => {
                 const stringStartTime = dateExtractor('startTime', e)
                 const formattedTime = formatLongDate(
@@ -293,7 +307,7 @@ function ReleaseSelector(props) {
               disableFuture
               label="To"
               format={dateEndFormat}
-              value={endTime}
+              value={parseDateValue(endTime)}
               onChange={(e) => {
                 const stringEndTime = dateExtractor('endTime', e)
                 const formattedTime = formatLongDate(
