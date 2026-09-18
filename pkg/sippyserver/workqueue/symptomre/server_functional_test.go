@@ -156,7 +156,10 @@ func TestFunctionalAsyncSymptomReEvaluation(t *testing.T) {
 	// --- Submit batch via HTTP POST ---
 	reqBody := fmt.Sprintf(`{"prow_job_build_ids": [%s], "dry_run": true}`,
 		quoteAndJoin(buildIDs))
-	resp, err := http.Post(ts.URL+"/api/jobs/runs/reevaluate", "application/json", strings.NewReader(reqBody)) //nolint:gosec // test server URL
+	postReq, err := http.NewRequestWithContext(ctx, http.MethodPost, ts.URL+"/api/jobs/runs/reevaluate", strings.NewReader(reqBody)) //nolint:gosec // test server URL
+	require.NoError(t, err, "HTTP POST request should build")
+	postReq.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(postReq) //nolint:gosec // request targets the local httptest server
 	require.NoError(t, err, "HTTP POST should succeed")
 	defer resp.Body.Close()
 
@@ -170,6 +173,14 @@ func TestFunctionalAsyncSymptomReEvaluation(t *testing.T) {
 	}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&submitResp),
 		"submit response should decode")
+	t.Cleanup(func() {
+		if err := gormDB.Where("batch_id = ?", submitResp.BatchID).Delete(&BatchItem{}).Error; err != nil {
+			t.Errorf("cleaning up batch items: %v", err)
+		}
+		if err := gormDB.Where("id = ?", submitResp.BatchID).Delete(&Batch{}).Error; err != nil {
+			t.Errorf("cleaning up batch: %v", err)
+		}
+	})
 	assert.NotEqual(t, uuid.Nil, submitResp.BatchID,
 		"batch ID should be non-nil")
 	assert.Equal(t, len(buildIDs), submitResp.Requested,
@@ -187,7 +198,9 @@ func TestFunctionalAsyncSymptomReEvaluation(t *testing.T) {
 		require.False(t, time.Now().After(pollDeadline),
 			"batch should complete within 3 minutes")
 
-		statusResp, err := http.Get(statusURL) //nolint:gosec // test URL from httptest
+		statusReq, err := http.NewRequestWithContext(ctx, http.MethodGet, statusURL, nil) //nolint:gosec // test URL from httptest
+		require.NoError(t, err, "HTTP GET request should build")
+		statusResp, err := http.DefaultClient.Do(statusReq) //nolint:gosec // request targets the local httptest server
 		require.NoError(t, err, "HTTP GET status should succeed")
 
 		require.Equal(t, http.StatusOK, statusResp.StatusCode,
@@ -244,9 +257,6 @@ func TestFunctionalAsyncSymptomReEvaluation(t *testing.T) {
 			finalStatus.Requested, finalStatus.Enqueued, finalStatus.Deduped)
 	}
 
-	// --- Cleanup test batch ---
-	gormDB.Where("batch_id = ?", submitResp.BatchID).Delete(&BatchItem{})
-	gormDB.Where("id = ?", submitResp.BatchID).Delete(&Batch{})
 }
 
 // makeSubmitHandler creates an HTTP handler for POST /api/jobs/runs/reevaluate
