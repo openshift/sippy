@@ -43,13 +43,17 @@ const useStyles = makeStyles((theme) => ({
  * filters. In the MIT licensed version, they only permit a single filter on a table. Our
  * component can do multiple filters, as well as adding the concept of a "not" modifier.
  */
-export default function GridToolbarFilterMenu(props) {
+export default function GridToolbarFilterMenu({
+  standalone = false,
+  logicOperatorDisabled = false,
+  ...props
+}) {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = React.useState(null)
   const [models, setModels] = React.useState(props.filterModel.items || [])
 
-  const [linkOperator, setLinkOperator] = React.useState(
-    props.filterModel.linkOperator || 'and'
+  const [logicOperator, setLogicOperator] = React.useState(
+    props.filterModel.logicOperator || 'and'
   )
 
   useEffect(() => {
@@ -60,13 +64,13 @@ export default function GridToolbarFilterMenu(props) {
       setModels([
         {
           id: 1,
-          columnField: '',
-          operatorValue: '',
+          field: '',
+          operator: '',
           value: '',
         },
       ])
     }
-    setLinkOperator(props.filterModel.linkOperator || 'and')
+    setLogicOperator(props.filterModel.logicOperator || 'and')
   }, [props.filterModel])
 
   // Ensure columns are ordered alphabetically
@@ -94,7 +98,7 @@ export default function GridToolbarFilterMenu(props) {
         errored++
       }
 
-      if (!(m.operatorValue === '' && m.columnField === '' && m.value === '')) {
+      if (!(m.operator === '' && m.field === '' && m.value === '')) {
         newModels.push(m)
       }
     })
@@ -110,7 +114,7 @@ export default function GridToolbarFilterMenu(props) {
         // User has filters (new or modified)
         props.setFilterModel({
           items: [...newModels],
-          linkOperator: linkOperator,
+          logicOperator: logicOperator,
         })
       } else if (currentFilters.length > 0) {
         // User is clearing all existing filters
@@ -121,7 +125,7 @@ export default function GridToolbarFilterMenu(props) {
       setModels(
         newModels.length > 0
           ? newModels
-          : [{ id: 1, columnField: '', operatorValue: '', value: '' }]
+          : [{ id: 1, field: '', operator: '', value: '' }]
       )
       setAnchorEl(null)
     }
@@ -135,8 +139,8 @@ export default function GridToolbarFilterMenu(props) {
       ...models,
       {
         id: models.length + 1,
-        columnField: '',
-        operatorValue: '',
+        field: '',
+        operator: '',
         value: '',
       },
     ])
@@ -147,8 +151,8 @@ export default function GridToolbarFilterMenu(props) {
       setModels([
         {
           id: 1,
-          columnField: '',
-          operatorValue: '',
+          field: '',
+          operator: '',
           value: '',
         },
       ])
@@ -158,11 +162,11 @@ export default function GridToolbarFilterMenu(props) {
   }
 
   const updateModel = (index, v) => {
-    const fields = ['columnField', 'operatorValue', 'value']
+    const fields = ['field', 'operator', 'value']
     const blankFields = fields
       .map((field) => {
         if (
-          !operatorWithoutValue.includes(v.operatorValue) &&
+          !operatorWithoutValue.includes(v.operator) &&
           !v[field] &&
           v[field] === ''
         ) {
@@ -179,7 +183,7 @@ export default function GridToolbarFilterMenu(props) {
 
     let columnType = 'string'
     props.columns.forEach((col) => {
-      if (col.field === v.columnField) {
+      if (col.field === v.field) {
         columnType = col.type || 'string'
       }
     })
@@ -193,24 +197,19 @@ export default function GridToolbarFilterMenu(props) {
 
   const currentItems = props.filterModel.items || []
   const filterItems = currentItems.filter(
-    (item) =>
-      !(
-        item.columnField === '' &&
-        item.operatorValue === '' &&
-        item.value === ''
-      )
+    (item) => !(item.field === '' && item.operator === '' && item.value === '')
   ).length
 
-  const linkOperatorForm = (
+  const logicOperatorForm = (
     <FormControl variant="standard">
-      <InputLabel id="linkOperatorLabel">Link operator</InputLabel>
+      <InputLabel id="logicOperatorLabel">Link operator</InputLabel>
       <Select
         variant="standard"
-        value={linkOperator}
-        onChange={(e) => setLinkOperator(e.target.value)}
+        value={logicOperator}
+        onChange={(e) => setLogicOperator(e.target.value)}
         className={classes.selector}
-        labelId="linkOperatorLabel"
-        id="linkOperator"
+        labelId="logicOperatorLabel"
+        id="logicOperator"
         autoWidth
       >
         <MenuItem value="and">and</MenuItem>
@@ -225,7 +224,7 @@ export default function GridToolbarFilterMenu(props) {
         <Button
           aria-describedby={id}
           color="primary"
-          variant={props.standalone ? 'contained' : 'text'}
+          variant={standalone ? 'contained' : 'text'}
           onClick={handleClick}
         >
           <Badge badgeContent={filterItems} color="primary">
@@ -281,9 +280,7 @@ export default function GridToolbarFilterMenu(props) {
           >
             <Add />
           </Fab>
-          {models.length > 1 && !props.linkOperatorDisabled
-            ? linkOperatorForm
-            : ''}
+          {models.length > 1 && !logicOperatorDisabled ? logicOperatorForm : ''}
           <Button variant="contained" color="primary" onClick={handleClose}>
             Filter
           </Button>
@@ -293,25 +290,20 @@ export default function GridToolbarFilterMenu(props) {
   )
 }
 
-GridToolbarFilterItem.defaultProps = {
-  standalone: false,
-  linkOperatorDisabled: false,
-}
-
 GridToolbarFilterMenu.propTypes = {
-  linkOperatorDisabled: PropTypes.bool,
+  logicOperatorDisabled: PropTypes.bool,
   standalone: PropTypes.bool,
   setFilterModel: PropTypes.func.isRequired,
   filterModel: PropTypes.shape({
     items: PropTypes.arrayOf(
       PropTypes.shape({
-        columnField: PropTypes.string,
+        field: PropTypes.string,
         not: PropTypes.bool,
-        operatorValue: PropTypes.string,
+        operator: PropTypes.string,
         value: PropTypes.string,
       })
     ).isRequired,
-    linkOperator: PropTypes.string,
+    logicOperator: PropTypes.string,
   }),
   columns: PropTypes.arrayOf(
     PropTypes.shape({

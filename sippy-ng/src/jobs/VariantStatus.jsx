@@ -33,8 +33,8 @@ export default function VariantStatus(props) {
                 filter={{
                   items: [
                     {
-                      columnField: 'variants',
-                      operatorValue: 'has entry',
+                      field: 'variants',
+                      operator: 'has entry',
                       value: props.variant,
                     },
                   ],
@@ -58,7 +58,9 @@ export default function VariantStatus(props) {
                 <TabPanel value={0}>
                   <JobTable
                     hideControls={true}
-                    pageSize={5}
+                    initialState={{
+                      pagination: { paginationModel: { pageSize: 5 } },
+                    }}
                     release={props.release}
                     filterModel={{
                       items: [
@@ -69,7 +71,9 @@ export default function VariantStatus(props) {
                 </TabPanel>
                 <TabPanel value={1}>
                   <JobRunsTable
-                    pageSize={5}
+                    initialState={{
+                      pagination: { paginationModel: { pageSize: 5 } },
+                    }}
                     hideControls={true}
                     release={props.release}
                     filterModel={{

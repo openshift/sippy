@@ -125,7 +125,21 @@ const useStyles = makeStyles((_theme) => ({
   },
 }))
 
-function TestTable(props) {
+function TestTable({
+  collapse = true,
+  limit = 0,
+  hideControls = false,
+  pageSize: pageSizeProp = 25,
+  period: periodProp = 'default',
+  view: viewProp = 'Passing',
+  pageSizeOptions = [5, 10, 25, 50, 100],
+  briefTable = false,
+  simpleLoading = false,
+  filterModel: filterModelProp = { items: [] },
+  sortField: sortFieldProp = 'current_pass_percentage',
+  sort: sortProp = 'asc',
+  ...props
+}) {
   const { classes } = props
   const gridClasses = useStyles()
   const theme = useTheme()
@@ -136,28 +150,27 @@ function TestTable(props) {
   const [isSearching, setSearching] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [period = props.period, setPeriod] = useQueryParam(
-    'period',
-    StringParam
-  )
+  const [period = periodProp, setPeriod] = useQueryParam('period', StringParam)
 
-  const [view = props.view, setView] = useQueryParam('view', StringParam)
+  const [view = viewProp, setView] = useQueryParam('view', StringParam)
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    filterModelProp
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldProp, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortProp, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeProp, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
+
+  const [page, setPage] = React.useState(0)
 
   const [cookies, _setCookie] = useCookies(['testTableDBSource'])
   const testTableDBSource = cookies['testTableDBSource']
@@ -170,8 +183,8 @@ function TestTable(props) {
 
     const filtersEqual = (f1, f2) => {
       return (
-        f1.columnField === f2.columnField &&
-        f1.operatorValue === f2.operatorValue &&
+        f1.field === f2.field &&
+        f1.operator === f2.operator &&
         f1.value === f2.value &&
         f1.not === f2.not
       )
@@ -185,7 +198,7 @@ function TestTable(props) {
     })
   }
 
-  const requiresNonDefaultFilter = !props.collapse && !hasNonDefaultFilters()
+  const requiresNonDefaultFilter = !collapse && !hasNonDefaultFilters()
 
   const views = {
     Working: {
@@ -202,56 +215,56 @@ function TestTable(props) {
         {
           field: 'suite_name',
           flex: 1.0,
-          hide: props.collapse,
+          hide: collapse,
         },
         {
           field: 'variants',
           flex: 1.75,
-          hide: props.collapse,
+          hide: collapse,
         },
         {
           field: 'delta_from_working_average',
           flex: 0.75,
-          hide: props.collapse,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: collapse,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'working_average',
           flex: 0.75,
-          hide: props.collapse || props.briefTable,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: collapse || briefTable,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'working_standard_deviation',
           flex: 0.75,
           hide: true,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'current_working_percentage',
           flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'net_working_improvement',
           flex: 0.5,
-          hide: !props.collapse && props.briefTable,
+          hide: !collapse && briefTable,
         },
         {
           field: 'previous_working_percentage',
           flex: 0.75,
-          hide: !props.collapse && props.briefTable,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: !collapse && briefTable,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'open_bugs',
           flex: 0.5,
-          hide: props.briefTable,
+          hide: briefTable,
         },
         {
           field: 'link',
-          flex: props.collapse ? 1.25 : 2,
-          hide: props.briefTable,
+          flex: collapse ? 1.25 : 2,
+          hide: briefTable,
         },
       ],
     },
@@ -274,25 +287,25 @@ function TestTable(props) {
         {
           field: 'variants',
           flex: 1.75,
-          hide: props.collapse,
+          hide: collapse,
         },
         {
           field: 'delta_from_passing_average',
           flex: 0.75,
-          hide: props.collapse,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: collapse,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'passing_average',
           flex: 0.75,
-          hide: props.collapse,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: collapse,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'passing_standard_deviation',
           flex: 0.75,
-          hide: props.collapse,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: collapse,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'current_pass_percentage',
@@ -311,12 +324,12 @@ function TestTable(props) {
         {
           field: 'open_bugs',
           flex: 0.5,
-          hide: props.briefTable,
+          hide: briefTable,
         },
         {
           field: 'link',
           flex: 0.75,
-          hide: props.briefTable,
+          hide: briefTable,
         },
       ],
     },
@@ -340,25 +353,25 @@ function TestTable(props) {
         {
           field: 'variants',
           flex: 1.75,
-          hide: props.collapse,
+          hide: collapse,
         },
         {
           field: 'delta_from_flake_average',
           flex: 0.75,
-          hide: props.collapse,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: collapse,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'flake_average',
           flex: 0.75,
-          hide: props.collapse,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: collapse,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'flake_standard_deviation',
           flex: 0.75,
-          hide: props.collapse,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          hide: collapse,
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'current_flake_percentage',
@@ -377,12 +390,12 @@ function TestTable(props) {
         {
           field: 'open_bugs',
           flex: 0.5,
-          hide: props.briefTable,
+          hide: briefTable,
         },
         {
           field: 'link',
           flex: 0.75,
-          hide: props.briefTable,
+          hide: briefTable,
         },
       ],
     },
@@ -404,17 +417,17 @@ function TestTable(props) {
         {
           field: 'current_working_percentage',
           flex: 0.75,
-          headerClassName: props.briefTable ? '' : 'wrapHeader',
+          headerClassName: briefTable ? '' : 'wrapHeader',
         },
         {
           field: 'open_bugs',
           flex: 0.5,
-          hide: props.briefTable,
+          hide: briefTable,
         },
         {
           field: 'link',
-          flex: props.collapse ? 1.25 : 2,
-          hide: props.briefTable,
+          flex: collapse ? 1.25 : 2,
+          hide: briefTable,
         },
       ],
     },
@@ -968,8 +981,8 @@ function TestTable(props) {
         '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
     }
 
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
+    if (limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(limit)
     }
 
     if (props.overall !== undefined) {
@@ -983,7 +996,7 @@ function TestTable(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
-    queryString += '&collapse=' + safeEncodeURIComponent(props.collapse)
+    queryString += '&collapse=' + safeEncodeURIComponent(collapse)
 
     let testAPI = '/api/tests?release='
     if (testTableDBSource === 'bigquery') {
@@ -1036,29 +1049,21 @@ function TestTable(props) {
     }
 
     prevLocation.current = location
-  }, [
-    period,
-    filterModel,
-    sort,
-    sortField,
-    props.collapse,
-    props.briefTable,
-    view,
-  ])
+  }, [period, filterModel, sort, sortField, collapse, briefTable, view])
 
   const requestSearch = (searchValue) => {
     const existingFilter = filterModel.items.find(
-      (f) => f.columnField === 'name' && f.operatorValue === 'contains'
+      (f) => f.field === 'name' && f.operator === 'contains'
     )
     if (existingFilter && existingFilter.value === searchValue) {
       return
     }
     setSearching(true)
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
+    const newItems = filterModel.items.filter((f) => f.field !== 'name')
     newItems.push({
       id: 99,
-      columnField: 'name',
-      operatorValue: 'contains',
+      field: 'name',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -1072,7 +1077,7 @@ function TestTable(props) {
   }
 
   if (isLoaded === false) {
-    if (props.briefTable || props.simpleLoading) {
+    if (briefTable || simpleLoading) {
       return <p>Loading...</p>
     } else {
       return (
@@ -1093,7 +1098,7 @@ function TestTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -1121,7 +1126,7 @@ function TestTable(props) {
       )}
       <StyledDataGrid
         loading={isSearching}
-        components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
@@ -1130,11 +1135,14 @@ function TestTable(props) {
             row.variants || []
           ).join('\x1f')}`
         }
-        getRowHeight={() => (props.collapse ? 100 : 'auto')}
-        disableColumnFilter={props.briefTable}
-        pageSize={pageSize}
-        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-        rowsPerPageOptions={props.rowsPerPageOptions}
+        getRowHeight={() => (collapse ? 100 : 'auto')}
+        disableColumnFilter={briefTable}
+        paginationModel={{ page, pageSize }}
+        onPaginationModelChange={(model) => {
+          setPage(model.page)
+          setPageSize(model.pageSize)
+        }}
+        pageSizeOptions={pageSizeOptions}
         checkboxSelection={false}
         filterMode="server"
         sortingMode="server"
@@ -1168,7 +1176,7 @@ function TestTable(props) {
 
           return rowClass.join(' ')
         }}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             bookmarks: bookmarks,
             views: gridView.views,
@@ -1194,23 +1202,6 @@ function TestTable(props) {
   )
 }
 
-TestTable.defaultProps = {
-  collapse: true,
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  period: 'default',
-  view: 'Passing',
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  briefTable: false,
-  simpleLoading: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'current_pass_percentage',
-  sort: 'asc',
-}
-
 TestTable.propTypes = {
   briefTable: PropTypes.bool,
   collapse: PropTypes.bool,
@@ -1225,7 +1216,7 @@ TestTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
   onDataLoaded: PropTypes.func,
 }

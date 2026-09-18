@@ -116,12 +116,12 @@ describe('aggregateLabelSummaries', () => {
     expect(jobRunsLink).toHaveAttribute('href', expectedJobRunsPath)
     expect(jobRunsLink).toHaveAttribute('target', '_blank')
     expect(jobRunsLink).toHaveAttribute('rel', 'noopener noreferrer')
-    userEvent.hover(jobRunsLink)
+    await userEvent.hover(jobRunsLink)
     expect(
       await screen.findByText('View job runs with this label')
     ).toBeInTheDocument()
 
-    userEvent.click(screen.getByRole('button', { name: 'Manual label' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Manual label' }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(
@@ -134,7 +134,7 @@ describe('aggregateLabelSummaries', () => {
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
 
-    userEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }))
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     )
@@ -162,11 +162,11 @@ describe('aggregateLabelSummaries', () => {
       name: 'Filter regressions to Manual label',
     })
     expect(filterButton).toHaveAttribute('aria-pressed', 'false')
-    userEvent.hover(filterButton)
+    await userEvent.hover(filterButton)
     expect(
       await screen.findByText('Filter regressions to this label')
     ).toBeInTheDocument()
-    userEvent.click(filterButton)
+    await userEvent.click(filterButton)
     expect(setLabelFilter).toHaveBeenCalledWith('ManualLabel')
 
     rerender(
@@ -183,7 +183,7 @@ describe('aggregateLabelSummaries', () => {
         name: 'Filter regressions to Manual label',
       })
     ).toHaveAttribute('aria-pressed', 'true')
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole('button', {
         name: 'Filter regressions to Manual label',
       })
@@ -191,7 +191,7 @@ describe('aggregateLabelSummaries', () => {
     expect(setLabelFilter).toHaveBeenLastCalledWith(null)
   })
 
-  it('handles empty labels and unavailable label details', () => {
+  it('handles empty labels and unavailable label details', async () => {
     const { rerender } = render(
       <MemoryRouter>
         <TriageSymptomLabels labelSummaries={[]} release="4.22" />
@@ -208,7 +208,7 @@ describe('aggregateLabelSummaries', () => {
         <TriageSymptomLabels labelSummaries={summaries} />
       </MemoryRouter>
     )
-    userEvent.click(screen.getByRole('button', { name: 'Known failure' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Known failure' }))
 
     expect(screen.getByText('No description available.')).toBeInTheDocument()
     expect(screen.getByText('Job run link unavailable.')).toBeInTheDocument()
