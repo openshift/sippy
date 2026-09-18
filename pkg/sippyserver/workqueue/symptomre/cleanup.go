@@ -61,7 +61,7 @@ func NewBatchCleanupProcess(db *gorm.DB, canceller *BatchCanceller) *BatchCleanu
 
 // Run executes the periodic cleanup loop, deleting old batches every hour
 // until the context is canceled.
-func (p *BatchCleanupProcess) Run(ctx context.Context) {
+func (p *BatchCleanupProcess) Run(ctx context.Context) error {
 	log.Info("batch cleanup: starting periodic cleanup process")
 
 	// Run once immediately at startup, then on a ticker.
@@ -74,7 +74,7 @@ func (p *BatchCleanupProcess) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			log.Info("batch cleanup: shutting down")
-			return
+			return nil
 		case <-ticker.C:
 			p.runCleanup(ctx)
 		}

@@ -2,6 +2,7 @@ package workqueue
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -33,7 +34,7 @@ func NewRiverProcess(pool *pgxpool.Pool, client *river.Client[pgx.Tx], reEvaluat
 // an initial symptom cache warm-up (non-fatal on failure since the cache is
 // refreshed when the first batch arrives) and a graceful shutdown with a
 // 9-second timeout.
-func (p *RiverProcess) Run(ctx context.Context) {
+func (p *RiverProcess) Run(ctx context.Context) error {
 	defer p.pool.Close()
 	if _, err := p.reEvaluator.RefreshSymptomCache(ctx); err != nil {
 		log.WithError(err).Warn("workqueue: initial symptom cache warm-up failed; cache will refresh on first batch")
@@ -41,7 +42,7 @@ func (p *RiverProcess) Run(ctx context.Context) {
 
 	if err := p.client.Start(ctx); err != nil {
 		log.WithError(err).Error("workqueue: failed to start River client")
-		return
+		return fmt.Errorf("starting River client: %w", err)
 	}
 	log.Info("workqueue: River client started")
 
@@ -60,4 +61,5 @@ func (p *RiverProcess) Run(ctx context.Context) {
 	case <-shutdownCtx.Done():
 		log.Warn("workqueue: shutdown deadline exceeded; closing pool with workers still running")
 	}
+	return nil
 }

@@ -12,7 +12,7 @@ import (
 )
 
 type DaemonProcess interface {
-	Run(ctx context.Context)
+	Run(ctx context.Context) error
 }
 
 func NewDaemonServer(processes []DaemonProcess) *DaemonServer {
@@ -48,6 +48,7 @@ func (da *DaemonServer) Serve() {
 
 	pendingContexts := make([]context.CancelFunc, 0)
 	wg := sync.WaitGroup{}
+	processErrors := make(chan error, len(da.processes))
 
 	for _, process := range da.processes {
 		ctx := context.Background()
@@ -58,15 +59,20 @@ func (da *DaemonServer) Serve() {
 		p := process
 		go func() {
 			defer wg.Done()
-			p.Run(ctx)
+			if err := p.Run(ctx); err != nil {
+				processErrors <- err
+			}
 		}()
 	}
 
 	sigChannel := make(chan os.Signal, 1)
 	signal.Notify(sigChannel, syscall.SIGINT, syscall.SIGTERM)
-	s := <-sigChannel
-
-	log.Infof("Received shutdown signal: %v", s)
+	select {
+	case s := <-sigChannel:
+		log.Infof("Received shutdown signal: %v", s)
+	case err := <-processErrors:
+		log.WithError(err).Error("daemon process exited with error")
+	}
 
 	for _, cancel := range pendingContexts {
 		log.Info("Canceling context")
