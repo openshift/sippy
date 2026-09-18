@@ -419,45 +419,108 @@ BigQuery, GCS, and PostgreSQL with the results. Requires `--enable-write-endpoin
 }
 ```
 
-Maximum 50 job run IDs per request. IDs must be numeric strings.
+Maximum 10,000 unique job run IDs per request. IDs must be numeric strings.
 
-### Response (200 OK)
+### Response (202 Accepted)
+
+The response contains `batch_id`, `requested`, and a `links.status` URL for polling.
 
 ```json
 {
-  "results": [
-    {
-      "prow_job_build_id": "1234567890",
-      "status": "success",
-      "symptoms_evaluated": 42,
-      "symptoms_matched": ["CreatePodSandboxForPodFailedInJournal"],
-      "labels_applied": ["InfraFailure", "NodeProblem"],
-      "bq_entries_written": 2,
-      "gcs_artifacts_written": 2,
-      "postgres_updated": true,
-      "links": {
-        "job_run": "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/.../1234567890",
-        "symptom:CreatePodSandboxForPodFailedInJournal": "http://localhost:8080/api/jobs/symptoms/SomeSymptom"
-      }
+    "batch_id": "d15dff1f-431c-48db-aa37-628ab42d755e",
+    "links": {
+        "status": "http://localhost:8080/api/jobs/runs/reevaluate/d15dff1f-431c-48db-aa37-628ab42d755e"
     },
-    {
-      "prow_job_build_id": "0987654321",
-      "status": "missing_error",
-      "error": "job run 0987654321 not found in database"
-    }
-  ],
-  "links": {
-    "self": "http://localhost:8080/api/jobs/runs/reevaluate"
-  }
+    "requested": 3
 }
 ```
 
-### Status Values
+### Status
+
+Poll the status link with `GET /api/jobs/runs/reevaluate/{batch_id}` for batch
+counts and per-item progress. Each item includes `item_key`, item `state`, and
+an optional `result` object. Most state values come directly from River's job
+state enum (e.g. `available`, `running`, `completed`, `cancelled`, `discarded`).
+Two synthetic states cover items outside River's lifecycle: `not_enqueued` (the
+batch fan-out has not yet created a River job for this item) and `orphaned` (the
+item references a River job that no longer exists, e.g. cleaned up by River's
+job retention):
+
+```json
+{
+  "batch_id": "<id>",
+  "status": "running",
+  "requested": 4,
+  "enqueued": 3,
+  "deduped": 1,
+  "completed": 2,
+  "failed": 1,
+  "running": 1,
+  "pending": 0,
+  "items": [
+    {
+      "item_key": "1234567890",
+      "state": "completed",
+      "result": {
+        "prow_job_build_id": "1234567890",
+        "status": "success",
+        "symptoms_evaluated": 42,
+        "symptoms_matched": ["SomeSymptom"],
+        "labels_applied": ["SomeLabel"],
+        "bq_entries_written": 1,
+        "gcs_artifacts_written": 1,
+        "postgres_updated": true,
+        "links": {
+          "job_run": "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/example/1234567890",
+          "symptom:SomeSymptom": "/api/jobs/symptoms/SomeSymptom"
+        }
+      }
+    },
+    ...
+  ]
+}
+```
+
+`result` contains the latest output recorded by the River job, including failed attempts
+and dry-run matches. Retries replace output when they record a new result. Execution `state`
+remains authoritative for queue progress; a failed attempt's result may be present while a
+retry is pending. Deduplicated items read the same job output. Items without output, including
+older jobs and jobs removed by River cleanup, omit `result`. Zero-valued optional result
+fields are omitted. Results become available when the attempt finishes.
+
+### Result status values
 
 - `success` - re-evaluation completed and all backends updated.
 - `missing_error` - the job run ID was not found in the database.
 - `eval_error` - artifact scanning failed (timeout, GCS error, database error).
 - `rewrite_error` - scanning succeeded but writing to BQ/GCS/PostgreSQL failed.
+
+### Cancel a batch
+
+Endpoint: `DELETE /api/jobs/runs/reevaluate/{batch_id}`
+
+Requires `--enable-write-endpoints`. No request body is needed. Requests cancellation
+of the batch's non-completed River jobs and marks the batch as `cancelled`. Jobs that
+have already completed are left alone.
+
+On success, returns `200 OK` with the same batch status response shape as the status
+endpoint above, including `batch_id`, `status: "cancelled"`, counts, and `items`.
+Running jobs may still be finishing when the response is returned; poll the status
+endpoint for updated per-item progress.
+
+If the batch is already `complete`, `failed`, or `cancelled`, returns `409 Conflict`
+(`ErrBatchTerminal`). For example, cancelling an already-cancelled batch returns:
+
+```json
+{
+  "code": 409,
+  "message": "batch is already in a terminal status: batch d15dff1f-431c-48db-aa37-628ab42d755e has status \"cancelled\""
+}
+```
+
+Other errors: `400 Bad Request` for an invalid batch UUID, `404 Not Found` if the
+batch does not exist, `503 Service Unavailable` if batch cancellation is not
+configured, and `500 Internal Server Error` if cancellation fails unexpectedly.
 
 ## Tests
 

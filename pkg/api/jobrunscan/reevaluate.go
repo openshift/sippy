@@ -2,12 +2,16 @@ package jobrunscan
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lib/pq"
@@ -34,7 +38,7 @@ import (
 
 const (
 	reEvalSourceTool = "sippy-api-reevaluate"
-	maxJobRunsPerReq = 50
+	maxJobRunsPerReq = 10000
 )
 
 // ReEvalStatus indicates the outcome of re-evaluating symptoms for a single job run.
@@ -89,6 +93,15 @@ func InjectReEvalHATEOASLinks(resp *ReEvaluationResponse, baseURL string) {
 	}
 }
 
+// symptomCache holds a concurrency-safe snapshot of active symptoms for the
+// daemon's async batch processing.
+type symptomCache struct {
+	mu       sync.RWMutex
+	symptoms []jobrunscan.Symptom
+	hash     string
+	loaded   bool
+}
+
 // ReEvaluator re-runs symptom detection against job artifacts and updates BQ, GCS, and PostgreSQL.
 type ReEvaluator struct {
 	bqClient    *bqclient.Client
@@ -97,11 +110,11 @@ type ReEvaluator struct {
 	db          *db.DB
 	cache       cache.Cache
 	artifactMgr *jobartifacts.Manager
-	dryRun      bool
+	symptoms    symptomCache
 }
 
 // NewReEvaluator creates a ReEvaluator with the given clients.
-func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBucket string, dbc *db.DB, cacheClient cache.Cache, artifactMgr *jobartifacts.Manager, dryRun bool) *ReEvaluator {
+func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBucket string, dbc *db.DB, cacheClient cache.Cache, artifactMgr *jobartifacts.Manager) *ReEvaluator {
 	return &ReEvaluator{
 		bqClient:    bqClient,
 		gcsClient:   gcsClient,
@@ -109,7 +122,6 @@ func NewReEvaluator(bqClient *bqclient.Client, gcsClient *storage.Client, gcsBuc
 		db:          dbc,
 		cache:       cacheClient,
 		artifactMgr: artifactMgr,
-		dryRun:      dryRun,
 	}
 }
 
@@ -120,30 +132,91 @@ type symptomMatch struct {
 	textMatch string // first matched line (empty for "none" matcher)
 }
 
-// ReEvaluateJobRuns re-evaluates all symptom matches for the specified job runs.
-func (r *ReEvaluator) ReEvaluateJobRuns(ctx context.Context, prowJobBuildIDs []string) ([]ReEvaluationResult, error) {
-	symptoms, err := r.loadActiveSymptoms()
-	if err != nil {
-		return nil, fmt.Errorf("loading symptoms: %w", err)
-	}
-	log.WithField("activeSymptoms", len(symptoms)).Debug("symptom reEval: loaded active symptoms")
-
-	results := make([]ReEvaluationResult, 0, len(prowJobBuildIDs))
-	for _, buildID := range prowJobBuildIDs {
-		result := r.reEvaluateOne(ctx, buildID, symptoms)
-		results = append(results, result)
-	}
-	return results, nil
-}
-
 // loadActiveSymptoms fetches all symptom definitions with implemented matcher types.
-func (r *ReEvaluator) loadActiveSymptoms() ([]jobrunscan.Symptom, error) {
+func (r *ReEvaluator) loadActiveSymptoms(ctx context.Context) ([]jobrunscan.Symptom, error) {
 	var all []jobrunscan.Symptom
-	res := r.db.DB.Order("id").Find(&all)
+	res := r.db.DB.WithContext(ctx).Order("id").Find(&all)
 	if res.Error != nil {
 		return nil, res.Error
 	}
 	return filterRelevantSymptoms(all), nil
+}
+
+// RefreshSymptomCache loads active symptoms from the database, caches them, and
+// computes a SHA-256 hash of the sorted symptom IDs. The hash is included in
+// per-item River job args so that deduplication is scoped to the current symptom
+// state: if symptoms change between batches, the new hash defeats deduplication.
+func (r *ReEvaluator) RefreshSymptomCache(ctx context.Context) (string, error) {
+	symptoms, err := r.loadActiveSymptoms(ctx)
+	if err != nil {
+		return "", fmt.Errorf("refreshing symptom cache: %w", err)
+	}
+	hash := computeSymptomHash(symptoms)
+
+	r.symptoms.mu.Lock()
+	r.symptoms.symptoms = symptoms
+	r.symptoms.hash = hash
+	r.symptoms.loaded = true
+	r.symptoms.mu.Unlock()
+
+	log.WithFields(log.Fields{
+		"symptoms": len(symptoms),
+		"hash":     hash[:12],
+	}).Info("symptom reEval: refreshed symptom cache")
+	return hash, nil
+}
+
+// ErrPermanent wraps errors that should not be retried by River.
+var ErrPermanent = errors.New("permanent failure")
+
+// ReEvaluateRunSymptoms re-evaluates a single job run using cached symptoms.
+// Returns the evaluation result alongside any error that triggers River retries.
+// Permanent failures (e.g. missing job run) are wrapped with ErrPermanent so
+// the River worker can cancel instead of retrying.
+func (r *ReEvaluator) ReEvaluateRunSymptoms(ctx context.Context, prowJobBuildID string, dryRun bool) (*ReEvaluationResult, error) {
+	r.symptoms.mu.RLock()
+	symptoms := r.symptoms.symptoms
+	loaded := r.symptoms.loaded
+	r.symptoms.mu.RUnlock()
+
+	if !loaded {
+		return nil, fmt.Errorf("symptom cache not initialized; RefreshSymptomCache must be called first")
+	}
+	if len(symptoms) == 0 {
+		log.Warn("symptom reEval: no active symptoms after filtering; nothing to evaluate")
+		return &ReEvaluationResult{ProwJobBuildID: prowJobBuildID, Status: ReEvalSuccess}, nil
+	}
+
+	result := r.reEvaluateOne(ctx, prowJobBuildID, symptoms, dryRun)
+	switch result.Status {
+	case ReEvalSuccess:
+		return &result, nil
+	case ReEvalMissingError:
+		return &result, fmt.Errorf("%w: %s", ErrPermanent, result.Error)
+	default:
+		return &result, fmt.Errorf("re-evaluation of %s failed (%s): %s", prowJobBuildID, result.Status, result.Error)
+	}
+}
+
+// symptomHashEntry pairs a symptom ID with its UpdatedAt timestamp so that
+// editing a symptom's content defeats deduplication even if the ID is unchanged.
+type symptomHashEntry struct {
+	ID        string `json:"id"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
+// computeSymptomHash produces a deterministic SHA-256 hex digest from sorted
+// symptom IDs and their UpdatedAt timestamps. The hash changes when symptoms
+// are added, removed, renamed, or modified.
+func computeSymptomHash(symptoms []jobrunscan.Symptom) string {
+	entries := make([]symptomHashEntry, len(symptoms))
+	for i, s := range symptoms {
+		entries[i] = symptomHashEntry{ID: s.ID, UpdatedAt: s.UpdatedAt.UnixMicro()}
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ID < entries[j].ID })
+	data, _ := json.Marshal(entries)
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("%x", sum)
 }
 
 // filterRelevantSymptoms returns only symptoms with labels and implemented matcher types (string, regex, none).
@@ -166,7 +239,7 @@ func filterRelevantSymptoms(symptoms []jobrunscan.Symptom) []jobrunscan.Symptom 
 }
 
 // reEvaluateOne processes a single job run through all symptoms.
-func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptoms []jobrunscan.Symptom) ReEvaluationResult {
+func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptoms []jobrunscan.Symptom, dryRun bool) ReEvaluationResult {
 	result := ReEvaluationResult{
 		ProwJobBuildID:    buildID,
 		SymptomsEvaluated: len(symptoms),
@@ -181,8 +254,13 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 
 	partKeys, err := query.LookupProwJobRunPartitionKeys(r.db.DB, jobRunID)
 	if err != nil {
-		result.Status = ReEvalEvalError
-		result.Error = fmt.Sprintf("looking up partition keys for job run %s: %v", buildID, err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			result.Status = ReEvalMissingError
+			result.Error = fmt.Sprintf("no job run %q found in the DB", buildID)
+		} else {
+			result.Status = ReEvalEvalError
+			result.Error = fmt.Sprintf("looking up partition keys for job run %s: %v", buildID, err)
+		}
 		return result
 	}
 
@@ -192,18 +270,22 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			result.Status = ReEvalMissingError
-			result.Error = fmt.Sprintf("job run %s not found in database", buildID)
+			result.Error = fmt.Sprintf("job run %q not found (after partition lookup succeeded)", buildID)
 		} else {
 			result.Status = ReEvalEvalError
 			result.Error = fmt.Sprintf("looking up job run %s: %v", buildID, res.Error)
 		}
+
 		return result
 	}
 
-	matches, err := r.evaluateSymptoms(ctx, jobRunID, symptoms)
+	matches, err := r.evaluateSymptoms(ctx, jobRunModel, symptoms)
 	if err != nil {
-		result.Status = ReEvalEvalError
 		result.Error = err.Error()
+		result.Status = ReEvalEvalError
+		if errors.Is(err, errJobRunMissing) {
+			result.Status = ReEvalMissingError
+		}
 		return result
 	}
 	result.SymptomsMatched = uniqueSymptomsMatched(matches)
@@ -222,7 +304,7 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	}
 	result.LabelsApplied = uniqueLabels(bqLabels)
 
-	if r.dryRun {
+	if dryRun {
 		log.WithFields(log.Fields{
 			"buildID":      buildID,
 			"matched":      len(result.SymptomsMatched),
@@ -255,25 +337,33 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	return result
 }
 
-// evaluateSymptoms runs one artifact query per symptom for the given job run.
-func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRunID int64, symptoms []jobrunscan.Symptom) ([]symptomMatch, error) {
-	var matches []symptomMatch
-	mgr := r.artifactMgr
+var errJobRunMissing = fmt.Errorf("job run not found in bucket")
 
+// evaluateSymptoms runs one artifact query per symptom for the given job run.
+func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRun *models.ProwJobRun, symptoms []jobrunscan.Symptom) ([]symptomMatch, error) {
+
+	mgr := r.artifactMgr
+	q := &jobartifacts.JobArtifactQuery{
+		GcsClient: r.gcsClient,
+		DbClient:  r.db,
+		JobRunIDs: []int64{int64(jobRun.ID)}, //nolint:gosec // G115: id is a PostgreSQL serial, always within int64 range
+	}
+
+	// check whether the job has been pruned or is otherwise missing before expecting to find symptoms
+	q.PathGlob = "finished.json" // should be present in any prow job
+	if pruneTest := mgr.Query(ctx, q); len(pruneTest.Errors) > 0 {
+		return nil, fmt.Errorf("testing for job %d presence in bucket: %q", jobRun.ID, pruneTest.Errors[0].Error)
+	} else if len(pruneTest.JobRuns) < 1 || len(pruneTest.JobRuns[0].Artifacts) < 1 {
+		return nil, errJobRunMissing
+	}
+
+	var matches []symptomMatch
 	for _, symptom := range symptoms {
-		contentMatcher, err := ContentMatcherForSymptom(symptom.SymptomContent)
-		if err != nil {
+		q.PathGlob = symptom.FilePattern
+		var err error
+		if q.ContentMatcher, err = ContentMatcherForSymptom(symptom.SymptomContent); err != nil {
 			log.WithError(err).WithField("symptom", symptom.ID).Warn("symptom reEval: skipping symptom due to matcher error")
 			continue
-		}
-
-		q := &jobartifacts.JobArtifactQuery{
-			GcsClient:      r.gcsClient,
-			DbClient:       r.db,
-			Cache:          r.cache,
-			JobRunIDs:      []int64{jobRunID},
-			PathGlob:       symptom.FilePattern,
-			ContentMatcher: contentMatcher,
 		}
 
 		queryResult := mgr.Query(ctx, q)
@@ -284,7 +374,7 @@ func (r *ReEvaluator) evaluateSymptoms(ctx context.Context, jobRunID int64, symp
 				}
 				matched := false
 				textMatch := ""
-				if contentMatcher == nil {
+				if q.ContentMatcher == nil {
 					// "none" matcher: file existence is a match
 					matched = true
 				} else if text, ok := a.Matched(); ok {
@@ -654,18 +744,22 @@ func uniqueLabels(labels []models.JobRunLabel) []string {
 	return s.UnsortedList()
 }
 
-// ValidateReEvalRequest validates the re-evaluation request parameters.
-func ValidateReEvalRequest(prowJobBuildIDs []string) error {
+// ValidateReEvalRequest validates and deduplicates the re-evaluation request
+// parameters, returning the deduplicated list or an error.
+func ValidateReEvalRequest(prowJobBuildIDs []string) ([]string, error) {
 	if len(prowJobBuildIDs) == 0 {
-		return fmt.Errorf("prow_job_build_ids is required")
+		return nil, fmt.Errorf("prow_job_build_ids is required")
 	}
-	if len(prowJobBuildIDs) > maxJobRunsPerReq {
-		return fmt.Errorf("maximum %d job runs per request", maxJobRunsPerReq)
+
+	deduped := sets.New[string](prowJobBuildIDs...).UnsortedList()
+
+	if len(deduped) > maxJobRunsPerReq {
+		return nil, fmt.Errorf("maximum %d job runs per request (after dedup: %d)", maxJobRunsPerReq, len(deduped))
 	}
-	for _, id := range prowJobBuildIDs {
+	for _, id := range deduped {
 		if _, err := strconv.ParseInt(id, 10, 64); err != nil {
-			return fmt.Errorf("invalid prow_job_build_id %q: must be a numeric string", id)
+			return nil, fmt.Errorf("invalid prow_job_build_id %q: must be a numeric string", id)
 		}
 	}
-	return nil
+	return deduped, nil
 }
