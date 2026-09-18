@@ -1066,7 +1066,7 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 			AND pj.variant_combination_id IN (
 				SELECT vc.id FROM variant_combinations vc WHERE ` + filterClause + `
 			)
-		ORDER BY pjr.timestamp DESC`
+		ORDER BY pjr.timestamp`
 
 	var args []any
 	args = append(args,
