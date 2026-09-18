@@ -18,6 +18,7 @@ releases:
     jobs:
       periodic-ci-Azure-ARO-HCP-main-periodic-integration-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-integration-e2e-parallel-ocp-nightly: true
+      periodic-ci-Azure-ARO-HCP-main-capz-e2e-integration: true
       branch-ci-Azure-ARO-HCP-main-e2e-integration-e2e-parallel: true
   aro-stage:
     synthetic: true
