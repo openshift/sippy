@@ -61,25 +61,23 @@ type JobQuerier interface {
 	LookupJobVariants(ctx context.Context, reqOptions reqopts.RequestOptions, jobName string) (map[string]string, error)
 }
 
-// SpotCheckQuerier fetches job-level pass/fail data for spot-check analysis.
+// SpotCheckQuerier fetches test status for spot-check jobs using the
+// [sig-sippy] openshift-tests should work synthetic test.
 type SpotCheckQuerier interface {
-	// QuerySpotCheckJobRuns returns aggregated pass/fail per spot-check group,
-	// grouped by SpotCheckComponent, SpotCheckCapability, and the DB group-by variants.
-	// includeVariants specifies variant filters (ANDed) from the spot-check sample config.
-	QuerySpotCheckJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
-		allJobVariants crtest.JobVariants,
-		includeVariants map[string][]string,
-		start, end time.Time) ([]SpotCheckGroup, error)
+	// QuerySpotCheckTestStatus queries the synthetic openshift-tests test for
+	// spot-check jobs, returning results keyed by synthetic test IDs with
+	// component/capability derived from job variants.
+	QuerySpotCheckTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
+		sampleName string, includeVariants map[string][]string,
+		start, end time.Time) (map[string]crstatus.TestStatus, error)
 
-	// QuerySpotCheckJobRunDetails returns individual job runs for a specific
-	// spot-check group, used for test details drill-down.
-	// includeVariants specifies variant filters (ANDed) from the spot-check sample config.
-	QuerySpotCheckJobRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
-		allJobVariants crtest.JobVariants,
+	// QuerySpotCheckTestDetails returns per-job-run test details for spot-check
+	// jobs, used for the test details drill-down page.
+	QuerySpotCheckTestDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
+		syntheticTestID string,
 		includeVariants map[string][]string,
-		variants map[string]string,
-		component, capability string,
-		start, end time.Time) ([]JobRunDetail, error)
+		requestedVariants map[string]string,
+		start, end time.Time) (map[string][]crstatus.TestDetailsSummary, error)
 }
 
 // DataProvider combines all query capabilities needed by Component Readiness.
@@ -101,25 +99,4 @@ type JobRunStats struct {
 	TotalRuns      int     `json:"total_runs"`
 	SuccessfulRuns int     `json:"successful_runs"`
 	PassRate       float64 `json:"pass_rate"`
-}
-
-// SpotCheckGroup contains aggregated pass/fail for a set of spot-check jobs
-// sharing the same component, capability, and variant column values.
-type SpotCheckGroup struct {
-	Component      string            `json:"component"`
-	Capability     string            `json:"capability"`
-	Variants       map[string]string `json:"variants"`
-	TotalRuns      int               `json:"total_runs"`
-	SuccessfulRuns int               `json:"successful_runs"`
-	JobNames       []string          `json:"job_names"`
-	LastFailure    time.Time         `json:"last_failure"`
-}
-
-// JobRunDetail contains data for a single job run, used in test details drill-down.
-type JobRunDetail struct {
-	JobName   string    `json:"job_name"`
-	RunID     string    `json:"run_id"`
-	URL       string    `json:"url"`
-	StartTime time.Time `json:"start_time"`
-	Success   bool      `json:"success"`
 }

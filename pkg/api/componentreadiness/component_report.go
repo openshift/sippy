@@ -2,6 +2,7 @@ package componentreadiness
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"os"
 	"reflect"
@@ -291,7 +292,7 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 
 	// middlewares that inject synthetic tests must run first so results are in place for other middleware.
 	if len(c.ReqOptions.SpotCheckJobSamples) > 0 {
-		c.middlewares = append(c.middlewares, spotcheckjobs.NewSpotCheckJobsMiddleware(c.dataProvider, c.ReqOptions))
+		c.middlewares = append(c.middlewares, spotcheckjobs.NewSpotCheckJobsMiddleware(c.ReqOptions))
 	}
 
 	// Initialize all our middleware applicable to this request.
@@ -368,6 +369,25 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 		}
 	})
 
+	// Query spot-check test status concurrently for each configured sample.
+	var spotCheckMu sync.Mutex
+	var spotCheckResults []map[string]crstatus.TestStatus
+	for _, sample := range c.ReqOptions.SpotCheckJobSamples {
+		wg.Go(func() {
+			results, err := c.dataProvider.QuerySpotCheckTestStatus(ctx, c.ReqOptions,
+				sample.Name, sample.IncludeVariants, sample.Start, sample.End)
+			if err != nil {
+				errCh <- fmt.Errorf("spot-check query for %s: %w", sample.Name, err)
+				return
+			}
+			if len(results) > 0 {
+				spotCheckMu.Lock()
+				spotCheckResults = append(spotCheckResults, results)
+				spotCheckMu.Unlock()
+			}
+		})
+	}
+
 	c.middlewares.Query(ctx, wg, errCh)
 
 	go func() {
@@ -378,6 +398,11 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 	var errs []error
 	for err := range errCh {
 		errs = append(errs, err)
+	}
+
+	// Merge spot-check results into sample status.
+	for _, scResults := range spotCheckResults {
+		maps.Copy(sampleStatus, scResults)
 	}
 
 	log.WithField("duration", time.Since(before)).

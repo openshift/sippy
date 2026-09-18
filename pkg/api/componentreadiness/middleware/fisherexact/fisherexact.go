@@ -24,11 +24,10 @@ func NewFisherExactMiddleware(reqOptions reqopts.RequestOptions) *FisherExact {
 	return &FisherExact{reqOptions: reqOptions}
 }
 
-func (f *FisherExact) Query(_ context.Context, _ *sync.WaitGroup, _ crtest.JobVariants,
-	_, _ chan map[string]crstatus.TestStatus, _ chan error) {
+func (f *FisherExact) Query(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 }
 
-func (f *FisherExact) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error, _ crtest.JobVariants) {
+func (f *FisherExact) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 }
 
 func (f *FisherExact) PreAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {

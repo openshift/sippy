@@ -25,6 +25,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/spotcheckjobs"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
@@ -466,6 +467,37 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 		}
 	}()
 
+	// Query spot-check test details for any spot-check test IDs in the request.
+	var spotCheckMu sync.Mutex
+	var spotCheckDetails []map[string][]crstatus.TestDetailsSummary
+	for _, tOpt := range c.ReqOptions.TestIDOptions {
+		if !spotcheckjobs.IsSpotCheckTestID(tOpt.TestID) {
+			continue
+		}
+		sampleName, _, _ := spotcheckjobs.ParseTestID(tOpt.TestID)
+		for _, sample := range c.ReqOptions.SpotCheckJobSamples {
+			if sample.Name != sampleName {
+				continue
+			}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				details, err := c.dataProvider.QuerySpotCheckTestDetails(ctx, c.ReqOptions,
+					tOpt.TestID, sample.IncludeVariants, tOpt.RequestedVariants,
+					sample.Start, sample.End)
+				if err != nil {
+					errCh <- fmt.Errorf("spot-check test details for %s: %w", tOpt.TestID, err)
+					return
+				}
+				if len(details) > 0 {
+					spotCheckMu.Lock()
+					spotCheckDetails = append(spotCheckDetails, details)
+					spotCheckMu.Unlock()
+				}
+			}()
+		}
+	}
+
 	go func() {
 		wg.Wait()
 		close(errCh)
@@ -474,6 +506,13 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 	var middlewareErrs []error
 	for err := range errCh {
 		middlewareErrs = append(middlewareErrs, err)
+	}
+
+	// Merge spot-check details into sample status.
+	for _, scDetails := range spotCheckDetails {
+		for jobName, summaries := range scDetails {
+			sampleStatus[jobName] = append(sampleStatus[jobName], summaries...)
+		}
 	}
 
 	fLog.Infof("total test statuses: %d", len(sampleStatus))

@@ -19,11 +19,10 @@ func NewAllTestsPassRateMiddleware(reqOptions reqopts.RequestOptions) *AllTestsP
 	return &AllTestsPassRate{reqOptions: reqOptions}
 }
 
-func (a *AllTestsPassRate) Query(_ context.Context, _ *sync.WaitGroup, _ crtest.JobVariants,
-	_, _ chan map[string]crstatus.TestStatus, _ chan error) {
+func (a *AllTestsPassRate) Query(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 }
 
-func (a *AllTestsPassRate) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error, _ crtest.JobVariants) {
+func (a *AllTestsPassRate) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 }
 
 func (a *AllTestsPassRate) PreAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {

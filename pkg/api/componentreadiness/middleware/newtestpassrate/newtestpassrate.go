@@ -4,12 +4,15 @@ import (
 	"context"
 	"sync"
 
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/analysis"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 )
+
+var _ middleware.Middleware = &NewTestPassRate{}
 
 type NewTestPassRate struct {
 	reqOptions reqopts.RequestOptions
@@ -19,11 +22,10 @@ func NewNewTestPassRateMiddleware(reqOptions reqopts.RequestOptions) *NewTestPas
 	return &NewTestPassRate{reqOptions: reqOptions}
 }
 
-func (n *NewTestPassRate) Query(_ context.Context, _ *sync.WaitGroup, _ crtest.JobVariants,
-	_, _ chan map[string]crstatus.TestStatus, _ chan error) {
+func (n *NewTestPassRate) Query(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 }
 
-func (n *NewTestPassRate) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error, _ crtest.JobVariants) {
+func (n *NewTestPassRate) QueryTestDetails(_ context.Context, _ *sync.WaitGroup, _ chan error) {
 }
 
 func (n *NewTestPassRate) PreAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
