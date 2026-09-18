@@ -299,6 +299,7 @@ var fileVariantsToIgnore = map[string]bool{
 func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobName string, variantFile map[string]string) map[string]string {
 	// Calculate variants based on job name:
 	variants := v.IdentifyVariants(jLog, jobName)
+	effectiveReleaseVersion := releaseVersionFromVariantFile(jLog, variantFile, variants)
 
 	// Carefully merge in the values read from cluster-data.json or any arbitrary variants data file
 	// containing a map. Some properties will be ignored as they are job RUN specific, not job specific.
@@ -358,13 +359,12 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 				// 4.13+ gained cluster-data.json but it was not able to detect dualstack, so
 				// jobs in this range were categorized as ipv4 mistakenly.
 				// For 4.21+, cluster-data.json network stack detection is reliable, so use it.
-				releaseVersion := releaseVersionFromVariants(jLog, variants)
 				releaseLabel := "unknown"
-				if releaseVersion != nil {
-					releaseLabel = releaseVersion.String()
+				if effectiveReleaseVersion != nil {
+					releaseLabel = effectiveReleaseVersion.String()
 				}
 				clusterDataReliable, _ := version.NewVersion("4.21")
-				if releaseVersion != nil && releaseVersion.GreaterThanOrEqual(clusterDataReliable) {
+				if effectiveReleaseVersion != nil && effectiveReleaseVersion.GreaterThanOrEqual(clusterDataReliable) {
 					jLog.Infof("variant mismatch: using %s from cluster-data (release %s >= 4.21)", k, releaseLabel)
 					variants[k] = v
 				} else {
@@ -1333,14 +1333,12 @@ func setContainerRuntime(jLog logrus.FieldLogger, variants map[string]string, jo
 }
 
 func releaseVersionFromVariants(jLog logrus.FieldLogger, variants map[string]string) *version.Version {
-	release, exists := variants[VariantFromRelease]
-	if !exists {
-		release, exists = variants[VariantRelease]
+	release := variants[VariantFromRelease]
+	if release == "" {
+		release = variants[VariantRelease]
 	}
-	if exists {
-		if v, err := version.NewVersion(release); err == nil {
-			return v
-		}
+	if v, err := version.NewVersion(release); err == nil {
+		return v
 	}
 
 	// Synthetic releases will not be able to determine the release version using the VariantRelease or VariantFromRelease
@@ -1354,6 +1352,21 @@ func releaseVersionFromVariants(jLog logrus.FieldLogger, variants map[string]str
 	}
 	jLog.Warning("release version not found, unable to determine version-dependent variant")
 	return nil
+}
+
+// releaseVersionFromVariantFile determines the release version to use while merging cluster data.
+// Cluster data takes priority when it provides a release, because map iteration order must not
+// influence version-dependent merge decisions.
+func releaseVersionFromVariantFile(jLog logrus.FieldLogger, variantFile, jobVariants map[string]string) *version.Version {
+	release := variantFile[VariantFromRelease]
+	if release == "" {
+		release = variantFile[VariantRelease]
+	}
+	if v, err := version.NewVersion(release); err == nil {
+		return v
+	}
+
+	return releaseVersionFromVariants(jLog, jobVariants)
 }
 
 func setCGroupMode(_ logrus.FieldLogger, variants map[string]string, jobName string) {

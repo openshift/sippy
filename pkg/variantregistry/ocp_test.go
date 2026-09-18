@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/flags/configflags"
 )
 
@@ -2819,6 +2820,24 @@ func TestReleaseVersionFromVariants(t *testing.T) {
 			expectedVersion: "4.21",
 		},
 		{
+			name: "empty FromRelease falls back to Release",
+			variants: map[string]string{
+				VariantRelease:     "4.22",
+				VariantFromRelease: "",
+			},
+			expectedVersion: "4.22",
+		},
+		{
+			name: "malformed FromRelease falls back to major/minor",
+			variants: map[string]string{
+				VariantRelease:      "4.22",
+				VariantFromRelease:  "not-a-release",
+				VariantReleaseMajor: "4",
+				VariantReleaseMinor: "20",
+			},
+			expectedVersion: "4.20",
+		},
+		{
 			name: "synthetic release falls back to major/minor",
 			variants: map[string]string{
 				VariantRelease:      "rosa-stage",
@@ -2861,6 +2880,48 @@ func TestReleaseVersionFromVariants(t *testing.T) {
 			require.NotNil(t, result)
 			assert.Equal(t, tt.expectedVersion, result.Original())
 		})
+	}
+}
+
+func TestReleaseVersionFromVariantFilePreservesMalformedFromRelease(t *testing.T) {
+	log := logrus.WithField("test", "TestReleaseVersionFromVariantFilePreservesMalformedFromRelease")
+	result := releaseVersionFromVariantFile(log,
+		map[string]string{
+			VariantRelease:     "4.22",
+			VariantFromRelease: "not-a-release",
+		},
+		map[string]string{
+			VariantRelease:      "rosa-stage",
+			VariantReleaseMajor: "4",
+			VariantReleaseMinor: "20",
+		})
+
+	require.NotNil(t, result)
+	assert.Equal(t, "4.20", result.Original())
+}
+
+func TestNetworkStackUsesEffectiveReleaseBeforeVariantMerge(t *testing.T) {
+	clusterData, err := prowloader.ParseVariantDataFile([]byte(`{
+  "Release": "5.1",
+  "FromRelease": "",
+  "Platform": "metal",
+  "Architecture": "amd64",
+  "Network": "ovn",
+  "Topology": "ha",
+  "os": {"Default": "rhel-10", "ControlPlaneMachineConfigPool": "", "WorkerMachineConfigPool": ""},
+  "NetworkStack": "Dual",
+  "CloudRegion": "",
+  "CloudZone": "",
+  "ClusterVersionHistory": ["5.1.0-0.ci-2026-09-14-010613"],
+  "MasterNodesUpdated": "N"
+}`))
+	require.NoError(t, err)
+
+	loader := OCPVariantLoader{config: &v1.SippyConfig{}}
+	const jobName = "periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-encryption-kms-2-dual"
+	for i := 0; i < 4096; i++ {
+		variants := loader.CalculateVariantsForJob(logrus.WithField("test", "TestNetworkStackUsesEffectiveReleaseBeforeVariantMerge"), jobName, clusterData)
+		assert.Equalf(t, "dual", variants[VariantNetworkStack], "iteration %d", i)
 	}
 }
 
