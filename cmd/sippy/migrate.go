@@ -35,7 +35,6 @@ func init() {
 			// River (work queue) schema is managed separately from Sippy's
 			// golang-migrate migrations. The API server needs the river_job
 			// table to enqueue async batches, so it must exist after migrate.
-			// The daemon also runs this at startup as a fallback for local dev.
 			ctx := cmd.Context()
 			pgxPool, err := workqueue.NewPgxV5Pool(ctx, f.DSN)
 			if err != nil {
