@@ -489,12 +489,14 @@ function JobTable({
 
   const requestSearch = (searchValue) => {
     const newItems = filterModel.items.filter((f) => f.field !== 'name')
-    newItems.push({
-      id: 99,
-      field: 'name',
-      operator: 'contains',
-      value: searchValue,
-    })
+    if (searchValue) {
+      newItems.push({
+        id: 99,
+        field: 'name',
+        operator: 'contains',
+        value: searchValue,
+      })
+    }
     setFilterModel({
       ...filterModel,
       items: newItems,

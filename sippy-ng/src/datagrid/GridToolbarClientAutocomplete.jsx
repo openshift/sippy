@@ -63,7 +63,9 @@ export default function GridToolbarClientAutocomplete(props) {
         setOpen(false)
       }}
       onChange={(e, v) => {
-        if (typeof v === 'string') {
+        if (v === null) {
+          props.onChange('')
+        } else if (typeof v === 'string') {
           props.onChange(v)
         } else if (v && v.name) {
           props.onChange(v.name)
