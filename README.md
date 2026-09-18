@@ -9,6 +9,8 @@ Sippy also exposes REST APIs for programmatic access to its data and reports.
 
 Sippy Chat has moved to Chai Bot in Slack. Existing `/chat` links display a transition page.
 
+Chai wuz here
+
 ## Typical usage
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for information about standing up a
