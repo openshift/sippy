@@ -2427,7 +2427,7 @@ periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--acm-virt--hub-spoke-mig--aws:
+periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--hub-spoke-mig--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -83471,6 +83471,26 @@ periodic-ci-openshift-ols-load-generator-main-ols-load-test-1000workers:
     SecurityMode: default
     Suite: unknown
     Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-platform:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: standard
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: gcp
+    Procedure: none
+    Release: gcp-hcp-main
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ho-upgrade-rosa-hcp-ho-upgrade-integration:
     Aggregation: none
@@ -305781,7 +305801,31 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-d
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-dualstack-recovery:
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-dualstack-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-dualstack-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -305901,7 +305945,31 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-i
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-ipv6-recovery:
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-ipv6-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-ipv6-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -306021,7 +306089,31 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-r
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-recovery-repo-ra:
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -312787,7 +312879,31 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-d
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-dualstack-recovery:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-dualstack-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-dualstack-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -312907,7 +313023,31 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-i
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-ipv6-recovery:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-ipv6-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-ipv6-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -313027,7 +313167,31 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-r
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-recovery-repo-ra:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -320228,7 +320392,31 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-du
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-dualstack-recovery:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-dualstack-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-dualstack-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -320348,7 +320536,31 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-ip
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-ipv6-recovery:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-ipv6-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-ipv6-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -320468,7 +320680,31 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-re
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-recovery-repo-ra:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -327744,7 +327980,31 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-du
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-dualstack-recovery:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-dualstack-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-dualstack-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -327864,7 +328124,31 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-ip
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-ipv6-recovery:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-ipv6-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-ipv6-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -327984,7 +328268,31 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-re
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-recovery-repo-ra:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -359381,6 +359689,76 @@ periodic-ci-redhat-openshift-ecosystem-cvp-ocp-4.22-cvp-fips-common-claim:
     Release: "4.22"
     ReleaseMajor: "4"
     ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-redhat-openshift-ecosystem-cvp-ocp-5.0-cvp-common-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-redhat-openshift-ecosystem-cvp-ocp-5.0-cvp-common-claim:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-redhat-openshift-ecosystem-cvp-ocp-5.0-cvp-fips-common-claim:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: fips
     Suite: unknown
