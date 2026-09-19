@@ -18296,6 +18296,11 @@ releases:
         regexp:
             - ^periodic-ci-quay-quay-redhat-3\.18-.*-e2e-install-.*
         synthetic: true
+    quay-io:
+        jobs:
+            periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-load-smoke: true
+            periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-performance-test: true
+        synthetic: true
     quay-presubmits:
         regexp:
             - ^pull-ci-quay-quay-master-.*(aws-s3|gcp-gcs).*$
