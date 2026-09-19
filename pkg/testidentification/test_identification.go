@@ -36,12 +36,25 @@ const (
 	NewInfrastructureTestName = `install should succeed: infrastructure`
 	NewInstallTestName        = `install should succeed: overall`
 
+	// LifecycleInstallTestName is the install headline testcase name product lifecycle CI steps
+	// emit under a "[sig-<product>] " prefix in a "<product>-lifecycle" suite.
+	LifecycleInstallTestName = "install should succeed"
+	// LifecycleUpgradeTestName is the upgrade headline testcase name product lifecycle CI steps
+	// emit under a "[sig-<product>] " prefix in a "<product>-lifecycle" suite.
+	LifecycleUpgradeTestName = "upgrade should succeed"
+
 	Success = "Success"
 	Failure = "Failure"
 	Unknown = "Unknown"
 )
 
 var (
+	// LifecycleProducts is the opt-in allowlist of synthetic "<product>-<version>" release products whose
+	// CI emits the "[sig-<product>] install/upgrade should succeed" lifecycle testcases. For a release
+	// whose product is listed, these testcases are selected in addition to (not instead of) the
+	// OpenShift install/upgrade test selection.
+	LifecycleProducts = sets.New("quay")
+
 	// DefaultExcludedVariants is used to exclude particular variants in reporting
 	DefaultExcludedVariants = []string{"aggregated", "never-stable"}
 
