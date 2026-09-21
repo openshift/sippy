@@ -19,6 +19,9 @@ var validJiraKeyRegex = regexp.MustCompile(`^[A-Z][A-Z0-9_]*-[0-9]+$`)
 
 // normalizeLabelBugs keeps the labels API response stable for legacy rows with a NULL bugs column.
 func normalizeLabelBugs(label *jobrunscan.Label) {
+	if label == nil {
+		return
+	}
 	if label.Bugs == nil {
 		label.Bugs = pq.StringArray{}
 	}

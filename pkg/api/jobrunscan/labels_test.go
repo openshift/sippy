@@ -9,6 +9,8 @@ import (
 )
 
 func TestNormalizeLabelBugs(t *testing.T) {
+	normalizeLabelBugs(nil)
+
 	label := jobrunscan.Label{}
 
 	normalizeLabelBugs(&label)

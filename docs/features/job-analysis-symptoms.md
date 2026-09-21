@@ -143,7 +143,7 @@ removed, re-evaluating produces the correct result. Manually-applied labels (tho
 
 | Path | Contents |
 |------|----------|
-| `pkg/db/models/jobrunscan/` | Data models: `Symptom`, `Label`, `Metadata` structs and their Postgres table mappings.|
+| `pkg/db/models/jobrunscan/` | Data models: `Symptom`, `Label`, `Metadata` structs and their Postgres table mappings. |
 | `pkg/db/models/job_labels.go` | `JobRunLabel` - BigQuery row schema for the `job_labels` table. |
 | `pkg/db/models/prow.go` | `ProwJobRun.Labels` - the label array stored in Postgres. |
 | `pkg/db/models/triage.go` | `TriageSymptom` - junction table linking symptoms to triage records. |
