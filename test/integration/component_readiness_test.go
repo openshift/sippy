@@ -4926,6 +4926,128 @@ func TestQuerySpotCheckTestDetails(t *testing.T) {
 	})
 }
 
+func TestQuerySpotCheckTestStatus_MultiJobAggregation(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.17"
+
+	// Two jobs with the same Component:Etcd + Capability:Scaling variants
+	vc1 := createVariantCombination(t, dbc, []string{
+		"Platform:aws", "Network:ovn", "Component:Etcd", "Capability:Scaling",
+		"JobTier:spotcheck-30d",
+	})
+	vc2 := createVariantCombination(t, dbc, []string{
+		"Platform:aws", "Network:sdn", "Component:Etcd", "Capability:Scaling",
+		"JobTier:spotcheck-30d",
+	})
+
+	job1 := createProwJobWithVC(t, dbc, "periodic-ci-etcd-scaling-aws-ovn", release, vc1)
+	job2 := createProwJobWithVC(t, dbc, "periodic-ci-etcd-scaling-aws-sdn", release, vc2)
+
+	syntheticTest := intutil.CreateTest(t, dbc, "[sig-sippy] openshift-tests should work")
+
+	now := time.Now().UTC()
+
+	// Job 1: 2 passes
+	for i := range 2 {
+		run := intutil.CreateProwJobRun(t, dbc, job1.ID, release,
+			now.Add(time.Duration(-(10-i*3))*24*time.Hour), true, "S",
+			intutil.WithURL(fmt.Sprintf("https://prow.ci/etcd-ovn-run-%d", i+1)))
+		createProwJobRunTest(t, dbc, run.ID, job1.ID, syntheticTest.ID, nil, 1, release, run.Timestamp)
+	}
+
+	// Job 2: 1 pass, 1 fail
+	run2a := intutil.CreateProwJobRun(t, dbc, job2.ID, release,
+		now.Add(-8*24*time.Hour), true, "S",
+		intutil.WithURL("https://prow.ci/etcd-sdn-run-1"))
+	createProwJobRunTest(t, dbc, run2a.ID, job2.ID, syntheticTest.ID, nil, 1, release, run2a.Timestamp)
+
+	run2b := intutil.CreateProwJobRun(t, dbc, job2.ID, release,
+		now.Add(-3*24*time.Hour), false, "F",
+		intutil.WithURL("https://prow.ci/etcd-sdn-run-2"))
+	createProwJobRunTest(t, dbc, run2b.ID, job2.ID, syntheticTest.ID, nil, 12, release, run2b.Timestamp)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := spotCheckReqOptions(release)
+	includeVariants := map[string][]string{
+		"JobTier": {"spotcheck-30d"},
+	}
+
+	t.Run("status aggregates across jobs", func(t *testing.T) {
+		result, err := provider.QuerySpotCheckTestStatus(
+			context.Background(), opts, "spotcheck-30d", includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.NoError(t, err)
+
+		// Both jobs share Component:Etcd + Capability:Scaling, so they should aggregate.
+		// DBGroupBy is Platform+Network, and the jobs differ on Network (ovn vs sdn),
+		// so we expect two groups.
+		var etcdOvn, etcdSdn *crstatus.TestStatus
+		for _, ts := range result {
+			if ts.Component == "Etcd" {
+				if ts.Variants["Network"] == "ovn" {
+					etcdOvn = &ts
+				} else if ts.Variants["Network"] == "sdn" {
+					etcdSdn = &ts
+				}
+			}
+		}
+
+		require.NotNil(t, etcdOvn, "expected Etcd/ovn spot-check result")
+		assert.Equal(t, 2, etcdOvn.TotalCount, "job1 had 2 runs")
+		assert.Equal(t, 2, etcdOvn.SuccessCount, "job1 had 2 passes")
+
+		require.NotNil(t, etcdSdn, "expected Etcd/sdn spot-check result")
+		assert.Equal(t, 2, etcdSdn.TotalCount, "job2 had 2 runs")
+		assert.Equal(t, 1, etcdSdn.SuccessCount, "job2 had 1 pass")
+	})
+
+	t.Run("status aggregates when DBGroupBy collapses variant differences", func(t *testing.T) {
+		// Group by Platform only (not Network), so both jobs collapse into one group
+		collapsedOpts := spotCheckReqOptions(release)
+		collapsedOpts.VariantOption.DBGroupBy = sets.New[string]("Platform")
+
+		result, err := provider.QuerySpotCheckTestStatus(
+			context.Background(), collapsedOpts, "spotcheck-30d", includeVariants,
+			collapsedOpts.SampleRelease.Start, collapsedOpts.SampleRelease.End)
+		require.NoError(t, err)
+
+		var etcdAWS *crstatus.TestStatus
+		for _, ts := range result {
+			if ts.Component == "Etcd" {
+				etcdAWS = &ts
+			}
+		}
+
+		require.NotNil(t, etcdAWS, "expected single collapsed Etcd result")
+		assert.Equal(t, 4, etcdAWS.TotalCount, "both jobs should aggregate: 2 + 2")
+		assert.Equal(t, 3, etcdAWS.SuccessCount, "passes should aggregate: 2 + 1")
+	})
+
+	t.Run("details shows runs from both jobs separately", func(t *testing.T) {
+		etcdTestID := postgres.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")
+
+		result, err := provider.QuerySpotCheckTestDetails(
+			context.Background(), opts, etcdTestID, includeVariants,
+			map[string]string{},
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.NoError(t, err)
+		require.NotEmpty(t, result)
+
+		// Each job gets its own normalized name as a key in the result map
+		totalRuns := 0
+		jobNames := sets.New[string]()
+		for jobName, summaries := range result {
+			jobNames.Insert(jobName)
+			for _, summary := range summaries {
+				totalRuns += len(summary.JobRuns)
+			}
+		}
+
+		assert.Equal(t, 4, totalRuns, "should see all 4 runs across both jobs")
+		assert.Equal(t, 2, jobNames.Len(), "should have 2 distinct normalized job names")
+	})
+}
+
 func TestSpotCheckEndToEnd(t *testing.T) {
 	dbc := crTestDB(t)
 	seed := seedSpotCheckData(t, dbc)
