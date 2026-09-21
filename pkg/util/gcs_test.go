@@ -135,6 +135,12 @@ func TestGCSBucketAndPathFromURL(t *testing.T) {
 			url:          "https://example.com/job/1",
 			wantFound:    false,
 		},
+		{
+			name:         "non Prow URL containing stored bucket is rejected",
+			storedBucket: "test-platform-results",
+			url:          "https://example.com/artifacts/test-platform-results/logs/job/1",
+			wantFound:    false,
+		},
 	}
 
 	for _, tt := range tests {

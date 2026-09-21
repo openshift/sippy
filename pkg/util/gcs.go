@@ -57,18 +57,15 @@ func GCSBucketFromURL(rawURL string) string {
 // The stored bucket is used when it agrees with the URL. When historical metadata
 // is stale, the URL is the source of truth so artifact readers can still load it.
 func GCSBucketAndPathFromURL(storedBucket, jobURL string) (bucket, path string, found bool) {
-	if storedBucket != "" {
-		if _, storedPath, matchesStoredBucket := strings.Cut(jobURL, "/"+storedBucket+"/"); matchesStoredBucket {
-			return storedBucket, storedPath, true
-		}
-	}
-
-	bucket = GCSBucketFromURL(jobURL)
-	path = GCSObjectPathFromURL(jobURL)
-	if bucket == "" || path == "" {
+	parsedBucket := GCSBucketFromURL(jobURL)
+	parsedPath := GCSObjectPathFromURL(jobURL)
+	if parsedBucket == "" || parsedPath == "" {
 		return "", "", false
 	}
-	return bucket, path, true
+	if storedBucket == parsedBucket {
+		return storedBucket, parsedPath, true
+	}
+	return parsedBucket, parsedPath, true
 }
 
 // ResolveGCSBucket prefers the bucket recorded on the job, then the bucket in the
