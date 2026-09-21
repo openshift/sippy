@@ -52,7 +52,8 @@ func (s *SpotCheckJobs) PreTestDetailsAnalysis(_ crtest.KeyWithVariants, _ *crst
 //   - Any successful run in the sample window = healthy (NotSignificant)
 //   - A single failed run with no successes = pending retry (MissingSample), since an
 //     external component will trigger a retry for failed spot-check jobs
-//   - Two or more failed runs with no successes = confirmed regression (ExtremeRegression)
+//   - Exactly two failed runs with no successes = SignificantRegression
+//   - Three or more failed runs with no successes = ExtremeRegression
 //   - No runs at all = no data (MissingSample)
 //
 // Returns false for non-spot-check tests to defer to other analyzers.
