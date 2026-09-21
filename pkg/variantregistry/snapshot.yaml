@@ -2951,6 +2951,30 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-4.22-lpMainline-lp-interop-
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-fips-lpMainline-lp-interop-interop-opp-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-cr--full-stack--aws:
     Aggregation: none
     Architecture: amd64
@@ -2975,7 +2999,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-c
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-cr--full-stack--vsphere:
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-interop-opp-vsphere:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -2996,6 +3020,30 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-c
     ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-fips-lpMainline-lp-interop-interop-opp-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: fips
     Suite: unknown
     Topology: ha
     Upgrade: none
@@ -3023,7 +3071,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-lpMainline-lp-interop-c
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-lpMainline-lp-interop-cr--full-stack--vsphere:
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-lpMainline-lp-interop-interop-opp-vsphere:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -31491,30 +31539,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-metal-5.0-nightly-x86-payload-daily
     Release: "5.0"
     ReleaseMajor: "5"
     ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-rosa-4.22-nightly-x86-build-farm-114nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
