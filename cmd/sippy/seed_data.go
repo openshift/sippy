@@ -534,7 +534,10 @@ func seedSyntheticData(dbc *db.DB) error {
 		return fmt.Errorf("failed to check for existing data: %w", err)
 	}
 	if count > 0 {
-		log.Infof("Database already contains %d ProwJobs, skipping seed. Drop and recreate the database to re-seed (e.g. docker compose down -v).", count)
+		log.Infof("Database already contains %d ProwJobs, skipping bulk seed and refreshing rerunnable seed records. Drop and recreate the database to fully re-seed (e.g. docker compose down -v).", count)
+		if err := createLabelsAndSymptoms(dbc); err != nil {
+			return errors.WithMessage(err, "failed to create labels and symptoms")
+		}
 		// Feature gates use FirstOrCreate and are safe to re-run on an existing DB.
 		if err := seedFeatureGates(dbc); err != nil {
 			return errors.WithMessage(err, "failed to seed feature gates")
@@ -1379,8 +1382,12 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 
 	for _, label := range labels {
 		var existing jobrunscan.Label
-		if err := dbc.DB.Where("id = ?", label.ID).FirstOrCreate(&existing, label).Error; err != nil {
-			return fmt.Errorf("failed to create or find label %s: %v", label.ID, err)
+		if err := dbc.DB.
+			Where("id = ?", label.ID).
+			Attrs(label).
+			Assign(map[string]any{"bugs": label.Bugs}).
+			FirstOrCreate(&existing).Error; err != nil {
+			return fmt.Errorf("failed to create or update label %s: %w", label.ID, err)
 		}
 	}
 
