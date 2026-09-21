@@ -18579,25 +18579,6 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-e
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-encryption-kms-2-dual:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: metal
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-encryption-kms-2-ipv6:
     Aggregation: none
     Architecture: amd64
@@ -18608,25 +18589,6 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-e
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv6
-    OS: rhcos10
-    Owner: eng
-    Platform: metal
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-encryption-kms-dual:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
     Platform: metal
@@ -19274,6 +19236,54 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-
     OS: rhcos10
     Owner: eng
     Platform: gcp
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-metal-encryption-kms-2-dualstack:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-metal-encryption-kms-dualstack:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
     Procedure: none
     Release: "5.1"
     ReleaseMajor: "5"
