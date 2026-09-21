@@ -158,6 +158,7 @@ removed, re-evaluating produces the correct result. Manually-applied labels (tho
 | `pkg/api/componentreadiness/regressiontracker.go` | `SyncTriageSymptoms` - links symptoms to triage records. |
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
 | `sippy-ng/src/component_readiness/JobArtifactQuery.jsx` | JAQ dialog including symptom creation UI. |
+| `sippy-ng/src/components/JobRunLabelDetails.jsx` | Shared label descriptions and Jira links in job-run and release-payload dialogs. |
 | `sippy-ng/src/components/JiraBugLinks.jsx` | Jira key validation, normalization, and link rendering for labels. |
 | `sippy-ng/src/component_readiness/TriageSymptomLabels.jsx` | Failed-run label summary used on Component Readiness test and triage details pages. |
 | `sippy-ng/src/component_readiness/TestDetailsReport.jsx` | Builds the test details label summary from failed sample job runs. |

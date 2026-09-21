@@ -34,7 +34,7 @@ func validateLabel(label jobrunscan.Label) error {
 	}
 	for _, bug := range label.Bugs {
 		if !validJiraKeyRegex.MatchString(bug) {
-			return fmt.Errorf("invalid Jira issue key for a label: %s", bug)
+			return fmt.Errorf("invalid Jira issue key for a label")
 		}
 	}
 

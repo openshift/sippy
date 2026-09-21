@@ -37,6 +37,7 @@ func TestValidateLabelJiraKeys(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "no bugs"},
+		{name: "sensitive invalid input", bugs: pq.StringArray{"secret-token\nforged log message"}, wantErr: true},
 		{name: "one bug", bugs: pq.StringArray{"OCPBUGS-12345"}},
 		{name: "multiple projects", bugs: pq.StringArray{"TRT-2896", "RHOAIENG-42"}},
 		{name: "lowercase project", bugs: pq.StringArray{"Ocpbugs-12345"}, wantErr: true},
@@ -56,6 +57,9 @@ func TestValidateLabelJiraKeys(t *testing.T) {
 			err := validateLabel(label)
 			if (err != nil) != test.wantErr {
 				t.Fatalf("validateLabel() error = %v, wantErr %t", err, test.wantErr)
+			}
+			if test.wantErr && err.Error() != "invalid Jira issue key for a label" {
+				t.Fatalf("validation error must not contain submitted Jira input: %v", err)
 			}
 		})
 	}

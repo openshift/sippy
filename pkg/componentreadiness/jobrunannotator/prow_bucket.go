@@ -319,6 +319,9 @@ func labelSection(instances []JobRunBucketLabelContainer) g.Node {
 
 // jiraBugLinks renders the Jira issues associated with a label.
 func jiraBugLinks(bugs []string) g.Node {
+	if len(bugs) == 0 {
+		return nil
+	}
 	links := make([]g.Node, 0, len(bugs)*2-1)
 	for i, bug := range bugs {
 		if i > 0 {

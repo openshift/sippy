@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   Dialog,
   DialogActions,
@@ -8,7 +7,6 @@ import {
   IconButton,
   List,
   ListItem,
-  ListItemText,
   Tooltip,
 } from '@mui/material'
 import { Check, DirectionsBoat, FilterList } from '@mui/icons-material'
@@ -18,10 +16,9 @@ import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
-import JiraBugLinks from '../components/JiraBugLinks'
+import JobRunLabelDetails from '../components/JobRunLabelDetails'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
 
 const useStyles = makeStyles((theme) => ({
   rowPhaseSucceeded: {
@@ -344,23 +341,7 @@ function ReleasePayloadJobRuns(props) {
                   </Tooltip>
                 }
               >
-                <ListItemText
-                  primary={label ? label.label_title : labelId}
-                  secondary={
-                    label ? (
-                      <Box component="div">
-                        {label.explanation && (
-                          <ReactMarkdown>{label.explanation}</ReactMarkdown>
-                        )}
-                        {label.bugs?.length > 0 && (
-                          <JiraBugLinks bugs={label.bugs} showLabel />
-                        )}
-                      </Box>
-                    ) : (
-                      'Label not found'
-                    )
-                  }
-                />
+                <JobRunLabelDetails label={label} labelId={labelId} />
               </ListItem>
             )
           })}

@@ -36,3 +36,39 @@ func TestGenerateHTMLSummaryIncludesJiraLinks(t *testing.T) {
 		}
 	}
 }
+
+// TestGenerateHTMLSummaryWithoutJiraLinks covers legacy and explicitly empty bug lists.
+func TestGenerateHTMLSummaryWithoutJiraLinks(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		bugs pq.StringArray
+	}{
+		{name: "legacy null bugs"},
+		{name: "empty bugs", bugs: pq.StringArray{}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			labels := map[string][]JobRunBucketLabelContainer{
+				"KnownFailure": {
+					{V1: &JobRunBucketLabel{
+						Label: jobrunscan.LabelContent{
+							ID:          "KnownFailure",
+							LabelTitle:  "Known failure",
+							Explanation: "A known failure mode.",
+							Bugs:        test.bugs,
+						},
+						Symptom: jobrunscan.SymptomContent{Summary: "Known symptom"},
+					}},
+				},
+			}
+			html := generateHTMLSummary(labels)
+			for _, expected := range []string{"Known failure", "A known failure mode.", "Known symptom"} {
+				if !strings.Contains(html, expected) {
+					t.Errorf("expected generated HTML to contain %q, got %s", expected, html)
+				}
+			}
+			if strings.Contains(html, "Bugs:") || strings.Contains(html, jiraIssueURLPrefix) {
+				t.Errorf("expected no Jira section, got %s", html)
+			}
+		})
+	}
+}
