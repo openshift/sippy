@@ -4983,12 +4983,14 @@ func TestQuerySpotCheckTestStatus_MultiJobAggregation(t *testing.T) {
 		// so we expect two groups.
 		var etcdOvn, etcdSdn *crstatus.TestStatus
 		for _, ts := range result {
-			if ts.Component == "Etcd" {
-				if ts.Variants["Network"] == "ovn" {
-					etcdOvn = &ts
-				} else if ts.Variants["Network"] == "sdn" {
-					etcdSdn = &ts
-				}
+			if ts.Component != "Etcd" {
+				continue
+			}
+			switch ts.Variants["Network"] {
+			case "ovn":
+				etcdOvn = &ts
+			case "sdn":
+				etcdSdn = &ts
 			}
 		}
 

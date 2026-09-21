@@ -49,10 +49,10 @@ func TestParseTestID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sample, comp, cap := ParseTestID(tt.testID)
+			sample, comp, capability := ParseTestID(tt.testID)
 			assert.Equal(t, tt.wantSample, sample)
 			assert.Equal(t, tt.wantComponent, comp)
-			assert.Equal(t, tt.wantCapability, cap)
+			assert.Equal(t, tt.wantCapability, capability)
 		})
 	}
 }
