@@ -401,6 +401,9 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 	}
 
 	// Merge spot-check results into sample status.
+	if len(spotCheckResults) > 0 && sampleStatus == nil {
+		sampleStatus = make(map[string]crstatus.TestStatus)
+	}
 	for _, scResults := range spotCheckResults {
 		maps.Copy(sampleStatus, scResults)
 	}

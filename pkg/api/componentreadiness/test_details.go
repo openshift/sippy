@@ -509,6 +509,9 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 	}
 
 	// Merge spot-check details into sample status.
+	if len(spotCheckDetails) > 0 && sampleStatus == nil {
+		sampleStatus = make(map[string][]crstatus.TestDetailsSummary)
+	}
 	for _, scDetails := range spotCheckDetails {
 		for jobName, summaries := range scDetails {
 			sampleStatus[jobName] = append(sampleStatus[jobName], summaries...)
