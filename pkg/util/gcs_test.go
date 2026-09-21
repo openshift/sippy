@@ -104,6 +104,49 @@ func TestGCSBucketFromURL(t *testing.T) {
 	}
 }
 
+func TestGCSBucketAndPathFromURL(t *testing.T) {
+	tests := []struct {
+		name         string
+		storedBucket string
+		url          string
+		wantBucket   string
+		wantPath     string
+		wantFound    bool
+	}{
+		{
+			name:         "matching stored bucket",
+			storedBucket: "test-platform-results",
+			url:          "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/job/1",
+			wantBucket:   "test-platform-results",
+			wantPath:     "logs/job/1",
+			wantFound:    true,
+		},
+		{
+			name:         "stale stored bucket falls back to URL bucket",
+			storedBucket: "test-platform-results",
+			url:          "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/job/1",
+			wantBucket:   "test-platform-results-public",
+			wantPath:     "logs/job/1",
+			wantFound:    true,
+		},
+		{
+			name:         "non Prow URL is rejected",
+			storedBucket: "test-platform-results",
+			url:          "https://example.com/job/1",
+			wantFound:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bucket, path, found := GCSBucketAndPathFromURL(tt.storedBucket, tt.url)
+			if bucket != tt.wantBucket || path != tt.wantPath || found != tt.wantFound {
+				t.Errorf("GCSBucketAndPathFromURL() = (%q, %q, %v), want (%q, %q, %v)", bucket, path, found, tt.wantBucket, tt.wantPath, tt.wantFound)
+			}
+		})
+	}
+}
+
 func TestResolveGCSBucket(t *testing.T) {
 	const fallback = "configured-default"
 	tests := []struct {

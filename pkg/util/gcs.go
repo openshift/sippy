@@ -53,6 +53,24 @@ func GCSBucketFromURL(rawURL string) string {
 	return m[1]
 }
 
+// GCSBucketAndPathFromURL returns the bucket and object path for a Prow job URL.
+// The stored bucket is used when it agrees with the URL. When historical metadata
+// is stale, the URL is the source of truth so artifact readers can still load it.
+func GCSBucketAndPathFromURL(storedBucket, jobURL string) (bucket, path string, found bool) {
+	if storedBucket != "" {
+		if _, storedPath, matchesStoredBucket := strings.Cut(jobURL, "/"+storedBucket+"/"); matchesStoredBucket {
+			return storedBucket, storedPath, true
+		}
+	}
+
+	bucket = GCSBucketFromURL(jobURL)
+	path = GCSObjectPathFromURL(jobURL)
+	if bucket == "" || path == "" {
+		return "", "", false
+	}
+	return bucket, path, true
+}
+
 // ResolveGCSBucket prefers the bucket recorded on the job, then the bucket in the
 // prow URL, then fallback. Used so historical jobs keep reading/writing the bucket
 // they were ingested from instead of a process-wide default.
