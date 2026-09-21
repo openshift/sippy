@@ -149,7 +149,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 	switch {
 	case jrr.Failed && jrr.TestsStatus == testidentification.Failure:
 		syntheticTests[testidentification.OpenShiftTestsName].fail = 1
-	case jrr.TestsStatus == testidentification.Success:
+	case !jrr.Failed:
 		syntheticTests[testidentification.OpenShiftTestsName].pass = 1
 	}
 

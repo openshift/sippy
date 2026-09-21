@@ -76,6 +76,82 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 	}
 }
 
+func TestOpenShiftTestsShouldWorkSyntheticTest(t *testing.T) {
+	testMgr := NewOpenshiftSyntheticTestManager()
+
+	testCases := []struct {
+		name       string
+		jrr        v1.RawJobRunResult
+		wantPass   bool
+		wantFail   bool
+		wantAbsent bool
+	}{
+		{
+			name: "job passed with all tests passing",
+			jrr: v1.RawJobRunResult{
+				Succeeded:   true,
+				TestsStatus: testidentification.Success,
+			},
+			wantPass: true,
+		},
+		{
+			name: "job passed despite informing test failures",
+			jrr: v1.RawJobRunResult{
+				Succeeded:   true,
+				TestsStatus: testidentification.Failure,
+			},
+			wantPass: true,
+		},
+		{
+			name: "job failed with test failures",
+			jrr: v1.RawJobRunResult{
+				Failed:      true,
+				TestsStatus: testidentification.Failure,
+			},
+			wantFail: true,
+		},
+		{
+			name: "job failed without test results (infra failure)",
+			jrr: v1.RawJobRunResult{
+				Failed: true,
+			},
+			wantAbsent: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			jrr := tc.jrr
+			testMgr.CreateSyntheticTests(&jrr)
+
+			var foundPass, foundFail bool
+			for _, tr := range jrr.TestResults {
+				if tr.Name == testidentification.OpenShiftTestsName {
+					foundPass = true
+				}
+			}
+			for _, fn := range jrr.FailedTestNames {
+				if fn == testidentification.OpenShiftTestsName {
+					foundFail = true
+				}
+			}
+
+			if tc.wantPass {
+				assert.True(t, foundPass, "expected synthetic test to pass")
+				assert.False(t, foundFail, "expected synthetic test not to fail")
+			}
+			if tc.wantFail {
+				assert.True(t, foundFail, "expected synthetic test to fail")
+				assert.False(t, foundPass, "expected synthetic test not to pass")
+			}
+			if tc.wantAbsent {
+				assert.False(t, foundPass, "expected no synthetic test pass result")
+				assert.False(t, foundFail, "expected no synthetic test fail result")
+			}
+		})
+	}
+}
+
 func TestJobRunStatusClassification(t *testing.T) {
 	testCases := []struct {
 		name           string
