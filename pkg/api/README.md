@@ -410,8 +410,7 @@ Label definitions include the immutable `id`, human-readable `label_title`, Mark
 `explanation`, optional `hide_display_contexts`, and `bugs`. The `bugs` field is an array of Jira
 issue keys such as `OCPBUGS-12345`. Responses always return an array for `bugs`, including `[]` for
 labels without associated issues. Jira keys are validated syntactically, but the API does not look
-up issues in Jira. Invalid keys return `invalid Jira issue key for a label` without echoing
-the submitted value.
+up issues in Jira.
 
 PUT requests use full-replacement semantics. Clients must send the complete label definition,
 including `bugs` and `hide_display_contexts` when those values should be retained.

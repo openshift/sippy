@@ -20,6 +20,7 @@ A **label** is a named tag applied to a job run. Labels have:
   and expressions.
 - A human-readable `label_title` that can be updated freely.
 - An optional markdown `explanation`.
+- An optional array `bugs` of one or more associated Jira issue keys.
 - `hide_display_contexts` - a denylist of display contexts where the
   label should not be shown (e.g. `"spyglass"`, `"metrics"`).
 
@@ -58,8 +59,7 @@ Symptoms and labels are created and managed through:
 
 - **Sippy REST API** - full CRUD at `/api/jobs/symptoms` and `/api/jobs/labels`.
 - **JAQ UI** - the Job Artifact Query dialog (available from test details and job runs pages) can
-  define a query, match it against job runs, and save it as a symptom definition. New labels can
-  include one or more associated Jira issue keys.
+  define a query, match it against job runs, and save it as a symptom definition.
 - **Seed data** - `cmd/sippy/seed_data.go` bootstraps built-in label/symptom definitions.
 - **Client library** - `pkg/sippyclient/jobrunscan/` provides a Go client used by the cloud function
   and CLI tools.
@@ -143,7 +143,7 @@ removed, re-evaluating produces the correct result. Manually-applied labels (tho
 
 | Path | Contents |
 |------|----------|
-| `pkg/db/models/jobrunscan/` | Data models: `Symptom`, `Label`, `Metadata` structs and their Postgres table mappings. Label definitions include associated Jira issue keys in `bugs`. |
+| `pkg/db/models/jobrunscan/` | Data models: `Symptom`, `Label`, `Metadata` structs and their Postgres table mappings.|
 | `pkg/db/models/job_labels.go` | `JobRunLabel` - BigQuery row schema for the `job_labels` table. |
 | `pkg/db/models/prow.go` | `ProwJobRun.Labels` - the label array stored in Postgres. |
 | `pkg/db/models/triage.go` | `TriageSymptom` - junction table linking symptoms to triage records. |
@@ -188,7 +188,7 @@ documentation.
 | Store | What | Purpose |
 |-------|------|---------|
 | PostgreSQL `job_run_symptoms` | Symptom definitions | Authoritative source for symptom rules. |
-| PostgreSQL `job_run_labels` | Label definitions and associated Jira keys | Authoritative source for label metadata. |
+| PostgreSQL `job_run_labels` | Label definitions | Authoritative source for label metadata. |
 | PostgreSQL `prow_job_runs.labels` | Applied label IDs per job run | Sippy queries and UI display. |
 | PostgreSQL `release_job_runs.labels` | Applied label IDs per payload job run | Sippy queries and UI display. |
 | PostgreSQL `triage_symptoms` | Symptom↔triage associations | Triage UI symptom summaries. |
