@@ -949,9 +949,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"-eusc-techpreview"}, "candidate"},
 
 		// AWS DualStack Techpreview jobs - candidate tier to collect data while stabilizing
-		{[]string{"-aws-ovn-dualstack"}, "candidate"},
-		{[]string{"-aws-ovn-installer-dualstack-ipv6-primary-techpreview"}, "candidate"},
-		{[]string{"-aws-ovn-installer-dualstack-ipv4-primary-techpreview"}, "candidate"},
+		{[]string{"-aws-ovn-dualstack"}, "standard"},
+		{[]string{"-aws-ovn-installer-dualstack-ipv6-primary-techpreview"}, "standard"},
+		{[]string{"-aws-ovn-installer-dualstack-ipv4-primary-techpreview"}, "standard"},
 
 		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}
