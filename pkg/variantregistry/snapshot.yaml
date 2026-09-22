@@ -9321,6 +9321,7 @@ periodic-ci-openshift-aws-account-operator-master-hive-e2e-promotion-int:
     Owner: eng
     Platform: aws
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9340,6 +9341,7 @@ periodic-ci-openshift-aws-account-operator-master-hive-e2e-promotion-stage:
     Owner: eng
     Platform: aws
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9527,6 +9529,7 @@ periodic-ci-openshift-aws-vpce-operator-main-rosa-hcp-mc-e2e-promotion-int:
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9546,6 +9549,7 @@ periodic-ci-openshift-aws-vpce-operator-main-rosa-hcp-mc-e2e-promotion-stage:
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9582,6 +9586,7 @@ periodic-ci-openshift-certman-operator-master-hive-e2e-promotion-int:
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9600,6 +9605,7 @@ periodic-ci-openshift-certman-operator-master-hive-e2e-promotion-stage:
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -10076,6 +10082,7 @@ periodic-ci-openshift-cloud-ingress-operator-master-rosa-osd-aws-e2e-promotion-i
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -10095,6 +10102,7 @@ periodic-ci-openshift-cloud-ingress-operator-master-rosa-osd-aws-e2e-promotion-s
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -31616,30 +31624,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-rosa_hcp-5.0-nightly-x86-control-pl
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-aws-ipsec-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: ipsec
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-baremetal-multi-3nodes:
     Aggregation: none
     Architecture: multi
@@ -31684,53 +31668,6 @@ periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-gc
     ReleaseMinor: "22"
     Scheduler: default
     SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-ibmcloud-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-nutanix-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: nutanix
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
     Suite: unknown
     Topology: ha
     Upgrade: none
@@ -31826,53 +31763,6 @@ periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-node-density-hea
     ReleaseMinor: "22"
     Scheduler: default
     SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-node-density-heavy-ibmcloud-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-node-density-heavy-nutanix-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: nutanix
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
     Suite: unknown
     Topology: ha
     Upgrade: none
@@ -329356,6 +329246,30 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ipi-ovn-runc-techprev
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-manual-credentials-mode:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn:
     Aggregation: none
     Architecture: amd64
@@ -333998,6 +333912,7 @@ periodic-ci-openshift-route-monitor-operator-master-rosa-hcp-mc-e2e-promotion-in
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -334017,6 +333932,7 @@ periodic-ci-openshift-route-monitor-operator-master-rosa-hcp-mc-e2e-promotion-st
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
