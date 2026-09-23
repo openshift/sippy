@@ -33,7 +33,16 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-function ReleasePayloadJobRuns(props) {
+function ReleasePayloadJobRuns({
+  limit = 0,
+  hideControls = false,
+  pageSize: pageSizeDefault = 25,
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'kind',
+  sort: sortDefault = 'asc',
+  ...props
+}) {
   const theme = useTheme()
   const classes = useStyles(theme)
 
@@ -105,9 +114,9 @@ function ReleasePayloadJobRuns(props) {
                           e.stopPropagation()
                           addFilters([
                             {
-                              columnField: 'labels',
+                              field: 'labels',
                               not: false,
-                              operatorValue: 'has entry',
+                              operator: 'has entry',
                               value: labelId,
                             },
                           ])
@@ -167,28 +176,27 @@ function ReleasePayloadJobRuns(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeDefault, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
+  const [page, setPage] = React.useState(0)
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -207,7 +215,7 @@ function ReleasePayloadJobRuns(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -236,8 +244,8 @@ function ReleasePayloadJobRuns(props) {
       queryString += '&release=' + safeEncodeURIComponent(props.release)
     }
 
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
+    if (limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(limit)
     }
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
@@ -328,9 +336,9 @@ function ReleasePayloadJobRuns(props) {
                       onClick={() => {
                         addFilters([
                           {
-                            columnField: 'labels',
+                            field: 'labels',
                             not: false,
-                            operatorValue: 'has entry',
+                            operator: 'has entry',
                             value: labelId,
                           },
                         ])
@@ -368,16 +376,19 @@ function ReleasePayloadJobRuns(props) {
   return (
     <>
       <DataGrid
-        components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={columns}
         autoHeight={true}
         getRowClassName={(params) => classes['rowPhase' + params.row.state]}
-        disableColumnFilter={props.briefTable}
+        disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        pageSize={pageSize}
-        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        paginationModel={{ pageSize, page }}
+        onPaginationModelChange={(model) => {
+          setPageSize(model.pageSize)
+          setPage(model.page)
+        }}
+        pageSizeOptions={[5, 10, 25, 50]}
         filterMode="server"
         sortingMode="server"
         sortingOrder={['desc', 'asc']}
@@ -388,7 +399,7 @@ function ReleasePayloadJobRuns(props) {
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             columns: columns,
             clearSearch: () => requestSearch(''),
@@ -403,18 +414,6 @@ function ReleasePayloadJobRuns(props) {
       {labelsDialog}
     </>
   )
-}
-
-ReleasePayloadJobRuns.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'kind',
-  sort: 'asc',
 }
 
 ReleasePayloadJobRuns.propTypes = {

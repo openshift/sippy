@@ -43,34 +43,32 @@ function variantColumnHeader(variant) {
 
 function buildTestAnalysisPath(release, variant, testName) {
   const v = variant.variants || {}
-  const items = [
-    { columnField: 'name', operatorValue: 'contains', value: testName },
-  ]
+  const items = [{ field: 'name', operator: 'contains', value: testName }]
   let id = 1
   for (const [key, val] of Object.entries(v)) {
     if (!val) continue
     items.push({
       id: id++,
-      columnField: 'variants',
-      operatorValue: 'has entry',
+      field: 'variants',
+      operator: 'has entry',
       value: `${key}:${val}`,
     })
   }
   items.push({
     id: id++,
-    columnField: 'variants',
+    field: 'variants',
     not: true,
-    operatorValue: 'has entry',
+    operator: 'has entry',
     value: 'never-stable',
   })
   items.push({
     id: id++,
-    columnField: 'variants',
+    field: 'variants',
     not: true,
-    operatorValue: 'has entry',
+    operator: 'has entry',
     value: 'aggregated',
   })
-  const filters = { items, linkOperator: 'and' }
+  const filters = { items, logicOperator: 'and' }
   return `/tests/${release}/details?filters=${encodeURIComponent(
     JSON.stringify(filters)
   )}&sortField=net_improvement&sort=asc`
@@ -168,11 +166,11 @@ export default function FeatureGatePromotionTab(props) {
           JSON.stringify({
             items: matchingJobs.map((job, i) => ({
               id: i,
-              columnField: 'name',
-              operatorValue: 'equals',
+              field: 'name',
+              operator: 'equals',
               value: job,
             })),
-            linkOperator: 'or',
+            logicOperator: 'or',
           })
         )}`
       : null
@@ -473,29 +471,29 @@ function PromotionTable({
 
 function buildCapabilityTestAnalysisPath(release, featureGate, testName) {
   const items = [
-    { columnField: 'name', operatorValue: 'equals', value: testName },
+    { field: 'name', operator: 'equals', value: testName },
     {
       id: 1,
-      columnField: 'variants',
-      operatorValue: 'has entry',
+      field: 'variants',
+      operator: 'has entry',
       value: `Capability:${featureGate}`,
     },
     {
       id: 2,
-      columnField: 'variants',
+      field: 'variants',
       not: true,
-      operatorValue: 'has entry',
+      operator: 'has entry',
       value: 'never-stable',
     },
     {
       id: 3,
-      columnField: 'variants',
+      field: 'variants',
       not: true,
-      operatorValue: 'has entry',
+      operator: 'has entry',
       value: 'aggregated',
     },
   ]
-  const filters = { items, linkOperator: 'and' }
+  const filters = { items, logicOperator: 'and' }
   return `/tests/${release}/analysis?test=${encodeURIComponent(testName)}&filters=${encodeURIComponent(JSON.stringify(filters))}`
 }
 

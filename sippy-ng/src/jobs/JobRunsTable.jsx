@@ -38,7 +38,17 @@ import ReactMarkdown from 'react-markdown'
 /**
  * JobRunsTable shows the list of all job runs matching any selected filters.
  */
-export default function JobRunsTable(props) {
+export default function JobRunsTable({
+  briefTable = false,
+  hideControls = false,
+  pageSize: defaultPageSize = 25,
+  release = '',
+  useCurrentRelease = false,
+  filterModel: defaultFilterModel = { items: [] },
+  sortField: defaultSortField = 'timestamp',
+  sort: defaultSort = 'desc',
+  ...props
+}) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [apiResult, setApiResult] = React.useState([])
@@ -52,16 +62,16 @@ export default function JobRunsTable(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    defaultFilterModel
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = defaultSortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = defaultPageSize, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
@@ -119,9 +129,9 @@ export default function JobRunsTable(props) {
   const filteredTestNames = (filterModel?.items || [])
     .filter(
       (f) =>
-        testFilterFields.includes(f.columnField) &&
+        testFilterFields.includes(f.field) &&
         f.value &&
-        !(f.not && f.columnField === 'ran_test_names')
+        !(f.not && f.field === 'ran_test_names')
     )
     .map((f) => f.value)
   const uniqueFilteredTestNames = [...new Set(filteredTestNames)]
@@ -155,7 +165,7 @@ export default function JobRunsTable(props) {
       filterable: true,
       flex: 1.25,
       type: 'date',
-      valueGetter: (params) => new Date(params.value),
+      valueGetter: (value) => new Date(value),
       renderCell: (params) => {
         return (
           <Tooltip title={relativeTime(params.value, startDate)}>
@@ -167,9 +177,9 @@ export default function JobRunsTable(props) {
     {
       field: 'job',
       autocomplete: 'jobs',
-      release: props.release,
+      release: release,
       headerName: 'Job name',
-      flex: props.briefTable ? 1 : 3,
+      flex: briefTable ? 1 : 3,
       renderCell: (params) => {
         return (
           <div
@@ -181,8 +191,8 @@ export default function JobRunsTable(props) {
             }}
           >
             <Tooltip title={params.value}>
-              <Link to={pathForExactJob(props.release, params.value)}>
-                {props.briefTable ? params.row.brief_name : params.value}
+              <Link to={pathForExactJob(release, params.value)}>
+                {briefTable ? params.row.brief_name : params.value}
               </Link>
             </Tooltip>
           </div>
@@ -281,9 +291,9 @@ export default function JobRunsTable(props) {
                           e.stopPropagation()
                           addFilters([
                             {
-                              columnField: 'labels',
+                              field: 'labels',
                               not: false,
-                              operatorValue: 'has entry',
+                              operator: 'has entry',
                               value: labelId,
                             },
                           ])
@@ -432,7 +442,7 @@ export default function JobRunsTable(props) {
     {
       field: 'name',
       autocomplete: 'jobs',
-      release: props.release,
+      release: release,
       headerName: 'Name',
       type: 'string',
       hide: 'true',
@@ -448,9 +458,9 @@ export default function JobRunsTable(props) {
 
   const fetchData = () => {
     let queryString = ''
-    if (props.release !== '') {
-      queryString += '&release=' + props.release
-    } else if (props.useCurrentRelease) {
+    if (release !== '') {
+      queryString += '&release=' + release
+    } else if (useCurrentRelease) {
       queryString += '&useCurrentRelease=true'
     }
 
@@ -485,16 +495,16 @@ export default function JobRunsTable(props) {
         setPageFlip(false)
       })
       .catch((error) => {
-        setFetchError('Could not retrieve jobs ' + props.release + ', ' + error)
+        setFetchError('Could not retrieve jobs ' + release + ', ' + error)
       })
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'job')
+    const newItems = filterModel.items.filter((f) => f.field !== 'job')
     newItems.push({
       id: 99,
-      columnField: 'job',
-      operatorValue: 'contains',
+      field: 'job',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -505,15 +515,7 @@ export default function JobRunsTable(props) {
 
   useEffect(() => {
     fetchData()
-  }, [
-    filterModel,
-    sort,
-    sortField,
-    page,
-    pageSize,
-    props.release,
-    props.useCurrentRelease,
-  ])
+  }, [filterModel, sort, sortField, page, pageSize, release, useCurrentRelease])
 
   // Fetch label definitions
   useEffect(() => {
@@ -574,7 +576,7 @@ export default function JobRunsTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -645,25 +647,34 @@ export default function JobRunsTable(props) {
     </div>
   )
 
-  const changePage = (newPage) => {
-    setPageFlip(true)
-    setPage(newPage)
+  const paginationModel = { page, pageSize }
+  const handlePaginationModelChange = (newModel) => {
+    if (newModel.page !== page) {
+      setPageFlip(true)
+      setPage(newModel.page)
+    }
+    if (newModel.pageSize !== pageSize) {
+      setPageSize(newModel.pageSize)
+    }
   }
 
   const table = (
     <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={apiResult.rows}
       rowCount={apiResult.total_rows}
       loading={pageFlip}
       pagination
       paginationMode="server"
-      onPageChange={(newPage) => changePage(newPage)}
+      paginationModel={paginationModel}
+      onPaginationModelChange={handlePaginationModelChange}
       columns={columns}
       autoHeight={true}
       checkboxSelection
-      onSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
-      selectionModel={selectionModel}
+      onRowSelectionModelChange={(newSelection) =>
+        setSelectionModel(newSelection)
+      }
+      rowSelectionModel={selectionModel}
       // Filtering:
       filterMode="server"
       sortingOrder={['desc', 'asc']}
@@ -676,11 +687,9 @@ export default function JobRunsTable(props) {
       // Sorting:
       onSortModelChange={(m) => updateSortModel(m)}
       sortingMode="server"
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
       disableColumnMenu={true}
-      rowsPerPageOptions={[5, 10, 25, 50, 100]}
-      componentsProps={{
+      pageSizeOptions={[5, 10, 25, 50, 100]}
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),
@@ -694,7 +703,7 @@ export default function JobRunsTable(props) {
     />
   )
 
-  if (props.briefTable) {
+  if (briefTable) {
     return table
   }
 
@@ -727,9 +736,9 @@ export default function JobRunsTable(props) {
                       onClick={() => {
                         addFilters([
                           {
-                            columnField: 'labels',
+                            field: 'labels',
                             not: false,
-                            operatorValue: 'has entry',
+                            operator: 'has entry',
                             value: labelId,
                           },
                         ])
@@ -834,19 +843,6 @@ export default function JobRunsTable(props) {
       {jaqDialog}
     </Fragment>
   )
-}
-
-JobRunsTable.defaultProps = {
-  briefTable: false,
-  hideControls: false,
-  pageSize: 25,
-  release: '',
-  useCurrentRelease: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'timestamp',
-  sort: 'desc',
 }
 
 JobRunsTable.propTypes = {

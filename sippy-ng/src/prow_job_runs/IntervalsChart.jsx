@@ -212,7 +212,26 @@ const intervalColorizers = {
   },
 }
 
-export default function IntervalsChart(props) {
+export default function IntervalsChart({
+  selectedSources: defaultSelectedSources = [
+    'OperatorAvailable',
+    'OperatorProgressing',
+    'OperatorDegraded',
+    'KubeletLog',
+    'EtcdLog',
+    'EtcdLeadership',
+    'Alert',
+    'Disruption',
+    'E2EFailed',
+    'APIServerGracefulShutdown',
+    'KubeEvent',
+    'NodeState',
+    'CPUMonitor',
+  ],
+  intervalFile: defaultIntervalFile = '',
+  overrideDisplayFlag: defaultOverrideDisplayFlag = false,
+  ...props
+}) {
   const navigate = useNavigate()
   const classes = useStyles()
   const { jobrunid, jobname, repoinfo, pullnumber } = useParams()
@@ -229,18 +248,18 @@ export default function IntervalsChart(props) {
 
   // categories is the set of selected categories to display. It is controlled by a combination
   // of default props, the categories query param, and the buttons the user can modify with.
-  const [selectedSources = props.selectedSources, setSelectedSources] =
+  const [selectedSources = defaultSelectedSources, setSelectedSources] =
     useQueryParam('selectedSources', ArrayParam)
 
   const [
-    overrideDisplayFlag = props.overrideDisplayFlag,
+    overrideDisplayFlag = defaultOverrideDisplayFlag,
     setOverrideDisplayFlag,
   ] = useQueryParam('overrideDisplayFlag', BooleanParam)
 
   const [allIntervalFiles, setAllIntervalFiles] = useState([])
   const [allSources, setAllSources] = useState([])
   const [sourceCounts, setSourceCounts] = useState([])
-  const [intervalFile = props.intervalFile, setIntervalFile] = useState(() => {
+  const [intervalFile = defaultIntervalFile, setIntervalFile] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('intervalFile')) {
       console.log(
@@ -681,27 +700,6 @@ export default function IntervalsChart(props) {
       </div>
     </Fragment>
   )
-}
-
-IntervalsChart.defaultProps = {
-  // default list of pre-selected sources:
-  selectedSources: [
-    'OperatorAvailable',
-    'OperatorProgressing',
-    'OperatorDegraded',
-    'KubeletLog',
-    'EtcdLog',
-    'EtcdLeadership',
-    'Alert',
-    'Disruption',
-    'E2EFailed',
-    'APIServerGracefulShutdown',
-    'KubeEvent',
-    'NodeState',
-    'CPUMonitor',
-  ],
-  intervalFile: '',
-  overrideDisplayFlag: false,
 }
 
 IntervalsChart.propTypes = {

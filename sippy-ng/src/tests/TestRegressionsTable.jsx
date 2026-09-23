@@ -59,7 +59,7 @@ export default function TestRegressionsTable({
 
   const variantFilters = useMemo(() => {
     if (!filterModel || !filterModel.items) return []
-    return filterModel.items.filter((f) => f.columnField === 'variants')
+    return filterModel.items.filter((f) => f.field === 'variants')
   }, [filterModel])
 
   const filteredRegressions = useMemo(() => {

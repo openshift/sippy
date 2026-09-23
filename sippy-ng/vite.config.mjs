@@ -8,6 +8,19 @@ export default defineConfig({
   build: {
     outDir: 'build',
   },
+  optimizeDeps: {
+    include: [
+      '@mui/material',
+      '@mui/material/Unstable_Grid2',
+      '@mui/icons-material',
+      '@mui/styles',
+      '@mui/system',
+      '@mui/x-data-grid',
+      '@mui/x-date-pickers',
+      '@emotion/react',
+      '@emotion/styled',
+    ],
+  },
   server: {
     port: 3000,
     host: true,
