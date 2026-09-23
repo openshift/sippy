@@ -20,6 +20,7 @@ A **label** is a named tag applied to a job run. Labels have:
   and expressions.
 - A human-readable `label_title` that can be updated freely.
 - An optional markdown `explanation`.
+- An optional array `bugs` of one or more associated Jira issue keys.
 - `hide_display_contexts` - a denylist of display contexts where the
   label should not be shown (e.g. `"spyglass"`, `"metrics"`).
 
@@ -118,6 +119,8 @@ Labels are relevant in several Sippy pages:
 - JAQ dialog - symptom management and label display.
 - Component Readiness test details - failed sample runs are summarized by label, with links to see sample-release job runs filtered by any label.
 - Component Readiness triage details - failed runs across the triage's regressions are summarized by label with links to label-filtered job-runs.
+- Label detail views and Component Readiness label tables link associated Jira issues from each
+  label definition. The Spyglass HTML summary includes the same issue links.
 - Re-evaluation controls - button in the JAQ dialog action bar. Submits an async batch
   re-evaluation for selected (or all visible) job runs. The UI polls the batch status endpoint
   and displays progress (requires SSO authentication via the write-enabled deployment).
@@ -191,7 +194,9 @@ modified, added, or removed, re-evaluating produces the correct result. Manually
 | `pkg/dataloader/prowloader/prow.go` | `GatherLabelsFromBQ` - reads labels from BQ during fetchdata. |
 | `pkg/api/componentreadiness/regressiontracker.go` | `SyncTriageSymptoms` - links symptoms to triage records. |
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
-| `sippy-ng/src/component_readiness/JobArtifactQuery.js` | JAQ dialog including symptom creation UI. |
+| `sippy-ng/src/component_readiness/JobArtifactQuery.jsx` | JAQ dialog including symptom creation UI. |
+| `sippy-ng/src/components/JobRunLabelDetails.jsx` | Shared label descriptions and Jira links in job-run and release-payload dialogs. |
+| `sippy-ng/src/components/JiraBugLinks.jsx` | Jira key validation, normalization, and link rendering for labels. |
 | `sippy-ng/src/component_readiness/TriageSymptomLabels.jsx` | Failed-run label summary used on Component Readiness test and triage details pages. |
 | `sippy-ng/src/component_readiness/TestDetailsReport.jsx` | Builds the test details label summary from failed sample job runs. |
 | `sippy-ng/src/component_readiness/Triage.jsx` | Builds the triage label summary from stored regression job runs. |

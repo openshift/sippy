@@ -81,8 +81,8 @@ releases:
       - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-hcp-ovn$"
       # ROSA Classic/STS conformance (all versions)
       - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-sts-ovn$"
-      # SRE operator e2e tests via Prow (staging, STS + GCP)
-      - "^periodic-ci-openshift-.*-(master|main)-(rosa-sts|osd-gcp)-e2e-promotion-stage$"
+      # SRE operator e2e tests via Prow (staging)
+      - "^periodic-ci-openshift-.*-(master|main)-(rosa-sts|osd-gcp|hive|rosa-hcp-mc|rosa-osd-aws)-e2e-promotion-stage$"
       # HyperShift CI sector tests (staging)
       - "^periodic-ci-openshift-online-rosa-e2e-main-hypershift-ci-.*-staging-.*"
       # ROSA CLI e2e tests
@@ -96,8 +96,8 @@ releases:
     regexp:
       # OCM FVT integration
       - "^periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-.*-integration-.*"
-      # SRE operator e2e tests via Prow (integration, STS + GCP)
-      - "^periodic-ci-openshift-.*-(master|main)-(rosa-sts|osd-gcp)-e2e-promotion-int$"
+      # SRE operator e2e tests via Prow (integration)
+      - "^periodic-ci-openshift-.*-(master|main)-(rosa-sts|osd-gcp|hive|rosa-hcp-mc|rosa-osd-aws)-e2e-promotion-int$"
       # HyperShift CI sector tests (integration)
       - "^periodic-ci-openshift-online-rosa-e2e-main-hypershift-ci-.*-integration-.*"
   rosa-production:
@@ -130,6 +130,10 @@ releases:
     synthetic: true
     regexp:
       - "^periodic-ci-openshift-hypershift-.*-periodics-hcm-.*"
+  gcp-hcp-main:
+    synthetic: true
+    jobs:
+      periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-platform: true
   quay-3.18:
     synthetic: true
     jobs:
@@ -137,3 +141,12 @@ releases:
       periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-3-18-nightly-4-22: false
     regexp:
       - "^periodic-ci-quay-quay-redhat-3\\.18-.*-e2e-install-.*"
+  quay-io:
+    synthetic: true
+    jobs:
+      periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-performance-test: true
+      periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-load-smoke: true
+  quay-presubmits:
+    synthetic: true
+    regexp:
+      - "^pull-ci-quay-quay-master-.*(aws-s3|gcp-gcs).*$"

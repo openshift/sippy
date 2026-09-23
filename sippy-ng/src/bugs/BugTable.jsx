@@ -11,13 +11,15 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { CompReadyVarsContext } from '../component_readiness/CompReadyVars'
 import { getTriagesAPIUrl } from '../component_readiness/CompReadyUtils'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
-import React, { useEffect } from 'react'
+import React, { useContext, useEffect } from 'react'
 
 export default function BugTable(props) {
+  const { view } = useContext(CompReadyVarsContext)
   const [isLoaded, setLoaded] = React.useState(false)
   const [bugs, setBugs] = React.useState([])
   const [bugToPotentialTriage, setBugToPotentialTriage] = React.useState({})
@@ -47,7 +49,7 @@ export default function BugTable(props) {
           props.regressionId &&
           bugs.length > 0
         ) {
-          return fetch(getTriagesAPIUrl())
+          return fetch(getTriagesAPIUrl(null, view))
             .then((res) => {
               if (res.status !== 200) {
                 throw new Error(

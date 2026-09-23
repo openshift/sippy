@@ -39,8 +39,10 @@ const sourceOrder = [
   'Disruption',
   'CertificateRotation',
   'KubeletLog',
+  'KernelLog',
   'EtcdLog',
   'EtcdLeadership',
+  'TestBucket',
 ]
 
 const useStyles = makeStyles({
@@ -143,6 +145,16 @@ const intervalColorizers = {
         return ['KubeletLogWarning', '#fada5e']
       case 'Error':
         return ['KubeletLogError', '#d0312d']
+    }
+  },
+  KernelLog: function (interval) {
+    switch (interval.level) {
+      case 'Warning':
+        return ['KernelLogWarning', '#ff6b35']
+      case 'Error':
+        return ['KernelLogError', '#d0312d']
+      default:
+        return ['KernelLogInfo', '#fada5e']
     }
   },
   APIServerGracefulShutdown: function (_interval) {
@@ -690,6 +702,7 @@ IntervalsChart.defaultProps = {
     'OperatorProgressing',
     'OperatorDegraded',
     'KubeletLog',
+    'KernelLog',
     'EtcdLog',
     'EtcdLeadership',
     'Alert',
@@ -699,6 +712,7 @@ IntervalsChart.defaultProps = {
     'KubeEvent',
     'NodeState',
     'CPUMonitor',
+    'TestBucket',
   ],
   intervalFile: '',
   overrideDisplayFlag: false,

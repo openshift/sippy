@@ -113,7 +113,8 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
           OR prowjob_job_name LIKE 'periodic-ci-quay-quay-redhat-%%'
-          OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
+          OR prowjob_job_name LIKE 'pull-ci-openshift-%%'
+          OR prowjob_job_name LIKE 'pull-ci-quay-quay-master-%%')
   GROUP BY prowjob_job_name
 )
 SELECT 
@@ -140,7 +141,8 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-quay-quay-redhat-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
-      OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
+      OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%'
+      OR j.prowjob_job_name LIKE 'pull-ci-quay-quay-master-%%')
 GROUP BY j.prowjob_job_name, r.prowjob_url, r.successful_start
 ORDER BY j.prowjob_job_name;
 `
@@ -947,9 +949,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"-eusc-techpreview"}, "candidate"},
 
 		// AWS DualStack Techpreview jobs - candidate tier to collect data while stabilizing
-		{[]string{"-aws-ovn-dualstack"}, "candidate"},
-		{[]string{"-aws-ovn-installer-dualstack-ipv6-primary-techpreview"}, "candidate"},
-		{[]string{"-aws-ovn-installer-dualstack-ipv4-primary-techpreview"}, "candidate"},
+		{[]string{"-aws-ovn-dualstack"}, "standard"},
+		{[]string{"-aws-ovn-installer-dualstack-ipv6-primary-techpreview"}, "standard"},
+		{[]string{"-aws-ovn-installer-dualstack-ipv4-primary-techpreview"}, "standard"},
 
 		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}

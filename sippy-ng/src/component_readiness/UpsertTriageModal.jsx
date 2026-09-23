@@ -1,11 +1,12 @@
 import { Button, DialogActions, Snackbar, Tooltip } from '@mui/material'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { getTriagesAPIUrl } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
 import AddRegressionPanel from './AddRegressionPanel'
 import Alert from '@mui/material/Alert'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useContext, useEffect } from 'react'
 import UpdateTriagePanel from './UpdateTriagePanel'
 
 const useCommonTriageStyles = makeStyles((theme) => ({
@@ -43,6 +44,7 @@ export default function UpsertTriageModal({
   submissionDelay = 0,
 }) {
   const commonClasses = useCommonTriageStyles()
+  const { view } = useContext(CompReadyVarsContext)
   const regressionAddMode =
     regressionIds !== undefined && regressionIds.length > 0
   const triageDetailsUpdateMode = triage !== undefined
@@ -50,14 +52,13 @@ export default function UpsertTriageModal({
   const [triages, setTriages] = React.useState([])
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
   const handleTriageModalOpen = () => {
-    // Only get all existing entries when actually adding/editing a triage
-    fetch(getTriagesAPIUrl())
+    const triagesAPIUrl = getTriagesAPIUrl(null, view)
+    // Only get existing entries when actually adding/editing a triage
+    fetch(triagesAPIUrl)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error(
-            `API call failed ${getTriagesAPIUrl()} Returned + ${
-              response.status
-            }`
+            `API call failed ${triagesAPIUrl} Returned + ${response.status}`
           )
         }
         return response.json()

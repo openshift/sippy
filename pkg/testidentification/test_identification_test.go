@@ -28,3 +28,51 @@ func TestIsIgnoredTest(t *testing.T) {
 		})
 	}
 }
+
+func TestIsNonSuiteTest(t *testing.T) {
+	tests := []struct {
+		name      string
+		suiteName string
+		testName  string
+		want      bool
+	}{
+		{
+			name:      "normalized multi-stage step graph test is included",
+			suiteName: "step graph",
+			testName:  "Run multi-stage step ipi-install-install-stableinitial",
+			want:      false,
+		},
+		{
+			name:      "unnormalized step graph test is excluded",
+			suiteName: "step graph",
+			testName:  "some-step",
+			want:      true,
+		},
+		{
+			name:      "legacy multi-stage test is excluded",
+			suiteName: "step graph",
+			testName:  "Run multi-stage test e2e-aws - pod container test",
+			want:      true,
+		},
+		{
+			name:      "pipeline step is excluded",
+			suiteName: "step graph",
+			testName:  "Run pipeline step provision",
+			want:      true,
+		},
+		{
+			name:      "prowjob junit remains excluded",
+			suiteName: "prowjob-junit",
+			testName:  "Run multi-stage step test",
+			want:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsNonSuiteTest(tt.suiteName, tt.testName); got != tt.want {
+				t.Errorf("IsNonSuiteTest(%q, %q) = %v, want %v", tt.suiteName, tt.testName, got, tt.want)
+			}
+		})
+	}
+}

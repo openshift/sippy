@@ -12,7 +12,6 @@ import {
   IconButton,
   List,
   ListItem,
-  ListItemText,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -31,9 +30,9 @@ import { ReportEndContext } from '../App'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import JobArtifactQuery from '../component_readiness/JobArtifactQuery'
+import JobRunLabelDetails from '../components/JobRunLabelDetails'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
 
 /**
  * JobRunsTable shows the list of all job runs matching any selected filters.
@@ -741,16 +740,7 @@ export default function JobRunsTable(props) {
                   </Tooltip>
                 }
               >
-                <ListItemText
-                  primary={label ? label.label_title : labelId}
-                  secondary={
-                    label ? (
-                      <ReactMarkdown>{label.explanation}</ReactMarkdown>
-                    ) : (
-                      'Label not found'
-                    )
-                  }
-                />
+                <JobRunLabelDetails label={label} labelId={labelId} />
               </ListItem>
             )
           })}

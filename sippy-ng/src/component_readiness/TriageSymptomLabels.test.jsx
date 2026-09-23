@@ -15,6 +15,7 @@ describe('aggregateLabelSummaries', () => {
       id: 'ManualLabel',
       label_title: 'Manual label',
       explanation: 'Applied manually after investigation',
+      bugs: ['OCPBUGS-12345', 'TRT-2896'],
     },
     { id: 'KnownFailure', label_title: 'Known failure' },
   ]
@@ -44,6 +45,7 @@ describe('aggregateLabelSummaries', () => {
       })
     )
     expect(summaries[1].percentage).toBeCloseTo(100 / 3)
+    expect(summaries[1].label.bugs).toEqual(['OCPBUGS-12345', 'TRT-2896'])
   })
 
   it('counts each triage regression once per label', () => {
@@ -107,6 +109,11 @@ describe('aggregateLabelSummaries', () => {
     )
 
     expect(screen.getByText('Failure Labels (1)')).toBeInTheDocument()
+    expect(screen.getByText('Bugs')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'OCPBUGS-12345' })).toHaveAttribute(
+      'href',
+      'https://redhat.atlassian.net/browse/OCPBUGS-12345'
+    )
     const expectedJobRunsPath = pathForJobRunsWithFilter('4.22', {
       items: [filterFor('labels', 'has entry', 'ManualLabel')],
     })
@@ -127,6 +134,11 @@ describe('aggregateLabelSummaries', () => {
     expect(
       screen.getByText('Applied manually after investigation')
     ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).getByRole('link', {
+        name: 'TRT-2896',
+      })
+    ).toHaveAttribute('href', 'https://redhat.atlassian.net/browse/TRT-2896')
     const link = within(screen.getByRole('dialog')).getByRole('link', {
       name: 'View job runs with this label',
     })
@@ -157,7 +169,7 @@ describe('aggregateLabelSummaries', () => {
     )
 
     const labelRow = screen.getByRole('row', { name: /Manual label/ })
-    const regressionCell = within(labelRow).getAllByRole('cell')[1]
+    const regressionCell = within(labelRow).getAllByRole('cell')[2]
     const filterButton = within(regressionCell).getByRole('button', {
       name: 'Filter regressions to Manual label',
     })

@@ -2427,7 +2427,7 @@ periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--acm-virt--hub-spoke-mig--aws:
+periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--hub-spoke-mig--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -2898,6 +2898,198 @@ periodic-ci-RedHatQE-interop-testing-master-ibm-fusion-access-operator-ocp4.21-l
     Release: "4.21"
     ReleaseMajor: "4"
     ReleaseMinor: "21"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-4.22-lpMainline-lp-interop-cr--full-stack--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-4.22-lpMainline-lp-interop-cr--full-stack--vsphere:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: mpiit
+    Platform: vsphere
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-fips-lpMainline-lp-interop-interop-opp-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-cr--full-stack--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-interop-opp-vsphere:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: vsphere
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-fips-lpMainline-lp-interop-interop-opp-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-lpMainline-lp-interop-cr--full-stack--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-lpMainline-lp-interop-interop-opp-vsphere:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--OPP
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: vsphere
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9129,6 +9321,7 @@ periodic-ci-openshift-aws-account-operator-master-hive-e2e-promotion-int:
     Owner: eng
     Platform: aws
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9148,6 +9341,7 @@ periodic-ci-openshift-aws-account-operator-master-hive-e2e-promotion-stage:
     Owner: eng
     Platform: aws
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9335,6 +9529,7 @@ periodic-ci-openshift-aws-vpce-operator-main-rosa-hcp-mc-e2e-promotion-int:
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9354,50 +9549,11 @@ periodic-ci-openshift-aws-vpce-operator-main-rosa-hcp-mc-e2e-promotion-stage:
     Owner: service-delivery
     Platform: rosa
     Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-aws-vpce-operator-main-rosa-sts-e2e-promotion-int:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
-    Release: rosa-integration
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-aws-vpce-operator-main-rosa-sts-e2e-promotion-stage:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
     Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
-    Topology: ha
+    Topology: external
     Upgrade: none
 periodic-ci-openshift-cert-manager-operator-master-tls-pqc-readiness-periodic:
     Aggregation: none
@@ -9430,6 +9586,7 @@ periodic-ci-openshift-certman-operator-master-hive-e2e-promotion-int:
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9448,6 +9605,7 @@ periodic-ci-openshift-certman-operator-master-hive-e2e-promotion-stage:
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9924,6 +10082,7 @@ periodic-ci-openshift-cloud-ingress-operator-master-rosa-osd-aws-e2e-promotion-i
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -9943,6 +10102,7 @@ periodic-ci-openshift-cloud-ingress-operator-master-rosa-osd-aws-e2e-promotion-s
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -18475,25 +18635,6 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-e
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-encryption-kms-2-dual:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: metal
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-encryption-kms-2-ipv6:
     Aggregation: none
     Architecture: amd64
@@ -18504,25 +18645,6 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-e
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv6
-    OS: rhcos10
-    Owner: eng
-    Platform: metal
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-cluster-kube-apiserver-operator-main-periodics-e2e-metal-encryption-kms-dual:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
     Platform: metal
@@ -19170,6 +19292,54 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-
     OS: rhcos10
     Owner: eng
     Platform: gcp
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-metal-encryption-kms-2-dualstack:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-metal-encryption-kms-dualstack:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
     Procedure: none
     Release: "5.1"
     ReleaseMajor: "5"
@@ -31382,30 +31552,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-metal-5.0-nightly-x86-payload-daily
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-rosa-4.22-nightly-x86-build-farm-114nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-eng-ocp-perfscale-main-rosa-5.0-nightly-x86-build-farm-114nodes:
     Aggregation: none
     Architecture: amd64
@@ -31478,30 +31624,6 @@ periodic-ci-openshift-eng-ocp-perfscale-main-rosa_hcp-5.0-nightly-x86-control-pl
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-aws-ipsec-120nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: aws
-    Procedure: ipsec
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-baremetal-multi-3nodes:
     Aggregation: none
     Architecture: multi
@@ -31546,53 +31668,6 @@ periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-gc
     ReleaseMinor: "22"
     Scheduler: default
     SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-ibmcloud-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-control-plane-nutanix-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: nutanix
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
     Suite: unknown
     Topology: ha
     Upgrade: none
@@ -31688,53 +31763,6 @@ periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-node-density-hea
     ReleaseMinor: "22"
     Scheduler: default
     SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-node-density-heavy-ibmcloud-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-4.22-nightly-node-density-heavy-nutanix-24nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: perfscale
-    Platform: nutanix
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
     Suite: unknown
     Topology: ha
     Upgrade: none
@@ -47221,6 +47249,29 @@ periodic-ci-openshift-kni-eco-ci-cd-main-cnf-network-phase2-5.1-cnf-network-func
     Release: "5.1"
     ReleaseMajor: "5"
     ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-kni-eco-ci-cd-main-cnf-ran-arm-ibx-4.20-cnf-ran-arm-ibx-tests:
+    Aggregation: none
+    Architecture: arm64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.20"
+    ReleaseMajor: "4"
+    ReleaseMinor: "20"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -83368,6 +83419,26 @@ periodic-ci-openshift-ols-load-generator-main-ols-load-test-1000workers:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-platform:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: standard
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: gcp
+    Procedure: none
+    Release: gcp-hcp-main
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ho-upgrade-rosa-hcp-ho-upgrade-integration:
     Aggregation: none
     Architecture: amd64
@@ -84106,8 +84177,48 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-production-ocm-fvt-p
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-hcp-e2e-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-hcp-e2e-staging-main:
     Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-access-request-ocp5-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -84186,7 +84297,47 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-adobe-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-adobe-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-amd64-ocp5-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84226,6 +84377,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-amd64-upgrade-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: micro
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-amd64-upgrade-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84246,9 +84417,49 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: micro
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-arm-ocp5-staging-main:
+    Aggregation: none
+    Architecture: arm64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-arm-staging-main:
     Aggregation: none
     Architecture: arm64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-autonode-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
     Installer: hypershift
@@ -84286,6 +84497,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-nx-y-upgrade-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: micro
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-nx-y-upgrade-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84306,7 +84537,47 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: micro
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-pl-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-pl-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-shared-vpc-ocp5-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84346,7 +84617,47 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-upgrade-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: micro
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-upgrade-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: micro
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-y-upgrade-ocp5-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84386,6 +84697,46 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: micro
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-zero-egr-upg-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-zero-egress-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-zero-egress-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84426,6 +84777,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: micro
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-sanity-jira-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-sanity-jira-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84446,7 +84817,47 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-sanity-ocp5-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-sanity-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-ocp5-resource-cleaner:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -233903,6 +234314,46 @@ periodic-ci-openshift-origin-release-3.11-e2e-gcp:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-osd-metrics-exporter-main-rosa-sts-e2e-promotion-int:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-integration
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-osd-metrics-exporter-main-rosa-sts-e2e-promotion-stage:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-ovn-kubernetes-release-4.18-periodics-branch-sync:
     Aggregation: none
     Architecture: amd64
@@ -235813,6 +236264,198 @@ periodic-ci-openshift-pipelines-release-tests-release-v1.22-openshift-pipelines-
     Release: "4.21"
     ReleaseMajor: "4"
     ReleaseMinor: "21"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+? periodic-ci-openshift-pipelines-release-tests-release-v1.23-openshift-pipelines-ocp-4.23-lp-interop-openshift-pipelines-interop-aws-fips
+:   Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-pipelines-release-tests-release-v1.23-openshift-pipelines-ocp4.23-e2e-osp-aws-fips:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-pipelines-release-tests-release-v1.23-openshift-pipelines-ocp4.23-e2e-osp-cr--openshift-pipelines--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-pipelines-release-tests-release-v1.23-openshift-pipelines-ocp4.23-lp-rosa-hypershift-aws-rosa-hypershift:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+? periodic-ci-openshift-pipelines-release-tests-release-v1.24-openshift-pipelines-ocp-5.0-lp-interop-openshift-pipelines-interop-aws-fips
+:   Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-pipelines-release-tests-release-v1.24-openshift-pipelines-ocp5.0-e2e-osp-aws-fips:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-pipelines-release-tests-release-v1.24-openshift-pipelines-ocp5.0-e2e-osp-cr--openshift-pipelines--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-pipelines-release-tests-release-v1.24-openshift-pipelines-ocp5.0-lp-rosa-hypershift-aws-rosa-hypershift:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -271956,30 +272599,6 @@ periodic-ci-openshift-release-main-nightly-4.14-e2e-azurestack-ovn-upi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.14-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.14"
-    ReleaseMajor: "4"
-    ReleaseMinor: "14"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.14-e2e-gcp-ovn-csi:
     Aggregation: none
     Architecture: amd64
@@ -274257,30 +274876,6 @@ periodic-ci-openshift-release-main-nightly-4.15-e2e-external-vsphere-ccm:
     Scheduler: default
     SecurityMode: default
     Suite: parallel
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.15-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.15"
-    ReleaseMajor: "4"
-    ReleaseMinor: "15"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.15-e2e-gcp-ovn-csi:
@@ -276583,30 +277178,6 @@ periodic-ci-openshift-release-main-nightly-4.16-e2e-external-vsphere-ccm:
     Suite: parallel
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.16-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.16"
-    ReleaseMajor: "4"
-    ReleaseMinor: "16"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.16-e2e-gcp-ovn-csi:
     Aggregation: none
     Architecture: amd64
@@ -278228,30 +278799,6 @@ periodic-ci-openshift-release-main-nightly-4.16-metal-ovn-single-node-recert-clu
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.16-opct-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.16"
-    ReleaseMajor: "4"
-    ReleaseMinor: "16"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.16-telco5g-network-flow-matrix-bm:
     Aggregation: none
     Architecture: amd64
@@ -279571,30 +280118,6 @@ periodic-ci-openshift-release-main-nightly-4.17-e2e-external-vsphere-ccm:
     Scheduler: default
     SecurityMode: default
     Suite: parallel
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.17-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.17-e2e-gcp-ovn-csi:
@@ -281290,30 +281813,6 @@ periodic-ci-openshift-release-main-nightly-4.17-metal-ovn-single-node-recert-clu
     SecurityMode: default
     Suite: unknown
     Topology: single
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.17-opct-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.17-telco5g-network-flow-matrix-bm:
     Aggregation: none
@@ -283050,30 +283549,6 @@ periodic-ci-openshift-release-main-nightly-4.18-e2e-external-vsphere-ccm:
     Scheduler: default
     SecurityMode: default
     Suite: parallel
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.18-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.18"
-    ReleaseMajor: "4"
-    ReleaseMinor: "18"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.18-e2e-gcp-ovn-cgroupsv1:
@@ -285784,30 +286259,6 @@ periodic-ci-openshift-release-main-nightly-4.18-metal-ovn-single-node-recert-clu
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.18-opct-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.18"
-    ReleaseMajor: "4"
-    ReleaseMinor: "18"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.18-telco5g-network-flow-matrix-bm:
     Aggregation: none
     Architecture: amd64
@@ -287454,30 +287905,6 @@ periodic-ci-openshift-release-main-nightly-4.19-e2e-external-vsphere-ccm:
     Scheduler: default
     SecurityMode: default
     Suite: parallel
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.19-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.19"
-    ReleaseMajor: "4"
-    ReleaseMinor: "19"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.19-e2e-gcp-ovn-csi:
@@ -290232,30 +290659,6 @@ periodic-ci-openshift-release-main-nightly-4.19-metal-ovn-single-node-recert-clu
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.19-opct-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.19"
-    ReleaseMajor: "4"
-    ReleaseMinor: "19"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.19-telco5g-network-flow-matrix-bm:
     Aggregation: none
     Architecture: amd64
@@ -292046,30 +292449,6 @@ periodic-ci-openshift-release-main-nightly-4.20-e2e-external-vsphere-ccm:
     Scheduler: default
     SecurityMode: default
     Suite: parallel
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.20-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.20"
-    ReleaseMajor: "4"
-    ReleaseMinor: "20"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.20-e2e-gcp-ovn-csi:
@@ -295089,30 +295468,6 @@ periodic-ci-openshift-release-main-nightly-4.20-metal-ovn-single-node-recert-clu
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.20-opct-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.20"
-    ReleaseMajor: "4"
-    ReleaseMinor: "20"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.20-telco5g-network-flow-matrix-bm:
     Aggregation: none
     Architecture: amd64
@@ -297207,30 +297562,6 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-gcp-disruptive-longrunning-t
     FeatureSet: techpreview
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.21"
-    ReleaseMajor: "4"
-    ReleaseMinor: "21"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.21-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -300535,30 +300866,6 @@ periodic-ci-openshift-release-main-nightly-4.21-metal-ovn-single-node-recert-clu
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.21-opct-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.21"
-    ReleaseMajor: "4"
-    ReleaseMinor: "21"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.21-telco5g-network-flow-matrix-bm:
     Aggregation: none
     Architecture: amd64
@@ -303233,30 +303540,6 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-gcp-disruptive-longrunning-t
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.22-e2e-gcp-ovn-csi:
     Aggregation: none
     Architecture: amd64
@@ -305873,7 +306156,31 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-d
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-dualstack-recovery:
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-dualstack-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-dualstack-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -305993,7 +306300,31 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-i
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-ipv6-recovery:
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-ipv6-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-ipv6-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -306113,7 +306444,31 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-r
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-recovery-repo-ra:
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -307716,54 +308071,6 @@ periodic-ci-openshift-release-main-nightly-4.22-metal-ovn-single-node-recert-clu
     SecurityMode: default
     Suite: unknown
     Topology: single
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-opct-platform-external-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-opct-platform-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.22-telco5g-network-flow-matrix-bm:
     Aggregation: none
@@ -310271,30 +310578,6 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-gcp-disruptive-longrunning-t
     FeatureSet: techpreview
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -312903,7 +313186,31 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-d
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-dualstack-recovery:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-dualstack-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-dualstack-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -313023,7 +313330,31 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-i
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-ipv6-recovery:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-ipv6-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-ipv6-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -313143,7 +313474,31 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-r
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-recovery-repo-ra:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -314675,54 +315030,6 @@ periodic-ci-openshift-release-main-nightly-4.23-metal-ovn-single-node-recert-clu
     SecurityMode: default
     Suite: unknown
     Topology: single
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-opct-platform-external-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-opct-platform-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.23-telco5g-network-flow-matrix-bm:
     Aggregation: none
@@ -317626,30 +317933,6 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-gcp-disruptive-longrunning-te
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.0-e2e-gcp-ovn-csi:
     Aggregation: none
     Architecture: amd64
@@ -320368,7 +320651,31 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-du
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-dualstack-recovery:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-dualstack-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-dualstack-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -320488,7 +320795,31 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-ip
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-ipv6-recovery:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-ipv6-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-ipv6-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -320608,7 +320939,31 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-re
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-recovery-repo-ra:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -322234,54 +322589,6 @@ periodic-ci-openshift-release-main-nightly-5.0-metal-ovn-single-node-recert-clus
     SecurityMode: default
     Suite: unknown
     Topology: single
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-opct-platform-external-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-opct-platform-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.0-telco5g-network-flow-matrix-bm:
     Aggregation: none
@@ -325166,30 +325473,6 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-gcp-disruptive-longrunning-te
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-gcp-graceful-shutdown:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.1-e2e-gcp-ovn-csi:
     Aggregation: none
     Architecture: amd64
@@ -327908,7 +328191,31 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-du
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-dualstack-recovery:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-dualstack-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-dualstack-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -328028,7 +328335,31 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-ip
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-ipv6-recovery:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-ipv6-recovery-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-ipv6-recovery-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -328148,7 +328479,31 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-re
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-recovery-repo-ra:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-two-node-fencing-recovery-repo-ra-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -328820,6 +329175,30 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ipi-ovn-runc-techprev
     CGroupMode: v2
     ContainerRuntime: runc
     FeatureSet: techpreview
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-manual-credentials-mode:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
     Installer: ipi
     JobTier: standard
     LayeredProduct: none
@@ -329774,54 +330153,6 @@ periodic-ci-openshift-release-main-nightly-5.1-metal-ovn-single-node-recert-clus
     SecurityMode: default
     Suite: unknown
     Topology: single
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-opct-platform-external-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-opct-platform-external-aws-ccm:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.1-telco5g-network-flow-matrix-bm:
     Aggregation: none
@@ -333366,6 +333697,52 @@ periodic-ci-openshift-release-tests-main-qe-release-gate-test:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-tls-pqc-readiness-all:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-tls13-adherence-all:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-rosa-master-e2e-rosa-hcp-advanced-prod-critical-high-f3:
     Aggregation: none
     Architecture: amd64
@@ -333480,6 +333857,7 @@ periodic-ci-openshift-route-monitor-operator-master-rosa-hcp-mc-e2e-promotion-in
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-integration
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -333499,6 +333877,7 @@ periodic-ci-openshift-route-monitor-operator-master-rosa-hcp-mc-e2e-promotion-st
     Owner: service-delivery
     Platform: rosa
     Procedure: none
+    Release: rosa-stage
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -355356,6 +355735,30 @@ periodic-ci-quay-quay-redhat-3.18-aws-ocp50-e2e-install-aws-s3-nightly:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-3-18-nightly-4-22:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-nightly:
     Aggregation: none
     Architecture: amd64
@@ -355371,6 +355774,30 @@ periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-nightly:
     OS: unknown
     Owner: eng
     Platform: aws
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-gcp-ocp422-e2e-install-gcp-gcs-3-18-nightly-4-22:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: gcp
     Procedure: none
     Release: quay-3.18
     ReleaseMajor: "3"
@@ -356761,13 +357188,14 @@ periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-
     CGroupMode: v2
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Release: quay-io
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -356779,13 +357207,14 @@ periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quayio-stage-
     CGroupMode: v2
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Release: quay-io
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -357639,7 +358068,7 @@ periodic-ci-red-hat-storage-ocs-ci-master-odf-ocp4.21-lp-interop-odf-interop-aws
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--outage-kubevirt--aws:
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-4.22-lpMainline-lp-chaos-cr--cnv--outage-kubevirt--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -357663,7 +358092,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--outage-ku
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--outage-node--aws:
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-4.22-lpMainline-lp-chaos-cr--cnv--outage-node--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -357687,7 +358116,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--outage-no
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--outage-pod--aws:
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-4.22-lpMainline-lp-chaos-cr--cnv--outage-pod--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -357711,7 +358140,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--outage-po
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--snapshot--kill--apiserver--aws:
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-4.22-lpMainline-lp-chaos-cr--cnv--snapshot--kill--apiserver--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -357735,7 +358164,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--snapshot-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--snapshot--kill--controller--aws:
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-4.22-lpMainline-lp-chaos-cr--cnv--snapshot--kill--controller--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -357759,7 +358188,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--snapshot-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--snapshot--kill--csi-driver--aws:
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-4.22-lpMainline-lp-chaos-cr--cnv--snapshot--kill--csi-driver--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -357783,7 +358212,7 @@ periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--snapshot-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-redhat-chaos-lp-chaos-main-ocp-4.22-lpGA-lp-chaos-cr--cnv--snapshot--kill--virt-api--aws:
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-4.22-lpMainline-lp-chaos-cr--cnv--snapshot--kill--virt-api--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -359497,6 +359926,76 @@ periodic-ci-redhat-openshift-ecosystem-cvp-ocp-4.22-cvp-fips-common-claim:
     Release: "4.22"
     ReleaseMajor: "4"
     ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-redhat-openshift-ecosystem-cvp-ocp-5.0-cvp-common-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-redhat-openshift-ecosystem-cvp-ocp-5.0-cvp-common-claim:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-redhat-openshift-ecosystem-cvp-ocp-5.0-cvp-fips-common-claim:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: fips
     Suite: unknown
@@ -362243,491 +362742,6 @@ periodic-ci-shiftstack-ci-release-4.16-e2e-openstack-proxy:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-additional-ipv6-network:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv6
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-ccpmso:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-ccpmso-zone:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-csi-cinder:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-csi-manila:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-dualstack:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: dual
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-dualstack-upi:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: upi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: dual
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-dualstack-v6primary:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: dual
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-externallb:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-fips:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-nfv-intel:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-nfv-mellanox:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-ovn-etcd-scaling:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    Capability: Scaling
-    Component: Etcd
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: spotcheck-30d
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: etcd-scaling
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: etcd-scaling
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-ovn-parallel:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-ovn-password:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-ovn-serial:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: serial
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-proxy:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: proxy
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-techpreview-e2e-openstack-ovn-serial-techpreview:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: serial
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-techpreview-e2e-openstack-ovn-techpreview:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-shiftstack-ci-release-4.17-upgrade-from-stable-4.16-e2e-openstack-ovn-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    FromRelease: "4.16"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "16"
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: openstack
-    Procedure: none
-    Release: "4.17"
-    ReleaseMajor: "4"
-    ReleaseMinor: "17"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
 periodic-ci-shiftstack-ci-release-4.18-e2e-openstack-additional-ipv6-network:
     Aggregation: none
     Architecture: amd64
@@ -365348,6 +365362,440 @@ periodic-ci-shiftstack-ci-release-4.23-upgrade-from-stable-4.22-e2e-openstack-ov
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-additional-ipv6-network:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-ccpmso:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-ccpmso-zone:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-csi-cinder:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-csi-manila:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-dualstack:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-dualstack-upi:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-dualstack-v6primary:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-externallb:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-fips:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-nfv-intel:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-nfv-mellanox:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-ovn-etcd-scaling:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: Scaling
+    Component: Etcd
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: spotcheck-30d
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: etcd-scaling
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: etcd-scaling
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-ovn-parallel:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-ovn-password:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-ovn-serial:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: serial
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-proxy:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: proxy
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.0-e2e-openstack-singlestackv6:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-shiftstack-ci-release-5.0-techpreview-e2e-openstack-ovn-serial-techpreview:
     Aggregation: none
     Architecture: amd64
@@ -365423,6 +365871,440 @@ periodic-ci-shiftstack-ci-release-5.0-upgrade-from-stable-4.22-e2e-openstack-ovn
     Suite: unknown
     Topology: ha
     Upgrade: major
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-additional-ipv6-network:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-ccpmso:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-ccpmso-zone:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-csi-cinder:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-csi-manila:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-dualstack:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-dualstack-upi:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-dualstack-v6primary:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-externallb:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-fips:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-nfv-intel:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-nfv-mellanox:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-ovn-etcd-scaling:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: Scaling
+    Component: Etcd
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: spotcheck-30d
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: etcd-scaling
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: etcd-scaling
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-ovn-parallel:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-ovn-password:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-ovn-serial:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-proxy:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: proxy
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-shiftstack-ci-release-5.1-e2e-openstack-singlestackv6:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-shiftstack-ci-release-5.1-techpreview-e2e-openstack-ovn-serial-techpreview:
     Aggregation: none
     Architecture: amd64
@@ -365498,6 +366380,33 @@ periodic-ci-shiftstack-ci-release-5.1-upgrade-from-stable-4.22-e2e-openstack-ovn
     Suite: unknown
     Topology: ha
     Upgrade: major
+periodic-ci-shiftstack-ci-release-5.1-upgrade-from-stable-5.0-e2e-openstack-ovn-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: openstack
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: minor
 ? periodic-ci-skupperproject-skupper-openshift-smoke-test-image-main-service-interconnect-ocp4.14-lp-rosa-classic-rhsi-interop-rosa-aws
 :   Aggregation: none
     Architecture: amd64
@@ -365988,54 +366897,6 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-fips-interop-opp-aws:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-stolostron-policy-collection-main-ocp4.22-interop-opp-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--OPP
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-stolostron-policy-collection-main-ocp4.22-interop-opp-vsphere:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--OPP
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: mpiit
-    Platform: vsphere
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-stolostron-policy-collection-main-ocp4.22-upgrade-interop-opp-upgrade-aws:
     Aggregation: none
     Architecture: amd64
@@ -366063,54 +366924,6 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-upgrade-interop-opp-upgrad
     Suite: unknown
     Topology: ha
     Upgrade: micro
-periodic-ci-stolostron-policy-collection-main-ocp5.0-interop-opp-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--OPP
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-stolostron-policy-collection-main-ocp5.0-interop-opp-vsphere:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--OPP
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: mpiit
-    Platform: vsphere
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-stolostron-policy-collection-main-ocp5.0-upgrade-interop-opp-upgrade-aws:
     Aggregation: none
     Architecture: amd64
@@ -366138,54 +366951,6 @@ periodic-ci-stolostron-policy-collection-main-ocp5.0-upgrade-interop-opp-upgrade
     Suite: unknown
     Topology: ha
     Upgrade: micro
-periodic-ci-stolostron-policy-collection-main-ocp5.1-interop-opp-aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--OPP
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-stolostron-policy-collection-main-ocp5.1-interop-opp-vsphere:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--OPP
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: mpiit
-    Platform: vsphere
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-stolostron-policy-collection-main-ocp5.1-upgrade-interop-opp-upgrade-aws:
     Aggregation: none
     Architecture: amd64
