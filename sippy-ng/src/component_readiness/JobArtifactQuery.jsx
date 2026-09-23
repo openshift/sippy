@@ -46,6 +46,7 @@ import {
   SavedSearch,
 } from '@mui/icons-material'
 import { getArtifactQueryAPIUrl } from './CompReadyUtils'
+import { isValidJiraKey, normalizeJiraKeys } from '../components/JiraBugLinks'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import { SippyCapabilitiesContext } from '../App'
 import LaunderedLink, { openLaunderedLink } from '../components/Laundry'
@@ -1032,7 +1033,7 @@ export default function JobArtifactQuery(props) {
     }
 
     function handleAddNewLabel() {
-      setNewLabel({ label_title: '', explanation: '' })
+      setNewLabel({ label_title: '', explanation: '', bugs: [] })
     }
 
     function handleRemoveNewLabel() {
@@ -1080,7 +1081,11 @@ export default function JobArtifactQuery(props) {
     }
 
     function canSaveNewLabel(newLabel) {
-      return newLabel.label_title && isLabelTitleUnique(newLabel.label_title)
+      return (
+        newLabel.label_title &&
+        isLabelTitleUnique(newLabel.label_title) &&
+        newLabel.bugs.every(isValidJiraKey)
+      )
     }
 
     async function handleSaveNewLabel() {
@@ -1101,6 +1106,7 @@ export default function JobArtifactQuery(props) {
             body: JSON.stringify({
               ...newLabel,
               label_title: newLabel.label_title.trim(),
+              bugs: normalizeJiraKeys(newLabel.bugs),
             }),
           }
         )
@@ -1429,6 +1435,37 @@ export default function JobArtifactQuery(props) {
                             }
                             label="Explanation (optional, markdown supported)"
                             helperText="Use markdown formatting for rich text"
+                          />
+                          <Autocomplete
+                            multiple
+                            freeSolo
+                            autoSelect
+                            options={[]}
+                            value={newLabel.bugs}
+                            onChange={(event, values) =>
+                              handleNewLabelChange(
+                                'bugs',
+                                normalizeJiraKeys(values)
+                              )
+                            }
+                            renderInput={(params) => {
+                              const invalidKeys = newLabel.bugs.filter(
+                                (bug) => !isValidJiraKey(bug)
+                              )
+                              return (
+                                <TextField
+                                  {...params}
+                                  label="Associated Jira Issues (optional)"
+                                  placeholder="OCPBUGS-12345"
+                                  error={invalidKeys.length > 0}
+                                  helperText={
+                                    invalidKeys.length > 0
+                                      ? `Invalid Jira key: ${invalidKeys.join(', ')}`
+                                      : 'Enter one or more Jira keys, pressing Enter after each'
+                                  }
+                                />
+                              )
+                            }}
                           />
                         </Stack>
                         <IconButton

@@ -7,7 +7,6 @@ import {
   IconButton,
   List,
   ListItem,
-  ListItemText,
   Tooltip,
 } from '@mui/material'
 import { Check, DirectionsBoat, FilterList } from '@mui/icons-material'
@@ -17,9 +16,9 @@ import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
+import JobRunLabelDetails from '../components/JobRunLabelDetails'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
 
 const useStyles = makeStyles((theme) => ({
   rowPhaseSucceeded: {
@@ -342,16 +341,7 @@ function ReleasePayloadJobRuns(props) {
                   </Tooltip>
                 }
               >
-                <ListItemText
-                  primary={label ? label.label_title : labelId}
-                  secondary={
-                    label ? (
-                      <ReactMarkdown>{label.explanation}</ReactMarkdown>
-                    ) : (
-                      'Label not found'
-                    )
-                  }
-                />
+                <JobRunLabelDetails label={label} labelId={labelId} />
               </ListItem>
             )
           })}
