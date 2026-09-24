@@ -241,6 +241,7 @@ export default function LabelEditor() {
         setSuccessMessage('')
       } catch (error) {
         setSuccessMessage('')
+        setDraft(null)
         setErrorMessage(
           `Label was deleted, but the label list could not be refreshed: ${error.message}`
         )

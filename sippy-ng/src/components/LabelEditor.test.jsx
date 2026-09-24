@@ -262,4 +262,46 @@ describe('LabelEditor', () => {
     )
     expect(screen.getByLabelText(/Label title/)).toHaveValue('Beta label')
   })
+
+  it('disables editing when the label list cannot refresh after deletion', async () => {
+    global.fetch
+      .mockResolvedValueOnce(response([alpha, beta]))
+      .mockResolvedValueOnce(response('', 204))
+      .mockResolvedValueOnce(response({ message: 'refresh failed' }, 500))
+    renderEditor()
+
+    await screen.findByDisplayValue('Beta label')
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete label Beta' })
+    )
+
+    vi.useFakeTimers()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Delete label' }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(10000)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      screen.getByText(
+        'Label was deleted, but the label list could not be refreshed: Failed to load label: refresh failed'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('The selected label was not found.')
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Save label' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete label Beta' })
+    ).not.toBeInTheDocument()
+  })
 })
