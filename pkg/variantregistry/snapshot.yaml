@@ -83439,6 +83439,25 @@ periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-platform:
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-cloud-resource-cleanup-profile01:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ho-upgrade-rosa-hcp-ho-upgrade-integration:
     Aggregation: none
     Architecture: amd64
@@ -364970,12 +364989,12 @@ periodic-ci-shiftstack-ci-release-4.22-e2e-openstack-dualstack-v6primary:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-shiftstack-ci-release-4.22-e2e-openstack-externallb:
+periodic-ci-shiftstack-ci-release-4.22-e2e-openstack-externallb-techpreview:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: default
+    FeatureSet: techpreview
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
