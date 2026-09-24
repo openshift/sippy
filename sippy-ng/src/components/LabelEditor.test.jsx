@@ -98,6 +98,33 @@ describe('LabelEditor', () => {
     expect(screen.getByText('JAQ options')).toBeInTheDocument()
   })
 
+  it('previews the explanation without writing to the API', async () => {
+    const markdownLabel = {
+      ...beta,
+      explanation: '**Expected** and ~~obsolete~~',
+    }
+    global.fetch.mockResolvedValueOnce(response([markdownLabel]))
+    renderEditor()
+
+    const explanation = await screen.findByRole('textbox', {
+      name: 'Explanation',
+    })
+    expect(explanation).toHaveValue(markdownLabel.explanation)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Preview' }))
+
+    expect(screen.getByText('Expected').tagName).toBe('STRONG')
+    expect(screen.getByText('obsolete').tagName).toBe('DEL')
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(screen.getByRole('textbox', { name: 'Explanation' })).toHaveValue(
+      markdownLabel.explanation
+    )
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
   it('lists every label and loads values when the selection changes', async () => {
     global.fetch.mockResolvedValueOnce(response([gamma, alpha, beta]))
     renderEditor()

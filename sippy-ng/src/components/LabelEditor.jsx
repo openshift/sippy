@@ -26,6 +26,7 @@ import { isValidJiraKey, normalizeJiraKeys } from './JiraBugLinks'
 import { labelEditorPath } from './LabelEditButton'
 import { SippyCapabilitiesContext } from '../App'
 import { useNavigate, useParams } from 'react-router-dom'
+import MarkdownEditor from './MarkdownEditor'
 import React from 'react'
 
 const DISPLAY_CONTEXTS = [
@@ -358,16 +359,15 @@ export default function LabelEditor() {
                   fullWidth
                   disabled={deletePending}
                 />
-                <TextField
+                <MarkdownEditor
                   label="Explanation"
                   value={draft.explanation}
                   onChange={(event) =>
                     updateDraft('explanation', event.target.value)
                   }
                   helperText="Markdown is supported."
-                  multiline
                   minRows={5}
-                  fullWidth
+                  size="medium"
                   disabled={deletePending}
                 />
                 <Autocomplete
