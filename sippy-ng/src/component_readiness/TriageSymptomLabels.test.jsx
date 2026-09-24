@@ -2,6 +2,7 @@ import '@testing-library/jest-dom'
 import { filterFor, pathForJobRunsWithFilter } from '../helpers'
 import { MemoryRouter } from 'react-router-dom'
 import { render, screen, waitFor, within } from '@testing-library/react'
+import { SippyCapabilitiesContext } from '../App'
 import React from 'react'
 import TriageSymptomLabels, {
   aggregateLabelSummaries,
@@ -201,6 +202,29 @@ describe('aggregateLabelSummaries', () => {
       })
     )
     expect(setLabelFilter).toHaveBeenLastCalledWith(null)
+  })
+
+  it('shows a new-tab edit link in writable label details', () => {
+    const summaries = aggregateLabelSummaries(
+      [{ job_labels: ['ManualLabel'] }],
+      labels
+    )
+    render(
+      <MemoryRouter>
+        <SippyCapabilitiesContext.Provider value={['write_endpoints']}>
+          <TriageSymptomLabels labelSummaries={summaries} release="4.22" />
+        </SippyCapabilitiesContext.Provider>
+      </MemoryRouter>
+    )
+
+    userEvent.click(screen.getByRole('button', { name: 'Manual label' }))
+
+    const editLink = within(screen.getByRole('dialog')).getByRole('link', {
+      name: 'Edit label ManualLabel',
+    })
+    expect(editLink).toHaveAttribute('href', '/labels/edit/ManualLabel')
+    expect(editLink).toHaveAttribute('target', '_blank')
+    expect(editLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('handles empty labels and unavailable label details', () => {

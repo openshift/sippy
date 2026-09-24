@@ -48,6 +48,7 @@ import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
 import IntervalsChart from './prow_job_runs/IntervalsChart'
 import Jobs from './jobs/Jobs'
+import LabelEditor from './components/LabelEditor'
 import MenuIcon from '@mui/icons-material/Menu'
 import MuiAppBar from '@mui/material/AppBar'
 import PayloadStream from './releases/PayloadStream'
@@ -778,6 +779,11 @@ function App(_props) {
                             <Route
                               path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/events"
                               element={<EventsChartWrapper />}
+                            />
+
+                            <Route
+                              path="/labels/edit/:labelId?"
+                              element={<LabelEditor />}
                             />
 
                             <Route

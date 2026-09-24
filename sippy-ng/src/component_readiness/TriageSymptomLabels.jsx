@@ -16,6 +16,7 @@ import { FilterList } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { symptomColor } from './CompReadyUtils'
 import JiraBugLinks from '../components/JiraBugLinks'
+import LabelEditButton from '../components/LabelEditButton'
 import PropTypes from 'prop-types'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -255,7 +256,10 @@ export default function TriageSymptomLabels({
         fullWidth
       >
         <DialogTitle>
-          {selectedLabel?.label_title || 'Label details'}
+          <Box display="flex" alignItems="center" gap={0.5}>
+            {selectedLabel?.label_title || 'Label details'}
+            {selectedLabel && <LabelEditButton labelId={selectedLabel.id} />}
+          </Box>
         </DialogTitle>
         <DialogContent>
           {selectedLabel?.explanation ? (
