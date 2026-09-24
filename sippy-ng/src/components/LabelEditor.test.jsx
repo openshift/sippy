@@ -220,7 +220,7 @@ describe('LabelEditor', () => {
       refreshed: [alpha],
       expected: alpha,
     },
-  ])('$name after ten seconds', async ({ initial, refreshed, expected }) => {
+  ])('$name after deletion', async ({ initial, refreshed, expected }) => {
     global.fetch
       .mockResolvedValueOnce(response(initial))
       .mockResolvedValueOnce(response('', 204))
