@@ -195,6 +195,7 @@ func NewServeCommand() *cobra.Command {
 				f.APIFlags.EnableWriteEndpoints,
 				jiraClient,
 			)
+			fmt.Println("this is purely a junk PR to test ai review")
 
 			if f.APIFlags.MetricsAddr != "" {
 				// Do an immediate metrics update
