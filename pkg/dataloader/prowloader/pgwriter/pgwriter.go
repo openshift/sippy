@@ -2,6 +2,7 @@ package pgwriter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -85,6 +86,10 @@ type JobRunResult struct {
 	Tests            []TestRow
 }
 
+// ErrProwJobRunAlreadyExists indicates that an idempotent parent insert did
+// not win ownership because the unique Prow job run ID already exists.
+var ErrProwJobRunAlreadyExists = errors.New("prow job run already exists")
+
 var (
 	runCols = []db.TempColumn[RunRow]{
 		{Name: "id", Type: "bigint NOT NULL", Value: func(r *RunRow) any { return r.ID }},
@@ -144,8 +149,22 @@ var (
 // then INSERTs/UPSERTs into permanent tables including tests, suites,
 // prow_job_run_tests, test_daily_totals, and test_cumulative_summaries.
 func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobRunResult) error {
+	return writeJobRuns(ctx, dbc, currentDate, batch, false)
+}
+
+// WriteSingleIdempotent persists one fully prepared job run. A writer that
+// does not win the parent-row insert returns ErrProwJobRunAlreadyExists
+// without writing children or summaries.
+func WriteSingleIdempotent(ctx context.Context, dbc *db.DB, currentDate civil.Date, result JobRunResult) error {
+	return writeJobRuns(ctx, dbc, currentDate, []JobRunResult{result}, true)
+}
+
+func writeJobRuns(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobRunResult, idempotent bool) error {
 	if len(batch) == 0 {
 		return nil
+	}
+	if idempotent && len(batch) != 1 {
+		return fmt.Errorf("idempotent job run write requires exactly one result")
 	}
 
 	sqlDB, err := dbc.DB.DB()
@@ -219,7 +238,7 @@ func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobR
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if err := insertJobRuns(ctx, tx); err != nil {
+	if err := insertJobRuns(ctx, tx, idempotent); err != nil {
 		return err
 	}
 	if err := insertJobRunIDMap(ctx, tx); err != nil {
@@ -257,9 +276,9 @@ func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobR
 	return nil
 }
 
-func insertJobRuns(ctx context.Context, tx pgx.Tx) error {
+func insertJobRuns(ctx context.Context, tx pgx.Tx, idempotent bool) error {
 	stepStart := time.Now()
-	if _, err := tx.Exec(ctx, `
+	query := `
 		INSERT INTO prow_job_runs (id, cluster, duration, prow_job_id, prow_job_release,
 			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
 			succeeded, failed, infrastructure_failure, known_failure, labels, created_at, updated_at)
@@ -267,7 +286,20 @@ func insertJobRuns(ctx context.Context, tx pgx.Tx) error {
 			url, gcs_bucket, timestamp, overall_result, test_failures, test_flakes,
 			succeeded, false, false, false, labels, NOW(), NOW()
 		FROM tmp_prow_job_runs
-	`); err != nil {
+	`
+	if idempotent {
+		query += `
+			ON CONFLICT (id) DO NOTHING
+			RETURNING id
+		`
+		var id uint
+		if err := tx.QueryRow(ctx, query).Scan(&id); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrProwJobRunAlreadyExists
+			}
+			return fmt.Errorf("inserting idempotent prow_job_run: %w", err)
+		}
+	} else if _, err := tx.Exec(ctx, query); err != nil {
 		return fmt.Errorf("inserting prow_job_runs: %w", err)
 	}
 	log.WithField("elapsed", time.Since(stepStart)).Debug("inserted prow_job_runs")
