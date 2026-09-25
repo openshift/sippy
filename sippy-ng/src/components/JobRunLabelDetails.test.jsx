@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom'
+import { MemoryRouter } from 'react-router-dom'
 import { render, screen } from '@testing-library/react'
+import { SippyCapabilitiesContext } from '../App'
 import JobRunLabelDetails from './JobRunLabelDetails'
 import React from 'react'
 
@@ -27,6 +29,9 @@ describe('JobRunLabelDetails', () => {
       'href',
       'https://redhat.atlassian.net/browse/TRT-2896'
     )
+    expect(
+      screen.queryByRole('link', { name: /Edit label/ })
+    ).not.toBeInTheDocument()
   })
 
   it('omits Jira links when the label has no bugs', () => {
@@ -47,5 +52,30 @@ describe('JobRunLabelDetails', () => {
 
     expect(screen.getByText('MissingLabel')).toBeInTheDocument()
     expect(screen.getByText('Label not found')).toBeInTheDocument()
+  })
+
+  it('links writable label details to the editor in a new tab', () => {
+    render(
+      <MemoryRouter>
+        <SippyCapabilitiesContext.Provider value={['write_endpoints']}>
+          <JobRunLabelDetails
+            label={{
+              id: 'KnownFailure',
+              label_title: 'Known failure',
+              explanation: '',
+              bugs: [],
+            }}
+            labelId="KnownFailure"
+          />
+        </SippyCapabilitiesContext.Provider>
+      </MemoryRouter>
+    )
+
+    const editLink = screen.getByRole('link', {
+      name: 'Edit label KnownFailure',
+    })
+    expect(editLink).toHaveAttribute('href', '/labels/edit/KnownFailure')
+    expect(editLink).toHaveAttribute('target', '_blank')
+    expect(editLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 })

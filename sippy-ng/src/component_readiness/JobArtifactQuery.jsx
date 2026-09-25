@@ -16,7 +16,6 @@ import {
   InputLabel,
   Link,
   MenuItem,
-  Paper,
   Popover,
   Select,
   Stack,
@@ -28,8 +27,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -37,12 +34,10 @@ import {
   Add,
   Close,
   Delete,
-  Edit as EditIcon,
   ExpandMore,
   FileCopy,
   Link as LinkIcon,
   OpenInNew,
-  Preview,
   SavedSearch,
 } from '@mui/icons-material'
 import { getArtifactQueryAPIUrl } from './CompReadyUtils'
@@ -50,11 +45,10 @@ import { isValidJiraKey, normalizeJiraKeys } from '../components/JiraBugLinks'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import { SippyCapabilitiesContext } from '../App'
 import LaunderedLink, { openLaunderedLink } from '../components/Laundry'
+import MarkdownEditor from '../components/MarkdownEditor'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import ReactMarkdown from 'react-markdown'
 import ReEvaluateButton from '../jobs/ReEvaluateSymptoms'
-import remarkGfm from 'remark-gfm'
 
 const emptyContentMatch = {
   type: 'none',
@@ -1687,89 +1681,6 @@ export default function JobArtifactQuery(props) {
         </AccordionDetails>
       </Accordion>
     )
-  }
-
-  function MarkdownEditor(props) {
-    const { value, onChange, label, helperText } = props
-    const [viewMode, setViewMode] = React.useState('edit')
-
-    return (
-      <Stack spacing={1}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <Typography variant="caption" color="text.secondary">
-            {label}
-          </Typography>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(e, newMode) => {
-              if (newMode !== null) setViewMode(newMode)
-            }}
-            size="small"
-          >
-            <ToggleButton value="edit">
-              <EditIcon fontSize="small" />
-              <Typography variant="caption" sx={{ ml: 0.5 }}>
-                Edit
-              </Typography>
-            </ToggleButton>
-            <ToggleButton value="preview">
-              <Preview fontSize="small" />
-              <Typography variant="caption" sx={{ ml: 0.5 }}>
-                Preview
-              </Typography>
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
-
-        {viewMode === 'edit' ? (
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={value}
-            onChange={onChange}
-            helperText={helperText}
-            placeholder="Enter markdown text..."
-            size="small"
-          />
-        ) : (
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              minHeight: '120px',
-              backgroundColor: (theme) =>
-                theme.palette.mode === 'dark'
-                  ? 'rgba(255, 255, 255, 0.05)'
-                  : 'grey.50',
-            }}
-          >
-            {value ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
-            ) : (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontStyle: 'italic' }}
-              >
-                No content to preview
-              </Typography>
-            )}
-          </Paper>
-        )}
-      </Stack>
-    )
-  }
-  MarkdownEditor.propTypes = {
-    value: PropTypes.string.isRequired,
-    onChange: PropTypes.func.isRequired,
-    label: PropTypes.string,
-    helperText: PropTypes.string,
   }
 
   /*********************************************************************************
