@@ -308043,7 +308043,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-zones-techprevie
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -308067,7 +308067,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-zones-techprevie
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -308091,7 +308091,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-zones-techprevie
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -322561,7 +322561,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-zones-techpreview
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -322585,7 +322585,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-zones-techpreview
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -322609,7 +322609,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-zones-techpreview
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
