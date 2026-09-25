@@ -34,6 +34,19 @@ func (l List) PreAnalysis(testKey crtest.Identification, testStats *testdetails.
 	return nil
 }
 
+func (l List) Analyze(testKey crtest.Identification, testStats *testdetails.TestComparison) (bool, error) {
+	for _, mw := range l {
+		handled, err := mw.Analyze(testKey, testStats)
+		if err != nil {
+			return false, err
+		}
+		if handled {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (l List) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	for _, mw := range l {
 		if err := mw.PostAnalysis(testKey, testStats); err != nil {

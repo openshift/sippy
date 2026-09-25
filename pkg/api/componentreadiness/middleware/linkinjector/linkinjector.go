@@ -45,6 +45,10 @@ func (l *LinkInjector) PreAnalysis(testKey crtest.Identification, testStats *tes
 	return nil
 }
 
+func (l *LinkInjector) Analyze(_ crtest.Identification, _ *testdetails.TestComparison) (bool, error) {
+	return false, nil
+}
+
 // PostAnalysis injects HATEOAS links into test analysis results
 func (l *LinkInjector) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	// Initialize Links map if it doesn't exist

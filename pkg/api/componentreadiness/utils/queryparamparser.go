@@ -83,6 +83,28 @@ func ParseComponentReportRequest(
 		}
 	}
 
+	// Resolve spot-check samples after all URL overrides (sampleRelease, date ranges)
+	// so they use the final release name and time context.
+	if view != nil {
+		for name, sample := range view.SpotCheckJobSamples {
+			spotCheckRelative := reqopts.RelativeRelease{
+				Release:       reqopts.Release{Name: opts.SampleRelease.Name},
+				RelativeStart: sample.RelativeStart,
+				RelativeEnd:   sample.RelativeEnd,
+			}
+			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check_"+name, spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
+			if resolveErr != nil {
+				err = resolveErr
+				return
+			}
+			opts.SpotCheckJobSamples = append(opts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
+				Name:            name,
+				Release:         resolved,
+				IncludeVariants: sample.IncludeVariants,
+			})
+		}
+	}
+
 	opts.TestIDOptions = parseTestIDOptions(req, releases, opts.BaseRelease, opts.AdvancedOption, opts.VariantOption)
 
 	opts.IncludeAllTests, err = ParseBoolArg(req, "includeAllTests", false)
@@ -92,6 +114,24 @@ func ParseComponentReportRequest(
 
 	if dataSource := param.SafeRead(req, "dataSource"); dataSource != "" {
 		opts.DataSource = dataSource
+	}
+
+	// If no view provided SpotCheckJobSamples, default from the sample release dates
+	// so spot-check middleware runs on drill-down requests too.
+	if len(opts.SpotCheckJobSamples) == 0 && !opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
+		opts.SpotCheckJobSamples = []reqopts.SpotCheckJobSampleOpts{
+			{
+				Name: "spotcheck-30d",
+				Release: reqopts.Release{
+					Name:  opts.SampleRelease.Name,
+					Start: opts.SampleRelease.Start,
+					End:   opts.SampleRelease.End,
+				},
+				IncludeVariants: map[string][]string{
+					"JobTier": {"spotcheck-30d"},
+				},
+			},
+		}
 	}
 
 	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)

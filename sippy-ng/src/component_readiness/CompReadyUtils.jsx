@@ -481,6 +481,10 @@ export function getUpdatedUrlParts(vars) {
     //component: vars.component,
   }
 
+  if (vars.view) {
+    valuesMap.view = vars.view
+  }
+
   if (vars.dataSource) {
     valuesMap.crDataSource = vars.dataSource
   }

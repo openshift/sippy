@@ -13,6 +13,11 @@ type View struct {
 	VariantOptions  reqopts.Variants           `json:"variant_options" yaml:"variant_options"`
 	AdvancedOptions reqopts.Advanced           `json:"advanced_options" yaml:"advanced_options"`
 
+	// SpotCheckJobSamples defines sample windows for spot-check job analysis, keyed by tier name
+	// (e.g. "spotcheck-30d"). Each entry specifies a time window and variant filters (ANDed)
+	// used to select which jobs to query. If empty, spot-check analysis is disabled for this view.
+	SpotCheckJobSamples map[string]SpotCheckJobSample `json:"spot_check_job_samples,omitempty" yaml:"spot_check_job_samples,omitempty"`
+
 	Metrics            Metrics            `json:"metrics" yaml:"metrics"`
 	RegressionTracking RegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`
 	AutomateJira       AutomateJira       `json:"automate_jira" yaml:"automate_jira"`
@@ -32,4 +37,12 @@ type PrimeCache struct {
 }
 type AutomateJira struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
+}
+
+// SpotCheckJobSample defines a spot-check sample window and variant filters for a tier.
+// The release is always inherited from SampleRelease.
+type SpotCheckJobSample struct {
+	RelativeStart   string              `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd     string              `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	IncludeVariants map[string][]string `json:"include_variants,omitempty" yaml:"include_variants,omitempty"`
 }

@@ -87,3 +87,16 @@ func (p *MixedProvider) QueryJobVariantValues(ctx context.Context, reqOptions re
 func (p *MixedProvider) LookupJobVariants(ctx context.Context, reqOptions reqopts.RequestOptions, jobName string) (map[string]string, error) {
 	return p.providerFor(reqOptions).LookupJobVariants(ctx, reqOptions, jobName)
 }
+
+func (p *MixedProvider) QuerySpotCheckTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
+	sampleName string, includeVariants map[string][]string,
+	start, end time.Time) (map[string]crstatus.TestStatus, error) {
+	return p.providerFor(reqOptions).QuerySpotCheckTestStatus(ctx, reqOptions, sampleName, includeVariants, start, end)
+}
+
+func (p *MixedProvider) QuerySpotCheckTestDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
+	syntheticTestID string, includeVariants map[string][]string,
+	requestedVariants map[string]string,
+	start, end time.Time) (map[string][]crstatus.TestDetailsSummary, error) {
+	return p.providerFor(reqOptions).QuerySpotCheckTestDetails(ctx, reqOptions, syntheticTestID, includeVariants, requestedVariants, start, end)
+}
