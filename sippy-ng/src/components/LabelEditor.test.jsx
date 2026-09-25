@@ -330,5 +330,24 @@ describe('LabelEditor', () => {
     expect(
       screen.queryByRole('button', { name: 'Delete label Beta' })
     ).not.toBeInTheDocument()
+
+    vi.useRealTimers()
+    await userEvent.click(screen.getByRole('combobox', { name: 'Label' }))
+
+    expect(
+      screen.queryByRole('option', { name: 'Beta label (Beta)' })
+    ).not.toBeInTheDocument()
+    const alphaOption = screen.getByRole('option', {
+      name: 'Alpha label (Alpha)',
+    })
+    expect(alphaOption).toBeInTheDocument()
+
+    await userEvent.click(alphaOption)
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/labels/edit/Alpha'
+    )
+    expect(screen.getByLabelText(/Label title/)).toHaveValue('Alpha label')
+    expect(global.fetch).toHaveBeenCalledTimes(3)
   })
 })

@@ -226,7 +226,7 @@ export default function LabelEditor() {
     }
   }
 
-  const refreshAfterDelete = (deletedIndex) => {
+  const refreshAfterDelete = (deletedIndex, deletedLabelId) => {
     deleteTimer.current = setTimeout(async () => {
       deleteTimer.current = null
       try {
@@ -243,6 +243,9 @@ export default function LabelEditor() {
       } catch (error) {
         setSuccessMessage('')
         setDraft(null)
+        setLabels((current) =>
+          current.filter((label) => label.id !== deletedLabelId)
+        )
         setErrorMessage(
           `Label was deleted, but the label list could not be refreshed: ${error.message}`
         )
@@ -274,7 +277,7 @@ export default function LabelEditor() {
       setSuccessMessage(
         `Label "${selectedLabel.label_title}" deleted successfully. The next label will load in 10 seconds.`
       )
-      refreshAfterDelete(deletedIndex)
+      refreshAfterDelete(deletedIndex, selectedLabel.id)
     } catch (error) {
       setDeleteDialogOpen(false)
       setErrorMessage(error.message)
