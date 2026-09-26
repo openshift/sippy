@@ -873,6 +873,13 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// vSphere VCF migration jobs are new and not yet stable enough for component readiness
 		{[]string{"-vcf-migration"}, "candidate"},
 
+		// vSphere vSphere zonal TP jobs are flagged as not stable enough so adding here until we are ready to make blocking.
+		// 5.1 is staying blocking on purpose since vSphere day 2 is GA there and we are making sure things remain stable.
+		{[]string{"5.0-e2e-vsphere-ovn-zones-techpreview"}, "candidate"},
+		{[]string{"4.22-e2e-vsphere-ovn-zones-techpreview"}, "candidate"},
+		{[]string{"4.21-e2e-vsphere-ovn-zones-techpreview"}, "candidate"},
+		{[]string{"4.20-e2e-vsphere-ovn-zones-techpreview"}, "candidate"},
+
 		// Nutanix upgrade job not yet stable due to CSI operator conformance failures
 		{[]string{"-e2e-nutanix-upgrade"}, "candidate"},
 
