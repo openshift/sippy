@@ -568,8 +568,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-distributed-tracing", "qe"},
 		{"-oadp-", "oadp"},
 		{"-lp-chaos-", "mpict"},    // MPEX Integrity Engineering Chaos Team
-		{"-interop-opp-", "mpiit"}, // MPEX Integrity Engineering Interop Team (OPP)
-		{"-opp--ocp-", "mpiit"},    // MPEX Integrity Engineering Interop Team (OPP) - new naming
+		{"-interop-opp-", "mpiit"}, // Legacy OPP job naming
 		{"-lp-interop-", "mpiit"},  // MPEX Integrity Engineering Interop Team
 		{"-lp-ocp-compat-", "lp"},  // Layered Product Teams
 	}
@@ -1397,9 +1396,9 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-lpga-lp-ocp-compat-cr--servicemesh-", "lp-ocp-compat--servicemesh--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--operator-e2e-", "lp-ocp-compat--serverless--lpGA"},
 		{"-coo-", "lp-interop-coo"},
-		{"-acm-virt-", "lp-interop--acm-virt"},
-		{"-opp--ocp-", "lp-interop--OPP"},    // New OPP jobs in RedHatQE/interop-testing
-		{"-interop-opp-", "lp-interop--OPP"}, // Old OPP jobs in stolostron/policy-collection (deprecated)
+		{"-lpmainline-lp-interop--acm-virt-", "lp-interop--acm-virt--lpMainline"},
+		{"-lpmainline-lp-interop--opp-", "lp-interop--opp--lpMainline"},
+		{"-interop-opp-", "lp-interop--opp--lpMainline"}, // Legacy OPP job naming
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},
