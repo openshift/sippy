@@ -46826,7 +46826,7 @@ periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-llc-5.1-e2e-telcov10n-funct
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nrop-stage-nightly-e2e-telcov10n-nrop-tests-5-0-nightly:
+periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nrop-tls-scanner-e2e-telcov10n-nrop-tls-scanner-stage-5-0:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -46844,7 +46844,7 @@ periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nrop-stage-nightly-e2e-telc
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nrop-stage-nightly-e2e-telcov10n-nrop-tls-scanner-5-0-nightly:
+periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nrop-tls-scanner-e2e-telcov10n-nrop-tls-scanner-stage-5-1:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
