@@ -2,6 +2,7 @@ package sippyserver
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/signal"
 	"sync"
@@ -37,11 +38,11 @@ func (da *DaemonServer) addProcess(process DaemonProcess) {
 	da.processes = append(da.processes, process)
 }
 
-func (da *DaemonServer) Serve() {
+func (da *DaemonServer) Serve() error {
 
 	if len(da.processes) < 1 {
 		log.Error("Empty process list, exiting")
-		return
+		return errors.New("daemon server has no processes to serve")
 	}
 
 	log.Info("Started serving")
@@ -67,11 +68,12 @@ func (da *DaemonServer) Serve() {
 
 	sigChannel := make(chan os.Signal, 1)
 	signal.Notify(sigChannel, syscall.SIGINT, syscall.SIGTERM)
+	var processErr error
 	select {
 	case s := <-sigChannel:
 		log.Infof("Received shutdown signal: %v", s)
-	case err := <-processErrors:
-		log.WithError(err).Error("daemon process exited with error")
+	case processErr = <-processErrors:
+		log.WithError(processErr).Error("daemon process exited with error")
 	}
 
 	for _, cancel := range pendingContexts {
@@ -95,4 +97,5 @@ func (da *DaemonServer) Serve() {
 	}
 
 	log.Info("Ended serving ")
+	return processErr
 }
