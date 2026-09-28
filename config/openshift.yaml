@@ -11002,9 +11002,9 @@ releases:
             periodic-ci-ComplianceAsCode-content-master-4.22-e2e-aws-openshift-node-compliance-weekly: true
             periodic-ci-ComplianceAsCode-content-master-4.22-e2e-aws-openshift-platform-compliance-arm-weekly: true
             periodic-ci-ComplianceAsCode-content-master-4.22-e2e-aws-openshift-platform-compliance-weekly: true
-            periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--2spoke-mig--aws: true
-            periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--hub-spoke-mig--aws: true
-            periodic-ci-RedHatQE-interop-testing-master-acm-virt--p2p--ocp-4.22-lpMainline-lp-interop-cr--n1-upgrade--aws: true
+            periodic-ci-RedHatQE-interop-testing-master-ocp-4.22-lpMainline-lp-interop--acm-virt--cclm-cr--2spoke-mig--aws: true
+            periodic-ci-RedHatQE-interop-testing-master-ocp-4.22-lpMainline-lp-interop--acm-virt--cclm-cr--hub-spoke-mig--aws: true
+            periodic-ci-RedHatQE-interop-testing-master-ocp-4.22-lpMainline-lp-interop--acm-virt--p2p-cr--n1-upgrade--aws: true
             periodic-ci-RedHatQE-interop-testing-master-cnv-odf-ocp-4.22-lpGA-lp-ocp-compat-aws-fips: true
             periodic-ci-RedHatQE-interop-testing-master-cnv-odf-ocp-4.22-lpGA-lp-ocp-compat-cr--cnv--odf-aws: true
             periodic-ci-RedHatQE-interop-testing-master-opp--ocp-4.22-lpMainline-lp-interop-cr--full-stack--aws: true

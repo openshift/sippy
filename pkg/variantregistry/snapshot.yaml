@@ -2403,81 +2403,6 @@ periodic-ci-RedHatQE-interop-testing-cnv-4.18-cnv-odf-ocp4.18-lp-interop-cnv-odf
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--2spoke-mig--aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--acm-virt
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-acm-virt--cclm--ocp-4.22-lpMainline-lp-interop-cr--hub-spoke-mig--aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--acm-virt
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-acm-virt--p2p--ocp-4.22-lpMainline-lp-interop-cr--n1-upgrade--aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.22"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "22"
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--acm-virt
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: micro
 periodic-ci-RedHatQE-interop-testing-master-cnv-odf-ocp-4.20-lp-interop-cnv-component-readiness-aws-ipi-ocp420:
     Aggregation: none
     Architecture: amd64
@@ -2903,6 +2828,81 @@ periodic-ci-RedHatQE-interop-testing-master-ibm-fusion-access-operator-ocp4.21-l
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-ocp-4.22-lpMainline-lp-interop--acm-virt--cclm-cr--2spoke-mig--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--acm-virt--lpMainline
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-ocp-4.22-lpMainline-lp-interop--acm-virt--cclm-cr--hub-spoke-mig--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--acm-virt--lpMainline
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-ocp-4.22-lpMainline-lp-interop--acm-virt--p2p-cr--n1-upgrade--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.22"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "22"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--acm-virt--lpMainline
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-RedHatQE-interop-testing-master-opp--ocp-4.22-lpMainline-lp-interop-cr--full-stack--aws:
     Aggregation: none
     Architecture: amd64
@@ -2911,7 +2911,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-4.22-lpMainline-lp-interop-
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: none
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -2935,7 +2935,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-4.22-lpMainline-lp-interop-
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: none
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -2959,7 +2959,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-fips-lpMainline-lp-inte
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: lp-interop--opp--lpMainline
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -2983,7 +2983,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-c
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: none
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -3007,7 +3007,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.0-lpMainline-lp-interop-i
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: lp-interop--opp--lpMainline
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -3031,7 +3031,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-fips-lpMainline-lp-inte
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: lp-interop--opp--lpMainline
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -3055,7 +3055,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-lpMainline-lp-interop-c
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: none
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -3079,7 +3079,7 @@ periodic-ci-RedHatQE-interop-testing-master-opp--ocp-5.1-lpMainline-lp-interop-i
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: lp-interop--opp--lpMainline
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -367483,7 +367483,7 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-fips-interop-opp-aws:
     FeatureSet: default
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: lp-interop--opp--lpMainline
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -367510,7 +367510,7 @@ periodic-ci-stolostron-policy-collection-main-ocp4.22-upgrade-interop-opp-upgrad
     FromReleaseMinor: "22"
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: lp-interop--opp--lpMainline
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -367537,7 +367537,7 @@ periodic-ci-stolostron-policy-collection-main-ocp5.0-upgrade-interop-opp-upgrade
     FromReleaseMinor: "0"
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: lp-interop--opp--lpMainline
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -367564,7 +367564,7 @@ periodic-ci-stolostron-policy-collection-main-ocp5.1-upgrade-interop-opp-upgrade
     FromReleaseMinor: "1"
     Installer: ipi
     JobTier: candidate
-    LayeredProduct: lp-interop--OPP
+    LayeredProduct: lp-interop--opp--lpMainline
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
