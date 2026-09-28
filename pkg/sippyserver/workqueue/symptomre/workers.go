@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -78,8 +79,9 @@ func (w *ProcessBatchWorker) Work(ctx context.Context, job *river.Job[ProcessBat
 
 	enqueued, deduped, err := ctxWorker.fanOutItems(ctx, batchID, items, batch.DryRun)
 	if err != nil { // attempt to mark the batch failed so client retries ASAP
+		completedAt := time.Now().UTC()
 		if res := db.Where(&Batch{ID: batchID, Status: batch.Status}).
-			Updates(&Batch{Status: workqueue.BatchStatusFailed}); res.Error != nil {
+			Updates(&Batch{Status: workqueue.BatchStatusFailed, CompletedAt: &completedAt}); res.Error != nil {
 			logger.WithError(res.Error).Errorf("couldn't update batch %s status after failed fanout", batchID)
 		} else if res.RowsAffected == 0 {
 			// lost the status change race; batch could have been canceled during fanout
