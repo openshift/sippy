@@ -356352,6 +356352,30 @@ periodic-ci-quay-quay-redhat-3.18-gcp-ocp422-e2e-install-gcp-gcs-nightly:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-libvirt-s390x-ocp422-e2e-install-libvirt-s3-nightly-s390x:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-tests-master-ocp-4.21-quay-cr-quay-e2e-tests-quay314-ocp421-lp-interop-aws:
     Aggregation: none
     Architecture: amd64
