@@ -204,7 +204,7 @@ describe('aggregateLabelSummaries', () => {
     expect(setLabelFilter).toHaveBeenLastCalledWith(null)
   })
 
-  it('shows a new-tab edit link in writable label details', () => {
+  it('shows a new-tab edit link in writable label details', async () => {
     const summaries = aggregateLabelSummaries(
       [{ job_labels: ['ManualLabel'] }],
       labels
@@ -217,7 +217,7 @@ describe('aggregateLabelSummaries', () => {
       </MemoryRouter>
     )
 
-    userEvent.click(screen.getByRole('button', { name: 'Manual label' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Manual label' }))
 
     const editLink = within(screen.getByRole('dialog')).getByRole('link', {
       name: 'Edit label ManualLabel',
