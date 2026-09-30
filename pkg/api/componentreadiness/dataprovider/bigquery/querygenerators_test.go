@@ -219,7 +219,6 @@ func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
 				options,
 				allJobVariants,
 				nil,
-				DefaultJunitTable,
 				tt.isSample,
 				options.SampleRelease.Name,
 			)
@@ -250,7 +249,7 @@ func TestBuildTestDetailsQuery_ParameterizedTestIDs(t *testing.T) {
 		testIDOptions = append(testIDOptions, reqopts.TestIdentification{TestID: testID})
 	}
 
-	query, _, params := buildTestDetailsQuery(client, testIDOptions, reqopts.RequestOptions{}, crtest.JobVariants{}, nil, DefaultJunitTable, true, "")
+	query, _, params := buildTestDetailsQuery(client, testIDOptions, reqopts.RequestOptions{}, crtest.JobVariants{}, nil, true, "")
 	for i, testID := range testIDs {
 		paramName := fmt.Sprintf("TestID%d", i)
 		assert.Contains(t, query, "cm.id = @"+paramName)

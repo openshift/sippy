@@ -552,7 +552,6 @@ func buildTestDetailsQuery(
 	c reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	junitTable string,
 	isSample bool,
 	releaseFilter string) (string, string, []bigquery.QueryParameter) {
 
@@ -578,7 +577,7 @@ func buildTestDetailsQuery(
 	}
 
 	// Build WITH clause with key test filtering if configured
-	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, releaseFilter, c.AdvancedOption.KeyTestNames)
+	withClause, commonParams := buildCRQueryCTEs(client.Dataset, DefaultJunitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, releaseFilter, c.AdvancedOption.KeyTestNames)
 
 	jobLabelsJoin := fmt.Sprintf(`LEFT JOIN (
 						SELECT prowjob_build_id,
@@ -908,7 +907,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		b.TestIDOpts,
 		b.ReqOptions,
 		b.allJobVariants,
-		b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false, b.BaseRelease)
+		b.ReqOptions.VariantOption.IncludeVariants, false, b.BaseRelease)
 	baseString := commonQuery
 	baseQuery := b.client.Query(ctx, bqlabel.TDJunitBase, baseString+groupByQuery)
 
@@ -970,7 +969,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		s.ReqOptions.TestIDOptions,
 		s.ReqOptions,
 		s.allJobVariants,
-		s.IncludeVariants, DefaultJunitTable, true, sampleReleaseFilter)
+		s.IncludeVariants, true, sampleReleaseFilter)
 
 	sampleString := commonQuery
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
