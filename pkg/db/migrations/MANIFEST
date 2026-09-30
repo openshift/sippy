@@ -20,3 +20,4 @@
 000011_add_lifecycle_to_summaries
 000012_drop_test_daily_totals_date_index
 000013_workqueue_symptom_re
+000014_remove_sippy_chat_tables
