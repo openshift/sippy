@@ -254,6 +254,57 @@ func TestRunnerNormalizesAndDeduplicatesBQBuildIDs(t *testing.T) {
 	assert.Equal(t, []string{"4.20"}, pg.runIDCalls)
 }
 
+func TestRunnerBQCompletenessUsesStoredReleaseForExistingRuns(t *testing.T) {
+	pg := &fakePostgreSQL{
+		releases: []string{"4.22", "5.0"},
+		runIDs: map[string]map[BuildID]struct{}{
+			"4.22": idSet(1, 2),
+		},
+	}
+	bq := &fakeBigQuery{jobs: []BQJob{
+		{JobName: "removed-from-config", BuildID: "1"},
+		{JobName: "moved-to-5.0", BuildID: "2"},
+		{JobName: "current-5.0", BuildID: "3"},
+	}}
+	runner := Runner{
+		PostgreSQL: pg,
+		BigQuery:   bq,
+		Config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+			"5.0": {Jobs: map[string]bool{"moved-to-5.0": true, "current-5.0": true}},
+		}},
+	}
+
+	result := runner.Run(context.Background(), Options{Date: testDate, Checks: []Check{CheckBQCompleteness}})
+
+	require.Len(t, result.Summaries, 2)
+	assert.Equal(t, Summary{Check: CheckBQCompleteness, Release: "4.22", Date: testDate, Passed: true, ExpectedRows: 2, ActualRows: 2}, result.Summaries[0])
+	assert.Equal(t, Summary{Check: CheckBQCompleteness, Release: "5.0", Date: testDate, Passed: false, ExpectedRows: 1, Discrepancies: 1}, result.Summaries[1])
+	require.Len(t, result.Discrepancies, 1)
+	assert.Equal(t, "missing-in-postgres", result.Discrepancies[0].Kind)
+	assert.Equal(t, "3", result.Discrepancies[0].Key)
+}
+
+func TestRunnerBQCompletenessStillFindsMissingBigQueryRun(t *testing.T) {
+	pg := &fakePostgreSQL{
+		releases: []string{"4.22"},
+		runIDs:   map[string]map[BuildID]struct{}{"4.22": idSet(1, 2)},
+	}
+	runner := Runner{
+		PostgreSQL: pg,
+		BigQuery:   &fakeBigQuery{jobs: []BQJob{{JobName: "removed-from-config", BuildID: "1"}}},
+	}
+
+	result := runner.Run(context.Background(), Options{Date: testDate, Checks: []Check{CheckBQCompleteness}})
+
+	require.Len(t, result.Summaries, 1)
+	assert.False(t, result.Summaries[0].Passed)
+	assert.Equal(t, 1, result.Summaries[0].ExpectedRows)
+	assert.Equal(t, 2, result.Summaries[0].ActualRows)
+	require.Len(t, result.Discrepancies, 1)
+	assert.Equal(t, "missing-in-bigquery", result.Discrepancies[0].Kind)
+	assert.Equal(t, "2", result.Discrepancies[0].Key)
+}
+
 func TestRunnerBQCompletenessContinuesAfterReleaseReadError(t *testing.T) {
 	pg := &fakePostgreSQL{
 		releases: []string{"pseudo", "4.20"},

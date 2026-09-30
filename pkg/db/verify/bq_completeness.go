@@ -56,24 +56,45 @@ func (v *BQCompletenessVerifier) Verify(ctx context.Context, scope Scope) Result
 		return result
 	}
 
+	postgresIDsByRelease := make(map[string]map[BuildID]struct{}, len(scope.Releases))
+	postgresReleaseByID := make(map[BuildID]string)
+	for _, release := range scope.Releases {
+		ids, err := v.PostgreSQL.ProwJobRunIDs(ctx, release, start, end)
+		if err != nil {
+			result.Summaries = append(result.Summaries, operationalSummary(CheckBQCompleteness, release, scope.Date, err))
+			continue
+		}
+		postgresIDsByRelease[release] = ids
+		for id := range ids {
+			postgresReleaseByID[id] = release
+		}
+	}
+
 	attributor := prowloader.NewReleaseAttributor(scope.Releases, v.Config, v.SyntheticReleaseOverrides)
 	bqIDs := make(map[string]map[BuildID]struct{}, len(scope.Releases))
 	malformedSets := make(map[string]sets.Set[string], len(scope.Releases))
 	for _, job := range jobs {
-		pj := &prow.ProwJob{
-			Annotations: job.Annotations,
-			Spec:        prow.ProwJobSpec{Job: job.JobName},
+		value := strings.TrimSpace(job.BuildID)
+		id, parseErr := strconv.ParseUint(value, 10, 64)
+		release := ""
+		if parseErr == nil {
+			// Generated config can drop a job after its run was imported.
+			release = postgresReleaseByID[BuildID(id)]
 		}
-		if job.HasRefs {
-			pj.Spec.Refs = &prow.Refs{}
+		if release == "" {
+			pj := &prow.ProwJob{
+				Annotations: job.Annotations,
+				Spec:        prow.ProwJobSpec{Job: job.JobName},
+			}
+			if job.HasRefs {
+				pj.Spec.Refs = &prow.Refs{}
+			}
+			release = attributor.Match(pj)
 		}
-		release := attributor.Match(pj)
 		if release == "" {
 			continue
 		}
-		value := strings.TrimSpace(job.BuildID)
-		id, err := strconv.ParseUint(value, 10, 64)
-		if err != nil {
+		if parseErr != nil {
 			if malformedSets[release] == nil {
 				malformedSets[release] = sets.New[string]()
 			}
@@ -86,9 +107,8 @@ func (v *BQCompletenessVerifier) Verify(ctx context.Context, scope Scope) Result
 		bqIDs[release][BuildID(id)] = struct{}{}
 	}
 	for _, release := range scope.Releases {
-		postgresIDs, err := v.PostgreSQL.ProwJobRunIDs(ctx, release, start, end)
-		if err != nil {
-			result.Summaries = append(result.Summaries, operationalSummary(CheckBQCompleteness, release, scope.Date, err))
+		postgresIDs, ok := postgresIDsByRelease[release]
+		if !ok {
 			continue
 		}
 		malformed := sets.List(malformedSets[release])
