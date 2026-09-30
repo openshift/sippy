@@ -642,7 +642,7 @@ func buildTestDetailsQuery(
 
 	queryString += "("
 	for i, testIDOption := range testIDOpts {
-		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants)
+		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants, &commonParams)
 
 	}
 	queryString += ")"
@@ -671,21 +671,25 @@ func buildTestDetailsQuery(
 	return queryString, groupString, commonParams
 }
 
-// addTestFilters injects query params to limit to one test and variants combo.
+// addTestFilters limits the query to one test and variant combination while
+// binding the test ID unchanged so characters in real IDs cannot alter SQL.
 func addTestFilters(
 	testIDOption reqopts.TestIdentification,
 	index int,
 	queryString string,
 	c reqopts.RequestOptions,
-	includeVariants map[string][]string) string {
+	includeVariants map[string][]string,
+	queryParams *[]bigquery.QueryParameter) string {
 
 	if index > 0 {
 		queryString += " OR "
 	}
 
-	queryString += fmt.Sprintf(`(cm.id = '%s'
+	paramName := fmt.Sprintf("TestID%d", index)
+	queryString += fmt.Sprintf(`(cm.id = @%s
 
-`, param.Cleanse(testIDOption.TestID))
+`, paramName)
+	*queryParams = append(*queryParams, bigquery.QueryParameter{Name: paramName, Value: testIDOption.TestID})
 
 	for _, key := range sortedKeys(includeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants

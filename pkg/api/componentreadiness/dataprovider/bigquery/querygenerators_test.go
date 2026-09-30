@@ -1,9 +1,11 @@
 package bigquery
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -234,6 +236,26 @@ func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
 			}
 			assert.Equal(t, tt.wantLifecycleArg, lifecycleParamFound)
 		})
+	}
+}
+
+func TestBuildTestDetailsQuery_ParameterizedTestIDs(t *testing.T) {
+	client := &bqcachedclient.Client{Dataset: "test_dataset"}
+	testIDs := []string{
+		"lp-ocp-compat--ServiceMesh--Root Suite.Kiali sidebar integration with OCP Console:15431c659e75b1e88129b9358c1b1d10",
+		"test-with-'quote",
+	}
+	testIDOptions := make([]reqopts.TestIdentification, 0, len(testIDs))
+	for _, testID := range testIDs {
+		testIDOptions = append(testIDOptions, reqopts.TestIdentification{TestID: testID})
+	}
+
+	query, _, params := buildTestDetailsQuery(client, testIDOptions, reqopts.RequestOptions{}, crtest.JobVariants{}, nil, DefaultJunitTable, true, "")
+	for i, testID := range testIDs {
+		paramName := fmt.Sprintf("TestID%d", i)
+		assert.Contains(t, query, "cm.id = @"+paramName)
+		assert.NotContains(t, query, testID)
+		assert.Contains(t, params, bigquery.QueryParameter{Name: paramName, Value: testID})
 	}
 }
 
