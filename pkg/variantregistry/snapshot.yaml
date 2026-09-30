@@ -3002,31 +3002,7 @@ periodic-ci-RedHatQE-interop-testing-master-ocp-5.0-lpMainline-lp-interop--opp-c
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-ocp-5.0-lpMainline-lp-interop--opp-cr--full-stack--fips--aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--opp--lpMainline
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-ocp-5.0-lpMainline-lp-interop--opp-interop-opp-vsphere:
+periodic-ci-RedHatQE-interop-testing-master-ocp-5.0-lpMainline-lp-interop--opp-cr--full-stack--vsphere:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -3047,6 +3023,30 @@ periodic-ci-RedHatQE-interop-testing-master-ocp-5.0-lpMainline-lp-interop--opp-i
     ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-ocp-5.0-lpMainline-lp-interop--opp-full-stack--fips--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--opp--lpMainline
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
     Suite: unknown
     Topology: ha
     Upgrade: none
@@ -3074,31 +3074,7 @@ periodic-ci-RedHatQE-interop-testing-master-ocp-5.1-lpMainline-lp-interop--opp-c
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-ocp-5.1-lpMainline-lp-interop--opp-cr--full-stack--fips--aws:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: lp-interop--opp--lpMainline
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: mpiit
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-RedHatQE-interop-testing-master-ocp-5.1-lpMainline-lp-interop--opp-interop-opp-vsphere:
+periodic-ci-RedHatQE-interop-testing-master-ocp-5.1-lpMainline-lp-interop--opp-cr--full-stack--vsphere:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -3119,6 +3095,30 @@ periodic-ci-RedHatQE-interop-testing-master-ocp-5.1-lpMainline-lp-interop--opp-i
     ReleaseMinor: "1"
     Scheduler: default
     SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-RedHatQE-interop-testing-master-ocp-5.1-lpMainline-lp-interop--opp-full-stack--fips--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: lp-interop--opp--lpMainline
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: fips
     Suite: unknown
     Topology: ha
     Upgrade: none
@@ -79015,6 +79015,30 @@ periodic-ci-openshift-multiarch-main-nightly-5.0-upgrade-from-stable-4.22-ocp-e2
     Suite: unknown
     Topology: ha
     Upgrade: major
+periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-external-ibmz-agent-libvirt:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: parallel
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-5.1-ocp-e2e-aws-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -83816,6 +83840,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-
     Suite: unknown
     Topology: ha
     Upgrade: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-osd-rh-aws-ocp5-latest-rc-staging-main
+:   Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-osd-rh-aws-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -83836,7 +83880,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-ad-candidate-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-ad-ocp5-latest-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -83896,8 +83940,8 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-sts-ad-candidate-staging-main:
-    Aggregation: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-sts-ad-ocp5-latest-rc-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -83956,8 +84000,8 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-
     Suite: unknown
     Topology: ha
     Upgrade: micro
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-sts-pl-candidate-staging-main:
-    Aggregation: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-sts-pl-ocp5-latest-rc-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -84016,7 +84060,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-
     Suite: unknown
     Topology: ha
     Upgrade: none
-? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-sts-shvpc-candidate-staging-main
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-sts-shvpc-ocp5-lt-rc-staging-main
 :   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84196,7 +84240,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-production-ocm-fvt-p
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-hcp-e2e-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-hcp-e2e-ocp5-latest-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84236,8 +84280,8 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-access-request-ocp5-staging-main
-:   Aggregation: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-acc-req-ocp5-lt-rc-staging-main:
+    Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -84276,7 +84320,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-ad-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-ad-ocp5-latest-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84316,7 +84360,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-adobe-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-adobe-ocp5-lt-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84356,7 +84400,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-amd64-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-amd64-ocp5-lt-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84396,8 +84440,8 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-amd64-upgrade-ocp5-staging-main:
-    Aggregation: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-amd64-upg-ocp5-ltrc-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -84406,7 +84450,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv4
-    OS: rhcos9
+    OS: rhcos10
     Owner: service-delivery
     Platform: rosa
     Procedure: none
@@ -84415,7 +84459,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     SecurityMode: default
     Suite: unknown
     Topology: external
-    Upgrade: micro
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-amd64-upgrade-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84436,7 +84480,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: micro
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-arm-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-arm-ocp5-latest-rc-staging-main:
     Aggregation: none
     Architecture: arm64
     CGroupMode: v2
@@ -84476,8 +84520,8 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-autonode-ocp5-staging-main:
-    Aggregation: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-autonode-ocp5-lt-rc-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -84516,8 +84560,8 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-nx-y-upgrade-ocp5-staging-main:
-    Aggregation: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-nx-y-upg-ocp5-lt-rc-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -84526,7 +84570,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv4
-    OS: rhcos9
+    OS: rhcos10
     Owner: service-delivery
     Platform: rosa
     Procedure: none
@@ -84535,7 +84579,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     SecurityMode: default
     Suite: unknown
     Topology: external
-    Upgrade: micro
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-nx-y-upgrade-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84556,7 +84600,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: micro
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-pl-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-pl-ocp5-latest-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84596,26 +84640,6 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-shared-vpc-ocp5-staging-main:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
-    Release: rosa-stage
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-shared-vpc-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84636,7 +84660,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-upgrade-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-shvpc-ocp5-lt-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84646,7 +84670,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv4
-    OS: rhcos9
+    OS: rhcos10
     Owner: service-delivery
     Platform: rosa
     Procedure: none
@@ -84655,7 +84679,27 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     SecurityMode: default
     Suite: unknown
     Topology: external
-    Upgrade: micro
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-upg-ocp5-latest-rc-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-upgrade-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84676,7 +84720,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: micro
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-y-upgrade-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-y-upg-ocp5-lt-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -84686,7 +84730,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     LayeredProduct: none
     NetworkAccess: default
     NetworkStack: ipv4
-    OS: rhcos9
+    OS: rhcos10
     Owner: service-delivery
     Platform: rosa
     Procedure: none
@@ -84695,7 +84739,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     SecurityMode: default
     Suite: unknown
     Topology: external
-    Upgrade: micro
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-y-upgrade-staging-main:
     Aggregation: none
     Architecture: amd64
@@ -84716,8 +84760,8 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: micro
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-zero-egr-upg-ocp5-staging-main:
-    Aggregation: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-z-egr-upg-ocp5-ltrc-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -84736,8 +84780,8 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-zero-egress-ocp5-staging-main:
-    Aggregation: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-rosa-hcp-zero-egr-ocp5-lt-rc-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -84836,7 +84880,7 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-peri
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-sanity-ocp5-staging-main:
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-hcp-staging-ocm-fvt-periodic-cs-sanity-ocp5-latest-rc-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -290978,6 +291022,33 @@ periodic-ci-openshift-release-main-nightly-4.19-upgrade-from-stable-4.18-e2e-met
     Suite: unknown
     Topology: single
     Upgrade: minor
+periodic-ci-openshift-release-main-nightly-4.19-upgrade-from-stable-4.18-e2e-platform-external-aws-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.18"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "18"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.19"
+    ReleaseMajor: "4"
+    ReleaseMinor: "19"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: minor
 periodic-ci-openshift-release-main-nightly-4.19-upgrade-from-stable-4.18-e2e-vsphere-upgrade:
     Aggregation: none
     Architecture: amd64
@@ -291050,33 +291121,6 @@ periodic-ci-openshift-release-main-nightly-4.19-upgrade-from-stable-4.18-e2e-vsp
     OS: rhcos9
     Owner: eng
     Platform: vsphere
-    Procedure: none
-    Release: "4.19"
-    ReleaseMajor: "4"
-    ReleaseMinor: "19"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
-periodic-ci-openshift-release-main-nightly-4.19-upgrade-from-stable-4.18-opct-platform-external-aws-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.18"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "18"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
     Procedure: none
     Release: "4.19"
     ReleaseMajor: "4"
@@ -295859,6 +295903,33 @@ periodic-ci-openshift-release-main-nightly-4.20-upgrade-from-stable-4.19-e2e-met
     Suite: unknown
     Topology: single
     Upgrade: minor
+periodic-ci-openshift-release-main-nightly-4.20-upgrade-from-stable-4.19-e2e-platform-external-aws-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.19"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "19"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.20"
+    ReleaseMajor: "4"
+    ReleaseMinor: "20"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: minor
 periodic-ci-openshift-release-main-nightly-4.20-upgrade-from-stable-4.19-e2e-vsphere-upgrade:
     Aggregation: none
     Architecture: amd64
@@ -295931,33 +296002,6 @@ periodic-ci-openshift-release-main-nightly-4.20-upgrade-from-stable-4.19-e2e-vsp
     OS: rhcos9
     Owner: eng
     Platform: vsphere
-    Procedure: none
-    Release: "4.20"
-    ReleaseMajor: "4"
-    ReleaseMinor: "20"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
-periodic-ci-openshift-release-main-nightly-4.20-upgrade-from-stable-4.19-opct-platform-external-aws-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.19"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "19"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
     Procedure: none
     Release: "4.20"
     ReleaseMajor: "4"
@@ -301410,6 +301454,33 @@ periodic-ci-openshift-release-main-nightly-4.21-upgrade-from-stable-4.20-e2e-met
     Suite: unknown
     Topology: two-node-arbiter
     Upgrade: minor
+periodic-ci-openshift-release-main-nightly-4.21-upgrade-from-stable-4.20-e2e-platform-external-aws-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.20"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "20"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.21"
+    ReleaseMajor: "4"
+    ReleaseMinor: "21"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: minor
 periodic-ci-openshift-release-main-nightly-4.21-upgrade-from-stable-4.20-e2e-vsphere-upgrade:
     Aggregation: none
     Architecture: amd64
@@ -301455,33 +301526,6 @@ periodic-ci-openshift-release-main-nightly-4.21-upgrade-from-stable-4.20-e2e-vsp
     OS: rhcos9
     Owner: eng
     Platform: vsphere
-    Procedure: none
-    Release: "4.21"
-    ReleaseMajor: "4"
-    ReleaseMinor: "21"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
-periodic-ci-openshift-release-main-nightly-4.21-upgrade-from-stable-4.20-opct-platform-external-aws-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.20"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "20"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
     Procedure: none
     Release: "4.21"
     ReleaseMajor: "4"
@@ -308639,6 +308683,33 @@ periodic-ci-openshift-release-main-nightly-4.22-upgrade-from-stable-4.21-e2e-met
     Suite: unknown
     Topology: two-node-arbiter
     Upgrade: minor
+periodic-ci-openshift-release-main-nightly-4.22-upgrade-from-stable-4.21-e2e-platform-external-aws-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.21"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "21"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: minor
 periodic-ci-openshift-release-main-nightly-4.22-upgrade-from-stable-4.21-e2e-vsphere-upgrade:
     Aggregation: none
     Architecture: amd64
@@ -308684,33 +308755,6 @@ periodic-ci-openshift-release-main-nightly-4.22-upgrade-from-stable-4.21-e2e-vsp
     OS: rhcos9
     Owner: eng
     Platform: vsphere
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: minor
-periodic-ci-openshift-release-main-nightly-4.22-upgrade-from-stable-4.21-opct-platform-external-aws-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    FromRelease: "4.21"
-    FromReleaseMajor: "4"
-    FromReleaseMinor: "21"
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
     Procedure: none
     Release: "4.22"
     ReleaseMajor: "4"
@@ -315601,6 +315645,33 @@ periodic-ci-openshift-release-main-nightly-4.23-upgrade-from-stable-4.22-e2e-met
     SecurityMode: default
     Suite: unknown
     Topology: two-node-fencing
+    Upgrade: minor
+periodic-ci-openshift-release-main-nightly-4.23-upgrade-from-stable-4.22-e2e-platform-external-aws-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.22"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "22"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
     Upgrade: minor
 periodic-ci-openshift-release-main-nightly-4.23-upgrade-from-stable-4.22-e2e-vsphere-upgrade:
     Aggregation: none
@@ -323265,6 +323336,60 @@ periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-meta
     Suite: unknown
     Topology: two-node-fencing
     Upgrade: major
+periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-platform-external-aws-ccm-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.22"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "22"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-platform-external-aws-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.22"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "22"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
 periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-vsphere-upgrade:
     Aggregation: none
     Architecture: amd64
@@ -330873,6 +330998,33 @@ periodic-ci-openshift-release-main-nightly-5.1-upgrade-from-stable-5.0-e2e-metal
     SecurityMode: default
     Suite: unknown
     Topology: two-node-fencing
+    Upgrade: minor
+periodic-ci-openshift-release-main-nightly-5.1-upgrade-from-stable-5.0-e2e-platform-external-aws-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
     Upgrade: minor
 periodic-ci-openshift-release-main-nightly-5.1-upgrade-from-stable-5.0-e2e-vsphere-upgrade:
     Aggregation: none
@@ -356172,6 +356324,30 @@ periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-nightly:
     OS: unknown
     Owner: eng
     Platform: aws
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-azure-ocp422-e2e-install-azure-blob-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: azure
     Procedure: none
     Release: quay-3.18
     ReleaseMajor: "3"
