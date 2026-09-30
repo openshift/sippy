@@ -193645,7 +193645,7 @@ periodic-ci-openshift-openshift-tests-private-release-4.22-multi-nightly-openshi
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-4.22-ppc64le-nightly-powervs-ipi-f7:
+periodic-ci-openshift-openshift-tests-private-release-4.22-ppc64le-nightly-powervs-ipi-f14:
     Aggregation: none
     Architecture: ppc64le
     CGroupMode: v2
@@ -193668,7 +193668,7 @@ periodic-ci-openshift-openshift-tests-private-release-4.22-ppc64le-nightly-power
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-4.22-ppc64le-nightly-powervs-ipi-f7-destructive:
+periodic-ci-openshift-openshift-tests-private-release-4.22-ppc64le-nightly-powervs-ipi-f14-destructive:
     Aggregation: none
     Architecture: ppc64le
     CGroupMode: v2
