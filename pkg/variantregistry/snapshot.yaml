@@ -292314,12 +292314,12 @@ periodic-ci-openshift-release-main-nightly-4.20-e2e-azure-ovn-kube-apiserver-rol
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.20-e2e-azure-ovn-multidisk-techpreview:
     Aggregation: none
-    Architecture: multi
+    Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -297441,7 +297441,7 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-azure-ovn-kube-apiserver-rol
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.21-e2e-azure-ovn-multidisk-techpreview:
     Aggregation: none
-    Architecture: multi
+    Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: techpreview
@@ -303451,7 +303451,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-azure-ovn-kube-apiserver-rol
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.22-e2e-azure-ovn-multidisk-techpreview:
     Aggregation: none
-    Architecture: multi
+    Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: techpreview
@@ -310505,7 +310505,7 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-azure-ovn-kube-apiserver-rol
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.23-e2e-azure-ovn-multidisk-techpreview:
     Aggregation: none
-    Architecture: multi
+    Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: techpreview
@@ -317871,7 +317871,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-azure-ovn-kube-apiserver-roll
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.0-e2e-azure-ovn-multidisk-techpreview:
     Aggregation: none
-    Architecture: multi
+    Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: techpreview
@@ -325537,7 +325537,7 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-azure-ovn-kube-apiserver-roll
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.1-e2e-azure-ovn-multidisk-techpreview:
     Aggregation: none
-    Architecture: multi
+    Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
     FeatureSet: techpreview
