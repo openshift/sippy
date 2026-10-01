@@ -1254,6 +1254,7 @@ func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName s
 		"-multitenant",
 		"-multiarch",
 		"-multinet",
+		"-multidisk",
 	}
 	for _, ignore := range ignorePatterns {
 		jobNameLower = strings.ReplaceAll(jobNameLower, ignore, "-")
