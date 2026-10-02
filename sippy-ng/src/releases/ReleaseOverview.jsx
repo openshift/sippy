@@ -169,6 +169,7 @@ export default function ReleaseOverview(props) {
               release={props.release}
               indicators={data.indicators}
               releases={releases}
+              links={data.links}
             />
 
             <Grid item xs={12}>

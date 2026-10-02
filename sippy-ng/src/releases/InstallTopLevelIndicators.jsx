@@ -6,7 +6,11 @@ import {
   INSTALL_THRESHOLDS,
 } from '../constants'
 import { Box } from '@mui/material'
-import { pathForTestByVariant, useNewInstallTests } from '../helpers'
+import {
+  pathForTestByVariant,
+  productLabelFor,
+  useNewInstallTests,
+} from '../helpers'
 import Grid from '@mui/material/Grid'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
@@ -36,6 +40,7 @@ export default function TopLevelIndicators(props) {
     'installOther',
     'bootstrap',
     'install',
+    'productInstall',
   ].forEach((indicator) => {
     let ind = props.indicators[indicator]
     if (ind && (ind.current_runs !== 0 || ind.previous_runs !== 0)) {
@@ -44,9 +49,30 @@ export default function TopLevelIndicators(props) {
   })
 
   let newInstall = useNewInstallTests(props.release)
-  if (noData || !newInstall) {
+  const isProduct = Boolean(props.links)
+
+  if (noData || (!newInstall && !isProduct)) {
     return <></>
   }
+
+  const productLabel = productLabelFor(props.release)
+
+  const infrastructureLink = pathForTestByVariant(
+    props.release,
+    'install should succeed: infrastructure'
+  )
+  const installConfigLink = pathForTestByVariant(
+    props.release,
+    'install should succeed: configuration'
+  )
+  const bootstrapLink = pathForTestByVariant(
+    props.release,
+    'install should succeed: cluster bootstrap'
+  )
+  const installOtherLink = pathForTestByVariant(
+    props.release,
+    'install should succeed: other'
+  )
 
   return (
     <Fragment>
@@ -56,10 +82,7 @@ export default function TopLevelIndicators(props) {
             key="infrastructure-summary"
             threshold={INFRASTRUCTURE_THRESHOLDS}
             name="Infrastructure"
-            link={pathForTestByVariant(
-              props.release,
-              'install should succeed: infrastructure'
-            )}
+            link={infrastructureLink}
             success={props.indicators.infrastructure.current_pass_percentage}
             flakes={props.indicators.infrastructure.current_flake_percentage}
             fail={props.indicators.infrastructure.current_failure_percentage}
@@ -75,10 +98,7 @@ export default function TopLevelIndicators(props) {
             key="install-config-summary"
             threshold={INSTALL_CONFIG_THRESHOLDS}
             name="Install-Config"
-            link={pathForTestByVariant(
-              props.release,
-              'install should succeed: configuration'
-            )}
+            link={installConfigLink}
             success={props.indicators.installConfig.current_pass_percentage}
             flakes={props.indicators.installConfig.current_flake_percentage}
             fail={props.indicators.installConfig.current_failure_percentage}
@@ -94,10 +114,7 @@ export default function TopLevelIndicators(props) {
             key="bootstrap-summary"
             threshold={BOOTSTRAP_THRESHOLDS}
             name="Bootstrap"
-            link={pathForTestByVariant(
-              props.release,
-              'install should succeed: cluster bootstrap'
-            )}
+            link={bootstrapLink}
             success={props.indicators.bootstrap.current_pass_percentage}
             flakes={props.indicators.bootstrap.current_flake_percentage}
             fail={props.indicators.bootstrap.current_failure_percentage}
@@ -113,10 +130,7 @@ export default function TopLevelIndicators(props) {
             key="install-other"
             threshold={INSTALL_OTHER_THRESHOLDS}
             name="Install Other"
-            link={pathForTestByVariant(
-              props.release,
-              'install should succeed: other'
-            )}
+            link={installOtherLink}
             success={props.indicators.installOther.current_pass_percentage}
             flakes={props.indicators.installOther.current_flake_percentage}
             fail={props.indicators.installOther.current_failure_percentage}
@@ -131,13 +145,32 @@ export default function TopLevelIndicators(props) {
           <SummaryCard
             key="install-summary"
             threshold={INSTALL_THRESHOLDS}
-            name="Install"
+            name={isProduct ? 'OpenShift Install' : 'Install'}
             link={'/install/' + props.release}
             success={props.indicators.install.current_pass_percentage}
             flakes={props.indicators.install.current_flake_percentage}
             fail={props.indicators.install.current_failure_percentage}
             caption={indicatorCaption(props.indicators.install)}
             tooltip="How often the install completes successfully."
+          />
+        </Grid>
+      )}
+
+      {props.indicators.productInstall && (
+        <Grid item md={2} sm={4}>
+          <SummaryCard
+            key="product-install-summary"
+            threshold={INSTALL_THRESHOLDS}
+            name={`${productLabel} Install`}
+            link={pathForTestByVariant(
+              props.release,
+              props.indicators.productInstall.name
+            )}
+            success={props.indicators.productInstall.current_pass_percentage}
+            flakes={props.indicators.productInstall.current_flake_percentage}
+            fail={props.indicators.productInstall.current_failure_percentage}
+            caption={indicatorCaption(props.indicators.productInstall)}
+            tooltip={`How often the ${productLabel} install completes successfully.`}
           />
         </Grid>
       )}
@@ -148,4 +181,5 @@ export default function TopLevelIndicators(props) {
 TopLevelIndicators.propTypes = {
   release: PropTypes.string,
   indicators: PropTypes.object,
+  links: PropTypes.object,
 }
