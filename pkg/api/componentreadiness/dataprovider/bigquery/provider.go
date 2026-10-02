@@ -255,7 +255,7 @@ func (p *BigQueryProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.
 		cleanV := param.Cleanse(v)
 		joinVariants += fmt.Sprintf(
 			"LEFT JOIN %s.job_variants jv_%s ON jobs.prowjob_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-			p.client.Dataset, cleanV, cleanV, cleanV, v)
+			p.client.Dataset, cleanV, cleanV, cleanV, cleanV)
 	}
 
 	variantFilters := ""
@@ -418,6 +418,18 @@ func (p *BigQueryProvider) LookupJobVariants(ctx context.Context, _ reqopts.Requ
 		variants[r.VariantName] = r.VariantValue
 	}
 	return variants, nil
+}
+
+// --- SpotCheckQuerier ---
+
+func (p *BigQueryProvider) QuerySpotCheckTestStatus(_ context.Context, _ reqopts.RequestOptions,
+	_ string, _ map[string][]string, _, _ time.Time) (map[string]crstatus.TestStatus, error) {
+	return nil, nil
+}
+
+func (p *BigQueryProvider) QuerySpotCheckTestDetails(_ context.Context, _ reqopts.RequestOptions,
+	_ string, _ map[string][]string, _ map[string]string, _, _ time.Time) (map[string][]crstatus.TestDetailsSummary, error) {
+	return nil, nil
 }
 
 // --- Helpers ---
