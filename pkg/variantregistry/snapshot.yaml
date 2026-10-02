@@ -362333,7 +362333,7 @@ periodic-ci-rhobs-troubleshooting-scenarios-main-4.20-troubleshooting-rhoai-peri
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-agentic-eval-anthropic-periodics:
+periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-ols-agentic-eval-periodics:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -362356,99 +362356,7 @@ periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-agentic-eval-anthropic-per
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-agentic-eval-google-periodics:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: agent
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-agentic-eval-openai-periodics:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: agent
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-ols-eval-anthropic-periodics:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-ols-eval-google-periodics:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-ols-eval-openai-periodics:
+periodic-ci-rhobs-troubleshooting-scenarios-main-4.22-ols-classic-eval-periodics:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
