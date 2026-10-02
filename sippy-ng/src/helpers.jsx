@@ -185,7 +185,7 @@ export function pathForExactTestAnalysisWithFilter(
   let filters = [filterFor('name', 'equals', test)]
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if (item.columnField === 'variants') {
+      if (item.field === 'variants') {
         filters.push(item)
       }
     })
@@ -226,7 +226,7 @@ export function pathForJobRunsWithTestFailure(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if (item.columnField === 'variants') {
+      if (item.field === 'variants') {
         filters.push(item)
       }
     })
@@ -241,7 +241,7 @@ export function pathForJobRunsWithTest(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if (item.columnField === 'variants') {
+      if (item.field === 'variants') {
         filters.push(item)
       }
     })
@@ -256,7 +256,7 @@ export function pathForJobRunsWithTestFlake(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if (item.columnField === 'variants') {
+      if (item.field === 'variants') {
         filters.push(item)
       }
     })
@@ -336,7 +336,7 @@ export function pathForRepository(release, org, repo) {
 }
 
 export function filterFor(column, operator, value) {
-  return { columnField: column, operatorValue: operator, value: value }
+  return { field: column, operator: operator, value: value }
 }
 
 export function withoutUnstable() {
@@ -345,13 +345,13 @@ export function withoutUnstable() {
 
 export function multiple(...filters) {
   return `filters=${safeEncodeURIComponent(
-    JSON.stringify({ items: filters, linkOperator: 'and' })
+    JSON.stringify({ items: filters, logicOperator: 'and' })
   )}`
 }
 
 export function multiple_or(...filters) {
   return `filters=${safeEncodeURIComponent(
-    JSON.stringify({ items: filters, linkOperator: 'or' })
+    JSON.stringify({ items: filters, logicOperator: 'or' })
   )}`
 }
 

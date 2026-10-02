@@ -53,11 +53,11 @@ import TestPassRateCharts from './TestPassRateCharts'
 import TestRegressionsTable from './TestRegressionsTable'
 import TestTable from './TestTable'
 
-export function TestAnalysis(props) {
+export function TestAnalysis({ test: testProp = '', ...props }) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
-  const [testName = props.test] = useQueryParam('test', SafeStringParam)
+  const [testName = testProp] = useQueryParam('test', SafeStringParam)
   const [period = 'default'] = useQueryParam('period', StringParam)
   const [filterModel, setFilterModel] = useStableJSONQueryParam('filters', {
     items: [
@@ -212,7 +212,7 @@ export function TestAnalysis(props) {
                   )}
                 </div>
                 <GridToolbarFilterMenu
-                  linkOperatorDisabled={true}
+                  logicOperatorDisabled={true}
                   standalone={true}
                   filterModel={filterModel || { items: [] }}
                   setFilterModel={setFilterModelSafe}
@@ -266,7 +266,7 @@ export function TestAnalysis(props) {
                       {
                         items: [
                           ...filterModel.items.filter(
-                            (f) => f.columnField === 'variants'
+                            (f) => f.field === 'variants'
                           ),
                         ],
                       },
@@ -291,7 +291,7 @@ export function TestAnalysis(props) {
                       {
                         items: [
                           ...filterModel.items.filter(
-                            (f) => f.columnField === 'variants'
+                            (f) => f.field === 'variants'
                           ),
                         ],
                       },
@@ -316,7 +316,7 @@ export function TestAnalysis(props) {
                       {
                         items: [
                           ...filterModel.items.filter(
-                            (f) => f.columnField === 'variants'
+                            (f) => f.field === 'variants'
                           ),
                         ],
                       },
@@ -406,7 +406,9 @@ export function TestAnalysis(props) {
               </Typography>
               <TestTable
                 simpleLoading={true}
-                pageSize={5}
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 5 } },
+                }}
                 hideControls={true}
                 collapse={false}
                 release={props.release}
@@ -489,10 +491,6 @@ export function TestAnalysis(props) {
       </Container>
     </Fragment>
   )
-}
-
-TestAnalysis.defaultProps = {
-  test: '',
 }
 
 TestAnalysis.propTypes = {

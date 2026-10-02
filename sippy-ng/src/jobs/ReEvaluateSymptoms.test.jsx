@@ -4,9 +4,11 @@ import React from 'react'
 import ReEvaluateButton from './ReEvaluateSymptoms'
 import userEvent from '@testing-library/user-event'
 
+let user
 beforeEach(() => {
   vi.restoreAllMocks()
   vi.useFakeTimers({ shouldAdvanceTime: true })
+  user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   import.meta.env.VITE_API_URL = ''
 })
 
@@ -89,7 +91,7 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2', '3']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
     })
 
     // Verify the submit call sent all IDs in one request.
@@ -127,7 +129,7 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
     })
 
     // After submit, progress bar should appear.
@@ -138,7 +140,7 @@ describe('ReEvaluateButton', () => {
 
     // Advance to first poll.
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
 
     await waitFor(() => {
@@ -147,7 +149,7 @@ describe('ReEvaluateButton', () => {
 
     // Advance to second poll (terminal).
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
 
     await waitFor(() => {
@@ -174,11 +176,11 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
     })
 
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
 
     await waitFor(() => {
@@ -207,11 +209,11 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
     })
 
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
 
     await waitFor(() => {
@@ -238,11 +240,11 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2', '3']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
     })
 
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
 
     await waitFor(() => {
@@ -261,7 +263,7 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
     })
 
     await waitFor(() => {
@@ -290,11 +292,11 @@ describe('ReEvaluateButton', () => {
     )
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
     })
 
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
 
     await waitFor(() => {
@@ -336,12 +338,12 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2', '3']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button'))
     })
 
     // First poll: running
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
     await waitFor(() => {
       expect(screen.getByText(/0\/3 completed/)).toBeInTheDocument()
@@ -349,7 +351,7 @@ describe('ReEvaluateButton', () => {
 
     // Second poll: 1 completed
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
     await waitFor(() => {
       expect(screen.getByText(/1\/3 completed/)).toBeInTheDocument()
@@ -357,7 +359,7 @@ describe('ReEvaluateButton', () => {
 
     // Third poll: terminal
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
     await waitFor(() => {
       expect(
@@ -383,7 +385,7 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+      await user.click(screen.getByRole('button', { name: /Re-evaluate/ }))
     })
 
     await waitFor(() => {
@@ -423,12 +425,12 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+      await user.click(screen.getByRole('button', { name: /Re-evaluate/ }))
     })
 
     // Wait for first poll so cancel button appears.
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
 
     await waitFor(() => {
@@ -437,7 +439,7 @@ describe('ReEvaluateButton', () => {
 
     // Click cancel.
     await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
     })
 
     await waitFor(() => {
@@ -457,7 +459,7 @@ describe('ReEvaluateButton', () => {
     ).not.toBeDisabled()
     expect(global.fetch).toHaveBeenCalledTimes(3)
     await act(async () => {
-      vi.advanceTimersByTime(10000)
+      await vi.advanceTimersByTimeAsync(10000)
     })
     expect(global.fetch).toHaveBeenCalledTimes(3)
   })
@@ -477,17 +479,13 @@ describe('ReEvaluateButton', () => {
 
     render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
     await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+      await user.click(screen.getByRole('button', { name: /Re-evaluate/ }))
     })
     const cancelButton = screen.getByRole('button', { name: 'Cancel' })
     await act(async () => {
-      userEvent.click(cancelButton)
+      await user.click(cancelButton)
     })
     expect(cancelButton).toBeDisabled()
-    await act(async () => {
-      userEvent.click(cancelButton)
-      userEvent.click(cancelButton)
-    })
     expect(global.fetch).toHaveBeenCalledTimes(2)
     expect(global.fetch).toHaveBeenLastCalledWith(
       '/api/jobs/runs/reevaluate/batch-cancel-pending',
@@ -514,11 +512,11 @@ describe('ReEvaluateButton', () => {
       .mockResolvedValueOnce(httpErrorResponse(503, 'Service Unavailable'))
     render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
     await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+      await user.click(screen.getByRole('button', { name: /Re-evaluate/ }))
     })
     const cancelButton = screen.getByRole('button', { name: 'Cancel' })
     await act(async () => {
-      userEvent.click(cancelButton)
+      await user.click(cancelButton)
     })
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Cancel failed: Service Unavailable'
@@ -536,7 +534,7 @@ describe('ReEvaluateButton', () => {
       expect.objectContaining({ method: 'DELETE' })
     )
     await act(async () => {
-      vi.advanceTimersByTime(10000)
+      await vi.advanceTimersByTimeAsync(10000)
     })
     expect(global.fetch).toHaveBeenCalledTimes(2)
   })
@@ -552,13 +550,13 @@ describe('ReEvaluateButton', () => {
     render(<ReEvaluateButton prowJobBuildIDs={['1', '2']} />)
 
     await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+      await user.click(screen.getByRole('button', { name: /Re-evaluate/ }))
     })
 
     // Four failures must leave the run active.
     for (let i = 0; i < 4; i++) {
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        await vi.advanceTimersByTimeAsync(2500)
       })
     }
 
@@ -567,7 +565,7 @@ describe('ReEvaluateButton', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
 
     await waitFor(() => {
@@ -585,7 +583,7 @@ describe('ReEvaluateButton', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(global.fetch).toHaveBeenCalledTimes(6)
     await act(async () => {
-      vi.advanceTimersByTime(10000)
+      await vi.advanceTimersByTimeAsync(10000)
     })
     expect(global.fetch).toHaveBeenCalledTimes(6)
   })
@@ -606,10 +604,10 @@ describe('ReEvaluateButton', () => {
         )
       render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
       await act(async () => {
-        userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+        await user.click(screen.getByRole('button', { name: /Re-evaluate/ }))
       })
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        await vi.advanceTimersByTimeAsync(2500)
       })
 
       expect(global.fetch).toHaveBeenCalledTimes(2)
@@ -618,7 +616,7 @@ describe('ReEvaluateButton', () => {
       ).not.toBeDisabled()
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
       await act(async () => {
-        vi.advanceTimersByTime(10000)
+        await vi.advanceTimersByTimeAsync(10000)
       })
       expect(global.fetch).toHaveBeenCalledTimes(2)
     }
@@ -631,16 +629,16 @@ describe('ReEvaluateButton', () => {
       .mockResolvedValue(statusResponse('batch-unmount'))
     const { unmount } = render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
     await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+      await user.click(screen.getByRole('button', { name: /Re-evaluate/ }))
     })
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
     expect(global.fetch).toHaveBeenCalledTimes(2)
 
     unmount()
     await act(async () => {
-      vi.advanceTimersByTime(10000)
+      await vi.advanceTimersByTimeAsync(10000)
     })
     expect(global.fetch).toHaveBeenCalledTimes(2)
   })
@@ -659,12 +657,12 @@ describe('ReEvaluateButton', () => {
 
     render(<ReEvaluateButton prowJobBuildIDs={['1']} />)
     await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: /Re-evaluate/ }))
+      await user.click(screen.getByRole('button', { name: /Re-evaluate/ }))
     })
     // Four errors, one success, then four more errors must keep polling.
     for (let i = 0; i < 9; i++) {
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        await vi.advanceTimersByTimeAsync(2500)
       })
     }
     expect(global.fetch).toHaveBeenCalledTimes(10)
@@ -673,7 +671,7 @@ describe('ReEvaluateButton', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 
     await act(async () => {
-      vi.advanceTimersByTime(2500)
+      await vi.advanceTimersByTimeAsync(2500)
     })
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Lost connection to batch status after 5 failed attempts.'

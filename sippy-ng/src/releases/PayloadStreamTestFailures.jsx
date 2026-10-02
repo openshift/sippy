@@ -12,7 +12,15 @@ import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-function PayloadStreamTestFailures(props) {
+function PayloadStreamTestFailures({
+  hideControls = false,
+  pageSize: pageSizeDefault = 25,
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'kind',
+  sort: sortDefault = 'asc',
+  ...props
+}) {
   const { classes } = props
 
   // Most things not filterable here, as we are not querying them directly from db,
@@ -101,26 +109,26 @@ function PayloadStreamTestFailures(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeDefault, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
+    const newItems = filterModel.items.filter((f) => f.field !== 'name')
     newItems.push({
       id: 99,
-      columnField: 'name',
-      operatorValue: 'contains',
+      field: 'name',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -139,7 +147,7 @@ function PayloadStreamTestFailures(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -232,15 +240,15 @@ function PayloadStreamTestFailures(props) {
           </Tooltip>
         </Typography>
         <DataGrid
-          components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+          slots={{ toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
           columns={columns}
           autoHeight={true}
-          disableColumnFilter={props.briefTable}
+          disableColumnFilter={briefTable}
           disableColumnMenu={true}
-          pageSize={pageSize}
-          onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          paginationModel={{ pageSize, page: 0 }}
+          onPaginationModelChange={(model) => setPageSize(model.pageSize)}
+          pageSizeOptions={[5, 10, 25, 50]}
           filterMode="server"
           sortingMode="server"
           sortingOrder={['desc', 'asc']}
@@ -254,7 +262,7 @@ function PayloadStreamTestFailures(props) {
           getRowClassName={(params) =>
             classes['row-percent-' + params.row.blocker_score]
           }
-          componentsProps={{
+          slotProps={{
             toolbar: {
               columns: columns,
               clearSearch: () => requestSearch(''),
@@ -269,18 +277,6 @@ function PayloadStreamTestFailures(props) {
       </Card>
     </Grid>
   )
-}
-
-PayloadStreamTestFailures.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'kind',
-  sort: 'asc',
 }
 
 PayloadStreamTestFailures.propTypes = {

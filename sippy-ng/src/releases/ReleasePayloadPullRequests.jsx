@@ -19,7 +19,16 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-function ReleasePayloadPullRequests(props) {
+function ReleasePayloadPullRequests({
+  limit = 0,
+  hideControls = false,
+  pageSize: pageSizeDefault = 25,
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'pull_request_id',
+  sort: sortDefault = 'asc',
+  ...props
+}) {
   const theme = useTheme()
   const classes = useStyles(theme)
 
@@ -62,28 +71,28 @@ function ReleasePayloadPullRequests(props) {
 
   const [filterModel, setFilterModel] = useStableJSONQueryParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeDefault, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
 
+  const [page, setPage] = React.useState(0)
+
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -102,7 +111,7 @@ function ReleasePayloadPullRequests(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -131,8 +140,8 @@ function ReleasePayloadPullRequests(props) {
       queryString += '&release=' + safeEncodeURIComponent(props.release)
     }
 
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
+    if (limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(limit)
     }
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
@@ -172,15 +181,18 @@ function ReleasePayloadPullRequests(props) {
 
   return (
     <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       autoHeight={true}
-      disableColumnFilter={props.briefTable}
+      disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={[5, 10, 25, 50]}
+      paginationModel={{ page, pageSize }}
+      onPaginationModelChange={(model) => {
+        setPage(model.page)
+        setPageSize(model.pageSize)
+      }}
+      pageSizeOptions={[5, 10, 25, 50]}
       getRowClassName={(params) => classes['rowPhase' + params.row.phase]}
       filterMode="server"
       sortingMode="server"
@@ -192,7 +204,7 @@ function ReleasePayloadPullRequests(props) {
         },
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),
@@ -205,18 +217,6 @@ function ReleasePayloadPullRequests(props) {
       }}
     />
   )
-}
-
-ReleasePayloadPullRequests.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'pull_request_id',
-  sort: 'asc',
 }
 
 ReleasePayloadPullRequests.propTypes = {
