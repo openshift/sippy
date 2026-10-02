@@ -49537,6 +49537,29 @@ periodic-ci-openshift-lightspeed-service-main-4.22-e2e-ols-cluster-periodics:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-lightspeed-service-main-4.22-ols-eval-periodic-daily:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-lvm-operator-main-nightly-e2e-aws-disc-mno-qe-integration-tests:
     Aggregation: none
     Architecture: amd64
@@ -79045,6 +79068,30 @@ periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-external-ibmz-agent-libvirt
     ContainerRuntime: crun
     FeatureSet: default
     Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: parallel
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-external-ibmz-upi-libvirt:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
     JobTier: candidate
     LayeredProduct: none
     Network: ovn
@@ -334467,6 +334514,150 @@ periodic-ci-openshift-rhwa-system-tests-main-5.0-tls13-adherence-all:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-upstream-e2e-far-daily-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-upstream-e2e-mdr-daily-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-upstream-e2e-nhc-daily-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-upstream-e2e-nmo-daily-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-upstream-e2e-sbr-daily-aws-odf:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-upstream-e2e-snr-daily-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-rosa-master-e2e-rosa-hcp-advanced-prod-critical-high-f3:
     Aggregation: none
     Architecture: amd64
@@ -356561,6 +356752,30 @@ periodic-ci-quay-quay-redhat-3.18-aws-arm64-ocp422-e2e-install-aws-s3-nightly:
     Topology: ha
     Upgrade: none
 periodic-ci-quay-quay-redhat-3.18-aws-ocp50-e2e-install-aws-s3-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-aws-ocp414-e2e-install-aws-s3-nightly:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
