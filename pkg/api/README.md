@@ -804,3 +804,20 @@ Each regression object in `would_close` / `would_not_close` includes:
 | last_failure_before_resolution| String (time)   | Most recent failing job run at or before the resolution time.   |
 | first_failure_after_resolution| String (time)   | Earliest failing job run after the resolution time, if any (a gap indicator that the test kept failing). |
 | links                         | Object          | HATEOAS links for the regression (`self` points to its detail endpoint). |
+### Job label reconciliation
+
+`POST /api/jobs/runs/{run_id}/labels/reconcile` reconciles a job run's complete label set
+from the existing GCS `artifacts/job_labels/` prefix. The request body is empty. Sippy
+loads the run's GCS bucket and job path from authoritative PostgreSQL metadata.
+
+Sippy reads all current label files once. A successful empty prefix removes all labels. GCS
+listing, object-read, or malformed-file errors are non-destructive and return an error for
+notification retry. The subscriber filters supported GCS event types before calling this
+endpoint; the endpoint can also be invoked by manual or other internal reconciliation triggers.
+A missing downstream run is acknowledged and ignored because the labels are read from GCS when
+the run is loaded later.
+
+Known follow-up: label titles and explanations are global metadata keyed by label ID, while
+GCS files are per-job. Different producers emitting different metadata for the same ID could
+overwrite one another. TRT-2884 retains the existing behavior and requires a future canonical
+metadata policy.
