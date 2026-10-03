@@ -961,6 +961,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"-aws-ovn-installer-dualstack-ipv6-primary-techpreview"}, "standard"},
 		{[]string{"-aws-ovn-installer-dualstack-ipv4-primary-techpreview"}, "standard"},
 
+		// Azure DualStack Techpreview jobs - candidate tier to collect data while stabilizing
+		{[]string{"-azure-ovn-dualstack"}, "candidate"},
+
 		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}
 
