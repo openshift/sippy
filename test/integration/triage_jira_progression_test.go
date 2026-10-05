@@ -152,6 +152,66 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		assert.Empty(t, string(triage.ResolutionReason))
 	})
 
+	t.Run("clears jira-progression resolution via bug_id when URL diverges", func(t *testing.T) {
+		dbc := intutil.NewTestDB(t, pgContainer)
+		ctx := context.Background()
+
+		oldURL := "https://issues.example.com/OLD-1"
+		newURL := "https://issues.example.com/NEW-1"
+		bug := createBug(t, dbc, "OLD-1", "ON_QA", "key will change", oldURL)
+		reg := intutil.CreateTestRegression(t, dbc, "test-bugid-1", "4.19")
+		triage := intutil.CreateTriage(t, dbc, oldURL, intutil.WithRegressions(reg))
+
+		// Reconcile to link bug_id and auto-resolve
+		runReconcileTriages(ctx, t, dbc)
+		reloadTriage(t, dbc, &triage)
+		require.True(t, triage.Resolved.Valid, "triage should be resolved after bug progressed")
+		require.NotNil(t, triage.BugID, "bug_id should be linked")
+
+		// Simulate Jira key change: bug URL updates, triage keeps old URL
+		require.NoError(t, dbc.DB.Model(&bug).Updates(map[string]interface{}{
+			"url":    newURL,
+			"key":    "NEW-1",
+			"status": "In Progress",
+		}).Error)
+
+		runReconcileTriages(ctx, t, dbc)
+
+		reloadTriage(t, dbc, &triage)
+		assert.False(t, triage.Resolved.Valid, "triage should be unresolved via bug_id match despite URL mismatch")
+		assert.Empty(t, string(triage.ResolutionReason))
+	})
+
+	t.Run("auto-resolves via bug_id when URL diverges", func(t *testing.T) {
+		dbc := intutil.NewTestDB(t, pgContainer)
+		ctx := context.Background()
+
+		oldURL := "https://issues.example.com/RESOLVE-OLD-1"
+		newURL := "https://issues.example.com/RESOLVE-NEW-1"
+		bug := createBug(t, dbc, "RESOLVE-OLD-1", "New", "key will change", oldURL)
+		reg := intutil.CreateTestRegression(t, dbc, "test-resolve-bugid-1", "4.19")
+		triage := intutil.CreateTriage(t, dbc, oldURL, intutil.WithRegressions(reg))
+
+		// Reconcile to link bug_id
+		runReconcileTriages(ctx, t, dbc)
+		reloadTriage(t, dbc, &triage)
+		require.NotNil(t, triage.BugID, "bug_id should be linked")
+		require.False(t, triage.Resolved.Valid, "triage should not be resolved for open bug")
+
+		// Simulate Jira key change and bug progression
+		require.NoError(t, dbc.DB.Model(&bug).Updates(map[string]interface{}{
+			"url":    newURL,
+			"key":    "RESOLVE-NEW-1",
+			"status": "Verified",
+		}).Error)
+
+		runReconcileTriages(ctx, t, dbc)
+
+		reloadTriage(t, dbc, &triage)
+		assert.True(t, triage.Resolved.Valid, "triage should be auto-resolved via bug_id match despite URL mismatch")
+		assert.Equal(t, string(models.JiraProgression), string(triage.ResolutionReason))
+	})
+
 	t.Run("idempotent auto-resolve", func(t *testing.T) {
 		dbc := intutil.NewTestDB(t, pgContainer)
 		ctx := context.Background()
