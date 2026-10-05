@@ -20605,7 +20605,7 @@ periodic-ci-openshift-cnv-cnv-ci-master-cnv-odf-ocp5.1-konflux-smoke:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-cnv-ocp-virt-validation-checkup-main-periodics-e2e-azure:
+periodic-ci-openshift-cnv-ocp-virt-validation-checkup-main-periodics-smoke-azure:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -27148,6 +27148,52 @@ periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-ov
     SecurityMode: default
     Suite: unknown
     Topology: compact
+    Upgrade: none
+periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-ove-ha-agent-dualstack-disc-konflux:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos9
+    Owner: qe
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-ove-sno-agent-ipv6-disc-konflux:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos9
+    Owner: qe
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: single
     Upgrade: none
 periodic-ci-openshift-eng-agent-qe-infra-release-4.22-amd64-nightly-baremetal-pxe-sno-agent-ipv4-static-connected-f7:
     Aggregation: none
@@ -48663,6 +48709,24 @@ periodic-ci-openshift-kueue-operator-main-test-e2e-4-22-hypershift:
     SecurityMode: default
     Suite: unknown
     Topology: external
+    Upgrade: none
+periodic-ci-openshift-kueue-operator-main-test-e2e-ci-build-downstream-dra-cc-5-0:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
     Upgrade: none
 periodic-ci-openshift-kueue-operator-main-test-e2e-ci-build-upstream-dra-4-22:
     Aggregation: none
