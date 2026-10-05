@@ -14,9 +14,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
+	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 const ticketRecencyFilter = `t.summary IS NOT NULL
@@ -441,14 +443,22 @@ func (bl *BugLoader) syncJobAssociations(conn db.PgxSession) error {
 }
 
 func (bl *BugLoader) reconcileTriages(conn db.PgxSession) error {
+	return ReconcileTriages(bl.ctx, conn)
+}
+
+// ReconcileTriages synchronizes triage resolution state with linked Jira bug
+// statuses. It updates descriptions from linked bugs, links triages to bug
+// records, auto-resolves single-release triages whose bugs have progressed,
+// and clears automatic jira-progression resolutions when the linked bug
+// returns to an open state.
+func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 	st := time.Now()
 
-	// Update triage descriptions from their linked bug's summary
-	descTag, err := conn.Exec(bl.ctx, `
+	descTag, err := conn.Exec(ctx, `
 		UPDATE triages t
 		SET description = b.summary, updated_at = NOW()
 		FROM bugs b
-		WHERE b.url = t.url
+		WHERE (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
 		  AND b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND b.summary != ''
@@ -458,8 +468,7 @@ func (bl *BugLoader) reconcileTriages(conn db.PgxSession) error {
 		return fmt.Errorf("updating triage descriptions: %w", err)
 	}
 
-	// Link triages to their bug records
-	linkTag, err := conn.Exec(bl.ctx, `
+	linkTag, err := conn.Exec(ctx, `
 		UPDATE triages t
 		SET bug_id = b.id, updated_at = NOW()
 		FROM bugs b
@@ -474,30 +483,55 @@ func (bl *BugLoader) reconcileTriages(conn db.PgxSession) error {
 
 	// Auto-resolve triages where the bug has progressed and the triage
 	// covers only a single release
-	resolveTag, err := conn.Exec(bl.ctx, `
+	resolvedBugStatuses := []string{
+		jiratype.StatusOnQA,
+		jiratype.StatusVerified,
+		jiratype.StatusReleasePending,
+		jiratype.StatusClosed,
+	}
+	resolveTag, err := conn.Exec(ctx, `
 		UPDATE triages t
-		SET resolved = NOW(), resolution_reason = 'jira-progression', updated_at = NOW()
+		SET resolved = NOW(), resolution_reason = $1, updated_at = NOW()
 		FROM bugs b
-		WHERE b.url = t.url
+		WHERE (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
 		  AND b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND t.resolved IS NULL
-		  AND b.status IN ('ON_QA', 'Verified', 'Release Pending', 'Closed')
+		  AND b.status = ANY($2)
 		  AND (
 			SELECT COUNT(DISTINCT r.release)
 			FROM triage_regressions tr
 			INNER JOIN test_regressions r ON r.id = tr.test_regression_id
 			WHERE tr.triage_id = t.id
 		  ) = 1
-	`)
+	`, string(models.JiraProgression), resolvedBugStatuses)
 	if err != nil {
 		return fmt.Errorf("auto-resolving triages: %w", err)
+	}
+
+	// Clear jira-progression resolutions when the linked bug returns to an
+	// open state. Only automatically set resolutions are reversed; manual
+	// (user) and regressions-rolled-off resolutions are never touched.
+	unresolveTag, err := conn.Exec(ctx, `
+		UPDATE triages t
+		SET resolved = NULL, resolution_reason = '', updated_at = NOW()
+		FROM bugs b
+		WHERE (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
+		  AND b.deleted_at IS NULL
+		  AND t.url != ''
+		  AND t.resolved IS NOT NULL
+		  AND t.resolution_reason = $1
+		  AND NOT (b.status = ANY($2))
+	`, string(models.JiraProgression), resolvedBugStatuses)
+	if err != nil {
+		return fmt.Errorf("clearing jira-progression resolutions: %w", err)
 	}
 
 	log.WithFields(log.Fields{
 		"descriptions_updated": descTag.RowsAffected(),
 		"bugs_linked":          linkTag.RowsAffected(),
 		"auto_resolved":        resolveTag.RowsAffected(),
+		"auto_unresolved":      unresolveTag.RowsAffected(),
 		"elapsed":              time.Since(st),
 	}).Info("triage reconciliation complete")
 	return nil
