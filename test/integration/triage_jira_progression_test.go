@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/dataloader/bugloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -21,7 +22,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/RESOLVE-1"
-		createBug(t, dbc, "RESOLVE-1", "ON_QA", "fix landed", bugURL)
+		createBug(t, dbc, "RESOLVE-1", jiratype.StatusOnQA, "fix landed", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-resolve-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL, intutil.WithRegressions(reg))
 
@@ -33,7 +34,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 	})
 
 	t.Run("auto-resolves for all progressed statuses", func(t *testing.T) {
-		for _, status := range []string{"ON_QA", "Verified", "Release Pending", "Closed"} {
+		for _, status := range []string{jiratype.StatusOnQA, jiratype.StatusVerified, jiratype.StatusReleasePending, jiratype.StatusClosed} {
 			t.Run(status, func(t *testing.T) {
 				dbc := intutil.NewTestDB(t, pgContainer)
 				ctx := context.Background()
@@ -57,7 +58,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/MULTI-1"
-		createBug(t, dbc, "MULTI-1", "ON_QA", "multi-release bug", bugURL)
+		createBug(t, dbc, "MULTI-1", jiratype.StatusOnQA, "multi-release bug", bugURL)
 		reg1 := intutil.CreateTestRegression(t, dbc, "test-multi-1a", "4.18")
 		reg2 := intutil.CreateTestRegression(t, dbc, "test-multi-1b", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL, intutil.WithRegressions(reg1, reg2))
@@ -74,11 +75,11 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/REOPEN-1"
-		bug := createBug(t, dbc, "REOPEN-1", "In Progress", "bug reopened", bugURL)
+		bug := createBug(t, dbc, "REOPEN-1", jiratype.StatusInProgress, "bug reopened", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-reopen-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL,
 			intutil.WithResolved(time.Now()), intutil.WithRegressions(reg))
-		setResolutionReason(t, dbc, triage.ID, "jira-progression")
+		setResolutionReason(t, dbc, triage.ID, string(models.JiraProgression))
 
 		runReconcileTriages(ctx, t, dbc)
 
@@ -94,12 +95,12 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/USER-1"
-		createBug(t, dbc, "USER-1", "In Progress", "user resolved", bugURL)
+		createBug(t, dbc, "USER-1", jiratype.StatusInProgress, "user resolved", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-user-1", "4.19")
 		resolvedAt := time.Now().Truncate(time.Second)
 		triage := intutil.CreateTriage(t, dbc, bugURL,
 			intutil.WithResolved(resolvedAt), intutil.WithRegressions(reg))
-		setResolutionReason(t, dbc, triage.ID, "user")
+		setResolutionReason(t, dbc, triage.ID, string(models.User))
 
 		runReconcileTriages(ctx, t, dbc)
 
@@ -113,11 +114,11 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/ROLLED-1"
-		createBug(t, dbc, "ROLLED-1", "In Progress", "rolled off", bugURL)
+		createBug(t, dbc, "ROLLED-1", jiratype.StatusInProgress, "rolled off", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-rolled-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL,
 			intutil.WithResolved(time.Now()), intutil.WithRegressions(reg))
-		setResolutionReason(t, dbc, triage.ID, "regressions-rolled-off")
+		setResolutionReason(t, dbc, triage.ID, string(models.RegressionsRolledOff))
 
 		runReconcileTriages(ctx, t, dbc)
 
@@ -131,7 +132,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/LIFECYCLE-1"
-		bug := createBug(t, dbc, "LIFECYCLE-1", "ON_QA", "lifecycle bug", bugURL)
+		bug := createBug(t, dbc, "LIFECYCLE-1", jiratype.StatusOnQA, "lifecycle bug", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-lifecycle-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL, intutil.WithRegressions(reg))
 
@@ -143,7 +144,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		assert.Equal(t, string(models.JiraProgression), string(triage.ResolutionReason))
 
 		// Step 2: bug reopens, triage resolution should be cleared
-		require.NoError(t, dbc.DB.Model(&bug).Update("status", "In Progress").Error)
+		require.NoError(t, dbc.DB.Model(&bug).Update("status", jiratype.StatusInProgress).Error)
 
 		runReconcileTriages(ctx, t, dbc)
 
@@ -158,7 +159,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 
 		oldURL := "https://issues.example.com/OLD-1"
 		newURL := "https://issues.example.com/NEW-1"
-		bug := createBug(t, dbc, "OLD-1", "ON_QA", "key will change", oldURL)
+		bug := createBug(t, dbc, "OLD-1", jiratype.StatusOnQA, "key will change", oldURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-bugid-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, oldURL, intutil.WithRegressions(reg))
 
@@ -172,7 +173,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		require.NoError(t, dbc.DB.Model(&bug).Updates(map[string]interface{}{
 			"url":    newURL,
 			"key":    "NEW-1",
-			"status": "In Progress",
+			"status": jiratype.StatusInProgress,
 		}).Error)
 
 		runReconcileTriages(ctx, t, dbc)
@@ -188,7 +189,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 
 		oldURL := "https://issues.example.com/RESOLVE-OLD-1"
 		newURL := "https://issues.example.com/RESOLVE-NEW-1"
-		bug := createBug(t, dbc, "RESOLVE-OLD-1", "New", "key will change", oldURL)
+		bug := createBug(t, dbc, "RESOLVE-OLD-1", jiratype.StatusNew, "key will change", oldURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-resolve-bugid-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, oldURL, intutil.WithRegressions(reg))
 
@@ -202,7 +203,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		require.NoError(t, dbc.DB.Model(&bug).Updates(map[string]interface{}{
 			"url":    newURL,
 			"key":    "RESOLVE-NEW-1",
-			"status": "Verified",
+			"status": jiratype.StatusVerified,
 		}).Error)
 
 		runReconcileTriages(ctx, t, dbc)
@@ -217,7 +218,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/IDEM-1"
-		createBug(t, dbc, "IDEM-1", "Verified", "idempotent", bugURL)
+		createBug(t, dbc, "IDEM-1", jiratype.StatusVerified, "idempotent", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-idem-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL, intutil.WithRegressions(reg))
 
@@ -238,11 +239,11 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/IDEM-2"
-		createBug(t, dbc, "IDEM-2", "New", "reopened", bugURL)
+		createBug(t, dbc, "IDEM-2", jiratype.StatusNew, "reopened", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-idem-2", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL,
 			intutil.WithResolved(time.Now()), intutil.WithRegressions(reg))
-		setResolutionReason(t, dbc, triage.ID, "jira-progression")
+		setResolutionReason(t, dbc, triage.ID, string(models.JiraProgression))
 
 		runReconcileTriages(ctx, t, dbc)
 
@@ -261,7 +262,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/DESC-1"
-		createBug(t, dbc, "DESC-1", "New", "updated summary", bugURL)
+		createBug(t, dbc, "DESC-1", jiratype.StatusNew, "updated summary", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-desc-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL, intutil.WithRegressions(reg))
 
@@ -276,7 +277,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		ctx := context.Background()
 
 		bugURL := "https://issues.example.com/LINK-1"
-		bug := createBug(t, dbc, "LINK-1", "New", "linkable", bugURL)
+		bug := createBug(t, dbc, "LINK-1", jiratype.StatusNew, "linkable", bugURL)
 		reg := intutil.CreateTestRegression(t, dbc, "test-link-1", "4.19")
 		triage := intutil.CreateTriage(t, dbc, bugURL, intutil.WithRegressions(reg))
 		require.Nil(t, triage.BugID, "bug_id should be nil before reconciliation")

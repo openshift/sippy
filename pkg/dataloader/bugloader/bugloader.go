@@ -14,9 +14,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
+	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 )
 
 const ticketRecencyFilter = `t.summary IS NOT NULL
@@ -481,22 +483,28 @@ func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 
 	// Auto-resolve triages where the bug has progressed and the triage
 	// covers only a single release
+	resolvedBugStatuses := []string{
+		jiratype.StatusOnQA,
+		jiratype.StatusVerified,
+		jiratype.StatusReleasePending,
+		jiratype.StatusClosed,
+	}
 	resolveTag, err := conn.Exec(ctx, `
 		UPDATE triages t
-		SET resolved = NOW(), resolution_reason = 'jira-progression', updated_at = NOW()
+		SET resolved = NOW(), resolution_reason = $1, updated_at = NOW()
 		FROM bugs b
 		WHERE (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
 		  AND b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND t.resolved IS NULL
-		  AND b.status IN ('ON_QA', 'Verified', 'Release Pending', 'Closed')
+		  AND b.status = ANY($2)
 		  AND (
 			SELECT COUNT(DISTINCT r.release)
 			FROM triage_regressions tr
 			INNER JOIN test_regressions r ON r.id = tr.test_regression_id
 			WHERE tr.triage_id = t.id
 		  ) = 1
-	`)
+	`, string(models.JiraProgression), resolvedBugStatuses)
 	if err != nil {
 		return fmt.Errorf("auto-resolving triages: %w", err)
 	}
@@ -512,9 +520,9 @@ func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 		  AND b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND t.resolved IS NOT NULL
-		  AND t.resolution_reason = 'jira-progression'
-		  AND b.status NOT IN ('ON_QA', 'Verified', 'Release Pending', 'Closed')
-	`)
+		  AND t.resolution_reason = $1
+		  AND NOT (b.status = ANY($2))
+	`, string(models.JiraProgression), resolvedBugStatuses)
 	if err != nil {
 		return fmt.Errorf("clearing jira-progression resolutions: %w", err)
 	}
