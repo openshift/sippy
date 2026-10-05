@@ -458,7 +458,7 @@ func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 		UPDATE triages t
 		SET description = b.summary, updated_at = NOW()
 		FROM bugs b
-		WHERE b.url = t.url
+		WHERE (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
 		  AND b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND b.summary != ''

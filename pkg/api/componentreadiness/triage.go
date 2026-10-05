@@ -262,6 +262,9 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	case res.Error == nil:
 		triage.Bug = &bug
 		triage.BugID = &bug.ID
+	case existingTriage.URL != triage.URL:
+		triage.Bug = nil
+		triage.BugID = nil
 	}
 
 	// Use a transaction to handle both model update and association changes atomically
