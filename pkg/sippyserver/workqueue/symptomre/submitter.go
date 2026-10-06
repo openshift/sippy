@@ -3,6 +3,7 @@ package symptomre
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -80,7 +81,9 @@ func (s *Submitter) Submit(ctx context.Context, prowJobBuildIDs []string, dryRun
 
 	if _, err := s.riverClient.Insert(ctx, ProcessBatchArgs{BatchID: batchID}, nil); err != nil {
 		log.WithError(err).Errorf("enqueuing process-batch job for batch %s", batchID)
+		completedAt := time.Now().UTC()
 		batch.Status = workqueue.BatchStatusCancelled
+		batch.CompletedAt = &completedAt
 		if err2 := db.Save(&batch).Error; err2 != nil {
 			log.WithError(err2).Errorf("cancelling batch %s for failed river insert", batchID)
 		}

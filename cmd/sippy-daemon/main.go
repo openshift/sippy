@@ -155,9 +155,7 @@ func NewSippyDaemonCommand() *cobra.Command {
 				}()
 			}
 
-			daemonServer.Serve()
-
-			return nil
+			return daemonServer.Serve()
 
 		},
 	}
