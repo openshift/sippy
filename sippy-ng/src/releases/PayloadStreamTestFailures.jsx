@@ -121,6 +121,7 @@ function PayloadStreamTestFailures({
     'pageSize',
     NumberParam
   )
+  const [page, setPage] = React.useState(0)
 
   const requestSearch = (searchValue) => {
     const newItems = filterModel.items.filter((f) => f.field !== 'name')
@@ -246,8 +247,11 @@ function PayloadStreamTestFailures({
           autoHeight={true}
           disableColumnFilter={briefTable}
           disableColumnMenu={true}
-          paginationModel={{ pageSize, page: 0 }}
-          onPaginationModelChange={(model) => setPageSize(model.pageSize)}
+          paginationModel={{ pageSize, page }}
+          onPaginationModelChange={(model) => {
+            setPageSize(model.pageSize)
+            setPage(model.page)
+          }}
           pageSizeOptions={[5, 10, 25, 50]}
           filterMode="server"
           sortingMode="server"

@@ -320,10 +320,10 @@ export default function TriagedRegressionTestList(props) {
           columns={columns}
           getRowHeight={() => 'auto'}
           getRowId={(row) => row.id}
-          rowSelectionModel={activeRow}
+          rowSelectionModel={activeRow != null ? [activeRow] : []}
           onRowSelectionModelChange={(newRow) => {
             if (newRow.length > 0) {
-              setActiveRow(Number(newRow), 'replaceIn')
+              setActiveRow(Number(newRow[0]), 'replaceIn')
             }
           }}
           paginationModel={{ pageSize: 10, page: activePage || 0 }}

@@ -390,7 +390,7 @@ export default function TriagedRegressions({
         columnVisibilityModel={{ created_at: false, updated_at: false }}
         sortModel={sortModel}
         onSortModelChange={setSortModel}
-        rowSelectionModel={activeRow}
+        rowSelectionModel={activeRow != null ? [activeRow] : []}
         onRowSelectionModelChange={handleSetSelectionModel}
         slots={{ toolbar: GridToolbar }}
         rows={filteredTriageEntries}

@@ -451,9 +451,7 @@ export function JobAnalysis(props) {
               <JobTable
                 view="Variants"
                 hideControls={true}
-                initialState={{
-                  pagination: { paginationModel: { pageSize: 5 } },
-                }}
+                pageSize={5}
                 release={props.release}
                 filterModel={filterModel}
               />
