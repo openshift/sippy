@@ -117,7 +117,8 @@ export default function TriagedRegressions({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator: filterModel.logicOperator || 'and',
+      logicOperator:
+        filterModel.logicOperator || filterModel.linkOperator || 'and',
     })
   }
 
@@ -137,7 +138,8 @@ export default function TriagedRegressions({
     }
     setFilterModel({
       items: currentFilters,
-      logicOperator: filterModel.logicOperator || 'and',
+      logicOperator:
+        filterModel.logicOperator || filterModel.linkOperator || 'and',
     })
   }
 

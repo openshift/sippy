@@ -286,7 +286,9 @@ export function JobAnalysis(props) {
     newFilters.push(...hourFilter(newOffset, startDate))
     setFilterModel({
       items: newFilters,
-      logicOperator: filterModel ? filterModel.logicOperator : 'and',
+      logicOperator: filterModel
+        ? filterModel.logicOperator || filterModel.linkOperator || 'and'
+        : 'and',
     })
     setDayOffset(newOffset)
   }
@@ -308,7 +310,9 @@ export function JobAnalysis(props) {
 
     setFilterModel({
       items: newFilters,
-      logicOperator: filterModel ? filterModel.logicOperator : 'and',
+      logicOperator: filterModel
+        ? filterModel.logicOperator || filterModel.linkOperator || 'and'
+        : 'and',
     })
     setPeriod(newPeriod)
   }
@@ -330,7 +334,7 @@ export function JobAnalysis(props) {
     return {
       items: newFilters,
       not: filterModel.not,
-      logicOperator: filterModel.logicOperator,
+      logicOperator: filterModel.logicOperator || filterModel.linkOperator,
     }
   }
 
