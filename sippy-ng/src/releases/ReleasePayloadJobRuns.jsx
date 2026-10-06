@@ -150,6 +150,9 @@ function ReleasePayloadJobRuns({
       flex: 0.75,
       filterable: false,
       renderCell: (params) => {
+        if (!params.value) {
+          return ''
+        }
         return (
           <Tooltip title="View in Prow">
             <Button

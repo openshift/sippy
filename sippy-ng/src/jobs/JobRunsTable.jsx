@@ -326,6 +326,9 @@ export default function JobRunsTable({
       headerName: ' ',
       flex: 0.4,
       renderCell: (params) => {
+        if (!params.value) {
+          return ''
+        }
         return (
           <Tooltip title="View in Prow">
             <Button
