@@ -196,8 +196,20 @@ function ReleaseSelector(props) {
   const parseDateValue = (val) => {
     if (val instanceof Date) return val
     if (typeof val === 'string' && val) {
+      if (val.includes('Z') || val.includes('+')) {
+        const d = new Date(val)
+        return isNaN(d.getTime()) ? null : d
+      }
+      // Parse as local date components to preserve the calendar date
+      // regardless of the browser's timezone.
+      const parts = val.split(/[-T :]/)
       const d = new Date(
-        val.includes('Z') || val.includes('+') ? val : val + 'Z'
+        Number(parts[0]),
+        Number(parts[1] || 1) - 1,
+        Number(parts[2] || 1),
+        Number(parts[3] || 0),
+        Number(parts[4] || 0),
+        Number(parts[5] || 0)
       )
       return isNaN(d.getTime()) ? null : d
     }

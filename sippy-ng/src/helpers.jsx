@@ -185,7 +185,7 @@ export function pathForExactTestAnalysisWithFilter(
   let filters = [filterFor('name', 'equals', test)]
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if (item.field === 'variants') {
+      if ((item.field || item.columnField) === 'variants') {
         filters.push(item)
       }
     })
@@ -226,7 +226,7 @@ export function pathForJobRunsWithTestFailure(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if (item.field === 'variants') {
+      if ((item.field || item.columnField) === 'variants') {
         filters.push(item)
       }
     })
@@ -241,7 +241,7 @@ export function pathForJobRunsWithTest(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if (item.field === 'variants') {
+      if ((item.field || item.columnField) === 'variants') {
         filters.push(item)
       }
     })
@@ -256,7 +256,7 @@ export function pathForJobRunsWithTestFlake(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if (item.field === 'variants') {
+      if ((item.field || item.columnField) === 'variants') {
         filters.push(item)
       }
     })

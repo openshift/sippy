@@ -154,7 +154,6 @@ export default function JobRunsTable({
   const columns = [
     {
       field: 'id',
-      hide: true,
       type: 'number',
       filterable: false,
     },
@@ -387,14 +386,12 @@ export default function JobRunsTable({
       type: 'array',
       autocomplete: 'variants',
       headerName: 'Variants',
-      hide: true,
     },
     {
       field: 'failed_test_names',
       type: 'array',
       autocomplete: 'tests',
       headerName: 'Failed tests',
-      hide: true,
       sortable: false,
     },
     {
@@ -402,7 +399,6 @@ export default function JobRunsTable({
       type: 'array',
       autocomplete: 'tests',
       headerName: 'Flaked tests',
-      hide: true,
       sortable: false,
     },
     {
@@ -410,31 +406,26 @@ export default function JobRunsTable({
       type: 'array',
       autocomplete: 'tests',
       headerName: 'Tests ran',
-      hide: true,
       sortable: false,
     },
     {
       field: 'pull_request_author',
       autocomplete: 'authors',
       headerName: 'Pull request author',
-      hide: true,
     },
     {
       field: 'pull_request_repo',
       autocomplete: 'repos',
       headerName: 'Pull request repo',
-      hide: true,
     },
     {
       field: 'pull_request_org',
       autocomplete: 'orgs',
       headerName: 'Pull request org',
-      hide: true,
     },
     {
       field: 'pull_request_sha',
       headerName: 'Pull request SHA',
-      hide: true,
     },
     // These are fields on the job, not the run - but we can
     // filter by them.
@@ -444,14 +435,12 @@ export default function JobRunsTable({
       release: release,
       headerName: 'Name',
       type: 'string',
-      hide: 'true',
     },
     {
       field: 'cluster',
       autocomplete: 'cluster',
       headerName: 'Build cluster',
       type: 'string',
-      hide: 'true',
     },
   ]
 
@@ -668,6 +657,19 @@ export default function JobRunsTable({
       paginationModel={paginationModel}
       onPaginationModelChange={handlePaginationModelChange}
       columns={columns}
+      columnVisibilityModel={{
+        id: false,
+        variants: false,
+        failed_test_names: false,
+        flaked_test_names: false,
+        ran_test_names: false,
+        pull_request_author: false,
+        pull_request_repo: false,
+        pull_request_org: false,
+        pull_request_sha: false,
+        name: false,
+        cluster: false,
+      }}
       autoHeight={true}
       checkboxSelection
       onRowSelectionModelChange={(newSelection) =>

@@ -141,7 +141,6 @@ export const getColumns = (config, _openBugzillaDialog) => {
         )
       },
       filterable: false,
-      hide: config.briefTable,
     },
     job_runs: {
       field: 'job_runs',
@@ -161,7 +160,6 @@ export const getColumns = (config, _openBugzillaDialog) => {
         )
       },
       filterable: false,
-      hide: config.briefTable,
     },
     link: {
       field: 'link',
@@ -170,7 +168,6 @@ export const getColumns = (config, _openBugzillaDialog) => {
       flex: 0.4,
 
       filterable: false,
-      hide: config.briefTable,
       renderCell: (params) => {
         return (
           <Tooltip title="Find Bugs">
@@ -199,21 +196,18 @@ export const getColumns = (config, _openBugzillaDialog) => {
       autocomplete: 'orgs',
       type: 'string',
       headerName: 'GitHub Org',
-      hide: true,
     },
     repo: {
       field: 'repo',
       autocomplete: 'repos',
       type: 'string',
       headerName: 'GitHub Repo',
-      hide: true,
     },
     variants: {
       field: 'variants',
       autocomplete: 'variants',
       type: 'array',
       headerName: 'Variants',
-      hide: true,
       renderCell: (params) => (
         <Tooltip
           sx={{ whiteSpace: 'pre' }}
@@ -232,13 +226,11 @@ export const getColumns = (config, _openBugzillaDialog) => {
     current_runs: {
       field: 'current_runs',
       headerName: 'Current runs',
-      hide: true,
       type: 'number',
     },
     previous_runs: {
       field: 'previous_runs',
       headerName: 'Previous runs',
-      hide: true,
       type: 'number',
     },
   }
@@ -446,6 +438,7 @@ function JobTable({
 
   const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
+  const [page, setPage] = React.useState(0)
   const [_jobDetails, _setJobDetails] = React.useState({ bugs: [] })
 
   const fetchData = () => {
@@ -635,6 +628,7 @@ function JobTable({
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
+        columnVisibilityModel={gridView.columnVisibilityModel}
         autoHeight={true}
         getRowHeight={() => 'auto'}
         sortingOrder={['desc', 'asc']}
@@ -652,8 +646,11 @@ function JobTable({
         checkboxSelection={!briefTable && !hideControls}
         onRowSelectionModelChange={(rows) => setSelectedJobs(rows)}
         pageSizeOptions={pageSizeOptions}
-        paginationModel={{ pageSize, page: 0 }}
-        onPaginationModelChange={(model) => setPageSize(model.pageSize)}
+        paginationModel={{ pageSize, page }}
+        onPaginationModelChange={(model) => {
+          setPageSize(model.pageSize)
+          setPage(model.page)
+        }}
         getRowClassName={(params) =>
           classes[
             'row-percent-' + Math.round(params.row.current_pass_percentage)

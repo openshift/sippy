@@ -249,7 +249,6 @@ export function JobAnalysis(props) {
   const columns = [
     {
       field: 'id',
-      hide: true,
       filterable: false,
     },
     {
@@ -542,6 +541,7 @@ export function JobAnalysis(props) {
                       Select tests to chart
                     </Typography>
                     <DataGrid
+                      columnVisibilityModel={{ id: false }}
                       slots={{ toolbar: GridToolbar }}
                       columns={columns}
                       rows={allTests}

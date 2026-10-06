@@ -76,14 +76,16 @@ export function filterIsEmpty(filter) {
   return (
     !filter ||
     filter.items.length === 0 ||
-    (filter.items.length === 1 && filter.items[0].field === '')
+    (filter.items.length === 1 &&
+      (filter.items[0].field || filter.items[0].columnField || '') === '')
   )
 }
 
 export function filterItemRenderValue(item) {
   let value = item.value
   let tooltip = null
-  if (item.field === 'timestamp' && item.value !== '') {
+  const itemField = item.field || item.columnField
+  if (itemField === 'timestamp' && item.value !== '') {
     let date = new Date(item.value)
     value = format(utcToZonedTime(date, 'UTC'), "yyyy-MM-dd HH:mm 'UTC'", {
       timeZone: 'Etc/UTC',
@@ -104,7 +106,7 @@ export function filterTooltip(filter) {
 
     return (
       <li key={`filter-${index}`}>
-        {`${item.field}${item.not ? ' not ' : ' '}${item.operator} ${value}`}
+        {`${item.field || item.columnField}${item.not ? ' not ' : ' '}${item.operator} ${value}`}
         {description ? `(${description})` : ''}
       </li>
     )
@@ -130,7 +132,7 @@ export function filterList(filter, setFilter) {
     let { value, description } = filterItemRenderValue(item)
     let listItem = (
       <ListItemText>
-        {`${item.field} ${item.not ? 'not ' : ''} ${item.operator} `}
+        {`${item.field || item.columnField} ${item.not ? 'not ' : ''} ${item.operator} `}
         {value}
       </ListItemText>
     )

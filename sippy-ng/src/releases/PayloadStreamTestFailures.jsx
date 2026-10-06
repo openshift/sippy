@@ -29,7 +29,6 @@ function PayloadStreamTestFailures({
     {
       field: 'id',
       headerName: 'Test ID',
-      hide: true,
       filterable: false,
       sortable: false,
     },
@@ -240,6 +239,7 @@ function PayloadStreamTestFailures({
           </Tooltip>
         </Typography>
         <DataGrid
+          columnVisibilityModel={{ id: false }}
           slots={{ toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
           columns={columns}

@@ -201,7 +201,7 @@ export default function TriagedRegressionTestList(props) {
       flex: 8,
       filterable: true,
       sortable: false,
-      valueGetter: (params) => (params.row.force_closed ? 'Yes' : 'No'),
+      valueGetter: (value, row) => (row.force_closed ? 'Yes' : 'No'),
       renderCell: (params) => {
         if (!params.row.force_closed) {
           return null

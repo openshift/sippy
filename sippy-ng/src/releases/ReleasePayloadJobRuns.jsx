@@ -49,7 +49,6 @@ function ReleasePayloadJobRuns({
     {
       field: 'release_tag',
       headerName: 'Tag',
-      hide: true,
     },
     {
       field: 'job_name',
@@ -369,6 +368,7 @@ function ReleasePayloadJobRuns({
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={columns}
+        columnVisibilityModel={{ release_tag: false }}
         autoHeight={true}
         getRowClassName={(params) => classes['rowPhase' + params.row.state]}
         disableColumnFilter={briefTable}

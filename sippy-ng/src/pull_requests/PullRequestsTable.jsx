@@ -435,6 +435,7 @@ export default function PullRequestsTable({
     <Fragment>
       <DataGrid
         className={gridClasses.root}
+        columnVisibilityModel={gridView.columnVisibilityModel}
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         density="compact"

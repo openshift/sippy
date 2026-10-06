@@ -28,7 +28,6 @@ function PayloadTestFailures({
     {
       field: 'id',
       headerName: 'Test ID',
-      hide: true,
       filterable: false,
       sortable: false,
     },
@@ -212,6 +211,7 @@ function PayloadTestFailures({
           </Tooltip>
         </Typography>
         <DataGrid
+          columnVisibilityModel={{ id: false }}
           slots={{ toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
           columns={columns}

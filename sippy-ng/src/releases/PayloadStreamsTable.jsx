@@ -84,7 +84,6 @@ function PayloadStreamsTable({
       field: 'stream',
       headerName: 'Stream',
       flex: 1.5,
-      hide: briefTable,
       renderCell: (params) => {
         return (
           <Link
@@ -225,6 +224,7 @@ function PayloadStreamsTable({
 
   return (
     <DataGrid
+      columnVisibilityModel={briefTable ? { stream: false } : {}}
       slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}

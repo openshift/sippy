@@ -99,7 +99,6 @@ function ReleasePayloadTable({
       headerName: 'Forced',
       align: 'center',
       flex: 0.75,
-      hide: briefTable,
       renderCell: (params) => {
         if (params.value === true) {
           if (params.row.phase === 'Accepted') {
@@ -130,7 +129,6 @@ function ReleasePayloadTable({
       field: 'reject_reason',
       headerName: 'Reject reasons',
       flex: 1.5,
-      hide: briefTable,
       renderCell: (params) => {
         let display_reasons = []
 
@@ -187,13 +185,11 @@ function ReleasePayloadTable({
       field: 'architecture',
       headerName: 'Architecture',
       flex: 1.5,
-      hide: briefTable,
     },
     {
       field: 'stream',
       headerName: 'Stream',
       flex: 1.5,
-      hide: briefTable,
     },
     {
       field: 'release_time',
@@ -219,7 +215,6 @@ function ReleasePayloadTable({
       field: 'kubernetes_version',
       headerName: 'Kubernetes version',
       flex: 1.5,
-      hide: briefTable,
     },
     {
       field: 'current_os_version',
@@ -228,7 +223,6 @@ function ReleasePayloadTable({
       renderCell: (params) => {
         return <a href={params.row.current_os_url}>{params.value}</a>
       },
-      hide: briefTable,
     },
     {
       field: 'os_diff_url',
@@ -250,7 +244,6 @@ function ReleasePayloadTable({
           )
         }
       },
-      hide: briefTable,
     },
     {
       field: 'previous_os_version',
@@ -261,7 +254,6 @@ function ReleasePayloadTable({
           return <a href={params.row.previous_os_url}>{params.value}</a>
         }
       },
-      hide: briefTable,
     },
     {
       field: 'failed_job_names',
@@ -408,6 +400,20 @@ function ReleasePayloadTable({
 
   return (
     <DataGrid
+      columnVisibilityModel={
+        briefTable
+          ? {
+              forced: false,
+              reject_reason: false,
+              architecture: false,
+              stream: false,
+              kubernetes_version: false,
+              current_os_version: false,
+              os_diff_url: false,
+              previous_os_version: false,
+            }
+          : {}
+      }
       slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}

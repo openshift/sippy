@@ -325,7 +325,6 @@ export default function TriagedRegressions({
     {
       field: 'created_at',
       type: 'date',
-      hide: true,
       filterable: false,
       valueGetter: (value, row) => {
         return row.created_at ? new Date(row.created_at) : null
@@ -344,7 +343,6 @@ export default function TriagedRegressions({
     {
       field: 'updated_at',
       type: 'date',
-      hide: true,
       filterable: false,
       valueGetter: (value, row) => {
         return row.updated_at ? new Date(row.updated_at) : null
@@ -389,6 +387,7 @@ export default function TriagedRegressions({
     <Fragment>
       <Typography>Triaged Test Regressions</Typography>
       <DataGrid
+        columnVisibilityModel={{ created_at: false, updated_at: false }}
         sortModel={sortModel}
         onSortModelChange={setSortModel}
         rowSelectionModel={activeRow}

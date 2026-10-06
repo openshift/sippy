@@ -36,7 +36,6 @@ function ReleasePayloadPullRequests({
     {
       field: 'release_tag',
       headerName: 'Tag',
-      hide: true,
       flex: 1,
     },
     {
@@ -181,6 +180,7 @@ function ReleasePayloadPullRequests({
 
   return (
     <DataGrid
+      columnVisibilityModel={{ release_tag: false }}
       slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
