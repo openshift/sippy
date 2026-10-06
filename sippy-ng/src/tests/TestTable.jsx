@@ -1129,6 +1129,7 @@ function TestTable({
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
+        columnVisibilityModel={gridView.columnVisibilityModel}
         autoHeight={true}
         getRowId={(row) =>
           `${row.name}\x1f${row.suite_name || ''}\x1f${(
