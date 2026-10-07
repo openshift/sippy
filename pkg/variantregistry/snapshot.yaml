@@ -85932,6 +85932,86 @@ periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e-full:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e-stable-4-21:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e-stable-4-21-full:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e-stable-4-22:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e-stable-4-22-full:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-online-rosa-hyperfleet-main-nightly-ephemeral:
     Aggregation: none
     Architecture: amd64
@@ -194067,6 +194147,126 @@ periodic-ci-openshift-openshift-tests-private-release-4.22-ppc64le-nightly-power
     Release: "4.22"
     ReleaseMajor: "4"
     ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-4.23-automated-release-aws-ipi-disruptive-f999:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: qe
+    Platform: aws
+    Procedure: automated-release
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-4.23-automated-release-aws-ipi-f999:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: qe
+    Platform: aws
+    Procedure: automated-release
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-4.23-automated-release-azure-ipi-fips-f999:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: qe
+    Platform: azure
+    Procedure: automated-release
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-4.23-automated-release-azure-upi-f999:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: qe
+    Platform: azure
+    Procedure: automated-release
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-4.23-automated-release-gcp-ipi-f999:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: qe
+    Platform: gcp
+    Procedure: automated-release
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
