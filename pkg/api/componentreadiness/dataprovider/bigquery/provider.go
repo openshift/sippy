@@ -154,11 +154,19 @@ type jobVariantsCacheKey struct {
 	Dataset string
 }
 
-func (p *BigQueryProvider) QueryJobVariants(ctx context.Context, _ reqopts.RequestOptions) (crtest.JobVariants, []error) {
+// QueryJobVariants reuses the provider cache while honoring the caller's
+// read-only cache options during source comparisons.
+func (p *BigQueryProvider) QueryJobVariants(ctx context.Context, reqOptions reqopts.RequestOptions) (crtest.JobVariants, []error) {
 	return apiPkg.GetDataFromCacheOrGenerate[crtest.JobVariants](
-		ctx, p.client.Cache, apiCache.RequestOptions{},
+		ctx, p.client.Cache, jobVariantsCacheOptions(reqOptions),
 		apiPkg.NewCacheSpec(jobVariantsCacheKey{Dataset: p.client.Dataset}, "BQJobVariants~", nil),
 		p.queryJobVariantsFromBQ, crtest.JobVariants{})
+}
+
+// jobVariantsCacheOptions carries caller cache policy into the BQ lookup so
+// parity checks do not populate or refresh caches unexpectedly.
+func jobVariantsCacheOptions(reqOptions reqopts.RequestOptions) apiCache.RequestOptions {
+	return reqOptions.CacheOption
 }
 
 func (p *BigQueryProvider) queryJobVariantsFromBQ(ctx context.Context) (crtest.JobVariants, []error) {
