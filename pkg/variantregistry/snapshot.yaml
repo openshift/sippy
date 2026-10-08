@@ -41225,6 +41225,30 @@ periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-powervs-ovn:
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-rosa-hyperfleet:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-v2-aws:
     Aggregation: none
     Architecture: amd64
@@ -42819,6 +42843,30 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-powervs-ovn:
     NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-rosa-hyperfleet:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
     Procedure: none
     Release: "5.1"
     ReleaseMajor: "5"
