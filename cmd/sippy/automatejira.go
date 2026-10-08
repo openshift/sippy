@@ -53,6 +53,7 @@ func NewAutomateJiraFlags() *AutomateJiraFlags {
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
 		ColumnThresholds:        map[jiraautomator.Variant]int{},
+		JiraFlags:               *flags.NewJiraFlags(),
 	}
 }
 
