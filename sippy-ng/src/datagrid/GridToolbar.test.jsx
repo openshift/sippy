@@ -38,8 +38,8 @@ describe('GridToolbar', () => {
         filterModel: {
           items: [
             {
-              columnField: 'name',
-              operatorValue: 'contains',
+              field: 'name',
+              operator: 'contains',
               value: 'my-job',
             },
           ],
@@ -54,8 +54,8 @@ describe('GridToolbar', () => {
         filterModel: {
           items: [
             {
-              columnField: 'name',
-              operatorValue: 'contains',
+              field: 'name',
+              operator: 'contains',
               not: true,
               value: 'excluded',
             },
@@ -71,13 +71,13 @@ describe('GridToolbar', () => {
         filterModel: {
           items: [
             {
-              columnField: 'name',
-              operatorValue: 'contains',
+              field: 'name',
+              operator: 'contains',
               value: 'a',
             },
             {
-              columnField: 'name',
-              operatorValue: 'contains',
+              field: 'name',
+              operator: 'contains',
               value: 'b',
             },
           ],
@@ -92,8 +92,8 @@ describe('GridToolbar', () => {
         filterModel: {
           items: [
             {
-              columnField: 'name',
-              operatorValue: 'equals',
+              field: 'name',
+              operator: 'equals',
               value: 'exact',
             },
           ],

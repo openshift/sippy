@@ -33,8 +33,8 @@ export default function VariantStatus(props) {
                 filter={{
                   items: [
                     {
-                      columnField: 'variants',
-                      operatorValue: 'has entry',
+                      field: 'variants',
+                      operator: 'has entry',
                       value: props.variant,
                     },
                   ],

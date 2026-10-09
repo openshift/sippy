@@ -39,8 +39,8 @@ describe('TriagedRegressionTestList force-closed indicator', () => {
     const column = getForceClosedColumn()
 
     expect(column.filterable).toBe(true)
-    expect(column.valueGetter({ row: { force_closed: true } })).toBe('Yes')
-    expect(column.valueGetter({ row: { force_closed: false } })).toBe('No')
+    expect(column.valueGetter(undefined, { force_closed: true })).toBe('Yes')
+    expect(column.valueGetter(undefined, { force_closed: false })).toBe('No')
     expect(column.renderCell({ row: { force_closed: false } })).toBeNull()
   })
 

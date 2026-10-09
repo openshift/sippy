@@ -271,7 +271,7 @@ export default function TriageFields({
               label="Resolution Date"
               value={
                 triageEntryData.resolved?.Valid
-                  ? triageEntryData.resolved?.Time
+                  ? new Date(triageEntryData.resolved?.Time)
                   : null
               }
               onChange={(date) =>
@@ -280,9 +280,9 @@ export default function TriageFields({
                   resolved: { Time: date, Valid: date !== null },
                 }))
               }
-              renderInput={(props) => (
-                <TextField variant="standard" fullWidth {...props} />
-              )}
+              slotProps={{
+                textField: { variant: 'standard', fullWidth: true },
+              }}
             />
           </LocalizationProvider>
         )}

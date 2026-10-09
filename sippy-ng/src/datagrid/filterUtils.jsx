@@ -22,16 +22,48 @@ export const VALUELESS_OPERATORS = [
 ]
 
 /**
+ * Normalizes a single filter item from MUI X v5 property names to v7.
+ */
+export function normalizeFilterItem(item) {
+  if (!item) return item
+  const { columnField, operatorValue, ...rest } = item
+  const normalized = { ...rest }
+  if (columnField !== undefined && item.field === undefined) {
+    normalized.field = columnField
+  }
+  if (operatorValue !== undefined && item.operator === undefined) {
+    normalized.operator = operatorValue
+  }
+  return normalized
+}
+
+/**
+ * Normalizes a filter model from MUI X v5 property names to v7.
+ * Maps columnField→field, operatorValue→operator, linkOperator→logicOperator.
+ */
+export function normalizeFilterModel(filterModel) {
+  if (!filterModel) return filterModel
+  const { linkOperator, ...rest } = filterModel
+  const normalized = { ...rest }
+  if (linkOperator !== undefined && filterModel.logicOperator === undefined) {
+    normalized.logicOperator = linkOperator
+  }
+  if (filterModel.items) {
+    normalized.items = filterModel.items.map(normalizeFilterItem)
+  }
+  return normalized
+}
+
+/**
  * Determines if a filter item should be kept when pruning filters
  *
  * @param {Object} item - The filter item
  * @param {string} item.value - The filter value
- * @param {string} item.operatorValue - The operator (primary property name)
- * @param {string} item.operator - The operator (alternate property name)
+ * @param {string} item.operator - The operator
  * @returns {boolean} Whether the item should be kept
  */
 export function shouldKeepFilterItem(item) {
-  const operator = item.operatorValue || item.operator
+  const operator = item.operator || item.operatorValue
   return item.value !== '' || VALUELESS_OPERATORS.includes(operator)
 }
 
@@ -39,9 +71,9 @@ export function shouldKeepFilterItem(item) {
  * Applies a filter model to an array of rows
  *
  * @param {Array} rows - The data rows to filter
- * @param {Object} filterModel - The filter model with items and linkOperator
+ * @param {Object} filterModel - The filter model with items and logicOperator
  * @param {Array} filterModel.items - Array of filter items
- * @param {string} filterModel.linkOperator - 'and' or 'or' to combine filters
+ * @param {string} filterModel.logicOperator - 'and' or 'or' to combine filters
  * @param {Array} columns - Optional column definitions with valueGetters
  * @returns {Array} Filtered rows
  */
@@ -51,8 +83,10 @@ export function applyFilterModel(rows, filterModel, columns = null) {
     return rows
   }
 
+  const normalized = normalizeFilterModel(filterModel)
+
   // Filter out empty items - if all items are empty, treat as no filter
-  const validFilters = filterModel.items.filter((item) =>
+  const validFilters = normalized.items.filter((item) =>
     shouldKeepFilterItem(item)
   )
 
@@ -66,9 +100,8 @@ export function applyFilterModel(rows, filterModel, columns = null) {
       evaluateFilter(row, filter, columns)
     )
 
-    // Apply AND/OR logic
-    const linkOperator = filterModel.linkOperator || 'and'
-    return linkOperator === 'and'
+    const logicOperator = normalized.logicOperator || 'and'
+    return logicOperator === 'and'
       ? results.every((r) => r)
       : results.some((r) => r)
   })
@@ -79,21 +112,23 @@ export function applyFilterModel(rows, filterModel, columns = null) {
  *
  * @param {Object} row - The data row
  * @param {Object} filter - The filter to apply
- * @param {string} filter.columnField - The field name to filter on
- * @param {string} filter.operatorValue - The comparison operator
+ * @param {string} filter.field - The field name to filter on
+ * @param {string} filter.operator - The comparison operator
  * @param {any} filter.value - The value to compare against
  * @param {boolean} filter.not - Whether to negate the result
  * @param {Array} columns - Optional column definitions with valueGetters
  * @returns {boolean} Whether the row matches the filter
  */
 export function evaluateFilter(row, filter, columns = null) {
-  let fieldValue = row[filter.columnField]
+  const field = filter.field || filter.columnField
+  const operator = filter.operator || filter.operatorValue
+  let fieldValue = row[field]
 
   // Use valueGetter if available in columns definition
   if (columns) {
-    const column = columns.find((col) => col.field === filter.columnField)
+    const column = columns.find((col) => col.field === field)
     if (column && column.valueGetter) {
-      fieldValue = column.valueGetter({ row, value: fieldValue })
+      fieldValue = column.valueGetter(fieldValue, row)
     }
   }
 
@@ -104,17 +139,11 @@ export function evaluateFilter(row, filter, columns = null) {
   const isEmpty = isNullOrUndefined || fieldValue === ''
 
   // For isEmpty/isNotEmpty, treat null/undefined as empty
-  if (
-    filter.operatorValue === 'isEmpty' ||
-    filter.operatorValue === 'is empty'
-  ) {
+  if (operator === 'isEmpty' || operator === 'is empty') {
     match = isEmpty
     return filter.not ? !match : match
   }
-  if (
-    filter.operatorValue === 'isNotEmpty' ||
-    filter.operatorValue === 'is not empty'
-  ) {
+  if (operator === 'isNotEmpty' || operator === 'is not empty') {
     match = !isEmpty
     return filter.not ? !match : match
   }
@@ -127,7 +156,7 @@ export function evaluateFilter(row, filter, columns = null) {
   const value = String(fieldValue).toLowerCase()
   const filterValue = String(filter.value).toLowerCase()
 
-  switch (filter.operatorValue) {
+  switch (operator) {
     case 'contains':
       match = value.includes(filterValue)
       break
