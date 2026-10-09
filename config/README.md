@@ -80,3 +80,24 @@ rejected credentials cause an error, without falling back to PAT authentication.
 
 Setting these variables alone does not switch existing Jira consumers away from
 `--jira-token-file`, `JIRA_TOKEN`, or `JIRA_TOKEN_BASIC`.
+
+### Automator dry-run rollout
+
+Only `automate-jira` currently offers this opt-in path. After supplying the three
+environment variables above, add these flags to its existing invocation:
+
+```sh
+sippy automate-jira --jira-service-account --dry-run <existing automator flags>
+```
+
+`--jira-service-account` requires `--dry-run`; it cannot enable writes. Keep the
+existing `--jira-account` value during this authentication rollout, since it
+selects the creator of existing regression issues in searches. Changing it to
+the service-account identity would stop matching issues created by the old
+account. Keep `--sippy-url` and the existing data-source and view configuration.
+
+After merging and building the image, configure only the automator deployment
+with the read-only credential and these flags. Check its next run for successful
+searches and dry-run proposals. Other Sippy commands keep their current PAT
+authentication. To roll back, remove `--jira-service-account` and retain the
+existing PAT configuration.

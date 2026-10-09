@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -42,6 +43,7 @@ type AutomateJiraFlags struct {
 	ColumnThresholds    map[jiraautomator.Variant]int
 	JiraAccount         string
 	DryRun              bool
+	JiraServiceAccount  bool
 }
 
 func NewAutomateJiraFlags() *AutomateJiraFlags {
@@ -71,6 +73,7 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&f.ColumnThresholdStrs, "column-threshold", f.ColumnThresholdStrs, "A threshold of red cell counts over which a jira issue will be created against a component corresponding to an interesting variant of a column (e.g. Bare Metal Hardware Provisioning for metal platform). The format of the threshold string is [variant]:[value]:[threshold] (e.g. Platform:metal:3).")
 	fs.StringVar(&f.JiraAccount, "jira-account", f.JiraAccount, "The jira account used to automate jira")
 	fs.BoolVar(&f.DryRun, "dry-run", f.DryRun, "Print the tasks of automating jiras without real interaction with jira.")
+	fs.BoolVar(&f.JiraServiceAccount, "jira-service-account", f.JiraServiceAccount, "Use read-only Jira service-account OAuth credentials (requires --dry-run)")
 	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider: default, bigquery, or postgres")
 }
 
@@ -121,6 +124,18 @@ func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
 	return f.GoogleCloudFlags.Validate()
 }
 
+// getJiraClient keeps service-account authentication opt-in and limits its
+// initial rollout to dry runs using the read-only credential.
+func (f *AutomateJiraFlags) getJiraClient(ctx context.Context) (*jira.Client, error) {
+	if f.JiraServiceAccount {
+		if !f.DryRun {
+			return nil, fmt.Errorf("--jira-service-account requires --dry-run")
+		}
+		return f.JiraFlags.GetReadOnlyServiceAccountClient(ctx)
+	}
+	return f.JiraFlags.GetJiraClient()
+}
+
 func NewAutomateJiraCommand() *cobra.Command {
 	f := NewAutomateJiraFlags()
 
@@ -131,6 +146,14 @@ func NewAutomateJiraCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 			defer cancel()
+
+			jiraClient, err := f.getJiraClient(ctx)
+			if err != nil {
+				return errors.WithMessage(err, "couldn't get jira client")
+			}
+			if jiraClient == nil {
+				return fmt.Errorf("couldn't get jira client: jira auth is not configured")
+			}
 
 			cacheClient, err := f.CacheFlags.GetCacheClient()
 			if err != nil {
@@ -154,14 +177,6 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("unable to load views")
 			}
-			jiraClient, err := f.JiraFlags.GetJiraClient()
-			if err != nil {
-				return errors.WithMessage(err, "couldn't get jira client")
-			}
-			if jiraClient == nil {
-				return fmt.Errorf("couldn't get jira client: jira auth is not configured")
-			}
-
 			dbc, err := f.PostgresFlags.GetDBClient()
 			if err != nil {
 				log.WithError(err).Warn("unable to connect to postgres, will use BigQuery for release metadata")
