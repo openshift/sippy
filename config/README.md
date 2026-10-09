@@ -57,3 +57,26 @@ exclude a job from being part of the Sippy configuration by setting the job to `
       jobs:
         aggregated-aws-ovn-upgrade-4.11-micro-release-openshift-release-analysis-aggregator: false
 ```
+
+## Jira service-account credentials
+
+Consumers explicitly opting into read-only service-account authentication use
+these environment variables, supplied through deployment secrets:
+
+| Variable | Purpose |
+| --- | --- |
+| `JIRA_READ_ONLY_CLIENT_ID` | OAuth client ID for the read-only service-account credential |
+| `JIRA_READ_ONLY_CLIENT_SECRET` | OAuth client secret for that credential |
+| `JIRA_CLOUD_ID` | Jira cloud UUID for the target site |
+
+All three are required. The credential should have `read:jira-user` and
+`read:jira-work` scopes and access to the projects being queried. Scopes are
+assigned when creating the credential in Atlassian Administration.
+
+Service-account requests use `https://api.atlassian.com/ex/jira/{cloudId}/`,
+regardless of `--jira-url`. The OAuth library obtains and renews access tokens
+in memory; no access-token file or external renewal job is needed. Missing or
+rejected credentials cause an error, without falling back to PAT authentication.
+
+Setting these variables alone does not switch existing Jira consumers away from
+`--jira-token-file`, `JIRA_TOKEN`, or `JIRA_TOKEN_BASIC`.
