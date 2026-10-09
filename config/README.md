@@ -57,3 +57,47 @@ exclude a job from being part of the Sippy configuration by setting the job to `
       jobs:
         aggregated-aws-ovn-upgrade-4.11-micro-release-openshift-release-analysis-aggregator: false
 ```
+
+## Jira service-account credentials
+
+Consumers explicitly opting into read-only service-account authentication use
+these environment variables, supplied through deployment secrets:
+
+| Variable | Purpose |
+| --- | --- |
+| `JIRA_READ_ONLY_CLIENT_ID` | OAuth client ID for the read-only service-account credential |
+| `JIRA_READ_ONLY_CLIENT_SECRET` | OAuth client secret for that credential |
+| `JIRA_CLOUD_ID` | Jira cloud UUID for the target site |
+
+All three are required. The credential should have `read:jira-user` and
+`read:jira-work` scopes and access to the projects being queried. Scopes are
+assigned when creating the credential in Atlassian Administration.
+
+Service-account requests use `https://api.atlassian.com/ex/jira/{cloudId}/`,
+regardless of `--jira-url`. The OAuth library obtains and renews access tokens
+in memory; no access-token file or external renewal job is needed. Missing or
+rejected credentials cause an error, without falling back to PAT authentication.
+
+Setting these variables alone does not switch existing Jira consumers away from
+`--jira-token-file`, `JIRA_TOKEN`, or `JIRA_TOKEN_BASIC`.
+
+### Automator dry-run rollout
+
+Only `automate-jira` currently offers this opt-in path. After supplying the three
+environment variables above, add these flags to its existing invocation:
+
+```sh
+sippy automate-jira --jira-service-account --dry-run <existing automator flags>
+```
+
+`--jira-service-account` requires `--dry-run`; it cannot enable writes. Keep the
+existing `--jira-account` value during this authentication rollout, since it
+selects the creator of existing regression issues in searches. Changing it to
+the service-account identity would stop matching issues created by the old
+account. Keep `--sippy-url` and the existing data-source and view configuration.
+
+After merging and building the image, configure only the automator deployment
+with the read-only credential and these flags. Check its next run for successful
+searches and dry-run proposals. Other Sippy commands keep their current PAT
+authentication. To roll back, remove `--jira-service-account` and retain the
+existing PAT configuration.

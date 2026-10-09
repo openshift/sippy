@@ -1,6 +1,7 @@
 package flags
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -8,6 +9,8 @@ import (
 	"github.com/andygrunwald/go-jira"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+
+	"github.com/openshift/sippy/pkg/jiraauth"
 )
 
 // JiraFlags holds Jira configuration information for Sippy.
@@ -87,4 +90,23 @@ func (f *JiraFlags) GetJiraClient() (*jira.Client, error) {
 		return nil, err
 	}
 	return jiraClient, nil
+}
+
+// GetReadOnlyServiceAccountClient explicitly selects the read-only OAuth
+// credential. JiraURL and PAT configuration do not apply to this gateway client.
+func (f *JiraFlags) GetReadOnlyServiceAccountClient(ctx context.Context) (*jira.Client, error) {
+	config := jiraauth.Config{
+		ClientID:     os.Getenv("JIRA_READ_ONLY_CLIENT_ID"),
+		ClientSecret: os.Getenv("JIRA_READ_ONLY_CLIENT_SECRET"),
+		CloudID:      os.Getenv("JIRA_CLOUD_ID"),
+	}
+	httpClient, baseURL, err := config.NewClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("configure read-only Jira service-account client (JIRA_READ_ONLY_CLIENT_ID, JIRA_READ_ONLY_CLIENT_SECRET, JIRA_CLOUD_ID): %w", err)
+	}
+	client, err := jira.NewClient(httpClient, baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("create read-only Jira service-account client: %w", err)
+	}
+	return client, nil
 }
