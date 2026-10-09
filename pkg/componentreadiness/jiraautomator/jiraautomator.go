@@ -147,8 +147,7 @@ func (j JiraAutomator) getComponentReportForView(view crview.View) (crtype.Compo
 		return crtype.ComponentReport{}, fmt.Errorf("failed to get request option for view %s with error %v", view.Name, err)
 	}
 
-	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReport(context.Background(), j.dataProvider, j.dbc, reportOpts, "")
+	report, errs := componentreadiness.GetComponentReport(context.Background(), j.dataProvider, j.dbc, reportOpts, j.sippyURL)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
