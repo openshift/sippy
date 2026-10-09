@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"sort"
@@ -164,20 +165,37 @@ func (j JiraAutomator) getComponentReportForView(view crview.View) (crtype.Compo
 // (c) were reported by the CR JIRA service account
 // Issues will be ordered by creation time
 func (j JiraAutomator) getExistingIssuesForComponent(view crview.View, component JiraComponent) ([]jira.Issue, error) {
-	searchOptions := jira.SearchOptionsV2{
-		MaxResults: 1,
-		Fields: []string{
-			"key",
-			"status",
-			"resolutiondate",
-			jiratype.CustomFieldReleaseBlockerName,
-			"unknowns",
-		},
+	fields := []string{
+		"key",
+		"status",
+		"resolutiondate",
+		jiratype.CustomFieldReleaseBlockerName,
+		"unknowns",
 	}
 	jqlQuery := fmt.Sprintf("project=%s&&component='%s'&&creator='%s'&&affectedVersion=%s&&labels in (%s) ORDER BY createdDate",
 		component.Project, component.Component, j.jiraAccount, view.SampleRelease.Name, jiratype.LabelJiraAutomator)
-	issues, _, err := j.jiraClient.Issue.SearchV2JQLWithContext(context.Background(), jqlQuery, &searchOptions)
-	return issues, err
+	query := url.Values{}
+	query.Set("jql", jqlQuery)
+	query.Set("maxResults", "1")
+	query.Set("fields", strings.Join(fields, ","))
+	searchURL := url.URL{Path: "rest/api/3/search/jql", RawQuery: query.Encode()}
+
+	// go-jira's enhanced-search helper targets REST v2, so build the v3 request here.
+	req, err := j.jiraClient.NewRequestWithContext(context.Background(), http.MethodGet, searchURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("build Jira search request: %w", err)
+	}
+	var result struct {
+		Issues []jira.Issue `json:"issues"`
+	}
+	response, err := j.jiraClient.Do(req, &result)
+	if err != nil {
+		if response != nil && (response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices) {
+			err = jira.NewJiraError(response, err)
+		}
+		return nil, fmt.Errorf("search Jira issues: %w", err)
+	}
+	return result.Issues, nil
 }
 
 func (j JiraAutomator) isPreRelease(release string) bool {
