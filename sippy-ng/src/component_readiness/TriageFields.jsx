@@ -271,7 +271,7 @@ export default function TriageFields({
               label="Resolution Date"
               value={
                 triageEntryData.resolved?.Valid
-                  ? triageEntryData.resolved?.Time
+                  ? new Date(triageEntryData.resolved?.Time)
                   : null
               }
               onChange={(date) =>

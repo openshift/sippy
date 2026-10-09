@@ -14,12 +14,13 @@ import {
 } from '@mui/material'
 import { filterTooltip } from './utils'
 import { makeStyles } from '@mui/styles'
+import { normalizeFilterModel } from './filterUtils'
 import Divider from '@mui/material/Divider'
 import GridToolbarFilterItem, {
   operatorWithoutValue,
 } from './GridToolbarFilterItem'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useEffect, useMemo } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   filterMenu: {
@@ -50,14 +51,20 @@ export default function GridToolbarFilterMenu({
 }) {
   const classes = useStyles()
   const [anchorEl, setAnchorEl] = React.useState(null)
-  const [models, setModels] = React.useState(props.filterModel.items || [])
+
+  const normalizedFilterModel = useMemo(
+    () => normalizeFilterModel(props.filterModel) || { items: [] },
+    [props.filterModel]
+  )
+
+  const [models, setModels] = React.useState(normalizedFilterModel.items || [])
 
   const [logicOperator, setLogicOperator] = React.useState(
-    props.filterModel.logicOperator || 'and'
+    normalizedFilterModel.logicOperator || 'and'
   )
 
   useEffect(() => {
-    const parentItems = props.filterModel.items || []
+    const parentItems = normalizedFilterModel.items || []
     if (parentItems.length > 0) {
       setModels([...parentItems])
     } else {
@@ -70,8 +77,8 @@ export default function GridToolbarFilterMenu({
         },
       ])
     }
-    setLogicOperator(props.filterModel.logicOperator || 'and')
-  }, [props.filterModel])
+    setLogicOperator(normalizedFilterModel.logicOperator || 'and')
+  }, [normalizedFilterModel])
 
   // Ensure columns are ordered alphabetically
   const orderedColumns = [...props.columns]
@@ -104,7 +111,7 @@ export default function GridToolbarFilterMenu({
     })
 
     if (errored === 0) {
-      const currentFilters = props.filterModel.items || []
+      const currentFilters = normalizedFilterModel.items || []
 
       // Only update filter model when there's a meaningful change:
       // - If we have new filters, update with them
@@ -195,7 +202,7 @@ export default function GridToolbarFilterMenu({
     setModels(models.map((m, i) => (i === index ? v : m)))
   }
 
-  const currentItems = props.filterModel.items || []
+  const currentItems = normalizedFilterModel.items || []
   const filterItems = currentItems.filter(
     (item) => !(item.field === '' && item.operator === '' && item.value === '')
   ).length
@@ -220,7 +227,7 @@ export default function GridToolbarFilterMenu({
 
   return (
     <Fragment>
-      <Tooltip title={filterTooltip(props.filterModel)}>
+      <Tooltip title={filterTooltip(normalizedFilterModel)}>
         <Button
           aria-describedby={id}
           color="primary"

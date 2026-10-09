@@ -275,7 +275,8 @@ function RepositoriesTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator: filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator:
+        filterModel.logicOperator || filterModel.linkOperator || 'and',
     })
   }
 

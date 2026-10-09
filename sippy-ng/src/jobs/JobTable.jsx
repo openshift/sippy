@@ -481,7 +481,9 @@ function JobTable({
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.field !== 'name')
+    const newItems = filterModel.items.filter(
+      (f) => (f.field || f.columnField) !== 'name'
+    )
     if (searchValue) {
       newItems.push({
         id: 99,
@@ -520,8 +522,9 @@ function JobTable({
 
   const addFilters = (filter) => {
     const currentFilters = filterModel.items.filter((item) => {
+      const itemField = item.field || item.columnField
       for (let i = 0; i < filter.length; i++) {
-        if (filter[i].field === item.field) {
+        if (filter[i].field === itemField) {
           return false
         }
       }
@@ -536,7 +539,8 @@ function JobTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator: filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator:
+        filterModel.logicOperator || filterModel.linkOperator || 'and',
     })
   }
 

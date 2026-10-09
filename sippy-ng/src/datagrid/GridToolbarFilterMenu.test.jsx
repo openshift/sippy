@@ -178,6 +178,47 @@ describe('GridToolbarFilterMenu', () => {
     })
   })
 
+  describe('legacy v5 filter model normalization', () => {
+    it('preserves OR logic when dismissing a legacy linkOperator model', async () => {
+      const setFilterModel = vi.fn()
+      renderMenu({
+        filterModel: {
+          items: [
+            { columnField: 'name', operatorValue: 'equals', value: 'alpha' },
+            { columnField: 'name', operatorValue: 'equals', value: 'beta' },
+          ],
+          linkOperator: 'or',
+        },
+        setFilterModel,
+      })
+
+      await userEvent.click(screen.getByText('Filters'))
+      await userEvent.click(screen.getByText('Filter'))
+
+      expect(setFilterModel).toHaveBeenCalledWith(
+        expect.objectContaining({ logicOperator: 'or' })
+      )
+    })
+
+    it('normalizes legacy columnField/operatorValue to field/operator', async () => {
+      renderMenu({
+        filterModel: {
+          items: [
+            {
+              columnField: 'name',
+              operatorValue: 'contains',
+              value: 'test',
+            },
+          ],
+          linkOperator: 'and',
+        },
+      })
+
+      await userEvent.click(screen.getByText('Filters'))
+      expect(screen.getByTestId('filter-column-0')).toHaveTextContent('name')
+    })
+  })
+
   describe('badge count', () => {
     it('shows zero for blank filters', () => {
       renderMenu({
