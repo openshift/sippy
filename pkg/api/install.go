@@ -18,31 +18,17 @@ import (
 func PrintInstallJSONReportFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
 	excludedVariants := testidentification.DefaultExcludedVariants
 	excludedVariants = append(excludedVariants, "upgrade-minor")
-	exactTestNames := sets.New[string]()
-	testPrefixes := sets.New(testidentification.OperatorInstallPrefix)
-	if useNewInstallTest(release) {
-		testPrefixes.Insert(testidentification.InstallTestNamePrefix)
-	} else {
-		exactTestNames = exactTestNames.Insert(testidentification.InstallTestName)
-	}
+	lifecycleTests := lifecycleTestsForRelease(release)
 
 	variantColumns, tests, err := VariantTestsReport(dbc, release, v1.CurrentReport,
-		exactTestNames, testPrefixes, sets.New[string](), excludedVariants)
+		lifecycleTests.InstallExactNames, lifecycleTests.InstallPrefixes, sets.New[string](), excludedVariants)
 	if err != nil {
 		log.WithError(err).Error("could not generate install report")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Could not generate install report: " + err.Error()})
 		return
 	}
 
-	// Build up a set of column names, every variant we encounter as well as an "All":
-	summary := map[string]interface{}{
-		"title":        "Install Rates by Operator",
-		"description":  "Install Rates by Operator by Variant",
-		"column_names": sets.List(variantColumns),
-		"tests":        tests,
-	}
-
-	result, err := json.Marshal(summary)
+	result, err := json.Marshal(installReportSummary(release, lifecycleTests, variantColumns, tests))
 	if err != nil {
 		log.WithError(err).Error("could not generate install report")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Could not generate install report: " + err.Error()})
@@ -51,6 +37,21 @@ func PrintInstallJSONReportFromDB(w http.ResponseWriter, dbc *db.DB, release str
 
 	jsonStr := string(result)
 	RespondWithJSON(http.StatusOK, w, jsonStr)
+}
+
+// installReportSummary builds the /api/install response body from the release's variant/test
+// data, adding the product lifecycle links (lifecycleLinks) when release is a product release.
+func installReportSummary(release string, lifecycleTests lifecycleTestSelection, variantColumns sets.Set[string], tests map[string]map[string]apitype.Test) map[string]interface{} {
+	summary := map[string]interface{}{
+		"title":        "Install Rates by Operator",
+		"description":  "Install Rates by Operator by Variant",
+		"column_names": sets.List(variantColumns),
+		"tests":        tests,
+	}
+	if links := lifecycleLinks(release, lifecycleTests); links != nil {
+		summary["links"] = links
+	}
+	return summary
 }
 
 // VariantTestsReport returns a set of all variant columns plus "All", and a map of testName to variant column to test results for that variant.

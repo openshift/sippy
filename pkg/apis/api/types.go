@@ -988,6 +988,7 @@ type Health struct {
 	Warnings    []string             `json:"warnings"`
 	Current     v1.Statistics        `json:"current_statistics"`
 	Previous    v1.Statistics        `json:"previous_statistics"`
+	Links       map[string]string    `json:"links,omitempty"`
 }
 
 type ProwJobRunRiskAnalysis struct {
