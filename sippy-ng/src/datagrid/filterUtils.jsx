@@ -26,12 +26,13 @@ export const VALUELESS_OPERATORS = [
  */
 export function normalizeFilterItem(item) {
   if (!item) return item
-  const normalized = { ...item }
-  if (item.columnField !== undefined && item.field === undefined) {
-    normalized.field = item.columnField
+  const { columnField, operatorValue, ...rest } = item
+  const normalized = { ...rest }
+  if (columnField !== undefined && item.field === undefined) {
+    normalized.field = columnField
   }
-  if (item.operatorValue !== undefined && item.operator === undefined) {
-    normalized.operator = item.operatorValue
+  if (operatorValue !== undefined && item.operator === undefined) {
+    normalized.operator = operatorValue
   }
   return normalized
 }
@@ -42,12 +43,10 @@ export function normalizeFilterItem(item) {
  */
 export function normalizeFilterModel(filterModel) {
   if (!filterModel) return filterModel
-  const normalized = { ...filterModel }
-  if (
-    filterModel.linkOperator !== undefined &&
-    filterModel.logicOperator === undefined
-  ) {
-    normalized.logicOperator = filterModel.linkOperator
+  const { linkOperator, ...rest } = filterModel
+  const normalized = { ...rest }
+  if (linkOperator !== undefined && filterModel.logicOperator === undefined) {
+    normalized.logicOperator = linkOperator
   }
   if (filterModel.items) {
     normalized.items = filterModel.items.map(normalizeFilterItem)

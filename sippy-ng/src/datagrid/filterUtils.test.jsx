@@ -9,14 +9,16 @@ import {
 import { describe, expect, it } from 'vitest'
 
 describe('normalizeFilterItem', () => {
-  it('maps v5 columnField to field', () => {
+  it('maps v5 columnField to field and strips legacy aliases', () => {
     const item = { columnField: 'name', operatorValue: 'contains', value: 'x' }
     const result = normalizeFilterItem(item)
     expect(result.field).toBe('name')
     expect(result.operator).toBe('contains')
+    expect(result).not.toHaveProperty('columnField')
+    expect(result).not.toHaveProperty('operatorValue')
   })
 
-  it('preserves v7 field/operator when both generations present', () => {
+  it('preserves v7 field/operator when both generations present and strips legacy', () => {
     const item = {
       field: 'v7name',
       columnField: 'v5name',
@@ -27,6 +29,8 @@ describe('normalizeFilterItem', () => {
     const result = normalizeFilterItem(item)
     expect(result.field).toBe('v7name')
     expect(result.operator).toBe('equals')
+    expect(result).not.toHaveProperty('columnField')
+    expect(result).not.toHaveProperty('operatorValue')
   })
 
   it('passes through v7-only items unchanged', () => {
@@ -43,18 +47,21 @@ describe('normalizeFilterItem', () => {
 })
 
 describe('normalizeFilterModel', () => {
-  it('maps v5 linkOperator to logicOperator', () => {
+  it('maps v5 linkOperator to logicOperator and strips legacy alias', () => {
     const model = {
       items: [{ columnField: 'name', operatorValue: 'contains', value: 'x' }],
       linkOperator: 'or',
     }
     const result = normalizeFilterModel(model)
     expect(result.logicOperator).toBe('or')
+    expect(result).not.toHaveProperty('linkOperator')
     expect(result.items[0].field).toBe('name')
     expect(result.items[0].operator).toBe('contains')
+    expect(result.items[0]).not.toHaveProperty('columnField')
+    expect(result.items[0]).not.toHaveProperty('operatorValue')
   })
 
-  it('preserves v7 logicOperator when both present', () => {
+  it('preserves v7 logicOperator when both present and strips legacy', () => {
     const model = {
       items: [],
       logicOperator: 'and',
@@ -62,6 +69,7 @@ describe('normalizeFilterModel', () => {
     }
     const result = normalizeFilterModel(model)
     expect(result.logicOperator).toBe('and')
+    expect(result).not.toHaveProperty('linkOperator')
   })
 
   it('returns null/undefined as-is', () => {
