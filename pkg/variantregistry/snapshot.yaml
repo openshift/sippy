@@ -297391,7 +297391,7 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-aws-disruptive-longrunning:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -303181,7 +303181,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-disruptive-longrunning:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -310283,7 +310283,7 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-aws-disruptive-longrunning:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -317327,7 +317327,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-disruptive-longrunning:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: candidate
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
