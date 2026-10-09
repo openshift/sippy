@@ -165,7 +165,7 @@ func (j JiraAutomator) getComponentReportForView(view crview.View) (crtype.Compo
 // (c) were reported by the CR JIRA service account
 // Issues will be ordered by creation time
 func (j JiraAutomator) getExistingIssuesForComponent(view crview.View, component JiraComponent) ([]jira.Issue, error) {
-	searchOptions := jira.SearchOptions{
+	searchOptions := jira.SearchOptionsV2{
 		MaxResults: 1,
 		Fields: []string{
 			"key",
@@ -177,7 +177,7 @@ func (j JiraAutomator) getExistingIssuesForComponent(view crview.View, component
 	}
 	jqlQuery := fmt.Sprintf("project=%s&&component='%s'&&creator='%s'&&affectedVersion=%s&&labels in (%s) ORDER BY createdDate",
 		component.Project, component.Component, j.jiraAccount, view.SampleRelease.Name, jiratype.LabelJiraAutomator)
-	issues, _, err := j.jiraClient.Issue.SearchWithContext(context.Background(), jqlQuery, &searchOptions)
+	issues, _, err := j.jiraClient.Issue.SearchV2JQLWithContext(context.Background(), jqlQuery, &searchOptions)
 	return issues, err
 }
 
