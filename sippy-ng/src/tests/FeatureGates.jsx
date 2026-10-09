@@ -256,7 +256,6 @@ export default function FeatureGates({
     {
       field: 'id',
       filterable: false,
-      hide: true,
     },
     { field: 'feature_gate', headerName: 'Feature Gate', flex: 3 },
     {
@@ -289,13 +288,11 @@ export default function FeatureGates({
       field: 'first_seen_in_major',
       headerName: 'First seen in major',
       type: 'number',
-      hide: true,
     },
     {
       field: 'first_seen_in_minor',
       headerName: 'First seen in minor',
       type: 'number',
-      hide: true,
     },
   ]
 
@@ -388,6 +385,15 @@ export default function FeatureGates({
           columns={columns}
           getRowHeight={() => 'auto'}
           autoHeight={true}
+          initialState={{
+            columns: {
+              columnVisibilityModel: {
+                id: false,
+                first_seen_in_major: false,
+                first_seen_in_minor: false,
+              },
+            },
+          }}
           pageSizeOptions={[10, 25, 50]}
           sortModel={[
             {
