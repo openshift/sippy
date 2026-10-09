@@ -19,7 +19,7 @@ import {
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
@@ -84,7 +84,7 @@ export default function PullRequestsTable({
     pageSize,
   })
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     filterModelDefault
   )
@@ -413,8 +413,7 @@ export default function PullRequestsTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

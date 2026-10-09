@@ -12,7 +12,7 @@ import {
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
@@ -288,7 +288,7 @@ function ReleasePayloadTable({
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     filterModelDefault
   )
@@ -330,8 +330,7 @@ function ReleasePayloadTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

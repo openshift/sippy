@@ -4,7 +4,7 @@ import { FileCopy } from '@mui/icons-material'
 import { formColumnName, generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
-import { relativeTime, SafeJSONParam } from '../helpers'
+import { relativeTime, useFilterModelParam } from '../helpers'
 import { SippyCapabilitiesContext } from '../App'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
@@ -26,10 +26,8 @@ export default function RegressedTestsPanel(props) {
     NumberParam,
     { updateType: 'replaceIn' }
   )
-  const [filterModel = { items: [] }, setFilterModel] = useQueryParam(
-    'regressedModalFilters',
-    SafeJSONParam,
-    { updateType: 'replaceIn' }
+  const [filterModel, setFilterModel] = useFilterModelParam(
+    'regressedModalFilters'
   )
   const { regressedTests, setTriageActionTaken } = props
   const [sortModel, setSortModel] = React.useState([
@@ -46,8 +44,7 @@ export default function RegressedTestsPanel(props) {
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -67,8 +64,7 @@ export default function RegressedTestsPanel(props) {
     }
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

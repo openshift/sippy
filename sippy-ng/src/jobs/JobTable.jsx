@@ -9,7 +9,7 @@ import {
   pathForExactJobRuns,
   relativeTime,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
@@ -421,7 +421,7 @@ function JobTable({
     StringParam
   )
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     defaultFilterModel
   )
@@ -481,9 +481,7 @@ function JobTable({
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => (f.field || f.columnField) !== 'name'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'name')
     if (searchValue) {
       newItems.push({
         id: 99,
@@ -522,7 +520,7 @@ function JobTable({
 
   const addFilters = (filter) => {
     const currentFilters = filterModel.items.filter((item) => {
-      const itemField = item.field || item.columnField
+      const itemField = item.field
       for (let i = 0; i < filter.length; i++) {
         if (filter[i].field === itemField) {
           return false
@@ -539,8 +537,7 @@ function JobTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

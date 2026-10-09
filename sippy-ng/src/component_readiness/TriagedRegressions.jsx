@@ -1,7 +1,11 @@
 import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
-import { formatDateToSeconds, relativeTime, SafeJSONParam } from '../helpers'
+import {
+  formatDateToSeconds,
+  relativeTime,
+  useFilterModelParam,
+} from '../helpers'
 import {
   hasFailedFixRegression,
   jiraUrlPrefix,
@@ -101,11 +105,7 @@ export default function TriagedRegressions({
     NumberParam,
     { updateType: 'replaceIn' }
   )
-  const [filterModel = { items: [] }, setFilterModel] = useQueryParam(
-    'triageFilters',
-    SafeJSONParam,
-    { updateType: 'replaceIn' }
-  )
+  const [filterModel, setFilterModel] = useFilterModelParam('triageFilters')
 
   const addFilters = (filter) => {
     const currentFilters = filterModel.items.filter(shouldKeepFilterItem)
@@ -117,8 +117,7 @@ export default function TriagedRegressions({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -138,8 +137,7 @@ export default function TriagedRegressions({
     }
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

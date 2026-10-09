@@ -15,7 +15,7 @@ import { MERGE_FAILURE_THERSHOLDS } from '../constants'
 import {
   pathForRepository,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { useNavigate } from 'react-router-dom'
@@ -73,7 +73,7 @@ function RepositoriesTable({
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     filterModelDefault
   )
@@ -275,8 +275,7 @@ function RepositoriesTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

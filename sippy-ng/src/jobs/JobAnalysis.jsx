@@ -4,7 +4,6 @@ import {
   NumberParam,
   StringParam,
   useQueryParam,
-  withDefault,
 } from 'use-query-params'
 import { ArrowBack, ArrowForward } from '@mui/icons-material'
 import {
@@ -25,8 +24,7 @@ import {
   pathForJobRunsWithFilter,
   pathForJobsWithFilter,
   safeEncodeURIComponent,
-  SafeJSONParam,
-  useStableJSONQueryParam,
+  useFilterModelParam,
   withSort,
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
@@ -52,7 +50,7 @@ export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_period: {} })
   const [bugsURL, setBugsURL] = React.useState('')
-  const [filterModel, setFilterModel] = useStableJSONQueryParam('filters')
+  const [filterModel, setFilterModel] = useFilterModelParam('filters')
   const [period, setPeriod] = useQueryParam('period', StringParam)
   const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
 
@@ -64,10 +62,7 @@ export function JobAnalysis(props) {
     'tests',
     ArrayParam
   )
-  const [testFilter, setTestFilter] = useQueryParam(
-    'testFilters',
-    withDefault(SafeJSONParam, { items: [] })
-  )
+  const [testFilter, setTestFilter] = useFilterModelParam('testFilters')
 
   const [testSelectionDialog, setTestSelectionDialog] = React.useState(false)
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
@@ -286,9 +281,7 @@ export function JobAnalysis(props) {
     newFilters.push(...hourFilter(newOffset, startDate))
     setFilterModel({
       items: newFilters,
-      logicOperator: filterModel
-        ? filterModel.logicOperator || filterModel.linkOperator || 'and'
-        : 'and',
+      logicOperator: filterModel ? filterModel.logicOperator || 'and' : 'and',
     })
     setDayOffset(newOffset)
   }
@@ -310,9 +303,7 @@ export function JobAnalysis(props) {
 
     setFilterModel({
       items: newFilters,
-      logicOperator: filterModel
-        ? filterModel.logicOperator || filterModel.linkOperator || 'and'
-        : 'and',
+      logicOperator: filterModel ? filterModel.logicOperator || 'and' : 'and',
     })
     setPeriod(newPeriod)
   }
@@ -334,7 +325,7 @@ export function JobAnalysis(props) {
     return {
       items: newFilters,
       not: filterModel.not,
-      logicOperator: filterModel.logicOperator || filterModel.linkOperator,
+      logicOperator: filterModel.logicOperator,
     }
   }
 

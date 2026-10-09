@@ -22,7 +22,7 @@ import {
   pathForJobRunsWithTestFailure,
   pathForJobRunsWithTestFlake,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
   withSort,
 } from '../helpers'
 import { generateClasses } from '../datagrid/utils'
@@ -154,7 +154,7 @@ function TestTable({
 
   const [view = viewProp, setView] = useQueryParam('view', StringParam)
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     filterModelProp
   )
@@ -1098,8 +1098,7 @@ function TestTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

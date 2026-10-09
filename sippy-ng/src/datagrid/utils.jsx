@@ -68,7 +68,7 @@ export function filterRemoveItem(filter, index) {
   }
   return {
     items: filter.items.filter((_, i) => i !== index),
-    logicOperator: filter.logicOperator || filter.linkOperator,
+    logicOperator: filter.logicOperator,
   }
 }
 
@@ -76,15 +76,14 @@ export function filterIsEmpty(filter) {
   return (
     !filter ||
     filter.items.length === 0 ||
-    (filter.items.length === 1 &&
-      (filter.items[0].field || filter.items[0].columnField || '') === '')
+    (filter.items.length === 1 && (filter.items[0].field || '') === '')
   )
 }
 
 export function filterItemRenderValue(item) {
   let value = item.value
   let tooltip = null
-  const itemField = item.field || item.columnField
+  const itemField = item.field
   if (itemField === 'timestamp' && item.value !== '') {
     let date = new Date(item.value)
     value = format(utcToZonedTime(date, 'UTC'), "yyyy-MM-dd HH:mm 'UTC'", {
@@ -106,7 +105,7 @@ export function filterTooltip(filter) {
 
     return (
       <li key={`filter-${index}`}>
-        {`${item.field || item.columnField}${item.not ? ' not ' : ' '}${item.operator || item.operatorValue} ${value}`}
+        {`${item.field}${item.not ? ' not ' : ' '}${item.operator} ${value}`}
         {description ? `(${description})` : ''}
       </li>
     )
@@ -116,7 +115,7 @@ export function filterTooltip(filter) {
     <Fragment>
       Current filters:
       <ul>{items}</ul>
-      Link operator: {filter.logicOperator || filter.linkOperator}
+      Link operator: {filter.logicOperator}
     </Fragment>
   )
 }
@@ -132,7 +131,7 @@ export function filterList(filter, setFilter) {
     let { value, description } = filterItemRenderValue(item)
     let listItem = (
       <ListItemText>
-        {`${item.field || item.columnField} ${item.not ? 'not ' : ''} ${item.operator || item.operatorValue} `}
+        {`${item.field} ${item.not ? 'not ' : ''} ${item.operator} `}
         {value}
       </ListItemText>
     )

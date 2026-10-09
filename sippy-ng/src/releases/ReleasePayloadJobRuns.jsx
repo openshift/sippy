@@ -13,7 +13,7 @@ import { Check, DirectionsBoat, FilterList } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
+import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import JobRunLabelDetails from '../components/JobRunLabelDetails'
@@ -175,7 +175,7 @@ function ReleasePayloadJobRuns({
   const [selectedJobRun, setSelectedJobRun] = React.useState(null)
   const [allLabels, setAllLabels] = React.useState({})
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     filterModelDefault
   )
@@ -216,8 +216,7 @@ function ReleasePayloadJobRuns({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

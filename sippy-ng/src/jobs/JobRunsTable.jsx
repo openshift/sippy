@@ -22,7 +22,7 @@ import {
   pathForExactJob,
   relativeTime,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
@@ -59,7 +59,7 @@ export default function JobRunsTable({
   const [jaqOpen, setJaqOpen] = React.useState(false)
   const [jaqJobRunIds, setJaqJobRunIds] = React.useState(null)
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     defaultFilterModel
   )
@@ -567,8 +567,7 @@ export default function JobRunsTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

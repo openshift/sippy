@@ -3,7 +3,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
+import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
 import { Tooltip } from '@mui/material'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -117,7 +117,7 @@ function PayloadStreamsTable({
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     defaultFilterModel
   )
@@ -158,8 +158,7 @@ function PayloadStreamsTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

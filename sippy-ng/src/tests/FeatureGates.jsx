@@ -5,7 +5,7 @@ import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   parseVersion,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -120,7 +120,7 @@ export default function FeatureGates({
     return filterItems
   }, [props.release, props.releases])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
     defaultFilterModel
   )
@@ -248,8 +248,7 @@ export default function FeatureGates({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 

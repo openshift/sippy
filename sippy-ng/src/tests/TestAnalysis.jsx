@@ -30,7 +30,7 @@ import {
   safeEncodeURIComponent,
   SafeStringParam,
   searchCI,
-  useStableJSONQueryParam,
+  useFilterModelParam,
   withSort,
 } from '../helpers'
 import { Link } from 'react-router-dom'
@@ -59,7 +59,7 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
   const [fetchError, setFetchError] = React.useState('')
   const [testName = testProp] = useQueryParam('test', SafeStringParam)
   const [period = 'default'] = useQueryParam('period', StringParam)
-  const [filterModel, setFilterModel] = useStableJSONQueryParam('filters', {
+  const [filterModel, setFilterModel] = useFilterModelParam('filters', {
     items: [
       filterFor('name', 'equals', testName),
       not(filterFor('variants', 'has entry', 'aggregated')),

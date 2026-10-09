@@ -1,3 +1,4 @@
+import { normalizeFilterModel } from './datagrid/filterUtils'
 import { useQueryParam } from 'use-query-params'
 import { useRef } from 'react'
 
@@ -42,6 +43,24 @@ export function useStableJSONQueryParam(key, defaultValue) {
 
   if (ref.current.serialized !== serialized) {
     ref.current = { serialized, value }
+  }
+
+  return [ref.current.value, setValue]
+}
+
+// Wraps useStableJSONQueryParam for filter model query params, normalizing
+// MUI X v5 property names (columnField, operatorValue, linkOperator) to v7
+// (field, operator, logicOperator) at the URL decode boundary.
+export function useFilterModelParam(key, defaultValue = { items: [] }) {
+  const [rawValue, setValue] = useQueryParam(key, SafeJSONParam)
+  const value = rawValue === undefined ? defaultValue : rawValue
+  const normalized = normalizeFilterModel(value) || value
+
+  const serialized = JSON.stringify(normalized)
+  const ref = useRef({ serialized, value: normalized })
+
+  if (ref.current.serialized !== serialized) {
+    ref.current = { serialized, value: normalized }
   }
 
   return [ref.current.value, setValue]
@@ -185,7 +204,7 @@ export function pathForExactTestAnalysisWithFilter(
   let filters = [filterFor('name', 'equals', test)]
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if ((item.field || item.columnField) === 'variants') {
+      if (item.field === 'variants') {
         filters.push(item)
       }
     })
@@ -226,7 +245,7 @@ export function pathForJobRunsWithTestFailure(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if ((item.field || item.columnField) === 'variants') {
+      if (item.field === 'variants') {
         filters.push(item)
       }
     })
@@ -241,7 +260,7 @@ export function pathForJobRunsWithTest(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if ((item.field || item.columnField) === 'variants') {
+      if (item.field === 'variants') {
         filters.push(item)
       }
     })
@@ -256,7 +275,7 @@ export function pathForJobRunsWithTestFlake(release, test, filter, period) {
   filters.push(timestampFilterForPeriod(period))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
-      if ((item.field || item.columnField) === 'variants') {
+      if (item.field === 'variants') {
         filters.push(item)
       }
     })

@@ -5,7 +5,7 @@ import { filterRegressionsByLabel } from './TriageSymptomLabels'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, useQueryParam } from 'use-query-params'
-import { relativeTime, SafeJSONParam } from '../helpers'
+import { relativeTime, useFilterModelParam } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
 import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -30,10 +30,8 @@ export default function TriagedRegressionTestList(props) {
     NumberParam,
     { updateType: 'replaceIn' }
   )
-  const [filterModel = { items: [] }, setFilterModel] = useQueryParam(
-    'regressedModalTestFilters',
-    SafeJSONParam,
-    { updateType: 'replaceIn' }
+  const [filterModel, setFilterModel] = useFilterModelParam(
+    'regressedModalTestFilters'
   )
 
   const [sortModel, setSortModel] = React.useState([
@@ -50,8 +48,7 @@ export default function TriagedRegressionTestList(props) {
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -71,8 +68,7 @@ export default function TriagedRegressionTestList(props) {
     }
     setFilterModel({
       items: currentFilters,
-      logicOperator:
-        filterModel.logicOperator || filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
