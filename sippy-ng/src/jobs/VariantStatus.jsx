@@ -58,9 +58,7 @@ export default function VariantStatus(props) {
                 <TabPanel value={0}>
                   <JobTable
                     hideControls={true}
-                    initialState={{
-                      pagination: { paginationModel: { pageSize: 5 } },
-                    }}
+                    pageSize={5}
                     release={props.release}
                     filterModel={{
                       items: [
@@ -71,9 +69,7 @@ export default function VariantStatus(props) {
                 </TabPanel>
                 <TabPanel value={1}>
                   <JobRunsTable
-                    initialState={{
-                      pagination: { paginationModel: { pageSize: 5 } },
-                    }}
+                    pageSize={5}
                     hideControls={true}
                     release={props.release}
                     filterModel={{

@@ -406,9 +406,7 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
               </Typography>
               <TestTable
                 simpleLoading={true}
-                initialState={{
-                  pagination: { paginationModel: { pageSize: 5 } },
-                }}
+                pageSize={5}
                 hideControls={true}
                 collapse={false}
                 release={props.release}

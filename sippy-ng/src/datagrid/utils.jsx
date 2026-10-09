@@ -68,7 +68,7 @@ export function filterRemoveItem(filter, index) {
   }
   return {
     items: filter.items.filter((_, i) => i !== index),
-    logicOperator: filter.logicOperator,
+    logicOperator: filter.logicOperator || filter.linkOperator,
   }
 }
 
@@ -106,7 +106,7 @@ export function filterTooltip(filter) {
 
     return (
       <li key={`filter-${index}`}>
-        {`${item.field || item.columnField}${item.not ? ' not ' : ' '}${item.operator} ${value}`}
+        {`${item.field || item.columnField}${item.not ? ' not ' : ' '}${item.operator || item.operatorValue} ${value}`}
         {description ? `(${description})` : ''}
       </li>
     )
@@ -116,7 +116,7 @@ export function filterTooltip(filter) {
     <Fragment>
       Current filters:
       <ul>{items}</ul>
-      Link operator: {filter.logicOperator}
+      Link operator: {filter.logicOperator || filter.linkOperator}
     </Fragment>
   )
 }
@@ -132,7 +132,7 @@ export function filterList(filter, setFilter) {
     let { value, description } = filterItemRenderValue(item)
     let listItem = (
       <ListItemText>
-        {`${item.field || item.columnField} ${item.not ? 'not ' : ''} ${item.operator} `}
+        {`${item.field || item.columnField} ${item.not ? 'not ' : ''} ${item.operator || item.operatorValue} `}
         {value}
       </ListItemText>
     )

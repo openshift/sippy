@@ -543,13 +543,15 @@ export function JobAnalysis(props) {
                       Select tests to chart
                     </Typography>
                     <DataGrid
-                      columnVisibilityModel={{ id: false }}
+                      initialState={{
+                        columns: {
+                          columnVisibilityModel: { id: false },
+                        },
+                        pagination: { paginationModel: { pageSize: 10 } },
+                      }}
                       slots={{ toolbar: GridToolbar }}
                       columns={columns}
                       rows={allTests}
-                      initialState={{
-                        pagination: { paginationModel: { pageSize: 10 } },
-                      }}
                       rowHeight={60}
                       autoHeight={true}
                       filterModel={testFilter}

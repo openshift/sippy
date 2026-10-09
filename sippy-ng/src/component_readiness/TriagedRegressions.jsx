@@ -389,7 +389,11 @@ export default function TriagedRegressions({
     <Fragment>
       <Typography>Triaged Test Regressions</Typography>
       <DataGrid
-        columnVisibilityModel={{ created_at: false, updated_at: false }}
+        initialState={{
+          columns: {
+            columnVisibilityModel: { created_at: false, updated_at: false },
+          },
+        }}
         sortModel={sortModel}
         onSortModelChange={setSortModel}
         rowSelectionModel={activeRow != null ? [activeRow] : []}

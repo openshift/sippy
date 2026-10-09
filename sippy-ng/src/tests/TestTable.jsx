@@ -1098,7 +1098,8 @@ function TestTable({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator: filterModel.logicOperator || 'and',
+      logicOperator:
+        filterModel.logicOperator || filterModel.linkOperator || 'and',
     })
   }
 
@@ -1129,7 +1130,9 @@ function TestTable({
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
-        columnVisibilityModel={gridView.columnVisibilityModel}
+        initialState={{
+          columns: { columnVisibilityModel: gridView.columnVisibilityModel },
+        }}
         autoHeight={true}
         getRowId={(row) =>
           `${row.name}\x1f${row.suite_name || ''}\x1f${(

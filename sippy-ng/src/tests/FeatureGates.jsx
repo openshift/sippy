@@ -248,7 +248,7 @@ export default function FeatureGates({
     })
     setFilterModel({
       items: currentFilters,
-      logicOperator: filterModel.logicOperator || 'and',
+      logicOperator: filterModel.logicOperator || filterModel.linkOperator || 'and',
     })
   }
 
