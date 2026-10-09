@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/bigquery v1.69.0
 	cloud.google.com/go/storage v1.56.0
 	github.com/anaskhan96/soup v1.2.5
-	github.com/andygrunwald/go-jira v1.14.0
+	github.com/andygrunwald/go-jira v1.17.0
 	github.com/apache/thrift v0.23.0
 	github.com/glycerine/golang-fisher-exact v0.0.0-20230401153517-53168ae38651
 	github.com/golang-migrate/migrate/v4 v4.19.1
@@ -96,7 +96,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
-	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/google/go-github/v62 v62.0.0 // indirect
