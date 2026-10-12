@@ -78,6 +78,7 @@ func (f *ServerFlags) Validate() error {
 	return f.GoogleCloudFlags.Validate()
 }
 
+// NewServeCommand serves the Sippy API and frontend using the configured data sources.
 func NewServeCommand() *cobra.Command {
 	f := NewServerFlags()
 
@@ -169,7 +170,7 @@ func NewServeCommand() *cobra.Command {
 				log.WithError(err).Fatal("unable to load views")
 			}
 
-			jiraClient, err := f.JiraFlags.GetJiraClient()
+			jiraClient, err := f.JiraFlags.GetJiraClient(cmd.Context())
 			if err != nil {
 				log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 			}

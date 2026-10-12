@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andygrunwald/go-jira"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -26,6 +25,7 @@ import (
 	"github.com/openshift/sippy/pkg/flags/configflags"
 )
 
+// AutomateJiraFlags configures regression issue discovery, filing, and dry runs.
 type AutomateJiraFlags struct {
 	BigQueryFlags           *flags.BigQueryFlags
 	GoogleCloudFlags        *flags.GoogleCloudFlags
@@ -43,7 +43,6 @@ type AutomateJiraFlags struct {
 	ColumnThresholds    map[jiraautomator.Variant]int
 	JiraAccount         string
 	DryRun              bool
-	JiraServiceAccount  bool
 }
 
 func NewAutomateJiraFlags() *AutomateJiraFlags {
@@ -59,6 +58,7 @@ func NewAutomateJiraFlags() *AutomateJiraFlags {
 	}
 }
 
+// BindFlags exposes the data sources and issue selection options for Jira automation.
 func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(fs)
 	f.PostgresFlags.BindFlags(fs)
@@ -73,7 +73,6 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&f.ColumnThresholdStrs, "column-threshold", f.ColumnThresholdStrs, "A threshold of red cell counts over which a jira issue will be created against a component corresponding to an interesting variant of a column (e.g. Bare Metal Hardware Provisioning for metal platform). The format of the threshold string is [variant]:[value]:[threshold] (e.g. Platform:metal:3).")
 	fs.StringVar(&f.JiraAccount, "jira-account", f.JiraAccount, "The jira account used to automate jira")
 	fs.BoolVar(&f.DryRun, "dry-run", f.DryRun, "Print the tasks of automating jiras without real interaction with jira.")
-	fs.BoolVar(&f.JiraServiceAccount, "jira-service-account", f.JiraServiceAccount, "Use read-only Jira service-account OAuth credentials (requires --dry-run)")
 	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider: default, bigquery, or postgres")
 }
 
@@ -124,18 +123,7 @@ func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
 	return f.GoogleCloudFlags.Validate()
 }
 
-// getJiraClient keeps service-account authentication opt-in and limits its
-// initial rollout to dry runs using the read-only credential.
-func (f *AutomateJiraFlags) getJiraClient(ctx context.Context) (*jira.Client, error) {
-	if f.JiraServiceAccount {
-		if !f.DryRun {
-			return nil, fmt.Errorf("--jira-service-account requires --dry-run")
-		}
-		return f.JiraFlags.GetReadOnlyServiceAccountClient(ctx)
-	}
-	return f.JiraFlags.GetJiraClient()
-}
-
+// NewAutomateJiraCommand maintains regression issues for configured component-readiness views.
 func NewAutomateJiraCommand() *cobra.Command {
 	f := NewAutomateJiraFlags()
 
@@ -144,10 +132,10 @@ func NewAutomateJiraCommand() *cobra.Command {
 		Short: "Automate jira with component readiness regressions",
 		Long:  "Check the component report for each view with automate jira enabled. Maintains jira cards for current regressions automatically.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+			ctx, cancel := context.WithTimeout(cmd.Context(), time.Hour*1)
 			defer cancel()
 
-			jiraClient, err := f.getJiraClient(ctx)
+			jiraClient, err := f.JiraFlags.GetJiraClient(ctx)
 			if err != nil {
 				return errors.WithMessage(err, "couldn't get jira client")
 			}

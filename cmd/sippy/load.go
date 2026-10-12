@@ -119,6 +119,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider for component readiness regression cache loading: default (auto-select from the configured clients), bigquery, or postgres (PostgreSQL-only, requires no BigQuery credentials)")
 }
 
+// NewLoadCommand refreshes configured CI data sources and regression tracking state.
 // nolint:gocyclo
 func NewLoadCommand() *cobra.Command {
 	f := NewLoadFlags()
@@ -137,7 +138,7 @@ func NewLoadCommand() *cobra.Command {
 			allErrs := []error{}
 
 			// Cancel syncing after 4 hours
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
+			ctx, cancel := context.WithTimeout(cmd.Context(), time.Hour*4)
 			defer cancel()
 
 			start := time.Now()
@@ -271,7 +272,7 @@ func NewLoadCommand() *cobra.Command {
 						return fmt.Errorf("no component readiness views provided")
 					}
 
-					jiraClient, jErr := f.JiraFlags.GetJiraClient()
+					jiraClient, jErr := f.JiraFlags.GetJiraClient(ctx)
 					if jErr != nil {
 						return errors.Wrap(jErr, "CRITICAL error getting jira client which prevents regression tracking")
 					}

@@ -42,6 +42,7 @@ type ComponentReadinessFlags struct {
 	LogLevel     string
 }
 
+// NewComponentReadinessCommand serves release comparisons and regression analysis.
 func NewComponentReadinessCommand() *cobra.Command {
 	f := &ComponentReadinessFlags{
 		LogLevel: "info",
@@ -64,10 +65,9 @@ func NewComponentReadinessCommand() *cobra.Command {
 			if err := f.Validate(); err != nil {
 				return errors.WithMessage(err, "error validating options")
 			}
-			if err := f.Run(); err != nil {
+			if err := f.Run(cmd.Context()); err != nil {
 				return errors.WithMessage(err, "error running command")
 			}
-			cmd.Context()
 
 			return nil
 		},
@@ -95,7 +95,9 @@ func (f *ComponentReadinessFlags) Validate() error {
 	return f.GoogleCloudFlags.Validate()
 }
 
-func (f *ComponentReadinessFlags) Run() error { //nolint:gocyclo
+// Run starts the component-readiness server, retaining ctx for its shared
+// Jira client's OAuth token acquisition and renewal throughout server lifetime.
+func (f *ComponentReadinessFlags) Run(ctx context.Context) error { //nolint:gocyclo
 	// Set log level
 	level, err := log.ParseLevel(f.LogLevel)
 	if err != nil {
@@ -122,10 +124,11 @@ func (f *ComponentReadinessFlags) Run() error { //nolint:gocyclo
 		}
 	}
 
-	return f.runServerMode()
+	return f.runServerMode(ctx)
 }
 
-func (f *ComponentReadinessFlags) runServerMode() error {
+// runServerMode wires the report API and retains ctx for shared Jira authentication.
+func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 	var err error
 
 	webRoot, err := fs.Sub(resources.SippyNG, "sippy-ng/build")
@@ -183,7 +186,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		log.WithError(err).Warn("unable to connect to postgres, regression tracking will be disabled")
 	}
 
-	jiraClient, err := f.JiraFlags.GetJiraClient()
+	jiraClient, err := f.JiraFlags.GetJiraClient(ctx)
 	if err != nil {
 		log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 	}

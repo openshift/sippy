@@ -20,13 +20,15 @@ func TestNewAutomateJiraCommandJiraURLDefault(t *testing.T) {
 	}
 }
 
-func TestAutomateJiraServiceAccountRequiresDryRun(t *testing.T) {
+func TestAutomateJiraServiceAccountDoesNotRequireDryRun(t *testing.T) {
+	t.Setenv("JIRA_CLIENT_ID", "")
+	t.Setenv("JIRA_CLIENT_SECRET", "")
 	cmd := NewAutomateJiraCommand()
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs([]string{"--jira-service-account"})
-	// The guard must run before cache, BigQuery, and database initialization.
-	require.ErrorContains(t, cmd.Execute(), "--jira-service-account requires --dry-run")
+	// Without --dry-run, OAuth credentials are still validated before data clients.
+	require.ErrorContains(t, cmd.Execute(), "client ID is required")
 }
 
 func TestAutomateJiraClientSelection(t *testing.T) {
@@ -38,17 +40,19 @@ func TestAutomateJiraClientSelection(t *testing.T) {
 	}{
 		{"PAT remains default", false, false, ""},
 		{"PAT dry run remains supported", false, true, ""},
-		{"SA cannot write", true, false, "--jira-service-account requires --dry-run"},
+		{"SA selects OAuth without dry run", true, false, "client ID is required"},
 		{"SA does not fall back to PAT", true, true, "client ID is required"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("JIRA_TOKEN", "existing-pat")
+			t.Setenv("JIRA_CLIENT_ID", "")
+			t.Setenv("JIRA_CLIENT_SECRET", "")
 			t.Setenv("JIRA_READ_ONLY_CLIENT_ID", "")
 			t.Setenv("JIRA_READ_ONLY_CLIENT_SECRET", "")
 			t.Setenv("JIRA_CLOUD_ID", "")
 			flags := NewAutomateJiraFlags()
-			flags.JiraServiceAccount, flags.DryRun = tc.serviceAccount, tc.dryRun
-			client, err := flags.getJiraClient(context.Background())
+			flags.JiraFlags.ServiceAccount, flags.DryRun = tc.serviceAccount, tc.dryRun
+			client, err := flags.JiraFlags.GetJiraClient(context.Background())
 			if tc.wantError != "" {
 				require.ErrorContains(t, err, tc.wantError)
 				assert.Nil(t, client)
