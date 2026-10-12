@@ -1,6 +1,7 @@
 package jiraloader
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,18 +24,36 @@ import (
 
 // JiraLoader loads various data sources directly from the Jira API, such as TRT incidents and OCPBUGS components.
 type JiraLoader struct {
-	dbc    *db.DB
-	errors []error
+	dbc           *db.DB
+	errors        []error
+	ctx           context.Context
+	httpClient    *http.Client
+	baseURL       string
+	authorization string
 }
 
+// New preserves the site's existing PAT or unauthenticated loading configuration.
 func New(dbc *db.DB) *JiraLoader {
+	loader := NewWithClient(context.Background(), dbc, &http.Client{}, "https://redhat.atlassian.net/")
+	loader.authorization = loader.getAuthorizationHeader()
+	return loader
+}
+
+// NewWithClient uses the supplied authenticated HTTP client and Jira base URL.
+// ctx must remain valid until loading completes, including any token renewals.
+// A nil client causes reads to return an error.
+func NewWithClient(ctx context.Context, dbc *db.DB, client *http.Client, baseURL string) *JiraLoader {
 	return &JiraLoader{
-		dbc: dbc,
+		dbc:        dbc,
+		ctx:        ctx,
+		httpClient: client,
+		baseURL:    strings.TrimRight(baseURL, "/") + "/",
 	}
 }
 
 const jiraTimeLayout = "2006-01-02T15:04:05.000Z0700"
 
+// Name identifies the loader for command selection and error reporting.
 func (jl *JiraLoader) Name() string {
 	return "jira"
 }
@@ -70,16 +89,16 @@ func (jl *JiraLoader) getAuthorizationHeader() string {
 	return ""
 }
 
+// Load refreshes the component and incident data stored in PostgreSQL.
 func (jl *JiraLoader) Load() {
-	authorizationHeader := jl.getAuthorizationHeader()
-
 	// Load components into DB
-	jl.componentLoader(authorizationHeader)
+	jl.componentLoader()
 
 	// Load incidents
-	jl.incidentLoader(authorizationHeader)
+	jl.incidentLoader()
 }
 
+// Errors reports failures encountered while refreshing Jira data.
 func (jl *JiraLoader) Errors() []error {
 	return jl.errors
 }
@@ -151,17 +170,24 @@ func issueContainsLabel(issue *v1jira.Issue, label string) bool {
 	return false
 }
 
-func (jl *JiraLoader) componentLoader(authorization string) {
+// queryComponents fetches Jira components separately from their database updates.
+func (jl *JiraLoader) queryComponents() ([]v1jira.Component, error) {
+	body, err := jl.jiraRequest("rest/api/2/project/OCPBUGS/components")
+	if err != nil {
+		return nil, err
+	}
+	var components []v1jira.Component
+	if err := json.Unmarshal(body, &components); err != nil {
+		return nil, fmt.Errorf("decode Jira components: %w", err)
+	}
+	return components, nil
+}
+
+// componentLoader synchronizes Jira components and removes obsolete database records.
+func (jl *JiraLoader) componentLoader() {
 	start := time.Now()
 	log.Infof("loading jira ocpbugs component information...")
-	body, err := jiraRequest("https://redhat.atlassian.net/rest/api/2/project/OCPBUGS/components", authorization)
-	if err != nil {
-		jl.errors = append(jl.errors, err)
-		return
-	}
-
-	var components []v1jira.Component
-	err = json.Unmarshal(body, &components)
+	components, err := jl.queryComponents()
 	if err != nil {
 		jl.errors = append(jl.errors, err)
 		return
@@ -208,7 +234,29 @@ func (jl *JiraLoader) componentLoader(authorization string) {
 	}).Infof("component load complete in %+v", time.Since(start))
 }
 
-func (jl *JiraLoader) incidentLoader(authorization string) {
+// queryIncidentPage preserves the incident query and escapes pagination tokens.
+func (jl *JiraLoader) queryIncidentPage(nextPageToken string) (*v1jira.SearchResponse, error) {
+	query := url.Values{
+		"jql":    {`labels = "trt-incident" AND updated >= -60d`},
+		"fields": {"summary,created,labels,resolutiondate"},
+		"expand": {"changelog"},
+	}
+	if nextPageToken != "" {
+		query.Set("nextPageToken", nextPageToken)
+	}
+	body, err := jl.jiraRequest("rest/api/3/search/jql?" + query.Encode())
+	if err != nil {
+		return nil, err
+	}
+	var response v1jira.SearchResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("decode Jira incident page: %w", err)
+	}
+	return &response, nil
+}
+
+// incidentLoader refreshes recent incidents and resolves incidents absent from the search results.
+func (jl *JiraLoader) incidentLoader() {
 	start := time.Now()
 	log.Infof("populating unresolved jira incident cache...")
 	var dbIssues []string
@@ -222,27 +270,14 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 	start = time.Now()
 	log.Infof("fetching incidents from jira...")
 
-	baseURL := "https://redhat.atlassian.net/rest/api/3/search/jql?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&fields=summary,created,labels,resolutiondate&expand=changelog"
 	nextPageToken := ""
 	pageCount := 0
 	totalIssues := 0
 
 	for {
 		pageCount++
-		apiURL := baseURL
-		if nextPageToken != "" {
-			apiURL = fmt.Sprintf("%s&nextPageToken=%s", baseURL, url.QueryEscape(nextPageToken))
-		}
-
 		log.Infof("fetching page %d of incidents...", pageCount)
-		body, err := jiraRequest(apiURL, authorization)
-		if err != nil {
-			jl.errors = append(jl.errors, err)
-			return
-		}
-
-		var response v1jira.SearchResponse
-		err = json.Unmarshal(body, &response)
+		response, err := jl.queryIncidentPage(nextPageToken)
 		if err != nil {
 			jl.errors = append(jl.errors, err)
 			return
@@ -283,7 +318,7 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 	log.Infof("we have %d unseen and unresolved jira incidents", unseenUnresolvedIssues.Len())
 	for _, unseen := range sets.List(unseenUnresolvedIssues) {
 		log.Infof("processing unseen, unresolved jira incidents (trt-incident label removed?)...")
-		issue, err := queryJiraAPI(unseen, authorization)
+		issue, err := jl.queryJiraAPI(unseen)
 		if err != nil {
 			log.WithError(err).Warnf("couldn't query details for %s. this is expected for cards that are restricted to 'Red Hat Only'", unseen)
 			continue
@@ -305,36 +340,15 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 }
 
 // queryJiraAPI returns a singular jira issue
-func queryJiraAPI(issueID, authorization string) (*v1jira.Issue, error) {
-	urlFmtStr := "https://redhat.atlassian.net/rest/api/2/issue/%s?expand=changelog"
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", fmt.Sprintf(urlFmtStr, issueID), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if authorization != "" {
-		req.Header.Add("Authorization", authorization)
-	}
-
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is hardcoded to redhat.atlassian.net Jira API with issue key from Jira's own response
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("received %s from Jira API", resp.Status)
-	}
-
-	bodyBytes, err := io.ReadAll(resp.Body)
+func (jl *JiraLoader) queryJiraAPI(issueID string) (*v1jira.Issue, error) {
+	bodyBytes, err := jl.jiraRequest("rest/api/2/issue/" + url.PathEscape(issueID) + "?expand=changelog")
 	if err != nil {
 		return nil, err
 	}
 
 	var issueDetails v1jira.Issue
-	err = json.Unmarshal(bodyBytes, &issueDetails)
-	if err != nil {
-		return nil, err
+	if err := json.Unmarshal(bodyBytes, &issueDetails); err != nil {
+		return nil, fmt.Errorf("decode Jira issue: %w", err)
 	}
 
 	return &issueDetails, nil
@@ -366,29 +380,34 @@ func issueToDB(issue *v1jira.Issue) (*models.JiraIncident, error) {
 	}, nil
 }
 
-func jiraRequest(apiURL, authorization string) ([]byte, error) {
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", apiURL, nil)
+// jiraRequest shares authentication and context across all loader reads.
+// apiPath is a relative Jira REST path, including any encoded query parameters.
+func (jl *JiraLoader) jiraRequest(apiPath string) ([]byte, error) {
+	if jl.httpClient == nil {
+		return nil, fmt.Errorf("jira request failed: HTTP client is nil")
+	}
+
+	req, err := http.NewRequestWithContext(jl.ctx, http.MethodGet, jl.baseURL+apiPath, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if authorization != "" {
-		req.Header.Add("Authorization", authorization)
+	if jl.authorization != "" {
+		req.Header.Add("Authorization", jl.authorization)
 	}
 
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is hardcoded to redhat.atlassian.net Jira API, pagination token is url.QueryEscape'd
+	resp, err := jl.httpClient.Do(req) //nolint:gosec // G704: configured Jira base URL, internal REST paths, escaped issue keys and query parameters
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("jira request failed: %s (%s)", resp.Status, strings.TrimSpace(string(body)))
+		// Response bodies can contain private Jira data and these errors reach logs.
+		return nil, fmt.Errorf("jira request failed: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
 	return io.ReadAll(resp.Body)
