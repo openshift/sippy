@@ -12,10 +12,8 @@ vi.mock('@mui/styles', () => ({
 vi.mock('./GridToolbarFilterItem', () => ({
   default: ({ id, filterModel, destroy }) => (
     <div data-testid={`filter-item-${id}`}>
-      <span data-testid={`filter-column-${id}`}>{filterModel.columnField}</span>
-      <span data-testid={`filter-operator-${id}`}>
-        {filterModel.operatorValue}
-      </span>
+      <span data-testid={`filter-column-${id}`}>{filterModel.field}</span>
+      <span data-testid={`filter-operator-${id}`}>{filterModel.operator}</span>
       <span data-testid={`filter-value-${id}`}>{filterModel.value}</span>
       <button data-testid={`filter-destroy-${id}`} onClick={destroy}>
         Remove
@@ -62,7 +60,7 @@ describe('GridToolbarFilterMenu', () => {
 
     it('does not mutate the parent items array when adding a filter', async () => {
       const parentItems = [
-        { columnField: 'name', operatorValue: 'contains', value: 'test' },
+        { field: 'name', operator: 'contains', value: 'test' },
       ]
       const filterModel = { items: parentItems }
       renderMenu({ filterModel })
@@ -75,8 +73,8 @@ describe('GridToolbarFilterMenu', () => {
 
     it('does not mutate the parent items array when removing a filter', async () => {
       const parentItems = [
-        { columnField: 'name', operatorValue: 'contains', value: 'a' },
-        { columnField: 'status', operatorValue: 'equals', value: 'b' },
+        { field: 'name', operator: 'contains', value: 'a' },
+        { field: 'status', operator: 'equals', value: 'b' },
       ]
       const filterModel = { items: parentItems }
       renderMenu({ filterModel })
@@ -106,8 +104,8 @@ describe('GridToolbarFilterMenu', () => {
             filterModel={{
               items: [
                 {
-                  columnField: 'name',
-                  operatorValue: 'contains',
+                  field: 'name',
+                  operator: 'contains',
                   value: 'synced',
                 },
               ],
@@ -133,9 +131,7 @@ describe('GridToolbarFilterMenu', () => {
     it('adds a new blank filter row on add click', async () => {
       renderMenu({
         filterModel: {
-          items: [
-            { columnField: 'name', operatorValue: 'contains', value: 'a' },
-          ],
+          items: [{ field: 'name', operator: 'contains', value: 'a' }],
         },
       })
 
@@ -149,9 +145,7 @@ describe('GridToolbarFilterMenu', () => {
     it('resets to a blank row when removing the last filter', async () => {
       renderMenu({
         filterModel: {
-          items: [
-            { columnField: 'name', operatorValue: 'contains', value: 'only' },
-          ],
+          items: [{ field: 'name', operator: 'contains', value: 'only' }],
         },
       })
 
@@ -184,11 +178,52 @@ describe('GridToolbarFilterMenu', () => {
     })
   })
 
+  describe('legacy v5 filter model normalization', () => {
+    it('preserves OR logic when dismissing a legacy linkOperator model', async () => {
+      const setFilterModel = vi.fn()
+      renderMenu({
+        filterModel: {
+          items: [
+            { columnField: 'name', operatorValue: 'equals', value: 'alpha' },
+            { columnField: 'name', operatorValue: 'equals', value: 'beta' },
+          ],
+          linkOperator: 'or',
+        },
+        setFilterModel,
+      })
+
+      await userEvent.click(screen.getByText('Filters'))
+      await userEvent.click(screen.getByText('Filter'))
+
+      expect(setFilterModel).toHaveBeenCalledWith(
+        expect.objectContaining({ logicOperator: 'or' })
+      )
+    })
+
+    it('normalizes legacy columnField/operatorValue to field/operator', async () => {
+      renderMenu({
+        filterModel: {
+          items: [
+            {
+              columnField: 'name',
+              operatorValue: 'contains',
+              value: 'test',
+            },
+          ],
+          linkOperator: 'and',
+        },
+      })
+
+      await userEvent.click(screen.getByText('Filters'))
+      expect(screen.getByTestId('filter-column-0')).toHaveTextContent('name')
+    })
+  })
+
   describe('badge count', () => {
     it('shows zero for blank filters', () => {
       renderMenu({
         filterModel: {
-          items: [{ columnField: '', operatorValue: '', value: '' }],
+          items: [{ field: '', operator: '', value: '' }],
         },
       })
       const badge = screen.getByText('Filters').closest('button')
@@ -199,8 +234,8 @@ describe('GridToolbarFilterMenu', () => {
       renderMenu({
         filterModel: {
           items: [
-            { columnField: 'name', operatorValue: 'contains', value: 'a' },
-            { columnField: 'status', operatorValue: 'equals', value: 'b' },
+            { field: 'name', operator: 'contains', value: 'a' },
+            { field: 'status', operator: 'equals', value: 'b' },
           ],
         },
       })

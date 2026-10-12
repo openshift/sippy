@@ -246,7 +246,7 @@ export default function Sidebar(props) {
           to={withSort(
             pathForTestsWithFilter(release, {
               items: DEFAULT_TEST_FILTERS,
-              linkOperator: 'and',
+              logicOperator: 'and',
             }),
             'net_improvement',
             'asc'

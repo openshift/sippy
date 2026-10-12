@@ -22,7 +22,7 @@ export default function GridToolbarClientAutocomplete(props) {
 
       // If valueGetter is provided, use it to get the display value
       if (props.valueGetter) {
-        value = props.valueGetter({ row, value })
+        value = props.valueGetter(value, row)
       }
 
       if (value !== null && value !== undefined && value !== '') {
@@ -63,7 +63,9 @@ export default function GridToolbarClientAutocomplete(props) {
         setOpen(false)
       }}
       onChange={(e, v) => {
-        if (typeof v === 'string') {
+        if (v === null) {
+          props.onChange('')
+        } else if (typeof v === 'string') {
           props.onChange(v)
         } else if (v && v.name) {
           props.onChange(v.name)

@@ -153,8 +153,6 @@ function ReleasePayloadAcceptance(props) {
   return <>{items}</>
 }
 
-ReleasePayloadAcceptance.defaultProps = {}
-
 ReleasePayloadAcceptance.propTypes = {
   release: PropTypes.string.isRequired,
 }

@@ -64,6 +64,26 @@ type Filter struct {
 	LinkOperator LinkOperator `json:"linkOperator"`
 }
 
+// UnmarshalJSON accepts both MUI X v5 ("linkOperator") and v7
+// ("logicOperator") field names so old bookmarks and new frontend
+// requests both work.
+func (filters *Filter) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Items         []FilterItem `json:"items"`
+		LinkOperator  LinkOperator `json:"linkOperator"`
+		LogicOperator LinkOperator `json:"logicOperator"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	filters.Items = raw.Items
+	filters.LinkOperator = raw.LinkOperator
+	if filters.LinkOperator == "" {
+		filters.LinkOperator = raw.LogicOperator
+	}
+	return nil
+}
+
 // FilterItem is an individual filter consisting of a field, operator,
 // value and a not boolean that negates the operator. For example:
 // name contains aws, or name not contains aws.
@@ -72,6 +92,33 @@ type FilterItem struct {
 	Not      bool     `json:"not"`
 	Operator Operator `json:"operatorValue"`
 	Value    string   `json:"value"`
+}
+
+// UnmarshalJSON accepts both MUI X v5 ("columnField"/"operatorValue")
+// and v7 ("field"/"operator") field names for backward compatibility.
+func (f *FilterItem) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ColumnField   string   `json:"columnField"`
+		Field         string   `json:"field"`
+		Not           bool     `json:"not"`
+		OperatorValue Operator `json:"operatorValue"`
+		Operator      Operator `json:"operator"`
+		Value         string   `json:"value"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	f.Field = raw.ColumnField
+	if f.Field == "" {
+		f.Field = raw.Field
+	}
+	f.Not = raw.Not
+	f.Operator = raw.OperatorValue
+	if f.Operator == "" {
+		f.Operator = raw.Operator
+	}
+	f.Value = raw.Value
+	return nil
 }
 
 // helper for constructing opposing branches of SQL logic concisely

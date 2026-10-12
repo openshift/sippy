@@ -69,8 +69,8 @@ export default function FeatureGateDetail(props) {
   const annotationFilter = {
     items: [
       {
-        columnField: 'name',
-        operatorValue: 'contains',
+        field: 'name',
+        operator: 'contains',
         value: `FeatureGate:${featureGate}]`,
       },
     ],
@@ -79,68 +79,68 @@ export default function FeatureGateDetail(props) {
   const installFilter = {
     items: [
       {
-        columnField: 'name',
-        operatorValue: 'contains',
+        field: 'name',
+        operator: 'contains',
         value: 'install should succeed',
       },
       {
-        columnField: 'variants',
-        operatorValue: 'has entry containing',
+        field: 'variants',
+        operator: 'has entry containing',
         value: `Capability:${featureGate}`,
       },
     ],
-    linkOperator: 'and',
+    logicOperator: 'and',
   }
 
   const jobTestsFilter = {
     items: [
       {
-        columnField: 'variants',
+        field: 'variants',
         not: true,
-        operatorValue: 'has entry',
+        operator: 'has entry',
         value: 'never-stable',
       },
       {
-        columnField: 'variants',
+        field: 'variants',
         not: true,
-        operatorValue: 'has entry',
+        operator: 'has entry',
         value: 'aggregated',
       },
       {
-        columnField: 'variants',
-        operatorValue: 'has entry',
+        field: 'variants',
+        operator: 'has entry',
         value: `Capability:${featureGate}`,
       },
       {
-        columnField: 'current_working_percentage',
-        operatorValue: '<',
+        field: 'current_working_percentage',
+        operator: '<',
         value: '92',
       },
       {
-        columnField: 'current_runs',
-        operatorValue: '>=',
+        field: 'current_runs',
+        operator: '>=',
         value: '0',
       },
       {
-        columnField: 'name',
+        field: 'name',
         not: true,
-        operatorValue: 'contains',
+        operator: 'contains',
         value: 'install should succeed',
       },
       {
-        columnField: 'name',
+        field: 'name',
         not: true,
-        operatorValue: 'contains',
+        operator: 'contains',
         value: 'openshift-tests should work',
       },
       {
-        columnField: 'name',
+        field: 'name',
         not: true,
-        operatorValue: 'contains',
+        operator: 'contains',
         value: 'infrastructure should work',
       },
     ],
-    linkOperator: 'and',
+    logicOperator: 'and',
   }
 
   const tabs = useMemo(() => {
@@ -262,11 +262,11 @@ export default function FeatureGateDetail(props) {
                     JSON.stringify({
                       items: gate.matching_jobs.map((job, i) => ({
                         id: i,
-                        columnField: 'name',
-                        operatorValue: 'equals',
+                        field: 'name',
+                        operator: 'equals',
                         value: job,
                       })),
-                      linkOperator: 'or',
+                      logicOperator: 'or',
                     })
                   )}`}
                   size="small"

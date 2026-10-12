@@ -19,7 +19,7 @@ const useStyles = makeStyles((theme) => ({
 /**
  * JobsDetail is the landing page for the JobDetailTable.
  */
-export default function JobsDetail(props) {
+export default function JobsDetail({ filter: defaultFilter = '', ...props }) {
   const classes = useStyles()
 
   const [query, setQuery] = React.useState('')
@@ -27,7 +27,7 @@ export default function JobsDetail(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [fetchError, setFetchError] = React.useState('')
 
-  const [filter = props.filter, setFilter] = useQueryParam('job', StringParam)
+  const [filter = defaultFilter, setFilter] = useQueryParam('job', StringParam)
 
   const [startDate, setStartDate] = React.useState('')
   const [endDate, setEndDate] = React.useState('')
@@ -142,10 +142,6 @@ export default function JobsDetail(props) {
       <JobDetailTable release={props.release} rows={rows} columns={columns} />
     </Fragment>
   )
-}
-
-JobsDetail.defaultProps = {
-  filter: '',
 }
 
 JobsDetail.propTypes = {

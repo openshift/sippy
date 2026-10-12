@@ -5,7 +5,7 @@ import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 import TextField from '@mui/material/TextField'
 
-export default function GridToolbarAutocomplete(props) {
+export default function GridToolbarAutocomplete({ release = '', ...props }) {
   const [open, setOpen] = React.useState(false)
   const [options, setOptions] = React.useState([])
   const [loading, setLoading] = React.useState(false)
@@ -16,8 +16,8 @@ export default function GridToolbarAutocomplete(props) {
     if (value !== '') {
       queryParams.push('search=' + safeEncodeURIComponent(value))
     }
-    if (props.release !== '') {
-      queryParams.push('release=' + safeEncodeURIComponent(props.release))
+    if (release !== '') {
+      queryParams.push('release=' + safeEncodeURIComponent(release))
     }
 
     const response = await fetch(
@@ -60,7 +60,7 @@ export default function GridToolbarAutocomplete(props) {
       onClose={() => {
         setOpen(false)
       }}
-      onChange={(e, v) => v && props.onChange(v.name)}
+      onChange={(e, v) => props.onChange(v ? v.name : '')}
       onInputChange={(e, value) => {
         if (e && e.type === 'change') {
           props.onChange(value)
@@ -102,10 +102,6 @@ export default function GridToolbarAutocomplete(props) {
       )}
     />
   )
-}
-
-GridToolbarAutocomplete.defaultProps = {
-  release: '',
 }
 
 GridToolbarAutocomplete.propTypes = {

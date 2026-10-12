@@ -3,12 +3,14 @@ export class GridView {
     this.allColumns = columns
     this.filterColumns = Object.entries(columns).map(([_, v]) => v)
     this.views = views
+    this.columnVisibilityModel = {}
     this.setView(defaultView)
   }
 
   setView(name) {
     if (name in this.views) {
       let columns = []
+      const visibilityModel = {}
       this.view = this.views[name]
       this.viewName = name
       this.view.fieldOrder.forEach((e) => {
@@ -16,11 +18,14 @@ export class GridView {
         if (field === undefined) {
           console.error(e.field + ' field not found')
         }
-        field.hide = e.hide !== undefined ? e.hide : false
+        if (e.hide) {
+          visibilityModel[e.field] = false
+        }
         field.flex = e.flex
         field.headerClassName = e.headerClassName
         columns.push(field)
       })
+      this.columnVisibilityModel = visibilityModel
       this.columns = columns
     } else {
       console.error(name + ' is not a known view')

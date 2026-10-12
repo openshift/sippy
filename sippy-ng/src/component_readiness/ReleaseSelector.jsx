@@ -10,7 +10,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
@@ -40,21 +39,21 @@ function ReleaseSelector(props) {
   const releases = useContext(ReleasesContext)
   const [versions, setVersions] = useState({})
   const {
-    label,
+    label = 'Version',
     setStartTime,
     startTime,
     setEndTime,
     endTime,
     version,
     onChange,
-    pullRequestSupport,
+    pullRequestSupport = false,
     pullRequestOrg,
     setPullRequestOrg,
     pullRequestRepo,
     setPullRequestRepo,
     pullRequestNumber,
     setPullRequestNumber,
-    payloadSupport,
+    payloadSupport = false,
     payloadTags,
     setPayloadTags,
   } = props
@@ -192,6 +191,32 @@ function ReleaseSelector(props) {
     return <p>Loading Releases...</p>
   }
 
+  // MUI X v7 DatePicker requires a Date object for value, but state may hold
+  // a formatted string from formatLongDate (e.g. "2024-09-05 00:00:00").
+  const parseDateValue = (val) => {
+    if (val instanceof Date) return val
+    if (typeof val === 'string' && val) {
+      if (val.includes('Z') || val.includes('+')) {
+        const d = new Date(val)
+        return isNaN(d.getTime()) ? null : d
+      }
+      // Parse as local date components to preserve the calendar date
+      // regardless of the browser's timezone.
+      const parts = val.split(/[-T :]/)
+      const d = new Date(
+        Number(parts[0]),
+        Number(parts[1] || 1) - 1,
+        Number(parts[2] || 1),
+        Number(parts[3] || 0),
+        Number(parts[4] || 0),
+        Number(parts[5] || 0)
+      )
+      return isNaN(d.getTime()) ? null : d
+    }
+    if (typeof val === 'number') return new Date(val)
+    return null
+  }
+
   // dateExtract takes a date from the DatePicker and extracts only the year, month, and day.
   // We can then use these 3 things to create a UTC time (regardless of the local browser's TZ).
   const dateExtractor = (descString, e) => {
@@ -276,12 +301,10 @@ function ReleaseSelector(props) {
 
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <DatePicker
-              showTodayButton
               disableFuture
               label="From"
               format={dateFormat}
-              ampm={false}
-              value={startTime}
+              value={parseDateValue(startTime)}
               onChange={(e) => {
                 const stringStartTime = dateExtractor('startTime', e)
                 const formattedTime = formatLongDate(
@@ -290,17 +313,13 @@ function ReleaseSelector(props) {
                 )
                 setStartTime(formattedTime)
               }}
-              renderInput={(props) => (
-                <TextField variant="standard" {...props} />
-              )}
+              slotProps={{ textField: { variant: 'standard' } }}
             />
             <DatePicker
-              showTodayButton
               disableFuture
               label="To"
               format={dateEndFormat}
-              ampm={false}
-              value={endTime}
+              value={parseDateValue(endTime)}
               onChange={(e) => {
                 const stringEndTime = dateExtractor('endTime', e)
                 const formattedTime = formatLongDate(
@@ -309,9 +328,7 @@ function ReleaseSelector(props) {
                 )
                 setEndTime(formattedTime)
               }}
-              renderInput={(props) => (
-                <TextField variant="standard" {...props} />
-              )}
+              slotProps={{ textField: { variant: 'standard' } }}
             />
           </LocalizationProvider>
         </Grid>
@@ -380,12 +397,6 @@ ReleaseSelector.propTypes = {
   payloadSupport: PropTypes.bool,
   payloadTags: PropTypes.string,
   setPayloadTags: PropTypes.func,
-}
-
-ReleaseSelector.defaultProps = {
-  label: 'Version',
-  pullRequestSupport: false,
-  payloadSupport: false,
 }
 
 export default ReleaseSelector

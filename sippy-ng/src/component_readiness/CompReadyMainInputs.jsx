@@ -174,7 +174,7 @@ function ReportButton(props) {
                                                                                      against a historical (previous) release using all the specific parameters specified'
           }
         >
-          <Fragment>Generate Report</Fragment>
+          <span>Generate Report</span>
         </Tooltip>
       </Button>
     </div>

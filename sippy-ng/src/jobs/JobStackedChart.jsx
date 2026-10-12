@@ -10,8 +10,8 @@ import { useNavigate } from 'react-router-dom'
 export const dayFilter = (days, startDate) => {
   return [
     {
-      columnField: 'timestamp',
-      operatorValue: '>',
+      field: 'timestamp',
+      operator: '>',
       value: new Date(startDate - 1000 * 60 * 60 * 24 * days).toISOString(),
     },
   ]
@@ -20,15 +20,15 @@ export const dayFilter = (days, startDate) => {
 export const hourFilter = (dayOffset, startDate) => {
   return [
     {
-      columnField: 'timestamp',
-      operatorValue: '>',
+      field: 'timestamp',
+      operator: '>',
       value: new Date(
         startDate - dayOffset * 1000 * 60 * 60 * 24
       ).toISOString(),
     },
     {
-      columnField: 'timestamp',
-      operatorValue: '<=',
+      field: 'timestamp',
+      operator: '<=',
       value: new Date(
         startDate - (dayOffset - 1) * 1000 * 60 * 60 * 24
       ).toISOString(),
@@ -223,6 +223,7 @@ export function JobStackedChart(props) {
         },
       },
     },
+    onClick: handleClick,
     scales: {
       x: {
         grid: {
@@ -256,7 +257,6 @@ export function JobStackedChart(props) {
       data={resultChart}
       options={options}
       height={120}
-      getElementAtEvent={handleClick}
     />
   )
 }

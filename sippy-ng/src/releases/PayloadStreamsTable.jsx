@@ -3,7 +3,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
+import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
 import { Tooltip } from '@mui/material'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -22,7 +22,15 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-function PayloadStreamsTable(props) {
+function PayloadStreamsTable({
+  hideControls = false,
+  pageSize: defaultPageSize = 25,
+  briefTable = false,
+  filterModel: defaultFilterModel = { items: [] },
+  sortField: defaultSortField = 'release_time',
+  sort: defaultSort = 'desc',
+  ...props
+}) {
   const theme = useTheme()
   const classes = useStyles(theme)
 
@@ -76,7 +84,6 @@ function PayloadStreamsTable(props) {
       field: 'stream',
       headerName: 'Stream',
       flex: 1.5,
-      hide: props.briefTable,
       renderCell: (params) => {
         return (
           <Link
@@ -110,30 +117,29 @@ function PayloadStreamsTable(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
-    props.filterModel
+    defaultFilterModel
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = defaultSortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = defaultPageSize, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
+  const [page, setPage] = React.useState(0)
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -152,7 +158,7 @@ function PayloadStreamsTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -218,16 +224,20 @@ function PayloadStreamsTable(props) {
 
   return (
     <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      columnVisibilityModel={briefTable ? { stream: false } : {}}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       rowHeight={70}
       autoHeight={true}
-      disableColumnFilter={props.briefTable}
+      disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={[]}
+      paginationModel={{ pageSize, page }}
+      onPaginationModelChange={(model) => {
+        setPageSize(model.pageSize)
+        setPage(model.page)
+      }}
+      pageSizeOptions={[]}
       getRowClassName={(params) =>
         params.row.forced === true
           ? classes.rowPhaseForced
@@ -243,7 +253,7 @@ function PayloadStreamsTable(props) {
         },
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),
@@ -256,18 +266,6 @@ function PayloadStreamsTable(props) {
       }}
     />
   )
-}
-
-PayloadStreamsTable.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'release_time',
-  sort: 'desc',
 }
 
 PayloadStreamsTable.propTypes = {

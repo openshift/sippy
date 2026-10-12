@@ -133,11 +133,23 @@ const useStyles = makeStyles(() => ({
   },
 }))
 
+const dataGridCellOverride = {
+  MuiDataGrid: {
+    styleOverrides: {
+      cell: {
+        paddingTop: 8,
+        paddingBottom: 8,
+      },
+    },
+  },
+}
+
 const themes = {
   dark: {
     palette: {
       mode: 'dark',
     },
+    components: dataGridCellOverride,
   },
   light: {
     palette: {
@@ -163,6 +175,7 @@ const themes = {
         dark: red[700],
       },
     },
+    components: dataGridCellOverride,
   },
 }
 
