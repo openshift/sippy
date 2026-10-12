@@ -15,3 +15,8 @@ OAuth token renewals.
 The HTTP queries and response decoding are separate from database updates so
 their authentication, URL handling, and pagination can be tested without a
 database connection.
+
+`sippy load --jira-service-account` supplies the shared OAuth client to
+`NewWithClient`. When regression tracking also runs, its Jira SDK client uses
+the same HTTP client and OAuth token cache. See [configuration and rollout instructions](../../../config/README.md#jira-data-loader-rollout)
+for credential variables and deployment details.

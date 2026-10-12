@@ -123,3 +123,36 @@ with the read-only credential and these flags. Check its next run for successful
 searches and dry-run proposals. Other Sippy commands keep their current PAT
 authentication unless separately opted in. To roll back, remove
 `--jira-service-account` and retain the existing PAT configuration.
+
+### Jira data-loader rollout
+
+`sippy load --jira-service-account` selects OAuth for both the `jira` data
+loader and the Jira client used by regression tracking. Both use the same
+credential variables and legacy aliases above. The flag defaults to false, so
+existing deployments keep their PAT or unauthenticated Jira behavior. Setting
+credentials without the flag does not switch authentication. Missing or
+rejected OAuth credentials fail loader construction without falling back to PAT.
+
+The Jira data loader reads components, paginated TRT incidents, and individual
+issue changelogs through the shared OAuth HTTP client and gateway URL. It writes
+the resulting data to PostgreSQL, but never
+modifies Jira issues. Regression tracking can post comments when associated
+triages are resolved. A load process that runs regression tracking must receive
+the read/write credential. Both consumers share one OAuth HTTP client and token
+cache for the lifetime of the load job. Comments
+are attributed to the service account. A process running only the `jira` data
+loader can use the read-only credential.
+
+After merging and building the image, update the `fetchdata` CronJob in
+`dpcr/sippy`: map `JIRA_CLIENT_ID` to `client-id-read-write`,
+`JIRA_CLIENT_SECRET` to `client-secret-read-write`, and `JIRA_CLOUD_ID` to
+`cloud-id` in secret `sippy-jira-trt-service-account`. Add
+`--jira-service-account` to the existing `sippy load` invocation and keep its
+other flags and PAT references. Trigger a one-off run and compare component
+counts, incident counts, load errors, and any triage-resolution comments with
+the PAT baseline. For rollback, remove the flag and use the retained PAT
+references. With the flag enabled, neither of these Jira consumers uses PAT.
+
+An isolated `sippy load --loader=jira --jira-service-account` run still updates
+PostgreSQL; it is not a dry run. Repeated short jobs verify token acquisition,
+while token renewal requires a client that remains active past token expiry.
