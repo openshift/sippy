@@ -46816,7 +46816,25 @@ periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nrop-tls-scanner-e2e-telcov
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nto-nightly-e2e-telcov10n-nto-tests-v2-t0-bm-5-nightly:
+periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nto-nightly-e2e-telcov10n-nto-tests-v2-t0-bm-4-23-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-kni-eco-ci-cd-main-cnf-compute-nto-nightly-e2e-telcov10n-nto-tests-v2-t0-bm-5-1-nightly:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -86394,6 +86412,46 @@ periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e-candidate-5-0:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e-candidate-5-0-full:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main_capa-e2e-capa-e2e-full:
     Aggregation: none
     Architecture: amd64
@@ -86667,54 +86725,6 @@ periodic-ci-openshift-open-telemetry-opentelemetry-operator-main-opentelemetry-p
     Release: "5.0"
     ReleaseMajor: "5"
     ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-openshift-ansible-release-3.11-e2e-aws-nightly:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: sdn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: unknown
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "3.11"
-    ReleaseMajor: "3"
-    ReleaseMinor: "11"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-openshift-ansible-release-3.11-e2e-gcp-nightly:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: sdn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: unknown
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "3.11"
-    ReleaseMajor: "3"
-    ReleaseMinor: "11"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -235444,30 +235454,6 @@ periodic-ci-openshift-operator-framework-operator-controller-release-5.1-periodi
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-origin-release-3.11-e2e-gcp:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: sdn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: unknown
-    Owner: eng
-    Platform: gcp
-    Procedure: none
-    Release: "3.11"
-    ReleaseMajor: "3"
-    ReleaseMinor: "11"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-osd-metrics-exporter-main-rosa-sts-e2e-promotion-int:
     Aggregation: none
     Architecture: amd64
@@ -236668,6 +236654,77 @@ periodic-ci-openshift-pagerduty-operator-master-hive-e2e-promotion-stage:
     SecurityMode: default
     Suite: unknown
     Topology: ha
+    Upgrade: none
+periodic-ci-openshift-pipelines-release-tests-ginkgo-release-v1.24-openshift-pipelines-ocp5.0-lp-interop-aws-fips:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+? periodic-ci-openshift-pipelines-release-tests-ginkgo-release-v1.24-openshift-pipelines-ocp5.0-lp-interop-openshift-pipelines-e2e-ginkgo
+:   Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: mpiit
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+? periodic-ci-openshift-pipelines-release-tests-ginkgo-release-v1.24-openshift-pipelines-ocp5.0-lp-rosa-hypershift-aws-rosa-hypershift
+:   Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
     Upgrade: none
 ? periodic-ci-openshift-pipelines-release-tests-release-v1.11-openshift-pipelines-ocp4.14-lp-interop-openshift-pipelines-interop-aws
 :   Aggregation: none
