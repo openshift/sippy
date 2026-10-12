@@ -157,7 +157,7 @@ export default function GridToolbarFilterItem({ columns = [], ...props }) {
                 slotProps={{ textField: { variant: 'standard' } }}
               />
             </LocalizationProvider>
-            <FormHelperText error={operatorError}>Required</FormHelperText>
+            <FormHelperText error={valueError}>Required</FormHelperText>
           </Fragment>
         )
       default:
@@ -212,7 +212,7 @@ export default function GridToolbarFilterItem({ columns = [], ...props }) {
                 variant="standard"
                 disabled={disabled}
                 inputProps={{ 'data-testid': `value-${props.id}` }}
-                error={operatorError}
+                error={valueError}
                 id={`value-${props.id}`}
                 label="Value"
                 onChange={(e) =>
