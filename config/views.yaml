@@ -635,6 +635,7 @@ component_readiness:
       Upgrade: { }
     include_variants:
       LayeredProduct:
+      - lp-interop--acm-virt--lpMainline
       - lp-interop--opp--lpMainline
       Network:
       - ovn
@@ -1801,6 +1802,7 @@ component_readiness:
       Upgrade: { }
     include_variants:
       LayeredProduct:
+      - lp-interop--acm-virt--lpMainline
       - lp-interop--opp--lpMainline
       Network:
       - ovn
