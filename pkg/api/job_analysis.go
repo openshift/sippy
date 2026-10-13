@@ -31,6 +31,10 @@ func PrintJobAnalysisJSONFromDB(
 	if err != nil {
 		return result, err
 	}
+	if len(jobs) == 0 {
+		result.ByPeriod = make(map[string]apitype.AnalysisResult)
+		return result, nil
+	}
 
 	// Next is sum up individual job results
 	type resultSum struct {
