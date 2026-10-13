@@ -500,7 +500,8 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []strin
 				WHERE t2.test_id = prow_job_run_tests.test_id
 				  AND t2.prow_job_run_release = prow_job_run_tests.prow_job_run_release
 				  AND t2.prow_job_run_timestamp >= ?
-				  AND prs.merged_at IS NOT NULL)`, mergedPRLookback)
+				  AND t2.prow_job_run_timestamp <= ?
+				  AND prs.merged_at IS NOT NULL)`, mergedPRLookback, jobRun.Timestamp)
 	} else {
 		testQuery = testQuery.Where("status = ?", sippyprocessingv1.TestStatusFailure)
 	}
