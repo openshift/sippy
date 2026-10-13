@@ -23,7 +23,7 @@ import { makeStyles, styled } from '@mui/styles'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
-import { ReactRouterAdapter } from './adapters/ReactRouterAdapter'
+import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import AccessibilityToggle from './components/AccessibilityToggle'
@@ -561,7 +561,7 @@ function App(_props) {
                 <AccessibilityModeProvider>
                   <CssBaseline />
                   <QueryParamProvider
-                    adapter={ReactRouterAdapter}
+                    adapter={ReactRouter6Adapter}
                     options={{
                       enableBatching: true,
                       searchStringToObject: parse,
