@@ -11,7 +11,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { SafeJSONParam } from '../helpers'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'

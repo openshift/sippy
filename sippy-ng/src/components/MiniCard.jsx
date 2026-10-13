@@ -6,7 +6,7 @@ import {
   Grid,
   Tooltip,
 } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles, useTheme } from '@mui/styles'
 import { parseVariantName } from '../helpers'
 import { scale } from 'chroma-js'

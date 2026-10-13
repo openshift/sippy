@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom'
 import { filterFor, pathForJobRunsWithFilter } from '../helpers'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { SippyCapabilitiesContext } from '../App'
 import React from 'react'

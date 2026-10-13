@@ -16,7 +16,7 @@ import {
   getTestDetailsLink,
   getTriagesAPIUrl,
 } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { makeStyles } from '@mui/styles'
 import { relativeTime } from '../helpers'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
