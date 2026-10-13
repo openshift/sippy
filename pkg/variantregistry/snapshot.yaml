@@ -64731,6 +64731,33 @@ periodic-ci-openshift-multiarch-main-nightly-4.14-ocp-e2e-upgrade-aws-ovn-arm64:
     Suite: unknown
     Topology: ha
     Upgrade: micro
+periodic-ci-openshift-multiarch-main-nightly-4.14-ocp-e2e-upgrade-aws-ovn-multi-a-a:
+    Aggregation: none
+    Architecture: arm64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "4.14"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "14"
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.14"
+    ReleaseMajor: "4"
+    ReleaseMinor: "14"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-openshift-multiarch-main-nightly-4.14-ocp-e2e-upgrade-azure-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -65720,6 +65747,33 @@ periodic-ci-openshift-multiarch-main-nightly-4.15-ocp-e2e-serial-ovn-remote-s2s-
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.15-ocp-e2e-upgrade-aws-ovn-arm64:
+    Aggregation: none
+    Architecture: arm64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "4.15"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "15"
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.15"
+    ReleaseMajor: "4"
+    ReleaseMinor: "15"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-openshift-multiarch-main-nightly-4.15-ocp-e2e-upgrade-aws-ovn-multi-a-a:
     Aggregation: none
     Architecture: arm64
     CGroupMode: v2
@@ -66975,6 +67029,33 @@ periodic-ci-openshift-multiarch-main-nightly-4.16-ocp-e2e-serial-ovn-remote-s2s-
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.16-ocp-e2e-upgrade-aws-ovn-arm64:
+    Aggregation: none
+    Architecture: arm64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "4.16"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "16"
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "4.16"
+    ReleaseMajor: "4"
+    ReleaseMinor: "16"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-openshift-multiarch-main-nightly-4.16-ocp-e2e-upgrade-aws-ovn-multi-a-a:
     Aggregation: none
     Architecture: arm64
     CGroupMode: v2
@@ -335480,6 +335561,30 @@ periodic-ci-openshift-release-tests-main-qe-release-gate-test:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-disconnected-e2e-far-nhc-interop-weekly-aws-disconnected:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-rhwa-system-tests-main-5.0-disconnected-e2e-far-weekly-aws-disconnected:
     Aggregation: none
     Architecture: amd64
@@ -358093,7 +358198,7 @@ periodic-ci-quay-quay-redhat-3.17-aws-ocp422-e2e-install-aws-s3-nightly:
     Owner: eng
     Platform: aws
     Procedure: none
-    Release: "3.17"
+    Release: quay-3.17
     ReleaseMajor: "3"
     ReleaseMinor: "17"
     Scheduler: default
@@ -358372,7 +358477,7 @@ periodic-ci-quay-quay-redhat-5.0-aws-ocp50-e2e-install-aws-s3-nightly:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -358381,7 +358486,7 @@ periodic-ci-quay-quay-redhat-5.0-aws-ocp50-e2e-install-aws-s3-nightly:
     Owner: eng
     Platform: aws
     Procedure: none
-    Release: "5.0"
+    Release: quay-5.0
     ReleaseMajor: "5"
     ReleaseMinor: "0"
     Scheduler: default
