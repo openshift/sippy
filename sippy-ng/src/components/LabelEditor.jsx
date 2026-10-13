@@ -25,7 +25,7 @@ import { Delete } from '@mui/icons-material'
 import { isValidJiraKey, normalizeJiraKeys } from './JiraBugLinks'
 import { labelEditorPath } from './LabelEditButton'
 import { SippyCapabilitiesContext } from '../App'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import MarkdownEditor from './MarkdownEditor'
 import React from 'react'
 

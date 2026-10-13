@@ -1,6 +1,6 @@
 import { Edit } from '@mui/icons-material'
 import { IconButton, Tooltip } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { SippyCapabilitiesContext } from '../App'
 import PropTypes from 'prop-types'
 import React from 'react'

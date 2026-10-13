@@ -20,13 +20,7 @@ import {
 } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { makeStyles, styled } from '@mui/styles'
-import {
-  Navigate,
-  Route,
-  Routes,
-  useNavigate,
-  useParams,
-} from 'react-router'
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
 import { ReactRouterAdapter } from './adapters/ReactRouterAdapter'

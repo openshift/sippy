@@ -13,7 +13,7 @@ import {
 } from '@mui/material'
 import { filterFor, pathForJobRunsWithFilter } from '../helpers'
 import { FilterList } from '@mui/icons-material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { symptomColor } from './CompReadyUtils'
 import JiraBugLinks from '../components/JiraBugLinks'
 import LabelEditButton from '../components/LabelEditButton'
