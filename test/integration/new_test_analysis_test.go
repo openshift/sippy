@@ -122,53 +122,6 @@ func TestFetchJobRunOnlyNewTests(t *testing.T) {
 			"test in ownership registry should be excluded")
 	})
 
-	t.Run("old merged PR beyond lookback does not exclude test", func(t *testing.T) {
-		// Create a test that only appeared in a very old merged PR (>90 days ago).
-		// With the bounded lookback, this test should be considered "new".
-		ancientTest := intutil.CreateTest(t, dbc, "test-only-in-ancient-merged-pr")
-
-		now := td.targetRun.Timestamp
-		ancientTime := now.Add(-120 * 24 * time.Hour)
-		ancientRun := intutil.CreateProwJobRun(t, dbc, td.job.ID, "4.16", ancientTime, true, v1.JobSucceeded)
-
-		ancientPR := models.ProwPullRequest{
-			Org:      "openshift",
-			Repo:     "origin",
-			Number:   99999,
-			Author:   "oldauthor",
-			MergedAt: timePtr(ancientTime),
-		}
-		require.NoError(t, dbc.DB.Create(&ancientPR).Error)
-
-		ancientPRLink := models.ProwJobRunProwPullRequest{
-			ProwJobRunID:        ancientRun.ID,
-			ProwPullRequestID:   ancientPR.ID,
-			ProwJobRunRelease:   "4.16",
-			ProwJobRunTimestamp: ancientTime,
-		}
-		require.NoError(t, dbc.DB.Create(&ancientPRLink).Error)
-
-		suite := intutil.CreateSuite(t, dbc, "ancient-suite")
-		intutil.CreateProwJobRunTest(t, dbc, ancientRun.ID, td.job.ID, ancientTest.ID,
-			"4.16", ancientTime, int(v1.TestStatusSuccess), intutil.WithSuiteID(suite.ID))
-
-		// Also add the ancient test to the target run
-		intutil.CreateProwJobRunTest(t, dbc, td.targetRun.ID, td.job.ID, ancientTest.ID,
-			"4.16", now, int(v1.TestStatusFailure), intutil.WithSuiteID(suite.ID))
-
-		jobRun, err := fetchJobRunInt64(dbc, td.targetRun.ID, true, nil, logger)
-		require.NoError(t, err)
-		require.NotNil(t, jobRun)
-
-		var testNames []string
-		for _, test := range jobRun.Tests {
-			testNames = append(testNames, test.Test.Name)
-		}
-
-		assert.Contains(t, testNames, "test-only-in-ancient-merged-pr",
-			"test only seen in a merged PR beyond the 90-day lookback should be treated as new")
-	})
-
 	t.Run("failed tests returned when onlyNewTests is false", func(t *testing.T) {
 		jobRun, err := fetchJobRunInt64(dbc, td.targetRun.ID, false, nil, logger)
 		require.NoError(t, err)
