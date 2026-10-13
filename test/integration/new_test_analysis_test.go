@@ -155,7 +155,7 @@ func TestPrintJobAnalysisEmptyJobs(t *testing.T) {
 
 	result, err := api.PrintJobAnalysisJSONFromDB(
 		dbc, "4.99", noMatchFilter, &filter.Filter{},
-		start, boundary, now, 10, "", apitype.SortDescending, api.PeriodDay, now,
+		start, boundary, now, 10, "name", apitype.SortDescending, api.PeriodDay, now,
 	)
 	require.NoError(t, err)
 	assert.Empty(t, result.ByPeriod,
