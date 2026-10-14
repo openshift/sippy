@@ -51,8 +51,14 @@ export default function UpsertTriageModal({
   const [triages, setTriages] = React.useState([])
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
   const handleTriageModalOpen = () => {
+    // Updating uses the triage supplied by the parent, not the triage list.
+    if (triageDetailsUpdateMode) {
+      setTriageModalOpen(true)
+      return
+    }
+
     const triagesAPIUrl = getTriagesAPIUrl(null, null, fields)
-    // Only get existing entries when actually adding/editing a triage
+    // Only get existing entries when actually adding regressions
     fetch(triagesAPIUrl)
       .then((response) => {
         if (response.status !== 200) {
