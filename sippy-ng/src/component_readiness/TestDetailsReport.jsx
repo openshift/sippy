@@ -335,11 +335,26 @@ Flakes: ${stats.flake_count}`
 
   // Convert API URL from data.links.latest to UI URL if present
   const getLatestReportUrl = () => {
-    if (!data.links || !data.links.latest) {
+    const latestReport = data.links?.latest
+    if (typeof latestReport !== 'string' || latestReport.trim() === '') {
       return null
     }
 
-    return convertApiUrlToUiUrl(data.links.latest)
+    try {
+      const convertedUrl = convertApiUrlToUiUrl(latestReport)
+      const parsedUrl = new URL(convertedUrl, window.location.origin)
+      if (
+        !['http:', 'https:'].includes(parsedUrl.protocol) ||
+        parsedUrl.origin !== window.location.origin ||
+        parsedUrl.pathname !== '/sippy-ng/component_readiness/test_details'
+      ) {
+        return null
+      }
+
+      return `${parsedUrl.pathname}${parsedUrl.search}`
+    } catch {
+      return null
+    }
   }
 
   const latestReportUrl = getLatestReportUrl()
