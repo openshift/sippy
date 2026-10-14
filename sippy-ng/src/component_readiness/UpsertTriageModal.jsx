@@ -55,7 +55,6 @@ export default function UpsertTriageModal({
       'url',
       'description',
       'updated_at',
-      'regressions.id',
     ])
     // Only get existing entries when actually adding/editing a triage
     fetch(triagesAPIUrl)
@@ -68,14 +67,6 @@ export default function UpsertTriageModal({
         return response.json()
       })
       .then((triages) => {
-        if (regressionAddMode) {
-          triages = triages.filter(
-            (triage) =>
-              !triage.regressions.some((regression) =>
-                regressionIds.includes(regression.id)
-              )
-          )
-        }
         setTriages(triages)
         setTriageModalOpen(true)
       })

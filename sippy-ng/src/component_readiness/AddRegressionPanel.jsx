@@ -84,7 +84,7 @@ export default function AddRegressionPanel({
         body: JSON.stringify(updatedTriage),
       })
       if (!response.ok) {
-        const data = await response.json()
+        const data = await response.json().catch(() => null)
         const errorMessage = data?.code
           ? 'error adding test to triage entry: ' +
             data.code +

@@ -20,12 +20,9 @@ func TestFieldSelection(t *testing.T) {
 		name, fields, expected string
 	}{
 		{"minimal", "id,description", `[{"id":42,"description":"test triage"}]`},
-		{"nested", "id, regressions.id", `[{"id":42,"regressions":[{"id":7}]}]`},
-		{"duplicates", "id,id, regressions.id,regressions.id", `[{"id":42,"regressions":[{"id":7}]}]`},
+		{"duplicates and whitespace", "id,id, description,description", `[{"id":42,"description":"test triage"}]`},
 		{"timestamp", "updated_at", `[{"updated_at":"2026-10-14T12:00:00Z"}]`},
 		{"omitted nil", "bug,bug_id", `[{}]`},
-		{"nested omitted nil", "bug.id", `[{}]`},
-		{"nested multiple fields", "regressions.id,regressions.test_name", `[{"regressions":[{"id":7,"test_name":"large details"}]}]`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -41,21 +38,16 @@ func TestFieldSelection(t *testing.T) {
 }
 
 func TestParseFieldSelection(t *testing.T) {
-	for _, raw := range []string{"missing", "ID", "triage_symptoms", "id.child", "regressions.missing", "links.self", "id,", ".id", "regressions..id"} {
+	for _, raw := range []string{"missing", "ID", "triage_symptoms", "regressions.id", "links.self", "id,"} {
 		t.Run(raw, func(t *testing.T) {
 			_, err := ParseFieldSelection(raw, models.Triage{})
 			require.Error(t, err)
 			require.True(t, IsBadRequestError(err))
 		})
 	}
-	for _, raw := range []string{"regressions,regressions.id", "regressions.id,regressions"} {
-		fields, err := ParseFieldSelection(raw, models.Triage{})
-		require.NoError(t, err)
-		require.Equal(t, FieldSelection{"regressions": nil}, fields)
-	}
-	fields, err := ParseFieldSelection(" id,regressions.id ", models.Triage{})
+	fields, err := ParseFieldSelection(" id,description ", models.Triage{})
 	require.NoError(t, err)
-	require.Equal(t, FieldSelection{"id": nil, "regressions": FieldSelection{"id": nil}}, fields)
+	require.ElementsMatch(t, []string{"id", "description"}, fields.UnsortedList())
 }
 
 func TestFieldSelectionEmptyAndNull(t *testing.T) {
@@ -67,7 +59,7 @@ func TestFieldSelectionEmptyAndNull(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, record, response)
 	}
-	fields, err := ParseFieldSelection("id,regressions.id", models.Triage{})
+	fields, err := ParseFieldSelection("id,regressions", models.Triage{})
 	require.NoError(t, err)
 	for _, tc := range []struct {
 		data any
@@ -100,7 +92,8 @@ func TestFieldSelectionPreservesIntegerPrecision(t *testing.T) {
 }
 
 func TestFieldSelectionEncodingError(t *testing.T) {
-	fields := FieldSelection{"id": nil}
-	_, err := fields.Project(make(chan int))
+	fields, err := ParseFieldSelection("id", models.Triage{})
+	require.NoError(t, err)
+	_, err = fields.Project(make(chan int))
 	require.ErrorContains(t, err, "encoding fields response")
 }

@@ -257,10 +257,9 @@ func Test_TriageAPI(t *testing.T) {
 			{"minimal", "id,description", map[string]any{
 				"id": created.ID, "description": created.Description, "links": created.Links,
 			}},
-			{"modal", "id,url,description,updated_at,regressions.id", map[string]any{
+			{"modal", "id,url,description,updated_at", map[string]any{
 				"id": created.ID, "url": created.URL, "description": created.Description,
 				"updated_at": created.UpdatedAt, "links": created.Links,
-				"regressions": []map[string]uint{{"id": testRegression1.ID}},
 			}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
@@ -292,14 +291,13 @@ func Test_TriageAPI(t *testing.T) {
 			require.NoError(t, tracker.UpsertRegressionView(testRegression1.ID, sparseView))
 			defer dbc.DB.Where("test_regression_id = ? AND view_name = ?", testRegression1.ID, sparseView).Delete(&models.RegressionView{})
 			var records []map[string]json.RawMessage
-			require.NoError(t, util.SippyGet("/api/component_readiness/triages?view="+sparseView+"&fields=id,regressions.id", &records))
+			require.NoError(t, util.SippyGet("/api/component_readiness/triages?view="+sparseView+"&fields=id", &records))
 			require.Len(t, records, 1)
 			require.Equal(t, fmt.Sprint(created.ID), string(records[0]["id"]))
-			require.JSONEq(t, fmt.Sprintf(`[{"id":%d}]`, testRegression1.ID), string(records[0]["regressions"]))
 		})
 
 		t.Run("invalid fields return bad request", func(t *testing.T) {
-			for _, fields := range []string{"unknown", "id,", "regressions.unknown", "id.child"} {
+			for _, fields := range []string{"unknown", "id,", "regressions.id"} {
 				var response any
 				err := util.SippyGet("/api/component_readiness/triages?fields="+url.QueryEscape(fields), &response)
 				require.Error(t, err)

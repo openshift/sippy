@@ -1875,9 +1875,9 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if len(fields) > 0 {
+	if fields.Len() > 0 {
 		// Keep discoverability links available even in sparse responses.
-		fields["links"] = nil
+		fields.Insert("links")
 	}
 	triages, err := componentreadiness.ListTriages(s.db, req)
 	if err != nil {
