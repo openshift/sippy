@@ -89,7 +89,7 @@ describe('getTestDetailsLink', () => {
 })
 
 describe('convertApiUrlToUiUrl', () => {
-  test('uses /sippy-ng by default for ordinary anchor hrefs', () => {
+  test('rewrites /api/component_readiness/ to /sippy-ng/component_readiness/', () => {
     expect(
       convertApiUrlToUiUrl(
         'http://localhost:8080/api/component_readiness/test_details?testId=foo'
@@ -113,27 +113,6 @@ describe('convertApiUrlToUiUrl', () => {
     expect(
       convertApiUrlToUiUrl('/api/component_readiness/test_details?a=b')
     ).toBe('/sippy-ng/component_readiness/test_details?a=b')
-  })
-
-  test('omits the UI prefix for React Router destinations', () => {
-    expect(
-      convertApiUrlToUiUrl(
-        'https://sippy.example/api/component_readiness/test_details?' +
-          'dataSource=BigQuery&includeVariant=Architecture%3Aamd64&' +
-          'includeVariant=Platform%3Aaws',
-        ''
-      )
-    ).toBe(
-      '/component_readiness/test_details?' +
-        'crDataSource=BigQuery&includeVariant=Architecture%3Aamd64&' +
-        'includeVariant=Platform%3Aaws'
-    )
-  })
-
-  test('leaves non-API URLs unchanged with an empty UI prefix', () => {
-    expect(
-      convertApiUrlToUiUrl('/sippy-ng/component_readiness/test_details?x=1', '')
-    ).toBe('/sippy-ng/component_readiness/test_details?x=1')
   })
 })
 

@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import {
   cancelledDataTable,
+  convertApiUrlToUiUrl,
   getAPIUrl,
   getColumns,
   getStatusAndIcon,
@@ -40,7 +41,6 @@ import CopyPageURL from './CopyPageURL'
 import FileBug from '../bugs/FileBug'
 import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
-import LatestReportLink from './LatestReportLink'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
 import Sidebar from './Sidebar'
@@ -333,12 +333,13 @@ Failures: ${stats.failure_count}
 Flakes: ${stats.flake_count}`
   }
 
+  // Convert API URL from data.links.latest to UI URL if present
   const getLatestReportUrl = () => {
     if (!data.links || !data.links.latest) {
       return null
     }
 
-    return data.links.latest
+    return convertApiUrlToUiUrl(data.links.latest)
   }
 
   const latestReportUrl = getLatestReportUrl()
@@ -433,7 +434,9 @@ View the [test details report|${document.location.href}] for additional context.
       {latestReportUrl && (
         <Alert severity="warning" sx={{ marginTop: 2, marginBottom: 2 }}>
           This report shows data from more than 48 hours ago.{' '}
-          <LatestReportLink apiUrl={latestReportUrl} />
+          <a href={latestReportUrl} style={{ textDecoration: 'underline' }}>
+            View the latest report with data from the last 7 days
+          </a>
         </Alert>
       )}
       <h3>

@@ -782,10 +782,10 @@ export const convertVariantItemsToParam = (groupedVariants) => {
 }
 
 // Convert API URL to a relative UI URL by stripping any scheme+host and
-// swapping the /api/ prefix for the requested UI prefix. The default prefix
-// produces browser hrefs; React Router callers pass an empty prefix because
-// its basename supplies /sippy-ng.
-export function convertApiUrlToUiUrl(apiUrl, uiPrefix = '/sippy-ng') {
+// swapping the /api/ prefix for /sippy-ng/.  Producing a relative path
+// avoids the bug where the backend embeds localhost (or another internal
+// host) as the origin in HATEOAS links.
+export function convertApiUrlToUiUrl(apiUrl) {
   const apiIndex = apiUrl.indexOf('/api/')
   if (apiIndex === -1) {
     return apiUrl
@@ -794,10 +794,10 @@ export function convertApiUrlToUiUrl(apiUrl, uiPrefix = '/sippy-ng') {
   if (pathAndQuery.startsWith('/api/component_readiness/')) {
     pathAndQuery = pathAndQuery.replace(
       '/api/component_readiness/',
-      `${uiPrefix}/component_readiness/`
+      '/sippy-ng/component_readiness/'
     )
   } else {
-    pathAndQuery = pathAndQuery.replace('/api/', `${uiPrefix}/`)
+    pathAndQuery = pathAndQuery.replace('/api/', '/sippy-ng/')
   }
   // The API uses dataSource, but the browser URL uses crDataSource.
   pathAndQuery = pathAndQuery.replace(/dataSource=/g, 'crDataSource=')

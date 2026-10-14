@@ -41,19 +41,20 @@ export default function RegressionRedirect() {
           setError('No test details link available for this regression.')
           return
         }
-        const routerUrl = convertApiUrlToUiUrl(testDetailsUrl, '')
+        const uiUrl = convertApiUrlToUiUrl(testDetailsUrl)
         let parsed
         try {
-          parsed = new URL(routerUrl, window.location.origin)
+          parsed = new URL(uiUrl, window.location.origin)
         } catch {
           setError('Could not parse test details link.')
           return
         }
-        if (!parsed.pathname.startsWith('/component_readiness/')) {
+        if (!parsed.pathname.startsWith('/sippy-ng/component_readiness/')) {
           setError('Unexpected redirect path.')
           return
         }
-        const navigatePath = parsed.pathname + parsed.search
+        const navigatePath =
+          parsed.pathname.replace('/sippy-ng', '') + parsed.search
         navigate(navigatePath, { replace: true })
       })
       .catch((err) => {
