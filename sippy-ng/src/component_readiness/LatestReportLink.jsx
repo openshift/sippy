@@ -4,8 +4,7 @@ import PropTypes from 'prop-types'
 import React from 'react'
 
 export default function LatestReportLink({ apiUrl }) {
-  const latestReportUrl = convertApiUrlToUiUrl(apiUrl)
-  const routerUrl = latestReportUrl.replace(/^\/sippy-ng(?=\/|$)/, '')
+  const routerUrl = convertApiUrlToUiUrl(apiUrl, '')
 
   return (
     <Link to={routerUrl} style={{ textDecoration: 'underline' }}>
