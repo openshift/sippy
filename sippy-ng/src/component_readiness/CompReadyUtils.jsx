@@ -785,6 +785,9 @@ export const convertVariantItemsToParam = (groupedVariants) => {
 // swapping the /api/ prefix for /sippy-ng/.  Producing a relative path
 // avoids the bug where the backend embeds localhost (or another internal
 // host) as the origin in HATEOAS links.
+// Converted API URLs include /sippy-ng and are intended for native anchor
+// hrefs. Do not pass them directly to a React Router Link under the
+// /sippy-ng basename, because the router would prepend the basename again.
 export function convertApiUrlToUiUrl(apiUrl) {
   const apiIndex = apiUrl.indexOf('/api/')
   if (apiIndex === -1) {
