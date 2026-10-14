@@ -41,6 +41,7 @@ import CopyPageURL from './CopyPageURL'
 import FileBug from '../bugs/FileBug'
 import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
+import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
 import Sidebar from './Sidebar'
@@ -335,26 +336,11 @@ Flakes: ${stats.flake_count}`
 
   // Convert API URL from data.links.latest to UI URL if present
   const getLatestReportUrl = () => {
-    const latestReport = data.links?.latest
-    if (typeof latestReport !== 'string' || latestReport.trim() === '') {
+    if (!data.links || !data.links.latest) {
       return null
     }
 
-    try {
-      const convertedUrl = convertApiUrlToUiUrl(latestReport)
-      const parsedUrl = new URL(convertedUrl, window.location.origin)
-      if (
-        !['http:', 'https:'].includes(parsedUrl.protocol) ||
-        parsedUrl.origin !== window.location.origin ||
-        parsedUrl.pathname !== '/sippy-ng/component_readiness/test_details'
-      ) {
-        return null
-      }
-
-      return `${parsedUrl.pathname}${parsedUrl.search}`
-    } catch {
-      return null
-    }
+    return convertApiUrlToUiUrl(data.links.latest)
   }
 
   const latestReportUrl = getLatestReportUrl()
@@ -449,9 +435,12 @@ View the [test details report|${document.location.href}] for additional context.
       {latestReportUrl && (
         <Alert severity="warning" sx={{ marginTop: 2, marginBottom: 2 }}>
           This report shows data from more than 48 hours ago.{' '}
-          <a href={latestReportUrl} style={{ textDecoration: 'underline' }}>
+          <LaunderedLink
+            address={latestReportUrl}
+            sx={{ textDecoration: 'underline' }}
+          >
             View the latest report with data from the last 7 days
-          </a>
+          </LaunderedLink>
         </Alert>
       )}
       <h3>
