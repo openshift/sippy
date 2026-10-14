@@ -71,12 +71,14 @@ export default function AddRegressionPanel({
         throw new Error('error retrieving triage entry for update')
       }
       const existingTriage = await detailsResponse.json()
+      // Compact lists can include already-linked triages; duplicate IDs would fail validation.
+      const combinedRegressionIds = new Set([
+        ...existingTriage.regressions.map((regression) => regression.id),
+        ...regressionIds.map(Number),
+      ])
       const updatedTriage = {
         ...existingTriage,
-        regressions: [
-          ...existingTriage.regressions,
-          ...regressionIds.map((id) => ({ id: Number(id) })),
-        ],
+        regressions: Array.from(combinedRegressionIds, (id) => ({ id })),
       }
 
       const response = await fetch(triageUrl, {

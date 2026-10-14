@@ -464,6 +464,7 @@ View the [test details report|${document.location.href}] for additional context.
           {writeEndpointsEnabled && regressionId > 0 && (
             <UpsertTriageModal
               regressionIds={[regressionId]}
+              fields={['id', 'url', 'description', 'updated_at']}
               setComplete={setHasBeenTriaged}
               buttonText="Triage"
               submissionDelay={2000}
