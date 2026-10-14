@@ -1,5 +1,4 @@
 {
-  "model": "claude-opus-4-6",
   "enabledPlugins": {
     "golang@ai-helpers": true,
     "github@ai-helpers": true,
