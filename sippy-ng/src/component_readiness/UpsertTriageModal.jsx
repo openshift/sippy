@@ -60,7 +60,6 @@ export default function UpsertTriageModal({
   buttonText,
   submissionDelay = 0,
   fields = [],
-  openImmediately = false,
 }) {
   const commonClasses = useCommonTriageStyles()
   const regressionAddMode =
@@ -80,10 +79,8 @@ export default function UpsertTriageModal({
 
     const requestGeneration = ++triagesRequestGeneration.current
     const triagesAPIUrl = getTriagesAPIUrl(null, null, fields)
-    if (openImmediately) {
-      setTriagesLoading(true)
-      setTriageModalOpen(true)
-    }
+    setTriagesLoading(true)
+    setTriageModalOpen(true)
     // Only get existing entries when actually adding regressions
     fetch(triagesAPIUrl)
       .then((response) => {
@@ -109,18 +106,13 @@ export default function UpsertTriageModal({
         }
         setTriages(triages)
         setTriagesLoading(false)
-        if (!openImmediately) {
-          setTriageModalOpen(true)
-        }
       })
       .catch((error) => {
         if (requestGeneration !== triagesRequestGeneration.current) {
           return
         }
         setTriagesLoading(false)
-        if (openImmediately) {
-          setTriageModalOpen(false)
-        }
+        setTriageModalOpen(false)
         setAlertText('Error retrieving existing triage records')
         setAlertSeverity('error')
         console.error(error)
@@ -233,8 +225,8 @@ export default function UpsertTriageModal({
               <DialogTitle>Triage</DialogTitle>
               <DialogContent className={commonClasses.dialogContent}>
                 <Box className={commonClasses.loadingContainer}>
-                  <CircularProgress aria-label="Loading triage records" />
-                  <Typography>Loading triage records...</Typography>
+                  <CircularProgress aria-label="Loading triage information..." />
+                  <Typography>Loading triage information...</Typography>
                 </Box>
               </DialogContent>
             </Fragment>
@@ -285,5 +277,4 @@ UpsertTriageModal.propTypes = {
   buttonText: PropTypes.string.isRequired,
   submissionDelay: PropTypes.number,
   fields: PropTypes.arrayOf(PropTypes.string),
-  openImmediately: PropTypes.bool,
 }

@@ -13,6 +13,10 @@ vi.mock('./AddRegressionPanel', () => ({
   ),
 }))
 
+vi.mock('./UpdateTriagePanel', () => ({
+  default: () => <div>Update triage form loaded</div>,
+}))
+
 function jsonResponse(body, status = 200) {
   return {
     status,
@@ -34,9 +38,20 @@ function renderModal() {
       <UpsertTriageModal
         regressionIds={[123]}
         fields={['id', 'url', 'description', 'updated_at']}
-        openImmediately
         setComplete={vi.fn()}
         buttonText="Triage"
+      />
+    </ThemeProvider>
+  )
+}
+
+function renderUpdateModal() {
+  return render(
+    <ThemeProvider theme={createTheme()}>
+      <UpsertTriageModal
+        triage={{ id: 1, description: 'Existing triage' }}
+        setComplete={vi.fn()}
+        buttonText="Update"
       />
     </ThemeProvider>
   )
@@ -47,8 +62,8 @@ beforeEach(() => {
   global.fetch = vi.fn()
 })
 
-describe('UpsertTriageModal immediate loading', () => {
-  test('opens immediately with an accessible loading indicator', async () => {
+describe('UpsertTriageModal default immediate loading', () => {
+  test('opens immediately with the requested accessible loading copy', async () => {
     const request = deferredResponse()
     global.fetch.mockReturnValueOnce(request.promise)
     renderModal()
@@ -57,9 +72,13 @@ describe('UpsertTriageModal immediate loading', () => {
 
     expect(screen.getByRole('dialog', { name: 'Triage' })).toBeInTheDocument()
     expect(
-      screen.getByRole('progressbar', { name: 'Loading triage records' })
+      screen.getByRole('progressbar', {
+        name: 'Loading triage information...',
+      })
     ).toBeInTheDocument()
-    expect(screen.getByText('Loading triage records...')).toBeInTheDocument()
+    expect(
+      screen.getByText('Loading triage information...')
+    ).toBeInTheDocument()
     expect(screen.queryByText('Triage form loaded')).not.toBeInTheDocument()
     expect(global.fetch).toHaveBeenCalledWith(
       'http://localhost:8080/api/component_readiness/triages?fields=id%2Curl%2Cdescription%2Cupdated_at'
@@ -133,7 +152,9 @@ describe('UpsertTriageModal immediate loading', () => {
 
     expect(screen.getByRole('dialog', { name: 'Triage' })).toBeInTheDocument()
     expect(
-      screen.getByRole('progressbar', { name: 'Loading triage records' })
+      screen.getByRole('progressbar', {
+        name: 'Loading triage information...',
+      })
     ).toBeInTheDocument()
     expect(screen.queryByText(/Stale triage/)).not.toBeInTheDocument()
 
@@ -167,7 +188,9 @@ describe('UpsertTriageModal immediate loading', () => {
 
     expect(screen.getByRole('dialog', { name: 'Triage' })).toBeInTheDocument()
     expect(
-      screen.getByRole('progressbar', { name: 'Loading triage records' })
+      screen.getByRole('progressbar', {
+        name: 'Loading triage information...',
+      })
     ).toBeInTheDocument()
     expect(
       screen.queryByText('Error retrieving existing triage records')
@@ -196,5 +219,16 @@ describe('UpsertTriageModal immediate loading', () => {
     ).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByText('Triage form loaded')).not.toBeInTheDocument()
+  })
+
+  test('opens an update form directly without fetching the triage list', async () => {
+    renderUpdateModal()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Update' }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Update triage form loaded')).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 })

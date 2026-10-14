@@ -465,7 +465,6 @@ View the [test details report|${document.location.href}] for additional context.
             <UpsertTriageModal
               regressionIds={[regressionId]}
               fields={['id', 'url', 'description', 'updated_at']}
-              openImmediately
               setComplete={setHasBeenTriaged}
               buttonText="Triage"
               submissionDelay={2000}
