@@ -95,15 +95,21 @@ export function getComponentReadinessViewsAPIUrl() {
   return getAPIUrl('component_readiness/views')
 }
 
-export function getTriagesAPIUrl(id = null, view = null) {
+export function getTriagesAPIUrl(id = null, view = null, fields = []) {
   const base = id
     ? `component_readiness/triages/${id}`
     : 'component_readiness/triages'
   const url = getAPIUrl(base)
-  if (view && !id) {
-    return `${url}?view=${encodeURIComponent(view)}`
+  const params = []
+  if (!id) {
+    if (view) {
+      params.push(`view=${encodeURIComponent(view)}`)
+    }
+    if (fields.length > 0) {
+      params.push(`fields=${encodeURIComponent(fields.join(','))}`)
+    }
   }
-  return url
+  return params.length > 0 ? `${url}?${params.join('&')}` : url
 }
 
 export function getForceClosePreviewUrl(triageId) {

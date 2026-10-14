@@ -41,6 +41,7 @@ export default function UpsertTriageModal({
   setComplete,
   buttonText,
   submissionDelay = 0,
+  fields = [],
 }) {
   const commonClasses = useCommonTriageStyles()
   const regressionAddMode =
@@ -50,7 +51,7 @@ export default function UpsertTriageModal({
   const [triages, setTriages] = React.useState([])
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
   const handleTriageModalOpen = () => {
-    const triagesAPIUrl = getTriagesAPIUrl()
+    const triagesAPIUrl = getTriagesAPIUrl(null, null, fields)
     // Only get existing entries when actually adding/editing a triage
     fetch(triagesAPIUrl)
       .then((response) => {
@@ -63,9 +64,10 @@ export default function UpsertTriageModal({
       })
       .then((triages) => {
         if (regressionAddMode) {
+          // Test Details omits regressions from its compact response, so no triages are filtered out there.
           triages = triages.filter(
             (triage) =>
-              !triage.regressions.some((regression) =>
+              !(triage.regressions || []).some((regression) =>
                 regressionIds.includes(regression.id)
               )
           )
@@ -224,4 +226,5 @@ UpsertTriageModal.propTypes = {
   setComplete: PropTypes.func.isRequired,
   buttonText: PropTypes.string.isRequired,
   submissionDelay: PropTypes.number,
+  fields: PropTypes.arrayOf(PropTypes.string),
 }

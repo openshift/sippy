@@ -1870,12 +1870,26 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 }
 
 func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
+	fields, err := api.ParseFieldSelection(req.URL.Query().Get("fields"), models.Triage{})
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if fields.Len() > 0 {
+		// Keep discoverability links available even in sparse responses.
+		fields.Insert("links")
+	}
 	triages, err := componentreadiness.ListTriages(s.db, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	api.RespondWithJSON(http.StatusOK, w, triages)
+	response, err := fields.Project(triages)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
 // ExpandedTriage allows for additional information to be included in the triage response.

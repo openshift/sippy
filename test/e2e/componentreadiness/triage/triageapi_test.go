@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var view = crview.View{
@@ -229,6 +231,91 @@ func Test_TriageAPI(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d/audit", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triage.ID),
 				triage.Links["audit_logs"])
 		}
+	})
+	t.Run("list selected fields", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triage := models.Triage{
+			URL: jiraBug.URL, Description: "sparse triage", Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{{ID: testRegression1.ID}},
+		}
+		var created models.Triage
+		require.NoError(t, util.SippyPost("/api/component_readiness/triages", &triage, &created))
+		path := fmt.Sprintf("/api/component_readiness/triages/%d", created.ID)
+		require.NoError(t, util.SippyGet(path, &created))
+
+		var full []models.Triage
+		require.NoError(t, util.SippyGet("/api/component_readiness/triages", &full))
+		expectedIDs := sets.New[uint]()
+		for _, record := range full {
+			expectedIDs.Insert(record.ID)
+		}
+
+		for _, tc := range []struct {
+			name, fields string
+			expected     map[string]any
+		}{
+			{"minimal", "id,description", map[string]any{
+				"id": created.ID, "description": created.Description, "links": created.Links,
+			}},
+			{"modal", "id,url,description,updated_at", map[string]any{
+				"id": created.ID, "url": created.URL, "description": created.Description,
+				"updated_at": created.UpdatedAt, "links": created.Links,
+			}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				var records []map[string]json.RawMessage
+				require.NoError(t, util.SippyGet("/api/component_readiness/triages?fields="+url.QueryEscape(tc.fields), &records))
+				foundIDs := sets.New[uint]()
+				for _, record := range records {
+					var id uint
+					require.NoError(t, json.Unmarshal(record["id"], &id))
+					foundIDs.Insert(id)
+					if id == created.ID {
+						expected, err := json.Marshal(tc.expected)
+						require.NoError(t, err)
+						actual, err := json.Marshal(record)
+						require.NoError(t, err)
+						require.JSONEq(t, string(expected), string(actual), "only requested fields and links should be returned")
+					}
+				}
+				require.Equal(t, expectedIDs, foundIDs, "field selection must still return all triages")
+			})
+		}
+
+		var unchanged []models.Triage
+		require.NoError(t, util.SippyGet("/api/component_readiness/triages?fields=", &unchanged))
+		require.ElementsMatch(t, full, unchanged, "empty fields should preserve the full response")
+
+		t.Run("combines fields and view", func(t *testing.T) {
+			const sparseView = "fields-test-view"
+			require.NoError(t, tracker.UpsertRegressionView(testRegression1.ID, sparseView))
+			defer dbc.DB.Where("test_regression_id = ? AND view_name = ?", testRegression1.ID, sparseView).Delete(&models.RegressionView{})
+			var records []map[string]json.RawMessage
+			require.NoError(t, util.SippyGet("/api/component_readiness/triages?view="+sparseView+"&fields=id", &records))
+			require.Len(t, records, 1)
+			require.Equal(t, fmt.Sprint(created.ID), string(records[0]["id"]))
+		})
+
+		t.Run("invalid fields return bad request", func(t *testing.T) {
+			for _, fields := range []string{"unknown", "id,", "regressions.id"} {
+				var response any
+				err := util.SippyGet("/api/component_readiness/triages?fields="+url.QueryEscape(fields), &response)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "code 400")
+			}
+		})
+
+		t.Run("full lookup permits safe update after sparse listing", func(t *testing.T) {
+			var triage models.Triage
+			require.NoError(t, util.SippyGet(path, &triage))
+			triage.Regressions = append(triage.Regressions, models.TestRegression{ID: testRegression2.ID})
+			var updated models.Triage
+			require.NoError(t, util.SippyPut(path, &triage, &updated))
+			require.Equal(t, triage.Type, updated.Type)
+			require.Equal(t, triage.Description, updated.Description)
+			require.Equal(t, triage.CreatedAt, updated.CreatedAt)
+			require.Len(t, updated.Regressions, 2)
+		})
 	})
 	t.Run("list filtered by view", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)

@@ -722,6 +722,14 @@ When `view` is omitted, all triages are returned (original behavior).
 | Option | Type   | Description                                                                 | Acceptable values |
 |--------|--------|-----------------------------------------------------------------------------|-------------------|
 | view   | String | Filter triages to those linked to regressions active in this view (e.g., 4.18-main). Optional; omit to return all triages. | N/A               |
+| fields | String | Comma-separated top-level JSON field names to include, such as `id,description` or `id,url,description,updated_at`. Omit or leave empty for the full response. Nested field selection is not supported. | Public JSON fields on a triage record. |
+
+Field selection changes the response shape, not which triages are returned, and can be
+combined with `view`. Unknown or malformed field names return `400 Bad Request`.
+HATEOAS `links` are always included. Normal JSON behavior for null values and omitted
+empty fields is preserved. Field selection is applied only to the API response;
+database queries and association loading are unchanged.
+Clients must retrieve the full record before submitting a replacement with `PUT`.
 
 Endpoint: `GET /api/component_readiness/triages/{id}`
 
