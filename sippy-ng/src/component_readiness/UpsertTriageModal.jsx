@@ -1,4 +1,14 @@
-import { Button, DialogActions, Snackbar, Tooltip } from '@mui/material'
+import {
+  Box,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Snackbar,
+  Tooltip,
+  Typography,
+} from '@mui/material'
 import { getTriagesAPIUrl } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
 import AddRegressionPanel from './AddRegressionPanel'
@@ -33,6 +43,14 @@ const useCommonTriageStyles = makeStyles((theme) => ({
   centeredHeading: {
     textAlign: 'center',
   },
+  loadingContainer: {
+    alignItems: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(2),
+    justifyContent: 'center',
+    minHeight: '400px',
+  },
 }))
 
 export default function UpsertTriageModal({
@@ -42,6 +60,7 @@ export default function UpsertTriageModal({
   buttonText,
   submissionDelay = 0,
   fields = [],
+  openImmediately = false,
 }) {
   const commonClasses = useCommonTriageStyles()
   const regressionAddMode =
@@ -49,6 +68,7 @@ export default function UpsertTriageModal({
   const triageDetailsUpdateMode = triage !== undefined
 
   const [triages, setTriages] = React.useState([])
+  const [triagesLoading, setTriagesLoading] = React.useState(false)
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
   const handleTriageModalOpen = () => {
     // Updating uses the triage supplied by the parent, not the triage list.
@@ -58,6 +78,10 @@ export default function UpsertTriageModal({
     }
 
     const triagesAPIUrl = getTriagesAPIUrl(null, null, fields)
+    if (openImmediately) {
+      setTriagesLoading(true)
+      setTriageModalOpen(true)
+    }
     // Only get existing entries when actually adding regressions
     fetch(triagesAPIUrl)
       .then((response) => {
@@ -79,9 +103,16 @@ export default function UpsertTriageModal({
           )
         }
         setTriages(triages)
-        setTriageModalOpen(true)
+        setTriagesLoading(false)
+        if (!openImmediately) {
+          setTriageModalOpen(true)
+        }
       })
       .catch((error) => {
+        setTriagesLoading(false)
+        if (openImmediately) {
+          setTriageModalOpen(false)
+        }
         setAlertText('Error retrieving existing triage records')
         setAlertSeverity('error')
         console.error(error)
@@ -174,6 +205,7 @@ export default function UpsertTriageModal({
       )}
       {triageModalOpen && (
         <Dialog
+          aria-label="Triage"
           fullWidth
           maxWidth="md"
           open={triageModalOpen}
@@ -187,7 +219,18 @@ export default function UpsertTriageModal({
             },
           }}
         >
-          {triageDetailsUpdateMode && (
+          {triagesLoading && (
+            <Fragment>
+              <DialogTitle>Triage</DialogTitle>
+              <DialogContent className={commonClasses.dialogContent}>
+                <Box className={commonClasses.loadingContainer}>
+                  <CircularProgress aria-label="Loading triage records" />
+                  <Typography>Loading triage records...</Typography>
+                </Box>
+              </DialogContent>
+            </Fragment>
+          )}
+          {!triagesLoading && triageDetailsUpdateMode && (
             <UpdateTriagePanel
               triage={triage}
               setAlertText={setAlertText}
@@ -198,7 +241,7 @@ export default function UpsertTriageModal({
               commonClasses={commonClasses}
             />
           )}
-          {regressionAddMode && (
+          {!triagesLoading && regressionAddMode && (
             <AddRegressionPanel
               triages={triages}
               regressionIds={regressionIds}
@@ -233,4 +276,5 @@ UpsertTriageModal.propTypes = {
   buttonText: PropTypes.string.isRequired,
   submissionDelay: PropTypes.number,
   fields: PropTypes.arrayOf(PropTypes.string),
+  openImmediately: PropTypes.bool,
 }
