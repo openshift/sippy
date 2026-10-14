@@ -62,39 +62,36 @@ export default function AddRegressionPanel({
     triages.length > 0 ? triages[0].id : null
   )
 
-  const handleAddToExistingTriageSubmit = () => {
-    const existingTriage = triages.find(
-      (triage) => triage.id === existingTriageId
-    )
-    const updatedTriage = {
-      ...existingTriage,
-      regressions: [
-        ...existingTriage.regressions,
-        ...regressionIds.map((id) => {
-          return { id: Number(id) }
-        }),
-      ],
-    }
+  const handleAddToExistingTriageSubmit = async () => {
+    try {
+      const triageUrl = getTriagesAPIUrl(existingTriageId)
+      // List entries are sparse. Retrieve the full record before replacing it.
+      const detailsResponse = await fetch(triageUrl)
+      if (!detailsResponse.ok) {
+        throw new Error('error retrieving triage entry for update')
+      }
+      const existingTriage = await detailsResponse.json()
+      const updatedTriage = {
+        ...existingTriage,
+        regressions: [
+          ...existingTriage.regressions,
+          ...regressionIds.map((id) => ({ id: Number(id) })),
+        ],
+      }
 
-    fetch(getTriagesAPIUrl(existingTriageId), {
-      method: 'PUT',
-      body: JSON.stringify(updatedTriage),
-    }).then((response) => {
+      const response = await fetch(triageUrl, {
+        method: 'PUT',
+        body: JSON.stringify(updatedTriage),
+      })
       if (!response.ok) {
-        response.json().then((data) => {
-          let errorMessage = 'invalid response returned from server'
-          if (data?.code) {
-            errorMessage =
-              'error adding test to triage entry: ' +
-              data.code +
-              ': ' +
-              data.message
-          }
-          console.error(errorMessage)
-          setAlertText(errorMessage)
-          setAlertSeverity('error')
-        })
-        return
+        const data = await response.json()
+        const errorMessage = data?.code
+          ? 'error adding test to triage entry: ' +
+            data.code +
+            ': ' +
+            data.message
+          : 'invalid response returned from server'
+        throw new Error(errorMessage)
       }
 
       setAlertText(
@@ -105,7 +102,11 @@ export default function AddRegressionPanel({
         setExistingTriageId(defaultTriageId) //reset the form to the first element
       }
       completeTriageSubmission()
-    })
+    } catch (error) {
+      console.error(error)
+      setAlertText(error.message)
+      setAlertSeverity('error')
+    }
   }
 
   const showPotentialMatches =
