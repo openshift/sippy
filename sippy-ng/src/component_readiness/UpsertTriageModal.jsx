@@ -1,4 +1,14 @@
-import { Button, DialogActions, Snackbar, Tooltip } from '@mui/material'
+import {
+  Box,
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Snackbar,
+  Tooltip,
+  Typography,
+} from '@mui/material'
 import { getTriagesAPIUrl } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
 import AddRegressionPanel from './AddRegressionPanel'
@@ -33,6 +43,14 @@ const useCommonTriageStyles = makeStyles((theme) => ({
   centeredHeading: {
     textAlign: 'center',
   },
+  loadingContainer: {
+    alignItems: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(2),
+    justifyContent: 'center',
+    minHeight: '400px',
+  },
 }))
 
 export default function UpsertTriageModal({
@@ -49,7 +67,9 @@ export default function UpsertTriageModal({
   const triageDetailsUpdateMode = triage !== undefined
 
   const [triages, setTriages] = React.useState([])
+  const [triagesLoading, setTriagesLoading] = React.useState(false)
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
+  const triagesRequestGeneration = React.useRef(0)
   const handleTriageModalOpen = () => {
     // Updating uses the triage supplied by the parent, not the triage list.
     if (triageDetailsUpdateMode) {
@@ -57,7 +77,10 @@ export default function UpsertTriageModal({
       return
     }
 
+    const requestGeneration = ++triagesRequestGeneration.current
     const triagesAPIUrl = getTriagesAPIUrl(null, null, fields)
+    setTriagesLoading(true)
+    setTriageModalOpen(true)
     // Only get existing entries when actually adding regressions
     fetch(triagesAPIUrl)
       .then((response) => {
@@ -69,6 +92,9 @@ export default function UpsertTriageModal({
         return response.json()
       })
       .then((triages) => {
+        if (requestGeneration !== triagesRequestGeneration.current) {
+          return
+        }
         if (regressionAddMode) {
           // Test Details omits regressions from its compact response, so no triages are filtered out there.
           triages = triages.filter(
@@ -79,15 +105,21 @@ export default function UpsertTriageModal({
           )
         }
         setTriages(triages)
-        setTriageModalOpen(true)
+        setTriagesLoading(false)
       })
       .catch((error) => {
+        if (requestGeneration !== triagesRequestGeneration.current) {
+          return
+        }
+        setTriagesLoading(false)
+        setTriageModalOpen(false)
         setAlertText('Error retrieving existing triage records')
         setAlertSeverity('error')
         console.error(error)
       })
   }
   const handleTriageModalClosed = () => {
+    ++triagesRequestGeneration.current
     setTriageModalOpen(false)
   }
 
@@ -174,6 +206,7 @@ export default function UpsertTriageModal({
       )}
       {triageModalOpen && (
         <Dialog
+          aria-label="Triage"
           fullWidth
           maxWidth="md"
           open={triageModalOpen}
@@ -187,7 +220,18 @@ export default function UpsertTriageModal({
             },
           }}
         >
-          {triageDetailsUpdateMode && (
+          {triagesLoading && (
+            <Fragment>
+              <DialogTitle>Triage</DialogTitle>
+              <DialogContent className={commonClasses.dialogContent}>
+                <Box className={commonClasses.loadingContainer}>
+                  <CircularProgress aria-label="Loading triage information..." />
+                  <Typography>Loading triage information...</Typography>
+                </Box>
+              </DialogContent>
+            </Fragment>
+          )}
+          {!triagesLoading && triageDetailsUpdateMode && (
             <UpdateTriagePanel
               triage={triage}
               setAlertText={setAlertText}
@@ -198,7 +242,7 @@ export default function UpsertTriageModal({
               commonClasses={commonClasses}
             />
           )}
-          {regressionAddMode && (
+          {!triagesLoading && regressionAddMode && (
             <AddRegressionPanel
               triages={triages}
               regressionIds={regressionIds}
