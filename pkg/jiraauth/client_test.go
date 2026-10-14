@@ -130,3 +130,36 @@ func TestNewClientRejectedCredential(t *testing.T) {
 	assert.Nil(t, client)
 	assert.Empty(t, baseURL)
 }
+
+func TestNewClientLifetimeContextCancelsRenewal(t *testing.T) {
+	var grants atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/oauth/token" {
+			t.Error("API request reached Jira after required token renewal was canceled")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		grants.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		// The SDK's early-expiry margin requires renewal on the next request.
+		_, err := w.Write([]byte(`{"access_token":"initial-token","token_type":"Bearer","expires_in":1}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+	target, err := url.Parse(server.URL)
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.WithValue(context.Background(), oauth2.HTTPClient, &http.Client{
+		Transport: redirectedTransport{target: target, base: server.Client().Transport},
+	}))
+	defer cancel()
+	client, baseURL, err := (Config{ClientID: "client", ClientSecret: "secret", CloudID: testCloudID}).NewClient(ctx)
+	require.NoError(t, err)
+	cancel()
+	// This request has an independent live context; renewal uses the retained one.
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, baseURL+"rest/api/3/search/jql", nil)
+	require.NoError(t, err)
+	response, err := client.Do(req) //nolint:gosec // G704: fixed Jira URL; transport redirects all requests to the local test server.
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Nil(t, response)
+	assert.EqualValues(t, 1, grants.Load())
+}

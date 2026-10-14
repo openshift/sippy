@@ -22,6 +22,8 @@ type Config struct {
 // NewClient obtains an initial access token and returns an authenticated client
 // and Jira gateway URL. ctx must remain valid for the client's lifetime because
 // the OAuth library uses it to obtain replacement tokens when they expire.
+// Use a server or job lifetime context; canceling a short-lived request context
+// would prevent later token renewals. API requests have independent contexts.
 func (c Config) NewClient(ctx context.Context) (*http.Client, string, error) {
 	if c.ClientID == "" {
 		return nil, "", fmt.Errorf("jira service-account client ID is required")
