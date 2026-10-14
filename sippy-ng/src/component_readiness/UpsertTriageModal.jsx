@@ -70,6 +70,7 @@ export default function UpsertTriageModal({
   const [triages, setTriages] = React.useState([])
   const [triagesLoading, setTriagesLoading] = React.useState(false)
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
+  const triagesRequestGeneration = React.useRef(0)
   const handleTriageModalOpen = () => {
     // Updating uses the triage supplied by the parent, not the triage list.
     if (triageDetailsUpdateMode) {
@@ -77,6 +78,7 @@ export default function UpsertTriageModal({
       return
     }
 
+    const requestGeneration = ++triagesRequestGeneration.current
     const triagesAPIUrl = getTriagesAPIUrl(null, null, fields)
     if (openImmediately) {
       setTriagesLoading(true)
@@ -93,6 +95,9 @@ export default function UpsertTriageModal({
         return response.json()
       })
       .then((triages) => {
+        if (requestGeneration !== triagesRequestGeneration.current) {
+          return
+        }
         if (regressionAddMode) {
           // Test Details omits regressions from its compact response, so no triages are filtered out there.
           triages = triages.filter(
@@ -109,6 +114,9 @@ export default function UpsertTriageModal({
         }
       })
       .catch((error) => {
+        if (requestGeneration !== triagesRequestGeneration.current) {
+          return
+        }
         setTriagesLoading(false)
         if (openImmediately) {
           setTriageModalOpen(false)
@@ -119,6 +127,7 @@ export default function UpsertTriageModal({
       })
   }
   const handleTriageModalClosed = () => {
+    ++triagesRequestGeneration.current
     setTriageModalOpen(false)
   }
 

@@ -6,7 +6,11 @@ import UpsertTriageModal from './UpsertTriageModal'
 import userEvent from '@testing-library/user-event'
 
 vi.mock('./AddRegressionPanel', () => ({
-  default: () => <div>Triage form loaded</div>,
+  default: ({ triages }) => (
+    <div>
+      Triage form loaded: {triages.map(({ description }) => description)}
+    </div>
+  ),
 }))
 
 function jsonResponse(body, status = 200) {
@@ -83,7 +87,9 @@ describe('UpsertTriageModal immediate loading', () => {
       )
     })
 
-    expect(screen.getByText('Triage form loaded')).toBeInTheDocument()
+    expect(
+      screen.getByText('Triage form loaded: Existing triage')
+    ).toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
@@ -105,6 +111,77 @@ describe('UpsertTriageModal immediate loading', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByText('Triage form loaded')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Triage' })).toBeInTheDocument()
+  })
+
+  test('ignores an earlier success after closing and reopening', async () => {
+    const firstRequest = deferredResponse()
+    const secondRequest = deferredResponse()
+    global.fetch
+      .mockReturnValueOnce(firstRequest.promise)
+      .mockReturnValueOnce(secondRequest.promise)
+    renderModal()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Triage' }))
+    await userEvent.click(screen.getByRole('button', { name: 'CLOSE' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Triage' }))
+
+    await act(async () => {
+      firstRequest.resolve(
+        jsonResponse([{ id: 1, description: 'Stale triage' }])
+      )
+    })
+
+    expect(screen.getByRole('dialog', { name: 'Triage' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('progressbar', { name: 'Loading triage records' })
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Stale triage/)).not.toBeInTheDocument()
+
+    await act(async () => {
+      secondRequest.resolve(
+        jsonResponse([{ id: 2, description: 'Current triage' }])
+      )
+    })
+
+    expect(
+      screen.getByText('Triage form loaded: Current triage')
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Stale triage/)).not.toBeInTheDocument()
+  })
+
+  test('ignores an earlier failure after closing and reopening', async () => {
+    const firstRequest = deferredResponse()
+    const secondRequest = deferredResponse()
+    global.fetch
+      .mockReturnValueOnce(firstRequest.promise)
+      .mockReturnValueOnce(secondRequest.promise)
+    renderModal()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Triage' }))
+    await userEvent.click(screen.getByRole('button', { name: 'CLOSE' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Triage' }))
+
+    await act(async () => {
+      firstRequest.resolve(jsonResponse({}, 500))
+    })
+
+    expect(screen.getByRole('dialog', { name: 'Triage' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('progressbar', { name: 'Loading triage records' })
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('Error retrieving existing triage records')
+    ).not.toBeInTheDocument()
+
+    await act(async () => {
+      secondRequest.resolve(
+        jsonResponse([{ id: 2, description: 'Current triage' }])
+      )
+    })
+
+    expect(
+      screen.getByText('Triage form loaded: Current triage')
+    ).toBeInTheDocument()
   })
 
   test('closes the loading modal and preserves the error notification', async () => {
