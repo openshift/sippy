@@ -10,13 +10,32 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/openshift/sippy/pkg/db"
 )
 
 // NewPgxV5Pool creates a pgx/v5 connection pool from a DSN. The returned pool
 // is intended for River's exclusive use and coexists with the application's
 // existing pgx/v4 pool.
+func configurePgxV5ApplicationName(config *pgx.ConnConfig, name string) {
+	if name != "" {
+		config.RuntimeParams["application_name"] = name
+	}
+}
+
 func NewPgxV5Pool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, dsn)
+	applicationName, err := db.DefaultApplicationName()
+	if err != nil {
+		return nil, fmt.Errorf("getting PostgreSQL application name: %w", err)
+	}
+
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parsing pgx/v5 pool config: %w", err)
+	}
+	configurePgxV5ApplicationName(config.ConnConfig, applicationName)
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("creating pgx/v5 pool: %w", err)
 	}

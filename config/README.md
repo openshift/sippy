@@ -2,6 +2,14 @@
 
 This is currently only used for Prow-based sippy, but could be expanded for general Sippy settings in the future.
 
+## PostgreSQL connection attribution
+
+Sippy sets PostgreSQL's `application_name` connection parameter so active
+connections can be attributed to a Sippy process or pod in `pg_stat_activity`.
+By default it uses `sippy/<hostname>`. In Kubernetes, the hostname is the pod
+name. Set `SIPPY_PG_APPLICATION_NAME` to provide an explicit value. Values are
+truncated to PostgreSQL's 63-byte limit.
+
 Example:
 
 ```yaml

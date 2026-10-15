@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -69,6 +70,39 @@ func WithPartitionwise(enable bool) Option {
 	}
 }
 
+const postgresApplicationNameLimit = 63
+
+func defaultPostgresApplicationName(hostname string) string {
+	name := "sippy/" + hostname
+	if len(name) > postgresApplicationNameLimit {
+		return name[:postgresApplicationNameLimit]
+	}
+	return name
+}
+
+// DefaultApplicationName returns the PostgreSQL application name used when one
+// is not explicitly configured. Kubernetes sets HOSTNAME to the pod name.
+func DefaultApplicationName() (string, error) {
+	if name := os.Getenv("SIPPY_PG_APPLICATION_NAME"); name != "" {
+		if len(name) > postgresApplicationNameLimit {
+			return "", fmt.Errorf("SIPPY_PG_APPLICATION_NAME exceeds PostgreSQL's %d-byte limit", postgresApplicationNameLimit)
+		}
+		return name, nil
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" {
+		hostname = "unknown"
+	}
+	return defaultPostgresApplicationName(hostname), nil
+}
+
+func configurePgxApplicationName(config *pgx.ConnConfig, name string) {
+	if name != "" {
+		config.RuntimeParams["application_name"] = name
+	}
+}
+
 func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) {
 	var cfg options
 	for _, o := range opts {
@@ -88,6 +122,11 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 	if err != nil {
 		return nil, err
 	}
+	applicationName, err := DefaultApplicationName()
+	if err != nil {
+		return nil, fmt.Errorf("getting PostgreSQL application name: %w", err)
+	}
+	configurePgxApplicationName(pgxConfig, applicationName)
 	// Prevent PostgreSQL from generating generic plans for prepared statements.
 	// After 5 executions PostgreSQL normally switches to a generic plan that
 	// cannot use parameter values for partition pruning. GORM generates
