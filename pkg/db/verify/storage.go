@@ -23,7 +23,13 @@ type DailyTotalsReader interface {
 }
 
 type CumulativeSummariesReader interface {
-	CumulativeRows(context.Context, string, civil.Date) (CumulativeRows, error)
+	CumulativeComparisonReader
+}
+
+// CumulativeComparisonReader reads the bounded result of a database-side
+// cumulative summary comparison.
+type CumulativeComparisonReader interface {
+	CumulativeComparison(context.Context, string, civil.Date, CumulativeComparisonHandler) (CumulativeComparison, error)
 }
 
 type PostgreSQLReader interface {
@@ -33,9 +39,36 @@ type PostgreSQLReader interface {
 	CumulativeSummariesReader
 }
 
-type BigQueryReader interface {
-	ProwJobs(context.Context, time.Time, time.Time) ([]BQJob, error)
+// CumulativeComparison is the bounded outcome returned by a database-side
+// cumulative summary comparison.
+type CumulativeComparison struct {
+	ExpectedRows  int
+	ActualRows    int
+	Discrepancies int
 }
+
+// CumulativeComparisonDiscrepancy is a database-side cumulative comparison
+// difference before it is scoped to the requested release and date.
+type CumulativeComparisonDiscrepancy struct {
+	Key      SummaryKey
+	Kind     string
+	Field    string
+	Expected string
+	Actual   string
+	Detail   string
+}
+
+// CumulativeComparisonHandler consumes one discrepancy while PostgreSQL rows
+// are being streamed.
+type CumulativeComparisonHandler func(CumulativeComparisonDiscrepancy)
+
+type BigQueryReader interface {
+	ForEachProwJob(context.Context, time.Time, time.Time, ProwJobHandler) error
+}
+
+// ProwJobHandler processes one BigQuery Prow job while the result stream is
+// being consumed.
+type ProwJobHandler func(BQJob) error
 
 type PostgreSQL struct {
 	dbc *db.DB
