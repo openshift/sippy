@@ -22,6 +22,7 @@ import (
 )
 
 var pgContainer *intutil.PostgresContainer
+var gcsContainer *intutil.GCSContainer
 
 func TestMain(m *testing.M) {
 	// Match the production setting from cmd/sippy/main.go init().
@@ -40,6 +41,16 @@ func runTests(m *testing.M) int {
 	defer func() {
 		if err := pgContainer.Terminate(ctx); err != nil {
 			log.Printf("warning: failed to terminate postgres container: %v", err)
+		}
+	}()
+
+	gcsContainer, err = intutil.StartGCSContainer(ctx)
+	if err != nil {
+		panic("failed to start fake GCS container: " + err.Error())
+	}
+	defer func() {
+		if err := gcsContainer.Terminate(ctx); err != nil {
+			log.Printf("warning: failed to terminate fake GCS container: %v", err)
 		}
 	}()
 
