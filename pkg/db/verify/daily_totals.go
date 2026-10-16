@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/civil"
+	log "github.com/sirupsen/logrus"
 )
 
 type DailyTotalsVerifier struct {
@@ -15,12 +16,33 @@ type DailyTotalsVerifier struct {
 func (v *DailyTotalsVerifier) Verify(ctx context.Context, scope Scope) Result {
 	result := Result{}
 	for _, release := range scope.Releases {
+		releaseStartedAt := time.Now()
+		log.WithFields(log.Fields{
+			"check":   CheckDailyTotals,
+			"date":    scope.Date,
+			"release": release,
+		}).Info("verification release started")
 		raw, stored, err := v.PostgreSQL.DailyRows(ctx, release, scope.Date)
 		if err != nil {
+			log.WithError(err).WithFields(log.Fields{
+				"check":   CheckDailyTotals,
+				"date":    scope.Date,
+				"elapsed": time.Since(releaseStartedAt),
+				"release": release,
+			}).Error("verification release failed")
 			result.Summaries = append(result.Summaries, operationalSummary(CheckDailyTotals, release, scope.Date, err))
 			continue
 		}
 		summary, discrepancies := CompareDaily(release, scope.Date, raw, stored)
+		log.WithFields(log.Fields{
+			"check":         CheckDailyTotals,
+			"date":          scope.Date,
+			"elapsed":       time.Since(releaseStartedAt),
+			"rawRows":       len(raw),
+			"release":       release,
+			"storedRows":    len(stored),
+			"discrepancies": len(discrepancies),
+		}).Info("verification release complete")
 		result.Summaries = append(result.Summaries, summary)
 		result.Discrepancies = append(result.Discrepancies, discrepancies...)
 	}
@@ -33,6 +55,7 @@ func (p *PostgreSQL) DailyRows(ctx context.Context, release string, date civil.D
 	}
 	start := date.In(time.UTC)
 	end := date.AddDays(1).In(time.UTC)
+	queryStartedAt := time.Now()
 	raw, err := p.queryDaily(ctx, `
 		SELECT
 			pjrt.test_id,
@@ -58,6 +81,14 @@ func (p *PostgreSQL) DailyRows(ctx context.Context, release string, date civil.D
 	if err != nil {
 		return nil, nil, fmt.Errorf("querying raw daily totals for release %s: %w", release, err)
 	}
+	log.WithFields(log.Fields{
+		"check":   CheckDailyTotals,
+		"elapsed": time.Since(queryStartedAt),
+		"query":   "raw-daily-totals",
+		"release": release,
+		"rows":    len(raw),
+	}).Info("verification PostgreSQL query complete")
+	queryStartedAt = time.Now()
 	summaryRows, err := p.queryDaily(ctx, `
 		SELECT test_id, prow_job_id, suite_id, lifecycle, successes, failures, flakes, runs
 		FROM test_daily_totals
@@ -67,6 +98,13 @@ func (p *PostgreSQL) DailyRows(ctx context.Context, release string, date civil.D
 	if err != nil {
 		return nil, nil, fmt.Errorf("querying stored daily totals for release %s: %w", release, err)
 	}
+	log.WithFields(log.Fields{
+		"check":   CheckDailyTotals,
+		"elapsed": time.Since(queryStartedAt),
+		"query":   "stored-daily-totals",
+		"release": release,
+		"rows":    len(summaryRows),
+	}).Info("verification PostgreSQL query complete")
 	return raw, summaryRows, nil
 }
 

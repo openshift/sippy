@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/civil"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -60,7 +62,20 @@ func (r *Runner) Run(ctx context.Context, options Options) Result {
 			}
 			continue
 		}
+		checkStartedAt := time.Now()
+		log.WithFields(log.Fields{
+			"check":    check,
+			"date":     options.Date,
+			"releases": len(releases),
+		}).Info("verification check started")
 		checkResult := verifier.Verify(ctx, scope)
+		log.WithFields(log.Fields{
+			"check":         check,
+			"date":          options.Date,
+			"elapsed":       time.Since(checkStartedAt),
+			"summaries":     len(checkResult.Summaries),
+			"discrepancies": len(checkResult.Discrepancies),
+		}).Info("verification check complete")
 		result.Summaries = append(result.Summaries, checkResult.Summaries...)
 		result.Discrepancies = append(result.Discrepancies, checkResult.Discrepancies...)
 	}
