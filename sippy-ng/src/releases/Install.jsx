@@ -76,6 +76,7 @@ export default function Install(props) {
           <TopLevelIndicators
             release={props.release}
             indicators={health.indicators}
+            links={health.links}
           />
         </Grid>
 
