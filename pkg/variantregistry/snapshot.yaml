@@ -48948,24 +48948,6 @@ periodic-ci-openshift-kubernetes-release-5.1-periodics-e2e-aws-hpa:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-kueue-operator-main-perfscale-kueue-operator-9nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: perfscale
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-kueue-operator-main-test-e2e-4-18:
     Aggregation: none
     Architecture: amd64
@@ -49321,29 +49303,6 @@ periodic-ci-openshift-kueue-operator-main-test-e2e-upstream-5-0:
     OS: rhcos10
     Owner: eng
     Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-kueue-operator-release-1.4-perfscale-kueue-operator-9nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: sdn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: unknown
-    Owner: perfscale
-    Procedure: none
-    Release: "1.4"
-    ReleaseMajor: "1"
-    ReleaseMinor: "4"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -49758,29 +49717,6 @@ periodic-ci-openshift-kueue-operator-release-1.4-test-e2e-upstream-5-0:
     Release: "1.4"
     ReleaseMajor: "1"
     ReleaseMinor: "4"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-kueue-operator-release-1.5-perfscale-kueue-operator-9nodes:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: runc
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: sdn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: unknown
-    Owner: perfscale
-    Procedure: none
-    Release: "1.5"
-    ReleaseMajor: "1"
-    ReleaseMinor: "5"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -85204,6 +85140,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-sts-ad-staging-main:
     Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+? periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-rosa-classic-staging-ocm-fvt-periodic-cs-rosa-sts-nx-y-upg-ocp5-lt-rc-staging-main
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     FeatureSet: default
@@ -358375,6 +358331,30 @@ periodic-ci-quay-quay-redhat-3.17-aws-ocp422-e2e-install-aws-s3-nightly:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-redhat-3.17-aws-ocp422-e2e-install-aws-s3-nightly-fips:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.17
+    ReleaseMajor: "3"
+    ReleaseMinor: "17"
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-redhat-3.17-azure-ocp422-e2e-install-azure-blob-nightly:
     Aggregation: none
     Architecture: amd64
@@ -358682,6 +358662,54 @@ periodic-ci-quay-quay-redhat-3.18-libvirt-s390x-ocp422-e2e-install-libvirt-s3-ni
     Release: quay-3.18
     ReleaseMajor: "3"
     ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-5.0-aws-arm64-ocp50-e2e-install-aws-s3-nightly:
+    Aggregation: none
+    Architecture: arm64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-5.0
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-5.0-aws-ocp50-e2e-install-aws-odf-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-5.0
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
