@@ -2,6 +2,56 @@
 prow:
   url: https://prow.ci.openshift.org/prowjobs.js
 releases:
+  "5.1":
+    # Integration-stream KMS periodics lack the job-release label used by automatic discovery.
+    jobs:
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-2: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-2-single-node: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-3: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-3-single-node: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-single-node: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-azure-encryption-kms: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-azure-encryption-kms-2: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-azure-encryption-kms-3: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-gcp-encryption-kms: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-gcp-encryption-kms-2: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-gcp-encryption-kms-3: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-2: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-2-dualstack: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-2-ipv6: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-3: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-3-ipv6: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-dualstack: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-ipv6: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-vsphere-encryption-kms: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-vsphere-encryption-kms-2: true
+      periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-vsphere-encryption-kms-3: true
+    informingJobs:
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-2
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-2-single-node
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-3
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-3-single-node
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-aws-encryption-kms-single-node
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-azure-encryption-kms
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-azure-encryption-kms-2
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-azure-encryption-kms-3
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-gcp-encryption-kms
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-gcp-encryption-kms-2
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-gcp-encryption-kms-3
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-2
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-2-dualstack
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-2-ipv6
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-3
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-3-ipv6
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-dualstack
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-metal-encryption-kms-ipv6
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-vsphere-encryption-kms
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-vsphere-encryption-kms-2
+      - periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-kms-periodics-e2e-vsphere-encryption-kms-3
   "Presubmits":
     regexp:
       - "^pull-ci-openshift-.*-(master|main).*-e2e-.*"
