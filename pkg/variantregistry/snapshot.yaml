@@ -361934,7 +361934,7 @@ periodic-ci-redhat-developer-devspaces-interop-tests-main-devspaces-ocp4.21-lp-r
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-redhat-developer-gitops-operator-v1.21-gitops-ocp-4.22-lpGA-lp-ocp-compat-aws-fips:
+periodic-ci-redhat-developer-gitops-operator-v1.22-gitops-ocp-5.0-lpGA-lp-ocp-compat-aws-fips:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -361946,19 +361946,19 @@ periodic-ci-redhat-developer-gitops-operator-v1.21-gitops-ocp-4.22-lpGA-lp-ocp-c
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
-    OS: rhcos9
+    OS: rhcos10
     Owner: lp
     Platform: aws
     Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: fips
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-redhat-developer-gitops-operator-v1.21-gitops-ocp-4.22-lpGA-lp-ocp-compat-cr--gitops--aws:
+periodic-ci-redhat-developer-gitops-operator-v1.22-gitops-ocp-5.0-lpGA-lp-ocp-compat-cr--gitops--aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -361970,13 +361970,13 @@ periodic-ci-redhat-developer-gitops-operator-v1.21-gitops-ocp-4.22-lpGA-lp-ocp-c
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
-    OS: rhcos9
+    OS: rhcos10
     Owner: lp
     Platform: aws
     Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
