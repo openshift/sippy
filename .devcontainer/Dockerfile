@@ -1,4 +1,6 @@
-FROM registry.fedoraproject.org/fedora:43
+FROM registry.fedoraproject.org/fedora:44
+
+# Fedora 44 provides Go 1.26; go.mod declares the minimum required Go version.
 
 ARG GOLANGCI_LINT_VERSION=2.10.1
 
@@ -55,7 +57,12 @@ ENV GOPATH=/home/vscode/go
 ENV PATH="/home/vscode/.local/bin:${GOPATH}/bin:/usr/local/go/bin:${PATH}"
 ENV CHROME_PATH=/usr/lib64/chromium-browser/headless_shell
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | env INSTALLER_NO_MODIFY_PATH=1 UV_INSTALL_DIR=/usr/local/bin sh
+# Do not pipe into sh: a failed download can otherwise look like a successful install.
+RUN curl --retry 3 -LsSf https://astral.sh/uv/install.sh -o /tmp/uv-install.sh && \
+    env INSTALLER_NO_MODIFY_PATH=1 UV_INSTALL_DIR=/usr/local/bin sh /tmp/uv-install.sh && \
+    /usr/local/bin/uv --version && \
+    /usr/local/bin/uvx --version && \
+    rm /tmp/uv-install.sh
 
 USER vscode
 
