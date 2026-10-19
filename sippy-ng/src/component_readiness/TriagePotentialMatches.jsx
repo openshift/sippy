@@ -433,19 +433,32 @@ export default function TriagePotentialMatches({
     },
   ]
 
+  const hasActiveViews = availableViews.length > 0
+  const buttonDisabled = isLoading || !hasActiveViews
+
   return (
     <Fragment>
-      <Button
-        onClick={findPotentialMatches}
-        variant="contained"
-        color="primary"
-        sx={{ margin: '10px 0' }}
-        disabled={isLoading}
+      <Tooltip
+        title={
+          hasActiveViews
+            ? ''
+            : 'All regressions have rolled off; no active views available for matching'
+        }
       >
-        {isLoading
-          ? 'Finding Matches...'
-          : 'Link Additional Matching Regressions'}
-      </Button>
+        <span>
+          <Button
+            onClick={findPotentialMatches}
+            variant="contained"
+            color="primary"
+            sx={{ margin: '10px 0' }}
+            disabled={buttonDisabled}
+          >
+            {isLoading
+              ? 'Finding Matches...'
+              : 'Link Additional Matching Regressions'}
+          </Button>
+        </span>
+      </Tooltip>
 
       <Dialog
         open={isModalOpen}
