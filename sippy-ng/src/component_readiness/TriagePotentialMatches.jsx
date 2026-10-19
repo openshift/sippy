@@ -108,7 +108,11 @@ export default function TriagePotentialMatches({
 
   // Extract unique active view names from triage regressions; default to first, preferring -main views
   React.useEffect(() => {
-    if (!triage.regressions || triage.regressions.length === 0) return
+    if (!triage.regressions || triage.regressions.length === 0) {
+      setAvailableViews([])
+      setSelectedView('')
+      return
+    }
 
     const viewSet = new Set()
     triage.regressions.forEach((regression) => {
@@ -445,7 +449,14 @@ export default function TriagePotentialMatches({
             : 'All regressions have rolled off; no active views available for matching'
         }
       >
-        <span>
+        <span
+          tabIndex={buttonDisabled ? 0 : -1}
+          aria-label={
+            buttonDisabled && !hasActiveViews
+              ? 'All regressions have rolled off; no active views available for matching'
+              : undefined
+          }
+        >
           <Button
             onClick={findPotentialMatches}
             variant="contained"
