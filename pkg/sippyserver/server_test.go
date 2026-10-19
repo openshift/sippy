@@ -2,12 +2,54 @@ package sippyserver
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db/models"
 )
+
+func TestMCPRouteIsNotExposed(t *testing.T) {
+	server := &Server{static: fstest.MapFS{}}
+	handler := server.handler()
+
+	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodDelete} {
+		for _, path := range []string{"/mcp/v1", "/mcp/v1/", "/mcp/v1/tools"} {
+			t.Run(method+" "+path, func(t *testing.T) {
+				request := httptest.NewRequest(method, path, nil)
+				response := httptest.NewRecorder()
+
+				handler.ServeHTTP(response, request)
+
+				if response.Code != http.StatusNotFound {
+					t.Fatalf("expected %s %s to return %d, got %d", method, path, http.StatusNotFound, response.Code)
+				}
+			})
+		}
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/api", nil)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected API index to return %d, got %d", http.StatusOK, response.Code)
+	}
+
+	var endpoints []struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&endpoints); err != nil {
+		t.Fatalf("decode API index: %v", err)
+	}
+	for _, endpoint := range endpoints {
+		if strings.HasPrefix(endpoint.Path, "/mcp/") {
+			t.Fatalf("API index still advertises MCP endpoint %q", endpoint.Path)
+		}
+	}
+}
 
 func TestValidateProwJobRun(t *testing.T) {
 

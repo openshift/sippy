@@ -39,8 +39,6 @@ import (
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
-	"github.com/openshift/sippy/pkg/mcp"
-
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/andygrunwald/go-jira"
@@ -2562,9 +2560,7 @@ func (s *Server) rateLimit(endpointPath string, maxRequests int, period time.Dur
 	}
 }
 
-func (s *Server) Serve() {
-	s.determineCapabilities()
-
+func (s *Server) handler() http.Handler {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
@@ -2600,9 +2596,6 @@ func (s *Server) Serve() {
 
 	router.PathPrefix("/static/").Handler(http.FileServer(http.FS(s.static)))
 
-	// Setup MCP Server
-	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
-
 	type apiEndpoints struct {
 		EndpointPath      string                                       `json:"path"`
 		Description       string                                       `json:"description"`
@@ -2616,12 +2609,6 @@ func (s *Server) Serve() {
 
 	var endpoints []apiEndpoints
 	endpoints = []apiEndpoints{
-		{
-			EndpointPath: "/mcp/v1/",
-			Description:  "Handles MCP Requests",
-			Capabilities: []string{},
-			HandlerFunc:  http.StripPrefix("/mcp/v1", mcpServer.Handler()).ServeHTTP,
-		},
 		{
 			EndpointPath: "/api",
 			Description:  "API docs",
@@ -3223,11 +3210,18 @@ func (s *Server) Serve() {
 		handlers.AllowedOrigins([]string{s.corsAllowedOrigin}),
 		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}),
 		handlers.AllowedHeaders([]string{"Content-Type", "X-Forwarded-User", "X-Forwarded-For", "X-Real-IP", "Authorization"}))
+	return cors(handler)
+}
+
+func (s *Server) Serve() {
+	s.determineCapabilities()
+
+	handler := s.handler()
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
 		Addr:              s.listenAddr,
-		Handler:           cors(handler),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
