@@ -116,20 +116,14 @@ func (f *JiraFlags) GetJiraClient(ctx context.Context) (*jira.Client, error) {
 // with raw HTTP consumers. OAuth retains ctx for token acquisition and renewal;
 // use a server or job lifetime context. API requests use their own contexts.
 func (f *JiraFlags) GetServiceAccountHTTPClient(ctx context.Context) (*http.Client, string, error) {
-	clientID, idSet := os.LookupEnv("JIRA_CLIENT_ID")
-	clientSecret, secretSet := os.LookupEnv("JIRA_CLIENT_SECRET")
-	if !idSet && !secretSet {
-		clientID = os.Getenv("JIRA_READ_ONLY_CLIENT_ID")
-		clientSecret = os.Getenv("JIRA_READ_ONLY_CLIENT_SECRET")
-	}
 	config := jiraauth.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
+		ClientID:     os.Getenv("JIRA_CLIENT_ID"),
+		ClientSecret: os.Getenv("JIRA_CLIENT_SECRET"),
 		CloudID:      os.Getenv("JIRA_CLOUD_ID"),
 	}
 	httpClient, baseURL, err := config.NewClient(ctx)
 	if err != nil {
-		return nil, "", fmt.Errorf("configure Jira service-account client (JIRA_CLIENT_ID, JIRA_CLIENT_SECRET, JIRA_CLOUD_ID; legacy aliases JIRA_READ_ONLY_CLIENT_ID, JIRA_READ_ONLY_CLIENT_SECRET): %w", err)
+		return nil, "", fmt.Errorf("configure Jira service-account client (JIRA_CLIENT_ID, JIRA_CLIENT_SECRET, JIRA_CLOUD_ID): %w", err)
 	}
 	return httpClient, baseURL, nil
 }

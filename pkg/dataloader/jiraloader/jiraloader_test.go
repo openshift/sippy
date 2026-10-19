@@ -157,8 +157,6 @@ func TestJiraLoaderPATAuthentication(t *testing.T) {
 			t.Setenv("JIRA_CLIENT_ID", "unused-client")
 			t.Setenv("JIRA_CLIENT_SECRET", "unused-secret")
 			t.Setenv("JIRA_CLOUD_ID", "invalid-but-unused")
-			t.Setenv("JIRA_READ_ONLY_CLIENT_ID", "unused-legacy-client")
-			t.Setenv("JIRA_READ_ONLY_CLIENT_SECRET", "unused-legacy-secret")
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, tc.want, r.Header.Get("Authorization"))
 				_, err := w.Write([]byte(`[]`))

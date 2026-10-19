@@ -38,14 +38,7 @@ func TestGetJiraClientServiceAccount(t *testing.T) {
 			clientID: "generic-client", secret: "generic-secret",
 		},
 		{
-			name: "legacy credentials remain supported",
-			env: map[string]string{
-				"JIRA_READ_ONLY_CLIENT_ID": "legacy-client", "JIRA_READ_ONLY_CLIENT_SECRET": "legacy-secret",
-			},
-			clientID: "legacy-client", secret: "legacy-secret",
-		},
-		{
-			name: "generic pair takes precedence",
+			name: "generic credentials ignore legacy variables",
 			env: map[string]string{
 				"JIRA_CLIENT_ID": "generic-client", "JIRA_CLIENT_SECRET": "generic-secret",
 				"JIRA_READ_ONLY_CLIENT_ID": "legacy-client", "JIRA_READ_ONLY_CLIENT_SECRET": "legacy-secret",
@@ -114,8 +107,6 @@ func TestGetJiraClientServiceAccountMissingEnvironment(t *testing.T) {
 		t.Run(variable, func(t *testing.T) {
 			t.Setenv("JIRA_CLIENT_ID", "client")
 			t.Setenv("JIRA_CLIENT_SECRET", "secret")
-			t.Setenv("JIRA_READ_ONLY_CLIENT_ID", "legacy-client")
-			t.Setenv("JIRA_READ_ONLY_CLIENT_SECRET", "legacy-secret")
 			t.Setenv("JIRA_CLOUD_ID", "11111111-2222-3333-4444-555555555555")
 			t.Setenv(variable, "")
 			t.Setenv("JIRA_TOKEN", "unused-pat")
@@ -128,12 +119,13 @@ func TestGetJiraClientServiceAccountMissingEnvironment(t *testing.T) {
 	}
 }
 
-func TestGetJiraClientServiceAccountDoesNotMixCredentialPairs(t *testing.T) {
+func TestGetJiraClientServiceAccountRequiresGenericCredentials(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		env       map[string]string
 		wantError string
 	}{
+		{"legacy pair without generic credentials", nil, "client ID is required"},
 		{"generic ID without secret", map[string]string{"JIRA_CLIENT_ID": "generic-client"}, "client secret is required"},
 		{"generic secret without ID", map[string]string{"JIRA_CLIENT_SECRET": "generic-secret"}, "client ID is required"},
 		{"empty generic pair", map[string]string{"JIRA_CLIENT_ID": "", "JIRA_CLIENT_SECRET": ""}, "client ID is required"},
@@ -151,7 +143,12 @@ func TestGetJiraClientServiceAccountDoesNotMixCredentialPairs(t *testing.T) {
 			t.Setenv("JIRA_CLOUD_ID", "11111111-2222-3333-4444-555555555555")
 			flags := NewJiraFlags()
 			flags.ServiceAccount = true
-			client, err := flags.GetJiraClient(context.Background())
+			ctx := context.WithValue(context.Background(), oauth2.HTTPClient, &http.Client{
+				Transport: jiraTestTransport(func(r *http.Request) (*http.Response, error) {
+					return nil, fmt.Errorf("unexpected OAuth request with incomplete credentials")
+				}),
+			})
+			client, err := flags.GetJiraClient(ctx)
 			require.ErrorContains(t, err, tc.wantError)
 			assert.Nil(t, client)
 		})
@@ -176,8 +173,6 @@ func TestGetJiraClientKeepsPATAuthentication(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("JIRA_CLIENT_ID", "client")
 			t.Setenv("JIRA_CLIENT_SECRET", "secret")
-			t.Setenv("JIRA_READ_ONLY_CLIENT_ID", "legacy-client")
-			t.Setenv("JIRA_READ_ONLY_CLIENT_SECRET", "legacy-secret")
 			t.Setenv("JIRA_CLOUD_ID", "11111111-2222-3333-4444-555555555555")
 			t.Setenv("JIRA_TOKEN", tc.bearer)
 			t.Setenv("JIRA_TOKEN_BASIC", tc.basic)
