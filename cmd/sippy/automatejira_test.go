@@ -47,8 +47,6 @@ func TestAutomateJiraClientSelection(t *testing.T) {
 			t.Setenv("JIRA_TOKEN", "existing-pat")
 			t.Setenv("JIRA_CLIENT_ID", "")
 			t.Setenv("JIRA_CLIENT_SECRET", "")
-			t.Setenv("JIRA_READ_ONLY_CLIENT_ID", "")
-			t.Setenv("JIRA_READ_ONLY_CLIENT_SECRET", "")
 			t.Setenv("JIRA_CLOUD_ID", "")
 			flags := NewAutomateJiraFlags()
 			flags.JiraFlags.ServiceAccount, flags.DryRun = tc.serviceAccount, tc.dryRun

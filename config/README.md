@@ -82,13 +82,6 @@ scopes are assigned when creating it in Atlassian Administration. Read-only
 consumers should receive the read-only credential with `read:jira-user` and
 `read:jira-work` scopes and access to the projects being queried.
 
-`JIRA_READ_ONLY_CLIENT_ID` and `JIRA_READ_ONLY_CLIENT_SECRET` remain supported as
-legacy aliases for existing deployments. They are used only when neither
-`JIRA_CLIENT_ID` nor `JIRA_CLIENT_SECRET` is set. If either generic variable is
-set, both must be nonempty; Sippy never mixes generic and legacy credentials.
-When updating a deployment, switch both environment variable names together,
-keeping their existing secret references. The cloud-ID variable is unchanged.
-
 Service-account requests use `https://api.atlassian.com/ex/jira/{cloudId}/`,
 regardless of `--jira-url`. The OAuth library obtains and renews access tokens
 in memory; no access-token file or external renewal job is needed. Missing or
@@ -136,7 +129,7 @@ authentication unless separately opted in. To roll back, remove
 
 `sippy load --jira-service-account` selects OAuth for both the `jira` data
 loader and the Jira client used by regression tracking. Both use the same
-credential variables and legacy aliases above. The flag defaults to false, so
+credential variables above. The flag defaults to false, so
 existing deployments keep their PAT or unauthenticated Jira behavior. Setting
 credentials without the flag does not switch authentication. Missing or
 rejected OAuth credentials fail loader construction without falling back to PAT.
