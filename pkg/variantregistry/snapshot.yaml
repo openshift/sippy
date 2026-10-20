@@ -87418,78 +87418,6 @@ periodic-ci-openshift-online-rosa-hyperfleet-main-nightly-integration:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-open-telemetry-opentelemetry-operator-main-downstream-e2e-ocp-4-22:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-open-telemetry-opentelemetry-operator-main-downstream-e2e-ocp-4-23:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-open-telemetry-opentelemetry-operator-main-downstream-e2e-ocp-5-0:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-open-telemetry-opentelemetry-operator-main-downstream-e2e-ui-ocp-4-22:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-openshift-tests-private-release-4.12-amd64-nightly-4.12-upgrade-from-aro-4.12-aro-f60:
     Aggregation: none
     Architecture: amd64
@@ -309603,60 +309531,12 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-host-groups-csi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-hybrid-env-serial-techpreview-1of2:
+periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-hybrid-env:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: vsphere
-    Procedure: serial
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-hybrid-env-serial-techpreview-2of2:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: vsphere
-    Procedure: serial
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-hybrid-env-techpreview:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -309673,6 +309553,54 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-hybrid-env-techp
     Scheduler: default
     SecurityMode: default
     Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-hybrid-env-serial-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-hybrid-env-serial-2of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-kube-apiserver-rollout:
@@ -309939,12 +309867,12 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-upi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-upi-hybrid-env-techpreview:
+periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-upi-hybrid-env:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: upi
     JobTier: candidate
     LayeredProduct: none
@@ -316424,60 +316352,12 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-host-groups-csi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-hybrid-env-serial-techpreview-1of2:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-hybrid-env:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: vsphere
-    Procedure: serial
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-hybrid-env-serial-techpreview-2of2:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: vsphere
-    Procedure: serial
-    Release: "4.23"
-    ReleaseMajor: "4"
-    ReleaseMinor: "23"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-hybrid-env-techpreview:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -316494,6 +316374,54 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-hybrid-env-techp
     Scheduler: default
     SecurityMode: default
     Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-hybrid-env-serial-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-hybrid-env-serial-2of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-kube-apiserver-rollout:
@@ -316760,12 +316688,12 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-upi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-upi-hybrid-env-techpreview:
+periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-upi-hybrid-env:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: upi
     JobTier: candidate
     LayeredProduct: none
@@ -323963,60 +323891,12 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-host-groups-csi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-hybrid-env-serial-techpreview-1of2:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-hybrid-env:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: vsphere
-    Procedure: serial
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-hybrid-env-serial-techpreview-2of2:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: vsphere
-    Procedure: serial
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-hybrid-env-techpreview:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -324033,6 +323913,54 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-hybrid-env-techpr
     Scheduler: default
     SecurityMode: default
     Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-hybrid-env-serial-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-hybrid-env-serial-2of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-kube-apiserver-rollout:
@@ -324395,12 +324323,12 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-upi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-upi-hybrid-env-techpreview:
+periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-upi-hybrid-env:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: upi
     JobTier: candidate
     LayeredProduct: none
@@ -329580,6 +329508,30 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-ha-cert-rotation-su
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-single-node-customnoupgrade-unified-dns:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: single
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ovn-single-node-live-iso:
     Aggregation: none
     Architecture: amd64
@@ -331676,60 +331628,12 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-host-groups-csi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-hybrid-env-serial-techpreview-1of2:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-hybrid-env:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: vsphere
-    Procedure: serial
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-hybrid-env-serial-techpreview-2of2:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: vsphere
-    Procedure: serial
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: serial
-    Topology: ha
-    Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-hybrid-env-techpreview:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -331746,6 +331650,54 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-hybrid-env-techpr
     Scheduler: default
     SecurityMode: default
     Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-hybrid-env-serial-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-hybrid-env-serial-2of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-kube-apiserver-rollout:
@@ -332108,12 +332060,12 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-upi:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-upi-hybrid-env-techpreview:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-upi-hybrid-env:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: upi
     JobTier: candidate
     LayeredProduct: none
@@ -358677,6 +358629,30 @@ periodic-ci-quarkus-qe-quarkus-openshift-interop-main-quarkus-ocp4.19-lp-interop
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-operator-redhat-5.0-aws-ocp50-e2e-chainsaw-aws-odf-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-redhat-3.16-aws-ocp421-e2e-install-aws-s3-nightly:
     Aggregation: none
     Architecture: amd64
@@ -359640,60 +359616,6 @@ periodic-ci-quay-quay-tests-master-ocp-420-quay-quay-e2e-tests-quay316-ocp420-vi
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-421-arm-quay-quay-e2e-tests-quay317-ocp421-arm:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-421-arm-quay-quay-e2e-tests-quay318-ocp421-arm:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-421-quay-quay-acs-violations-check-quay317:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-quay-quay-tests-master-ocp-421-quay-quay-e2e-tests-quay314-ocp421-lp-interop-fips:
     Aggregation: none
     Architecture: amd64
@@ -359725,135 +359647,6 @@ periodic-ci-quay-quay-tests-master-ocp-421-quay-quay-e2e-tests-quay316-ocp421-az
     OS: rhcos10
     Owner: eng
     Platform: azure
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-421-quay-quay-e2e-tests-quay317-ocp421-azure:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: azure
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-421-quay-quay-e2e-tests-quay317-ocp421-virtual-builder:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: virt
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-421-quay-quay-e2e-tests-quay318-ocp421-virtual-builder:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: virt
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-421-s390x-quay-quay-e2e-tests-quay317-ocp421-s390x-libvirt:
-    Aggregation: none
-    Architecture: s390x
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: libvirt
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-422-quay-quay-e2e-tests-quay317-ocp422-virtual-builder:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: virt
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-422-quay-quay-e2e-tests-quay318-ocp422-azure:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: azure
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-ocp-422-quay-quay-e2e-tests-quay318-ocp422-virtual-builder:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: virt
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
     Procedure: none
     Scheduler: default
     SecurityMode: default
@@ -360130,42 +359923,6 @@ periodic-ci-quay-quay-tests-master-quay-api-quay-e2e-tests-quay316-api-testing:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-api-quay-e2e-tests-quay317-api-testing:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-api-quay-e2e-tests-quay318-api-testing:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-quay-quay-tests-master-quay-api-sustaining-ocp412-quay-e2e-tests-quay39-api-testing:
     Aggregation: none
     Architecture: amd64
@@ -360203,60 +359960,6 @@ periodic-ci-quay-quay-tests-master-quay-api-sustaining-ocp414-quay-e2e-tests-qua
     Topology: ha
     Upgrade: none
 periodic-ci-quay-quay-tests-master-quay-api-sustaining-ocp416-quay-e2e-tests-quay312-api-testing:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-aro-ocp-quay-e2e-tests-quay317-aro:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-aro-ocp-quay-e2e-tests-quay318-aro:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-dast-quay-dast-test-quay317:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -360382,78 +360085,6 @@ periodic-ci-quay-quay-tests-master-quay-newui-quay-e2e-tests-quay316-ocp421-newu
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-newui-quay-e2e-tests-quay317-ocp416-newui-p1-p2:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-newui-quay-e2e-tests-quay317-ocp421-newui-p3:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-newui-quay-e2e-tests-quay318-ocp421-newui-p1-p2:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-newui-quay-e2e-tests-quay318-ocp421-newui-p3:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-quay-quay-tests-master-quay-newui-stress-quay-e2e-tests-quay312-ocp416-newui-stress:
     Aggregation: none
     Architecture: amd64
@@ -360490,42 +360121,6 @@ periodic-ci-quay-quay-tests-master-quay-oci-conformance-quay-oci-conformance-tes
     Suite: parallel
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-operator-test-quay317-ocp420-operator-test-allns:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-operator-test-quay317-ocp420-operator-test-singlens:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-quay-quay-tests-master-quay-osd-ocp-quay-e2e-tests-quay312-osd-ocp419:
     Aggregation: none
     Architecture: amd64
@@ -360556,24 +360151,6 @@ periodic-ci-quay-quay-tests-master-quay-osd-ocp-quay-e2e-tests-quay314-osd-ocp41
     NetworkStack: ipv4
     OS: rhcos10
     Owner: service-delivery
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-performance-quay-e2e-tests-quay317-performance-test:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
     Procedure: none
     Scheduler: default
     SecurityMode: default
@@ -360764,42 +360341,6 @@ periodic-ci-quay-quay-tests-master-quay-sdl-quay-sdl-check-images-vulnerabilitie
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-sdl-quay-sdl-check-images-vulnerabilities-quay317-konflux:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-sdl-quay-sdl-check-images-vulnerabilities-quay318-konflux:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-quay-quay-tests-master-quay-stage-quayio-quay-stage-quayio-validation-testing:
     Aggregation: none
     Architecture: amd64
@@ -360818,42 +360359,6 @@ periodic-ci-quay-quay-tests-master-quay-stage-quayio-quay-stage-quayio-validatio
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-quay-quay-tests-master-quay-upgrade-cso-quay-ocp421-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: micro
-periodic-ci-quay-quay-tests-master-quay-upgrade-qbo-quay-ocp421-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: micro
 periodic-ci-quay-quay-tests-master-quay-upgrade-quay314-ocp421-upgrade:
     Aggregation: none
     Architecture: amd64
@@ -360873,42 +360378,6 @@ periodic-ci-quay-quay-tests-master-quay-upgrade-quay314-ocp421-upgrade:
     Topology: ha
     Upgrade: micro
 periodic-ci-quay-quay-tests-master-quay-upgrade-quay316-ocp421-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: micro
-periodic-ci-quay-quay-tests-master-quay-upgrade-quay317-ocp421-upgrade:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Procedure: none
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: micro
-periodic-ci-quay-quay-tests-master-quay-upgrade-quay318-ocp421-upgrade:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
