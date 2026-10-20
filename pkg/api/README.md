@@ -7,19 +7,6 @@ break backwards compatability where possible.
 For exact API usage, you can use your browser's web developer tools to
 examine the requests we make.
 
-## Sippy MCP removal
-
-The Sippy HTTP MCP endpoint has been removed, including `/mcp/v1`. The
-repository's local development MCP server under `mcp/` is separate and remains
-available.
-
-## Sippy Chat removal
-
-The Sippy Chat API has been removed, including `/api/chat` and its streaming,
-persona, model, prompt, rating, and conversation endpoints. The `chat` capability
-and `--chat-api` server flag are no longer available. The frontend `/chat` and
-nested chat URLs display a transition page directing users to Chai Bot in Slack.
-
 ## Filtering and sorting
 
 ### Filtering
