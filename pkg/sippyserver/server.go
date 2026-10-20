@@ -39,8 +39,6 @@ import (
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
-	"github.com/openshift/sippy/pkg/mcp"
-
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/andygrunwald/go-jira"
@@ -2600,9 +2598,6 @@ func (s *Server) Serve() {
 
 	router.PathPrefix("/static/").Handler(http.FileServer(http.FS(s.static)))
 
-	// Setup MCP Server
-	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
-
 	type apiEndpoints struct {
 		EndpointPath      string                                       `json:"path"`
 		Description       string                                       `json:"description"`
@@ -2616,12 +2611,6 @@ func (s *Server) Serve() {
 
 	var endpoints []apiEndpoints
 	endpoints = []apiEndpoints{
-		{
-			EndpointPath: "/mcp/v1/",
-			Description:  "Handles MCP Requests",
-			Capabilities: []string{},
-			HandlerFunc:  http.StripPrefix("/mcp/v1", mcpServer.Handler()).ServeHTTP,
-		},
 		{
 			EndpointPath: "/api",
 			Description:  "API docs",
