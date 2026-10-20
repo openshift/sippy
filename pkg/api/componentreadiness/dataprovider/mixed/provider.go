@@ -19,8 +19,9 @@ import (
 var _ dataprovider.DataProvider = &MixedProvider{}
 
 // MixedProvider wraps both a BigQuery and PostgreSQL provider, routing
-// release metadata queries to PostgreSQL and everything else to BigQuery.
-// When reqOptions.DataSource is DataSourcePostgres, test status queries route to PG instead.
+// release metadata queries to PostgreSQL and other queries to PostgreSQL by
+// default. When reqOptions.DataSource is DataSourceBigQuery, those queries
+// route to BigQuery instead.
 type MixedProvider struct {
 	bq *bigquery.BigQueryProvider
 	pg *postgres.PostgresProvider
@@ -34,14 +35,14 @@ func NewMixedProvider(bqClient *bqcachedclient.Client, dbc *db.DB, cacheClient c
 }
 
 func (p *MixedProvider) providerFor(reqOptions reqopts.RequestOptions) dataprovider.DataProvider {
-	if reqOptions.DataSource == reqopts.DataSourcePostgres {
-		return p.pg
+	if reqOptions.DataSource == reqopts.DataSourceBigQuery {
+		return p.bq
 	}
-	return p.bq
+	return p.pg
 }
 
 func (p *MixedProvider) Cache() cache.Cache {
-	return p.bq.Cache()
+	return p.providerFor(reqopts.RequestOptions{}).Cache()
 }
 
 func (p *MixedProvider) QueryReleases(ctx context.Context) ([]v1.Release, error) {
