@@ -2560,7 +2560,9 @@ func (s *Server) rateLimit(endpointPath string, maxRequests int, period time.Dur
 	}
 }
 
-func (s *Server) handler() http.Handler {
+func (s *Server) Serve() {
+	s.determineCapabilities()
+
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
@@ -3210,18 +3212,11 @@ func (s *Server) handler() http.Handler {
 		handlers.AllowedOrigins([]string{s.corsAllowedOrigin}),
 		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}),
 		handlers.AllowedHeaders([]string{"Content-Type", "X-Forwarded-User", "X-Forwarded-For", "X-Real-IP", "Authorization"}))
-	return cors(handler)
-}
-
-func (s *Server) Serve() {
-	s.determineCapabilities()
-
-	handler := s.handler()
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
 		Addr:              s.listenAddr,
-		Handler:           handler,
+		Handler:           cors(handler),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
