@@ -48948,6 +48948,44 @@ periodic-ci-openshift-kubernetes-release-5.1-periodics-e2e-aws-hpa:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-kueue-operator-main-libvirt-s390x-test-e2e-4-22-downstream:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-kueue-operator-main-libvirt-s390x-test-e2e-4-22-upstream:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-kueue-operator-main-test-e2e-4-18:
     Aggregation: none
     Architecture: amd64
@@ -49303,6 +49341,54 @@ periodic-ci-openshift-kueue-operator-main-test-e2e-upstream-5-0:
     OS: rhcos10
     Owner: eng
     Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-kueue-operator-release-1.4-libvirt-s390x-test-e2e-4-22-downstream:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Release: "1.4"
+    ReleaseMajor: "1"
+    ReleaseMinor: "4"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-kueue-operator-release-1.4-libvirt-s390x-test-e2e-4-22-upstream:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: libvirt
+    Procedure: none
+    Release: "1.4"
+    ReleaseMajor: "1"
+    ReleaseMinor: "4"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -84815,6 +84901,26 @@ periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osd-gcp-staging-ocm-fvt-perio
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osd-gcp-staging-ocm-fvt-periodic-cs-osd-gcp-non-cross-proj-wif-staging-main:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-ocm-fvt-osd-gcp-staging-ocm-fvt-periodic-cs-osd-gcp-psc-wif-sv-staging-main:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -198037,6 +198143,30 @@ periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-aws-sc2s
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-aws-upi-ovn-winc-f7:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: hidden
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: qe
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-aws-usgov-ipi-custom-dns-mini-perm-tp-f7:
     Aggregation: none
     Architecture: amd64
@@ -202133,6 +202263,30 @@ periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-olmv1-be
     NetworkStack: ipv4
     OS: rhcos10
     Owner: qe
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-vsphere-ipi-disconnected-ovn-winc-f7:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: hidden
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: qe
+    Platform: vsphere
     Procedure: none
     Release: "5.0"
     ReleaseMajor: "5"
@@ -210998,6 +211152,30 @@ periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-aws-sc2s
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-aws-upi-ovn-winc-f7:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: hidden
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: qe
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-aws-usgov-ipi-custom-dns-mini-perm-tp-f7:
     Aggregation: none
     Architecture: amd64
@@ -215070,6 +215248,30 @@ periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-olmv1-be
     NetworkStack: ipv4
     OS: rhcos10
     Owner: qe
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-vsphere-ipi-disconnected-ovn-winc-f7:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: hidden
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: qe
+    Platform: vsphere
     Procedure: none
     Release: "5.1"
     ReleaseMajor: "5"
