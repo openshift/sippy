@@ -1,8 +1,8 @@
 import { Card, CircularProgress, Grid, Typography } from '@mui/material'
 import { Line } from 'react-chartjs-2'
 import { safeEncodeURIComponent } from '../helpers'
-import { scale } from 'chroma-js'
 import Alert from '@mui/material/Alert'
+import chroma from 'chroma-js'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
@@ -90,7 +90,8 @@ export default function TestPassRateCharts({
     )
   }
 
-  const colors = scale('Set2')
+  const colors = chroma
+    .scale('Set2')
     .mode('lch')
     .colors(Object.keys(groupedData).length)
 

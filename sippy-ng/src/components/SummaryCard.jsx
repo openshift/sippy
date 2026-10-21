@@ -2,8 +2,8 @@ import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
 import { Doughnut } from 'react-chartjs-2'
 import { Link } from 'react-router'
 import { makeStyles } from '../makeStyles'
-import { scale } from 'chroma-js'
 import { useTheme } from '@mui/material/styles'
+import chroma from 'chroma-js'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -35,15 +35,17 @@ export default function SummaryCard({
 
   const percent = ((success + flakes) / ((flakes || 0) + fail + success)) * 100
 
-  const colors = scale([
-    theme.palette.error.main,
-    theme.palette.warning.main,
-    theme.palette.success.main,
-  ]).domain([
-    props.threshold.error,
-    props.threshold.warning,
-    props.threshold.success,
-  ])
+  const colors = chroma
+    .scale([
+      theme.palette.error.main,
+      theme.palette.warning.main,
+      theme.palette.success.main,
+    ])
+    .domain([
+      props.threshold.error,
+      props.threshold.warning,
+      props.threshold.success,
+    ])
 
   const bgColor = colors(percent).hex()
 
