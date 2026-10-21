@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -200,6 +201,54 @@ func Test_TriageAPI(t *testing.T) {
 
 		assert.Equal(t, crtest.ExtremeTriagedRegression, statusMap[r.Regression.ID], "First regressed test should have ExtremeTriagedRegression status")
 		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[r2.Regression.ID], "Second regressed test should have SignificantTriagedRegression status")
+	})
+	t.Run("expand=regressions skips unknown views with warning", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		r := createTestRegressionWithDetails(t, tracker, view, "unknown-view-test-1", "component-unknown", "capability-unknown", "TestUnknownView1", crtest.ExtremeRegression)
+		defer dbc.DB.Delete(r.Regression)
+		require.NoError(t, tracker.UpsertRegressionView(r.Regression.ID, view.Name))
+
+		unknownViewName := "99.99-nonexistent-view"
+		require.NoError(t, tracker.UpsertRegressionView(r.Regression.ID, unknownViewName))
+
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: r.Regression.ID},
+			},
+		}
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+
+		cache, err := util.NewE2ECacheManipulator(util.Release)
+		require.NoError(t, err)
+		defer cache.Close()
+
+		err = cache.AddTestRegressionsToReport([]componentreport.ReportTestSummary{r})
+		require.NoError(t, err)
+
+		var expandedTriage sippyserver.ExpandedTriage
+		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d?view=%s-main&expand=regressions", triageResponse.ID, util.Release), &expandedTriage)
+		require.NoError(t, err, "endpoint should not return 500 for unknown views")
+
+		require.NotNil(t, expandedTriage.Triage)
+		assert.Equal(t, triageResponse.ID, expandedTriage.ID)
+
+		require.NotEmpty(t, expandedTriage.Warnings, "should contain a warning about the unknown view")
+		foundWarning := false
+		for _, w := range expandedTriage.Warnings {
+			if strings.Contains(w, unknownViewName) {
+				foundWarning = true
+				break
+			}
+		}
+		assert.True(t, foundWarning, "warnings should mention the unknown view %q, got: %v", unknownViewName, expandedTriage.Warnings)
+
+		require.Contains(t, expandedTriage.RegressedTests, view.Name, "known view regressions should still be present")
+		assert.NotContains(t, expandedTriage.RegressedTests, unknownViewName, "unknown view should not appear in regressed tests")
 	})
 	t.Run("list", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
