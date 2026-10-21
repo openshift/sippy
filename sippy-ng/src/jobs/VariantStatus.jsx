@@ -58,12 +58,27 @@ export default function VariantStatus(props) {
                 indicatorColor="primary"
                 variant="fullWidth"
               >
-                <Tab label="Jobs" value={0} />
-                <Tab label="Job runs" value={1} />
+                <Tab
+                  label="Jobs"
+                  value={0}
+                  id="variant-tab-0"
+                  aria-controls="variant-tabpanel-0"
+                />
+                <Tab
+                  label="Job runs"
+                  value={1}
+                  id="variant-tab-1"
+                  aria-controls="variant-tabpanel-1"
+                />
               </Tabs>
 
               {tab === 0 && (
-                <Box sx={{ pt: 3 }}>
+                <Box
+                  role="tabpanel"
+                  id="variant-tabpanel-0"
+                  aria-labelledby="variant-tab-0"
+                  sx={{ pt: 3 }}
+                >
                   <JobTable
                     hideControls={true}
                     pageSize={5}
@@ -77,7 +92,12 @@ export default function VariantStatus(props) {
                 </Box>
               )}
               {tab === 1 && (
-                <Box sx={{ pt: 3 }}>
+                <Box
+                  role="tabpanel"
+                  id="variant-tabpanel-1"
+                  aria-labelledby="variant-tab-1"
+                  sx={{ pt: 3 }}
+                >
                   <JobRunsTable
                     pageSize={5}
                     hideControls={true}

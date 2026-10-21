@@ -86,7 +86,7 @@ function PayloadStreamOverview(props) {
   return (
     <Container>
       <Grid container spacing={3} alignItems="stretch" justifyContent="center">
-        <Grid item md={9}>
+        <Grid size={{ md: 9 }}>
           <NumberCard
             title="Last Payload Accepted"
             size={3}
@@ -105,7 +105,7 @@ function PayloadStreamOverview(props) {
         </Grid>
       </Grid>
       <Grid container spacing={3} alignItems="stretch" justifyContent="center">
-        <Grid item md={3}>
+        <Grid size={{ md: 3 }}>
           <SummaryCard
             key="payload-acceptance-summary-overall"
             threshold={TEST_THRESHOLDS}
@@ -132,7 +132,7 @@ function PayloadStreamOverview(props) {
             fail={streamHealth.phase_counts.total.rejected}
           />
         </Grid>
-        <Grid item md={3}>
+        <Grid size={{ md: 3 }}>
           <SummaryCard
             key="payload-acceptance-summary-currentweek"
             threshold={TEST_THRESHOLDS}
@@ -159,7 +159,7 @@ function PayloadStreamOverview(props) {
             fail={streamHealth.phase_counts.current_week.rejected}
           />
         </Grid>
-        <Grid item md={3}>
+        <Grid size={{ md: 3 }}>
           <NumberCard
             title="Payload Streak"
             number={streamHealth.count}
@@ -180,9 +180,9 @@ function PayloadStreamOverview(props) {
         alignItems="stretch"
         justifyContent="center"
       >
-        <Grid item md={3}>
+        <Grid size={{ md: 3 }}>
           <Grid container spacing={3}>
-            <Grid item md={12}>
+            <Grid size={{ md: 12 }}>
               <NumberCard
                 title="Overall"
                 number={Number(
@@ -201,7 +201,7 @@ function PayloadStreamOverview(props) {
                 }
               />
             </Grid>
-            <Grid item md={12}>
+            <Grid size={{ md: 12 }}>
               <NumberCard
                 title="This Week"
                 number={Number(
@@ -222,8 +222,8 @@ function PayloadStreamOverview(props) {
             </Grid>
           </Grid>
         </Grid>
-        <Grid item md={6}>
-          <Grid item style={{ height: '100%' }}>
+        <Grid size={{ md: 6 }}>
+          <Grid style={{ height: '100%' }}>
             <Card elevation={5} style={{ padding: 20, height: '100%' }}>
               <PayloadMiniCalendar
                 release={props.release}
