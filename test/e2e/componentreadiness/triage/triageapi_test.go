@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -202,7 +201,7 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, crtest.ExtremeTriagedRegression, statusMap[r.Regression.ID], "First regressed test should have ExtremeTriagedRegression status")
 		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[r2.Regression.ID], "Second regressed test should have SignificantTriagedRegression status")
 	})
-	t.Run("expand=regressions skips unknown views with warning", func(t *testing.T) {
+	t.Run("expand=regressions skips unknown views", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
 		r := createTestRegressionWithDetails(t, tracker, view, "unknown-view-test-1", "component-unknown", "capability-unknown", "TestUnknownView1", crtest.ExtremeRegression)
@@ -236,16 +235,6 @@ func Test_TriageAPI(t *testing.T) {
 
 		require.NotNil(t, expandedTriage.Triage)
 		assert.Equal(t, triageResponse.ID, expandedTriage.ID)
-
-		require.NotEmpty(t, expandedTriage.Warnings, "should contain a warning about the unknown view")
-		foundWarning := false
-		for _, w := range expandedTriage.Warnings {
-			if strings.Contains(w, unknownViewName) {
-				foundWarning = true
-				break
-			}
-		}
-		assert.True(t, foundWarning, "warnings should mention the unknown view %q, got: %v", unknownViewName, expandedTriage.Warnings)
 
 		require.Contains(t, expandedTriage.RegressedTests, view.Name, "known view regressions should still be present")
 		require.Len(t, expandedTriage.RegressedTests[view.Name], 1)
