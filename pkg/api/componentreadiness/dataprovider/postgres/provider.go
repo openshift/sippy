@@ -336,16 +336,17 @@ func (p *PostgresProvider) QueryTestStatus(
 // --- TestDetailsQuerier ---
 
 type testDetailRow struct {
-	TestID          string    `gorm:"column:test_id"`
-	TestName        string    `gorm:"column:test_name"`
-	ProwJobName     string    `gorm:"column:prowjob_name"`
-	ProwJobRunID    string    `gorm:"column:prowjob_run_id"`
-	ProwJobURL      string    `gorm:"column:prowjob_url"`
-	ProwJobStart    time.Time `gorm:"column:prowjob_start"`
-	ProwJobID       uint      `gorm:"column:prow_job_id"`
-	Status          int       `gorm:"column:status"`
-	JiraComponent   string    `gorm:"column:jira_component"`
-	JiraComponentID *uint     `gorm:"column:jira_component_id"`
+	TestID          string         `gorm:"column:test_id"`
+	TestName        string         `gorm:"column:test_name"`
+	ProwJobName     string         `gorm:"column:prowjob_name"`
+	ProwJobRunID    string         `gorm:"column:prowjob_run_id"`
+	ProwJobURL      string         `gorm:"column:prowjob_url"`
+	ProwJobStart    time.Time      `gorm:"column:prowjob_start"`
+	ProwJobID       uint           `gorm:"column:prow_job_id"`
+	JobLabels       pq.StringArray `gorm:"column:job_labels;type:text[]"`
+	Status          int            `gorm:"column:status"`
+	JiraComponent   string         `gorm:"column:jira_component"`
+	JiraComponentID *uint          `gorm:"column:jira_component_id"`
 }
 
 func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
@@ -389,6 +390,7 @@ SELECT
     COALESCE(pjr.url, '') AS prowjob_url,
     pjr.timestamp AS prowjob_start,
     pj.id AS prow_job_id,
+    pjr.labels AS job_labels,
     pjrt.status,
     COALESCE(tt.jira_component, '') AS jira_component,
     tt.jira_component_id
@@ -476,6 +478,7 @@ WHERE pj.release = ?
 			ProwJobRunID:    row.ProwJobRunID,
 			ProwJobURL:      row.ProwJobURL,
 			StartTime:       row.ProwJobStart,
+			JobLabels:       []string(row.JobLabels),
 			Count:           crtest.Count{TotalCount: 1, SuccessCount: successCount, FlakeCount: flakeCount},
 			JiraComponent:   row.JiraComponent,
 			JiraComponentID: jiraComponentID,

@@ -3730,6 +3730,7 @@ func TestTestDetailsReport_AggregateBaseStats(t *testing.T) {
 	run2 := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS2)
 	run3 := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS3)
 	run4 := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS4)
+	setJobRunLabels(t, dbc, run4.ID, []string{"KubeletVersionSkew"})
 
 	createProwJobRunTest(t, dbc, run1.ID, job.ID, test.ID, &suite.ID, 1, release, sampleTS1)
 	createProwJobRunTest(t, dbc, run2.ID, job.ID, test.ID, &suite.ID, 1, release, sampleTS2)
@@ -3759,6 +3760,8 @@ func TestTestDetailsReport_AggregateBaseStats(t *testing.T) {
 	jobStat := analysis.JobStats[0]
 	assert.Empty(t, jobStat.BaseJobRunStats, "aggregate base should have no individual runs")
 	assert.Len(t, jobStat.SampleJobRunStats, 4, "sample should have 4 individual runs")
+	assert.Equal(t, []string{"KubeletVersionSkew"}, jobStat.SampleJobRunStats[3].JobLabels,
+		"failed run should carry its PostgreSQL job labels into test details")
 
 	assert.Equal(t, "Storage", report.JiraComponent)
 	require.NotNil(t, report.JiraComponentID)
