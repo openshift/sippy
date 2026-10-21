@@ -1947,7 +1947,7 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 		viewNames := componentreadiness.GetViewsForTriage(triage)
 		for _, viewName := range viewNames {
 			if _, ok := componentreadiness.FindViewByName(viewName, s.views.ComponentReadiness); !ok {
-				log.WithField("view", viewName).WithField("triageID", triage.ID).Warning("skipping unknown view for triage regression enrichment")
+				log.WithField("view", viewName).WithField("triageID", triage.ID).Warn("skipping unknown view for triage regression enrichment")
 				continue
 			}
 			q := req.URL.Query()
