@@ -248,6 +248,9 @@ func Test_TriageAPI(t *testing.T) {
 		assert.True(t, foundWarning, "warnings should mention the unknown view %q, got: %v", unknownViewName, expandedTriage.Warnings)
 
 		require.Contains(t, expandedTriage.RegressedTests, view.Name, "known view regressions should still be present")
+		require.Len(t, expandedTriage.RegressedTests[view.Name], 1)
+		assert.Equal(t, r.Regression.ID, expandedTriage.RegressedTests[view.Name][0].Regression.ID)
+		assert.Equal(t, crtest.ExtremeTriagedRegression, expandedTriage.RegressedTests[view.Name][0].ReportStatus)
 		assert.NotContains(t, expandedTriage.RegressedTests, unknownViewName, "unknown view should not appear in regressed tests")
 	})
 	t.Run("list", func(t *testing.T) {
