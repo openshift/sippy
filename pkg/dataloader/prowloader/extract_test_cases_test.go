@@ -56,6 +56,44 @@ func TestExtractTestCases(t *testing.T) {
 			},
 		},
 		{
+			name: "failing test with message fallback",
+			suite: &junit.TestSuite{
+				Name: "openshift-tests",
+				TestCases: []*junit.TestCase{
+					{Name: "test-a", Duration: 2.0, FailureOutput: &junit.FailureOutput{Message: failMsg}},
+				},
+			},
+			expected: map[testCaseKey]*types.TestCaseEntry{
+				{SuiteName: "openshift-tests", TestName: "test-a"}: {
+					TestName:  "test-a",
+					SuiteName: "openshift-tests",
+					Status:    int(sippyprocessingv1.TestStatusFailure),
+					Duration:  2.0,
+					Output:    &failMsg,
+					Lifecycle: "blocking",
+				},
+			},
+		},
+		{
+			name: "failing test prefers output over message",
+			suite: &junit.TestSuite{
+				Name: "openshift-tests",
+				TestCases: []*junit.TestCase{
+					{Name: "test-a", Duration: 2.0, FailureOutput: &junit.FailureOutput{Output: failMsg, Message: "other msg"}},
+				},
+			},
+			expected: map[testCaseKey]*types.TestCaseEntry{
+				{SuiteName: "openshift-tests", TestName: "test-a"}: {
+					TestName:  "test-a",
+					SuiteName: "openshift-tests",
+					Status:    int(sippyprocessingv1.TestStatusFailure),
+					Duration:  2.0,
+					Output:    &failMsg,
+					Lifecycle: "blocking",
+				},
+			},
+		},
+		{
 			name: "skipped test excluded",
 			suite: &junit.TestSuite{
 				Name: "openshift-tests",
