@@ -782,6 +782,9 @@ var componentCapabilityPatterns = []componentCapabilityEntry{
 	{[]string{"-aws-ovn-installer-dualstack"}, "Installer", "AWSDualStackInstall", "candidate"},
 	{[]string{"-gcd-"}, "Installer", "GCPSovereignCloudInstall", "standard"},
 	{[]string{"-iso-no-registry"}, "Installer / Agent based installation", "NoRegistryClusterInstall", "candidate"},
+	// ExternalOIDCAsWebhook is TechPreviewNoUpgrade-only; label TPNU jobs, not default FeatureSet.
+	{[]string{"cluster-authentication-operator", "release-5.1-", "external-oidc", "techpreview"}, "apiserver-auth", "ExternalOIDCAsWebhook", "candidate"},
+	{[]string{"hypershift", "release-5.1-", "external-oidc", "techpreview"}, "apiserver-auth", "ExternalOIDCAsWebhook", "candidate"},
 }
 
 // setComponentAndCapability identifies the component and capability owner for a job.

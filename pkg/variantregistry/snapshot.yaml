@@ -15107,10 +15107,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -15155,10 +15157,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -42583,6 +42587,8 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-aws-external-oidc-tec
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: hypershift
@@ -42874,6 +42880,8 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-azure-aks-external-oi
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: techpreview
     Installer: hypershift
