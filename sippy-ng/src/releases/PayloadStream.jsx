@@ -1,9 +1,9 @@
 import { filterFor } from '../helpers'
 import { Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { TabContext } from '@mui/lab'
+
 import PayloadCalendar from './PayloadCalendar'
 import PayloadStreamOverview from './PayloadStreamOverview'
 import PayloadStreamTestFailures from './PayloadStreamTestFailures'
@@ -61,102 +61,100 @@ export default function PayloadStream(props) {
         }
         currentPage={currPage}
       />
-      <TabContext value={location.pathname}>
-        <Fragment>
-          <Typography variant="h4" gutterBottom className={classes.title}>
-            {arch} {stream} {props.release} Payload Stream
-          </Typography>
+      <Fragment>
+        <Typography variant="h4" gutterBottom className={classes.title}>
+          {arch} {stream} {props.release} Payload Stream
+        </Typography>
 
-          <Grid
-            container
-            justifyContent="center"
-            width="100%"
-            style={{ margin: 20 }}
-          >
-            <Paper>
-              <Tabs
-                value={location.pathname.substring(
-                  location.pathname.lastIndexOf('/') + 1
-                )}
-                indicatorColor="primary"
-                textColor="primary"
-              >
-                <Tab
-                  label="Overview"
-                  value="overview"
-                  component={Link}
-                  to={basePath + '/overview'}
-                />
-                <Tab
-                  label="Calendar"
-                  value="calendar"
-                  component={Link}
-                  to={basePath + '/calendar'}
-                />
-                <Tab
-                  label="Payloads"
-                  value="payloads"
-                  component={Link}
-                  to={basePath + '/payloads'}
-                />
-                <Tab
-                  label="Test Failures"
-                  value="testfailures"
-                  component={Link}
-                  to={basePath + '/testfailures'}
-                />
-              </Tabs>
-            </Paper>
-          </Grid>
-          <Routes>
-            <Route
-              path="overview"
-              element={
-                <PayloadStreamOverview
+        <Grid
+          container
+          justifyContent="center"
+          width="100%"
+          style={{ margin: 20 }}
+        >
+          <Paper>
+            <Tabs
+              value={location.pathname.substring(
+                location.pathname.lastIndexOf('/') + 1
+              )}
+              indicatorColor="primary"
+              textColor="primary"
+            >
+              <Tab
+                label="Overview"
+                value="overview"
+                component={Link}
+                to={basePath + '/overview'}
+              />
+              <Tab
+                label="Calendar"
+                value="calendar"
+                component={Link}
+                to={basePath + '/calendar'}
+              />
+              <Tab
+                label="Payloads"
+                value="payloads"
+                component={Link}
+                to={basePath + '/payloads'}
+              />
+              <Tab
+                label="Test Failures"
+                value="testfailures"
+                component={Link}
+                to={basePath + '/testfailures'}
+              />
+            </Tabs>
+          </Paper>
+        </Grid>
+        <Routes>
+          <Route
+            path="overview"
+            element={
+              <PayloadStreamOverview
+                release={props.release}
+                stream={props.stream}
+                arch={props.arch}
+              />
+            }
+          />
+          <Route
+            path="calendar"
+            element={
+              <PayloadCalendar
+                release={props.release}
+                arch={props.arch}
+                stream={props.stream}
+              />
+            }
+          />
+          <Route
+            path="testfailures"
+            element={
+              <PayloadStreamTestFailures
+                release={props.release}
+                stream={props.stream}
+                arch={props.arch}
+              />
+            }
+          />
+          <Route
+            path="payloads"
+            element={
+              <Typography variant="h4" gutterBottom className={classes.title}>
+                <ReleasePayloadTable
                   release={props.release}
-                  stream={props.stream}
-                  arch={props.arch}
+                  filterModel={payloadsFilterModel}
                 />
-              }
-            />
-            <Route
-              path="calendar"
-              element={
-                <PayloadCalendar
-                  release={props.release}
-                  arch={props.arch}
-                  stream={props.stream}
-                />
-              }
-            />
-            <Route
-              path="testfailures"
-              element={
-                <PayloadStreamTestFailures
-                  release={props.release}
-                  stream={props.stream}
-                  arch={props.arch}
-                />
-              }
-            />
-            <Route
-              path="payloads"
-              element={
-                <Typography variant="h4" gutterBottom className={classes.title}>
-                  <ReleasePayloadTable
-                    release={props.release}
-                    filterModel={payloadsFilterModel}
-                  />
-                </Typography>
-              }
-            />
-            <Route
-              path="/"
-              element={<Navigate to={basePath + '/overview'} replace />}
-            />
-          </Routes>
-        </Fragment>
-      </TabContext>
+              </Typography>
+            }
+          />
+          <Route
+            path="/"
+            element={<Navigate to={basePath + '/overview'} replace />}
+          />
+        </Routes>
+      </Fragment>
     </Fragment>
   )
 }

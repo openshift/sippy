@@ -1,6 +1,6 @@
 import { FormControl, InputLabel, MenuItem, Select } from '@mui/material'
 import { useStyles } from './CompReadyMainInputs'
-import { useTheme } from '@mui/styles'
+import { useTheme } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React from 'react'
 

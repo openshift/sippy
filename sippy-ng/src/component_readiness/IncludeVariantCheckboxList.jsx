@@ -13,7 +13,7 @@ import {
 } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import PropTypes from 'prop-types'
 import React, { useContext, useState } from 'react'
 import Typography from '@mui/material/Typography'

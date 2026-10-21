@@ -1,5 +1,5 @@
 import { Box, Chip, Typography } from '@mui/material'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import Grid from '@mui/material/Grid'

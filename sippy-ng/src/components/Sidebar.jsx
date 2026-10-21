@@ -24,7 +24,7 @@ import {
   withSort,
 } from '../helpers'
 import { SippyCapabilitiesContext } from '../App'
-import { styled } from '@mui/styles'
+import { styled } from '@mui/material/styles'
 import ApartmentIcon from '@mui/icons-material/Apartment'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import Collapse from '@mui/material/Collapse'

@@ -1,5 +1,5 @@
 import { Card, Container, Tooltip, Typography } from '@mui/material'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { React } from 'react'
 
 import BuildClusterHealthChart from './BuildClusterHealthChart'

@@ -1,7 +1,7 @@
 import './TestByVariantTable.css'
 import { grey } from '@mui/material/colors'
 import { Link } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { parseVariantName, pathForExactTestAnalysis } from '../helpers'
 import { scale } from 'chroma-js'
 import { TableContainer, Tooltip, Typography } from '@mui/material'

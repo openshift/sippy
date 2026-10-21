@@ -1,6 +1,6 @@
 import { ArrayParam, useQueryParam } from 'use-query-params'
 import { Backdrop, CircularProgress } from '@mui/material'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'

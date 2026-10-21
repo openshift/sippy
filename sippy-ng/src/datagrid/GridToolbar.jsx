@@ -1,5 +1,6 @@
 import { GridToolbarDensitySelector } from '@mui/x-data-grid'
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
+import { useTheme } from '@mui/material/styles'
 import ClearIcon from '@mui/icons-material/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
 import GridToolbarDownload from './GridToolbarDownload'

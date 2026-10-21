@@ -1,7 +1,7 @@
 import { Button, FormHelperText, Tab, Tabs } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { formColumnName, getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { relativeTime } from '../helpers'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'

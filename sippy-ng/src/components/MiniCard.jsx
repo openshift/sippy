@@ -7,9 +7,10 @@ import {
   Tooltip,
 } from '@mui/material'
 import { Link } from 'react-router'
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { parseVariantName } from '../helpers'
 import { scale } from 'chroma-js'
+import { useTheme } from '@mui/material/styles'
 import PassRateIcon from './PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'

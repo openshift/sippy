@@ -1,4 +1,4 @@
-import Autocomplete from '@mui/lab/Autocomplete'
+import Autocomplete from '@mui/material/Autocomplete'
 import PropTypes from 'prop-types'
 import React from 'react'
 import TextField from '@mui/material/TextField'

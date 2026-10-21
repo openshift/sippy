@@ -1,5 +1,5 @@
 import { Box, Container, Paper, Tab, Tabs, Typography } from '@mui/material'
-import { TabContext } from '@mui/lab'
+
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
@@ -16,7 +16,6 @@ import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
  */
 export default function Jobs(props) {
   const location = useLocation()
-  const currentPath = location.pathname
   const basePath = `/jobs/${props.release}`
 
   useEffect(() => {
@@ -26,7 +25,7 @@ export default function Jobs(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} currentPage="Jobs" />
-      <TabContext value={currentPath}>
+      <Fragment>
         <Typography align="center" variant="h4">
           Job health for {props.release}
         </Typography>
@@ -103,7 +102,7 @@ export default function Jobs(props) {
             <Route path="/" element={<JobTable release={props.release} />} />
           </Routes>
         </Container>
-      </TabContext>
+      </Fragment>
     </Fragment>
   )
 }

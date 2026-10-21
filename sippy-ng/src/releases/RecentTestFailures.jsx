@@ -19,7 +19,7 @@ import {
 } from '@mui/material'
 import { DirectionsBoat, OpenInNew } from '@mui/icons-material'
 import { Link } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import {
   pathForExactTestAnalysis,
   relativeTime,

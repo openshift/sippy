@@ -10,7 +10,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Launch } from '@mui/icons-material'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { MERGE_FAILURE_THERSHOLDS } from '../constants'
 import {
   pathForRepository,
@@ -19,7 +19,7 @@ import {
 } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { useNavigate } from 'react-router'
-import { withStyles } from '@mui/styles'
+import { withStyles } from '../makeStyles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'

@@ -1,5 +1,5 @@
 import './SippyLogo.css'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import fifaLogo from '../sippy-fifa.svg'
 import logo from '../sippy.svg'
 import Popover from '@mui/material/Popover'
