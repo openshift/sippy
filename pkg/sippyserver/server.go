@@ -1944,10 +1944,14 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 
 	if expandFields["regressions"] {
 		et.RegressedTests = make(map[string][]*componentreport.ReportTestSummary)
-		views := componentreadiness.GetViewsForTriage(triage)
-		for _, view := range views {
+		viewNames := componentreadiness.GetViewsForTriage(triage)
+		for _, viewName := range viewNames {
+			if _, ok := componentreadiness.FindViewByName(viewName, s.views.ComponentReadiness); !ok {
+				log.WithField("view", viewName).WithField("triageID", triage.ID).Warn("skipping unknown view for triage regression enrichment")
+				continue
+			}
 			q := req.URL.Query()
-			q.Set("view", view)
+			q.Set("view", viewName)
 			req.URL.RawQuery = q.Encode()
 			componentReport, err := s.getComponentReportFromRequest(req)
 			if err != nil {
@@ -1962,7 +1966,7 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 			if len(regressedTests) > 0 {
-				et.RegressedTests[view] = regressedTests
+				et.RegressedTests[viewName] = regressedTests
 			}
 		}
 	}

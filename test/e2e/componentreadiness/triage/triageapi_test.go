@@ -150,6 +150,10 @@ func Test_TriageAPI(t *testing.T) {
 		// TODO(sgoeddel): If we ever have a need for another view available within e2e tests we could verify that we could get regressed_tests
 		// for multiple views at once here, but it isn't worth the overhead now.
 
+		// Associate an unknown view with the first regression to verify it gets skipped gracefully
+		unknownViewName := "99.99-nonexistent-view"
+		require.NoError(t, tracker.UpsertRegressionView(r.Regression.ID, unknownViewName))
+
 		// Create a triage with the test regressions
 		triage := models.Triage{
 			URL:  jiraBug.URL,
@@ -200,6 +204,7 @@ func Test_TriageAPI(t *testing.T) {
 
 		assert.Equal(t, crtest.ExtremeTriagedRegression, statusMap[r.Regression.ID], "First regressed test should have ExtremeTriagedRegression status")
 		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[r2.Regression.ID], "Second regressed test should have SignificantTriagedRegression status")
+		assert.NotContains(t, expandedTriage.RegressedTests, unknownViewName, "unknown view should not appear in regressed tests")
 	})
 	t.Run("list", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
