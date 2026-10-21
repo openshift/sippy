@@ -702,6 +702,13 @@ logic use canonical filter definitions from
 | release*      | String | The OpenShift release to return results from (e.g., 5.0) |
 | feature_gate  | Path   | The feature gate name (in the URL path)                  |
 
+## Component Readiness Test Details
+
+Endpoint: `GET /api/component_readiness/test_details`
+
+Returns per-job-run test results. Runs may include applied `job_labels` when
+supplied by the selected data provider.
+
 ## Component Readiness Triages
 
 Endpoint: `GET /api/component_readiness/triages`
@@ -726,7 +733,9 @@ Clients must retrieve the full record before submitting a replacement with `PUT`
 
 Endpoint: `GET /api/component_readiness/triages/{id}`
 
-Returns a single triage record by ID.
+Returns a single triage record by ID. Use `expand=regressions` to include
+regressed test summaries. Regression job runs in the response may contain
+applied `job_labels`.
 
 Endpoint: `POST /api/component_readiness/triages`
 

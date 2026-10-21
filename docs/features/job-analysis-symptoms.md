@@ -104,13 +104,7 @@ array on `ProwJobRun` records in PostgreSQL (which are written to the `prow_job_
 
 The sippy release loader does the same for payload job runs (`release_job_runs` table).
 
-### 4. Triage Integration
-
-The regression cache loader syncs symptom associations to triage records via `TriageSymptom`
-junction records. This allows the triage UI to show which symptoms are present across a triage's
-regressions and what percentage exhibit each one.
-
-### 5. UI Display
+### 4. UI Display
 
 Labels are relevant in several Sippy pages:
 
@@ -131,7 +125,7 @@ Labels are relevant in several Sippy pages:
 They are also displayed in Spyglass (the Deck display of a Prow job) - an HTML summary added to the
 job's bucket entry is included by the html lens.
 
-### 6. Retroactive Re-evaluation
+### 5. Retroactive Re-evaluation
 
 The `POST /api/jobs/runs/reevaluate` endpoint re-runs symptom detection for specified job runs.
 Unlike the cloud function (which processes files as they arrive), the re-evaluator scans all
@@ -186,7 +180,6 @@ modified, added, or removed, re-evaluating produces the correct result. Manually
 | `pkg/db/models/jobrunscan/` | Data models: `Symptom`, `Label`, `Metadata` structs and their Postgres table mappings. |
 | `pkg/db/models/job_labels.go` | `JobRunLabel` - BigQuery row schema for the `job_labels` table. |
 | `pkg/db/models/prow.go` | `ProwJobRun.Labels` - the label array stored in Postgres. |
-| `pkg/db/models/triage.go` | `TriageSymptom` - junction table linking symptoms to triage records. |
 | `pkg/api/jobrunscan/` | API handlers for symptom/label CRUD and re-evaluation, with validation logic. |
 | `pkg/api/jobrunscan/reevaluate.go` | Re-evaluation service: symptom scanning, BQ/GCS/PostgreSQL write logic. |
 | `pkg/sippyserver/job_run_scan.go` | HTTP route handlers delegating to the jobrunscan API package. |
@@ -195,7 +188,6 @@ modified, added, or removed, re-evaluating produces the correct result. Manually
 | `pkg/componentreadiness/jobrunannotator/prow_bucket.go` | `JobRunBucketLabel`, `WriteHTMLSummaryToBucket` - writes label files and HTML summaries to GCS. Shared with cloud function. |
 | `pkg/api/jobartifacts/` | `JobArtifactQuery`, `ContentMatcher` - the artifact querying and matching engine used by JAQ and symptom evaluation. Results (matched lines per file) are cached by `(jobRunID, pathGlob, matcherKey)` to avoid re-scanning the same job run for the same query; this does **not** cache raw GCS file contents. |
 | `pkg/dataloader/prowloader/prow.go` | `GatherLabelsFromBQ` - reads labels from BQ during fetchdata. |
-| `pkg/api/componentreadiness/regressiontracker.go` | `SyncTriageSymptoms` - links symptoms to triage records. |
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
 | `sippy-ng/src/component_readiness/JobArtifactQuery.jsx` | JAQ dialog including symptom creation UI. |
 | `sippy-ng/src/components/JobRunLabelDetails.jsx` | Shared label descriptions and Jira links in job-run and release-payload dialogs. |
@@ -238,7 +230,6 @@ documentation.
 | PostgreSQL `job_run_labels` | Label definitions | Authoritative source for label metadata. |
 | PostgreSQL `prow_job_runs.labels` | Applied label IDs per job run | Sippy queries and UI display. |
 | PostgreSQL `release_job_runs.labels` | Applied label IDs per payload job run | Sippy queries and UI display. |
-| PostgreSQL `triage_symptoms` | Symptom↔triage associations | Triage UI symptom summaries. |
 | BigQuery `ci_analysis_us.job_labels` | Applied labels with provenance | Warehouse for analytics; source of truth during fetchdata. |
 | GCS `artifacts/job_labels/*.json` | Per-match label files | Provenance and Spyglass display. |
 | GCS `artifacts/job_labels/label-summary.html` | HTML summary | Rendered by Spyglass html lens. |

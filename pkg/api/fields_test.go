@@ -105,7 +105,6 @@ func TestParseFieldSelection(t *testing.T) {
 		{name: "duplicate fields", fields: "id,id", expected: []string{"id"}},
 		{name: "unknown field", fields: "missing", wantError: true},
 		{name: "Go field name", fields: "ID", wantError: true},
-		{name: "JSON-excluded field", fields: "triage_symptoms", wantError: true},
 		{name: "nested slice field", fields: "regressions.id", wantError: true},
 		{name: "nested map field", fields: "links.self", wantError: true},
 		{name: "trailing comma", fields: "id,", wantError: true},

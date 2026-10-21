@@ -215,7 +215,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.RegressionJobRun{},
 		&models.RegressionView{},
 		&models.Triage{},
-		&models.TriageSymptom{},
 		&models.AuditLog{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
@@ -228,10 +227,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	if err := createAuditLogIndexes(d.DB); err != nil {
-		return err
-	}
-
-	if err := ensureTriageSymptomCascade(d.DB); err != nil {
 		return err
 	}
 
@@ -559,42 +554,6 @@ func createAuditLogIndexes(db *gorm.DB) error {
 		return fmt.Errorf("failed to create GIN index on audit_logs.old_data: %w", err)
 	}
 
-	return nil
-}
-
-// ensureTriageSymptomCascade adds foreign keys to triage_symptoms with ON DELETE CASCADE
-// so that deleting a symptom definition or a regression automatically cleans up the
-// associated triage_symptoms rows.
-func ensureTriageSymptomCascade(db *gorm.DB) error {
-	constraints := []struct {
-		name string
-		sql  string
-	}{
-		{
-			name: "fk_triage_symptoms_symptom",
-			sql:  "ALTER TABLE triage_symptoms ADD CONSTRAINT fk_triage_symptoms_symptom FOREIGN KEY (symptom_id) REFERENCES job_run_symptoms(id) ON DELETE CASCADE",
-		},
-		{
-			name: "fk_triage_symptoms_regression",
-			sql:  "ALTER TABLE triage_symptoms ADD CONSTRAINT fk_triage_symptoms_regression FOREIGN KEY (regression_id) REFERENCES test_regressions(id) ON DELETE CASCADE",
-		},
-	}
-
-	for _, c := range constraints {
-		err := db.Exec(fmt.Sprintf(`
-			DO $$
-			BEGIN
-				IF NOT EXISTS (
-					SELECT 1 FROM pg_constraint
-					WHERE conname = '%s'
-				) THEN
-					%s;
-				END IF;
-			END $$`, c.name, c.sql)).Error
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

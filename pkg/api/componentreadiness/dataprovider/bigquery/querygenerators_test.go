@@ -222,6 +222,8 @@ func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
 				tt.isSample,
 				options.SampleRelease.Name,
 			)
+			assert.Contains(t, query, "ANY_VALUE(agg_labels.job_labels) AS job_labels")
+			assert.NotContains(t, query, "job_symptoms")
 
 			assert.Equal(t, tt.wantFilter,
 				strings.Contains(query, "COALESCE(NULLIF(junit.lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)"))
