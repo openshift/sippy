@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { filterTooltip } from './utils'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { normalizeFilterModel } from './filterUtils'
 import Divider from '@mui/material/Divider'
 import GridToolbarFilterItem, {

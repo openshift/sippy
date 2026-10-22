@@ -6,7 +6,7 @@ import {
   UPGRADE_THRESHOLDS,
 } from '../constants'
 import { Link } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp'

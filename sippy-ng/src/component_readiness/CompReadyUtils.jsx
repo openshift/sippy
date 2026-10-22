@@ -1,7 +1,7 @@
 import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import { alpha, InputBase, Typography } from '@mui/material'
 import { formatInTimeZone } from 'date-fns-tz'
-import { styled } from '@mui/styles'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import blue from './blue.svg'
 import blue_missing_data from './none-blue.svg'

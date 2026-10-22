@@ -19,11 +19,12 @@ import {
   relativeTime,
 } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
-import { makeStyles, styled } from '@mui/styles'
+import { makeStyles } from './makeStyles'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
+import { styled } from '@mui/material/styles'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import AccessibilityToggle from './components/AccessibilityToggle'

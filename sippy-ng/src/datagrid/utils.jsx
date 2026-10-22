@@ -4,7 +4,7 @@ import { format, utcToZonedTime } from 'date-fns-tz'
 import { green, orange, red } from '@mui/material/colors'
 import { Link } from 'react-router'
 import { ListItem, ListItemIcon, ListItemText, Tooltip } from '@mui/material'
-import { scale } from 'chroma-js'
+import chroma from 'chroma-js'
 import List from '@mui/material/List'
 import React, { Fragment } from 'react'
 
@@ -46,7 +46,7 @@ export function generateClasses(threshold, invert = false) {
       theme.palette.error.light,
     ]
   }
-  const colors = scale(scaleColors).domain(thresholds)
+  const colors = chroma.scale(scaleColors).domain(thresholds)
 
   const classes = {}
 

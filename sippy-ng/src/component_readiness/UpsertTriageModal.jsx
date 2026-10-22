@@ -10,7 +10,7 @@ import {
   Typography,
 } from '@mui/material'
 import { getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import AddRegressionPanel from './AddRegressionPanel'
 import Alert from '@mui/material/Alert'
 import Dialog from '@mui/material/Dialog'

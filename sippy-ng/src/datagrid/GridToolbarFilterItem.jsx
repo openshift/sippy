@@ -13,7 +13,7 @@ import {
 import { Close } from '@mui/icons-material'
 import { DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { isValid } from 'date-fns'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import GridToolbarClientAutocomplete from './GridToolbarClientAutocomplete'
 import PropTypes from 'prop-types'

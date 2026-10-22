@@ -7,9 +7,10 @@ import {
   Tooltip,
 } from '@mui/material'
 import { Link } from 'react-router'
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { parseVariantName } from '../helpers'
-import { scale } from 'chroma-js'
+import { useTheme } from '@mui/material/styles'
+import chroma from 'chroma-js'
 import PassRateIcon from './PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -27,15 +28,17 @@ export default function MiniCard({ tooltip = '', ...props }) {
   const classes = useStyles(props)
   const theme = useTheme()
 
-  const colorScale = scale([
-    theme.palette.error.light,
-    theme.palette.warning.light,
-    theme.palette.success.light,
-  ]).domain([
-    props.threshold.error,
-    props.threshold.warning,
-    props.threshold.success,
-  ])
+  const colorScale = chroma
+    .scale([
+      theme.palette.error.light,
+      theme.palette.warning.light,
+      theme.palette.success.light,
+    ])
+    .domain([
+      props.threshold.error,
+      props.threshold.warning,
+      props.threshold.success,
+    ])
 
   let bgColor = colorScale(props.current).hex()
   if (props.currentRuns === 0) {

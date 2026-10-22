@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import Button from '@mui/material/Button'
 import ExistingTriageSelector from './ExistingTriageSelector'
 import InfoIcon from '@mui/icons-material/Info'

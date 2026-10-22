@@ -33,9 +33,9 @@ import { JOB_THRESHOLDS } from '../constants'
 import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router'
 import { ReportEndContext } from '../App'
-import { scale } from 'chroma-js'
 import Alert from '@mui/material/Alert'
 import BugTable from '../bugs/BugTable'
+import chroma from 'chroma-js'
 import Divider from '@mui/material/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
@@ -164,7 +164,7 @@ export function JobAnalysis(props) {
     datasets: [],
   }
 
-  const colors = scale('Set2').mode('lch').colors(selectionModel.length)
+  const colors = chroma.scale('Set2').mode('lch').colors(selectionModel.length)
 
   selectionModel.forEach((id, index) => {
     if (id < allTests.length) {

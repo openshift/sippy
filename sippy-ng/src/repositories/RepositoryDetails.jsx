@@ -1,7 +1,7 @@
 import { Card, Container, Grid, Typography } from '@mui/material'
 import { filterFor, pathForJobsWithFilter, withSort } from '../helpers'
 import { Link } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import JobTable from '../jobs/JobTable'
 import PropTypes from 'prop-types'
 import PullRequestsTable from '../pull_requests/PullRequestsTable'

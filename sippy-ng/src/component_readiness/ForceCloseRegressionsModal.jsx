@@ -24,7 +24,7 @@ import {
   getForceClosePreviewUrl,
   getForceCloseRegressionsUrl,
 } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { SippyCapabilitiesContext } from '../App'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useState } from 'react'

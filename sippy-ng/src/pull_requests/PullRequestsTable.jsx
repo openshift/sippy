@@ -23,9 +23,10 @@ import {
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router'
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
+import { useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -43,8 +44,8 @@ const useStyles = makeStyles((_theme) => ({
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
       display: '-webkit-box',
-      '-webkit-line-clamp': 2,
-      '-webkit-box-orient': 'vertical',
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical',
       overflow: 'hidden',
       overflowWrap: 'break-word',
       lineHeight: '20px',

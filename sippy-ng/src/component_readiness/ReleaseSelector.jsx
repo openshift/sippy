@@ -15,7 +15,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { Fragment, useContext, useEffect, useState } from 'react'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { ReleasesContext } from '../App'
 import PropTypes from 'prop-types'
 import React from 'react'

@@ -11,7 +11,7 @@ import {
 import { filterFor, safeEncodeURIComponent } from '../helpers'
 import { Fragment } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { WarningOutlined } from '@mui/icons-material'
 import Alert from '@mui/material/Alert'

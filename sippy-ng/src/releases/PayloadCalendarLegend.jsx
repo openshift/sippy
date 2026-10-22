@@ -1,5 +1,6 @@
 import { Box, Typography } from '@mui/material'
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
+import { useTheme } from '@mui/material/styles'
 import React from 'react'
 
 const useStyles = makeStyles((theme) => ({

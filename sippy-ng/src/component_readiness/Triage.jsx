@@ -8,7 +8,7 @@ import {
   jiraUrlPrefix,
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { SippyCapabilitiesContext } from '../App'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'

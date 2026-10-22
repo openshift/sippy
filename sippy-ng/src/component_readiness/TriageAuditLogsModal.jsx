@@ -18,7 +18,7 @@ import {
 } from '@mui/material'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import { History } from '@mui/icons-material'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useState } from 'react'
 

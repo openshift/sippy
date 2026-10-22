@@ -336,17 +336,18 @@ func (p *PostgresProvider) QueryTestStatus(
 // --- TestDetailsQuerier ---
 
 type testDetailRow struct {
-	TestID          string    `gorm:"column:test_id"`
-	TestName        string    `gorm:"column:test_name"`
-	ProwJobName     string    `gorm:"column:prowjob_name"`
-	ProwJobRunID    string    `gorm:"column:prowjob_run_id"`
-	ProwJobURL      string    `gorm:"column:prowjob_url"`
-	ProwJobStart    time.Time `gorm:"column:prowjob_start"`
-	ProwJobID       uint      `gorm:"column:prow_job_id"`
-	TestFailures    int       `gorm:"column:test_failures"`
-	Status          int       `gorm:"column:status"`
-	JiraComponent   string    `gorm:"column:jira_component"`
-	JiraComponentID *uint     `gorm:"column:jira_component_id"`
+	TestID          string         `gorm:"column:test_id"`
+	TestName        string         `gorm:"column:test_name"`
+	ProwJobName     string         `gorm:"column:prowjob_name"`
+	ProwJobRunID    string         `gorm:"column:prowjob_run_id"`
+	ProwJobURL      string         `gorm:"column:prowjob_url"`
+	ProwJobStart    time.Time      `gorm:"column:prowjob_start"`
+	ProwJobID       uint           `gorm:"column:prow_job_id"`
+	JobLabels       pq.StringArray `gorm:"column:job_labels;type:text[]"`
+	TestFailures    int            `gorm:"column:test_failures"`
+	Status          int            `gorm:"column:status"`
+	JiraComponent   string         `gorm:"column:jira_component"`
+	JiraComponentID *uint          `gorm:"column:jira_component_id"`
 }
 
 func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
@@ -390,6 +391,7 @@ SELECT
     COALESCE(pjr.url, '') AS prowjob_url,
     pjr.timestamp AS prowjob_start,
     pj.id AS prow_job_id,
+    pjr.labels AS job_labels,
     COALESCE(pjr.test_failures, 0) AS test_failures,
     pjrt.status,
     COALESCE(tt.jira_component, '') AS jira_component,
@@ -478,6 +480,7 @@ WHERE pj.release = ?
 			ProwJobRunID:    row.ProwJobRunID,
 			ProwJobURL:      row.ProwJobURL,
 			StartTime:       row.ProwJobStart,
+			JobLabels:       []string(row.JobLabels),
 			TestFailures:    row.TestFailures,
 			Count:           crtest.Count{TotalCount: 1, SuccessCount: successCount, FlakeCount: flakeCount},
 			JiraComponent:   row.JiraComponent,

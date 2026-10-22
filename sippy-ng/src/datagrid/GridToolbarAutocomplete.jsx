@@ -1,5 +1,5 @@
 import { safeEncodeURIComponent } from '../helpers'
-import Autocomplete from '@mui/lab/Autocomplete'
+import Autocomplete from '@mui/material/Autocomplete'
 import CircularProgress from '@mui/material/CircularProgress'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'

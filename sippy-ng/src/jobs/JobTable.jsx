@@ -14,9 +14,9 @@ import {
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { withStyles } from '@mui/styles'
+import { withStyles } from '../makeStyles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
@@ -376,8 +376,8 @@ const useStyles = makeStyles((_theme) => ({
     '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
       textOverflow: 'ellipsis',
       display: '-webkit-box',
-      '-webkit-line-clamp': 2,
-      '-webkit-box-orient': 'vertical',
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical',
       overflow: 'hidden',
       overflowWrap: 'break-word',
       lineHeight: '20px',

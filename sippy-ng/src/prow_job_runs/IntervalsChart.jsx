@@ -18,7 +18,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { escapeRegex } from '../helpers'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import { stringify } from 'query-string'
 import Alert from '@mui/material/Alert'

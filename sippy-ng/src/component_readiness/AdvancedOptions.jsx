@@ -8,7 +8,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 
 import PropTypes from 'prop-types'
 import React from 'react'
