@@ -114,6 +114,9 @@ the database and Redis environment variables from `devcontainer.json`, and run
 `init-services.sh` on the host first. The setup script installs frontend and
 MCP dependencies, builds Sippy, initializes seed data, and migrates the
 prod-like database, so use development databases intended for these operations.
+The MCP virtualenv is created with `uv venv --seed` because `make test` and
+`mcp/run.sh` call `mcp/.venv/bin/pip`. `uv venv` without `--seed` does not
+install pip. Reusing this `post-create.sh` picks up that behavior.
 
 Set `SKIP_CLAUDE_INSTALL` to `"true"` in `containerEnv` to install OpenCode
 instead of Claude Code. Neither coding agent is installed during the image build.
