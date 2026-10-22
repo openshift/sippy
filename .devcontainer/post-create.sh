@@ -31,8 +31,11 @@ if [[ "${INSTALL_OPENCODE:-}" == "true" ]]; then
 fi
 
 echo "==> Setting up MCP server venv..."
-uv venv --clear mcp/.venv
+# --seed installs pip. make test and mcp/run.sh call mcp/.venv/bin/pip.
+uv venv --clear --seed mcp/.venv
 uv pip install --python mcp/.venv/bin/python3 -r mcp/requirements.txt -q
+mcp/.venv/bin/pip --version
+mcp/.venv/bin/pytest --version
 
 echo "==> Building sippy and seeding database..."
 make sippy
