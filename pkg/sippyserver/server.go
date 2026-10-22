@@ -1893,8 +1893,7 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
 // ExpandedTriage allows for additional information to be included in the triage response.
 type ExpandedTriage struct {
 	*models.Triage
-	RegressedTests   map[string][]*componentreport.ReportTestSummary `json:"regressed_tests"`
-	SymptomSummaries []componentreadiness.TriageSymptomSummary       `json:"symptom_summaries,omitempty"`
+	RegressedTests map[string][]*componentreport.ReportTestSummary `json:"regressed_tests"`
 }
 
 func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
@@ -1907,7 +1906,6 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 			expandFields[f] = true
 		}
 	}
-
 	triageID, err := strconv.Atoi(idStr)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
@@ -1924,22 +1922,13 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if len(expandFields) == 0 {
+	if !expandFields["regressions"] {
 		api.RespondWithJSON(http.StatusOK, w, triage)
 		return
 	}
 
 	et := ExpandedTriage{
 		Triage: triage,
-	}
-
-	if expandFields["symptoms"] {
-		symptomSummaries, err := componentreadiness.GetTriageSymptomSummaries(s.db, triage.ID, len(triage.Regressions))
-		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting symptom summaries for triage %d: %v", triage.ID, err))
-			return
-		}
-		et.SymptomSummaries = symptomSummaries
 	}
 
 	if expandFields["regressions"] {

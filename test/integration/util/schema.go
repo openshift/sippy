@@ -44,7 +44,6 @@ func SetupIntegrationSchema(dbc *db.DB) error {
 		&models.RegressionJobRun{},
 		&models.RegressionView{},
 		&models.Triage{},
-		&models.TriageSymptom{},
 		&models.AuditLog{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},

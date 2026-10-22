@@ -617,7 +617,6 @@ func (c *ComponentReportGenerator) toJobRunStats(run crstatus.JobRunDetail) test
 		JobRunID:     run.ProwJobRunID,
 		StartTime:    run.StartTime,
 		JobLabels:    run.JobLabels,
-		JobSymptoms:  run.JobSymptoms,
 		TestFailures: run.TestFailures,
 	}
 }

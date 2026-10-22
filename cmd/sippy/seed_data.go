@@ -625,10 +625,10 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 	log.Info("Seeded bugs and triages")
 
-	if err := seedSymptomJobRunLinkage(dbc); err != nil {
-		return errors.WithMessage(err, "failed to seed symptom-job-run linkage")
+	if err := seedJobRunLabels(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed job run labels")
 	}
-	log.Info("Seeded symptom-to-job-run linkage")
+	log.Info("Seeded job run labels")
 
 	log.Infof("Seeded synthetic data: %d ProwJobRuns, %d test results across %d releases",
 		totalRuns, totalResults, len(syntheticReleases))
@@ -1831,7 +1831,8 @@ func seedBugsAndTriages(dbc *db.DB) error {
 	return nil
 }
 
-func seedSymptomJobRunLinkage(dbc *db.DB) error {
+// seedJobRunLabels gives synthetic failed runs labels for exercising label displays.
+func seedJobRunLabels(dbc *db.DB) error {
 	// Apply labels to some failed job runs (for label display on job runs)
 	var jobRuns []models.ProwJobRun
 	start, end := releaseTimeWindow("4.22")
@@ -1863,68 +1864,6 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 		labeled++
 	}
 	log.WithField("count", labeled).Info("Applied labels to failed job runs")
-
-	// Assign symptoms to regression job runs by test name.
-	type symptomSpec struct {
-		testName string
-		symptoms pq.StringArray
-	}
-	symptomSpecs := []symptomSpec{
-		{
-			testName: "[sig-network] Services should serve endpoints on same port and different protocol",
-			symptoms: pq.StringArray{"DNSTimeoutSymptom"},
-		},
-		{
-			testName: "[sig-etcd] etcd leader changes are not excessive",
-			symptoms: pq.StringArray{"InstallTimeoutSymptom", "APITimeoutSymptom"},
-		},
-		{
-			testName: "[sig-node] Memory management should handle large allocations",
-			symptoms: pq.StringArray{"DNSTimeoutSymptom", "APITimeoutSymptom"},
-		},
-		{
-			testName: "[sig-node] Memory management should handle large deallocations",
-			symptoms: pq.StringArray{"DNSTimeoutSymptom"},
-		},
-		{
-			testName: "[sig-node] Container lifecycle should start containers promptly",
-			symptoms: pq.StringArray{"InstallTimeoutSymptom"},
-		},
-	}
-
-	updatedCount := 0
-	for _, spec := range symptomSpecs {
-		var regs []models.TestRegression
-		if err := dbc.DB.Preload("JobRuns").
-			Where("test_name = ? AND closed IS NULL", spec.testName).
-			Find(&regs).Error; err != nil {
-			return fmt.Errorf("finding regressions for %q: %w", spec.testName, err)
-		}
-		for _, reg := range regs {
-			for _, jr := range reg.JobRuns {
-				if err := dbc.DB.Model(&models.RegressionJobRun{}).Where("id = ?", jr.ID).
-					Update("job_symptoms", spec.symptoms).Error; err != nil {
-					return fmt.Errorf("failed to update regression job run symptoms: %w", err)
-				}
-				updatedCount++
-			}
-		}
-	}
-	log.WithField("count", updatedCount).Info("Populated job_symptoms on regression job runs")
-
-	// Sync triage symptoms from the regression job run data.
-	backend := componentreadiness.NewPostgresRegressionStore(dbc, nil)
-	var activeRegs []*models.TestRegression
-	var allRegs []models.TestRegression
-	if err := dbc.DB.Where("release = ? AND closed IS NULL", "4.22").Find(&allRegs).Error; err != nil {
-		return fmt.Errorf("finding active regressions: %w", err)
-	}
-	for i := range allRegs {
-		activeRegs = append(activeRegs, &allRegs[i])
-	}
-	if err := backend.SyncTriageSymptoms(activeRegs); err != nil {
-		return fmt.Errorf("syncing triage symptoms: %w", err)
-	}
 
 	return nil
 }
