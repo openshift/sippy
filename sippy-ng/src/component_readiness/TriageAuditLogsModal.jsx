@@ -18,8 +18,29 @@ import {
 } from '@mui/material'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import { History } from '@mui/icons-material'
+import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useState } from 'react'
+
+const LoadingBox = styled(Box)({
+  padding: 24,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+})
+
+const DiffPaper = styled(Paper, {
+  shouldForwardProp: (prop) => prop !== 'difftype',
+})(({ theme, difftype }) => ({
+  padding: 8,
+  ...(difftype === 'original' && {
+    marginBottom: 8,
+    backgroundColor: theme.palette.error.light,
+  }),
+  ...(difftype === 'modified' && {
+    backgroundColor: theme.palette.success.light,
+  }),
+}))
 
 export default function TriageAuditLogsModal({ triage }) {
   const [auditLogs, setAuditLogs] = useState([])
@@ -93,14 +114,7 @@ export default function TriageAuditLogsModal({ triage }) {
             </Typography>
             <Box sx={{ ml: 1 }}>
               {change.original && (
-                <Paper
-                  variant="outlined"
-                  sx={(theme) => ({
-                    mb: 1,
-                    p: 1,
-                    backgroundColor: theme.palette.error.light,
-                  })}
-                >
+                <DiffPaper variant="outlined" difftype="original">
                   <Typography
                     variant="caption"
                     color="text.primary"
@@ -108,16 +122,10 @@ export default function TriageAuditLogsModal({ triage }) {
                   >
                     - {change.original}
                   </Typography>
-                </Paper>
+                </DiffPaper>
               )}
               {change.modified && (
-                <Paper
-                  variant="outlined"
-                  sx={(theme) => ({
-                    p: 1,
-                    backgroundColor: theme.palette.success.light,
-                  })}
-                >
+                <DiffPaper variant="outlined" difftype="modified">
                   <Typography
                     variant="caption"
                     color="text.primary"
@@ -125,7 +133,7 @@ export default function TriageAuditLogsModal({ triage }) {
                   >
                     + {change.modified}
                   </Typography>
-                </Paper>
+                </DiffPaper>
               )}
             </Box>
           </Paper>
@@ -151,19 +159,12 @@ export default function TriageAuditLogsModal({ triage }) {
         </DialogTitle>
         <DialogContent>
           {loading && (
-            <Box
-              sx={{
-                p: 3,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
+            <LoadingBox>
               <CircularProgress />
               <Typography variant="body1" sx={{ ml: 2 }}>
                 Loading audit logs...
               </Typography>
-            </Box>
+            </LoadingBox>
           )}
 
           {error && (

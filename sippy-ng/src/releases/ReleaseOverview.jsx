@@ -8,6 +8,7 @@ import {
 } from '@mui/material'
 import { Link } from 'react-router'
 import { ReleasesContext } from '../App'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import InfoIcon from '@mui/icons-material/Info'
@@ -18,6 +19,39 @@ import ReleaseKeyDates from './ReleaseKeyDates'
 import ReleasePayloadAcceptance from './ReleasePayloadAcceptance'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TopLevelIndicators from './TopLevelIndicators'
+
+const LoadingContainer = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  minHeight: '60vh',
+})
+
+const PageWrapper = styled(Box)(({ theme }) => ({
+  paddingTop: theme.spacing(3),
+  paddingBottom: theme.spacing(3),
+  paddingLeft: theme.spacing(2.5),
+  paddingRight: theme.spacing(2.5),
+}))
+
+const CenteredBox = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: '100%',
+})
+
+const SectionHeader = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  marginBottom: theme.spacing(2),
+}))
+
+const StyledInfoIcon = styled(InfoIcon)(({ theme }) => ({
+  marginLeft: theme.spacing(1),
+  fontSize: 20,
+  opacity: 0.6,
+}))
 
 export default function ReleaseOverview(props) {
   const [fetchError, setFetchError] = React.useState('')
@@ -62,14 +96,7 @@ export default function ReleaseOverview(props) {
 
   if (!isLoaded) {
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '60vh',
-        }}
-      >
+      <LoadingContainer>
         <Box sx={{ textAlign: 'center' }}>
           <CircularProgress size={48} />
           <Typography
@@ -80,7 +107,7 @@ export default function ReleaseOverview(props) {
             Loading release overview...
           </Typography>
         </Box>
-      </Box>
+      </LoadingContainer>
     )
   }
 
@@ -100,14 +127,7 @@ export default function ReleaseOverview(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} />
-      <Box
-        sx={(theme) => ({
-          paddingTop: theme.spacing(3),
-          paddingBottom: theme.spacing(3),
-          paddingLeft: theme.spacing(2.5),
-          paddingRight: theme.spacing(2.5),
-        })}
-      >
+      <PageWrapper>
         <Container maxWidth="lg">
           <Grid
             container
@@ -116,18 +136,11 @@ export default function ReleaseOverview(props) {
             sx={(theme) => ({ marginBottom: theme.spacing(3) })}
           >
             <Grid item xs={12} md={8}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                }}
-              >
+              <CenteredBox>
                 <Typography variant="h4" sx={{ fontWeight: 600 }}>
                   {props.release} Overview
                 </Typography>
-              </Box>
+              </CenteredBox>
             </Grid>
             <ReleaseKeyDates release={props.release} releases={releases} />
           </Grid>
@@ -151,13 +164,7 @@ export default function ReleaseOverview(props) {
                   elevation={5}
                   sx={(theme) => ({ padding: theme.spacing(2.5) })}
                 >
-                  <Box
-                    sx={(theme) => ({
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginBottom: theme.spacing(2),
-                    })}
-                  >
+                  <SectionHeader>
                     <Typography
                       variant="h6"
                       component={Link}
@@ -171,15 +178,9 @@ export default function ReleaseOverview(props) {
                         'These cards show the last accepted payload for each architecture/stream combination.'
                       }
                     >
-                      <InfoIcon
-                        sx={(theme) => ({
-                          marginLeft: theme.spacing(1),
-                          fontSize: 20,
-                          opacity: 0.6,
-                        })}
-                      />
+                      <StyledInfoIcon />
                     </Tooltip>
-                  </Box>
+                  </SectionHeader>
 
                   <Grid
                     container
@@ -194,7 +195,7 @@ export default function ReleaseOverview(props) {
             )}
           </Grid>
         </Container>
-      </Box>
+      </PageWrapper>
     </Fragment>
   )
 }

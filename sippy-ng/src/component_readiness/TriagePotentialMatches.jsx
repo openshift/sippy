@@ -22,9 +22,23 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { relativeTime } from '../helpers'
+import { styled } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
+
+const CloseButton = styled(IconButton)({
+  position: 'absolute',
+  right: 8,
+  top: 8,
+})
+
+const FilterFormGroup = styled(FormGroup)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'row',
+  gap: theme.spacing(2),
+  alignItems: 'center',
+}))
 
 export default function TriagePotentialMatches({
   triage,
@@ -441,13 +455,9 @@ export default function TriagePotentialMatches({
       >
         <DialogTitle>
           Potential Matching Regressions
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseModal}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
+          <CloseButton aria-label="close" onClick={handleCloseModal}>
             <Close />
-          </IconButton>
+          </CloseButton>
         </DialogTitle>
         <DialogContent>
           {isLoading ? (
@@ -497,14 +507,7 @@ export default function TriagePotentialMatches({
                   <Typography sx={{ mr: 1, fontWeight: 'bold' }}>
                     Filter by:
                   </Typography>
-                  <FormGroup
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      gap: 2,
-                      alignItems: 'center',
-                    }}
-                  >
+                  <FilterFormGroup>
                     <FormControlLabel
                       control={
                         <Checkbox
@@ -551,7 +554,7 @@ export default function TriagePotentialMatches({
                         ).length
                       })`}
                     />
-                  </FormGroup>
+                  </FilterFormGroup>
                 </div>
               </div>
               <DataGrid

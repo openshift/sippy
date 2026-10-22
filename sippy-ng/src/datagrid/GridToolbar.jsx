@@ -1,5 +1,6 @@
 import { Box } from '@mui/material'
 import { GridToolbarDensitySelector } from '@mui/x-data-grid'
+import { styled } from '@mui/material/styles'
 import ClearIcon from '@mui/icons-material/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
 import GridToolbarDownload from './GridToolbarDownload'
@@ -11,6 +12,14 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import TextField from '@mui/material/TextField'
+
+const ToolbarContainer = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(0.5, 0.5, 0),
+  justifyContent: 'space-between',
+  display: 'flex',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap',
+}))
 
 export default function GridToolbar(props) {
   const [search, setSearch] = React.useState('')
@@ -33,15 +42,7 @@ export default function GridToolbar(props) {
   }, [filterSearchValue])
 
   return (
-    <Box
-      sx={(theme) => ({
-        padding: theme.spacing(0.5, 0.5, 0),
-        justifyContent: 'space-between',
-        display: 'flex',
-        alignItems: 'flex-start',
-        flexWrap: 'wrap',
-      })}
-    >
+    <ToolbarContainer>
       <div>
         <GridToolbarFilterMenu
           columns={props.columns}
@@ -123,7 +124,7 @@ export default function GridToolbar(props) {
       ) : (
         ''
       )}
-    </Box>
+    </ToolbarContainer>
   )
 }
 

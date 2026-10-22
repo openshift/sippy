@@ -1,8 +1,8 @@
-import { Button, FormHelperText, Tab, Tabs } from '@mui/material'
+import { Button, FormHelperText, Tab } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { formColumnName, getTriagesAPIUrl } from './CompReadyUtils'
 import { relativeTime } from '../helpers'
-import DialogContent from '@mui/material/DialogContent'
+import { TriageDialogContent, TriageTabs } from './TriageStyledComponents'
 import DialogTitle from '@mui/material/DialogTitle'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -15,9 +15,7 @@ export default function UpdateTriagePanel({
   setAlertText,
   setAlertSeverity,
   handleTriageFormCompletion,
-  commonClasses,
 }) {
-  const classes = commonClasses
   const [removedRegressions, setRemovedRegressions] = React.useState([])
   const [validationMessage, setValidationMessage] = React.useState('')
 
@@ -91,21 +89,20 @@ export default function UpdateTriagePanel({
   return (
     <Fragment>
       <DialogTitle>Update Triage</DialogTitle>
-      <DialogContent sx={classes.dialogContent}>
-        <Tabs
+      <TriageDialogContent>
+        <TriageTabs
           value={tabIndex}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="primary"
           variant="fullWidth"
-          sx={classes.tabsContainer}
         >
           <Tab label="Update Fields" />
           <Tab
             label="Remove Regressions"
             disabled={triage.regressions.length < 2}
           />
-        </Tabs>
+        </TriageTabs>
 
         {updateFields && (
           <Fragment>
@@ -218,7 +215,7 @@ export default function UpdateTriagePanel({
             </Button>
           </Fragment>
         )}
-      </DialogContent>
+      </TriageDialogContent>
     </Fragment>
   )
 }
@@ -230,5 +227,4 @@ UpdateTriagePanel.propTypes = {
   setAlertText: PropTypes.func.isRequired,
   setAlertSeverity: PropTypes.func.isRequired,
   handleTriageFormCompletion: PropTypes.func.isRequired,
-  commonClasses: PropTypes.object.isRequired,
 }

@@ -78,6 +78,49 @@ const OutputPre = styled('pre')(({ theme }) => ({
   marginTop: theme.spacing(1),
 }))
 
+const TestNameBox = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'clickable',
+})(({ clickable }) => ({
+  maxWidth: 500,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  ...(clickable && {
+    cursor: 'pointer',
+    '&:hover': { textDecoration: 'underline' },
+  }),
+}))
+
+const OutputDetailBar = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(2),
+}))
+
+const JobNameText = styled(Typography)({
+  fontWeight: 500,
+  flex: 1,
+  minWidth: 0,
+})
+
+const CenteredBox = styled(Box)(({ theme }) => ({
+  textAlign: 'center',
+  paddingTop: theme.spacing(4),
+  paddingBottom: theme.spacing(4),
+}))
+
+const EmptyStateIcon = styled(ExpandMoreIcon)(({ theme }) => ({
+  fontSize: 48,
+  opacity: 0.3,
+  marginBottom: theme.spacing(1),
+}))
+
+const HintIcon = styled(InfoIcon)(({ theme }) => ({
+  marginLeft: theme.spacing(1),
+  fontSize: 20,
+  opacity: 0.6,
+}))
+
 function FailureRow({ row, release, defaultExpanded }) {
   const [open, setOpen] = React.useState(defaultExpanded)
   const hasOutputs = row.outputs && row.outputs.length > 0
@@ -103,17 +146,8 @@ function FailureRow({ row, release, defaultExpanded }) {
         </TableCell>
         <TableCell>
           <Tooltip title={row.test_name} enterDelay={500}>
-            <Box
-              sx={{
-                maxWidth: 500,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                ...(hasOutputs && {
-                  cursor: 'pointer',
-                  '&:hover': { textDecoration: 'underline' },
-                }),
-              }}
+            <TestNameBox
+              clickable={hasOutputs}
               onClick={(e) => {
                 e.stopPropagation()
                 if (hasOutputs) setOpen(!open)
@@ -122,7 +156,7 @@ function FailureRow({ row, release, defaultExpanded }) {
               <Typography variant="body2" color="primary" noWrap>
                 {row.test_name}
               </Typography>
-            </Box>
+            </TestNameBox>
           </Tooltip>
           {row.suite_name && (
             <Typography
@@ -209,20 +243,10 @@ function FailureRow({ row, release, defaultExpanded }) {
                 </SummaryBar>
                 {row.outputs.slice(0, 5).map((output, idx) => (
                   <OutputCard key={idx}>
-                    <Box
-                      sx={(theme) => ({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: theme.spacing(2),
-                      })}
-                    >
-                      <Typography
-                        variant="body2"
-                        noWrap
-                        sx={{ fontWeight: 500, flex: 1, minWidth: 0 }}
-                      >
+                    <OutputDetailBar>
+                      <JobNameText variant="body2" noWrap>
                         {output.prow_job_name}
-                      </Typography>
+                      </JobNameText>
                       <Tooltip
                         title={new Date(output.failed_at).toLocaleString()}
                       >
@@ -244,7 +268,7 @@ function FailureRow({ row, release, defaultExpanded }) {
                           sx={{ minWidth: 'auto' }}
                         />
                       </Tooltip>
-                    </Box>
+                    </OutputDetailBar>
                     {output.output ? (
                       <OutputPre>
                         {output.output.substring(0, 500)}
@@ -376,13 +400,7 @@ export default function RecentTestFailures(props) {
         <Tooltip
           title={`Tests that failed in the last ${period} but did not fail in the ${previousPeriod} before that. This helps surface new regressions.`}
         >
-          <InfoIcon
-            sx={(theme) => ({
-              marginLeft: theme.spacing(1),
-              fontSize: 20,
-              opacity: 0.6,
-            })}
-          />
+          <HintIcon />
         </Tooltip>
         <Box sx={{ flex: 1 }} />
         {isLoaded && (
@@ -395,33 +413,17 @@ export default function RecentTestFailures(props) {
       </CardHeader>
 
       {!isLoaded ? (
-        <Box
-          sx={(theme) => ({
-            textAlign: 'center',
-            paddingTop: theme.spacing(4),
-            paddingBottom: theme.spacing(4),
-          })}
-        >
+        <CenteredBox>
           <CircularProgress size={36} />
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={(theme) => ({ marginTop: theme.spacing(1) })}
-          >
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Loading recent failures...
           </Typography>
-        </Box>
+        </CenteredBox>
       ) : data.rows === null || data.rows.length === 0 ? (
         <Box
           sx={(theme) => ({ textAlign: 'center', padding: theme.spacing(4) })}
         >
-          <ExpandMoreIcon
-            sx={(theme) => ({
-              fontSize: 48,
-              opacity: 0.3,
-              marginBottom: theme.spacing(1),
-            })}
-          />
+          <EmptyStateIcon />
           <Typography variant="body1" color="text.secondary">
             No new test failures detected
           </Typography>

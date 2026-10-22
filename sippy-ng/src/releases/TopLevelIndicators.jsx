@@ -7,6 +7,7 @@ import {
 } from '../constants'
 import { Link } from 'react-router'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
+import { styled } from '@mui/material/styles'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp'
 import CloudIcon from '@mui/icons-material/Cloud'
@@ -17,6 +18,37 @@ import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import UpgradeIcon from '@mui/icons-material/Upgrade'
 import VerifiedIcon from '@mui/icons-material/Verified'
+
+const IndicatorCard = styled(Card)(({ theme }) => ({
+  padding: theme.spacing(2.5),
+  height: '100%',
+  transition: 'transform 0.2s, box-shadow 0.2s',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: theme.shadows[8],
+  },
+}))
+
+const CardHeaderBox = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  marginBottom: 16,
+})
+
+const ProgressBarTrack = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  height: 8,
+  borderRadius: theme.spacing(1),
+  overflow: 'hidden',
+  backgroundColor: theme.palette.divider,
+}))
+
+const CenteredFlexBox = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+})
 
 export default function TopLevelIndicators(props) {
   const theme = useTheme()
@@ -68,24 +100,13 @@ export default function TopLevelIndicators(props) {
             to={link}
             sx={{ textDecoration: 'none', display: 'block' }}
           >
-            <Card
-              elevation={5}
-              sx={(theme) => ({
-                padding: theme.spacing(2.5),
-                height: '100%',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: theme.shadows[8],
-                },
-              })}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <IndicatorCard elevation={5}>
+              <CardHeaderBox>
                 {icon}
                 <Typography variant="h6" sx={{ ml: 1 }}>
                   {name}
                 </Typography>
-              </Box>
+              </CardHeaderBox>
 
               <Box sx={{ textAlign: 'center', mb: 2 }}>
                 <Typography variant="h2" sx={{ color, fontWeight: 'bold' }}>
@@ -98,15 +119,7 @@ export default function TopLevelIndicators(props) {
 
               {/* Stacked bar showing pass/flake/fail breakdown */}
               <Box sx={{ mb: 2, px: 1 }}>
-                <Box
-                  sx={(theme) => ({
-                    display: 'flex',
-                    height: 8,
-                    borderRadius: theme.spacing(1),
-                    overflow: 'hidden',
-                    backgroundColor: theme.palette.divider,
-                  })}
-                >
+                <ProgressBarTrack>
                   <Box
                     sx={{
                       width: `${indicator.current_pass_percentage}%`,
@@ -125,17 +138,10 @@ export default function TopLevelIndicators(props) {
                       backgroundColor: theme.palette.error.main,
                     }}
                   />
-                </Box>
+                </ProgressBarTrack>
               </Box>
 
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1,
-                }}
-              >
+              <CenteredFlexBox>
                 {improvement > 0 ? (
                   <ArrowDropUpIcon sx={{ color: theme.palette.success.main }} />
                 ) : improvement < 0 ? (
@@ -159,8 +165,8 @@ export default function TopLevelIndicators(props) {
                 <Typography variant="caption" color="text.secondary">
                   vs prev ({indicator.previous_working_percentage.toFixed(0)}%)
                 </Typography>
-              </Box>
-            </Card>
+              </CenteredFlexBox>
+            </IndicatorCard>
           </Box>
         </Tooltip>
       </Grid>

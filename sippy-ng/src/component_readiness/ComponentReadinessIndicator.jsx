@@ -18,6 +18,7 @@ import {
 } from './CompReadyUtils'
 import { Link } from 'react-router'
 import { relativeTime } from '../helpers'
+import { styled } from '@mui/material/styles'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import Grid from '@mui/material/Grid'
 import HealingIcon from '@mui/icons-material/Healing'
@@ -26,6 +27,61 @@ import PropTypes from 'prop-types'
 import React, { useEffect, useState } from 'react'
 import Tooltip from '@mui/material/Tooltip'
 import WarningIcon from '@mui/icons-material/Warning'
+
+const CenteredMessageBox = styled(Box)({
+  padding: 32,
+  textAlign: 'center',
+  color: 'text.secondary',
+})
+
+const StatsHeaderBox = styled(Box)({
+  marginBottom: 16,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+})
+
+const StatsColumnBox = styled(Box)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+})
+
+const StatCardBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: 16,
+  borderRadius: theme.spacing(1),
+  backgroundColor: theme.palette.action.hover,
+}))
+
+const SectionHeaderBox = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  marginBottom: 16,
+})
+
+const RegressionList = styled(List)(({ theme }) => ({
+  maxHeight: 240,
+  overflow: 'auto',
+  backgroundColor: theme.palette.action.hover,
+  borderRadius: theme.spacing(1),
+}))
+
+const TruncatedTestName = styled(Typography)({
+  fontWeight: 500,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+})
+
+const VariantChipsBox = styled(Box)({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 4,
+})
 
 export default function ComponentReadinessIndicator({ release }) {
   const theme = useTheme()
@@ -147,25 +203,18 @@ export default function ComponentReadinessIndicator({ release }) {
     <Grid item xs={12}>
       <Card elevation={5} sx={{ p: 2.5 }}>
         {!isLoaded ? (
-          <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+          <CenteredMessageBox>
             <Typography>Loading component readiness data...</Typography>
-          </Box>
+          </CenteredMessageBox>
         ) : !regressions ? (
-          <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+          <CenteredMessageBox>
             <Typography>No component readiness data available</Typography>
-          </Box>
+          </CenteredMessageBox>
         ) : (
           <Grid container spacing={3}>
             {/* Left Column - Stats */}
             <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
+              <StatsHeaderBox>
                 <Typography variant="h6">Component Readiness</Typography>
                 <Button
                   component={Link}
@@ -177,17 +226,9 @@ export default function ComponentReadinessIndicator({ release }) {
                 >
                   View Full Report
                 </Button>
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box
-                  sx={(theme) => ({
-                    display: 'flex',
-                    alignItems: 'center',
-                    p: 2,
-                    borderRadius: theme.spacing(1),
-                    backgroundColor: theme.palette.action.hover,
-                  })}
-                >
+              </StatsHeaderBox>
+              <StatsColumnBox>
+                <StatCardBox>
                   <WarningIcon sx={{ mr: 2, color: unresolvedColor }} />
                   <Box>
                     <Typography variant="h3" sx={{ color: unresolvedColor }}>
@@ -197,17 +238,9 @@ export default function ComponentReadinessIndicator({ release }) {
                       Unresolved Regressions
                     </Typography>
                   </Box>
-                </Box>
+                </StatCardBox>
 
-                <Box
-                  sx={(theme) => ({
-                    display: 'flex',
-                    alignItems: 'center',
-                    p: 2,
-                    borderRadius: theme.spacing(1),
-                    backgroundColor: theme.palette.action.hover,
-                  })}
-                >
+                <StatCardBox>
                   <HealingIcon sx={{ mr: 2, color: 'warning.main' }} />
                   <Box>
                     <Typography variant="h3" color="warning.main">
@@ -217,37 +250,28 @@ export default function ComponentReadinessIndicator({ release }) {
                       Untriaged Regressions
                     </Typography>
                   </Box>
-                </Box>
-              </Box>
+                </StatCardBox>
+              </StatsColumnBox>
             </Grid>
 
             {/* Right Column - Recent Regressions */}
             <Grid item xs={12} md={6}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <SectionHeaderBox>
                 <Typography variant="h6">
                   New Regressions ({regressions.recent.length})
                 </Typography>
                 <Tooltip title="Regressions opened in the last 24 hours">
                   <InfoIcon sx={{ ml: 1 }} color="action" />
                 </Tooltip>
-              </Box>
+              </SectionHeaderBox>
               {regressions.recent.length === 0 ? (
-                <Box
-                  sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}
-                >
+                <CenteredMessageBox sx={{ p: 3 }}>
                   <Typography>
                     No new regressions in the last 24 hours
                   </Typography>
-                </Box>
+                </CenteredMessageBox>
               ) : (
-                <List
-                  sx={(theme) => ({
-                    maxHeight: 240,
-                    overflow: 'auto',
-                    backgroundColor: theme.palette.action.hover,
-                    borderRadius: theme.spacing(1),
-                  })}
-                >
+                <RegressionList>
                   {regressions.recent.map((regression, index) => {
                     // Get the test details URL from the regression links
                     const viewName = `${release}-main`
@@ -269,19 +293,9 @@ export default function ComponentReadinessIndicator({ release }) {
                         >
                           <ListItemText
                             primary={
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 500,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                }}
-                              >
+                              <TruncatedTestName variant="body2">
                                 {regression.test_name}
-                              </Typography>
+                              </TruncatedTestName>
                             }
                             secondaryTypographyProps={{ component: 'div' }}
                             secondary={
@@ -309,13 +323,7 @@ export default function ComponentReadinessIndicator({ release }) {
                                 </Box>
                                 {regression.regression?.variants &&
                                   regression.regression.variants.length > 0 && (
-                                    <Box
-                                      sx={{
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        gap: 0.5,
-                                      }}
-                                    >
+                                    <VariantChipsBox>
                                       {[...regression.regression.variants]
                                         .sort()
                                         .map((variant, vIndex) => (
@@ -329,7 +337,7 @@ export default function ComponentReadinessIndicator({ release }) {
                                             }}
                                           />
                                         ))}
-                                    </Box>
+                                    </VariantChipsBox>
                                   )}
                               </Box>
                             }
@@ -341,7 +349,7 @@ export default function ComponentReadinessIndicator({ release }) {
                       </React.Fragment>
                     )
                   })}
-                </List>
+                </RegressionList>
               )}
             </Grid>
           </Grid>

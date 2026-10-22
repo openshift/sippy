@@ -25,8 +25,28 @@ import {
   getForceCloseRegressionsUrl,
 } from './CompReadyUtils'
 import { SippyCapabilitiesContext } from '../App'
+import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useState } from 'react'
+
+const ScrollableTableContainer = styled(Box)({
+  maxHeight: 300,
+  overflow: 'auto',
+  marginBottom: 16,
+})
+
+const IconTextRow = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+})
+
+const LoadingContainer = styled(Box)({
+  padding: 24,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+})
 
 // ForceCloseRegressionsModal renders a button that, for a resolved triage, lets a
 // user preview and then force close the regressions associated with the triage.
@@ -178,7 +198,7 @@ export default function ForceCloseRegressionsModal({
       )
     }
     return (
-      <Box sx={{ maxHeight: 300, overflow: 'auto', mb: 2 }}>
+      <ScrollableTableContainer>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
@@ -199,21 +219,17 @@ export default function ForceCloseRegressionsModal({
                 <TableCell>
                   {regression.first_failure_after_resolution ? (
                     <Tooltip title="Failures were observed after the triage resolution date. Force closing anyway will close this regression.">
-                      <Box
-                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                      >
+                      <IconTextRow>
                         <Warning color="warning" fontSize="small" />
                         {formatDate(regression.first_failure_after_resolution)}
-                      </Box>
+                      </IconTextRow>
                     </Tooltip>
                   ) : (
                     <Tooltip title="No failures observed after the triage resolution date.">
-                      <Box
-                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                      >
+                      <IconTextRow>
                         <CheckCircle color="success" fontSize="small" />
                         None
-                      </Box>
+                      </IconTextRow>
                     </Tooltip>
                   )}
                 </TableCell>
@@ -221,7 +237,7 @@ export default function ForceCloseRegressionsModal({
             ))}
           </TableBody>
         </Table>
-      </Box>
+      </ScrollableTableContainer>
     )
   }
 
@@ -273,19 +289,12 @@ export default function ForceCloseRegressionsModal({
         <DialogTitle>Force Close Regressions</DialogTitle>
         <DialogContent>
           {loading && (
-            <Box
-              sx={{
-                p: 3,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
+            <LoadingContainer>
               <CircularProgress />
               <Typography variant="body1" sx={{ ml: 2 }}>
                 Loading preview...
               </Typography>
-            </Box>
+            </LoadingContainer>
           )}
 
           {!loading && error && (

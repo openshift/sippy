@@ -12,10 +12,23 @@ import {
 } from '../helpers'
 import { Link } from 'react-router'
 import { ReportEndContext } from '../App'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
+
+const StreamLinkBox = styled(Box)(({ theme }) => ({
+  textDecoration: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(1.5),
+  borderRadius: theme.spacing(1),
+  border: `2px solid ${theme.palette.divider}`,
+  '&:hover': {
+    backgroundColor: theme.palette.action.hover,
+  },
+}))
 
 function ReleasePayloadAcceptance(props) {
   const theme = useTheme()
@@ -106,20 +119,9 @@ function ReleasePayloadAcceptance(props) {
         key={`release-${props.release}-${row.architecture}-${row.stream}`}
       >
         <Tooltip title={tooltip}>
-          <Box
+          <StreamLinkBox
             component={Link}
             to={`/release/${props.release}/streams/${row.architecture}/${row.stream}/overview`}
-            sx={(theme) => ({
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              padding: theme.spacing(1.5),
-              borderRadius: theme.spacing(1),
-              border: `2px solid ${theme.palette.divider}`,
-              '&:hover': {
-                backgroundColor: theme.palette.action.hover,
-              },
-            })}
           >
             <Box sx={{ mr: 1.5 }}>{icon}</Box>
             <Box sx={{ flex: 1 }}>
@@ -138,7 +140,7 @@ function ReleasePayloadAcceptance(props) {
                 {text}
               </Typography>
             </Box>
-          </Box>
+          </StreamLinkBox>
         </Tooltip>
       </Grid>
     )

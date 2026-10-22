@@ -21,6 +21,7 @@ import {
 } from '@mui/material'
 import { Link as RouterLink, useParams } from 'react-router'
 import { StringParam, useQueryParam } from 'use-query-params'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
@@ -31,6 +32,12 @@ import React, {
   useMemo,
   useState,
 } from 'react'
+
+const SortableHeaderCell = styled(TableCell)({
+  cursor: 'pointer',
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+})
 
 const COLUMNS = [
   { id: 'firstTimestamp', label: 'First Timestamp', visible: true },
@@ -469,19 +476,14 @@ export default function EventsChart(props) {
           <TableHead>
             <TableRow>
               {visibleColumns.map((col) => (
-                <TableCell
+                <SortableHeaderCell
                   key={col.id}
                   onClick={() => handleSort(col.id)}
-                  sx={{
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                  }}
                 >
                   {col.label}
                   {sortColumn === col.id &&
                     (sortDirection === 'asc' ? ' ▲' : ' ▼')}
-                </TableCell>
+                </SortableHeaderCell>
               ))}
             </TableRow>
           </TableHead>

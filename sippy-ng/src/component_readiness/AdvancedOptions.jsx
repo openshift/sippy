@@ -8,12 +8,25 @@ import {
   Tooltip,
 } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
+import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React from 'react'
 import Slider from '@mui/material/Slider'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+
+const OptionsAccordion = styled(Accordion)({
+  width: '220px',
+  padding: 0,
+  margin: 0,
+})
+
+const OptionsAccordionSummary = styled(AccordionSummary)({
+  backgroundColor: 'rgb(0, 153, 255)',
+  margin: '0px !important',
+  padding: 0,
+})
 
 export default function AdvancedOptions(props) {
   const {
@@ -87,19 +100,12 @@ export default function AdvancedOptions(props) {
       sx={(theme) => ({ margin: theme.spacing(1), minWidth: '20px' })}
       component="fieldset"
     >
-      <Accordion sx={{ width: '220px', p: 0, m: 0 }}>
-        <AccordionSummary
-          sx={{
-            backgroundColor: 'rgb(0, 153, 255)',
-            m: '0px !important',
-            p: 0,
-          }}
-          expandIcon={<ExpandMore />}
-        >
+      <OptionsAccordion>
+        <OptionsAccordionSummary expandIcon={<ExpandMore />}>
           <Typography className="checkboxlist-label">
             {props.headerName}
           </Typography>
-        </AccordionSummary>
+        </OptionsAccordionSummary>
         <AccordionDetails>
           <FormGroup>
             <p>Confidence: {confidence}</p>
@@ -180,7 +186,7 @@ export default function AdvancedOptions(props) {
             </Tooltip>
           </FormGroup>
         </AccordionDetails>
-      </Accordion>
+      </OptionsAccordion>
     </FormControl>
   )
 }

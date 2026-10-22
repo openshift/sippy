@@ -1,6 +1,6 @@
 import { getTriagesAPIUrl } from './CompReadyUtils'
-import { Tab, Tabs, Typography } from '@mui/material'
-import DialogContent from '@mui/material/DialogContent'
+import { Tab, Typography } from '@mui/material'
+import { TriageDialogContent, TriageTabs } from './TriageStyledComponents'
 import DialogTitle from '@mui/material/DialogTitle'
 import ExistingTriageSelector from './ExistingTriageSelector'
 import PropTypes from 'prop-types'
@@ -17,9 +17,7 @@ export default function AddRegressionPanel({
   completeTriageSubmission,
   triageEntryData,
   setTriageEntryData,
-  commonClasses,
 }) {
-  const classes = commonClasses
   triages.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
 
   // We can only find potential matching triages when we are triaging a single regression at a time
@@ -106,14 +104,13 @@ export default function AddRegressionPanel({
   return (
     <Fragment>
       <DialogTitle>Triage</DialogTitle>
-      <DialogContent sx={classes.dialogContent}>
-        <Tabs
+      <TriageDialogContent>
+        <TriageTabs
           value={tabIndex}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="primary"
           variant="fullWidth"
-          sx={classes.tabsContainer}
         >
           {hasSingleRegression && (
             <Tab
@@ -127,7 +124,7 @@ export default function AddRegressionPanel({
           )}
           <Tab label="Existing Triage" />
           <Tab label="New Triage" />
-        </Tabs>
+        </TriageTabs>
         {showPotentialMatches && (
           <RegressionPotentialMatchesTab
             regressionId={regressionIds[0]}
@@ -139,7 +136,7 @@ export default function AddRegressionPanel({
         )}
         {addToExisting && (
           <Fragment>
-            <Typography variant="h6" sx={classes.centeredHeading}>
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
               Add to existing Triage
             </Typography>
             <ExistingTriageSelector
@@ -152,7 +149,7 @@ export default function AddRegressionPanel({
         )}
         {addToNew && (
           <Fragment>
-            <Typography variant="h6" sx={classes.centeredHeading}>
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
               Create new Triage
             </Typography>
             <TriageFields
@@ -169,7 +166,7 @@ export default function AddRegressionPanel({
             />
           </Fragment>
         )}
-      </DialogContent>
+      </TriageDialogContent>
     </Fragment>
   )
 }
@@ -183,5 +180,4 @@ AddRegressionPanel.propTypes = {
   setAlertSeverity: PropTypes.func.isRequired,
   handleNewTriageFormCompletion: PropTypes.func.isRequired,
   completeTriageSubmission: PropTypes.func.isRequired,
-  commonClasses: PropTypes.object.isRequired,
 }

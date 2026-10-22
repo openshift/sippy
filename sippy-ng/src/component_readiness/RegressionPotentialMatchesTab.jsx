@@ -12,14 +12,16 @@ import {
   jiraUrlPrefix,
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
+import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 
-const ellipsisTextSx = {
+const EllipsisText = styled(Typography)({
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-}
+})
+
 const customTooltipSx = {
   maxWidth: 600,
   fontSize: '0.875rem',
@@ -187,9 +189,7 @@ export default function RegressionPotentialMatchesTab({
       },
       renderCell: (param) => (
         <Tooltip title={param.value || 'No description'}>
-          <Typography sx={ellipsisTextSx}>
-            {param.value || 'No description'}
-          </Typography>
+          <EllipsisText>{param.value || 'No description'}</EllipsisText>
         </Tooltip>
       ),
     },

@@ -24,9 +24,29 @@ import {
   getBugsAPIUrl,
   getTriagesAPIUrl,
 } from '../component_readiness/CompReadyUtils'
+import { styled } from '@mui/material/styles'
 import BugButton from './BugButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useState } from 'react'
+
+const CloseButton = styled(IconButton)({
+  position: 'absolute',
+  right: 8,
+  top: 8,
+})
+
+const ChipContainer = styled(Box)({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+  marginTop: 8,
+})
+
+const NoteText = styled(Typography)(({ theme }) => ({
+  fontStyle: 'italic',
+  color: theme.palette.text.secondary,
+  textAlign: 'right',
+}))
 
 export default function FileBug({
   testName,
@@ -371,13 +391,9 @@ See the [sippy test details|${url}] for additional context.
       >
         <DialogTitle>
           File Jira Bug
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseModal}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
+          <CloseButton aria-label="close" onClick={handleCloseModal}>
             <Close />
-          </IconButton>
+          </CloseButton>
         </DialogTitle>
 
         <DialogContent dividers>
@@ -422,7 +438,7 @@ See the [sippy test details|${url}] for additional context.
             fullWidth
             margin="normal"
           />
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+          <ChipContainer>
             {formData.affectsVersions.map((version) => (
               <Chip
                 key={version}
@@ -432,7 +448,7 @@ See the [sippy test details|${url}] for additional context.
                 variant="outlined"
               />
             ))}
-          </Box>
+          </ChipContainer>
 
           <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
             Components *
@@ -452,7 +468,7 @@ See the [sippy test details|${url}] for additional context.
                 : ''
             }
           />
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+          <ChipContainer>
             {(!isNaN(jiraComponentID) || jiraComponentName) && (
               <Chip
                 label={`Computed Component: ${jiraComponentName || 'Unknown'}${
@@ -471,7 +487,7 @@ See the [sippy test details|${url}] for additional context.
                 variant="outlined"
               />
             ))}
-          </Box>
+          </ChipContainer>
 
           <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
             Labels
@@ -486,7 +502,7 @@ See the [sippy test details|${url}] for additional context.
             fullWidth
             margin="normal"
           />
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+          <ChipContainer>
             {formData.labels.map((label) => (
               <Chip
                 key={label}
@@ -496,7 +512,7 @@ See the [sippy test details|${url}] for additional context.
                 variant="outlined"
               />
             ))}
-          </Box>
+          </ChipContainer>
 
           <FormControlLabel
             control={
@@ -556,16 +572,9 @@ See the [sippy test details|${url}] for additional context.
               {isSubmitting ? 'Filing Bug...' : 'File Bug'}
             </Button>
           </Box>
-          <Typography
-            variant="body2"
-            sx={{
-              fontStyle: 'italic',
-              color: 'text.secondary',
-              textAlign: 'right',
-            }}
-          >
+          <NoteText variant="body2">
             Note: All fields can be edited after the bug is submitted to Jira.
-          </Typography>
+          </NoteText>
         </DialogActions>
       </Dialog>
     </Fragment>

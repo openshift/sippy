@@ -43,6 +43,10 @@ const PullRequestsDataGrid = styled(StyledDataGrid)({
   '& .MuiDataGrid-row.Mui-even': {
     backgroundColor: 'lightgrey',
   },
+  '& .MuiDataGrid-columnHeaderTitle': {
+    whiteSpace: 'normal',
+    overflowWrap: 'break-word',
+  },
 })
 
 export default function PullRequestsTable({

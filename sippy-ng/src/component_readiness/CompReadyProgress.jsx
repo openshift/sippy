@@ -8,9 +8,46 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
+import { styled } from '@mui/material/styles'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PropTypes from 'prop-types'
 import React from 'react'
+
+const CenteredContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '60vh',
+  padding: theme.spacing(4),
+}))
+
+const DetailsAccordion = styled(Accordion)(({ theme }) => ({
+  width: '100%',
+  marginTop: theme.spacing(2),
+  boxShadow: theme.shadows[1],
+  '&:before': { display: 'none' },
+}))
+
+const ApiLink = styled(Link)(({ theme }) => ({
+  display: 'block',
+  marginBottom: theme.spacing(2),
+  wordBreak: 'break-all',
+  fontSize: '0.875rem',
+}))
+
+const ParamList = styled(Box)(({ theme }) => ({
+  margin: 0,
+  paddingLeft: theme.spacing(2),
+  listStyle: 'none',
+  '& li': {
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(0.5),
+    fontSize: '0.875rem',
+    fontFamily: 'monospace',
+    color: theme.palette.text.primary,
+  },
+}))
 
 export default function CompReadyProgress(props) {
   const { apiLink } = props
@@ -18,16 +55,7 @@ export default function CompReadyProgress(props) {
   document.title = 'Loading...'
 
   return (
-    <Box
-      sx={(theme) => ({
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '60vh',
-        p: theme.spacing(4),
-      })}
-    >
+    <CenteredContainer>
       <Stack
         spacing={3}
         alignItems="center"
@@ -44,14 +72,7 @@ export default function CompReadyProgress(props) {
           minutes to load.
         </Typography>
 
-        <Accordion
-          sx={(theme) => ({
-            width: '100%',
-            mt: theme.spacing(2),
-            boxShadow: theme.shadows[1],
-            '&:before': { display: 'none' },
-          })}
-        >
+        <DetailsAccordion>
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}
             sx={(theme) => ({
@@ -67,39 +88,15 @@ export default function CompReadyProgress(props) {
             <Typography variant="body2" color="text.secondary" gutterBottom>
               API Endpoint:
             </Typography>
-            <Link
-              href={apiLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={(theme) => ({
-                display: 'block',
-                mb: theme.spacing(2),
-                wordBreak: 'break-all',
-                fontSize: '0.875rem',
-              })}
-            >
+            <ApiLink href={apiLink} target="_blank" rel="noopener noreferrer">
               {apiLink}
-            </Link>
+            </ApiLink>
             {apiLink.includes('?') && (
               <>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   Request Parameters:
                 </Typography>
-                <Box
-                  component="ul"
-                  sx={(theme) => ({
-                    m: 0,
-                    pl: theme.spacing(2),
-                    listStyle: 'none',
-                    '& li': {
-                      pt: theme.spacing(0.5),
-                      pb: theme.spacing(0.5),
-                      fontSize: '0.875rem',
-                      fontFamily: 'monospace',
-                      color: theme.palette.text.primary,
-                    },
-                  })}
-                >
+                <ParamList component="ul">
                   {apiLink
                     .split('?')[1]
                     .split('&')
@@ -109,13 +106,13 @@ export default function CompReadyProgress(props) {
                       }
                       return null
                     })}
-                </Box>
+                </ParamList>
               </>
             )}
           </AccordionDetails>
-        </Accordion>
+        </DetailsAccordion>
       </Stack>
-    </Box>
+    </CenteredContainer>
   )
 }
 
