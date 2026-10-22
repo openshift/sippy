@@ -443,6 +443,26 @@ branch-ci-Azure-ARO-HCP-main-e2e-integration-e2e-parallel:
     Suite: unknown
     Topology: external
     Upgrade: none
+branch-ci-Azure-ARO-HCP-main-e2e-integration-e2e-parallel-all:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: aro
+    JobTier: standard
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: aro
+    Platform: aro
+    Procedure: none
+    Release: aro-integration
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 branch-ci-Azure-ARO-HCP-main-e2e-prod-e2e-parallel:
     Aggregation: none
     Architecture: amd64
@@ -464,6 +484,26 @@ branch-ci-Azure-ARO-HCP-main-e2e-prod-e2e-parallel:
     Topology: external
     Upgrade: none
 branch-ci-Azure-ARO-HCP-main-e2e-stage-e2e-parallel:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: aro
+    JobTier: standard
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: aro
+    Platform: aro
+    Procedure: none
+    Release: aro-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+branch-ci-Azure-ARO-HCP-main-e2e-stage-e2e-parallel-all:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -86545,6 +86585,26 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-staging-stable
     Topology: external
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-staging-stable-4-22:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-external-oidc-e2e-staging:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -327712,6 +327772,78 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-ibmcloud-ovn:
     NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-bgp-vip:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-bgp-vip-ovn-bgp-evpn:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-bgp-vip-ovn-bgp-metallb:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
     Procedure: none
     Release: "5.1"
     ReleaseMajor: "5"
