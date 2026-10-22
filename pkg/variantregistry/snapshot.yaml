@@ -19523,6 +19523,30 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-metal-encryption-kms-3-dualstack:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-metal-encryption-kms-3-ipv4:
     Aggregation: none
     Architecture: amd64
@@ -41774,7 +41798,7 @@ periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-powervs-ovn:
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-rosa-hyperfleet:
+periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-rosa-seaplane:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -43381,7 +43405,7 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-powervs-ovn:
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-rosa-hyperfleet:
+periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-rosa-seaplane:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -59579,54 +59603,6 @@ periodic-ci-openshift-microshift-release-4.20-periodics-e2e-aws-tests-bootc-nigh
     Suite: unknown
     Topology: microshift
     Upgrade: none
-periodic-ci-openshift-microshift-release-4.20-periodics-e2e-aws-tests-bootc-release-arm-periodic:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.20"
-    ReleaseMajor: "4"
-    ReleaseMinor: "20"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.20-periodics-e2e-aws-tests-bootc-release-periodic:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.20"
-    ReleaseMajor: "4"
-    ReleaseMinor: "20"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
 periodic-ci-openshift-microshift-release-4.20-periodics-e2e-aws-tests-cache-nightly:
     Aggregation: none
     Architecture: amd64
@@ -59676,54 +59652,6 @@ periodic-ci-openshift-microshift-release-4.20-periodics-e2e-aws-tests-cache-nigh
     Topology: microshift
     Upgrade: none
 periodic-ci-openshift-microshift-release-4.20-periodics-e2e-aws-tests-nightly:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.20"
-    ReleaseMajor: "4"
-    ReleaseMinor: "20"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.20-periodics-e2e-aws-tests-release-arm-periodic:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.20"
-    ReleaseMajor: "4"
-    ReleaseMinor: "20"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.20-periodics-e2e-aws-tests-release-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -59984,54 +59912,6 @@ periodic-ci-openshift-microshift-release-4.21-periodics-e2e-aws-tests-bootc-nigh
     Suite: unknown
     Topology: microshift
     Upgrade: none
-periodic-ci-openshift-microshift-release-4.21-periodics-e2e-aws-tests-bootc-release-arm-periodic:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.21"
-    ReleaseMajor: "4"
-    ReleaseMinor: "21"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.21-periodics-e2e-aws-tests-bootc-release-periodic:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.21"
-    ReleaseMajor: "4"
-    ReleaseMinor: "21"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
 periodic-ci-openshift-microshift-release-4.21-periodics-e2e-aws-tests-cache-nightly:
     Aggregation: none
     Architecture: amd64
@@ -60081,54 +59961,6 @@ periodic-ci-openshift-microshift-release-4.21-periodics-e2e-aws-tests-cache-nigh
     Topology: microshift
     Upgrade: none
 periodic-ci-openshift-microshift-release-4.21-periodics-e2e-aws-tests-nightly:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.21"
-    ReleaseMajor: "4"
-    ReleaseMinor: "21"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.21-periodics-e2e-aws-tests-release-arm-periodic:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.21"
-    ReleaseMajor: "4"
-    ReleaseMinor: "21"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.21-periodics-e2e-aws-tests-release-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -60556,151 +60388,7 @@ periodic-ci-openshift-microshift-release-4.22-periodics-e2e-aws-tests-bootc-nigh
     Suite: unknown
     Topology: microshift
     Upgrade: none
-periodic-ci-openshift-microshift-release-4.22-periodics-e2e-aws-tests-bootc-release-arm-periodic-el9:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.22-periodics-e2e-aws-tests-bootc-release-arm-periodic-el10:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.22-periodics-e2e-aws-tests-bootc-release-periodic-el9:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.22-periodics-e2e-aws-tests-bootc-release-periodic-el10:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
 periodic-ci-openshift-microshift-release-4.22-periodics-e2e-aws-tests-nightly:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.22-periodics-e2e-aws-tests-release-arm-periodic:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-4.22-periodics-e2e-aws-tests-release-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -61080,102 +60768,6 @@ periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-bootc-night
     Suite: unknown
     Topology: microshift
     Upgrade: none
-periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-bootc-release-arm-periodic-el9:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-bootc-release-arm-periodic-el10:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-bootc-release-periodic-el9:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-bootc-release-periodic-el10:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
 periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-cache-nightly:
     Aggregation: none
     Architecture: amd64
@@ -61225,54 +60817,6 @@ periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-cache-night
     Topology: microshift
     Upgrade: none
 periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-nightly:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-release-arm-periodic:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.0-periodics-e2e-aws-tests-release-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -61652,102 +61196,6 @@ periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-bootc-night
     Suite: unknown
     Topology: microshift
     Upgrade: none
-periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-bootc-release-arm-periodic-el9:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-bootc-release-arm-periodic-el10:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-bootc-release-periodic-el9:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-bootc-release-periodic-el10:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
 periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-cache-nightly:
     Aggregation: none
     Architecture: amd64
@@ -61797,54 +61245,6 @@ periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-cache-night
     Topology: microshift
     Upgrade: none
 periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-nightly:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-release-arm-periodic:
-    Aggregation: none
-    Architecture: arm64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Platform: aws
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: microshift
-    Upgrade: none
-periodic-ci-openshift-microshift-release-5.1-periodics-e2e-aws-tests-release-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -359209,7 +358609,55 @@ periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-nightly-fips:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-aws-ocp422-e2e-install-aws-s3-rds-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-redhat-3.18-azure-ocp422-e2e-install-azure-blob-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: azure
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-azure-ocp422-e2e-install-azure-blob-postgres-nightly:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
