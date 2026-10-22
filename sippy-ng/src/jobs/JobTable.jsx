@@ -2,7 +2,7 @@ import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
 import { Button, Container, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import {
   escapeRegex,
   pathForExactJobAnalysis,
@@ -11,12 +11,9 @@ import {
   safeEncodeURIComponent,
   useFilterModelParam,
 } from '../helpers'
-import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { withStyles } from '../makeStyles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
@@ -371,24 +368,7 @@ export const getViews = (props) => {
   }
 }
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-    backdrop: {
-      zIndex: 999999,
-      color: '#fff',
-    },
-  },
-}))
+const ColoredDataGrid = createColoredDataGrid(JOB_THRESHOLDS)
 
 /**
  * JobTable shows the list of all jobs matching any selected filters,
@@ -407,8 +387,6 @@ function JobTable({
   view: defaultView = 'Default',
   ...props
 }) {
-  const { classes } = props
-  const gridClasses = useStyles()
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
@@ -624,8 +602,7 @@ function JobTable({
   return (
     <Container size="xl">
       {pageTitle()}
-      <DataGrid
-        className={gridClasses.root}
+      <ColoredDataGrid
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
@@ -653,9 +630,7 @@ function JobTable({
           setPage(model.page)
         }}
         getRowClassName={(params) =>
-          classes[
-            'row-percent-' + Math.round(params.row.current_pass_percentage)
-          ]
+          'row-percent-' + Math.round(params.row.current_pass_percentage)
         }
         slotProps={{
           toolbar: {
@@ -687,7 +662,6 @@ function JobTable({
 
 JobTable.propTypes = {
   briefTable: PropTypes.bool,
-  classes: PropTypes.object,
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   release: PropTypes.string.isRequired,
@@ -702,4 +676,4 @@ JobTable.propTypes = {
   view: PropTypes.string,
 }
 
-export default withStyles(generateClasses(JOB_THRESHOLDS))(JobTable)
+export default JobTable

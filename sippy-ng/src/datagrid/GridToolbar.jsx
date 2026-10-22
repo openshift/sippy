@@ -1,6 +1,5 @@
+import { Box } from '@mui/material'
 import { GridToolbarDensitySelector } from '@mui/x-data-grid'
-import { makeStyles } from '../makeStyles'
-import { useTheme } from '@mui/material/styles'
 import ClearIcon from '@mui/icons-material/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
 import GridToolbarDownload from './GridToolbarDownload'
@@ -13,32 +12,7 @@ import React, { Fragment, useEffect } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import TextField from '@mui/material/TextField'
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    padding: theme.spacing(0.5, 0.5, 0),
-    justifyContent: 'space-between',
-    display: 'flex',
-    alignItems: 'flex-start',
-    flexWrap: 'wrap',
-  },
-  textField: {
-    [theme.breakpoints.down('sm')]: {
-      width: '100%',
-    },
-    margin: theme.spacing(1, 0.5, 1.5),
-    '& .MuiSvgIcon-root': {
-      marginRight: theme.spacing(0.5),
-    },
-    '& .MuiInput-underline:before': {
-      borderBottom: `1px solid ${theme.palette.divider}`,
-    },
-  },
-}))
-
 export default function GridToolbar(props) {
-  const theme = useTheme()
-  const classes = useStyles(theme)
-
   const [search, setSearch] = React.useState('')
 
   const filterSearchValue = (() => {
@@ -59,7 +33,15 @@ export default function GridToolbar(props) {
   }, [filterSearchValue])
 
   return (
-    <div className={classes.root}>
+    <Box
+      sx={(theme) => ({
+        padding: theme.spacing(0.5, 0.5, 0),
+        justifyContent: 'space-between',
+        display: 'flex',
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+      })}
+    >
       <div>
         <GridToolbarFilterMenu
           columns={props.columns}
@@ -141,7 +123,7 @@ export default function GridToolbar(props) {
       ) : (
         ''
       )}
-    </div>
+    </Box>
   )
 }
 

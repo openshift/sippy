@@ -1,16 +1,16 @@
 import { BLOCKER_SCORE_THRESHOLDS } from '../constants'
 import { Box, Card, Grid, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
-import { generateClasses } from '../datagrid/utils'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import { Link } from 'react-router'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
-import { withStyles } from '../makeStyles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
+
+const ColoredDataGrid = createColoredDataGrid(BLOCKER_SCORE_THRESHOLDS, true)
 
 function PayloadStreamTestFailures({
   hideControls = false,
@@ -21,8 +21,6 @@ function PayloadStreamTestFailures({
   sort: sortDefault = 'asc',
   ...props
 }) {
-  const { classes } = props
-
   // Most things not filterable here, as we are not querying them directly from db,
   // but test name is, and that is likely the most important.
   const columns = [
@@ -239,7 +237,7 @@ function PayloadStreamTestFailures({
             <InfoIcon />
           </Tooltip>
         </Typography>
-        <DataGrid
+        <ColoredDataGrid
           columnVisibilityModel={{ id: false }}
           slots={{ toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
@@ -264,7 +262,7 @@ function PayloadStreamTestFailures({
           ]}
           onSortModelChange={(m) => updateSortModel(m)}
           getRowClassName={(params) =>
-            classes['row-percent-' + params.row.blocker_score]
+            'row-percent-' + params.row.blocker_score
           }
           slotProps={{
             toolbar: {
@@ -291,13 +289,9 @@ PayloadStreamTestFailures.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  classes: PropTypes.object,
-
   release: PropTypes.string,
   arch: PropTypes.string.isRequired,
   stream: PropTypes.string.isRequired,
 }
 
-export default withStyles(generateClasses(BLOCKER_SCORE_THRESHOLDS, true))(
-  PayloadStreamTestFailures
-)
+export default PayloadStreamTestFailures

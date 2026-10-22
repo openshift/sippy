@@ -21,73 +21,16 @@ import { Close } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
 import { relativeTime } from '../helpers'
 import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
-
-const useStyles = makeStyles((theme) => ({
-  dialogPaper: {
-    width: '90%',
-    maxWidth: 'none',
-  },
-  loadingContainer: {
-    textAlign: 'center',
-    padding: '40px',
-  },
-  loadingText: {
-    marginTop: '16px',
-  },
-  statusCell: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100%',
-  },
-  confidenceTooltip: {
-    cursor: 'help',
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  dialogActions: {
-    justifyContent: 'flex-start',
-  },
-  filterContainer: {
-    marginBottom: theme.spacing(2),
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(2),
-  },
-  filterGroup: {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: theme.spacing(2),
-    alignItems: 'center',
-  },
-  filterTitle: {
-    marginRight: theme.spacing(1),
-    fontWeight: 'bold',
-  },
-  viewDropdown: {
-    minWidth: 150,
-  },
-  filterSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(2),
-  },
-}))
 
 export default function TriagePotentialMatches({
   triage,
   setMessage,
   setLinkingComplete,
 }) {
-  const classes = useStyles()
   const [isModalOpen, setIsModalOpen] = React.useState(false)
   const [selectedView, setSelectedView] = React.useState('')
   const [availableViews, setAvailableViews] = React.useState([])
@@ -373,7 +316,14 @@ export default function TriagePotentialMatches({
         }
       },
       renderCell: (params) => (
-        <div className={classes.statusCell}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100%',
+          }}
+        >
           {params.value.url ? (
             <a
               href={params.value.url}
@@ -430,7 +380,17 @@ export default function TriagePotentialMatches({
 
         return (
           <Tooltip title={tooltipContent} arrow placement="top">
-            <div className={classes.confidenceTooltip}>{params.value}</div>
+            <div
+              style={{
+                cursor: 'help',
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              {params.value}
+            </div>
           </Tooltip>
         )
       },
@@ -475,8 +435,8 @@ export default function TriagePotentialMatches({
         open={isModalOpen}
         onClose={handleCloseModal}
         maxWidth={false}
-        classes={{
-          paper: classes.dialogPaper,
+        slotProps={{
+          paper: { sx: { width: '90%', maxWidth: 'none' } },
         }}
       >
         <DialogTitle>
@@ -491,17 +451,31 @@ export default function TriagePotentialMatches({
         </DialogTitle>
         <DialogContent>
           {isLoading ? (
-            <div className={classes.loadingContainer}>
+            <div style={{ textAlign: 'center', padding: '40px' }}>
               <CircularProgress />
-              <div className={classes.loadingText}>
+              <div style={{ marginTop: '16px' }}>
                 Loading potential matches...
               </div>
             </div>
           ) : (
             <>
-              <div className={classes.filterContainer}>
-                <div className={classes.filterSection}>
-                  <FormControl size="small" className={classes.viewDropdown}>
+              <div
+                style={{
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '16px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                  }}
+                >
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
                     <InputLabel>View</InputLabel>
                     <Select
                       value={selectedView}
@@ -520,10 +494,17 @@ export default function TriagePotentialMatches({
                 <div
                   style={{ display: 'flex', alignItems: 'center', gap: '16px' }}
                 >
-                  <Typography className={classes.filterTitle}>
+                  <Typography sx={{ mr: 1, fontWeight: 'bold' }}>
                     Filter by:
                   </Typography>
-                  <FormGroup className={classes.filterGroup}>
+                  <FormGroup
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'row',
+                      gap: 2,
+                      alignItems: 'center',
+                    }}
+                  >
                     <FormControlLabel
                       control={
                         <Checkbox
@@ -594,7 +575,7 @@ export default function TriagePotentialMatches({
             </>
           )}
         </DialogContent>
-        <DialogActions className={classes.dialogActions}>
+        <DialogActions sx={{ justifyContent: 'flex-start' }}>
           <Button
             onClick={linkSelectedRegressions}
             disabled={selectedRegressions.length === 0 || isLinking}

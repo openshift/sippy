@@ -1,21 +1,11 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
 import { Doughnut } from 'react-chartjs-2'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { useTheme } from '@mui/material/styles'
 import chroma from 'chroma-js'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React from 'react'
-
-const useStyles = makeStyles({
-  cardContent: {
-    textAlign: 'center',
-  },
-  summaryCard: (_props) => ({
-    height: '100%',
-  }),
-})
 
 /**
  * SummaryCard with a simple pie chart showing some data,
@@ -30,7 +20,6 @@ export default function SummaryCard({
   tooltip = '',
   ...props
 }) {
-  const classes = useStyles(props)
   const theme = useTheme()
 
   const percent = ((success + flakes) / ((flakes || 0) + fail + success)) * 100
@@ -58,12 +47,8 @@ export default function SummaryCard({
   ]
 
   let card = (
-    <Card
-      elevation={5}
-      className={`${classes.summaryCard}`}
-      style={{ backgroundColor: bgColor }}
-    >
-      <CardContent className={`${classes.cardContent}`}>
+    <Card elevation={5} sx={{ height: '100%', backgroundColor: bgColor }}>
+      <CardContent sx={{ textAlign: 'center' }}>
         <Typography variant="h6">
           {props.name}
           {tooltip ? <InfoIcon /> : ''}

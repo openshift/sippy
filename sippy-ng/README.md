@@ -3,9 +3,8 @@
 Sippy's frontend is written in React and [Material-UI v6](https://mui.com/). The
 dev server and production build are powered by [Vite](https://vite.dev/).
 
-The legacy `makeStyles`/`withStyles` API (removed in MUI v5) is provided by a
-local shim at `src/makeStyles.jsx`, which uses `@emotion/css` under the hood.
-New code should prefer MUI's `styled()` API or the `sx` prop.
+Styling uses MUI's native `styled()` API for reusable or non-trivial styles
+and the `sx` prop for trivial, one-off styles.
 
 In development, you can start Sippy as usual, and then run `npm start`
 in the sippy-ng directory. You can also just run `make build`, and use
@@ -64,7 +63,11 @@ import { relativeTime, safeEncodeURIComponent } from '../helpers'
 vs.
 
 ```javascript
-import { getReportStartDate, relativeTime, safeEncodeURIComponent } from '../helpers'
+import {
+  getReportStartDate,
+  relativeTime,
+  safeEncodeURIComponent,
+} from '../helpers'
 import { Link } from 'react-router'
 ```
 

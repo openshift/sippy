@@ -10,48 +10,54 @@ import {
   Typography,
 } from '@mui/material'
 import { getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
+import { useTheme } from '@mui/material/styles'
 import AddRegressionPanel from './AddRegressionPanel'
 import Alert from '@mui/material/Alert'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useEffect, useMemo } from 'react'
 import UpdateTriagePanel from './UpdateTriagePanel'
 
-const useCommonTriageStyles = makeStyles((theme) => ({
-  tabsContainer: {
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    '& .MuiTab-root': {
-      border: `1px solid ${theme.palette.divider}`,
-      borderBottom: 'none',
-      margin: '0 2px',
-      '&:hover': {
-        backgroundColor: theme.palette.action.hover,
+function useCommonTriageStyles() {
+  const theme = useTheme()
+  return useMemo(
+    () => ({
+      tabsContainer: {
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        '& .MuiTab-root': {
+          border: `1px solid ${theme.palette.divider}`,
+          borderBottom: 'none',
+          margin: '0 2px',
+          '&:hover': {
+            backgroundColor: theme.palette.action.hover,
+          },
+          '&.Mui-selected': {
+            backgroundColor: theme.palette.background.paper,
+            borderColor: theme.palette.primary.main,
+          },
+        },
       },
-      '&.Mui-selected': {
-        backgroundColor: theme.palette.background.paper,
-        borderColor: theme.palette.primary.main,
+      dialogContent: {
+        overflow: 'auto',
+        flex: 1,
+        paddingTop: '8px',
+        paddingBottom: '8px',
       },
-    },
-  },
-  dialogContent: {
-    overflow: 'auto',
-    flex: 1,
-    paddingTop: '8px',
-    paddingBottom: '8px',
-  },
-  centeredHeading: {
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing(2),
-    justifyContent: 'center',
-    minHeight: '400px',
-  },
-}))
+      centeredHeading: {
+        textAlign: 'center',
+      },
+      loadingContainer: {
+        alignItems: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: theme.spacing(2),
+        justifyContent: 'center',
+        minHeight: '400px',
+      },
+    }),
+    [theme]
+  )
+}
 
 export default function UpsertTriageModal({
   regressionIds,
@@ -223,8 +229,8 @@ export default function UpsertTriageModal({
           {triagesLoading && (
             <Fragment>
               <DialogTitle>Triage</DialogTitle>
-              <DialogContent className={commonClasses.dialogContent}>
-                <Box className={commonClasses.loadingContainer}>
+              <DialogContent sx={commonClasses.dialogContent}>
+                <Box sx={commonClasses.loadingContainer}>
                   <CircularProgress aria-label="Loading triage information..." />
                   <Typography>Loading triage information...</Typography>
                 </Box>

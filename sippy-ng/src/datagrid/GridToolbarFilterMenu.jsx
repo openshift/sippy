@@ -13,7 +13,6 @@ import {
   Tooltip,
 } from '@mui/material'
 import { filterTooltip } from './utils'
-import { makeStyles } from '../makeStyles'
 import { normalizeFilterModel } from './filterUtils'
 import Divider from '@mui/material/Divider'
 import GridToolbarFilterItem, {
@@ -22,22 +21,7 @@ import GridToolbarFilterItem, {
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useMemo } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  filterMenu: {
-    padding: 20,
-  },
-  filterAdd: {
-    padding: 20,
-    textAlign: 'right',
-  },
-  selector: {
-    margin: theme.spacing(1),
-    minWidth: 120,
-  },
-  resetButton: {
-    marginLeft: 10,
-  },
-}))
+const selectorSx = (theme) => ({ margin: theme.spacing(1), minWidth: 120 })
 
 /**
  * GridToolbarFilterMenu is a drop-in replacement for the built-in material data tables
@@ -49,7 +33,6 @@ export default function GridToolbarFilterMenu({
   logicOperatorDisabled = false,
   ...props
 }) {
-  const classes = useStyles()
   const [anchorEl, setAnchorEl] = React.useState(null)
 
   const normalizedFilterModel = useMemo(
@@ -214,7 +197,7 @@ export default function GridToolbarFilterMenu({
         variant="standard"
         value={logicOperator}
         onChange={(e) => setLogicOperator(e.target.value)}
-        className={classes.selector}
+        sx={selectorSx}
         labelId="logicOperatorLabel"
         id="logicOperator"
         autoWidth
@@ -255,7 +238,7 @@ export default function GridToolbarFilterMenu({
           horizontal: 'left',
         }}
       >
-        <div className={classes.filterMenu}>
+        <div style={{ padding: 20 }}>
           {models.map((item, index) => {
             return (
               <div key={`filter-item-${index}`} style={{ paddingTop: 20 }}>
@@ -276,7 +259,7 @@ export default function GridToolbarFilterMenu({
         <Grid
           container
           justifyContent="space-between"
-          className={classes.filterAdd}
+          sx={{ padding: '20px', textAlign: 'right' }}
         >
           <Fab
             data-testid="add-button"

@@ -5,10 +5,6 @@ import GridToolbarFilterMenu from './GridToolbarFilterMenu'
 import React from 'react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('../makeStyles', () => ({
-  makeStyles: () => () => ({}),
-}))
-
 vi.mock('./GridToolbarFilterItem', () => ({
   default: ({ id, filterModel, destroy }) => (
     <div data-testid={`filter-item-${id}`}>

@@ -1,32 +1,16 @@
 import { BUILD_CLUSTER_THRESHOLDS } from '../constants'
 import { CircularProgress, Tooltip } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
-import { generateClasses } from '../datagrid/utils'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
-import { withStyles } from '../makeStyles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-  },
-}))
+const ColoredDataGrid = createColoredDataGrid(BUILD_CLUSTER_THRESHOLDS)
 
 function BuildClusterTable({
   briefTable = false,
@@ -37,9 +21,6 @@ function BuildClusterTable({
   filterModel: filterModelProp = { items: [] },
   ...props
 }) {
-  const gridClasses = useStyles()
-  const { classes } = props
-
   // place to store state (i.e., our table data, error message, etc)
   const [rows, setRows] = React.useState([])
   const [error, setError] = React.useState('')
@@ -174,8 +155,7 @@ function BuildClusterTable({
 
   // what we return
   return (
-    <DataGrid
-      className={gridClasses.root}
+    <ColoredDataGrid
       slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
@@ -200,7 +180,7 @@ function BuildClusterTable({
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
       getRowClassName={(params) =>
-        classes['row-percent-' + Math.round(params.row.current_pass_percentage)]
+        'row-percent-' + Math.round(params.row.current_pass_percentage)
       }
       slotProps={{
         toolbar: {
@@ -220,13 +200,10 @@ function BuildClusterTable({
   )
 }
 
-export default withStyles(generateClasses(BUILD_CLUSTER_THRESHOLDS))(
-  BuildClusterTable
-)
+export default BuildClusterTable
 
 BuildClusterTable.propTypes = {
   briefTable: PropTypes.bool,
-  classes: PropTypes.object,
   hideControls: PropTypes.bool,
   pageSize: PropTypes.number,
   period: PropTypes.string,

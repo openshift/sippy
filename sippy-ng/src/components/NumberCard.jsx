@@ -1,28 +1,12 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import PropTypes from 'prop-types'
 import React from 'react'
 
-const useStyles = makeStyles({
-  cardContent: {
-    textAlign: 'center',
-  },
-  numberCard: (_props) => ({
-    height: '100%',
-  }),
-})
-
 export default function NumberCard(props) {
-  const classes = useStyles(props)
-
   let card = (
-    <Card
-      elevation={5}
-      className={`${classes.numberCard}`}
-      style={{ backgroundColor: props.bgColor }}
-    >
-      <CardContent className={`${classes.cardContent}`}>
+    <Card elevation={5} sx={{ height: '100%', backgroundColor: props.bgColor }}>
+      <CardContent sx={{ textAlign: 'center' }}>
         <Typography variant="h6">{props.title}</Typography>
         <div style={{ fontSize: `${props.size ? props.size : 6}em` }}>
           {props.number}

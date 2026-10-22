@@ -19,7 +19,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { makeStyles } from '../makeStyles'
 import { Link as RouterLink, useParams } from 'react-router'
 import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
@@ -32,20 +31,6 @@ import React, {
   useMemo,
   useState,
 } from 'react'
-
-const useStyles = makeStyles({
-  filterRow: {
-    padding: '10px 0',
-    paddingBottom: '1rem',
-  },
-  controls: {
-    marginBottom: '1rem',
-  },
-  columnToggle: {
-    marginRight: '0.5rem',
-    marginBottom: '0.5rem',
-  },
-})
 
 const COLUMNS = [
   { id: 'firstTimestamp', label: 'First Timestamp', visible: true },
@@ -83,7 +68,6 @@ function buildIntervalsPath(jobrunid, jobname, repoinfo, pullnumber) {
 }
 
 export default function EventsChart(props) {
-  const classes = useStyles()
   const { jobrunid, jobname, repoinfo, pullnumber } = useParams()
   const { jobRunID, jobName, repoInfo, pullNumber } = props
   const effectiveJobRunID = jobRunID ?? jobrunid
@@ -334,8 +318,8 @@ export default function EventsChart(props) {
         , filtered down to {filteredEvents.length}.
       </Typography>
 
-      <Paper className={classes.controls} sx={{ p: 2 }}>
-        <Box className={classes.filterRow}>
+      <Paper sx={{ mb: '1rem', p: 2 }}>
+        <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Time Range Filter (UTC)
           </Typography>
@@ -359,7 +343,7 @@ export default function EventsChart(props) {
           </Box>
         </Box>
 
-        <Box className={classes.filterRow}>
+        <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Filters
           </Typography>
@@ -446,7 +430,7 @@ export default function EventsChart(props) {
           </Box>
         </Box>
 
-        <Box className={classes.filterRow}>
+        <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Toggle Columns
           </Typography>
@@ -461,7 +445,7 @@ export default function EventsChart(props) {
                   />
                 }
                 label={col.label}
-                className={classes.columnToggle}
+                sx={{ mr: '0.5rem', mb: '0.5rem' }}
               />
             ))}
           </Box>

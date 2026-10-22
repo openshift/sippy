@@ -1,10 +1,10 @@
+import { Box } from '@mui/material'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Drawer } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import AccessibilityToggle from '../components/AccessibilityToggle'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import clsx from 'clsx'
 import CompReadyMainInputs from './CompReadyMainInputs'
 import IconButton from '@mui/material/IconButton'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -30,21 +30,19 @@ export default function Sidebar({ controlsOpts }) {
         aria-label="open drawer"
         onClick={handleDrawerOpen}
         edge="start"
-        className={clsx(classes.menuButton, drawerOpen && classes.hide)}
+        sx={[classes.menuButton, drawerOpen && classes.hide]}
         size="large"
       >
         <MenuIcon />
       </IconButton>
       <Drawer
-        className={classes.drawer}
+        sx={classes.drawer}
         variant="persistent"
         anchor="left"
         open={drawerOpen}
-        classes={{
-          paper: classes.drawerPaper,
-        }}
+        slotProps={{ paper: { sx: classes.drawerPaper } }}
       >
-        <div className={classes.drawerHeader}>
+        <Box sx={classes.drawerHeader}>
           <AccessibilityToggle />
           <IconButton onClick={handleDrawerClose} size="large">
             {theme.direction === 'ltr' ? (
@@ -53,7 +51,7 @@ export default function Sidebar({ controlsOpts }) {
               <ChevronRightIcon />
             )}
           </IconButton>
-        </div>
+        </Box>
         <CompReadyMainInputs controlsOpts={controlsOpts} />
       </Drawer>
     </div>

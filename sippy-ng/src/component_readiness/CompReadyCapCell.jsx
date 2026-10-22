@@ -46,7 +46,7 @@ export default function CompReadyCapCell(props) {
     return (
       <Tooltip title="No data">
         <TableCell
-          className={classes.crCellResult}
+          sx={classes.crCellResult}
           style={{
             textAlign: 'center',
             backgroundColor: theme.palette.text.disabled,
@@ -59,7 +59,7 @@ export default function CompReadyCapCell(props) {
   } else {
     return (
       <TableCell
-        className={classes.crCellResult}
+        sx={classes.crCellResult}
         style={{
           textAlign: 'center',
           backgroundColor: 'white',

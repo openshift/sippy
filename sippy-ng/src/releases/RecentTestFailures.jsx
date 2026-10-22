@@ -19,12 +19,12 @@ import {
 } from '@mui/material'
 import { DirectionsBoat, OpenInNew } from '@mui/icons-material'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import {
   pathForExactTestAnalysis,
   relativeTime,
   safeEncodeURIComponent,
 } from '../helpers'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -34,127 +34,51 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  card: {
-    padding: theme.spacing(2.5),
-  },
-  cardHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    marginBottom: theme.spacing(2),
-  },
-  cardTitle: {
-    textDecoration: 'none',
-    color: 'inherit',
-  },
-  infoIcon: {
-    marginLeft: theme.spacing(1),
-    fontSize: 20,
-    opacity: 0.6,
-  },
-  headerIcon: {
-    marginRight: theme.spacing(1),
-    color: theme.palette.error.main,
-  },
-  flexSpacer: {
-    flex: 1,
-  },
-  failureChip: {
-    fontWeight: 'bold',
-  },
-  expandableRow: {
-    '& > *': { borderBottom: 'unset' },
-  },
-  testNameCell: {
-    maxWidth: 500,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  clickableTestName: {
-    cursor: 'pointer',
-    '&:hover': {
-      textDecoration: 'underline',
-    },
-  },
-  collapseCell: {
-    paddingTop: 0,
-    paddingBottom: 0,
-  },
-  collapseContent: {
-    margin: theme.spacing(1),
-  },
-  summaryBar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
-    marginBottom: theme.spacing(1.5),
-    padding: theme.spacing(1),
-    borderRadius: theme.shape.borderRadius,
-    backgroundColor:
-      theme.palette.mode === 'dark'
-        ? 'rgba(255,255,255,0.04)'
-        : 'rgba(0,0,0,0.03)',
-  },
-  outputCard: {
-    padding: theme.spacing(1.5),
-    marginBottom: theme.spacing(1),
-    borderRadius: theme.shape.borderRadius,
-    border: '1px solid',
-    borderColor: theme.palette.divider,
-  },
-  outputHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(2),
-  },
-  jobName: {
-    fontWeight: 500,
-    flex: 1,
-    minWidth: 0,
-  },
-  noWrap: {
-    whiteSpace: 'nowrap',
-  },
-  prowButton: {
-    minWidth: 'auto',
-  },
-  outputPre: {
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-all',
-    fontSize: '0.75rem',
-    maxHeight: 150,
-    overflow: 'auto',
-    backgroundColor: theme.palette.mode === 'dark' ? '#1a1a2e' : '#f5f5f5',
-    padding: theme.spacing(1),
-    borderRadius: theme.spacing(0.5),
-    margin: 0,
-    marginTop: theme.spacing(1),
-  },
-  moreText: {
-    display: 'block',
-    marginTop: theme.spacing(1),
-  },
-  loadingContainer: {
-    textAlign: 'center',
-    paddingTop: theme.spacing(4),
-    paddingBottom: theme.spacing(4),
-  },
-  loadingText: {
-    marginTop: theme.spacing(1),
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: theme.spacing(4),
-  },
-  emptyIcon: {
-    fontSize: 48,
-    opacity: 0.3,
-    marginBottom: theme.spacing(1),
-  },
+const ContentCard = styled(Card)(({ theme }) => ({
+  padding: theme.spacing(2.5),
 }))
 
-function FailureRow({ row, release, classes, defaultExpanded }) {
+const CardHeader = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  marginBottom: theme.spacing(2),
+}))
+
+const SummaryBar = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(1),
+  marginBottom: theme.spacing(1.5),
+  padding: theme.spacing(1),
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor:
+    theme.palette.mode === 'dark'
+      ? 'rgba(255,255,255,0.04)'
+      : 'rgba(0,0,0,0.03)',
+}))
+
+const OutputCard = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(1.5),
+  marginBottom: theme.spacing(1),
+  borderRadius: theme.shape.borderRadius,
+  border: '1px solid',
+  borderColor: theme.palette.divider,
+}))
+
+const OutputPre = styled('pre')(({ theme }) => ({
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-all',
+  fontSize: '0.75rem',
+  maxHeight: 150,
+  overflow: 'auto',
+  backgroundColor: theme.palette.mode === 'dark' ? '#1a1a2e' : '#f5f5f5',
+  padding: theme.spacing(1),
+  borderRadius: theme.spacing(0.5),
+  margin: 0,
+  marginTop: theme.spacing(1),
+}))
+
+function FailureRow({ row, release, defaultExpanded }) {
   const [open, setOpen] = React.useState(defaultExpanded)
   const hasOutputs = row.outputs && row.outputs.length > 0
 
@@ -162,8 +86,10 @@ function FailureRow({ row, release, classes, defaultExpanded }) {
     <Fragment>
       <TableRow
         hover
-        className={classes.expandableRow}
-        style={{ cursor: hasOutputs ? 'pointer' : 'default' }}
+        sx={{
+          '& > *': { borderBottom: 'unset' },
+          cursor: hasOutputs ? 'pointer' : 'default',
+        }}
         onClick={() => {
           if (hasOutputs) setOpen(!open)
         }}
@@ -178,9 +104,16 @@ function FailureRow({ row, release, classes, defaultExpanded }) {
         <TableCell>
           <Tooltip title={row.test_name} enterDelay={500}>
             <Box
-              className={`${classes.testNameCell} ${
-                hasOutputs ? classes.clickableTestName : ''
-              }`}
+              sx={{
+                maxWidth: 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                ...(hasOutputs && {
+                  cursor: 'pointer',
+                  '&:hover': { textDecoration: 'underline' },
+                }),
+              }}
               onClick={(e) => {
                 e.stopPropagation()
                 if (hasOutputs) setOpen(!open)
@@ -206,7 +139,7 @@ function FailureRow({ row, release, classes, defaultExpanded }) {
             label={row.failure_count}
             color="error"
             size="small"
-            className={classes.failureChip}
+            sx={{ fontWeight: 'bold' }}
           />
         </TableCell>
         <TableCell>
@@ -232,10 +165,10 @@ function FailureRow({ row, release, classes, defaultExpanded }) {
 
       {hasOutputs && (
         <TableRow>
-          <TableCell colSpan={5} className={classes.collapseCell}>
+          <TableCell colSpan={5} sx={{ paddingTop: 0, paddingBottom: 0 }}>
             <Collapse in={open} timeout="auto" unmountOnExit>
-              <Box className={classes.collapseContent}>
-                <Box className={classes.summaryBar}>
+              <Box sx={(theme) => ({ margin: theme.spacing(1) })}>
+                <SummaryBar>
                   <Tooltip title={new Date(row.first_failure).toLocaleString()}>
                     <Chip
                       label={`First failure: ${relativeTime(
@@ -268,19 +201,25 @@ function FailureRow({ row, release, classes, defaultExpanded }) {
                       />
                     </Tooltip>
                   )}
-                  <Box className={classes.flexSpacer} />
+                  <Box sx={{ flex: 1 }} />
                   <Typography variant="caption" color="text.secondary">
                     {row.outputs.length} failure
                     {row.outputs.length !== 1 ? 's' : ''} recorded
                   </Typography>
-                </Box>
+                </SummaryBar>
                 {row.outputs.slice(0, 5).map((output, idx) => (
-                  <Box key={idx} className={classes.outputCard}>
-                    <Box className={classes.outputHeader}>
+                  <OutputCard key={idx}>
+                    <Box
+                      sx={(theme) => ({
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: theme.spacing(2),
+                      })}
+                    >
                       <Typography
                         variant="body2"
                         noWrap
-                        className={classes.jobName}
+                        sx={{ fontWeight: 500, flex: 1, minWidth: 0 }}
                       >
                         {output.prow_job_name}
                       </Typography>
@@ -290,7 +229,7 @@ function FailureRow({ row, release, classes, defaultExpanded }) {
                         <Typography
                           variant="body2"
                           color="text.secondary"
-                          className={classes.noWrap}
+                          sx={{ whiteSpace: 'nowrap' }}
                         >
                           {relativeTime(new Date(output.failed_at), Date.now())}
                         </Typography>
@@ -302,27 +241,30 @@ function FailureRow({ row, release, classes, defaultExpanded }) {
                           startIcon={<DirectionsBoat />}
                           href={encodeURI(output.prow_job_url)}
                           onClick={(e) => e.stopPropagation()}
-                          className={classes.prowButton}
+                          sx={{ minWidth: 'auto' }}
                         />
                       </Tooltip>
                     </Box>
                     {output.output ? (
-                      <pre className={classes.outputPre}>
+                      <OutputPre>
                         {output.output.substring(0, 500)}
                         {output.output.length > 500 ? '...' : ''}
-                      </pre>
+                      </OutputPre>
                     ) : (
                       <Typography variant="caption" color="text.secondary">
                         No output captured
                       </Typography>
                     )}
-                  </Box>
+                  </OutputCard>
                 ))}
                 {row.outputs.length > 5 && (
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    className={classes.moreText}
+                    sx={(theme) => ({
+                      display: 'block',
+                      marginTop: theme.spacing(1),
+                    })}
                   >
                     ...and {row.outputs.length - 5} more
                   </Typography>
@@ -337,15 +279,12 @@ function FailureRow({ row, release, classes, defaultExpanded }) {
 }
 
 FailureRow.propTypes = {
-  classes: PropTypes.object.isRequired,
   defaultExpanded: PropTypes.bool,
   release: PropTypes.string.isRequired,
   row: PropTypes.object.isRequired,
 }
 
 export default function RecentTestFailures(props) {
-  const classes = useStyles()
-
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({ rows: [], total_rows: 0 })
@@ -411,27 +350,41 @@ export default function RecentTestFailures(props) {
 
   if (fetchError !== '') {
     return (
-      <Card elevation={5} className={classes.card}>
+      <ContentCard elevation={5}>
         <Alert severity="error">{fetchError}</Alert>
-      </Card>
+      </ContentCard>
     )
   }
 
   const title = props.title || 'New Test Failures'
 
   return (
-    <Card elevation={5} className={classes.card}>
-      <Box className={classes.cardHeader}>
-        <ErrorOutlineIcon className={classes.headerIcon} />
-        <Typography variant="h6" className={classes.cardTitle}>
+    <ContentCard elevation={5}>
+      <CardHeader>
+        <ErrorOutlineIcon
+          sx={(theme) => ({
+            marginRight: theme.spacing(1),
+            color: theme.palette.error.main,
+          })}
+        />
+        <Typography
+          variant="h6"
+          sx={{ textDecoration: 'none', color: 'inherit' }}
+        >
           {title}
         </Typography>
         <Tooltip
           title={`Tests that failed in the last ${period} but did not fail in the ${previousPeriod} before that. This helps surface new regressions.`}
         >
-          <InfoIcon className={classes.infoIcon} />
+          <InfoIcon
+            sx={(theme) => ({
+              marginLeft: theme.spacing(1),
+              fontSize: 20,
+              opacity: 0.6,
+            })}
+          />
         </Tooltip>
-        <Box className={classes.flexSpacer} />
+        <Box sx={{ flex: 1 }} />
         {isLoaded && (
           <Chip
             label={`${data.total_rows} test${data.total_rows !== 1 ? 's' : ''}`}
@@ -439,22 +392,36 @@ export default function RecentTestFailures(props) {
             variant="outlined"
           />
         )}
-      </Box>
+      </CardHeader>
 
       {!isLoaded ? (
-        <Box className={classes.loadingContainer}>
+        <Box
+          sx={(theme) => ({
+            textAlign: 'center',
+            paddingTop: theme.spacing(4),
+            paddingBottom: theme.spacing(4),
+          })}
+        >
           <CircularProgress size={36} />
           <Typography
             variant="body2"
             color="text.secondary"
-            className={classes.loadingText}
+            sx={(theme) => ({ marginTop: theme.spacing(1) })}
           >
             Loading recent failures...
           </Typography>
         </Box>
       ) : data.rows === null || data.rows.length === 0 ? (
-        <Box className={classes.emptyState}>
-          <ExpandMoreIcon className={classes.emptyIcon} />
+        <Box
+          sx={(theme) => ({ textAlign: 'center', padding: theme.spacing(4) })}
+        >
+          <ExpandMoreIcon
+            sx={(theme) => ({
+              fontSize: 48,
+              opacity: 0.3,
+              marginBottom: theme.spacing(1),
+            })}
+          />
           <Typography variant="body1" color="text.secondary">
             No new test failures detected
           </Typography>
@@ -505,7 +472,6 @@ export default function RecentTestFailures(props) {
                   key={row.test_id || idx}
                   row={row}
                   release={props.release}
-                  classes={classes}
                   defaultExpanded={false}
                 />
               ))}
@@ -525,7 +491,7 @@ export default function RecentTestFailures(props) {
           />
         </TableContainer>
       )}
-    </Card>
+    </ContentCard>
   )
 }
 

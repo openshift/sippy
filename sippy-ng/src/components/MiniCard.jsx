@@ -7,7 +7,6 @@ import {
   Tooltip,
 } from '@mui/material'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { parseVariantName } from '../helpers'
 import { useTheme } from '@mui/material/styles'
 import chroma from 'chroma-js'
@@ -15,17 +14,7 @@ import PassRateIcon from './PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-const useStyles = makeStyles({
-  cardContent: {
-    textAlign: 'center',
-  },
-  miniCard: (_props) => ({
-    height: '100%',
-  }),
-})
-
 export default function MiniCard({ tooltip = '', ...props }) {
-  const classes = useStyles(props)
   const theme = useTheme()
 
   const colorScale = chroma
@@ -58,16 +47,9 @@ export default function MiniCard({ tooltip = '', ...props }) {
   )
 
   let card = (
-    <Card
-      elevation={5}
-      className={`${classes.miniCard}`}
-      sx={{ backgroundColor: bgColor }}
-    >
+    <Card elevation={5} sx={{ height: '100%', backgroundColor: bgColor }}>
       <CardHeader title={variantInfo.name} subheader={variantInfo.variant} />
-      <CardContent
-        className={`${classes.cardContent}`}
-        sx={{ textAlign: 'center' }}
-      >
+      <CardContent sx={{ textAlign: 'center' }}>
         <Grid
           container
           direction="row"

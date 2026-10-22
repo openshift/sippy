@@ -8,34 +8,12 @@ import {
   Tooltip,
 } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
-import { makeStyles } from '../makeStyles'
-
 import PropTypes from 'prop-types'
 import React from 'react'
 import Slider from '@mui/material/Slider'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-
-const useStyles = makeStyles((theme) => ({
-  formControl: {
-    margin: theme.spacing(1),
-    minWidth: '20px',
-  },
-  selectEmpty: {
-    marginTop: theme.spacing(2),
-  },
-  headerName: {
-    width: '220px',
-    padding: '0px',
-    margin: '0px',
-  },
-  summary: {
-    backgroundColor: 'rgb(0, 153, 255)',
-    margin: '0px !important',
-    padding: '0px',
-  },
-}))
 
 export default function AdvancedOptions(props) {
   const {
@@ -59,8 +37,6 @@ export default function AdvancedOptions(props) {
     setFlakeAsFailure,
     setIncludeMultiReleaseAnalysis,
   } = props
-
-  const classes = useStyles()
 
   const handleChangeConfidence = (event, newValue) => {
     setConfidence(newValue)
@@ -108,12 +84,16 @@ export default function AdvancedOptions(props) {
   return (
     <FormControl
       variant="standard"
-      className={classes.formControl}
+      sx={(theme) => ({ margin: theme.spacing(1), minWidth: '20px' })}
       component="fieldset"
     >
-      <Accordion className={classes.headerName}>
+      <Accordion sx={{ width: '220px', p: 0, m: 0 }}>
         <AccordionSummary
-          className={classes.summary}
+          sx={{
+            backgroundColor: 'rgb(0, 153, 255)',
+            m: '0px !important',
+            p: 0,
+          }}
           expandIcon={<ExpandMore />}
         >
           <Typography className="checkboxlist-label">

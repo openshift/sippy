@@ -24,48 +24,9 @@ import {
   getForceClosePreviewUrl,
   getForceCloseRegressionsUrl,
 } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
 import { SippyCapabilitiesContext } from '../App'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useState } from 'react'
-
-const useStyles = makeStyles((theme) => ({
-  triggerButton: {
-    marginLeft: '10px',
-  },
-  loadingContainer: {
-    padding: theme.spacing(3),
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginLeft: theme.spacing(2),
-  },
-  alert: {
-    marginBottom: theme.spacing(2),
-    marginTop: theme.spacing(2),
-  },
-  description: {
-    marginBottom: theme.spacing(2),
-  },
-  spacingTop: {
-    marginTop: theme.spacing(2),
-  },
-  tableContainer: {
-    maxHeight: 300,
-    overflow: 'auto',
-    marginBottom: theme.spacing(2),
-  },
-  sectionHeading: {
-    marginTop: theme.spacing(2),
-  },
-  dateCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(0.5),
-  },
-}))
 
 // ForceCloseRegressionsModal renders a button that, for a resolved triage, lets a
 // user preview and then force close the regressions associated with the triage.
@@ -76,7 +37,6 @@ export default function ForceCloseRegressionsModal({
   resolved,
   setIsUpdated,
 }) {
-  const classes = useStyles()
   const capabilitiesContext = useContext(SippyCapabilitiesContext)
   const writeEndpointsEnabled = capabilitiesContext.includes('write_endpoints')
 
@@ -218,7 +178,7 @@ export default function ForceCloseRegressionsModal({
       )
     }
     return (
-      <Box className={classes.tableContainer}>
+      <Box sx={{ maxHeight: 300, overflow: 'auto', mb: 2 }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
@@ -239,14 +199,18 @@ export default function ForceCloseRegressionsModal({
                 <TableCell>
                   {regression.first_failure_after_resolution ? (
                     <Tooltip title="Failures were observed after the triage resolution date. Force closing anyway will close this regression.">
-                      <Box className={classes.dateCell}>
+                      <Box
+                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                      >
                         <Warning color="warning" fontSize="small" />
                         {formatDate(regression.first_failure_after_resolution)}
                       </Box>
                     </Tooltip>
                   ) : (
                     <Tooltip title="No failures observed after the triage resolution date.">
-                      <Box className={classes.dateCell}>
+                      <Box
+                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                      >
                         <CheckCircle color="success" fontSize="small" />
                         None
                       </Box>
@@ -298,7 +262,7 @@ export default function ForceCloseRegressionsModal({
             color="warning"
             disabled={!resolved}
             startIcon={<Block />}
-            className={classes.triggerButton}
+            sx={{ ml: '10px' }}
           >
             Force Close Regressions
           </Button>
@@ -309,29 +273,36 @@ export default function ForceCloseRegressionsModal({
         <DialogTitle>Force Close Regressions</DialogTitle>
         <DialogContent>
           {loading && (
-            <Box className={classes.loadingContainer}>
+            <Box
+              sx={{
+                p: 3,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
               <CircularProgress />
-              <Typography variant="body1" className={classes.loadingText}>
+              <Typography variant="body1" sx={{ ml: 2 }}>
                 Loading preview...
               </Typography>
             </Box>
           )}
 
           {!loading && error && (
-            <Alert severity="error" className={classes.alert}>
+            <Alert severity="error" sx={{ mb: 2, mt: 2 }}>
               {error}
             </Alert>
           )}
 
           {!loading && !error && preview && (
             <Fragment>
-              <DialogContentText className={classes.description}>
+              <DialogContentText sx={{ mb: 2 }}>
                 Review the regressions below before force closing. Force closing
                 marks the eligible regressions as closed. This operation is
                 idempotent; regressions that are already closed are skipped.
               </DialogContentText>
 
-              <Typography variant="h6" className={classes.sectionHeading}>
+              <Typography variant="h6" sx={{ mt: 2 }}>
                 Would Close ({wouldClose.length})
               </Typography>
               {renderRegressionTable(
@@ -339,7 +310,7 @@ export default function ForceCloseRegressionsModal({
                 'No regressions are eligible to be force closed (they may already be closed).'
               )}
 
-              <Typography variant="h6" className={classes.sectionHeading}>
+              <Typography variant="h6" sx={{ mt: 2 }}>
                 Would Not Close ({wouldNotClose.length})
               </Typography>
               {renderRegressionTable(
@@ -348,7 +319,7 @@ export default function ForceCloseRegressionsModal({
               )}
 
               {nothingToClose ? (
-                <Alert severity="info" className={classes.spacingTop}>
+                <Alert severity="info" sx={{ mt: 2 }}>
                   There are no regressions to force close.
                 </Alert>
               ) : (
@@ -373,7 +344,7 @@ export default function ForceCloseRegressionsModal({
                     'Required. Explain why these regressions are being force closed.'
                   }
                   disabled={submitting}
-                  className={classes.spacingTop}
+                  sx={{ mt: 2 }}
                 />
               )}
             </Fragment>

@@ -9,23 +9,12 @@ import {
   Tooltip,
 } from '@mui/material'
 import { DirectionsBoat } from '@mui/icons-material'
-import { makeStyles } from '../makeStyles'
 import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((_theme) => ({
-  table: {
-    '& .MuiTableCell-root': {
-      border: '1px solid #cccccc',
-    },
-  },
-}))
-
 export function TestOutputs(props) {
-  const classes = useStyles()
-
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [outputs, setOutputs] = React.useState([])
@@ -83,7 +72,9 @@ export function TestOutputs(props) {
 
   return (
     <Fragment>
-      <TableContainer className={classes.table}>
+      <TableContainer
+        sx={{ '& .MuiTableCell-root': { border: '1px solid #cccccc' } }}
+      >
         <Table aria-label="test-outputs" style={{ tableLayout: 'fixed' }}>
           <TableBody>
             {outputs.map((v, index) => (

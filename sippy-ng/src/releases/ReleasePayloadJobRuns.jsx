@@ -11,25 +11,21 @@ import {
 } from '@mui/material'
 import { Check, DirectionsBoat, FilterList } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
-import { makeStyles } from '../makeStyles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
-import { useTheme } from '@mui/material/styles'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import JobRunLabelDetails from '../components/JobRunLabelDetails'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  rowPhaseSucceeded: {
+const PhaseColoredDataGrid = styled(DataGrid)(({ theme }) => ({
+  '& .rowPhaseSucceeded': {
     backgroundColor: theme.palette.success.light,
   },
-  rowPhaseFailed: {
+  '& .rowPhaseFailed': {
     backgroundColor: theme.palette.error.light,
-  },
-  title: {
-    textAlign: 'center',
   },
 }))
 
@@ -43,9 +39,6 @@ function ReleasePayloadJobRuns({
   sort: sortDefault = 'asc',
   ...props
 }) {
-  const theme = useTheme()
-  const classes = useStyles(theme)
-
   const columns = [
     {
       field: 'release_tag',
@@ -368,13 +361,13 @@ function ReleasePayloadJobRuns({
 
   return (
     <>
-      <DataGrid
+      <PhaseColoredDataGrid
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={columns}
         columnVisibilityModel={{ release_tag: false }}
         autoHeight={true}
-        getRowClassName={(params) => classes['rowPhase' + params.row.state]}
+        getRowClassName={(params) => 'rowPhase' + params.row.state}
         disableColumnFilter={briefTable}
         disableColumnMenu={true}
         paginationModel={{ pageSize, page }}

@@ -1,7 +1,6 @@
 import './ComponentReadiness.css'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { dateFormat, formatLongDate } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
 import { useNavigate } from 'react-router'
 import { useTheme } from '@mui/material/styles'
 import AdvancedOptions from './AdvancedOptions'
@@ -15,22 +14,19 @@ import SidebarTestFilters from './SidebarTestFilters'
 import Tooltip from '@mui/material/Tooltip'
 import ViewPicker from './ViewPicker'
 
-export const useStyles = makeStyles((theme) => ({
-  crRelease: {
-    textAlign: 'center',
-    marginBottom: 50,
-    fontWeight: 'bold',
-    padding: 5,
-    backgroundColor:
-      theme.palette.mode == 'dark'
-        ? theme.palette.grey[800]
-        : theme.palette.grey[300],
-  },
-}))
+export const crReleaseSx = (theme) => ({
+  textAlign: 'center',
+  marginBottom: 50,
+  fontWeight: 'bold',
+  padding: 5,
+  backgroundColor:
+    theme.palette.mode == 'dark'
+      ? theme.palette.grey[800]
+      : theme.palette.grey[300],
+})
 
 export default function CompReadyMainInputs({ controlsOpts }) {
   const theme = useTheme()
-  const classes = useStyles(theme)
   // checkBoxHiddenIncludeVariants defines what variants are excluded when creating Include Variant CheckBox
   // This could also be deduced from varsContext.dbGroupByVariants
   const checkBoxHiddenIncludeVariants = new Set([
@@ -113,7 +109,18 @@ export default function CompReadyMainInputs({ controlsOpts }) {
         enabled={shouldDisplayViewPicker()}
       />
 
-      <div className={classes.crRelease}>
+      <div
+        style={{
+          textAlign: 'center',
+          marginBottom: 50,
+          fontWeight: 'bold',
+          padding: 5,
+          backgroundColor:
+            theme.palette.mode == 'dark'
+              ? theme.palette.grey[800]
+              : theme.palette.grey[300],
+        }}
+      >
         <ReleaseSelector
           label="Sample Release"
           tooltip="Release and dates to compare for regression against the basis (historical) release"
@@ -135,7 +142,18 @@ export default function CompReadyMainInputs({ controlsOpts }) {
           setPayloadTags={varsContext.setSamplePayloadTags}
         ></ReleaseSelector>
       </div>
-      <div className={classes.crRelease}>
+      <div
+        style={{
+          textAlign: 'center',
+          marginBottom: 50,
+          fontWeight: 'bold',
+          padding: 5,
+          backgroundColor:
+            theme.palette.mode == 'dark'
+              ? theme.palette.grey[800]
+              : theme.palette.grey[300],
+        }}
+      >
         <ReleaseSelector
           version={varsContext.baseRelease}
           label="Basis Release"

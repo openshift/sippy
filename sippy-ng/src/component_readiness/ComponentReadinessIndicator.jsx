@@ -17,7 +17,6 @@ import {
   getTriagesAPIUrl,
 } from './CompReadyUtils'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { relativeTime } from '../helpers'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import Grid from '@mui/material/Grid'
@@ -28,37 +27,8 @@ import React, { useEffect, useState } from 'react'
 import Tooltip from '@mui/material/Tooltip'
 import WarningIcon from '@mui/icons-material/Warning'
 
-const useStyles = makeStyles((theme) => ({
-  testName: {
-    fontWeight: 500,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-  },
-  variantChip: {
-    height: 16,
-    fontSize: '0.65rem',
-  },
-  statBox: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: theme.spacing(2),
-    borderRadius: theme.spacing(1),
-    backgroundColor: theme.palette.action.hover,
-  },
-  regressionsList: {
-    maxHeight: 240,
-    overflow: 'auto',
-    backgroundColor: theme.palette.action.hover,
-    borderRadius: theme.spacing(1),
-  },
-}))
-
 export default function ComponentReadinessIndicator({ release }) {
   const theme = useTheme()
-  const classes = useStyles()
   const [regressions, setRegressions] = useState(null)
   const [isLoaded, setIsLoaded] = useState(false)
 
@@ -209,7 +179,15 @@ export default function ComponentReadinessIndicator({ release }) {
                 </Button>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box className={classes.statBox}>
+                <Box
+                  sx={(theme) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    p: 2,
+                    borderRadius: theme.spacing(1),
+                    backgroundColor: theme.palette.action.hover,
+                  })}
+                >
                   <WarningIcon sx={{ mr: 2, color: unresolvedColor }} />
                   <Box>
                     <Typography variant="h3" sx={{ color: unresolvedColor }}>
@@ -221,7 +199,15 @@ export default function ComponentReadinessIndicator({ release }) {
                   </Box>
                 </Box>
 
-                <Box className={classes.statBox}>
+                <Box
+                  sx={(theme) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    p: 2,
+                    borderRadius: theme.spacing(1),
+                    backgroundColor: theme.palette.action.hover,
+                  })}
+                >
                   <HealingIcon sx={{ mr: 2, color: 'warning.main' }} />
                   <Box>
                     <Typography variant="h3" color="warning.main">
@@ -254,7 +240,14 @@ export default function ComponentReadinessIndicator({ release }) {
                   </Typography>
                 </Box>
               ) : (
-                <List className={classes.regressionsList}>
+                <List
+                  sx={(theme) => ({
+                    maxHeight: 240,
+                    overflow: 'auto',
+                    backgroundColor: theme.palette.action.hover,
+                    borderRadius: theme.spacing(1),
+                  })}
+                >
                   {regressions.recent.map((regression, index) => {
                     // Get the test details URL from the regression links
                     const viewName = `${release}-main`
@@ -278,7 +271,14 @@ export default function ComponentReadinessIndicator({ release }) {
                             primary={
                               <Typography
                                 variant="body2"
-                                className={classes.testName}
+                                sx={{
+                                  fontWeight: 500,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                }}
                               >
                                 {regression.test_name}
                               </Typography>
@@ -323,7 +323,10 @@ export default function ComponentReadinessIndicator({ release }) {
                                             key={vIndex}
                                             label={variant}
                                             size="small"
-                                            className={classes.variantChip}
+                                            sx={{
+                                              height: 16,
+                                              fontSize: '0.65rem',
+                                            }}
                                           />
                                         ))}
                                     </Box>

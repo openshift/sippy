@@ -16,9 +16,9 @@ export default function CompCapTestRow(props) {
 
   // Put the testName on the left side with no link.
   const testNameColumn = (
-    <TableCell className={classes.componentName} key={testCols.test_name}>
+    <TableCell sx={classes.componentName} key={testCols.test_name}>
       <Tooltip title={testCols.test_id}>
-        <Typography className={classes.crCellName}>
+        <Typography sx={classes.crCellName}>
           {[testCols.test_suite, testCols.test_name].filter(Boolean).join('.')}
         </Typography>
       </Tooltip>

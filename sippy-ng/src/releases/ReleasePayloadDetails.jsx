@@ -11,7 +11,6 @@ import {
 import { filterFor, safeEncodeURIComponent } from '../helpers'
 import { Fragment } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { WarningOutlined } from '@mui/icons-material'
 import Alert from '@mui/material/Alert'
@@ -22,18 +21,7 @@ import ReleasePayloadJobRuns from './ReleasePayloadJobRuns'
 import ReleasePayloadPullRequests from './ReleasePayloadPullRequests'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const useStyles = makeStyles((theme) => ({
-  title: {
-    textAlign: 'center',
-  },
-  backdrop: {
-    zIndex: theme.zIndex.drawer + 1,
-    color: '#fff',
-  },
-}))
-
 export default function ReleasePayloadDetails(props) {
-  const classes = useStyles()
   const location = useLocation()
   const basePath = `/release/${props.release}/tags/${props.releaseTag}`
 
@@ -121,7 +109,7 @@ export default function ReleasePayloadDetails(props) {
         currentPage={releaseTag}
       />
       <Container maxWidth={'xl'}>
-        <Typography variant="h4" gutterBottom className={classes.title}>
+        <Typography variant="h4" gutterBottom sx={{ textAlign: 'center' }}>
           {releaseTag}{' '}
         </Typography>
 

@@ -1,7 +1,6 @@
 import { filterFor } from '../helpers'
 import { Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { StringParam, useQueryParam } from 'use-query-params'
 
 import PayloadCalendar from './PayloadCalendar'
@@ -12,18 +11,7 @@ import React, { Fragment } from 'react'
 import ReleasePayloadTable from './ReleasePayloadTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const useStyles = makeStyles((theme) => ({
-  title: {
-    textAlign: 'center',
-  },
-  backdrop: {
-    zIndex: theme.zIndex.drawer + 1,
-    color: '#fff',
-  },
-}))
-
 export default function PayloadStream(props) {
-  const classes = useStyles()
   const location = useLocation()
   const basePath = `/release/${props.release}/streams/${props.arch}/${props.stream}`
 
@@ -55,7 +43,7 @@ export default function PayloadStream(props) {
         }
         currentPage={currPage}
       />
-      <Typography variant="h4" gutterBottom className={classes.title}>
+      <Typography variant="h4" gutterBottom sx={{ textAlign: 'center' }}>
         {arch} {stream} {props.release} Payload Stream
       </Typography>
 
@@ -134,7 +122,7 @@ export default function PayloadStream(props) {
         <Route
           path="payloads"
           element={
-            <Typography variant="h4" gutterBottom className={classes.title}>
+            <Typography variant="h4" gutterBottom sx={{ textAlign: 'center' }}>
               <ReleasePayloadTable
                 release={props.release}
                 filterModel={payloadsFilterModel}

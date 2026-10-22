@@ -14,39 +14,11 @@ import {
   Tooltip,
 } from '@mui/material'
 import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
 import Button from '@mui/material/Button'
 import ExistingTriageSelector from './ExistingTriageSelector'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
-
-const useStyles = makeStyles({
-  triageForm: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-    padding: '8px 0',
-  },
-  formFields: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    gap: 12,
-    width: '100%',
-  },
-  validationErrors: {
-    color: 'red',
-  },
-  submitButton: {
-    alignSelf: 'flex-start',
-    minWidth: '120px',
-  },
-  infoIcon: {
-    marginLeft: 8,
-    verticalAlign: 'middle',
-  },
-})
 
 export default function TriageFields({
   triageId,
@@ -61,7 +33,6 @@ export default function TriageFields({
   setExistingTriageId,
   handleAddToExistingTriage,
 }) {
-  const classes = useStyles()
   const { sampleRelease } = useContext(CompReadyVarsContext)
 
   const [matchingTriages, setMatchingTriages] = React.useState([])
@@ -235,8 +206,23 @@ export default function TriageFields({
   ]
 
   return (
-    <div className={classes.triageForm}>
-      <div className={classes.formFields}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        padding: '8px 0',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: 12,
+          width: '100%',
+        }}
+      >
         <TextField
           name="url"
           label="Jira URL"
@@ -290,12 +276,12 @@ export default function TriageFields({
           variant="contained"
           color="primary"
           onClick={handleTriageEntrySubmit}
-          className={classes.submitButton}
+          sx={{ alignSelf: 'flex-start', minWidth: '120px' }}
         >
           {submitButtonText}
         </Button>
         {triageValidationErrors && (
-          <FormHelperText className={classes.validationErrors}>
+          <FormHelperText sx={{ color: 'red' }}>
             {triageValidationErrors.map((text, index) => (
               <span key={index}>
                 {text}
@@ -310,7 +296,10 @@ export default function TriageFields({
           <h4>
             Triage Entries with Matching Jira Exist
             <Tooltip title="It is likely unwanted to create a new triage entry for the same Jira. Please select an existing triage entry to add to instead.">
-              <InfoIcon fontSize="small" className={classes.infoIcon} />
+              <InfoIcon
+                fontSize="small"
+                sx={{ ml: 1, verticalAlign: 'middle' }}
+              />
             </Tooltip>
           </h4>
           <ExistingTriageSelector

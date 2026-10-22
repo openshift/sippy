@@ -12,31 +12,19 @@ import {
   jiraUrlPrefix,
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  ellipsisText: {
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  customTooltip: {
-    maxWidth: 600,
-    fontSize: '0.875rem',
-    whiteSpace: 'pre-line',
-  },
-  centeredHeading: {
-    textAlign: 'center',
-  },
-  successIcon: {
-    color: theme.palette.success.light,
-  },
-  errorIcon: {
-    color: theme.palette.error.light,
-  },
-}))
+const ellipsisTextSx = {
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+const customTooltipSx = {
+  maxWidth: 600,
+  fontSize: '0.875rem',
+  whiteSpace: 'pre-line',
+}
 
 export default function RegressionPotentialMatchesTab({
   regressionId,
@@ -45,7 +33,6 @@ export default function RegressionPotentialMatchesTab({
   completeTriageSubmission,
   onMatchesFound,
 }) {
-  const classes = useStyles()
   const [matches, setMatches] = useState([])
   const [loadingMatches, setLoadingMatches] = useState(false)
   const [matchesError, setMatchesError] = useState('')
@@ -109,7 +96,7 @@ export default function RegressionPotentialMatchesTab({
       <Tooltip
         title={tooltipText}
         placement="top"
-        classes={{ tooltip: classes.customTooltip }}
+        slotProps={{ tooltip: { sx: customTooltipSx } }}
       >
         <Typography variant="body2">{count}</Typography>
       </Tooltip>
@@ -181,11 +168,13 @@ export default function RegressionPotentialMatchesTab({
               new Date()
             )} (${formatDateToSeconds(param.value)})`}
           >
-            <CheckCircle className={classes.successIcon} />
+            <CheckCircle
+              sx={(theme) => ({ color: theme.palette.success.light })}
+            />
           </Tooltip>
         ) : (
           <Tooltip title="Not resolved">
-            <ErrorIcon className={classes.errorIcon} />
+            <ErrorIcon sx={(theme) => ({ color: theme.palette.error.light })} />
           </Tooltip>
         ),
     },
@@ -198,7 +187,7 @@ export default function RegressionPotentialMatchesTab({
       },
       renderCell: (param) => (
         <Tooltip title={param.value || 'No description'}>
-          <Typography className={classes.ellipsisText}>
+          <Typography sx={ellipsisTextSx}>
             {param.value || 'No description'}
           </Typography>
         </Tooltip>
@@ -277,7 +266,7 @@ export default function RegressionPotentialMatchesTab({
           <Tooltip
             title={tooltipText}
             placement="top"
-            classes={{ tooltip: classes.customTooltip }}
+            slotProps={{ tooltip: { sx: customTooltipSx } }}
           >
             <Typography variant="body2">
               {Math.round(bestOverlap.overlap_percent)}%
@@ -345,7 +334,7 @@ export default function RegressionPotentialMatchesTab({
 
   return (
     <Fragment>
-      <h3 className={classes.centeredHeading}>Potential Matching Triages</h3>
+      <h3 style={{ textAlign: 'center' }}>Potential Matching Triages</h3>
       {loadingMatches && <Typography>Loading matching triages...</Typography>}
       {matchesError && (
         <Typography color="error">Error: {matchesError}</Typography>

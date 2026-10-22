@@ -1,6 +1,5 @@
 import { getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
-import { Tab, Tabs } from '@mui/material'
+import { Tab, Tabs, Typography } from '@mui/material'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import ExistingTriageSelector from './ExistingTriageSelector'
@@ -8,17 +7,6 @@ import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import RegressionPotentialMatchesTab from './RegressionPotentialMatchesTab'
 import TriageFields from './TriageFields'
-
-const useStyles = makeStyles((_theme) => ({
-  noMatchesMessage: {
-    textAlign: 'center',
-    padding: '8px',
-    fontStyle: 'italic',
-    backgroundColor: '#f5f5f5',
-    borderRadius: '4px',
-    margin: '8px 0',
-  },
-}))
 
 export default function AddRegressionPanel({
   triages,
@@ -31,8 +19,7 @@ export default function AddRegressionPanel({
   setTriageEntryData,
   commonClasses,
 }) {
-  const localClasses = useStyles()
-  const classes = { ...commonClasses, ...localClasses }
+  const classes = commonClasses
   triages.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
 
   // We can only find potential matching triages when we are triaging a single regression at a time
@@ -119,14 +106,14 @@ export default function AddRegressionPanel({
   return (
     <Fragment>
       <DialogTitle>Triage</DialogTitle>
-      <DialogContent className={classes.dialogContent}>
+      <DialogContent sx={classes.dialogContent}>
         <Tabs
           value={tabIndex}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="primary"
           variant="fullWidth"
-          className={classes.tabsContainer}
+          sx={classes.tabsContainer}
         >
           {hasSingleRegression && (
             <Tab
@@ -152,7 +139,9 @@ export default function AddRegressionPanel({
         )}
         {addToExisting && (
           <Fragment>
-            <h3 className={classes.centeredHeading}>Add to existing Triage</h3>
+            <Typography variant="h6" sx={classes.centeredHeading}>
+              Add to existing Triage
+            </Typography>
             <ExistingTriageSelector
               triages={triages}
               existingTriageId={existingTriageId}
@@ -163,7 +152,9 @@ export default function AddRegressionPanel({
         )}
         {addToNew && (
           <Fragment>
-            <h3 className={classes.centeredHeading}>Create new Triage</h3>
+            <Typography variant="h6" sx={classes.centeredHeading}>
+              Create new Triage
+            </Typography>
             <TriageFields
               triages={triages}
               setAlertText={setAlertText}

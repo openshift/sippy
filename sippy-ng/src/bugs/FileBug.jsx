@@ -24,26 +24,9 @@ import {
   getBugsAPIUrl,
   getTriagesAPIUrl,
 } from '../component_readiness/CompReadyUtils'
-import { makeStyles } from '../makeStyles'
 import BugButton from './BugButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useState } from 'react'
-
-const useStyles = makeStyles((theme) => ({
-  alignedButton: {
-    float: 'left',
-  },
-  fieldLabel: {
-    marginTop: theme.spacing(2),
-    marginBottom: theme.spacing(1),
-  },
-  chipContainer: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
-    marginTop: theme.spacing(1),
-  },
-}))
 
 export default function FileBug({
   testName,
@@ -60,7 +43,6 @@ export default function FileBug({
   setHasBeenTriaged,
   url,
 }) {
-  const classes = useStyles()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formData, setFormData] = useState({
     summary: '',
@@ -368,7 +350,7 @@ See the [sippy test details|${url}] for additional context.
         <Button
           variant="contained"
           color="primary"
-          className={classes.alignedButton}
+          sx={{ float: 'left' }}
           onClick={handleOpenModal}
         >
           File a new bug
@@ -399,7 +381,7 @@ See the [sippy test details|${url}] for additional context.
         </DialogTitle>
 
         <DialogContent dividers>
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
             Summary *
           </Typography>
           <TextField
@@ -412,7 +394,7 @@ See the [sippy test details|${url}] for additional context.
             helperText="Title of the issue"
           />
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
             Description *
           </Typography>
           <TextField
@@ -427,7 +409,7 @@ See the [sippy test details|${url}] for additional context.
             helperText="Detailed description including test failure information"
           />
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
             Affects Versions *
           </Typography>
           <TextField
@@ -440,7 +422,7 @@ See the [sippy test details|${url}] for additional context.
             fullWidth
             margin="normal"
           />
-          <Box className={classes.chipContainer}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
             {formData.affectsVersions.map((version) => (
               <Chip
                 key={version}
@@ -452,7 +434,7 @@ See the [sippy test details|${url}] for additional context.
             ))}
           </Box>
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
             Components *
           </Typography>
           <TextField
@@ -470,7 +452,7 @@ See the [sippy test details|${url}] for additional context.
                 : ''
             }
           />
-          <Box className={classes.chipContainer}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
             {(!isNaN(jiraComponentID) || jiraComponentName) && (
               <Chip
                 label={`Computed Component: ${jiraComponentName || 'Unknown'}${
@@ -491,7 +473,7 @@ See the [sippy test details|${url}] for additional context.
             ))}
           </Box>
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
             Labels
           </Typography>
           <TextField
@@ -504,7 +486,7 @@ See the [sippy test details|${url}] for additional context.
             fullWidth
             margin="normal"
           />
-          <Box className={classes.chipContainer}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
             {formData.labels.map((label) => (
               <Chip
                 key={label}

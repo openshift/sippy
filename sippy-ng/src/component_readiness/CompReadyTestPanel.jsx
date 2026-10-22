@@ -38,8 +38,8 @@ export default function CompReadyTestPanel(props) {
 
   const tableCell = (label, idx) => {
     return (
-      <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
-        <Typography className={classes.crCellName}>{label}</Typography>
+      <TableCell sx={classes.crColResult} key={'column' + '-' + idx}>
+        <Typography sx={classes.crCellName}>{label}</Typography>
       </TableCell>
     )
   }
@@ -47,10 +47,10 @@ export default function CompReadyTestPanel(props) {
   const tableTooltipCell = (label, idx, title) => {
     return (
       <Tooltip title={title}>
-        <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
+        <TableCell sx={classes.crColResult} key={'column' + '-' + idx}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <InfoIcon style={{ fontSize: '16px', fontWeight: 'lighter' }} />
-            <Typography className={classes.crCellName}>{label}</Typography>
+            <Typography sx={classes.crCellName}>{label}</Typography>
           </div>
         </TableCell>
       </Tooltip>

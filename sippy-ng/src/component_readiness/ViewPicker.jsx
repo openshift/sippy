@@ -1,15 +1,12 @@
-import { FormControl, InputLabel, MenuItem, Select } from '@mui/material'
-import { useStyles } from './CompReadyMainInputs'
-import { useTheme } from '@mui/material/styles'
+import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material'
+import { crReleaseSx } from './CompReadyMainInputs'
 import PropTypes from 'prop-types'
 import React from 'react'
 
 export default function ViewPicker(props) {
-  const theme = useTheme()
-  const classes = useStyles(theme)
   if (!props.enabled) return null
   return (
-    <div className={classes.crRelease}>
+    <Box sx={crReleaseSx}>
       <FormControl variant="standard" sx={{ minWidth: 100 }}>
         <InputLabel> View </InputLabel>
         <Select
@@ -33,7 +30,7 @@ export default function ViewPicker(props) {
           ))}
         </Select>
       </FormControl>
-    </div>
+    </Box>
   )
 }
 

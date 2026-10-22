@@ -1,31 +1,12 @@
 import { Button, FormHelperText, Tab, Tabs } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { formColumnName, getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
 import { relativeTime } from '../helpers'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import TriageFields from './TriageFields'
-
-const useStyles = makeStyles((theme) => ({
-  regressionList: {
-    listStyle: 'none',
-  },
-  removeButton: {
-    marginTop: theme.spacing(2),
-  },
-  errorText: {
-    color: 'red',
-  },
-  dataGrid: {
-    marginBottom: theme.spacing(2),
-    '& .MuiDataGrid-columnHeaders': {
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-    },
-  },
-}))
 
 export default function UpdateTriagePanel({
   triage,
@@ -36,8 +17,7 @@ export default function UpdateTriagePanel({
   handleTriageFormCompletion,
   commonClasses,
 }) {
-  const localClasses = useStyles()
-  const classes = { ...commonClasses, ...localClasses }
+  const classes = commonClasses
   const [removedRegressions, setRemovedRegressions] = React.useState([])
   const [validationMessage, setValidationMessage] = React.useState('')
 
@@ -111,14 +91,14 @@ export default function UpdateTriagePanel({
   return (
     <Fragment>
       <DialogTitle>Update Triage</DialogTitle>
-      <DialogContent className={classes.dialogContent}>
+      <DialogContent sx={classes.dialogContent}>
         <Tabs
           value={tabIndex}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="primary"
           variant="fullWidth"
-          className={classes.tabsContainer}
+          sx={classes.tabsContainer}
         >
           <Tab label="Update Fields" />
           <Tab
@@ -129,7 +109,7 @@ export default function UpdateTriagePanel({
 
         {updateFields && (
           <Fragment>
-            <h3 className={classes.centeredHeading}>Update Information</h3>
+            <h3 style={{ textAlign: 'center' }}>Update Information</h3>
             <TriageFields
               triageId={triage.id}
               setAlertText={setAlertText}
@@ -143,7 +123,7 @@ export default function UpdateTriagePanel({
         )}
         {updateRegressions && (
           <Fragment>
-            <h3 className={classes.centeredHeading}>Remove Regressions</h3>
+            <h3 style={{ textAlign: 'center' }}>Remove Regressions</h3>
             <DataGrid
               rows={triage.regressions}
               columns={[
@@ -221,10 +201,15 @@ export default function UpdateTriagePanel({
               }}
               pageSizeOptions={[10, 25, 50]}
               disableColumnMenu={true}
-              className={classes.dataGrid}
+              sx={(theme) => ({
+                mb: theme.spacing(2),
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                },
+              })}
             />
             {validationMessage !== '' && (
-              <FormHelperText className={classes.errorText}>
+              <FormHelperText sx={{ color: 'red' }}>
                 {validationMessage}
               </FormHelperText>
             )}

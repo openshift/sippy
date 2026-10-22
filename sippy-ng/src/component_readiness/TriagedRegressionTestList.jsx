@@ -3,7 +3,6 @@ import { CheckCircle } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { filterRegressionsByLabel } from './TriageSymptomLabels'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime, useFilterModelParam } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
@@ -12,14 +11,7 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-const useStyles = makeStyles({
-  forceClosedTooltip: {
-    whiteSpace: 'pre-line',
-  },
-})
-
 export default function TriagedRegressionTestList(props) {
-  const classes = useStyles()
   const [activeRow, setActiveRow] = useQueryParam(
     'regressedModalTestRow',
     NumberParam,
@@ -220,7 +212,7 @@ export default function TriagedRegressionTestList(props) {
         return (
           <Tooltip
             title={
-              <span className={classes.forceClosedTooltip}>
+              <span style={{ whiteSpace: 'pre-line' }}>
                 {details || 'Force closed'}
               </span>
             }

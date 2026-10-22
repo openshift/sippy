@@ -40,9 +40,9 @@ export default function CompCapRow(props) {
   // Put the capabilityName on the left side with a link to a capability specific
   // capabilities report.
   const capabilityNameColumn = (
-    <TableCell className={classes.componentName} key={capabilityName}>
+    <TableCell sx={classes.componentName} key={capabilityName}>
       <Tooltip title={'Capabilities report for ' + capabilityName}>
-        <Typography className={classes.crCellName}>
+        <Typography sx={classes.crCellName}>
           <Link to={capabilityLink(filterVals, capabilityName, environment)}>
             {capabilityName}
           </Link>

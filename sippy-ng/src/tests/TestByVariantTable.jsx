@@ -1,7 +1,6 @@
 import './TestByVariantTable.css'
 import { grey } from '@mui/material/colors'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { parseVariantName, pathForExactTestAnalysis } from '../helpers'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
 import { useCookies } from 'react-cookie'
@@ -21,29 +20,28 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 
-const useStyles = makeStyles((theme) => ({
-  tableContainer: {
-    maxHeight: 800,
-    [theme.breakpoints.down('sm')]: {
-      maxHeight: 500,
-    },
-    [theme.breakpoints.down('md')]: {
-      maxHeight: 600,
-    },
-    [theme.breakpoints.down('lg')]: {
-      maxHeight: 700,
-    },
+const tableContainerSx = (theme) => ({
+  maxHeight: 800,
+  [theme.breakpoints.down('sm')]: {
+    maxHeight: 500,
   },
-  stickyCellName: {
-    position: 'sticky',
-    left: 0,
-    background: theme.palette.mode === 'dark' ? grey[800] : 'white',
-    borderRight: '2px solid black',
-    lineHeight: 'normal',
-    whiteSpace: 'break-spaces',
-    wordWrap: 'break-word',
+  [theme.breakpoints.down('md')]: {
+    maxHeight: 600,
   },
-}))
+  [theme.breakpoints.down('lg')]: {
+    maxHeight: 700,
+  },
+})
+
+const stickyCellNameSx = (theme) => ({
+  position: 'sticky',
+  left: 0,
+  background: theme.palette.mode === 'dark' ? grey[800] : 'white',
+  borderRight: '2px solid black',
+  lineHeight: 'normal',
+  whiteSpace: 'break-spaces',
+  wordWrap: 'break-word',
+})
 
 function PassRateCompare(props) {
   const { previous, current } = props
@@ -159,9 +157,8 @@ Cell.propTypes = {
 
 function Row(props) {
   const { columnNames, testName, results } = props
-  const classes = useStyles()
   const nameColumn = (
-    <TableCell className={classes.stickyCellName} key={testName}>
+    <TableCell sx={stickyCellNameSx} key={testName}>
       <Tooltip title={testName}>
         <Typography className="cell-name">
           <Link
@@ -219,7 +216,6 @@ export default function TestByVariantTable({
   const cookie =
     cookies['testDetailShowFull'] || cookies['testDetailShowFull'] === 'true'
   const [showFull, setShowFull] = React.useState(props.showFull || cookie)
-  const classes = useStyles()
   if (props.data === undefined || props.data.tests.length === 0) {
     return <p>No data.</p>
   }
@@ -280,7 +276,7 @@ export default function TestByVariantTable({
   return (
     <Paper variant="outlined" elevation={3} sx={{ margin: '20px' }}>
       {pageTitle}
-      <TableContainer className={classes.tableContainer}>
+      <TableContainer sx={tableContainerSx}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>
