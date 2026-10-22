@@ -1,12 +1,12 @@
 import './TestByVariantTable.css'
 import { grey } from '@mui/material/colors'
 import { Link } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { parseVariantName, pathForExactTestAnalysis } from '../helpers'
-import { scale } from 'chroma-js'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
 import { useCookies } from 'react-cookie'
 import { useTheme } from '@mui/material/styles'
+import chroma from 'chroma-js'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
@@ -67,11 +67,13 @@ function Cell(props) {
   const theme = useTheme()
 
   const cellBackground = (percent) => {
-    const colorScale = scale([
-      theme.palette.error.light,
-      theme.palette.warning.light,
-      theme.palette.success.light,
-    ]).domain(props.colorScale)
+    const colorScale = chroma
+      .scale([
+        theme.palette.error.light,
+        theme.palette.warning.light,
+        theme.palette.success.light,
+      ])
+      .domain(props.colorScale)
     return colorScale(percent).hex()
   }
 

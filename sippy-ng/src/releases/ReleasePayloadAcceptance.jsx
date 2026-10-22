@@ -11,7 +11,7 @@ import {
   safeEncodeURIComponent,
 } from '../helpers'
 import { Link } from 'react-router'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'

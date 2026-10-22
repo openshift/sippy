@@ -5,7 +5,7 @@ import GridToolbarFilterMenu from './GridToolbarFilterMenu'
 import React from 'react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('@mui/styles', () => ({
+vi.mock('../makeStyles', () => ({
   makeStyles: () => () => ({}),
 }))
 

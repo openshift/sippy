@@ -12,7 +12,7 @@ import {
   jiraUrlPrefix,
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 

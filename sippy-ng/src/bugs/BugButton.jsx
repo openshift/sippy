@@ -1,5 +1,5 @@
 import { Button } from '@mui/material'
-import { makeStyles } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { safeEncodeURIComponent } from '../helpers'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'

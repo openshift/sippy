@@ -2,7 +2,7 @@ import './ComponentReadiness.css'
 import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import { Badge, Tooltip } from '@mui/material'
 import { getStatusAndIcon } from './CompReadyUtils'
-import { withStyles } from '@mui/styles'
+import { withStyles } from '../makeStyles'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 

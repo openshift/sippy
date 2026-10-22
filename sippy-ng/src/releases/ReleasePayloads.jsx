@@ -1,5 +1,6 @@
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '../makeStyles'
 import { Typography } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import ReleasePayloadTable from './ReleasePayloadTable'
