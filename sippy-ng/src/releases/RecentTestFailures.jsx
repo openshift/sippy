@@ -25,10 +25,10 @@ import {
   safeEncodeURIComponent,
 } from '../helpers'
 import { styled } from '@mui/material/styles'
+import { StyledInfoIcon } from './releaseStyledComponents'
 import Alert from '@mui/material/Alert'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import InfoIcon from '@mui/icons-material/Info'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import PropTypes from 'prop-types'
@@ -113,12 +113,6 @@ const EmptyStateIcon = styled(ExpandMoreIcon)(({ theme }) => ({
   fontSize: 48,
   opacity: 0.3,
   marginBottom: theme.spacing(1),
-}))
-
-const HintIcon = styled(InfoIcon)(({ theme }) => ({
-  marginLeft: theme.spacing(1),
-  fontSize: 20,
-  opacity: 0.6,
 }))
 
 function FailureRow({ row, release, defaultExpanded }) {
@@ -400,7 +394,7 @@ export default function RecentTestFailures(props) {
         <Tooltip
           title={`Tests that failed in the last ${period} but did not fail in the ${previousPeriod} before that. This helps surface new regressions.`}
         >
-          <HintIcon />
+          <StyledInfoIcon />
         </Tooltip>
         <Box sx={{ flex: 1 }} />
         {isLoaded && (

@@ -9,9 +9,9 @@ import {
 import { Link } from 'react-router'
 import { ReleasesContext } from '../App'
 import { styled } from '@mui/material/styles'
+import { StyledInfoIcon } from './releaseStyledComponents'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
-import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import RecentTestFailures from './RecentTestFailures'
@@ -45,12 +45,6 @@ const SectionHeader = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   marginBottom: theme.spacing(2),
-}))
-
-const StyledInfoIcon = styled(InfoIcon)(({ theme }) => ({
-  marginLeft: theme.spacing(1),
-  fontSize: 20,
-  opacity: 0.6,
 }))
 
 export default function ReleaseOverview(props) {

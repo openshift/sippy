@@ -28,11 +28,11 @@ import React, { useEffect, useState } from 'react'
 import Tooltip from '@mui/material/Tooltip'
 import WarningIcon from '@mui/icons-material/Warning'
 
-const CenteredMessageBox = styled(Box)({
+const CenteredMessageBox = styled(Box)(({ theme }) => ({
   padding: 32,
   textAlign: 'center',
-  color: 'text.secondary',
-})
+  color: theme.palette.text.secondary,
+}))
 
 const StatsHeaderBox = styled(Box)({
   marginBottom: 16,

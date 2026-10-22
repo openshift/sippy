@@ -236,7 +236,7 @@ export default function CompReadyEnvCapabilities(props) {
                         key={'column' + '-' + idx}
                       >
                         <Tooltip title={'Single row report for ' + column}>
-                          <Typography sx={classes.crColName}>
+                          <Typography sx={classes.crCellName}>
                             {column}
                           </Typography>
                         </Tooltip>

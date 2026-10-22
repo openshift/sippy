@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Block, CheckCircle, Warning } from '@mui/icons-material'
+import { CompactLoadingBox } from './TriageStyledComponents'
 import { formatDateToSeconds } from '../helpers'
 import {
   getForceClosePreviewUrl,
@@ -39,13 +40,6 @@ const IconTextRow = styled(Box)({
   display: 'flex',
   alignItems: 'center',
   gap: 4,
-})
-
-const LoadingContainer = styled(Box)({
-  padding: 24,
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
 })
 
 // ForceCloseRegressionsModal renders a button that, for a resolved triage, lets a
@@ -289,12 +283,12 @@ export default function ForceCloseRegressionsModal({
         <DialogTitle>Force Close Regressions</DialogTitle>
         <DialogContent>
           {loading && (
-            <LoadingContainer>
+            <CompactLoadingBox>
               <CircularProgress />
               <Typography variant="body1" sx={{ ml: 2 }}>
                 Loading preview...
               </Typography>
-            </LoadingContainer>
+            </CompactLoadingBox>
           )}
 
           {!loading && error && (

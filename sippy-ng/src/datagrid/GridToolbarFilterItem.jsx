@@ -13,6 +13,7 @@ import {
 import { Close } from '@mui/icons-material'
 import { DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { isValid } from 'date-fns'
+import { selectorSx } from './utils'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import GridToolbarClientAutocomplete from './GridToolbarClientAutocomplete'
 import PropTypes from 'prop-types'
@@ -31,8 +32,6 @@ const operatorValues = {
  * GridToolbarFilterItem represents a single filter used by GridToolbarFilterMenu, consisting
  * of a column field, operator, value, and optional not modifier.
  */
-const selectorSx = (theme) => ({ margin: theme.spacing(1), minWidth: 120 })
-
 export default function GridToolbarFilterItem({ columns = [], ...props }) {
   let columnType = 'string'
   let autocomplete = ''

@@ -10,7 +10,6 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
-  IconButton,
   InputLabel,
   Link,
   MenuItem,
@@ -20,6 +19,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Close } from '@mui/icons-material'
+import { CloseButton } from '../component_readiness/TriageStyledComponents'
 import {
   getBugsAPIUrl,
   getTriagesAPIUrl,
@@ -28,12 +28,6 @@ import { styled } from '@mui/material/styles'
 import BugButton from './BugButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useState } from 'react'
-
-const CloseButton = styled(IconButton)({
-  position: 'absolute',
-  right: 8,
-  top: 8,
-})
 
 const ChipContainer = styled(Box)({
   display: 'flex',

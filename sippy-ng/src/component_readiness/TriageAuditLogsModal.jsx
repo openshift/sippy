@@ -16,18 +16,12 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { CompactLoadingBox } from './TriageStyledComponents'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import { History } from '@mui/icons-material'
 import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useState } from 'react'
-
-const LoadingBox = styled(Box)({
-  padding: 24,
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-})
 
 const DiffPaper = styled(Paper, {
   shouldForwardProp: (prop) => prop !== 'difftype',
@@ -159,12 +153,12 @@ export default function TriageAuditLogsModal({ triage }) {
         </DialogTitle>
         <DialogContent>
           {loading && (
-            <LoadingBox>
+            <CompactLoadingBox>
               <CircularProgress />
               <Typography variant="body1" sx={{ ml: 2 }}>
                 Loading audit logs...
               </Typography>
-            </LoadingBox>
+            </CompactLoadingBox>
           )}
 
           {error && (

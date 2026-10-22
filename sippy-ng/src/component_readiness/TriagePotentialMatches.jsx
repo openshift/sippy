@@ -10,7 +10,6 @@ import {
   FormControl,
   FormControlLabel,
   FormGroup,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -18,6 +17,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Close } from '@mui/icons-material'
+import { CloseButton } from './TriageStyledComponents'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
@@ -27,18 +27,46 @@ import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 
-const CloseButton = styled(IconButton)({
-  position: 'absolute',
-  right: 8,
-  top: 8,
-})
-
 const FilterFormGroup = styled(FormGroup)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'row',
   gap: theme.spacing(2),
   alignItems: 'center',
 }))
+
+const CenteredFlexCell = styled('div')({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  height: '100%',
+})
+
+const ConfidenceCell = styled('div')({
+  cursor: 'help',
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  alignItems: 'center',
+})
+
+const LoadingContent = styled('div')({
+  textAlign: 'center',
+  padding: '40px',
+})
+
+const FilterBar = styled('div')({
+  marginBottom: '16px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '16px',
+})
+
+const FilterSection = styled('div')({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '16px',
+})
 
 export default function TriagePotentialMatches({
   triage,
@@ -330,14 +358,7 @@ export default function TriagePotentialMatches({
         }
       },
       renderCell: (params) => (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100%',
-          }}
-        >
+        <CenteredFlexCell>
           {params.value.url ? (
             <a
               href={params.value.url}
@@ -355,7 +376,7 @@ export default function TriagePotentialMatches({
               explanations={params.value.explanations}
             />
           )}
-        </div>
+        </CenteredFlexCell>
       ),
     },
     {
@@ -394,17 +415,7 @@ export default function TriagePotentialMatches({
 
         return (
           <Tooltip title={tooltipContent} arrow placement="top">
-            <div
-              style={{
-                cursor: 'help',
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              {params.value}
-            </div>
+            <ConfidenceCell>{params.value}</ConfidenceCell>
           </Tooltip>
         )
       },
@@ -461,30 +472,16 @@ export default function TriagePotentialMatches({
         </DialogTitle>
         <DialogContent>
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
+            <LoadingContent>
               <CircularProgress />
-              <div style={{ marginTop: '16px' }}>
+              <Typography sx={{ mt: 2 }}>
                 Loading potential matches...
-              </div>
-            </div>
+              </Typography>
+            </LoadingContent>
           ) : (
             <>
-              <div
-                style={{
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '16px',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                  }}
-                >
+              <FilterBar>
+                <FilterSection>
                   <FormControl size="small" sx={{ minWidth: 150 }}>
                     <InputLabel>View</InputLabel>
                     <Select
@@ -500,10 +497,8 @@ export default function TriagePotentialMatches({
                       ))}
                     </Select>
                   </FormControl>
-                </div>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '16px' }}
-                >
+                </FilterSection>
+                <FilterSection>
                   <Typography sx={{ mr: 1, fontWeight: 'bold' }}>
                     Filter by:
                   </Typography>
@@ -555,8 +550,8 @@ export default function TriagePotentialMatches({
                       })`}
                     />
                   </FilterFormGroup>
-                </div>
-              </div>
+                </FilterSection>
+              </FilterBar>
               <DataGrid
                 rows={filteredMatches}
                 columns={columns}

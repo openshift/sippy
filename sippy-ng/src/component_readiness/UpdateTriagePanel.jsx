@@ -1,4 +1,4 @@
-import { Button, FormHelperText, Tab } from '@mui/material'
+import { Button, FormHelperText, Tab, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { formColumnName, getTriagesAPIUrl } from './CompReadyUtils'
 import { relativeTime } from '../helpers'
@@ -106,7 +106,9 @@ export default function UpdateTriagePanel({
 
         {updateFields && (
           <Fragment>
-            <h3 style={{ textAlign: 'center' }}>Update Information</h3>
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
+              Update Information
+            </Typography>
             <TriageFields
               triageId={triage.id}
               setAlertText={setAlertText}
@@ -120,7 +122,9 @@ export default function UpdateTriagePanel({
         )}
         {updateRegressions && (
           <Fragment>
-            <h3 style={{ textAlign: 'center' }}>Remove Regressions</h3>
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
+              Remove Regressions
+            </Typography>
             <DataGrid
               rows={triage.regressions}
               columns={[

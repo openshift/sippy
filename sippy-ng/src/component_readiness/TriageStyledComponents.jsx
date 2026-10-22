@@ -1,4 +1,4 @@
-import { Box, DialogContent, Tabs } from '@mui/material'
+import { Box, DialogContent, IconButton, Tabs } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
 export const TriageTabs = styled(Tabs)(({ theme }) => ({
@@ -32,3 +32,16 @@ export const LoadingContainer = styled(Box)(({ theme }) => ({
   justifyContent: 'center',
   minHeight: '400px',
 }))
+
+export const CloseButton = styled(IconButton)({
+  position: 'absolute',
+  right: 8,
+  top: 8,
+})
+
+export const CompactLoadingBox = styled(Box)({
+  padding: 24,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+})

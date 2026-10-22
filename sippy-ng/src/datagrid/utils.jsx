@@ -5,6 +5,11 @@ import { ListItem, ListItemIcon, ListItemText, Tooltip } from '@mui/material'
 import List from '@mui/material/List'
 import React, { Fragment } from 'react'
 
+export const selectorSx = (theme) => ({
+  margin: theme.spacing(1),
+  minWidth: 120,
+})
+
 export function filterRemoveItem(filter, index) {
   if (!filter || filter.items.length === 0) {
     return

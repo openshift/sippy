@@ -1,11 +1,11 @@
 import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
+import { Box, Tooltip, Typography } from '@mui/material'
 import { CheckCircle } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { filterRegressionsByLabel } from './TriageSymptomLabels'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime, useFilterModelParam } from '../helpers'
-import { Tooltip, Typography } from '@mui/material'
 import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -212,9 +212,9 @@ export default function TriagedRegressionTestList(props) {
         return (
           <Tooltip
             title={
-              <span style={{ whiteSpace: 'pre-line' }}>
+              <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
                 {details || 'Force closed'}
-              </span>
+              </Box>
             }
           >
             <CheckCircle color="success" />

@@ -1,4 +1,4 @@
-import { Card, Container, Grid, Typography } from '@mui/material'
+import { Box, Card, Container, Grid, Typography } from '@mui/material'
 import { filterFor, pathForJobsWithFilter, withSort } from '../helpers'
 import { Link } from 'react-router'
 import JobTable from '../jobs/JobTable'
@@ -21,7 +21,7 @@ export default function RepositoryDetails(props) {
         }
         currentPage={`${props.org}/${props.repo}`}
       />
-      <div style={{ padding: 20 }}>
+      <Box sx={{ padding: '20px' }}>
         <Container maxWidth="lg">
           <Typography variant="h4" gutterBottom sx={{ textAlign: 'center' }}>
             {props.org}/{props.repo}
@@ -118,7 +118,7 @@ export default function RepositoryDetails(props) {
             </Grid>
           </Grid>
         </Container>
-      </div>
+      </Box>
     </Fragment>
   )
 }

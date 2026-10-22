@@ -334,7 +334,9 @@ export default function RegressionPotentialMatchesTab({
 
   return (
     <Fragment>
-      <h3 style={{ textAlign: 'center' }}>Potential Matching Triages</h3>
+      <Typography variant="h6" sx={{ textAlign: 'center' }}>
+        Potential Matching Triages
+      </Typography>
       {loadingMatches && <Typography>Loading matching triages...</Typography>}
       {matchesError && (
         <Typography color="error">Error: {matchesError}</Typography>

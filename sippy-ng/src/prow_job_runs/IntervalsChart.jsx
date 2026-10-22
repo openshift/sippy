@@ -613,7 +613,7 @@ export default function IntervalsChart({
         <LaunderedLink address={jobRunUrl}>GCS job run</LaunderedLink>, filtered
         down to {filteredIntervals.length}.
       </p>
-      <div style={{ padding: '10px 0', paddingBottom: '1rem' }}>
+      <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
         Categories:
         <Box
           display="flex"
@@ -634,8 +634,8 @@ export default function IntervalsChart({
             </Button>
           ))}
         </Box>
-      </div>
-      <div style={{ padding: '10px 0', paddingBottom: '1rem' }}>
+      </Box>
+      <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
         Files:
         <Select
           labelId="interval-file-label"
@@ -657,8 +657,8 @@ export default function IntervalsChart({
           onChange={handleFilterChange}
           defaultValue={filterText}
         />
-      </div>
-      <div style={{ padding: '10px 0', paddingBottom: '1rem' }}>
+      </Box>
+      <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
         Time Filter:
         <TextField
           id="start"
@@ -678,7 +678,7 @@ export default function IntervalsChart({
         <Button key="resetTimeFilters" onClick={() => resetTimeFilters()}>
           Reset
         </Button>
-      </div>
+      </Box>
       <div>
         <Tooltip
           title={

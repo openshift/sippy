@@ -1,14 +1,15 @@
 import './chartSetup'
 import { AccessibilityModeProvider } from './components/AccessibilityModeProvider'
-import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
-import { createTheme, useTheme } from '@mui/material/styles'
 import {
+  Box,
   CssBaseline,
   Grid,
   StyledEngineProvider,
   ThemeProvider,
   Tooltip,
 } from '@mui/material'
+import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
+import { createTheme, useTheme } from '@mui/material/styles'
 import { cyan, green, orange, red } from '@mui/material/colors'
 import { DarkMode, LightMode, ToggleOff, ToggleOn } from '@mui/icons-material'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -557,7 +558,7 @@ function App(_props) {
                       objectToSearchString: stringify,
                     }}
                   >
-                    <div style={{ display: 'flex', flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', flexGrow: 1 }}>
                       <AppBar
                         position="fixed"
                         open={drawerOpen}
@@ -803,7 +804,7 @@ function App(_props) {
                           </Routes>
                         </ErrorBoundary>
                       </Main>
-                    </div>
+                    </Box>
                   </QueryParamProvider>
                 </AccessibilityModeProvider>
               </SippyCapabilitiesContext.Provider>

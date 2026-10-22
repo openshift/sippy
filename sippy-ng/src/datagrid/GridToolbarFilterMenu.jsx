@@ -2,6 +2,7 @@ import './GridToolbarFilterMenu.css'
 import { Add, FilterList } from '@mui/icons-material'
 import {
   Badge,
+  Box,
   Button,
   Fab,
   FormControl,
@@ -12,7 +13,7 @@ import {
   Select,
   Tooltip,
 } from '@mui/material'
-import { filterTooltip } from './utils'
+import { filterTooltip, selectorSx } from './utils'
 import { normalizeFilterModel } from './filterUtils'
 import Divider from '@mui/material/Divider'
 import GridToolbarFilterItem, {
@@ -20,8 +21,6 @@ import GridToolbarFilterItem, {
 } from './GridToolbarFilterItem'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useMemo } from 'react'
-
-const selectorSx = (theme) => ({ margin: theme.spacing(1), minWidth: 120 })
 
 /**
  * GridToolbarFilterMenu is a drop-in replacement for the built-in material data tables
@@ -238,10 +237,10 @@ export default function GridToolbarFilterMenu({
           horizontal: 'left',
         }}
       >
-        <div style={{ padding: 20 }}>
+        <Box sx={{ padding: '20px' }}>
           {models.map((item, index) => {
             return (
-              <div key={`filter-item-${index}`} style={{ paddingTop: 20 }}>
+              <Box key={`filter-item-${index}`} sx={{ paddingTop: '20px' }}>
                 <GridToolbarFilterItem
                   id={index}
                   columns={orderedColumns}
@@ -251,10 +250,10 @@ export default function GridToolbarFilterMenu({
                   autocompleteData={props.autocompleteData}
                 />
                 <Divider />
-              </div>
+              </Box>
             )
           })}
-        </div>
+        </Box>
 
         <Grid
           container
