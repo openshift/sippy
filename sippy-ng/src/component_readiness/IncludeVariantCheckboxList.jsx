@@ -13,14 +13,11 @@ import {
 } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
+import { formControlSx } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React, { useContext, useState } from 'react'
 import Typography from '@mui/material/Typography'
 
-const formControlSx = (theme) => ({
-  margin: theme.spacing(1),
-  minWidth: '20px',
-})
 const gridCenterSx = (theme) => ({
   marginTop: theme.spacing(1),
   textAlign: 'center',

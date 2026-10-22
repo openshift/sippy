@@ -28,6 +28,8 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'
 
+const filterRowSx = { padding: '10px 0', paddingBottom: '1rem' }
+
 // sourceOrder is our preferred ordering of the sections of the chart (interval sources), assuming that
 // source is selected in the UI and present in the intervals file:
 const sourceOrder = [
@@ -613,7 +615,7 @@ export default function IntervalsChart({
         <LaunderedLink address={jobRunUrl}>GCS job run</LaunderedLink>, filtered
         down to {filteredIntervals.length}.
       </p>
-      <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
+      <Box sx={filterRowSx}>
         Categories:
         <Box
           display="flex"
@@ -635,7 +637,7 @@ export default function IntervalsChart({
           ))}
         </Box>
       </Box>
-      <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
+      <Box sx={filterRowSx}>
         Files:
         <Select
           labelId="interval-file-label"
@@ -658,7 +660,7 @@ export default function IntervalsChart({
           defaultValue={filterText}
         />
       </Box>
-      <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
+      <Box sx={filterRowSx}>
         Time Filter:
         <TextField
           id="start"

@@ -39,6 +39,8 @@ const SortableHeaderCell = styled(TableCell)({
   whiteSpace: 'nowrap',
 })
 
+const filterRowSx = { padding: '10px 0', paddingBottom: '1rem' }
+
 const COLUMNS = [
   { id: 'firstTimestamp', label: 'First Timestamp', visible: true },
   { id: 'lastTimestamp', label: 'Last Timestamp', visible: true },
@@ -326,7 +328,7 @@ export default function EventsChart(props) {
       </Typography>
 
       <Paper sx={{ mb: '1rem', p: 2 }}>
-        <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
+        <Box sx={filterRowSx}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Time Range Filter (UTC)
           </Typography>
@@ -350,7 +352,7 @@ export default function EventsChart(props) {
           </Box>
         </Box>
 
-        <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
+        <Box sx={filterRowSx}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Filters
           </Typography>
@@ -437,7 +439,7 @@ export default function EventsChart(props) {
           </Box>
         </Box>
 
-        <Box sx={{ padding: '10px 0', paddingBottom: '1rem' }}>
+        <Box sx={filterRowSx}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Toggle Columns
           </Typography>

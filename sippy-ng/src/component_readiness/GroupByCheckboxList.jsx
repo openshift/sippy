@@ -11,6 +11,7 @@ import {
 } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
+import { formControlSx } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 import Typography from '@mui/material/Typography'
@@ -30,11 +31,7 @@ export default function GroupByCheckboxList(props) {
   }
 
   return (
-    <FormControl
-      variant="standard"
-      sx={(theme) => ({ margin: theme.spacing(1), minWidth: '20px' })}
-      component="fieldset"
-    >
+    <FormControl variant="standard" sx={formControlSx} component="fieldset">
       <Accordion className="checkboxlist-headerName">
         <AccordionSummary
           className="checkboxlist-summary"

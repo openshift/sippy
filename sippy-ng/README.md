@@ -3,8 +3,9 @@
 Sippy's frontend is written in React and [Material-UI v6](https://mui.com/). The
 dev server and production build are powered by [Vite](https://vite.dev/).
 
-Styling uses MUI's native `styled()` API for reusable or non-trivial styles
-and the `sx` prop for trivial, one-off styles.
+Styling uses MUI's native `styled()` API for reusable or non-trivial styles,
+the `sx` prop for trivial, one-off styles, and the plain `style` prop for
+simple dynamic values (e.g., width or color computed from props).
 
 In development, you can start Sippy as usual, and then run `npm start`
 in the sippy-ng directory. You can also just run `make build`, and use

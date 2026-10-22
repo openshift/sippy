@@ -16,6 +16,14 @@ export const StyledDataGrid = styled(DataGrid)({
 })
 
 export function buildColoredStyles(thresholds, invert, theme) {
+  for (const key of ['error', 'warning', 'success']) {
+    if (!Number.isFinite(thresholds[key])) {
+      throw new Error(
+        `buildColoredStyles: thresholds.${key} must be a finite number, got ${thresholds[key]}`
+      )
+    }
+  }
+
   let scaleColors = [
     theme.palette.error.light,
     theme.palette.warning.light,

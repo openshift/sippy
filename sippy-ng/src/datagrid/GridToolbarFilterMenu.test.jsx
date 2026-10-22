@@ -19,7 +19,8 @@ vi.mock('./GridToolbarFilterItem', () => ({
   operatorWithoutValue: ['is empty', 'is not empty'],
 }))
 
-vi.mock('./utils', () => ({
+vi.mock('./utils', async (importOriginal) => ({
+  ...(await importOriginal()),
   filterTooltip: () => '',
 }))
 

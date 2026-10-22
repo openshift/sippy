@@ -36,6 +36,11 @@ const ChipContainer = styled(Box)({
   marginTop: 8,
 })
 
+const FieldLabel = styled(Typography)({
+  marginTop: 16,
+  marginBottom: 8,
+})
+
 const NoteText = styled(Typography)(({ theme }) => ({
   fontStyle: 'italic',
   color: theme.palette.text.secondary,
@@ -391,9 +396,7 @@ See the [sippy test details|${url}] for additional context.
         </DialogTitle>
 
         <DialogContent dividers>
-          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-            Summary *
-          </Typography>
+          <FieldLabel variant="subtitle2">Summary *</FieldLabel>
           <TextField
             name="summary"
             value={formData.summary}
@@ -404,9 +407,7 @@ See the [sippy test details|${url}] for additional context.
             helperText="Title of the issue"
           />
 
-          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-            Description *
-          </Typography>
+          <FieldLabel variant="subtitle2">Description *</FieldLabel>
           <TextField
             name="description"
             value={formData.description}
@@ -419,9 +420,7 @@ See the [sippy test details|${url}] for additional context.
             helperText="Detailed description including test failure information"
           />
 
-          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-            Affects Versions *
-          </Typography>
+          <FieldLabel variant="subtitle2">Affects Versions *</FieldLabel>
           <TextField
             placeholder="Add versions (press Enter to add)"
             value={versionInput}
@@ -444,9 +443,7 @@ See the [sippy test details|${url}] for additional context.
             ))}
           </ChipContainer>
 
-          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-            Components *
-          </Typography>
+          <FieldLabel variant="subtitle2">Components *</FieldLabel>
           <TextField
             placeholder="Add components (press Enter to add)"
             value={componentInput}
@@ -483,9 +480,7 @@ See the [sippy test details|${url}] for additional context.
             ))}
           </ChipContainer>
 
-          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-            Labels
-          </Typography>
+          <FieldLabel variant="subtitle2">Labels</FieldLabel>
           <TextField
             placeholder="Add labels (press Enter to add)"
             value={labelInput}

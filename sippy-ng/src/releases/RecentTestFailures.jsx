@@ -38,7 +38,7 @@ const ContentCard = styled(Card)(({ theme }) => ({
   padding: theme.spacing(2.5),
 }))
 
-const CardHeader = styled(Box)(({ theme }) => ({
+const CardHeaderRow = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   marginBottom: theme.spacing(2),
@@ -378,7 +378,7 @@ export default function RecentTestFailures(props) {
 
   return (
     <ContentCard elevation={5}>
-      <CardHeader>
+      <CardHeaderRow>
         <ErrorOutlineIcon
           sx={(theme) => ({
             marginRight: theme.spacing(1),
@@ -404,7 +404,7 @@ export default function RecentTestFailures(props) {
             variant="outlined"
           />
         )}
-      </CardHeader>
+      </CardHeaderRow>
 
       {!isLoaded ? (
         <CenteredBox>

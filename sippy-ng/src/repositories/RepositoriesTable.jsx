@@ -236,7 +236,10 @@ function RepositoriesTable({
       return <p>Loading...</p>
     } else {
       return (
-        <Backdrop sx={{ zIndex: 999999, color: '#fff' }} open={true}>
+        <Backdrop
+          sx={(theme) => ({ zIndex: theme.zIndex.drawer + 1, color: '#fff' })}
+          open={true}
+        >
           <CircularProgress color="inherit" />
         </Backdrop>
       )

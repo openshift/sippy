@@ -8,6 +8,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
+import { formControlSx } from './CompReadyUtils'
 import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -95,11 +96,7 @@ export default function AdvancedOptions(props) {
   }
 
   return (
-    <FormControl
-      variant="standard"
-      sx={(theme) => ({ margin: theme.spacing(1), minWidth: '20px' })}
-      component="fieldset"
-    >
+    <FormControl variant="standard" sx={formControlSx} component="fieldset">
       <OptionsAccordion>
         <OptionsAccordionSummary expandIcon={<ExpandMore />}>
           <Typography className="checkboxlist-label">

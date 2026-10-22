@@ -32,21 +32,53 @@ describe('buildColoredStyles', () => {
     const normal = buildColoredStyles(thresholds, false, theme)
     const inverted = buildColoredStyles(thresholds, true, theme)
 
-    const normalFirst = normal['& .row-percent-0'].backgroundColor
-    const invertedFirst = inverted['& .row-percent-0'].backgroundColor
-    const normalLast = normal['& .row-percent-100'].backgroundColor
-    const invertedLast = inverted['& .row-percent-100'].backgroundColor
-
-    expect(normalFirst).not.toBe(invertedFirst)
-    expect(normalLast).not.toBe(invertedLast)
+    expect(normal['& .row-percent-0'].backgroundColor).toBe(
+      theme.palette.error.light
+    )
+    expect(normal['& .row-percent-100'].backgroundColor).toBe(
+      theme.palette.success.light
+    )
+    expect(inverted['& .row-percent-0'].backgroundColor).toBe(
+      theme.palette.success.light
+    )
+    expect(inverted['& .row-percent-100'].backgroundColor).toBe(
+      theme.palette.error.light
+    )
   })
 
-  it('does not throw with descending threshold domains', () => {
+  it('maps descending threshold domains to correct colors', () => {
     const descending = { error: 80, warning: 60, success: 0 }
-    expect(() => buildColoredStyles(descending, false, theme)).not.toThrow()
     const styles = buildColoredStyles(descending, false, theme)
-    expect(styles['& .row-percent-0']).toBeDefined()
+
+    expect(styles['& .row-percent-0'].backgroundColor).toBe(
+      theme.palette.success.light
+    )
+    expect(styles['& .row-percent-80'].backgroundColor).toBe(
+      theme.palette.error.light
+    )
     expect(styles['& .row-percent-100']).toBeDefined()
+  })
+
+  it('throws on non-finite thresholds', () => {
+    expect(() =>
+      buildColoredStyles({ error: 0, warning: NaN, success: 80 }, false, theme)
+    ).toThrow('thresholds.warning must be a finite number')
+
+    expect(() =>
+      buildColoredStyles(
+        { error: 0, warning: 60, success: undefined },
+        false,
+        theme
+      )
+    ).toThrow('thresholds.success must be a finite number')
+
+    expect(() =>
+      buildColoredStyles(
+        { error: null, warning: 60, success: 80 },
+        false,
+        theme
+      )
+    ).toThrow('thresholds.error must be a finite number')
   })
 
   it('produces valid hex color strings', () => {

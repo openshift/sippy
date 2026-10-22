@@ -746,6 +746,11 @@ export const SearchIconWrapper = styled('div')(({ theme }) => ({
   justifyContent: 'center',
 }))
 
+export const formControlSx = (theme) => ({
+  margin: theme.spacing(1),
+  minWidth: '20px',
+})
+
 export const StyledInputBase = styled(InputBase)(({ theme }) => ({
   color: 'inherit',
   '& .MuiInputBase-input': {
