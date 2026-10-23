@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { Fragment, useContext } from 'react'
 import { Link, Typography } from '@mui/material'
 import PropTypes from 'prop-types'

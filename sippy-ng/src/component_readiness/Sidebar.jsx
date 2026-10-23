@@ -1,5 +1,5 @@
 import { Box } from '@mui/material'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { Drawer } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import AccessibilityToggle from '../components/AccessibilityToggle'

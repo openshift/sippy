@@ -10,7 +10,7 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { escapeRegex, safeEncodeURIComponent } from '../helpers'
 import { Link } from 'react-router'

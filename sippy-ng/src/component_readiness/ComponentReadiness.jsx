@@ -10,6 +10,10 @@ import {
   Typography,
 } from '@mui/material'
 import {
+  buildCRStyles,
+  ComponentReadinessStyleContext,
+} from './ComponentReadinessStyles'
+import {
   cancelledDataTable,
   formColumnName,
   getColumns,
@@ -25,7 +29,6 @@ import {
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { escapeRegex, safeEncodeURIComponent } from '../helpers'
-import { grey } from '@mui/material/colors'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router'
 import { useTheme } from '@mui/material/styles'
 import ComponentReadinessHelp from './ComponentReadinessHelp'
@@ -58,80 +61,11 @@ import Triage from './Triage'
 import TriageList from './TriageList'
 import WarningsBanner from './WarningsBanner'
 
-const drawerWidth = 240
-
-function buildCRStyles(theme) {
-  return {
-    menuButton: { marginRight: theme.spacing(2) },
-    hide: { display: 'none' },
-    drawer: { width: drawerWidth, flexShrink: 0 },
-    drawerPaper: { width: drawerWidth },
-    drawerHeader: {
-      display: 'flex',
-      alignItems: 'center',
-      padding: theme.spacing(0, 1),
-      ...theme.mixins.toolbar,
-      justifyContent: 'flex-end',
-    },
-    selectedJobRun: {
-      borderStyle: 'solid',
-      borderWidth: '1px',
-      borderRadius: '5px',
-      marginRight: '1px',
-    },
-    unselectedJobRun: { marginRight: '1px' },
-    crColResultFull: {
-      backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
-      fontWeight: 'bold',
-      position: 'sticky',
-      top: 0,
-      left: 0,
-      zIndex: 1,
-    },
-    crColResult: {
-      hyphens: 'auto',
-      verticalAlign: 'top !important',
-      backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
-      fontWeight: 'bold',
-      position: 'sticky',
-      top: 0,
-      left: 0,
-      zIndex: 1,
-      wordBreak: 'break-word',
-    },
-    crColJobName: {
-      verticalAlign: 'top',
-      backgroundColor: theme.palette.mode === 'dark' ? grey[900] : grey['A200'],
-    },
-    componentName: {
-      width: 220,
-      minWidth: 220,
-      maxWidth: 220,
-      backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
-      fontWeight: 'bold',
-      position: 'sticky',
-      left: 0,
-      zIndex: 1,
-    },
-    crCellResult: {
-      backgroundColor: theme.palette.mode === 'dark' ? grey[100] : 'white',
-      minHeight: 60,
-      padding: '8px !important',
-      lineHeight: '16px !important',
-      border: '1px solid #EEE',
-      textAlign: 'center',
-    },
-    crCellName: { fontSize: '14px !important' },
-    crCellCapabCol: { fontSize: '13px !important', width: '300px' },
-  }
-}
-
 function TriageWrapper() {
   const { triageId } = useParams()
   return <Triage id={triageId} />
 }
 
-export const ComponentReadinessStyleContext = React.createContext({})
 export const TestCapabilitiesContext = React.createContext([])
 export const TestLifecyclesContext = React.createContext([])
 

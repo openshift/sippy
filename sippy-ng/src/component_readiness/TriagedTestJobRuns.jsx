@@ -1,4 +1,4 @@
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { TableContainer, Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'

@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { Fragment, useContext } from 'react'
 import { Link } from 'react-router'
 import { safeEncodeURIComponent } from '../helpers'
