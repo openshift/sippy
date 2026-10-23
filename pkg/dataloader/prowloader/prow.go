@@ -1077,7 +1077,14 @@ func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.T
 		case tc.FailureOutput == nil:
 			status = sippyprocessingv1.TestStatusSuccess
 		default:
-			output = &tc.FailureOutput.Output
+			// Some JUnit producers (e.g. ACM OPP interop tests) populate
+			// only the message attribute; fall back to it when the chardata
+			// output is empty.
+			if tc.FailureOutput.Output != "" {
+				output = &tc.FailureOutput.Output
+			} else if tc.FailureOutput.Message != "" {
+				output = &tc.FailureOutput.Message
+			}
 		}
 
 		key := testCaseKey{SuiteName: suite.Name, TestName: tc.Name}
