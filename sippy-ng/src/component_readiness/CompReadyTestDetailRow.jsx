@@ -1,6 +1,6 @@
 import './ComponentReadiness.css'
 import { Box, Checkbox, Tooltip, Typography } from '@mui/material'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { Fragment, useContext } from 'react'
 import PropTypes from 'prop-types'
 import React from 'react'

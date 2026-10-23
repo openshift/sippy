@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Fragment, useContext } from 'react'
 import { Link } from 'react-router'

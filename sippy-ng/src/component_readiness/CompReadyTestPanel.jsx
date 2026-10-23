@@ -15,7 +15,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { getTestStatus } from '../helpers'
 import { styled } from '@mui/material/styles'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
