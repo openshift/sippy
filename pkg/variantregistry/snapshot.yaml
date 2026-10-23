@@ -53898,6 +53898,29 @@ periodic-ci-openshift-lvm-operator-release-5.0-nightly-e2e-baremetalds-sno-duals
     Suite: unknown
     Topology: single
     Upgrade: none
+periodic-ci-openshift-lvm-operator-release-5.0-nightly-e2e-baremetalds-tnf-lvms-mno-qe-integration-tests:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: hidden
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: qe
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: two-node-fencing
+    Upgrade: none
 periodic-ci-openshift-lvm-operator-release-5.0-nightly-upgrade-e2e-aws-mno-y-stream-upgrade:
     Aggregation: none
     Architecture: amd64
