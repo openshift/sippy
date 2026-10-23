@@ -1,4 +1,5 @@
 import { Box, Card, Tooltip, Typography, useTheme } from '@mui/material'
+import { CardHeaderRow } from './releaseStyledComponents'
 import {
   INFRASTRUCTURE_THRESHOLDS,
   INSTALL_THRESHOLDS,
@@ -28,12 +29,6 @@ const IndicatorCard = styled(Card)(({ theme }) => ({
     boxShadow: theme.shadows[8],
   },
 }))
-
-const CardHeaderBox = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  marginBottom: 16,
-})
 
 const ProgressBarTrack = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -101,12 +96,12 @@ export default function TopLevelIndicators(props) {
             sx={{ textDecoration: 'none', display: 'block' }}
           >
             <IndicatorCard elevation={5}>
-              <CardHeaderBox>
+              <CardHeaderRow>
                 {icon}
                 <Typography variant="h6" sx={{ ml: 1 }}>
                   {name}
                 </Typography>
-              </CardHeaderBox>
+              </CardHeaderRow>
 
               <Box sx={{ textAlign: 'center', mb: 2 }}>
                 <Typography variant="h2" sx={{ color, fontWeight: 'bold' }}>

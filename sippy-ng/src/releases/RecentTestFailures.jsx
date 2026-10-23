@@ -17,6 +17,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { CardHeaderRow, StyledInfoIcon } from './releaseStyledComponents'
 import { DirectionsBoat, OpenInNew } from '@mui/icons-material'
 import { Link } from 'react-router'
 import {
@@ -25,7 +26,6 @@ import {
   safeEncodeURIComponent,
 } from '../helpers'
 import { styled } from '@mui/material/styles'
-import { StyledInfoIcon } from './releaseStyledComponents'
 import Alert from '@mui/material/Alert'
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -36,12 +36,6 @@ import React, { Fragment, useEffect } from 'react'
 
 const ContentCard = styled(Card)(({ theme }) => ({
   padding: theme.spacing(2.5),
-}))
-
-const CardHeaderRow = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  marginBottom: theme.spacing(2),
 }))
 
 const SummaryBar = styled(Box)(({ theme }) => ({
@@ -103,7 +97,7 @@ const JobNameText = styled(Typography)({
   minWidth: 0,
 })
 
-const CenteredBox = styled(Box)(({ theme }) => ({
+const CenteredLoadingBox = styled(Box)(({ theme }) => ({
   textAlign: 'center',
   paddingTop: theme.spacing(4),
   paddingBottom: theme.spacing(4),
@@ -407,12 +401,12 @@ export default function RecentTestFailures(props) {
       </CardHeaderRow>
 
       {!isLoaded ? (
-        <CenteredBox>
+        <CenteredLoadingBox>
           <CircularProgress size={36} />
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Loading recent failures...
           </Typography>
-        </CenteredBox>
+        </CenteredLoadingBox>
       ) : data.rows === null || data.rows.length === 0 ? (
         <Box
           sx={(theme) => ({ textAlign: 'center', padding: theme.spacing(4) })}

@@ -20,10 +20,12 @@ applyTo: "sippy-ng/**"
   utilities inline, check `sippy-ng/src/helpers.js` for existing functions
   like `relativeDuration`, `safeEncodeURIComponent`, etc. Prefer reusing
   existing helpers over reimplementing similar logic.
-* React components with extensive inline CSS should use the `useStyles` pattern.
+* React components with extensive inline CSS should use MUI's `styled()` API.
   Inline style objects with more than 3-4 properties should be extracted to
-  `useStyles()` or styled components. Inline styles are acceptable for simple,
-  dynamic values (e.g., width based on props).
+  `styled()` components. Use the `sx` prop for trivial, one-off styles (1-2
+  properties), and the plain `style` prop for simple dynamic values (e.g.,
+  width based on props). Do not use the legacy `makeStyles` or `useStyles`
+  patterns.
 * **Timestamps and dates from the API**:
   - Timestamps arrive as RFC 3339 strings (e.g., `"2024-06-27T15:30:00Z"`), not epoch millisecond integers. Use `new Date(value)` or `Temporal.Instant.from(value)` to parse them.
   - Dates arrive as `YYYY-MM-DD` strings (e.g., `"2024-06-27"`). Use `Temporal.PlainDate.from(value)` for date arithmetic.

@@ -7,7 +7,7 @@ import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const PhaseDataGrid = styled(DataGrid)(({ theme }) => ({
+const PhaseColoredDataGrid = styled(DataGrid)(({ theme }) => ({
   '& .rowPhaseAccepted': {
     backgroundColor: theme.palette.success.light,
   },
@@ -173,7 +173,7 @@ function ReleasePayloadPullRequests({
   }
 
   return (
-    <PhaseDataGrid
+    <PhaseColoredDataGrid
       columnVisibilityModel={{ release_tag: false }}
       slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}

@@ -19,7 +19,7 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import Typography from '@mui/material/Typography'
 
-const formControlSx = (theme) => ({ margin: theme.spacing(1) })
+const sidebarFilterControlSx = (theme) => ({ margin: theme.spacing(1) })
 const autocompleteSx = {
   width: '100%',
   '& .MuiAutocomplete-inputRoot': { paddingRight: '9px !important' },
@@ -47,7 +47,11 @@ export default function SidebarTestFilters(props) {
   }
 
   return (
-    <FormControl variant="standard" sx={formControlSx} component="fieldset">
+    <FormControl
+      variant="standard"
+      sx={sidebarFilterControlSx}
+      component="fieldset"
+    >
       <Accordion className="checkboxlist-headerName">
         <AccordionSummary
           className="checkboxlist-summary"

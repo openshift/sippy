@@ -39,9 +39,9 @@ export const CloseButton = styled(IconButton)({
   top: 8,
 })
 
-export const CompactLoadingBox = styled(Box)({
-  padding: 24,
+export const CompactLoadingBox = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(3),
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-})
+}))

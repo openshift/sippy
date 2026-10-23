@@ -6,10 +6,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { CardHeaderRow, StyledInfoIcon } from './releaseStyledComponents'
 import { Link } from 'react-router'
 import { ReleasesContext } from '../App'
 import { styled } from '@mui/material/styles'
-import { StyledInfoIcon } from './releaseStyledComponents'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import PropTypes from 'prop-types'
@@ -20,7 +20,7 @@ import ReleasePayloadAcceptance from './ReleasePayloadAcceptance'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import TopLevelIndicators from './TopLevelIndicators'
 
-const LoadingContainer = styled(Box)({
+const FullScreenLoadingBox = styled(Box)({
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
@@ -34,18 +34,12 @@ const PageWrapper = styled(Box)(({ theme }) => ({
   paddingRight: theme.spacing(2.5),
 }))
 
-const CenteredBox = styled(Box)({
+const TitleCenterBox = styled(Box)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   height: '100%',
 })
-
-const SectionHeader = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  marginBottom: theme.spacing(2),
-}))
 
 export default function ReleaseOverview(props) {
   const [fetchError, setFetchError] = React.useState('')
@@ -90,7 +84,7 @@ export default function ReleaseOverview(props) {
 
   if (!isLoaded) {
     return (
-      <LoadingContainer>
+      <FullScreenLoadingBox>
         <Box sx={{ textAlign: 'center' }}>
           <CircularProgress size={48} />
           <Typography
@@ -101,7 +95,7 @@ export default function ReleaseOverview(props) {
             Loading release overview...
           </Typography>
         </Box>
-      </LoadingContainer>
+      </FullScreenLoadingBox>
     )
   }
 
@@ -130,11 +124,11 @@ export default function ReleaseOverview(props) {
             sx={(theme) => ({ marginBottom: theme.spacing(3) })}
           >
             <Grid item xs={12} md={8}>
-              <CenteredBox>
+              <TitleCenterBox>
                 <Typography variant="h4" sx={{ fontWeight: 600 }}>
                   {props.release} Overview
                 </Typography>
-              </CenteredBox>
+              </TitleCenterBox>
             </Grid>
             <ReleaseKeyDates release={props.release} releases={releases} />
           </Grid>
@@ -158,7 +152,7 @@ export default function ReleaseOverview(props) {
                   elevation={5}
                   sx={(theme) => ({ padding: theme.spacing(2.5) })}
                 >
-                  <SectionHeader>
+                  <CardHeaderRow>
                     <Typography
                       variant="h6"
                       component={Link}
@@ -174,7 +168,7 @@ export default function ReleaseOverview(props) {
                     >
                       <StyledInfoIcon />
                     </Tooltip>
-                  </SectionHeader>
+                  </CardHeaderRow>
 
                   <Grid
                     container

@@ -19,7 +19,7 @@ import { ReleasesContext } from '../App'
 import PropTypes from 'prop-types'
 import React from 'react'
 
-const formControlSx = (theme) => ({
+const releaseSelectorFormControlSx = (theme) => ({
   margin: theme.spacing(1),
   minWidth: 80,
 })
@@ -224,7 +224,7 @@ function ReleaseSelector(props) {
     <Fragment>
       <Grid container justifyContent="center" alignItems="center">
         <Grid item md={12}>
-          <FormControl variant="standard" sx={formControlSx}>
+          <FormControl variant="standard" sx={releaseSelectorFormControlSx}>
             <Tooltip title={props.tooltip}>
               <InputLabel sx={labelSx}>{label}</InputLabel>
             </Tooltip>

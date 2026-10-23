@@ -29,37 +29,37 @@ import Tooltip from '@mui/material/Tooltip'
 import WarningIcon from '@mui/icons-material/Warning'
 
 const CenteredMessageBox = styled(Box)(({ theme }) => ({
-  padding: 32,
+  padding: theme.spacing(4),
   textAlign: 'center',
   color: theme.palette.text.secondary,
 }))
 
-const StatsHeaderBox = styled(Box)({
-  marginBottom: 16,
+const StatsHeaderBox = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-})
+}))
 
-const StatsColumnBox = styled(Box)({
+const StatsColumnBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  gap: 16,
-})
+  gap: theme.spacing(2),
+}))
 
 const StatCardBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  padding: 16,
+  padding: theme.spacing(2),
   borderRadius: theme.spacing(1),
   backgroundColor: theme.palette.action.hover,
 }))
 
-const SectionHeaderBox = styled(Box)({
+const SectionHeaderBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  marginBottom: 16,
-})
+  marginBottom: theme.spacing(2),
+}))
 
 const RegressionList = styled(List)(({ theme }) => ({
   maxHeight: 240,

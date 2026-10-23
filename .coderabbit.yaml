@@ -92,22 +92,24 @@ reviews:
           - Reuse prepared statements for repeated queries
           - Avoid string concatenation in SQL query construction (valid use cases should be justified)
 
-      - name: "Excessive CSS in React Should Use Styles"
+      - name: "Excessive CSS in React Should Use Styled Components"
         mode: warning
         instructions: |
-          React components with extensive inline CSS should use the useStyles pattern:
+          React components with extensive inline CSS should use MUI's styled() API:
           - Flag inline style objects with more than 3-4 style properties
-          - Suggest extracting complex styles to useStyles() or styled components
+          - Suggest extracting complex styles to styled() components
+          - The sx prop is acceptable for trivial, one-off styles (1-2 properties)
           - Inline styles are acceptable for simple, dynamic values
-          - Prefer useStyles for maintainability and reusability
+          - Do not suggest makeStyles or useStyles (legacy patterns removed from this codebase)
 
           ❌ Avoid:
           - Large inline style objects in JSX
           - Repeated style definitions across components
+          - makeStyles() or useStyles() (removed)
 
           ✅ Prefer:
-          - useStyles() hook for complex styling
-          - CSS modules or styled components
+          - styled() components for reusable or non-trivial styles
+          - sx prop for trivial one-off styles (1-2 properties)
           - Inline styles only for dynamic values (e.g., width based on props)
 
       - name: "Test Coverage for New Features"
