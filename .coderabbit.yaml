@@ -92,7 +92,7 @@ reviews:
           - Reuse prepared statements for repeated queries
           - Avoid string concatenation in SQL query construction (valid use cases should be justified)
 
-      - name: "Excessive CSS in React Should Use Styled Components"
+      - name: "Excessive React CSS Uses Styled Components"
         mode: warning
         instructions: |
           React components with extensive inline CSS should use MUI's styled() API:
