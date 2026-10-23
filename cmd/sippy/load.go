@@ -118,7 +118,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.ProwLoadSince, "prow-load-since", "", "Override how far back to load prow jobs (e.g. 2024-01-15T00:00:00Z or 72h for 72 hours ago)")
 	fs.BoolVar(&f.SkipMatviewRefresh, "skip-matview-refresh", false, "Skip refreshing materialized views after loading")
 	fs.BoolVar(&f.ForceGARefresh, "force-ga-refresh", false, "Force re-population of GA test status data from BigQuery")
-	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider for component readiness regression cache loading: default (auto-select from the configured clients), bigquery, or postgres (PostgreSQL-only, requires no BigQuery credentials)")
+	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider for component readiness regression cache loading: default (PostgreSQL when available, otherwise BigQuery), bigquery, or postgres (PostgreSQL-only, requires no BigQuery credentials)")
 }
 
 // loadJiraClients shares one OAuth HTTP client across a load job's Jira consumers.
