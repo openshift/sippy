@@ -215,8 +215,8 @@ export default function CompReadyEnvCapability(props) {
         <Table className="cr-comp-read-table">
           <TableHead>
             <TableRow>
-              <TableCell className={classes.crColResultFull}>
-                <Typography className={classes.crCellCapabCol}>Name</Typography>
+              <TableCell sx={classes.crColResultFull}>
+                <Typography sx={classes.crCellCapabCol}>Name</Typography>
               </TableCell>
               {columnNames
                 .filter((column, _idx) =>
@@ -226,11 +226,11 @@ export default function CompReadyEnvCapability(props) {
                   if (column !== 'Name') {
                     return (
                       <TableCell
-                        className={classes.crColResult}
+                        sx={classes.crColResult}
                         key={'column' + '-' + idx}
                       >
                         <Tooltip title={'Single row report for ' + column}>
-                          <Typography className={classes.crCellName}>
+                          <Typography sx={classes.crCellName}>
                             {column}
                           </Typography>
                         </Tooltip>

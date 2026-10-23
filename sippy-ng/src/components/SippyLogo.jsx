@@ -1,19 +1,9 @@
 import './SippyLogo.css'
-import { makeStyles } from '../makeStyles'
 import fifaLogo from '../sippy-fifa.svg'
 import logo from '../sippy.svg'
 import Popover from '@mui/material/Popover'
 import React from 'react'
 import Typography from '@mui/material/Typography'
-
-const useStyles = makeStyles((theme) => ({
-  popover: {
-    pointerEvents: 'none',
-  },
-  paper: {
-    padding: theme.spacing(1),
-  },
-}))
 
 export function isFifaWorldCup() {
   const now = new Date()
@@ -23,7 +13,6 @@ export function isFifaWorldCup() {
 }
 
 export default function SippyLogo() {
-  const classes = useStyles()
   const [anchorEl, setAnchorEl] = React.useState(null)
   const isFifa = isFifaWorldCup()
 
@@ -53,10 +42,8 @@ export default function SippyLogo() {
       </Typography>
       <Popover
         id="mouse-over-popover"
-        className={classes.popover}
-        classes={{
-          paper: classes.paper,
-        }}
+        sx={{ pointerEvents: 'none' }}
+        slotProps={{ paper: { sx: { p: 1 } } }}
         open={open}
         anchorEl={anchorEl}
         anchorOrigin={{

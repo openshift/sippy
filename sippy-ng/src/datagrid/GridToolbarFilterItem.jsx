@@ -13,25 +13,11 @@ import {
 import { Close } from '@mui/icons-material'
 import { DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { isValid } from 'date-fns'
-import { makeStyles } from '../makeStyles'
+import { selectorSx } from './utils'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
 import GridToolbarClientAutocomplete from './GridToolbarClientAutocomplete'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-
-const useStyles = makeStyles((theme) => ({
-  filterMenu: {
-    padding: 20,
-  },
-  filterAdd: {
-    padding: 20,
-    textAlign: 'right',
-  },
-  selector: {
-    margin: theme.spacing(1),
-    minWidth: 120,
-  },
-}))
 
 export const operatorWithoutValue = ['is empty', 'is not empty']
 
@@ -47,8 +33,6 @@ const operatorValues = {
  * of a column field, operator, value, and optional not modifier.
  */
 export default function GridToolbarFilterItem({ columns = [], ...props }) {
-  const classes = useStyles()
-
   let columnType = 'string'
   let autocomplete = ''
   let release = ''
@@ -112,7 +96,7 @@ export default function GridToolbarFilterItem({ columns = [], ...props }) {
                 value: e.target.value,
               })
             }
-            className={classes.selector}
+            sx={selectorSx}
             labelId={`valueLabel-${props.id}`}
             id={`value-${props.id}`}
             autoWidth
@@ -252,7 +236,7 @@ export default function GridToolbarFilterItem({ columns = [], ...props }) {
           error={fieldError}
           value={props.filterModel.field}
           onChange={updateField}
-          className={classes.selector}
+          sx={selectorSx}
           labelId={`fieldLabel-${props.id}`}
           id={`field-${props.id}`}
           autoWidth
@@ -309,7 +293,7 @@ export default function GridToolbarFilterItem({ columns = [], ...props }) {
             })
           }
           value={props.filterModel.operator}
-          className={classes.selector}
+          sx={selectorSx}
           labelId={`operatorLabel-${props.id}`}
           id={`operator-${props.id}`}
           autoWidth

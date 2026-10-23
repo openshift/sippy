@@ -15,23 +15,22 @@ import {
   useFilterModelParam,
 } from '../helpers'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
-import { useTheme } from '@mui/material/styles'
+import { styled, useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  rowPhaseAccepted: {
+const PhaseColoredDataGrid = styled(DataGrid)(({ theme }) => ({
+  '& .rowPhaseAccepted': {
     backgroundColor: theme.palette.success.light,
   },
-  rowPhaseRejected: {
+  '& .rowPhaseRejected': {
     backgroundColor: theme.palette.error.light,
   },
-  rowPhaseForced: {
+  '& .rowPhaseForced': {
     backgroundColor: theme.palette.warning.light,
   },
 }))
@@ -47,7 +46,6 @@ function ReleasePayloadTable({
   ...props
 }) {
   const theme = useTheme()
-  const classes = useStyles(theme)
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
   const columns = [
     {
@@ -400,7 +398,7 @@ function ReleasePayloadTable({
   }
 
   return (
-    <DataGrid
+    <PhaseColoredDataGrid
       columnVisibilityModel={
         briefTable
           ? {
@@ -430,8 +428,8 @@ function ReleasePayloadTable({
       pageSizeOptions={[5, 10, 25, 50, 100]}
       getRowClassName={(params) =>
         params.row.forced === true
-          ? classes.rowPhaseForced
-          : classes['rowPhase' + params.row.phase]
+          ? 'rowPhaseForced'
+          : 'rowPhase' + params.row.phase
       }
       filterMode="server"
       sortingMode="server"

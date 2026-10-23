@@ -1,6 +1,5 @@
 /* global Temporal */
 import { Backdrop, CircularProgress } from '@mui/material'
-import { makeStyles } from '../makeStyles'
 import { PropTypes } from 'prop-types'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -9,19 +8,10 @@ import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
 import JobDetailTable from './JobDetailTable'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  backdrop: {
-    zIndex: theme.zIndex.drawer + 1,
-    color: '#fff',
-  },
-}))
-
 /**
  * JobsDetail is the landing page for the JobDetailTable.
  */
 export default function JobsDetail({ filter: defaultFilter = '', ...props }) {
-  const classes = useStyles()
-
   const [query, setQuery] = React.useState('')
   const [data, setData] = React.useState({ jobs: [] })
   const [isLoaded, setLoaded] = React.useState(false)
@@ -68,7 +58,10 @@ export default function JobsDetail({ filter: defaultFilter = '', ...props }) {
 
   if (filter !== '' && !isLoaded) {
     return (
-      <Backdrop className={classes.backdrop} open={!isLoaded}>
+      <Backdrop
+        sx={(theme) => ({ zIndex: theme.zIndex.drawer + 1, color: '#fff' })}
+        open={!isLoaded}
+      >
         Fetching data...
         <CircularProgress color="inherit" />
       </Backdrop>

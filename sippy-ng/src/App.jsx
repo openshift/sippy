@@ -1,14 +1,15 @@
 import './chartSetup'
 import { AccessibilityModeProvider } from './components/AccessibilityModeProvider'
-import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
-import { createTheme, useTheme } from '@mui/material/styles'
 import {
+  Box,
   CssBaseline,
   Grid,
   StyledEngineProvider,
   ThemeProvider,
   Tooltip,
 } from '@mui/material'
+import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
+import { createTheme, useTheme } from '@mui/material/styles'
 import { cyan, green, orange, red } from '@mui/material/colors'
 import { DarkMode, LightMode, ToggleOff, ToggleOn } from '@mui/icons-material'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -19,7 +20,6 @@ import {
   relativeTime,
 } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
-import { makeStyles } from './makeStyles'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
@@ -117,16 +117,6 @@ export const ReportEndContext = React.createContext('')
 const ColorModeContext = React.createContext({
   toggleColorMode: () => {},
 })
-
-const useStyles = makeStyles(() => ({
-  root: {
-    display: 'flex',
-    flexGrow: 1,
-  },
-  title: {
-    flexGrow: 1,
-  },
-}))
 
 const dataGridCellOverride = {
   MuiDataGrid: {
@@ -401,7 +391,6 @@ const EventsChartWrapper = () => {
 }
 
 function App(_props) {
-  const classes = useStyles()
   const theme = useTheme()
 
   const [cookies, setCookie] = useCookies([
@@ -569,7 +558,7 @@ function App(_props) {
                       objectToSearchString: stringify,
                     }}
                   >
-                    <div className={classes.root}>
+                    <Box sx={{ display: 'flex', flexGrow: 1 }}>
                       <AppBar
                         position="fixed"
                         open={drawerOpen}
@@ -593,7 +582,7 @@ function App(_props) {
                             justifyContent="space-between"
                             alignItems="center"
                           >
-                            <Typography variant="h6" className={classes.title}>
+                            <Typography variant="h6" sx={{ flexGrow: 1 }}>
                               Sippy
                             </Typography>
                             {showWithCapability(
@@ -815,7 +804,7 @@ function App(_props) {
                           </Routes>
                         </ErrorBoundary>
                       </Main>
-                    </div>
+                    </Box>
                   </QueryParamProvider>
                 </AccessibilityModeProvider>
               </SippyCapabilitiesContext.Provider>

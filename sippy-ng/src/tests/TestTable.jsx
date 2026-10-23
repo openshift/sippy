@@ -15,6 +15,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { BOOKMARKS, DEFAULT_TEST_FILTERS, TEST_THRESHOLDS } from '../constants'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import {
   escapeRegex,
   filterFor,
@@ -25,15 +26,11 @@ import {
   useFilterModelParam,
   withSort,
 } from '../helpers'
-import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { StyledDataGrid } from '../datagrid/StyledDataGrid'
 import { useCookies } from 'react-cookie'
 import { useTheme } from '@mui/material/styles'
-import { withStyles } from '../makeStyles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import IconButton from '@mui/material/IconButton'
@@ -119,12 +116,7 @@ function isComponentReadinessIncludedJobTier(variant) {
   )
 }
 
-const useStyles = makeStyles((_theme) => ({
-  backdrop: {
-    zIndex: 999999,
-    color: '#fff',
-  },
-}))
+const ColoredDataGrid = createColoredDataGrid(TEST_THRESHOLDS)
 
 function TestTable({
   collapse = true,
@@ -141,8 +133,6 @@ function TestTable({
   sort: sortProp = 'asc',
   ...props
 }) {
-  const { classes } = props
-  const gridClasses = useStyles()
   const theme = useTheme()
   const location = useLocation().pathname
 
@@ -1082,7 +1072,10 @@ function TestTable({
       return <p>Loading...</p>
     } else {
       return (
-        <Backdrop className={gridClasses.backdrop} open={true}>
+        <Backdrop
+          sx={(theme) => ({ zIndex: theme.zIndex.drawer + 1, color: '#fff' })}
+          open={true}
+        >
           <CircularProgress color="inherit" />
         </Backdrop>
       )
@@ -1125,7 +1118,7 @@ function TestTable({
           results. The unfiltered dataset is too large to display.
         </Alert>
       )}
-      <StyledDataGrid
+      <ColoredDataGrid
         loading={isSearching}
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
@@ -1161,7 +1154,7 @@ function TestTable({
         getRowClassName={(params) => {
           let rowClass = []
           if (params.row.name === overallTestName) {
-            rowClass.push(classes['overall'])
+            rowClass.push('overall')
           }
 
           // Force the test tables to extremes; it's an up or down thing. Either a test
@@ -1174,9 +1167,7 @@ function TestTable({
               params.row[gridView.view.rowColor.field] < 5 ? 100 : 0
           }
 
-          let className = 'row-percent-' + adjustedPercentage
-
-          rowClass.push(classes[className])
+          rowClass.push('row-percent-' + adjustedPercentage)
 
           return rowClass.join(' ')
         }}
@@ -1215,7 +1206,6 @@ TestTable.propTypes = {
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   release: PropTypes.string.isRequired,
-  classes: PropTypes.object,
   period: PropTypes.string,
   filterModel: PropTypes.object,
   sort: PropTypes.string,
@@ -1225,4 +1215,4 @@ TestTable.propTypes = {
   onDataLoaded: PropTypes.func,
 }
 
-export default withStyles(generateClasses(TEST_THRESHOLDS))(TestTable)
+export default TestTable

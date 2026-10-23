@@ -10,7 +10,6 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
-  IconButton,
   InputLabel,
   Link,
   MenuItem,
@@ -20,29 +19,32 @@ import {
   Typography,
 } from '@mui/material'
 import { Close } from '@mui/icons-material'
+import { CloseButton } from '../component_readiness/TriageStyledComponents'
 import {
   getBugsAPIUrl,
   getTriagesAPIUrl,
 } from '../component_readiness/CompReadyUtils'
-import { makeStyles } from '../makeStyles'
+import { styled } from '@mui/material/styles'
 import BugButton from './BugButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useState } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  alignedButton: {
-    float: 'left',
-  },
-  fieldLabel: {
-    marginTop: theme.spacing(2),
-    marginBottom: theme.spacing(1),
-  },
-  chipContainer: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
-    marginTop: theme.spacing(1),
-  },
+const ChipContainer = styled(Box)({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+  marginTop: 8,
+})
+
+const FieldLabel = styled(Typography)({
+  marginTop: 16,
+  marginBottom: 8,
+})
+
+const NoteText = styled(Typography)(({ theme }) => ({
+  fontStyle: 'italic',
+  color: theme.palette.text.secondary,
+  textAlign: 'right',
 }))
 
 export default function FileBug({
@@ -60,7 +62,6 @@ export default function FileBug({
   setHasBeenTriaged,
   url,
 }) {
-  const classes = useStyles()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formData, setFormData] = useState({
     summary: '',
@@ -368,7 +369,7 @@ See the [sippy test details|${url}] for additional context.
         <Button
           variant="contained"
           color="primary"
-          className={classes.alignedButton}
+          sx={{ float: 'left' }}
           onClick={handleOpenModal}
         >
           File a new bug
@@ -389,19 +390,13 @@ See the [sippy test details|${url}] for additional context.
       >
         <DialogTitle>
           File Jira Bug
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseModal}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
+          <CloseButton aria-label="close" onClick={handleCloseModal}>
             <Close />
-          </IconButton>
+          </CloseButton>
         </DialogTitle>
 
         <DialogContent dividers>
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
-            Summary *
-          </Typography>
+          <FieldLabel variant="subtitle2">Summary *</FieldLabel>
           <TextField
             name="summary"
             value={formData.summary}
@@ -412,9 +407,7 @@ See the [sippy test details|${url}] for additional context.
             helperText="Title of the issue"
           />
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
-            Description *
-          </Typography>
+          <FieldLabel variant="subtitle2">Description *</FieldLabel>
           <TextField
             name="description"
             value={formData.description}
@@ -427,9 +420,7 @@ See the [sippy test details|${url}] for additional context.
             helperText="Detailed description including test failure information"
           />
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
-            Affects Versions *
-          </Typography>
+          <FieldLabel variant="subtitle2">Affects Versions *</FieldLabel>
           <TextField
             placeholder="Add versions (press Enter to add)"
             value={versionInput}
@@ -440,7 +431,7 @@ See the [sippy test details|${url}] for additional context.
             fullWidth
             margin="normal"
           />
-          <Box className={classes.chipContainer}>
+          <ChipContainer>
             {formData.affectsVersions.map((version) => (
               <Chip
                 key={version}
@@ -450,11 +441,9 @@ See the [sippy test details|${url}] for additional context.
                 variant="outlined"
               />
             ))}
-          </Box>
+          </ChipContainer>
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
-            Components *
-          </Typography>
+          <FieldLabel variant="subtitle2">Components *</FieldLabel>
           <TextField
             placeholder="Add components (press Enter to add)"
             value={componentInput}
@@ -470,7 +459,7 @@ See the [sippy test details|${url}] for additional context.
                 : ''
             }
           />
-          <Box className={classes.chipContainer}>
+          <ChipContainer>
             {(!isNaN(jiraComponentID) || jiraComponentName) && (
               <Chip
                 label={`Computed Component: ${jiraComponentName || 'Unknown'}${
@@ -489,11 +478,9 @@ See the [sippy test details|${url}] for additional context.
                 variant="outlined"
               />
             ))}
-          </Box>
+          </ChipContainer>
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
-            Labels
-          </Typography>
+          <FieldLabel variant="subtitle2">Labels</FieldLabel>
           <TextField
             placeholder="Add labels (press Enter to add)"
             value={labelInput}
@@ -504,7 +491,7 @@ See the [sippy test details|${url}] for additional context.
             fullWidth
             margin="normal"
           />
-          <Box className={classes.chipContainer}>
+          <ChipContainer>
             {formData.labels.map((label) => (
               <Chip
                 key={label}
@@ -514,7 +501,7 @@ See the [sippy test details|${url}] for additional context.
                 variant="outlined"
               />
             ))}
-          </Box>
+          </ChipContainer>
 
           <FormControlLabel
             control={
@@ -574,16 +561,9 @@ See the [sippy test details|${url}] for additional context.
               {isSubmitting ? 'Filing Bug...' : 'File Bug'}
             </Button>
           </Box>
-          <Typography
-            variant="body2"
-            sx={{
-              fontStyle: 'italic',
-              color: 'text.secondary',
-              textAlign: 'right',
-            }}
-          >
+          <NoteText variant="body2">
             Note: All fields can be edited after the bug is submitted to Jira.
-          </Typography>
+          </NoteText>
         </DialogActions>
       </Dialog>
     </Fragment>

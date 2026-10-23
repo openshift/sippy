@@ -5,10 +5,6 @@ import GridToolbarFilterMenu from './GridToolbarFilterMenu'
 import React from 'react'
 import userEvent from '@testing-library/user-event'
 
-vi.mock('../makeStyles', () => ({
-  makeStyles: () => () => ({}),
-}))
-
 vi.mock('./GridToolbarFilterItem', () => ({
   default: ({ id, filterModel, destroy }) => (
     <div data-testid={`filter-item-${id}`}>
@@ -23,7 +19,8 @@ vi.mock('./GridToolbarFilterItem', () => ({
   operatorWithoutValue: ['is empty', 'is not empty'],
 }))
 
-vi.mock('./utils', () => ({
+vi.mock('./utils', async (importOriginal) => ({
+  ...(await importOriginal()),
   filterTooltip: () => '',
 }))
 

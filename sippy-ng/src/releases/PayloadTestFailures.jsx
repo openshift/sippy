@@ -1,15 +1,24 @@
 import './PayloadTestFailures.css'
 import { Box, Card, Grid, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
-import { generateClasses } from '../datagrid/utils'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
-import { withStyles } from '../makeStyles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
+
+const TEST_FAILURES_IN_PAYLOAD_THRESHOLDS = {
+  success: 0,
+  warning: 2,
+  error: 5,
+}
+
+const ColoredDataGrid = createColoredDataGrid(
+  TEST_FAILURES_IN_PAYLOAD_THRESHOLDS,
+  true
+)
 
 function PayloadTestFailures({
   hideControls = false,
@@ -20,8 +29,6 @@ function PayloadTestFailures({
   sort: defaultSort = 'asc',
   ...props
 }) {
-  const { classes } = props
-
   // Most things not filterable here, as we are not querying them directly from db,
   // but test name is, and that is likely the most important.
   const columns = [
@@ -211,7 +218,7 @@ function PayloadTestFailures({
             <InfoIcon />
           </Tooltip>
         </Typography>
-        <DataGrid
+        <ColoredDataGrid
           columnVisibilityModel={{ id: false }}
           slots={{ toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
@@ -237,7 +244,7 @@ function PayloadTestFailures({
           ]}
           onSortModelChange={(m) => updateSortModel(m)}
           getRowClassName={(params) =>
-            classes['row-percent-' + params.row.failure_count]
+            'row-percent-' + params.row.failure_count
           }
           slotProps={{
             toolbar: {
@@ -264,17 +271,7 @@ PayloadTestFailures.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  classes: PropTypes.object,
-
   payload: PropTypes.string,
 }
 
-const TEST_FAILURES_IN_PAYLOAD_THRESHOLDS = {
-  success: 0,
-  warning: 2,
-  error: 5,
-}
-
-export default withStyles(
-  generateClasses(TEST_FAILURES_IN_PAYLOAD_THRESHOLDS, true)
-)(PayloadTestFailures)
+export default PayloadTestFailures

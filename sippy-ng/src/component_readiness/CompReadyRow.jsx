@@ -32,9 +32,9 @@ export default function CompReadyRow(props) {
   // Put the componentName on the left side with a link to a component specific
   // capabilities report.
   const componentNameColumn = (
-    <TableCell className={classes.componentName} key={componentName}>
+    <TableCell sx={classes.componentName} key={componentName}>
       <Tooltip title={'Component report for ' + componentName}>
-        <Typography className={classes.crCellName}>
+        <Typography sx={classes.crCellName}>
           <Link to={capabilitiesReport(filterVals, componentName)}>
             {componentName}
           </Link>

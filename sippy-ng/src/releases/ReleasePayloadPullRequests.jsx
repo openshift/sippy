@@ -1,22 +1,18 @@
 import { DataGrid } from '@mui/x-data-grid'
-import { makeStyles } from '../makeStyles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
-import { useTheme } from '@mui/material/styles'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  rowPhaseAccepted: {
+const PhaseColoredDataGrid = styled(DataGrid)(({ theme }) => ({
+  '& .rowPhaseAccepted': {
     backgroundColor: theme.palette.success.light,
   },
-  rowPhaseRejected: {
+  '& .rowPhaseRejected': {
     backgroundColor: theme.palette.error.light,
-  },
-  title: {
-    textAlign: 'center',
   },
 }))
 
@@ -30,9 +26,6 @@ function ReleasePayloadPullRequests({
   sort: sortDefault = 'asc',
   ...props
 }) {
-  const theme = useTheme()
-  const classes = useStyles(theme)
-
   const columns = [
     {
       field: 'release_tag',
@@ -180,7 +173,7 @@ function ReleasePayloadPullRequests({
   }
 
   return (
-    <DataGrid
+    <PhaseColoredDataGrid
       columnVisibilityModel={{ release_tag: false }}
       slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
@@ -194,7 +187,7 @@ function ReleasePayloadPullRequests({
         setPageSize(model.pageSize)
       }}
       pageSizeOptions={[5, 10, 25, 50]}
-      getRowClassName={(params) => classes['rowPhase' + params.row.phase]}
+      getRowClassName={(params) => 'rowPhase' + params.row.phase}
       filterMode="server"
       sortingMode="server"
       sortingOrder={['desc', 'asc']}

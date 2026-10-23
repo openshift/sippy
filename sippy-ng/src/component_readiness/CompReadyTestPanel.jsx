@@ -17,11 +17,19 @@ import {
 } from '@mui/material'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { getTestStatus } from '../helpers'
+import { styled } from '@mui/material/styles'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
 import InfoIcon from '@mui/icons-material/Info'
 import JobArtifactQuery from './JobArtifactQuery'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
+
+const DialogHeaderBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: theme.spacing(2),
+}))
 
 export default function CompReadyTestPanel(props) {
   const { data, versions, loadedParams, testName, environment, component } =
@@ -38,8 +46,8 @@ export default function CompReadyTestPanel(props) {
 
   const tableCell = (label, idx) => {
     return (
-      <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
-        <Typography className={classes.crCellName}>{label}</Typography>
+      <TableCell sx={classes.crColResult} key={'column' + '-' + idx}>
+        <Typography sx={classes.crCellName}>{label}</Typography>
       </TableCell>
     )
   }
@@ -47,10 +55,10 @@ export default function CompReadyTestPanel(props) {
   const tableTooltipCell = (label, idx, title) => {
     return (
       <Tooltip title={title}>
-        <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
+        <TableCell sx={classes.crColResult} key={'column' + '-' + idx}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <InfoIcon style={{ fontSize: '16px', fontWeight: 'lighter' }} />
-            <Typography className={classes.crCellName}>{label}</Typography>
+            <Typography sx={classes.crCellName}>{label}</Typography>
           </div>
         </TableCell>
       </Tooltip>
@@ -355,14 +363,7 @@ export default function CompReadyTestPanel(props) {
         onClose={handleToggleJAQOpen}
       >
         <Grid className="jaq-dialog" tabIndex="0">
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: 2,
-            }}
-          >
+          <DialogHeaderBox>
             <Typography variant="h4" component="h1">
               Test Details Job Artifact Query
             </Typography>
@@ -375,7 +376,7 @@ export default function CompReadyTestPanel(props) {
                 Close
               </Button>
             </Tooltip>
-          </Box>
+          </DialogHeaderBox>
 
           <Box sx={{ mb: 2 }}>
             <Typography variant="body1" sx={{ mb: 1 }}>

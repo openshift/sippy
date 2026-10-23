@@ -1,24 +1,23 @@
 import { CheckCircle, Error as ErrorIcon, Help } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
+import { styled } from '@mui/material/styles'
 import { Tooltip } from '@mui/material'
-import { useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  rowPhaseAccepted: {
+const PhaseColoredDataGrid = styled(DataGrid)(({ theme }) => ({
+  '& .rowPhaseAccepted': {
     backgroundColor: theme.palette.success.light,
   },
-  rowPhaseRejected: {
+  '& .rowPhaseRejected': {
     backgroundColor: theme.palette.error.light,
   },
-  rowPhaseForced: {
+  '& .rowPhaseForced': {
     backgroundColor: theme.palette.warning.light,
   },
 }))
@@ -32,9 +31,6 @@ function PayloadStreamsTable({
   sort: defaultSort = 'desc',
   ...props
 }) {
-  const theme = useTheme()
-  const classes = useStyles(theme)
-
   const columns = [
     {
       field: 'phase',
@@ -224,7 +220,7 @@ function PayloadStreamsTable({
   }
 
   return (
-    <DataGrid
+    <PhaseColoredDataGrid
       columnVisibilityModel={briefTable ? { stream: false } : {}}
       slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
@@ -241,8 +237,8 @@ function PayloadStreamsTable({
       pageSizeOptions={[]}
       getRowClassName={(params) =>
         params.row.forced === true
-          ? classes.rowPhaseForced
-          : classes['rowPhase' + params.row.last_phase]
+          ? 'rowPhaseForced'
+          : 'rowPhase' + params.row.last_phase
       }
       filterMode="server"
       sortingMode="server"

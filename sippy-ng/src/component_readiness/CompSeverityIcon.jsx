@@ -2,12 +2,12 @@ import './ComponentReadiness.css'
 import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import { Badge, Tooltip } from '@mui/material'
 import { getStatusAndIcon } from './CompReadyUtils'
-import { withStyles } from '../makeStyles'
+import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 
-const StyledBadge = withStyles((_theme) => ({
-  badge: {
+const StyledBadge = styled(Badge)({
+  '& .MuiBadge-badge': {
     height: 12,
     maxHeight: 12,
     minHeight: 12,
@@ -15,7 +15,7 @@ const StyledBadge = withStyles((_theme) => ({
     maxWidth: 12,
     minWidth: 12,
   },
-}))(Badge)
+})
 
 export default function CompSeverityIcon(props) {
   const { accessibilityModeOn } = useContext(AccessibilityModeContext)

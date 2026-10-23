@@ -51,9 +51,9 @@ export default function CompTestRow(props) {
   // Put the testName on the left side with a link to a test specific
   // test report.
   const testNameColumn = (
-    <TableCell className={classes.componentName} key={testName}>
+    <TableCell sx={classes.componentName} key={testName}>
       <Tooltip title={'Capabilities report for ' + testName}>
-        <Typography className={classes.crCellName}>
+        <Typography sx={classes.crCellName}>
           <Link to={testLink(filterVals, component, capability, testId)}>
             {[testSuite, testName].filter(Boolean).join('.')}
           </Link>

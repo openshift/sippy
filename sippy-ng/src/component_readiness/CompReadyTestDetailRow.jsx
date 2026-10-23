@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { Checkbox, Tooltip, Typography } from '@mui/material'
+import { Box, Checkbox, Tooltip, Typography } from '@mui/material'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Fragment, useContext } from 'react'
 import PropTypes from 'prop-types'
@@ -53,7 +53,7 @@ export default function CompReadyTestDetailRow(props) {
 
   const infoCell = (stats) => {
     return (
-      <Typography className={classes.crCellName}>
+      <Typography sx={classes.crCellName}>
         pass rate=
         {(stats.success_rate * 100).toFixed(2)}%
         <br />
@@ -113,16 +113,15 @@ export default function CompReadyTestDetailRow(props) {
 
                 var content = (
                   <Tooltip title={tooltipText}>
-                    <Typography className={classes.crCellName}>
-                      {letter}
-                    </Typography>
+                    <Typography sx={classes.crCellName}>{letter}</Typography>
                   </Tooltip>
                 )
                 var selectHandler = handlerForJobRunSelect(jobRun.job_run_id)
 
                 return searchJobArtifacts ? (
-                  <a
-                    className={
+                  <Box
+                    component="a"
+                    sx={
                       searchJobRunIds.has(jobRun.job_run_id)
                         ? classes.selectedJobRun
                         : classes.unselectedJobRun
@@ -136,9 +135,8 @@ export default function CompReadyTestDetailRow(props) {
                   >
                     {' '}
                     {content}{' '}
-                  </a>
+                  </Box>
                 ) : (
-                  // not searching artifacts, show normal job run with link
                   <a
                     href={jobRun.job_url}
                     key={jobRunIndex}
@@ -199,11 +197,11 @@ export default function CompReadyTestDetailRow(props) {
     <Fragment>
       <TableRow key={'jobheader-' + idx}>
         <TableCell
-          className={classes.crColJobName}
+          sx={classes.crColJobName}
           key={'basisJob-' + idx}
           colSpan={3}
         >
-          <Typography className={classes.crCellName}>
+          <Typography sx={classes.crCellName}>
             {element.base_job_name ? (
               <Fragment>
                 {element.base_job_name}
@@ -216,11 +214,11 @@ export default function CompReadyTestDetailRow(props) {
           </Typography>
         </TableCell>
         <TableCell
-          className={classes.crColJobName}
+          sx={classes.crColJobName}
           key={'sampleJob-' + idx}
           colSpan={3}
         >
-          <Typography className={classes.crCellName}>
+          <Typography sx={classes.crCellName}>
             {element.sample_job_name ? (
               <Fragment>
                 {element.sample_job_name}
@@ -244,7 +242,7 @@ export default function CompReadyTestDetailRow(props) {
         </TableCell>
         {testJobDetailCell(element, 'sample')}
         <TableCell style={{ verticalAlign: 'top' }}>
-          <Typography className={classes.crCellName}>
+          <Typography sx={classes.crCellName}>
             {element.significant ? 'True' : 'False'}
           </Typography>
         </TableCell>

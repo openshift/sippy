@@ -13,25 +13,16 @@ import {
 } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
-import { makeStyles } from '../makeStyles'
+import { formControlSx } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React, { useContext, useState } from 'react'
 import Typography from '@mui/material/Typography'
 
-const useIncludeVariantStyles = makeStyles((theme) => ({
-  formControl: {
-    margin: theme.spacing(1),
-    minWidth: '20px',
-  },
-  gridCenter: {
-    marginTop: theme.spacing(1),
-    textAlign: 'center',
-  },
-  gridRight: {
-    justifyContent: 'flex-end',
-    display: 'flex',
-  },
-}))
+const gridCenterSx = (theme) => ({
+  marginTop: theme.spacing(1),
+  textAlign: 'center',
+})
+const gridRightSx = { justifyContent: 'flex-end', display: 'flex' }
 
 export default function IncludeVariantCheckBoxList(props) {
   const variantGroupName = props.variantGroupName
@@ -94,11 +85,8 @@ export default function IncludeVariantCheckBoxList(props) {
     setIsCompareMode(!isCompareMode)
   }
 
-  const classes = useIncludeVariantStyles()
-
   let params = {
     variantGroupName,
-    classes,
     displayList: varsContext.allJobVariants[variantGroupName],
     includeItems,
     handleIncludeVariantSelection,
@@ -107,11 +95,7 @@ export default function IncludeVariantCheckBoxList(props) {
   }
 
   return (
-    <FormControl
-      variant="standard"
-      className={classes.formControl}
-      component="fieldset"
-    >
+    <FormControl variant="standard" sx={formControlSx} component="fieldset">
       <Accordion className="checkboxlist-headerName">
         <AccordionSummary
           className="checkboxlist-summary"
@@ -131,7 +115,6 @@ export default function IncludeVariantCheckBoxList(props) {
             <Button
               variant="contained"
               color="primary"
-              className={classes.control}
               onClick={handleToggleCompare}
             >
               {isCompareMode ? 'Cancel Compare' : 'Compare'}
@@ -170,7 +153,7 @@ function CompareVariantGroup(params) {
         <Grid item xs={6}>
           Basis
         </Grid>
-        <Grid item xs={6} className={params.classes.gridRight}>
+        <Grid item xs={6} sx={gridRightSx}>
           Sample
         </Grid>
       </Grid>
@@ -183,7 +166,7 @@ function CompareVariantGroup(params) {
               name={item}
             />
           </Grid>
-          <Grid item xs={8} className={params.classes.gridCenter}>
+          <Grid item xs={8} sx={gridCenterSx}>
             {item}
           </Grid>
           <Grid item xs={2}>

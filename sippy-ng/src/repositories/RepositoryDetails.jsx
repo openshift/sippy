@@ -1,34 +1,13 @@
-import { Card, Container, Grid, Typography } from '@mui/material'
+import { Box, Card, Container, Grid, Typography } from '@mui/material'
 import { filterFor, pathForJobsWithFilter, withSort } from '../helpers'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import JobTable from '../jobs/JobTable'
 import PropTypes from 'prop-types'
 import PullRequestsTable from '../pull_requests/PullRequestsTable'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    flexGrow: 1,
-  },
-  card: {
-    minWidth: 275,
-    alignContent: 'center',
-    margin: 'auto',
-  },
-  title: {
-    textAlign: 'center',
-  },
-  warning: {
-    margin: 10,
-    width: '100%',
-  },
-}))
-
 export default function RepositoryDetails(props) {
-  const classes = useStyles()
-
   useEffect(() => {
     document.title = `Sippy > ${props.release} > Repositories > ${props.org}/${props.repo}`
   }, [])
@@ -42,9 +21,9 @@ export default function RepositoryDetails(props) {
         }
         currentPage={`${props.org}/${props.repo}`}
       />
-      <div className="{classes.root}" style={{ padding: 20 }}>
+      <Box sx={{ padding: '20px' }}>
         <Container maxWidth="lg">
-          <Typography variant="h4" gutterBottom className={classes.title}>
+          <Typography variant="h4" gutterBottom sx={{ textAlign: 'center' }}>
             {props.org}/{props.repo}
           </Typography>
 
@@ -139,7 +118,7 @@ export default function RepositoryDetails(props) {
             </Grid>
           </Grid>
         </Container>
-      </div>
+      </Box>
     </Fragment>
   )
 }

@@ -14,7 +14,6 @@ import {
   GitHub,
   History,
 } from '@mui/icons-material'
-import { DataGrid } from '@mui/x-data-grid'
 import {
   getReportStartDate,
   relativeTime,
@@ -23,9 +22,10 @@ import {
 } from '../helpers'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router'
-import { makeStyles } from '../makeStyles'
 import { ReportEndContext } from '../App'
 import { StringParam, useQueryParam } from 'use-query-params'
+import { styled } from '@mui/material/styles'
+import { StyledDataGrid } from '../datagrid/StyledDataGrid'
 import { useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -39,27 +39,11 @@ const bookmarks = [
   },
 ]
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-    '& .MuiDataGrid-row.Mui-even': {
-      backgroundColor: 'lightgrey',
-    },
-    backdrop: {
-      zIndex: 999999,
-      color: '#fff',
-    },
+const PullRequestsDataGrid = styled(StyledDataGrid)({
+  '& .MuiDataGrid-row.Mui-even': {
+    backgroundColor: 'lightgrey',
   },
-}))
+})
 
 export default function PullRequestsTable({
   limit = 0,
@@ -73,8 +57,6 @@ export default function PullRequestsTable({
   sort: sortDefault = 'desc',
   ...props
 }) {
-  const _classes = props.classes
-  const gridClasses = useStyles()
   const theme = useTheme()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -397,7 +379,10 @@ export default function PullRequestsTable({
       return <p>Loading...</p>
     } else {
       return (
-        <Backdrop className={gridClasses.backdrop} open={true}>
+        <Backdrop
+          sx={(theme) => ({ zIndex: theme.zIndex.drawer + 1, color: '#fff' })}
+          open={true}
+        >
           <CircularProgress color="inherit" />
         </Backdrop>
       )
@@ -434,8 +419,7 @@ export default function PullRequestsTable({
 
   return (
     <Fragment>
-      <DataGrid
-        className={gridClasses.root}
+      <PullRequestsDataGrid
         columnVisibilityModel={gridView.columnVisibilityModel}
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
@@ -486,7 +470,6 @@ PullRequestsTable.propTypes = {
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   release: PropTypes.string.isRequired,
-  classes: PropTypes.object,
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,

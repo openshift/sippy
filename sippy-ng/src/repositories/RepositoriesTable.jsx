@@ -6,11 +6,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
-import { generateClasses } from '../datagrid/utils'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import { GridView } from '../datagrid/GridView'
 import { Launch } from '@mui/icons-material'
-import { makeStyles } from '../makeStyles'
 import { MERGE_FAILURE_THERSHOLDS } from '../constants'
 import {
   pathForRepository,
@@ -19,31 +17,13 @@ import {
 } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { useNavigate } from 'react-router'
-import { withStyles } from '../makeStyles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-    backdrop: {
-      zIndex: 999999,
-      color: '#fff',
-    },
-  },
-}))
+const ColoredDataGrid = createColoredDataGrid(MERGE_FAILURE_THERSHOLDS)
 
 function RepositoriesTable({
   limit = 0,
@@ -65,8 +45,6 @@ function RepositoriesTable({
   const REVERT_COUNT_TOOLTIP =
     'Revert count is our best guess for how many reverts this repo has had merged over the last 90 days.'
 
-  const { classes } = props
-  const gridClasses = useStyles()
   const navigate = useNavigate()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -258,7 +236,10 @@ function RepositoriesTable({
       return <p>Loading...</p>
     } else {
       return (
-        <Backdrop className={gridClasses.backdrop} open={true}>
+        <Backdrop
+          sx={(theme) => ({ zIndex: theme.zIndex.drawer + 1, color: '#fff' })}
+          open={true}
+        >
           <CircularProgress color="inherit" />
         </Backdrop>
       )
@@ -309,8 +290,7 @@ function RepositoriesTable({
 
   return (
     <Fragment>
-      <DataGrid
-        className={gridClasses.root}
+      <ColoredDataGrid
         slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         density="compact"
@@ -323,9 +303,7 @@ function RepositoriesTable({
         onPaginationModelChange={setPaginationModel}
         pageSizeOptions={pageSizeOptions}
         getRowClassName={(params) =>
-          classes[
-            'row-percent-' + Math.round(params.row.worst_premerge_job_failures)
-          ]
+          'row-percent-' + Math.round(params.row.worst_premerge_job_failures)
         }
         onRowClick={(e) =>
           navigate(`/repositories/${props.release}/${e.row.org}/${e.row.repo}`)
@@ -370,7 +348,6 @@ RepositoriesTable.propTypes = {
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   release: PropTypes.string.isRequired,
-  classes: PropTypes.object,
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
@@ -378,6 +355,4 @@ RepositoriesTable.propTypes = {
   view: PropTypes.string,
 }
 
-export default withStyles(generateClasses(MERGE_FAILURE_THERSHOLDS))(
-  RepositoriesTable
-)
+export default RepositoriesTable

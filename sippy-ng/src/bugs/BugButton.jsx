@@ -1,17 +1,9 @@
 import { Button } from '@mui/material'
-import { makeStyles } from '../makeStyles'
 import { safeEncodeURIComponent } from '../helpers'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 
-const useStyles = makeStyles((_theme) => ({
-  alignedButton: {
-    float: 'left',
-  },
-}))
-
 export default function BugButton({ jiraProjectID = '10325', ...props }) {
-  const classes = useStyles()
   const [_open, _setOpen] = useState(false)
 
   const text = `
@@ -50,7 +42,7 @@ See the [sippy test details|${document.location.href}] for additional context.
     <Button
       variant="contained"
       color="primary"
-      className={classes.alignedButton}
+      sx={{ float: 'left' }}
       onClick={handleClick}
     >
       File a new bug

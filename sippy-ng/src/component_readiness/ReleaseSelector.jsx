@@ -15,27 +15,17 @@ import {
   Tooltip,
 } from '@mui/material'
 import { Fragment, useContext, useEffect, useState } from 'react'
-import { makeStyles } from '../makeStyles'
 import { ReleasesContext } from '../App'
 import PropTypes from 'prop-types'
 import React from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  formControl: {
-    margin: theme.spacing(1),
-    minWidth: 80,
-  },
-  selectEmpty: {
-    marginTop: theme.spacing(5),
-  },
-  label: {
-    display: 'flex',
-    whiteSpace: 'nowrap',
-  },
-}))
+const releaseSelectorFormControlSx = (theme) => ({
+  margin: theme.spacing(1),
+  minWidth: 80,
+})
+const labelSx = { display: 'flex', whiteSpace: 'nowrap' }
 
 function ReleaseSelector(props) {
-  const classes = useStyles()
   const releases = useContext(ReleasesContext)
   const [versions, setVersions] = useState({})
   const {
@@ -234,9 +224,9 @@ function ReleaseSelector(props) {
     <Fragment>
       <Grid container justifyContent="center" alignItems="center">
         <Grid item md={12}>
-          <FormControl variant="standard" className={classes.formControl}>
+          <FormControl variant="standard" sx={releaseSelectorFormControlSx}>
             <Tooltip title={props.tooltip}>
-              <InputLabel className={classes.label}>{label}</InputLabel>
+              <InputLabel sx={labelSx}>{label}</InputLabel>
             </Tooltip>
             <Select variant="standard" value={version} onChange={onChange}>
               {Object.keys(versions).map((v) => (

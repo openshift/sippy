@@ -1,57 +1,20 @@
 import {
-  Box,
   Button,
   CircularProgress,
   DialogActions,
-  DialogContent,
   DialogTitle,
   Snackbar,
   Tooltip,
   Typography,
 } from '@mui/material'
 import { getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '../makeStyles'
+import { LoadingContainer, TriageDialogContent } from './TriageStyledComponents'
 import AddRegressionPanel from './AddRegressionPanel'
 import Alert from '@mui/material/Alert'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import UpdateTriagePanel from './UpdateTriagePanel'
-
-const useCommonTriageStyles = makeStyles((theme) => ({
-  tabsContainer: {
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    '& .MuiTab-root': {
-      border: `1px solid ${theme.palette.divider}`,
-      borderBottom: 'none',
-      margin: '0 2px',
-      '&:hover': {
-        backgroundColor: theme.palette.action.hover,
-      },
-      '&.Mui-selected': {
-        backgroundColor: theme.palette.background.paper,
-        borderColor: theme.palette.primary.main,
-      },
-    },
-  },
-  dialogContent: {
-    overflow: 'auto',
-    flex: 1,
-    paddingTop: '8px',
-    paddingBottom: '8px',
-  },
-  centeredHeading: {
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: theme.spacing(2),
-    justifyContent: 'center',
-    minHeight: '400px',
-  },
-}))
 
 export default function UpsertTriageModal({
   regressionIds,
@@ -61,7 +24,6 @@ export default function UpsertTriageModal({
   submissionDelay = 0,
   fields = [],
 }) {
-  const commonClasses = useCommonTriageStyles()
   const regressionAddMode =
     regressionIds !== undefined && regressionIds.length > 0
   const triageDetailsUpdateMode = triage !== undefined
@@ -223,12 +185,12 @@ export default function UpsertTriageModal({
           {triagesLoading && (
             <Fragment>
               <DialogTitle>Triage</DialogTitle>
-              <DialogContent className={commonClasses.dialogContent}>
-                <Box className={commonClasses.loadingContainer}>
+              <TriageDialogContent>
+                <LoadingContainer>
                   <CircularProgress aria-label="Loading triage information..." />
                   <Typography>Loading triage information...</Typography>
-                </Box>
-              </DialogContent>
+                </LoadingContainer>
+              </TriageDialogContent>
             </Fragment>
           )}
           {!triagesLoading && triageDetailsUpdateMode && (
@@ -239,7 +201,6 @@ export default function UpsertTriageModal({
               triageEntryData={triageEntryData}
               setTriageEntryData={setTriageEntryData}
               handleTriageFormCompletion={handleTriageFormCompletion}
-              commonClasses={commonClasses}
             />
           )}
           {!triagesLoading && regressionAddMode && (
@@ -252,7 +213,6 @@ export default function UpsertTriageModal({
               setAlertSeverity={setAlertSeverity}
               handleNewTriageFormCompletion={handleTriageFormCompletion}
               completeTriageSubmission={completeTriageSubmission}
-              commonClasses={commonClasses}
             />
           )}
           <DialogActions sx={{ justifyContent: 'flex-start' }}>

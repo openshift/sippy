@@ -18,7 +18,6 @@ import {
   Tooltip,
 } from '@mui/material'
 import { escapeRegex } from '../helpers'
-import { makeStyles } from '../makeStyles'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import { stringify } from 'query-string'
 import Alert from '@mui/material/Alert'
@@ -28,6 +27,8 @@ import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'
+
+const filterRowSx = { padding: '10px 0', paddingBottom: '1rem' }
 
 // sourceOrder is our preferred ordering of the sections of the chart (interval sources), assuming that
 // source is selected in the UI and present in the intervals file:
@@ -44,13 +45,6 @@ const sourceOrder = [
   'EtcdLeadership',
   'TestBucket',
 ]
-
-const useStyles = makeStyles({
-  filterRow: {
-    padding: '10px 0',
-    paddingBottom: '1rem',
-  },
-})
 
 // These Sources should be sorted on their locator to group lines together by node, pod, etc.
 const sortOnLocatorSources = ['NodeState']
@@ -247,7 +241,6 @@ export default function IntervalsChart({
   ...props
 }) {
   const navigate = useNavigate()
-  const classes = useStyles()
   const { jobrunid, jobname, repoinfo, pullnumber } = useParams()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -622,7 +615,7 @@ export default function IntervalsChart({
         <LaunderedLink address={jobRunUrl}>GCS job run</LaunderedLink>, filtered
         down to {filteredIntervals.length}.
       </p>
-      <div className={classes.filterRow}>
+      <Box sx={filterRowSx}>
         Categories:
         <Box
           display="flex"
@@ -643,8 +636,8 @@ export default function IntervalsChart({
             </Button>
           ))}
         </Box>
-      </div>
-      <div className={classes.filterRow}>
+      </Box>
+      <Box sx={filterRowSx}>
         Files:
         <Select
           labelId="interval-file-label"
@@ -666,8 +659,8 @@ export default function IntervalsChart({
           onChange={handleFilterChange}
           defaultValue={filterText}
         />
-      </div>
-      <div className={classes.filterRow}>
+      </Box>
+      <Box sx={filterRowSx}>
         Time Filter:
         <TextField
           id="start"
@@ -687,7 +680,7 @@ export default function IntervalsChart({
         <Button key="resetTimeFilters" onClick={() => resetTimeFilters()}>
           Reset
         </Button>
-      </div>
+      </Box>
       <div>
         <Tooltip
           title={

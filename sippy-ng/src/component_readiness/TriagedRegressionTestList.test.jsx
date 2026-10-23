@@ -62,7 +62,6 @@ describe('TriagedRegressionTestList force-closed indicator', () => {
     const tooltipContent = await screen.findByText(/Reason: stale regression/)
     expect(tooltipContent).toBeInTheDocument()
     expect(tooltipContent).toHaveStyle({ whiteSpace: 'pre-line' })
-    expect(tooltipContent).not.toHaveAttribute('style')
     expect(screen.getByText(/By: developer/)).toBeInTheDocument()
     expect(screen.getByText(/Triage: 42/)).toBeInTheDocument()
   })

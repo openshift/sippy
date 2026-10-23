@@ -1,5 +1,4 @@
 import { Card, Container, Tooltip, Typography } from '@mui/material'
-import { makeStyles } from '../makeStyles'
 import { React } from 'react'
 
 import BuildClusterHealthChart from './BuildClusterHealthChart'
@@ -7,23 +6,7 @@ import BuildClusterTable from './BuildClusterTable'
 import Grid from '@mui/material/Grid'
 import InfoIcon from '@mui/icons-material/Info'
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    flexGrow: 1,
-  },
-  card: {
-    minWidth: 275,
-    alignContent: 'center',
-    margin: 'auto',
-  },
-  title: {
-    textAlign: 'center',
-  },
-}))
-
 export default function BuildClusterOverview(_props) {
-  const _classes = useStyles()
-
   return (
     <Container size="xl">
       <Typography align="center" variant="h4">
