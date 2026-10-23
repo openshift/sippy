@@ -3,6 +3,7 @@ package pgwriter
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/civil"
@@ -139,11 +140,19 @@ var (
 	}
 )
 
-// Write persists a batch of job run results to the database within a single
-// transaction. It creates temp tables, copies raw rows via the COPY protocol,
-// then INSERTs/UPSERTs into permanent tables including tests, suites,
-// prow_job_run_tests, test_daily_totals, and test_cumulative_summaries.
+// Write persists a batch and updates summary tables using the live-loader
+// behavior.
 func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobRunResult) error {
+	return write(ctx, dbc, currentDate, batch, true)
+}
+
+// WriteRaw persists complete job and test rows atomically without updating
+// summary tables. Historical backfill rebuilds summaries in a later phase.
+func WriteRaw(ctx context.Context, dbc *db.DB, batch []JobRunResult) error {
+	return write(ctx, dbc, civil.Date{}, batch, false)
+}
+
+func write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobRunResult, updateSummaries bool) error {
 	if len(batch) == 0 {
 		return nil
 	}
@@ -220,7 +229,7 @@ func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobR
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	if err := insertJobRuns(ctx, tx); err != nil {
-		return err
+		return fmt.Errorf("%w; candidate prow_job_runs partition keys: %s", err, formatRunPartitionKeys(batch))
 	}
 	if err := insertJobRunIDMap(ctx, tx); err != nil {
 		return err
@@ -238,8 +247,10 @@ func Write(ctx context.Context, dbc *db.DB, currentDate civil.Date, batch []JobR
 		if err := insertTestResults(ctx, tx); err != nil {
 			return err
 		}
-		if err := upsertSummaryTables(ctx, tx, currentDate); err != nil {
-			return err
+		if updateSummaries {
+			if err := upsertSummaryTables(ctx, tx, currentDate); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -272,6 +283,21 @@ func insertJobRuns(ctx context.Context, tx pgx.Tx) error {
 	}
 	log.WithField("elapsed", time.Since(stepStart)).Debug("inserted prow_job_runs")
 	return nil
+}
+
+func formatRunPartitionKeys(batch []JobRunResult) string {
+	keys := make([]string, 0, len(batch))
+	seen := make(map[string]struct{}, len(batch))
+	for _, result := range batch {
+		key := fmt.Sprintf("release=%q date=%s run_id=%d timestamp=%s", result.Run.ProwJobRelease, result.Run.Timestamp.UTC().Format("2006-01-02"), result.Run.ID, result.Run.Timestamp.UTC().Format(time.RFC3339))
+		partitionKey := fmt.Sprintf("release=%q date=%s", result.Run.ProwJobRelease, result.Run.Timestamp.UTC().Format("2006-01-02"))
+		if _, ok := seen[partitionKey]; ok {
+			continue
+		}
+		seen[partitionKey] = struct{}{}
+		keys = append(keys, key)
+	}
+	return "[" + strings.Join(keys, "; ") + "]"
 }
 
 func insertJobRunIDMap(ctx context.Context, tx pgx.Tx) error {
