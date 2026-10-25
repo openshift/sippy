@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 
+	"cloud.google.com/go/civil"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
@@ -133,6 +134,8 @@ UPDATE test_daily_totals dt SET
 FROM infra_failure_deltas d
 WHERE dt.release = d.release
 	AND dt.date = d.date
+	AND dt.release = ?
+	AND dt.date = ?
 	AND dt.test_id = d.test_id
 	AND dt.suite_id = d.suite_id
 	AND dt.lifecycle = d.lifecycle
@@ -151,6 +154,8 @@ UPDATE test_cumulative_summaries cs SET
 	prefix_sum_runs = cs.prefix_sum_runs - d.runs
 FROM infra_failure_deltas d
 WHERE cs.release = d.release
+	AND cs.release = ?
+	AND cs.date >= ?
 	AND cs.test_id = d.test_id
 	AND cs.suite_id = d.suite_id
 	AND cs.lifecycle = d.lifecycle
@@ -247,6 +252,7 @@ func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) (RecordOutcome, err
 // atomically with the caller's other writes.
 func subtractFromSummaries(tx *gorm.DB, prowJobRunID int64, partKeys query.ProwJobRunPartitionKeys) error {
 	logger := log.WithField("prowJobRunID", prowJobRunID)
+	release, date := summaryPartitionBounds(partKeys)
 
 	// Drop any stale temp table before recreating it. ON COMMIT DROP ties the
 	// table's lifetime to the outermost transaction, not to a savepoint, so when
@@ -266,7 +272,7 @@ func subtractFromSummaries(tx *gorm.DB, prowJobRunID int64, partKeys query.ProwJ
 	}
 
 	// Subtract the run's counts from the per-day totals.
-	dailyRes := tx.Exec(subtractDailyTotalsSQL)
+	dailyRes := tx.Exec(subtractDailyTotalsSQL, release, date)
 	if dailyRes.Error != nil {
 		return fmt.Errorf("subtracting daily totals for prow_job_run %d: %w", prowJobRunID, dailyRes.Error)
 	}
@@ -274,13 +280,19 @@ func subtractFromSummaries(tx *gorm.DB, prowJobRunID int64, partKeys query.ProwJ
 
 	// Cascade the subtraction into the cumulative prefix sums from the affected
 	// date onward.
-	cumulativeRes := tx.Exec(subtractCumulativeSummariesSQL)
+	cumulativeRes := tx.Exec(subtractCumulativeSummariesSQL, release, date)
 	if cumulativeRes.Error != nil {
 		return fmt.Errorf("subtracting cumulative summaries for prow_job_run %d: %w", prowJobRunID, cumulativeRes.Error)
 	}
 	logger.WithField("rowsAffected", cumulativeRes.RowsAffected).Debug("subtracted infra-failure run from test_cumulative_summaries")
 
 	return nil
+}
+
+// summaryPartitionBounds supplies constants for planning the summary updates.
+// The database session uses UTC, matching the date() expression in the deltas.
+func summaryPartitionBounds(partKeys query.ProwJobRunPartitionKeys) (string, civil.Date) {
+	return partKeys.ProwJobRelease, civil.DateOf(partKeys.Timestamp.UTC())
 }
 
 // SubtractNewInfraFailure removes a prow job run's contribution from the summary
