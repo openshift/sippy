@@ -232,6 +232,9 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		reloadTriage(t, dbc, &triage)
 		assert.True(t, triage.Resolved.Valid, "triage should still be resolved")
 		assert.Equal(t, firstResolved.Unix(), triage.Resolved.Time.Unix(), "resolved time should not change on second run")
+
+		audits := getReconcileAuditLogs(t, dbc, triage.ID)
+		assert.Len(t, audits, 1, "second run should not create additional audit entries")
 	})
 
 	t.Run("idempotent unresolve", func(t *testing.T) {
@@ -255,6 +258,9 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 
 		reloadTriage(t, dbc, &triage)
 		assert.False(t, triage.Resolved.Valid, "triage should still be unresolved")
+
+		audits := getReconcileAuditLogs(t, dbc, triage.ID)
+		assert.Len(t, audits, 1, "second run should not create additional audit entries")
 	})
 
 	t.Run("updates triage description from bug summary", func(t *testing.T) {
@@ -305,8 +311,8 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 
 		audits := getReconcileAuditLogs(t, dbc, triage.ID)
 		require.NotEmpty(t, audits, "audit log should be created for auto-resolve")
-		assert.Equal(t, "bug-loader", audits[0].User)
-		assert.Equal(t, "UPDATE", audits[0].Operation)
+		assert.Equal(t, bugloader.ReconcileAuditUser, audits[0].User)
+		assert.Equal(t, string(models.Update), audits[0].Operation)
 
 		var oldTriage, newTriage models.Triage
 		require.NoError(t, json.Unmarshal(audits[0].OldData, &oldTriage))
@@ -334,8 +340,8 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 
 		audits := getReconcileAuditLogs(t, dbc, triage.ID)
 		require.NotEmpty(t, audits, "audit log should be created for auto-unresolve")
-		assert.Equal(t, "bug-loader", audits[0].User)
-		assert.Equal(t, "UPDATE", audits[0].Operation)
+		assert.Equal(t, bugloader.ReconcileAuditUser, audits[0].User)
+		assert.Equal(t, string(models.Update), audits[0].Operation)
 
 		var oldTriage, newTriage models.Triage
 		require.NoError(t, json.Unmarshal(audits[0].OldData, &oldTriage))
@@ -346,7 +352,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		assert.Empty(t, string(newTriage.ResolutionReason))
 	})
 
-	t.Run("no audit log when reconciliation is a no-op", func(t *testing.T) {
+	t.Run("no audit log for description and bug-link only changes", func(t *testing.T) {
 		dbc := intutil.NewTestDB(t, pgContainer)
 		ctx := context.Background()
 
@@ -382,6 +388,66 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		require.NoError(t, json.Unmarshal(audits[0].NewData, &newTriage))
 		require.Len(t, newTriage.Regressions, 1, "audit log should include regression IDs")
 		assert.Equal(t, reg.ID, newTriage.Regressions[0].ID)
+	})
+
+	t.Run("multi-candidate resolve creates one audit entry each", func(t *testing.T) {
+		dbc := intutil.NewTestDB(t, pgContainer)
+		ctx := context.Background()
+
+		bugURL1 := "https://issues.example.com/MULTI-1"
+		bugURL2 := "https://issues.example.com/MULTI-2"
+		bugURL3 := "https://issues.example.com/MULTI-3"
+		createBug(t, dbc, "MULTI-1", jiratype.StatusVerified, "multi 1", bugURL1)
+		createBug(t, dbc, "MULTI-2", jiratype.StatusClosed, "multi 2", bugURL2)
+		createBug(t, dbc, "MULTI-3", jiratype.StatusOnQA, "multi 3", bugURL3)
+		reg1 := intutil.CreateTestRegression(t, dbc, "test-multi-1", "4.19")
+		reg2 := intutil.CreateTestRegression(t, dbc, "test-multi-2", "4.19")
+		reg3 := intutil.CreateTestRegression(t, dbc, "test-multi-3", "4.19")
+		triage1 := intutil.CreateTriage(t, dbc, bugURL1, intutil.WithRegressions(reg1))
+		triage2 := intutil.CreateTriage(t, dbc, bugURL2, intutil.WithRegressions(reg2))
+		triage3 := intutil.CreateTriage(t, dbc, bugURL3, intutil.WithRegressions(reg3))
+
+		runReconcileTriages(ctx, t, dbc)
+
+		for _, tr := range []models.Triage{triage1, triage2, triage3} {
+			reloadTriage(t, dbc, &tr)
+			assert.True(t, tr.Resolved.Valid, "triage %d should be resolved", tr.ID)
+			audits := getReconcileAuditLogs(t, dbc, tr.ID)
+			assert.Len(t, audits, 1, "triage %d should have exactly one audit entry", tr.ID)
+		}
+	})
+
+	t.Run("resolve then unresolve produces ordered audit sequence", func(t *testing.T) {
+		dbc := intutil.NewTestDB(t, pgContainer)
+		ctx := context.Background()
+
+		bugURL := "https://issues.example.com/SEQ-1"
+		bug := createBug(t, dbc, "SEQ-1", jiratype.StatusVerified, "sequence", bugURL)
+		reg := intutil.CreateTestRegression(t, dbc, "test-seq-1", "4.19")
+		triage := intutil.CreateTriage(t, dbc, bugURL, intutil.WithRegressions(reg))
+
+		runReconcileTriages(ctx, t, dbc)
+
+		reloadTriage(t, dbc, &triage)
+		require.True(t, triage.Resolved.Valid, "triage should be resolved after first run")
+
+		require.NoError(t, dbc.DB.Model(&bug).Update("status", jiratype.StatusInProgress).Error)
+
+		runReconcileTriages(ctx, t, dbc)
+
+		reloadTriage(t, dbc, &triage)
+		require.False(t, triage.Resolved.Valid, "triage should be unresolved after second run")
+
+		audits := getReconcileAuditLogs(t, dbc, triage.ID)
+		require.Len(t, audits, 2, "should have resolve and unresolve audit entries")
+
+		var firstNew, secondNew models.Triage
+		require.NoError(t, json.Unmarshal(audits[0].NewData, &firstNew))
+		require.NoError(t, json.Unmarshal(audits[1].NewData, &secondNew))
+		assert.True(t, firstNew.Resolved.Valid, "first audit should record resolution")
+		assert.Equal(t, string(models.JiraProgression), string(firstNew.ResolutionReason))
+		assert.False(t, secondNew.Resolved.Valid, "second audit should record un-resolution")
+		assert.Empty(t, string(secondNew.ResolutionReason))
 	})
 }
 
@@ -421,7 +487,7 @@ func getReconcileAuditLogs(t *testing.T, dbc *db.DB, triageID uint) []models.Aud
 	t.Helper()
 	var audits []models.AuditLog
 	require.NoError(t, dbc.DB.
-		Where("table_name = 'triage' AND row_id = ? AND \"user\" = 'bug-loader'", triageID).
+		Where("table_name = 'triage' AND row_id = ? AND \"user\" = ?", triageID, bugloader.ReconcileAuditUser).
 		Order("created_at ASC").
 		Find(&audits).Error)
 	return audits
