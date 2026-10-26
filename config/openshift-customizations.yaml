@@ -131,8 +131,10 @@ releases:
     synthetic: true
     jobs:
       periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-platform: true
-      branch-ci-openshift-online-gcp-hcp-infra-sector-integration-main-e2e-hostedcluster-int: true
-      branch-ci-openshift-online-gcp-hcp-infra-sector-stage-main-e2e-hostedcluster-stg: true
+      periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-hostedcluster-int: true
+      periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-hostedcluster-stg: true
+      branch-ci-openshift-online-gcp-hcp-infra-environmentsector-integration-main-e2e-hostedcluster-int: true
+      branch-ci-openshift-online-gcp-hcp-infra-environmentsector-stage-main-e2e-hostedcluster-stg: true
   quay-3.10:
     synthetic: true
     regexp:
