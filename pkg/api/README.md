@@ -713,7 +713,7 @@ supplied by the selected data provider.
 
 | Option         | Type   | Description |
 |----------------|--------|-------------|
-| testLifecycles | String | Comma-separated lifecycle values (e.g. `blocking`, `informing`) to restrict both the row filter and the `test_failures` count to matching tests. When set, `test_failures` is computed as a COUNT(DISTINCT test) of failures in the requested lifecycles rather than the pre-computed total on the job run. Omit to include all lifecycles. |
+| testLifecycles | String (repeated) | Lifecycle values (e.g. `testLifecycles=blocking&testLifecycles=informing`) to restrict both the row filter and the `test_failures` count to matching tests. Applied only to sample data; base details remain unfiltered. When set, `test_failures` is computed as a COUNT(DISTINCT test) of failures in the requested lifecycles rather than the pre-computed total on the job run. Omit to include all lifecycles. |
 
 ## Component Readiness Triages
 

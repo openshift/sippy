@@ -508,14 +508,14 @@ func testFailuresExpression(lifecycles []string) (string, []any) {
 	if len(lifecycles) == 0 {
 		return "COALESCE(pjr.test_failures, 0) AS test_failures", nil
 	}
-	return fmt.Sprintf(`(SELECT COUNT(DISTINCT lf.test_id) FROM prow_job_run_tests lf
+	return `(SELECT COUNT(DISTINCT lf.test_id) FROM prow_job_run_tests lf
             WHERE lf.prow_job_run_id = pjr.id
             AND lf.prow_job_run_release = pjr.prow_job_release
             AND lf.prow_job_run_timestamp = pjr.timestamp
-            AND lf.status = %d
+            AND lf.status = ?
             AND lf.lifecycle = ANY(?)
-            AND lf.deleted_at IS NULL) AS test_failures`, int(sippyprocessingv1.TestStatusFailure)),
-		[]any{pq.Array(lifecycles)}
+            AND lf.deleted_at IS NULL) AS test_failures`,
+		[]any{int(sippyprocessingv1.TestStatusFailure), pq.Array(lifecycles)}
 }
 
 // appendTestDetailsLifecycleFilter keeps sample test details aligned with the

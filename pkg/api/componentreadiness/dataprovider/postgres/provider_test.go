@@ -26,13 +26,13 @@ func TestTestFailuresExpression(t *testing.T) {
 		{
 			name:       "with lifecycles uses correlated subquery",
 			lifecycles: []string{"blocking"},
-			wantArgs:   1,
+			wantArgs:   2,
 			wantSubq:   true,
 		},
 		{
 			name:       "multiple lifecycles uses correlated subquery",
 			lifecycles: []string{"blocking", "informing"},
-			wantArgs:   1,
+			wantArgs:   2,
 			wantSubq:   true,
 		},
 	}
@@ -51,8 +51,8 @@ func TestTestFailuresExpression(t *testing.T) {
 				if !strings.Contains(expr, "lf.lifecycle = ANY(?)") {
 					t.Fatal("subquery should filter by lifecycle")
 				}
-				if !strings.Contains(expr, "lf.status = 12") {
-					t.Fatal("subquery should filter by failure status")
+				if !strings.Contains(expr, "lf.status = ?") {
+					t.Fatal("subquery should use placeholder for failure status")
 				}
 			} else if !strings.Contains(expr, "COALESCE(pjr.test_failures, 0)") {
 				t.Fatal("should use pre-computed column when no lifecycles")
