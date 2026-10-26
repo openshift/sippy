@@ -15,6 +15,7 @@ import {
 import {
   cancelledDataTable,
   convertApiUrlToUiUrl,
+  createLatestRequest,
   getAPIUrl,
   getColumns,
   getStatusAndIcon,
@@ -58,6 +59,7 @@ import UpsertTriageModal from './UpsertTriageModal'
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
+const reportRequests = createLatestRequest()
 const _cancelFetch = () => {
   console.log('Aborting page5a')
   abortController.abort()
@@ -165,9 +167,13 @@ export default function TestDetailsReport(props) {
     if (!testId) return // wait until the vars are initialized from params
 
     // fetch the test_details data followed by any triage records that match the regressionId (if found)
+    const requestId = reportRequests.start()
     fetch(testDetailsApiCall, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return null
+        }
         if (data.code < 200 || data.code >= 300) {
           const errorMessage = data.message
             ? `${data.message}`
@@ -179,12 +185,11 @@ export default function TestDetailsReport(props) {
         return data
       })
       .then((json) => {
+        if (!reportRequests.isCurrent(requestId) || json == null) {
+          return
+        }
         // If the basics are not present, consider it no data
-        if (
-          !json.component ||
-          !json.analyses ||
-          !json.analyses[0].sample_stats
-        ) {
+        if (!json.component || !json.analyses?.[0]?.sample_stats) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
         } else {
@@ -197,16 +202,22 @@ export default function TestDetailsReport(props) {
         }
       })
       .catch((error) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (error.name === 'AbortError') {
           setData(cancelledDataTable)
 
           // Once this fired, we need a new one for the next button click.
           abortController = new AbortController()
         } else {
-          setFetchError(error)
+          setFetchError(`API call failed: ${testDetailsApiCall}\n${error}`)
         }
       })
       .finally(() => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         setIsLoaded(true)
       })
   }, [hasBeenTriaged, urlParams, testId])
@@ -288,6 +299,10 @@ export default function TestDetailsReport(props) {
         apiCallStr={testDetailsApiCall}
       />
     )
+  }
+
+  if (!data.analyses || !data.analyses[0]) {
+    return <Alert severity="info">No data found for this test.</Alert>
   }
 
   let status = data.analyses[0].status

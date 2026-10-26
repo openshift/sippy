@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
+  createLatestRequest,
   formColumnName,
   getColumns,
   getCRMainAPIUrl,
@@ -35,6 +36,7 @@ import WarningsBanner from './WarningsBanner'
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
+const reportRequests = createLatestRequest()
 const _cancelFetch = () => {
   console.log('Aborting page3')
   abortController.abort()
@@ -78,9 +80,13 @@ export default function CompReadyEnvCapability(props) {
   }, [triageActionTaken, urlParams, capability])
 
   const fetchData = () => {
+    const requestId = reportRequests.start()
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return null
+        }
         if (data.code < 200 || data.code >= 300) {
           const errorMessage = data.message
             ? `${data.message}`
@@ -90,6 +96,9 @@ export default function CompReadyEnvCapability(props) {
         return data
       })
       .then((json) => {
+        if (!reportRequests.isCurrent(requestId) || json == null) {
+          return
+        }
         if (Object.keys(json).length === 0 || json.rows.length === 0) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
@@ -101,6 +110,9 @@ export default function CompReadyEnvCapability(props) {
         }
       })
       .catch((error) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (error.name === 'AbortError') {
           setData(cancelledDataTable)
 
@@ -111,13 +123,12 @@ export default function CompReadyEnvCapability(props) {
         }
       })
       .finally(() => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
-  }
-
-  if (fetchError !== '') {
-    return gotFetchError(fetchError)
   }
 
   const [searchRowRegexURL, setSearchRowRegexURL] = useQueryParam(
@@ -179,6 +190,10 @@ export default function CompReadyEnvCapability(props) {
         : 0
     }`
   )
+
+  if (fetchError !== '') {
+    return gotFetchError(fetchError)
+  }
 
   if (!isLoaded) {
     return <CompReadyProgress apiLink={apiCallStr} />

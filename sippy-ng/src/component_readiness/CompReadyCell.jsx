@@ -63,7 +63,10 @@ export default function CompReadyCell(props) {
           textAlign: 'center',
         }}
       >
-        <Link to={componentReport(componentName, environment, filterVals)}>
+        <Link
+          data-testid={`cr-cell-${componentName}`}
+          to={componentReport(componentName, environment, filterVals)}
+        >
           <CompSeverityIcon
             status={status}
             grayFactor={grayFactor}

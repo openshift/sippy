@@ -32,6 +32,7 @@ export default function CompCapTestRow(props) {
         {testCols.columns.map((columnVal, idx) => (
           <CompReadyTestCell
             key={'testName-' + idx}
+            columnIndex={idx}
             status={columnVal.status}
             test={
               columnVal.all_tests?.[0] || columnVal.regressed_tests?.[0] || null

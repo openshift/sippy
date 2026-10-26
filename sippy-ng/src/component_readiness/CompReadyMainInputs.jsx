@@ -160,6 +160,7 @@ function ReportButton(props) {
   return (
     <div className="cr-report-button">
       <Button
+        data-testid="generate-report"
         size="large"
         variant="contained"
         color="primary"

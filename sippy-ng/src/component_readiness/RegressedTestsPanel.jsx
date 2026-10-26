@@ -391,6 +391,7 @@ export default function RegressedTestsPanel(props) {
       )}
       {triageEnabled ? (
         <Button
+          data-testid="triage-regressions"
           variant="contained"
           color="secondary"
           sx={'margin: 10px'}

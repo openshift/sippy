@@ -11,7 +11,7 @@ import TableCell from '@mui/material/TableCell'
 
 // CompReadyTestCall is for rendering the cells on the right of page4 or page4a
 export default function CompReadyTestCell(props) {
-  const { status, test } = props
+  const { columnIndex, status, test } = props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
 
@@ -41,7 +41,7 @@ export default function CompReadyTestCell(props) {
       }}
     >
       {link ? (
-        <a href={link}>
+        <a data-testid={`cr-test-details-link-${columnIndex}`} href={link}>
           <CompSeverityIcon status={status} />
         </a>
       ) : (
@@ -52,6 +52,7 @@ export default function CompReadyTestCell(props) {
 }
 
 CompReadyTestCell.propTypes = {
+  columnIndex: PropTypes.number.isRequired,
   status: PropTypes.number.isRequired,
   test: PropTypes.object,
 }

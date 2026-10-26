@@ -28,6 +28,9 @@ const labelSx = { display: 'flex', whiteSpace: 'nowrap' }
 function ReleaseSelector(props) {
   const releases = useContext(ReleasesContext)
   const [versions, setVersions] = useState({})
+  const labelId = String(props.label || 'Version')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
   const {
     label = 'Version',
     setStartTime,
@@ -226,9 +229,16 @@ function ReleaseSelector(props) {
         <Grid item md={12}>
           <FormControl variant="standard" sx={releaseSelectorFormControlSx}>
             <Tooltip title={props.tooltip}>
-              <InputLabel sx={labelSx}>{label}</InputLabel>
+              <InputLabel id={`${labelId}-label`} sx={labelSx}>
+                {label}
+              </InputLabel>
             </Tooltip>
-            <Select variant="standard" value={version} onChange={onChange}>
+            <Select
+              labelId={`${labelId}-label`}
+              variant="standard"
+              value={version}
+              onChange={onChange}
+            >
               {Object.keys(versions).map((v) => (
                 <MenuItem key={v} value={v}>
                   {v}

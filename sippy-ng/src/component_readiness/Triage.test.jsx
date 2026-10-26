@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
-import { render, screen, waitFor } from '@testing-library/react'
 import { SippyCapabilitiesContext } from '../App'
 import React from 'react'
 import Triage from './Triage'
@@ -103,5 +103,172 @@ describe('Triage force-close integration', () => {
 
     await screen.findByText('Triage Details')
     expect(screen.queryByTestId('force-close-modal')).not.toBeInTheDocument()
+  })
+})
+
+describe('Triage delete', () => {
+  test('ignores a delete error after the triage id changes', async () => {
+    let rejectDelete
+    global.fetch = vi.fn((url, options = {}) => {
+      if (options.method === 'DELETE') {
+        return new Promise((_, reject) => {
+          rejectDelete = reject
+        })
+      }
+      const recordId = String(url).includes('/triages/43') ? 43 : 42
+      return Promise.resolve({
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ...triage,
+            id: recordId,
+            description: `triage ${recordId}`,
+          }),
+      })
+    })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const page = (id) => (
+      <ThemeProvider theme={createTheme()}>
+        <SippyCapabilitiesContext.Provider
+          value={['local_db', 'write_endpoints']}
+        >
+          <CompReadyVarsContext.Provider value={{ sampleRelease: '4.20' }}>
+            <Triage id={id} />
+          </CompReadyVarsContext.Provider>
+        </SippyCapabilitiesContext.Provider>
+      </ThemeProvider>
+    )
+
+    const view = render(page('42'))
+    await userEvent.click(await screen.findByTestId('delete-triage'))
+
+    view.rerender(page('43'))
+    await screen.findByText('triage 43')
+
+    await act(async () => {
+      rejectDelete(new Error('API server returned 400'))
+    })
+
+    expect(
+      screen.queryByText(/API server returned 400/)
+    ).not.toBeInTheDocument()
+  })
+
+  test('ignores a completed delete after the triage id changes', async () => {
+    let resolveDelete
+    global.fetch = vi.fn((url, options = {}) => {
+      if (options.method === 'DELETE') {
+        return new Promise((resolve) => {
+          resolveDelete = () => resolve({ status: 200 })
+        })
+      }
+      const recordId = String(url).includes('/triages/43') ? 43 : 42
+      return Promise.resolve({
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            ...triage,
+            id: recordId,
+            description: `triage ${recordId}`,
+          }),
+      })
+    })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const page = (id) => (
+      <ThemeProvider theme={createTheme()}>
+        <SippyCapabilitiesContext.Provider
+          value={['local_db', 'write_endpoints']}
+        >
+          <CompReadyVarsContext.Provider value={{ sampleRelease: '4.20' }}>
+            <Triage id={id} />
+          </CompReadyVarsContext.Provider>
+        </SippyCapabilitiesContext.Provider>
+      </ThemeProvider>
+    )
+
+    const view = render(page('42'))
+    await userEvent.click(await screen.findByTestId('delete-triage'))
+
+    view.rerender(page('43'))
+    await screen.findByText('triage 43')
+
+    await act(async () => {
+      resolveDelete()
+    })
+
+    expect(
+      screen.queryByText('Triage record has been deleted.')
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Triage Details' })
+    ).toBeVisible()
+  })
+})
+
+describe('Triage load', () => {
+  function page(id) {
+    return (
+      <ThemeProvider theme={createTheme()}>
+        <SippyCapabilitiesContext.Provider
+          value={['local_db', 'write_endpoints']}
+        >
+          <CompReadyVarsContext.Provider value={{ sampleRelease: '4.20' }}>
+            <Triage id={id} />
+          </CompReadyVarsContext.Provider>
+        </SippyCapabilitiesContext.Provider>
+      </ThemeProvider>
+    )
+  }
+
+  test('drops the previous record while the next id is loading', async () => {
+    const pending = []
+    global.fetch = vi.fn((url) => {
+      const recordId = String(url).includes('/triages/43') ? 43 : 42
+      return new Promise((resolve) => {
+        pending.push({ recordId, resolve })
+      })
+    })
+
+    const fulfill = async (recordId, description) => {
+      const entry = pending.find(
+        (item) => item.recordId === recordId && !item.fulfilled
+      )
+      entry.fulfilled = true
+      await act(async () => {
+        entry.resolve({
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              ...triage,
+              id: recordId,
+              description,
+            }),
+        })
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+    }
+
+    const view = render(page('42'))
+    await fulfill(42, 'triage 42')
+    expect(await screen.findByText('triage 42')).toBeInTheDocument()
+
+    view.rerender(page('43'))
+    expect(screen.queryByText('triage 42')).not.toBeInTheDocument()
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
+
+    await fulfill(43, 'triage 43')
+    expect(await screen.findByText('triage 43')).toBeInTheDocument()
+
+    view.rerender(page('42'))
+    view.rerender(page('43'))
+    await fulfill(43, 'triage 43')
+    expect(await screen.findByText('triage 43')).toBeInTheDocument()
+
+    await fulfill(42, 'late triage 42')
+    expect(screen.queryByText('late triage 42')).not.toBeInTheDocument()
+    expect(screen.getByText('triage 43')).toBeInTheDocument()
   })
 })
