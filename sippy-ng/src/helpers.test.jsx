@@ -1,4 +1,11 @@
-import { ageColor, jiraProjectForRelease } from './helpers'
+import {
+  ageColor,
+  jiraProjectForRelease,
+  pathForExactTestAnalysisWithVariants,
+  pathForJobRunsWithTestFailureHistory,
+  pathForJobRunsWithTestHistory,
+  safeEncodeURIComponent,
+} from './helpers'
 
 const lightTheme = {
   palette: {
@@ -65,5 +72,146 @@ describe('jiraProjectForRelease', () => {
     [undefined, { key: 'OCPBUGS', pid: '10325' }],
   ])('%s -> %o', (release, expected) => {
     expect(jiraProjectForRelease(release)).toEqual(expected)
+  })
+})
+
+describe('pathForExactTestAnalysisWithVariants', () => {
+  const testName =
+    '[sig-network][OCPFeatureGate:NetworkSegmentation] pod connected [Suite:openshift/conformance/parallel]'
+
+  test('generates path with all variant filters and exclusions', () => {
+    const variants = [
+      'Architecture:amd64',
+      'Platform:gcp',
+      'Network:ovn',
+      'Suite:unknown',
+      'Upgrade:none',
+    ]
+    const path = pathForExactTestAnalysisWithVariants('5.0', testName, variants)
+
+    expect(path).toContain('/tests/5.0/analysis?')
+    expect(path).toContain(`test=${safeEncodeURIComponent(testName)}`)
+
+    const filtersParam = new URLSearchParams(path.split('?')[1]).get('filters')
+    const filters = JSON.parse(filtersParam)
+
+    expect(filters.logicOperator).toBe('and')
+
+    const nameFilter = filters.items.find(
+      (f) => f.field === 'name' && f.operator === 'equals'
+    )
+    expect(nameFilter.value).toBe(testName)
+
+    const aggregatedExclusion = filters.items.find(
+      (f) => f.value === 'aggregated' && f.not === true
+    )
+    expect(aggregatedExclusion).toBeDefined()
+
+    const neverStableExclusion = filters.items.find(
+      (f) => f.value === 'never-stable' && f.not === true
+    )
+    expect(neverStableExclusion).toBeDefined()
+
+    variants.forEach((variant) => {
+      const found = filters.items.find(
+        (f) =>
+          f.field === 'variants' &&
+          f.operator === 'has entry' &&
+          f.value === variant &&
+          !f.not
+      )
+      expect(found).toBeDefined()
+    })
+  })
+
+  test('falls back to analysis without variant filters when variants are empty', () => {
+    const path = pathForExactTestAnalysisWithVariants('5.0', testName, [])
+
+    const filtersParam = new URLSearchParams(path.split('?')[1]).get('filters')
+    const filters = JSON.parse(filtersParam)
+
+    const variantPositive = filters.items.filter(
+      (f) => f.field === 'variants' && !f.not
+    )
+    expect(variantPositive).toHaveLength(0)
+
+    expect(
+      filters.items.find((f) => f.value === 'aggregated' && f.not)
+    ).toBeDefined()
+    expect(
+      filters.items.find((f) => f.value === 'never-stable' && f.not)
+    ).toBeDefined()
+  })
+
+  test('falls back when variants is undefined', () => {
+    const path = pathForExactTestAnalysisWithVariants(
+      '5.0',
+      testName,
+      undefined
+    )
+
+    const filtersParam = new URLSearchParams(path.split('?')[1]).get('filters')
+    const filters = JSON.parse(filtersParam)
+
+    const variantPositive = filters.items.filter(
+      (f) => f.field === 'variants' && !f.not
+    )
+    expect(variantPositive).toHaveLength(0)
+  })
+
+  test('preserves special characters in test names', () => {
+    const special = 'test [brackets] & ampersand + plus % percent / slash'
+    const path = pathForExactTestAnalysisWithVariants('4.16', special, [])
+
+    expect(path).toContain(`test=${safeEncodeURIComponent(special)}`)
+
+    const filtersParam = new URLSearchParams(path.split('?')[1]).get('filters')
+    const filters = JSON.parse(filtersParam)
+    expect(filters.items[0].value).toBe(special)
+  })
+
+  test('uses the row release, not a hardcoded one', () => {
+    const path = pathForExactTestAnalysisWithVariants('4.16', testName, [])
+    expect(path).toMatch(/^\/tests\/4\.16\/analysis\?/)
+  })
+})
+
+describe('pathForJobRunsWithTestHistory', () => {
+  test('generates path without timestamp filter', () => {
+    const path = pathForJobRunsWithTestHistory('5.0', 'my-test', {
+      items: [
+        { field: 'variants', operator: 'has entry', value: 'Platform:gcp' },
+      ],
+    })
+
+    expect(path).toContain('/jobs/5.0/runs?')
+
+    const filtersParam = new URLSearchParams(path.split('?')[1]).get('filters')
+    const filters = JSON.parse(filtersParam)
+
+    expect(
+      filters.items.find((f) => f.field === 'ran_test_names')
+    ).toBeDefined()
+    expect(filters.items.find((f) => f.field === 'variants')).toBeDefined()
+    expect(filters.items.find((f) => f.field === 'timestamp')).toBeUndefined()
+  })
+})
+
+describe('pathForJobRunsWithTestFailureHistory', () => {
+  test('generates path without timestamp filter', () => {
+    const path = pathForJobRunsWithTestFailureHistory('5.0', 'my-test', {
+      items: [
+        { field: 'variants', operator: 'has entry', value: 'Network:ovn' },
+      ],
+    })
+
+    const filtersParam = new URLSearchParams(path.split('?')[1]).get('filters')
+    const filters = JSON.parse(filtersParam)
+
+    expect(
+      filters.items.find((f) => f.field === 'failed_test_names')
+    ).toBeDefined()
+    expect(filters.items.find((f) => f.field === 'variants')).toBeDefined()
+    expect(filters.items.find((f) => f.field === 'timestamp')).toBeUndefined()
   })
 })

@@ -5,7 +5,9 @@ import { CheckCircle } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { filterRegressionsByLabel } from './TriageSymptomLabels'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
+import { Link } from 'react-router'
 import { NumberParam, useQueryParam } from 'use-query-params'
+import { pathForExactTestAnalysisWithVariants } from '../helpers'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -124,7 +126,18 @@ export default function TriagedRegressionTestList(props) {
       valueGetter: (value, row) => {
         return row.test_name
       },
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      renderCell: (params) => (
+        <Link
+          to={pathForExactTestAnalysisWithVariants(
+            params.row.release,
+            params.row.test_name,
+            params.row.variants
+          )}
+          className="test-name"
+        >
+          {params.value}
+        </Link>
+      ),
     },
     {
       field: 'release',

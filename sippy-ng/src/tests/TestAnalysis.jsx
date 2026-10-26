@@ -17,6 +17,7 @@ import {
   ContentCopy,
   ErrorOutline,
   FormatListBulleted,
+  History,
   OpenInNew,
   SyncProblem,
 } from '@mui/icons-material'
@@ -26,7 +27,9 @@ import {
   not,
   pathForJobRunsWithTest,
   pathForJobRunsWithTestFailure,
+  pathForJobRunsWithTestFailureHistory,
   pathForJobRunsWithTestFlake,
+  pathForJobRunsWithTestHistory,
   safeEncodeURIComponent,
   SafeStringParam,
   searchCI,
@@ -332,6 +335,55 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
                 >
                   Flaked Runs ({test.current_flakes})
                 </Button>
+
+                <Tooltip title="All runs of this test across the available lookback (up to 90 days), without date filtering">
+                  <Button
+                    component={Link}
+                    to={withSort(
+                      pathForJobRunsWithTestHistory(props.release, testName, {
+                        items: [
+                          ...filterModel.items.filter(
+                            (f) => f.field === 'variants'
+                          ),
+                        ],
+                      }),
+                      'timestamp',
+                      'desc'
+                    )}
+                    size="small"
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<History />}
+                  >
+                    Run History
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Failed runs of this test across the available lookback (up to 90 days), without date filtering">
+                  <Button
+                    component={Link}
+                    to={withSort(
+                      pathForJobRunsWithTestFailureHistory(
+                        props.release,
+                        testName,
+                        {
+                          items: [
+                            ...filterModel.items.filter(
+                              (f) => f.field === 'variants'
+                            ),
+                          ],
+                        }
+                      ),
+                      'timestamp',
+                      'desc'
+                    )}
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    startIcon={<History />}
+                  >
+                    Failure History
+                  </Button>
+                </Tooltip>
 
                 <div className="test-hero-spacer" />
 
