@@ -400,9 +400,11 @@ var syntheticTests = []syntheticTestSpec{
 	},
 
 	// --- Informing lifecycle tests: exercise lifecycle filtering in test details ---
-	// These tests share job runs with blocking tests above, so job runs have
-	// both blocking and informing failures. This lets us confirm that
-	// testLifecycles filtering produces different test_failures counts.
+	// Enough informing tests share job runs with blocking tests above that
+	// total test_failures (blocking + informing) exceeds MASS_FAILURE_THRESHOLD
+	// (10) while blocking-only failures stay well below it. This lets the seed
+	// environment demonstrate that the mass-failure indicator disappears when
+	// testLifecycles=blocking is applied.
 	{
 		testID: "test-informing-network", testName: "[sig-network] [Informing] Services should handle connection resets gracefully",
 		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
@@ -418,6 +420,78 @@ var syntheticTests = []syntheticTestSpec{
 		lifecycle: "informing",
 		jobCounts: map[string]map[string]testCount{
 			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 160, 0}},
+		},
+	},
+	{
+		testID: "test-informing-node-lifecycle", testName: "[sig-node] [Informing] Node lifecycle controller should cordon nodes gracefully",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 165, 0}},
+		},
+	},
+	{
+		testID: "test-informing-pod-gc", testName: "[sig-node] [Informing] Pod garbage collector should clean up orphaned pods",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 188, 0}, "4.22": {200, 165, 0}},
+		},
+	},
+	{
+		testID: "test-informing-service-lb", testName: "[sig-network] [Informing] LoadBalancer services should distribute traffic evenly",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 185, 0}, "4.22": {200, 168, 0}},
+		},
+	},
+	{
+		testID: "test-informing-csi-resize", testName: "[sig-storage] [Informing] CSI volumes should support online resize",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 192, 0}, "4.22": {200, 163, 0}},
+		},
+	},
+	{
+		testID: "test-informing-api-priority", testName: "[sig-api-machinery] [Informing] API priority and fairness should handle bursts",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 166, 0}},
+		},
+	},
+	{
+		testID: "test-informing-dns-perf", testName: "[sig-network] [Informing] DNS resolution should meet latency SLO",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 187, 0}, "4.22": {200, 164, 0}},
+		},
+	},
+	{
+		testID: "test-informing-lease-renewal", testName: "[sig-node] [Informing] Kubelet lease renewal should not miss deadlines",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 191, 0}, "4.22": {200, 167, 0}},
+		},
+	},
+	{
+		testID: "test-informing-image-pull", testName: "[sig-node] [Informing] Image pull should handle registry timeouts",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 189, 0}, "4.22": {200, 162, 0}},
+		},
+	},
+	{
+		testID: "test-informing-oom-handling", testName: "[sig-node] [Informing] OOM killer should respect pod priority",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 186, 0}, "4.22": {200, 161, 0}},
 		},
 	},
 
