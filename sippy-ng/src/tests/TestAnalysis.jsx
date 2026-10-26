@@ -60,11 +60,13 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
+  const [testNotFound, setTestNotFound] = React.useState(false)
   const [testName = testProp] = useQueryParam('test', SafeStringParam)
   const [period = 'default'] = useQueryParam('period', StringParam)
   const [filterModel, setFilterModel] = useFilterModelParam('filters', {
     items: [
       filterFor('name', 'equals', testName),
+      not(filterFor('variants', 'has entry', 'Aggregation:aggregated')),
       not(filterFor('variants', 'has entry', 'aggregated')),
       not(filterFor('variants', 'has entry', 'never-stable')),
     ],
@@ -104,7 +106,13 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
       })
       .then(([test]) => {
         if (test.length === 0) {
-          throw new Error('test not found')
+          setTestNotFound(true)
+          setFetchError(
+            'Could not retrieve test analysis ' +
+              props.release +
+              ', test not found in the current reporting period'
+          )
+          return
         }
         setTest(test[0])
         setLoaded(true)
@@ -136,6 +144,58 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
         <Alert style={{ marginTop: 25 }} severity="error">
           {fetchError}
         </Alert>
+        {testNotFound && testName && (
+          <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+            <Tooltip title="All runs of this test across the available lookback (up to 90 days), without date filtering">
+              <Button
+                component={Link}
+                to={withSort(
+                  pathForJobRunsWithTestHistory(props.release, testName, {
+                    items: [
+                      ...filterModel.items.filter(
+                        (f) => f.field === 'variants'
+                      ),
+                    ],
+                  }),
+                  'timestamp',
+                  'desc'
+                )}
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={<History />}
+              >
+                Run History
+              </Button>
+            </Tooltip>
+            <Tooltip title="Failed runs of this test across the available lookback (up to 90 days), without date filtering">
+              <Button
+                component={Link}
+                to={withSort(
+                  pathForJobRunsWithTestFailureHistory(
+                    props.release,
+                    testName,
+                    {
+                      items: [
+                        ...filterModel.items.filter(
+                          (f) => f.field === 'variants'
+                        ),
+                      ],
+                    }
+                  ),
+                  'timestamp',
+                  'desc'
+                )}
+                size="small"
+                variant="outlined"
+                color="error"
+                startIcon={<History />}
+              >
+                Failure History
+              </Button>
+            </Tooltip>
+          </Box>
+        )}
       </Fragment>
     )
   }

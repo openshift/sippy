@@ -193,6 +193,26 @@ describe('TriagedRegressionTestList test_name links', () => {
     )
   })
 
+  test('link click stops propagation to prevent row selection override', () => {
+    renderComponent()
+    const column = getColumn('test_name')
+
+    const cell = render(
+      <MemoryRouter>
+        {column.renderCell({
+          value: testName,
+          row: { test_name: testName, release: '5.0', variants },
+        })}
+      </MemoryRouter>
+    )
+
+    const link = cell.getByRole('link')
+    const clickEvent = new MouseEvent('click', { bubbles: true })
+    const stopPropagation = vi.spyOn(clickEvent, 'stopPropagation')
+    link.dispatchEvent(clickEvent)
+    expect(stopPropagation).toHaveBeenCalled()
+  })
+
   test('falls back to analysis across variants when row has no variants', () => {
     renderComponent()
     const column = getColumn('test_name')

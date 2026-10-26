@@ -134,6 +134,7 @@ export default function TriagedRegressionTestList(props) {
             params.row.variants
           )}
           className="test-name"
+          onClick={(e) => e.stopPropagation()}
         >
           {params.value}
         </Link>

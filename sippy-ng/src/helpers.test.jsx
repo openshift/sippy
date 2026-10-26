@@ -102,10 +102,15 @@ describe('pathForExactTestAnalysisWithVariants', () => {
     )
     expect(nameFilter.value).toBe(testName)
 
-    const aggregatedExclusion = filters.items.find(
+    const qualifiedAggregatedExclusion = filters.items.find(
+      (f) => f.value === 'Aggregation:aggregated' && f.not === true
+    )
+    expect(qualifiedAggregatedExclusion).toBeDefined()
+
+    const bareAggregatedExclusion = filters.items.find(
       (f) => f.value === 'aggregated' && f.not === true
     )
-    expect(aggregatedExclusion).toBeDefined()
+    expect(bareAggregatedExclusion).toBeDefined()
 
     const neverStableExclusion = filters.items.find(
       (f) => f.value === 'never-stable' && f.not === true
@@ -135,6 +140,9 @@ describe('pathForExactTestAnalysisWithVariants', () => {
     )
     expect(variantPositive).toHaveLength(0)
 
+    expect(
+      filters.items.find((f) => f.value === 'Aggregation:aggregated' && f.not)
+    ).toBeDefined()
     expect(
       filters.items.find((f) => f.value === 'aggregated' && f.not)
     ).toBeDefined()

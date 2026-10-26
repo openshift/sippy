@@ -232,6 +232,7 @@ export function pathForExactTestAnalysisWithFilter(
 export function pathForExactTestAnalysisWithVariants(release, test, variants) {
   let filters = [
     filterFor('name', 'equals', test),
+    not(filterFor('variants', 'has entry', 'Aggregation:aggregated')),
     not(filterFor('variants', 'has entry', 'aggregated')),
     not(filterFor('variants', 'has entry', 'never-stable')),
   ]
