@@ -117,7 +117,6 @@ type syntheticTestSpec struct {
 	testName     string
 	component    string
 	capabilities []string
-	lifecycle    string // defaults to "blocking" when empty
 	// Each entry maps a job name template -> per-release counts.
 	// The job template determines which variants the test runs with.
 	jobCounts map[string]map[string]testCount // jobTemplate -> release -> counts
@@ -396,102 +395,6 @@ var syntheticTests = []syntheticTestSpec{
 		component: "Installer / openshift-installer", capabilities: []string{"install"},
 		jobCounts: map[string]map[string]testCount{
 			awsAmd64CapabilityAWSDualStackInstall: {"4.22": {50, 47, 0}},
-		},
-	},
-
-	// --- Informing lifecycle tests: exercise lifecycle filtering in test details ---
-	// Enough informing tests share job runs with blocking tests above that
-	// total test_failures (blocking + informing) exceeds MASS_FAILURE_THRESHOLD
-	// (10) while blocking-only failures stay well below it. This lets the seed
-	// environment demonstrate that the mass-failure indicator disappears when
-	// testLifecycles=blocking is applied.
-	{
-		testID: "test-informing-network", testName: "[sig-network] [Informing] Services should handle connection resets gracefully",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 185, 0}, "4.22": {200, 170, 0}},
-			gcpAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 185, 0}},
-		},
-	},
-	{
-		testID: "test-informing-etcd", testName: "[sig-etcd] [Informing] etcd compaction should complete in time",
-		component: "comp-ExtremeRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 160, 0}},
-		},
-	},
-	{
-		testID: "test-informing-node-lifecycle", testName: "[sig-node] [Informing] Node lifecycle controller should cordon nodes gracefully",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 165, 0}},
-		},
-	},
-	{
-		testID: "test-informing-pod-gc", testName: "[sig-node] [Informing] Pod garbage collector should clean up orphaned pods",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 188, 0}, "4.22": {200, 165, 0}},
-		},
-	},
-	{
-		testID: "test-informing-service-lb", testName: "[sig-network] [Informing] LoadBalancer services should distribute traffic evenly",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 185, 0}, "4.22": {200, 168, 0}},
-		},
-	},
-	{
-		testID: "test-informing-csi-resize", testName: "[sig-storage] [Informing] CSI volumes should support online resize",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 192, 0}, "4.22": {200, 163, 0}},
-		},
-	},
-	{
-		testID: "test-informing-api-priority", testName: "[sig-api-machinery] [Informing] API priority and fairness should handle bursts",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 166, 0}},
-		},
-	},
-	{
-		testID: "test-informing-dns-perf", testName: "[sig-network] [Informing] DNS resolution should meet latency SLO",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 187, 0}, "4.22": {200, 164, 0}},
-		},
-	},
-	{
-		testID: "test-informing-lease-renewal", testName: "[sig-node] [Informing] Kubelet lease renewal should not miss deadlines",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 191, 0}, "4.22": {200, 167, 0}},
-		},
-	},
-	{
-		testID: "test-informing-image-pull", testName: "[sig-node] [Informing] Image pull should handle registry timeouts",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 189, 0}, "4.22": {200, 162, 0}},
-		},
-	},
-	{
-		testID: "test-informing-oom-handling", testName: "[sig-node] [Informing] OOM killer should respect pod priority",
-		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
-		lifecycle: "informing",
-		jobCounts: map[string]map[string]testCount{
-			awsAmd64Parallel: {"4.21": {200, 186, 0}, "4.22": {200, 161, 0}},
 		},
 	},
 
@@ -993,10 +896,6 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 				runsWithFailure[runKeys[i].ID] = true
 			}
 
-			lifecycle := ts.lifecycle
-			if lifecycle == "" {
-				lifecycle = "blocking"
-			}
 			result := models.ProwJobRunTest{
 				ProwJobRunID:        runKeys[i].ID,
 				ProwJobID:           prowJob.ID,
@@ -1006,7 +905,6 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 				SuiteID:             &suite.ID,
 				Status:              status,
 				Duration:            5.0,
-				Lifecycle:           lifecycle,
 				CreatedAt:           runKeys[i].Timestamp,
 			}
 			if err := dbc.DB.Create(&result).Error; err != nil {
