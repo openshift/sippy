@@ -703,6 +703,46 @@ branch-ci-Azure-ARO-RP-master-e2e-stage-e2e-parallel-miwi:
     Suite: unknown
     Topology: ha
     Upgrade: none
+branch-ci-openshift-online-gcp-hcp-infra-environmentsector-integration-main-e2e-hostedcluster-int:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: standard
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: gcp
+    Procedure: none
+    Release: gcp-hcp-main
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+branch-ci-openshift-online-gcp-hcp-infra-environmentsector-stage-main-e2e-hostedcluster-stg:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: standard
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: gcp
+    Procedure: none
+    Release: gcp-hcp-main
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-3scale-qe-3scale-deploy-main-3scale-amp-ocp4.13-lp-interop-3scale-amp-interop-aws:
     Aggregation: none
     Architecture: amd64
@@ -33372,6 +33412,25 @@ periodic-ci-openshift-hypershift-main-periodic-review-agent:
     Owner: eng
     Procedure: none
     Release: automation
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-hypershift-main-periodics-e2e-aws-capi-storage-migration:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
     Scheduler: default
     SecurityMode: default
     Suite: unknown
@@ -85436,6 +85495,46 @@ periodic-ci-openshift-ols-load-generator-main-ols-load-test-1000workers:
     SecurityMode: default
     Suite: unknown
     Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-hostedcluster-int:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: standard
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: gcp
+    Procedure: none
+    Release: gcp-hcp-main
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-hostedcluster-stg:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: standard
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: gcp
+    Procedure: none
+    Release: gcp-hcp-main
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
     Upgrade: none
 periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-platform:
     Aggregation: none
@@ -359995,6 +360094,29 @@ periodic-ci-quay-quay-redhat-3.18-azure-ocp422-e2e-install-azure-blob-postgres-n
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-baremetal-ocp422-e2e-install-baremetal-s3-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-redhat-3.18-gcp-ocp422-e2e-install-gcp-gcs-3-18-nightly-4-22:
     Aggregation: none
     Architecture: amd64
@@ -362109,6 +362231,54 @@ periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-4.22-lpMainline-lp-chaos-cr--cnv
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-5.0-lpGA-lp-chaos-cr--cnv--outage-node--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: virt
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: chaos
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-5.0-lpGA-lp-chaos-cr--cnv--outage-pod--aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: virt
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: chaos
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-redhat-chaos-lp-chaos-main-cnv--ocp-5.0-lpMainline-lp-chaos-cr--cnv--outage-kubevirt--aws:
     Aggregation: none
     Architecture: amd64
@@ -364177,54 +364347,6 @@ periodic-ci-redhat-openshift-ecosystem-msp-ocp-4.11-small-single-az-amd64-aws:
     Release: "4.11"
     ReleaseMajor: "4"
     ReleaseMinor: "11"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-redhat-openshift-ecosystem-opct-main-4.22-platform-external-vsphere:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: vsphere
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
-periodic-ci-redhat-openshift-ecosystem-opct-main-4.22-platform-none-vsphere:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: standard
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: eng
-    Platform: vsphere
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
