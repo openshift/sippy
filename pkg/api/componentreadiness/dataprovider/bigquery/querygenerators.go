@@ -589,13 +589,21 @@ func buildTestDetailsQuery(
 					) agg_labels ON junit.prowjob_build_id = agg_labels.prowjob_build_id
 `, client.Dataset)
 
-	jobRunFailuresJoin := `LEFT JOIN (
+	jobRunFailuresFilter := "WHERE adjusted_success_val = 0 AND adjusted_flake_count = 0"
+	if isSample && len(c.Lifecycles) > 0 {
+		jobRunFailuresFilter += ` AND COALESCE(NULLIF(lifecycle, ''), 'blocking') IN UNNEST(@FailureLifecycles)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "FailureLifecycles",
+			Value: c.Lifecycles,
+		})
+	}
+	jobRunFailuresJoin := fmt.Sprintf(`LEFT JOIN (
 						SELECT prowjob_build_id, COUNT(DISTINCT test_name) AS job_run_test_failure_count
 						FROM deduped_testcases
-						WHERE adjusted_success_val = 0 AND adjusted_flake_count = 0
+						%s
 						GROUP BY prowjob_build_id
 					) agg_failures ON junit.prowjob_build_id = agg_failures.prowjob_build_id
-`
+`, jobRunFailuresFilter)
 
 	queryString := fmt.Sprintf(`%s
 					SELECT

@@ -382,7 +382,9 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 		args = append(args, testIDs)
 	}
 
-	sqlQuery += `)
+	testFailuresExpr, needsLifecycleArg := testFailuresExpression(lifecycles)
+
+	sqlQuery += fmt.Sprintf(`)
 SELECT
     tt.unique_id AS test_id,
     t.name AS test_name,
@@ -392,7 +394,7 @@ SELECT
     pjr.timestamp AS prowjob_start,
     pj.id AS prow_job_id,
     pjr.labels AS job_labels,
-    COALESCE(pjr.test_failures, 0) AS test_failures,
+    %s,
     pjrt.status,
     COALESCE(tt.jira_component, '') AS jira_component,
     tt.jira_component_id
@@ -410,8 +412,11 @@ WHERE pj.release = ?
     AND pjrt.prow_job_run_release = ?
     AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
     AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
-    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`
+    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`, testFailuresExpr)
 
+	if needsLifecycleArg {
+		args = append(args, pq.Array(lifecycles))
+	}
 	args = append(args, release, start, end, release, release, start, end)
 	sqlQuery, args = appendTestDetailsLifecycleFilter(sqlQuery, args, lifecycles)
 
@@ -491,6 +496,24 @@ WHERE pj.release = ?
 	}
 
 	return crstatus.SummarizeTestJobRuns(result), nil
+}
+
+// testFailuresExpression returns the SQL expression for the test_failures column.
+// When lifecycles is non-empty, it returns a correlated subquery that counts only
+// failures matching the lifecycle filter (instead of the pre-computed total on
+// prow_job_runs). The bool return indicates whether the expression contains a
+// placeholder that requires an additional pq.Array(lifecycles) argument.
+func testFailuresExpression(lifecycles []string) (string, bool) {
+	if len(lifecycles) == 0 {
+		return "COALESCE(pjr.test_failures, 0) AS test_failures", false
+	}
+	return `(SELECT COUNT(DISTINCT lf.test_id) FROM prow_job_run_tests lf
+            WHERE lf.prow_job_run_id = pjr.id
+            AND lf.prow_job_run_release = pjr.prow_job_release
+            AND lf.prow_job_run_timestamp = pjr.timestamp
+            AND lf.status = 12
+            AND lf.lifecycle = ANY(?)
+            AND lf.deleted_at IS NULL) AS test_failures`, true
 }
 
 // appendTestDetailsLifecycleFilter keeps sample test details aligned with the

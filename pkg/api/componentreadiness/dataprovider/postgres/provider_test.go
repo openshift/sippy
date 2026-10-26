@@ -8,6 +8,59 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+func TestTestFailuresExpression(t *testing.T) {
+	tests := []struct {
+		name       string
+		lifecycles []string
+		wantArg    bool
+		wantSubq   bool
+	}{
+		{
+			name:       "no lifecycles uses pre-computed column",
+			lifecycles: nil,
+		},
+		{
+			name:       "empty lifecycles uses pre-computed column",
+			lifecycles: []string{},
+		},
+		{
+			name:       "with lifecycles uses correlated subquery",
+			lifecycles: []string{"blocking"},
+			wantArg:    true,
+			wantSubq:   true,
+		},
+		{
+			name:       "multiple lifecycles uses correlated subquery",
+			lifecycles: []string{"blocking", "informing"},
+			wantArg:    true,
+			wantSubq:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expr, needsArg := testFailuresExpression(tt.lifecycles)
+			if needsArg != tt.wantArg {
+				t.Fatalf("needsArg = %t, want %t", needsArg, tt.wantArg)
+			}
+			hasSubquery := strings.Contains(expr, "prow_job_run_tests lf")
+			if hasSubquery != tt.wantSubq {
+				t.Fatalf("has subquery = %t, want %t", hasSubquery, tt.wantSubq)
+			}
+			if tt.wantSubq {
+				if !strings.Contains(expr, "lf.lifecycle = ANY(?)") {
+					t.Fatal("subquery should filter by lifecycle")
+				}
+				if !strings.Contains(expr, "lf.status = 12") {
+					t.Fatal("subquery should filter by failure status")
+				}
+			} else if !strings.Contains(expr, "COALESCE(pjr.test_failures, 0)") {
+				t.Fatal("should use pre-computed column when no lifecycles")
+			}
+		})
+	}
+}
+
 func TestAppendTestDetailsLifecycleFilter(t *testing.T) {
 	tests := []struct {
 		name           string
