@@ -117,6 +117,7 @@ type syntheticTestSpec struct {
 	testName     string
 	component    string
 	capabilities []string
+	lifecycle    string // defaults to "blocking" when empty
 	// Each entry maps a job name template -> per-release counts.
 	// The job template determines which variants the test runs with.
 	jobCounts map[string]map[string]testCount // jobTemplate -> release -> counts
@@ -395,6 +396,28 @@ var syntheticTests = []syntheticTestSpec{
 		component: "Installer / openshift-installer", capabilities: []string{"install"},
 		jobCounts: map[string]map[string]testCount{
 			awsAmd64CapabilityAWSDualStackInstall: {"4.22": {50, 47, 0}},
+		},
+	},
+
+	// --- Informing lifecycle tests: exercise lifecycle filtering in test details ---
+	// These tests share job runs with blocking tests above, so job runs have
+	// both blocking and informing failures. This lets us confirm that
+	// testLifecycles filtering produces different test_failures counts.
+	{
+		testID: "test-informing-network", testName: "[sig-network] [Informing] Services should handle connection resets gracefully",
+		component: "comp-SignificantRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 185, 0}, "4.22": {200, 170, 0}},
+			gcpAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 185, 0}},
+		},
+	},
+	{
+		testID: "test-informing-etcd", testName: "[sig-etcd] [Informing] etcd compaction should complete in time",
+		component: "comp-ExtremeRegression", capabilities: []string{"cap1"},
+		lifecycle: "informing",
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.21": {200, 190, 0}, "4.22": {200, 160, 0}},
 		},
 	},
 
@@ -896,6 +919,10 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 				runsWithFailure[runKeys[i].ID] = true
 			}
 
+			lifecycle := ts.lifecycle
+			if lifecycle == "" {
+				lifecycle = "blocking"
+			}
 			result := models.ProwJobRunTest{
 				ProwJobRunID:        runKeys[i].ID,
 				ProwJobID:           prowJob.ID,
@@ -905,6 +932,7 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 				SuiteID:             &suite.ID,
 				Status:              status,
 				Duration:            5.0,
+				Lifecycle:           lifecycle,
 				CreatedAt:           runKeys[i].Timestamp,
 			}
 			if err := dbc.DB.Create(&result).Error; err != nil {
