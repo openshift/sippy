@@ -3,6 +3,7 @@ package bugloader
 import (
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -15,6 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
@@ -521,23 +523,27 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	}
 	resolveIDs := sets.New[uint](resolveCandidateIDs...)
 
+	var reconcileErrs []error
 	for _, id := range resolveIDs.UnsortedList() {
-		var triage models.Triage
-		if err := dbWithContext.Preload("Regressions").First(&triage, id).Error; err != nil {
+		if err := dbWithContext.Transaction(func(tx *gorm.DB) error {
+			var triage models.Triage
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Preload("Regressions").First(&triage, id).Error; err != nil {
+				return err
+			}
+			if triage.Resolved.Valid {
+				return nil
+			}
+			triage.Resolved = sql.NullTime{Time: time.Now(), Valid: true}
+			triage.ResolutionReason = models.JiraProgression
+			return tx.Save(&triage).Error
+		}); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				log.WithField("triage_id", id).Warn("triage deleted before auto-resolve, skipping")
 				continue
 			}
-			log.WithError(err).WithField("triage_id", id).Error("loading triage for auto-resolve")
-			continue
-		}
-		if triage.Resolved.Valid {
-			continue
-		}
-		triage.Resolved = sql.NullTime{Time: time.Now(), Valid: true}
-		triage.ResolutionReason = models.JiraProgression
-		if err := dbWithContext.Save(&triage).Error; err != nil {
 			log.WithError(err).WithField("triage_id", id).Error("auto-resolving triage")
+			reconcileErrs = append(reconcileErrs, fmt.Errorf("auto-resolving triage %d: %w", id, err))
 			continue
 		}
 	}
@@ -561,22 +567,25 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	unresolveIDs := sets.New[uint](unresolveCandidateIDs...)
 
 	for _, id := range unresolveIDs.UnsortedList() {
-		var triage models.Triage
-		if err := dbWithContext.Preload("Regressions").First(&triage, id).Error; err != nil {
+		if err := dbWithContext.Transaction(func(tx *gorm.DB) error {
+			var triage models.Triage
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Preload("Regressions").First(&triage, id).Error; err != nil {
+				return err
+			}
+			if !triage.Resolved.Valid || triage.ResolutionReason != models.JiraProgression {
+				return nil
+			}
+			triage.Resolved = sql.NullTime{}
+			triage.ResolutionReason = ""
+			return tx.Save(&triage).Error
+		}); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				log.WithField("triage_id", id).Warn("triage deleted before unresolve, skipping")
 				continue
 			}
-			log.WithError(err).WithField("triage_id", id).Error("loading triage for unresolve")
-			continue
-		}
-		if !triage.Resolved.Valid || triage.ResolutionReason != models.JiraProgression {
-			continue
-		}
-		triage.Resolved = sql.NullTime{}
-		triage.ResolutionReason = ""
-		if err := dbWithContext.Save(&triage).Error; err != nil {
 			log.WithError(err).WithField("triage_id", id).Error("clearing jira-progression resolution")
+			reconcileErrs = append(reconcileErrs, fmt.Errorf("unresolving triage %d: %w", id, err))
 			continue
 		}
 	}
@@ -588,5 +597,5 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 		"auto_unresolved":      unresolveIDs.Len(),
 		"elapsed":              time.Since(st),
 	}).Info("triage reconciliation complete")
-	return nil
+	return stderrors.Join(reconcileErrs...)
 }
