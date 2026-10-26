@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom'
-import { render, screen, waitFor } from '@testing-library/react'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
+import { render, screen, waitFor } from '@testing-library/react'
 import { SippyCapabilitiesContext } from '../App'
 import React from 'react'
 import Triage from './Triage'
