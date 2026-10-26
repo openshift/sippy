@@ -1,24 +1,12 @@
 import { getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
-import { Tab, Tabs } from '@mui/material'
-import DialogContent from '@mui/material/DialogContent'
+import { Tab, Typography } from '@mui/material'
+import { TriageDialogContent, TriageTabs } from './TriageStyledComponents'
 import DialogTitle from '@mui/material/DialogTitle'
 import ExistingTriageSelector from './ExistingTriageSelector'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import RegressionPotentialMatchesTab from './RegressionPotentialMatchesTab'
 import TriageFields from './TriageFields'
-
-const useStyles = makeStyles((_theme) => ({
-  noMatchesMessage: {
-    textAlign: 'center',
-    padding: '8px',
-    fontStyle: 'italic',
-    backgroundColor: '#f5f5f5',
-    borderRadius: '4px',
-    margin: '8px 0',
-  },
-}))
 
 export default function AddRegressionPanel({
   triages,
@@ -29,10 +17,7 @@ export default function AddRegressionPanel({
   completeTriageSubmission,
   triageEntryData,
   setTriageEntryData,
-  commonClasses,
 }) {
-  const localClasses = useStyles()
-  const classes = { ...commonClasses, ...localClasses }
   triages.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
 
   // We can only find potential matching triages when we are triaging a single regression at a time
@@ -62,39 +47,38 @@ export default function AddRegressionPanel({
     triages.length > 0 ? triages[0].id : null
   )
 
-  const handleAddToExistingTriageSubmit = () => {
-    const existingTriage = triages.find(
-      (triage) => triage.id === existingTriageId
-    )
-    const updatedTriage = {
-      ...existingTriage,
-      regressions: [
-        ...existingTriage.regressions,
-        ...regressionIds.map((id) => {
-          return { id: Number(id) }
-        }),
-      ],
-    }
+  const handleAddToExistingTriageSubmit = async () => {
+    try {
+      const triageUrl = getTriagesAPIUrl(existingTriageId)
+      // List entries are sparse. Retrieve the full record before replacing it.
+      const detailsResponse = await fetch(triageUrl)
+      if (!detailsResponse.ok) {
+        throw new Error('error retrieving triage entry for update')
+      }
+      const existingTriage = await detailsResponse.json()
+      // Compact lists can include already-linked triages; duplicate IDs would fail validation.
+      const combinedRegressionIds = new Set([
+        ...existingTriage.regressions.map((regression) => regression.id),
+        ...regressionIds.map(Number),
+      ])
+      const updatedTriage = {
+        ...existingTriage,
+        regressions: Array.from(combinedRegressionIds, (id) => ({ id })),
+      }
 
-    fetch(getTriagesAPIUrl(existingTriageId), {
-      method: 'PUT',
-      body: JSON.stringify(updatedTriage),
-    }).then((response) => {
+      const response = await fetch(triageUrl, {
+        method: 'PUT',
+        body: JSON.stringify(updatedTriage),
+      })
       if (!response.ok) {
-        response.json().then((data) => {
-          let errorMessage = 'invalid response returned from server'
-          if (data?.code) {
-            errorMessage =
-              'error adding test to triage entry: ' +
-              data.code +
-              ': ' +
-              data.message
-          }
-          console.error(errorMessage)
-          setAlertText(errorMessage)
-          setAlertSeverity('error')
-        })
-        return
+        const data = await response.json().catch(() => null)
+        const errorMessage = data?.code
+          ? 'error adding test to triage entry: ' +
+            data.code +
+            ': ' +
+            data.message
+          : 'invalid response returned from server'
+        throw new Error(errorMessage)
       }
 
       setAlertText(
@@ -105,7 +89,11 @@ export default function AddRegressionPanel({
         setExistingTriageId(defaultTriageId) //reset the form to the first element
       }
       completeTriageSubmission()
-    })
+    } catch (error) {
+      console.error(error)
+      setAlertText(error.message)
+      setAlertSeverity('error')
+    }
   }
 
   const showPotentialMatches =
@@ -116,14 +104,13 @@ export default function AddRegressionPanel({
   return (
     <Fragment>
       <DialogTitle>Triage</DialogTitle>
-      <DialogContent className={classes.dialogContent}>
-        <Tabs
+      <TriageDialogContent>
+        <TriageTabs
           value={tabIndex}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="primary"
           variant="fullWidth"
-          className={classes.tabsContainer}
         >
           {hasSingleRegression && (
             <Tab
@@ -137,7 +124,7 @@ export default function AddRegressionPanel({
           )}
           <Tab label="Existing Triage" />
           <Tab label="New Triage" />
-        </Tabs>
+        </TriageTabs>
         {showPotentialMatches && (
           <RegressionPotentialMatchesTab
             regressionId={regressionIds[0]}
@@ -149,7 +136,9 @@ export default function AddRegressionPanel({
         )}
         {addToExisting && (
           <Fragment>
-            <h3 className={classes.centeredHeading}>Add to existing Triage</h3>
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
+              Add to existing Triage
+            </Typography>
             <ExistingTriageSelector
               triages={triages}
               existingTriageId={existingTriageId}
@@ -160,7 +149,9 @@ export default function AddRegressionPanel({
         )}
         {addToNew && (
           <Fragment>
-            <h3 className={classes.centeredHeading}>Create new Triage</h3>
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
+              Create new Triage
+            </Typography>
             <TriageFields
               triages={triages}
               setAlertText={setAlertText}
@@ -175,7 +166,7 @@ export default function AddRegressionPanel({
             />
           </Fragment>
         )}
-      </DialogContent>
+      </TriageDialogContent>
     </Fragment>
   )
 }
@@ -189,5 +180,4 @@ AddRegressionPanel.propTypes = {
   setAlertSeverity: PropTypes.func.isRequired,
   handleNewTriageFormCompletion: PropTypes.func.isRequired,
   completeTriageSubmission: PropTypes.func.isRequired,
-  commonClasses: PropTypes.object.isRequired,
 }

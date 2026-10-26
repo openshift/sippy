@@ -230,16 +230,6 @@ type DailyRow struct {
 	Counts Counts
 }
 
-// CumulativeRows contains the three inputs needed for cumulative validation.
-type CumulativeRows struct {
-	// Previous contains cumulative rows from the day before the target date.
-	Previous []DailyRow
-	// Daily contains daily total rows from the target date.
-	Daily []DailyRow
-	// Target contains stored cumulative rows from the target date.
-	Target []DailyRow
-}
-
 // BQJob contains the BigQuery Prow job fields needed for release attribution and ID comparison.
 type BQJob struct {
 	// BuildID is the raw BigQuery build ID and may be blank or malformed.

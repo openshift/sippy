@@ -10,7 +10,6 @@ import {
   FormControl,
   FormControlLabel,
   FormGroup,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -18,76 +17,62 @@ import {
   Typography,
 } from '@mui/material'
 import { Close } from '@mui/icons-material'
+import { CloseButton } from './TriageStyledComponents'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
 import { relativeTime } from '../helpers'
+import { styled } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  dialogPaper: {
-    width: '90%',
-    maxWidth: 'none',
-  },
-  loadingContainer: {
-    textAlign: 'center',
-    padding: '40px',
-  },
-  loadingText: {
-    marginTop: '16px',
-  },
-  statusCell: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100%',
-  },
-  confidenceTooltip: {
-    cursor: 'help',
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  dialogActions: {
-    justifyContent: 'flex-start',
-  },
-  filterContainer: {
-    marginBottom: theme.spacing(2),
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing(2),
-  },
-  filterGroup: {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: theme.spacing(2),
-    alignItems: 'center',
-  },
-  filterTitle: {
-    marginRight: theme.spacing(1),
-    fontWeight: 'bold',
-  },
-  viewDropdown: {
-    minWidth: 150,
-  },
-  filterSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(2),
-  },
+const FilterFormGroup = styled(FormGroup)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'row',
+  gap: theme.spacing(2),
+  alignItems: 'center',
 }))
+
+const CenteredFlexCell = styled('div')({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  height: '100%',
+})
+
+const ConfidenceCell = styled('div')({
+  cursor: 'help',
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  alignItems: 'center',
+})
+
+const LoadingContent = styled('div')({
+  textAlign: 'center',
+  padding: '40px',
+})
+
+const FilterBar = styled('div')({
+  marginBottom: '16px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '16px',
+})
+
+const FilterSection = styled('div')({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '16px',
+})
 
 export default function TriagePotentialMatches({
   triage,
   setMessage,
   setLinkingComplete,
 }) {
-  const classes = useStyles()
   const [isModalOpen, setIsModalOpen] = React.useState(false)
   const [selectedView, setSelectedView] = React.useState('')
   const [availableViews, setAvailableViews] = React.useState([])
@@ -108,7 +93,11 @@ export default function TriagePotentialMatches({
 
   // Extract unique active view names from triage regressions; default to first, preferring -main views
   React.useEffect(() => {
-    if (!triage.regressions || triage.regressions.length === 0) return
+    if (!triage.regressions || triage.regressions.length === 0) {
+      setAvailableViews([])
+      setSelectedView('')
+      return
+    }
 
     const viewSet = new Set()
     triage.regressions.forEach((regression) => {
@@ -296,8 +285,8 @@ export default function TriagePotentialMatches({
       field: 'test_name',
       headerName: 'Test Name',
       flex: 60,
-      valueGetter: (params) => {
-        return params.row.regressed_test.test_name
+      valueGetter: (value, row) => {
+        return row.regressed_test.test_name
       },
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -305,8 +294,8 @@ export default function TriagePotentialMatches({
       field: 'release',
       headerName: 'Release',
       flex: 4,
-      valueGetter: (params) => {
-        return params.row.regressed_test.regression.release
+      valueGetter: (value, row) => {
+        return row.regressed_test.regression.release
       },
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -314,8 +303,8 @@ export default function TriagePotentialMatches({
       field: 'variants',
       headerName: 'Variants',
       flex: 40,
-      valueGetter: (params) => {
-        const variants = params.row.regressed_test.regression.variants
+      valueGetter: (value, row) => {
+        const variants = row.regressed_test.regression.variants
         if (variants && Array.isArray(variants)) {
           return variants.join(', ')
         }
@@ -328,8 +317,8 @@ export default function TriagePotentialMatches({
       headerName: 'Regressed Since',
       type: 'date',
       flex: 12,
-      valueGetter: (params) => {
-        const opened = params.row.regressed_test.regression.opened
+      valueGetter: (value, row) => {
+        const opened = row.regressed_test.regression.opened
         if (!opened) {
           return null
         }
@@ -345,8 +334,8 @@ export default function TriagePotentialMatches({
       field: 'regression_id',
       headerName: 'Regression ID',
       flex: 8,
-      valueGetter: (params) => {
-        return params.row.regressed_test.regression.id
+      valueGetter: (value, row) => {
+        return row.regressed_test.regression.id
       },
       renderCell: (param) => <div>{param.value}</div>,
     },
@@ -354,8 +343,8 @@ export default function TriagePotentialMatches({
       field: 'status',
       headerName: 'Status',
       flex: 4,
-      valueGetter: (params) => {
-        const regressedTest = params.row.regressed_test
+      valueGetter: (value, row) => {
+        const regressedTest = row.regressed_test
         const viewToUse = selectedView || view
         const testDetailsUrl = generateTestDetailsReportLink(
           regressedTest,
@@ -369,7 +358,7 @@ export default function TriagePotentialMatches({
         }
       },
       renderCell: (params) => (
-        <div className={classes.statusCell}>
+        <CenteredFlexCell>
           {params.value.url ? (
             <a
               href={params.value.url}
@@ -387,7 +376,7 @@ export default function TriagePotentialMatches({
               explanations={params.value.explanations}
             />
           )}
-        </div>
+        </CenteredFlexCell>
       ),
     },
     {
@@ -426,58 +415,74 @@ export default function TriagePotentialMatches({
 
         return (
           <Tooltip title={tooltipContent} arrow placement="top">
-            <div className={classes.confidenceTooltip}>{params.value}</div>
+            <ConfidenceCell>{params.value}</ConfidenceCell>
           </Tooltip>
         )
       },
     },
   ]
 
+  const hasActiveViews = availableViews.length > 0
+  const buttonDisabled = isLoading || !hasActiveViews
+
   return (
     <Fragment>
-      <Button
-        onClick={findPotentialMatches}
-        variant="contained"
-        color="primary"
-        sx={{ margin: '10px 0' }}
-        disabled={isLoading}
+      <Tooltip
+        title={
+          hasActiveViews
+            ? ''
+            : 'All regressions have rolled off; no active views available for matching'
+        }
       >
-        {isLoading
-          ? 'Finding Matches...'
-          : 'Link Additional Matching Regressions'}
-      </Button>
+        <span
+          tabIndex={buttonDisabled ? 0 : -1}
+          aria-label={
+            buttonDisabled && !hasActiveViews
+              ? 'All regressions have rolled off; no active views available for matching'
+              : undefined
+          }
+        >
+          <Button
+            onClick={findPotentialMatches}
+            variant="contained"
+            color="primary"
+            sx={{ margin: '10px 0' }}
+            disabled={buttonDisabled}
+          >
+            {isLoading
+              ? 'Finding Matches...'
+              : 'Link Additional Matching Regressions'}
+          </Button>
+        </span>
+      </Tooltip>
 
       <Dialog
         open={isModalOpen}
         onClose={handleCloseModal}
         maxWidth={false}
-        classes={{
-          paper: classes.dialogPaper,
+        slotProps={{
+          paper: { sx: { width: '90%', maxWidth: 'none' } },
         }}
       >
         <DialogTitle>
           Potential Matching Regressions
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseModal}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
+          <CloseButton aria-label="close" onClick={handleCloseModal}>
             <Close />
-          </IconButton>
+          </CloseButton>
         </DialogTitle>
         <DialogContent>
           {isLoading ? (
-            <div className={classes.loadingContainer}>
+            <LoadingContent>
               <CircularProgress />
-              <div className={classes.loadingText}>
+              <Typography sx={{ mt: 2 }}>
                 Loading potential matches...
-              </div>
-            </div>
+              </Typography>
+            </LoadingContent>
           ) : (
             <>
-              <div className={classes.filterContainer}>
-                <div className={classes.filterSection}>
-                  <FormControl size="small" className={classes.viewDropdown}>
+              <FilterBar>
+                <FilterSection>
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
                     <InputLabel>View</InputLabel>
                     <Select
                       value={selectedView}
@@ -492,14 +497,12 @@ export default function TriagePotentialMatches({
                       ))}
                     </Select>
                   </FormControl>
-                </div>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '16px' }}
-                >
-                  <Typography className={classes.filterTitle}>
+                </FilterSection>
+                <FilterSection>
+                  <Typography sx={{ mr: 1, fontWeight: 'bold' }}>
                     Filter by:
                   </Typography>
-                  <FormGroup className={classes.filterGroup}>
+                  <FilterFormGroup>
                     <FormControlLabel
                       control={
                         <Checkbox
@@ -546,20 +549,22 @@ export default function TriagePotentialMatches({
                         ).length
                       })`}
                     />
-                  </FormGroup>
-                </div>
-              </div>
+                  </FilterFormGroup>
+                </FilterSection>
+              </FilterBar>
               <DataGrid
                 rows={filteredMatches}
                 columns={columns}
-                components={{ Toolbar: GridToolbar }}
+                slots={{ toolbar: GridToolbar }}
                 getRowId={(row) => row.regressed_test.regression.id}
                 autoHeight
                 rowHeight={80}
-                pageSize={10}
-                rowsPerPageOptions={[10, 25, 50]}
-                disableSelectionOnClick
-                componentsProps={{
+                initialState={{
+                  pagination: { paginationModel: { pageSize: 10 } },
+                }}
+                pageSizeOptions={[10, 25, 50]}
+                disableRowSelectionOnClick
+                slotProps={{
                   toolbar: {
                     columns: columns,
                   },
@@ -568,7 +573,7 @@ export default function TriagePotentialMatches({
             </>
           )}
         </DialogContent>
-        <DialogActions className={classes.dialogActions}>
+        <DialogActions sx={{ justifyContent: 'flex-start' }}>
           <Button
             onClick={linkSelectedRegressions}
             disabled={selectedRegressions.length === 0 || isLinking}

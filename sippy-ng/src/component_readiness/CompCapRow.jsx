@@ -1,8 +1,8 @@
 import './ComponentReadiness.css'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Fragment, useContext } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { sortQueryParams } from './CompReadyUtils'
 import { Tooltip, Typography } from '@mui/material'
 import CompReadyCapsCell from './CompReadyCapsCell'
@@ -40,9 +40,9 @@ export default function CompCapRow(props) {
   // Put the capabilityName on the left side with a link to a capability specific
   // capabilities report.
   const capabilityNameColumn = (
-    <TableCell className={classes.componentName} key={capabilityName}>
+    <TableCell sx={classes.componentName} key={capabilityName}>
       <Tooltip title={'Capabilities report for ' + capabilityName}>
-        <Typography className={classes.crCellName}>
+        <Typography sx={classes.crCellName}>
           <Link to={capabilityLink(filterVals, capabilityName, environment)}>
             {capabilityName}
           </Link>

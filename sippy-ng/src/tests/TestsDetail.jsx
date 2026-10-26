@@ -1,6 +1,5 @@
 import { ArrayParam, useQueryParam } from 'use-query-params'
 import { Backdrop, CircularProgress } from '@mui/material'
-import { makeStyles } from '@mui/styles'
 import { safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
@@ -8,17 +7,8 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import TestByVariantTable from './TestByVariantTable'
 
-const useStyles = makeStyles((theme) => ({
-  backdrop: {
-    zIndex: theme.zIndex.drawer + 1,
-    color: '#fff',
-  },
-}))
-
-export default function TestsDetails(props) {
-  const classes = useStyles()
-
-  const [names = props.test, setNames] = useQueryParam('test', ArrayParam)
+export default function TestsDetails({ test = [], ...props }) {
+  const [names = test, setNames] = useQueryParam('test', ArrayParam)
   const [query, setQuery] = React.useState('')
 
   const [fetchError, setFetchError] = React.useState('')
@@ -84,7 +74,10 @@ export default function TestsDetails(props) {
   if (!isLoaded) {
     return (
       <Fragment>
-        <Backdrop className={classes.backdrop} open={!isLoaded}>
+        <Backdrop
+          sx={(theme) => ({ zIndex: theme.zIndex.drawer + 1, color: '#fff' })}
+          open={!isLoaded}
+        >
           Fetching data...
           <CircularProgress data-icon="CircularProgress" color="inherit" />
         </Backdrop>
@@ -103,10 +96,6 @@ export default function TestsDetails(props) {
       <TestByVariantTable release={props.release} data={data} />
     </Fragment>
   )
-}
-
-TestsDetails.defaultProps = {
-  test: [],
 }
 
 TestsDetails.propTypes = {

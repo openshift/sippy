@@ -40,6 +40,14 @@ const (
 	// maxFailuresToFullyAnalyze is a limit to the number of failures we'll attempt to
 	// individually analyze, if you exceed this the job failure is classified as high risk.
 	maxFailuresToFullyAnalyze = 20
+
+	// mergedPRLookbackDays bounds the NOT EXISTS subquery that checks whether a
+	// test has appeared in a merged pull request. Without a bound, the correlated
+	// subquery scans every daily range sub-partition within the release, holding
+	// shared locks that block partition DDL (CREATE TABLE ... PARTITION OF) and
+	// can exhaust max_locks_per_transaction. 90 days is well beyond the window
+	// where a "new" test determination matters for PR risk analysis.
+	mergedPRLookbackDays = 90
 )
 
 // nonDeterministicRiskLevels indicate incomplete analysis and allow for fallback to other analysis methodologies name -> variant
@@ -479,6 +487,10 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []strin
 	if onlyNewTests {
 		// A test is "new" if it is not registered in test_ownerships and has
 		// not appeared in any job run associated with a merged pull request.
+		// Bound the merged-PR check to 90 days so the correlated subquery
+		// only touches recent range sub-partitions instead of scanning all
+		// historical partitions within the release.
+		mergedPRLookback := jobRun.Timestamp.Add(-mergedPRLookbackDays * 24 * time.Hour)
 		testQuery = testQuery.
 			Where("NOT EXISTS (SELECT 1 FROM test_ownerships tow WHERE tow.test_id = prow_job_run_tests.test_id)").
 			Where(`NOT EXISTS (
@@ -487,7 +499,9 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []strin
 				INNER JOIN prow_pull_requests prs ON prs.id = prmap.prow_pull_request_id
 				WHERE t2.test_id = prow_job_run_tests.test_id
 				  AND t2.prow_job_run_release = prow_job_run_tests.prow_job_run_release
-				  AND prs.merged_at IS NOT NULL)`)
+				  AND t2.prow_job_run_timestamp >= ?
+				  AND t2.prow_job_run_timestamp <= ?
+				  AND prs.merged_at IS NOT NULL)`, mergedPRLookback, jobRun.Timestamp)
 	} else {
 		testQuery = testQuery.Where("status = ?", sippyprocessingv1.TestStatusFailure)
 	}

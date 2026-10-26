@@ -22,7 +22,7 @@ import (
 	  We do not want these trying to run during CI; skip tests with required environment variables that are not set.
 */
 
-const GcsBucketRoot = "test-platform-results"
+const GcsBucketRoot = "test-platform-results-public"
 
 func GetDbHandle(t *testing.T) *db.DB {
 	dbLogLevel := os.Getenv("TEST_DB_LOG_LEVEL") // e.g. "info" or "silent"
@@ -46,16 +46,22 @@ func GetDbHandle(t *testing.T) *db.DB {
 	return dbc
 }
 
-func GetGcsBucket(t *testing.T) *storage.BucketHandle {
+func GetGcsClient(t *testing.T) *storage.Client {
 	pathToGcsCredentials := os.Getenv("TEST_GCS_CREDS_PATH")
 	if pathToGcsCredentials == "" {
 		t.Skip("TEST_GCS_CREDS_PATH environment variable is not set; skipping GCS tests")
 	}
-	gcsClient, err := gcs.NewGCSClient(context.TODO(), pathToGcsCredentials, "")
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	gcsClient, err := gcs.NewGCSClient(ctx, pathToGcsCredentials, "")
 	if err != nil {
 		logrus.WithError(err).Fatalf("CRITICAL error getting GCS client with credentials at %s", pathToGcsCredentials)
 	}
-	return gcsClient.Bucket(GcsBucketRoot)
+	return gcsClient
+}
+
+func GetGcsBucket(t *testing.T) *storage.BucketHandle {
+	return GetGcsClient(t).Bucket(GcsBucketRoot)
 }
 
 type PseudoCache struct {

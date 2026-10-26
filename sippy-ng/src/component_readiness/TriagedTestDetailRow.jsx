@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { Fragment, useContext } from 'react'
 import { Link, Typography } from '@mui/material'
 import PropTypes from 'prop-types'
@@ -32,7 +32,7 @@ export default function TriagedTestDetailRow(props) {
                     marginRight: '4px',
                   }}
                 >
-                  <Typography className={classes.crCellName}>
+                  <Typography sx={classes.crCellName}>
                     {jobRun.jobRunId}
                   </Typography>
                 </Link>
@@ -47,13 +47,11 @@ export default function TriagedTestDetailRow(props) {
     <Fragment>
       <TableRow key={idx}>
         <TableCell
-          className={classes.crColResult}
+          sx={classes.crColResult}
           key={'column' + '-' + idx}
           width={'25%'}
         >
-          <Typography className={classes.crCellName}>
-            {element.job_name}
-          </Typography>
+          <Typography sx={classes.crCellName}>{element.job_name}</Typography>
         </TableCell>
         {testJobDetailCell(element.job_runs)}
       </TableRow>

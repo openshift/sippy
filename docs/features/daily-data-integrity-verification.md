@@ -23,7 +23,10 @@ verification scope.
   each release in BigQuery with `prow_job_runs`. Both sources use the Prow
   start-time half-open interval `[date 00:00:00Z, next date 00:00:00Z)`.
   BigQuery retains the loader's terminal-state and non-null URL filters.
-  Malformed BigQuery build IDs are failures.
+  Existing PostgreSQL runs use their stored release when matching BigQuery
+  build IDs, so removal or renaming of a job in generated config does not
+  create a false discrepancy. BigQuery runs without a PostgreSQL match use the
+  current release config. Malformed BigQuery build IDs are failures.
 - `daily-totals` recomputes counts from `prow_job_run_tests` and compares them
   in both directions with `test_daily_totals`. It uses the production composite
   run join, normalizes a null suite to ID 0, separates lifecycle values, and

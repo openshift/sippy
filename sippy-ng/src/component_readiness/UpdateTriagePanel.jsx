@@ -1,31 +1,12 @@
-import { Button, FormHelperText, Tab, Tabs } from '@mui/material'
+import { Button, FormHelperText, Tab, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { formColumnName, getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
 import { relativeTime } from '../helpers'
-import DialogContent from '@mui/material/DialogContent'
+import { TriageDialogContent, TriageTabs } from './TriageStyledComponents'
 import DialogTitle from '@mui/material/DialogTitle'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import TriageFields from './TriageFields'
-
-const useStyles = makeStyles((theme) => ({
-  regressionList: {
-    listStyle: 'none',
-  },
-  removeButton: {
-    marginTop: theme.spacing(2),
-  },
-  errorText: {
-    color: 'red',
-  },
-  dataGrid: {
-    marginBottom: theme.spacing(2),
-    '& .MuiDataGrid-columnHeaders': {
-      backgroundColor: 'rgba(0, 0, 0, 0.04)',
-    },
-  },
-}))
 
 export default function UpdateTriagePanel({
   triage,
@@ -34,10 +15,7 @@ export default function UpdateTriagePanel({
   setAlertText,
   setAlertSeverity,
   handleTriageFormCompletion,
-  commonClasses,
 }) {
-  const localClasses = useStyles()
-  const classes = { ...commonClasses, ...localClasses }
   const [removedRegressions, setRemovedRegressions] = React.useState([])
   const [validationMessage, setValidationMessage] = React.useState('')
 
@@ -111,25 +89,26 @@ export default function UpdateTriagePanel({
   return (
     <Fragment>
       <DialogTitle>Update Triage</DialogTitle>
-      <DialogContent className={classes.dialogContent}>
-        <Tabs
+      <TriageDialogContent>
+        <TriageTabs
           value={tabIndex}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="primary"
           variant="fullWidth"
-          className={classes.tabsContainer}
         >
           <Tab label="Update Fields" />
           <Tab
             label="Remove Regressions"
             disabled={triage.regressions.length < 2}
           />
-        </Tabs>
+        </TriageTabs>
 
         {updateFields && (
           <Fragment>
-            <h3 className={classes.centeredHeading}>Update Information</h3>
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
+              Update Information
+            </Typography>
             <TriageFields
               triageId={triage.id}
               setAlertText={setAlertText}
@@ -143,7 +122,9 @@ export default function UpdateTriagePanel({
         )}
         {updateRegressions && (
           <Fragment>
-            <h3 className={classes.centeredHeading}>Remove Regressions</h3>
+            <Typography variant="h6" sx={{ textAlign: 'center' }}>
+              Remove Regressions
+            </Typography>
             <DataGrid
               rows={triage.regressions}
               columns={[
@@ -185,14 +166,11 @@ export default function UpdateTriagePanel({
                   field: 'variants',
                   headerName: 'Variants',
                   flex: 35,
-                  valueGetter: (params) => {
-                    if (
-                      params.row.variants &&
-                      typeof params.row.variants === 'object'
-                    ) {
-                      return formColumnName({ variants: params.row.variants })
+                  valueGetter: (value, row) => {
+                    if (row.variants && typeof row.variants === 'object') {
+                      return formColumnName({ variants: row.variants })
                     }
-                    return params.row.variants || ''
+                    return row.variants || ''
                   },
                   renderCell: (param) => (
                     <div className="test-name">{param.value}</div>
@@ -202,11 +180,11 @@ export default function UpdateTriagePanel({
                   field: 'opened',
                   headerName: 'Regressed Since',
                   flex: 12,
-                  valueGetter: (params) => {
-                    if (!params.row.opened) {
+                  valueGetter: (value, row) => {
+                    if (!row.opened) {
                       return ''
                     }
-                    const regressedSinceDate = new Date(params.row.opened)
+                    const regressedSinceDate = new Date(row.opened)
                     return relativeTime(regressedSinceDate, new Date())
                   },
                   renderCell: (param) => (
@@ -217,15 +195,22 @@ export default function UpdateTriagePanel({
               getRowId={(row) => row.id}
               autoHeight={true}
               getRowHeight={() => 80}
-              disableSelectionOnClick
+              disableRowSelectionOnClick
               hideFooter={triage.regressions.length <= 10}
-              pageSize={10}
-              rowsPerPageOptions={[10, 25, 50]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 10 } },
+              }}
+              pageSizeOptions={[10, 25, 50]}
               disableColumnMenu={true}
-              className={classes.dataGrid}
+              sx={(theme) => ({
+                mb: theme.spacing(2),
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                },
+              })}
             />
             {validationMessage !== '' && (
-              <FormHelperText className={classes.errorText}>
+              <FormHelperText sx={{ color: 'red' }}>
                 {validationMessage}
               </FormHelperText>
             )}
@@ -234,7 +219,7 @@ export default function UpdateTriagePanel({
             </Button>
           </Fragment>
         )}
-      </DialogContent>
+      </TriageDialogContent>
     </Fragment>
   )
 }
@@ -246,5 +231,4 @@ UpdateTriagePanel.propTypes = {
   setAlertText: PropTypes.func.isRequired,
   setAlertSeverity: PropTypes.func.isRequired,
   handleTriageFormCompletion: PropTypes.func.isRequired,
-  commonClasses: PropTypes.object.isRequired,
 }

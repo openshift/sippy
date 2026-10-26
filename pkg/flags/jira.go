@@ -1,6 +1,7 @@
 package flags
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -8,26 +9,32 @@ import (
 	"github.com/andygrunwald/go-jira"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+
+	"github.com/openshift/sippy/pkg/jiraauth"
 )
 
 // JiraFlags holds Jira configuration information for Sippy.
 type JiraFlags struct {
-	JiraTokenFile string
-	JiraURL       string
+	JiraTokenFile  string
+	JiraURL        string
+	ServiceAccount bool
 }
 
+// NewJiraFlags supplies the default Jira site for commands sharing authentication flags.
 func NewJiraFlags() *JiraFlags {
 	return &JiraFlags{
 		JiraURL: "https://redhat.atlassian.net/",
 	}
 }
 
+// BindFlags exposes shared Jira authentication and endpoint configuration.
 func (f *JiraFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.JiraTokenFile,
 		"jira-token-file",
 		f.JiraTokenFile,
 		"file containing Jira token")
 	fs.StringVar(&f.JiraURL, "jira-url", f.JiraURL, "Jira URL")
+	fs.BoolVar(&f.ServiceAccount, "jira-service-account", f.ServiceAccount, "Use Jira service-account OAuth credentials")
 }
 
 type authTransport struct {
@@ -48,8 +55,24 @@ func (at *authTransport) transport() http.RoundTripper {
 	return http.DefaultTransport
 }
 
-// GetJiraClient initializes and returns a Jira client if token is available
-func (f *JiraFlags) GetJiraClient() (*jira.Client, error) {
+// GetJiraClient selects OAuth when ServiceAccount is set, otherwise retaining
+// PAT authentication. OAuth retains ctx for initial token acquisition and all
+// later renewals, so use a server or job lifetime context, not a request or
+// constructor-only context. Jira API requests use their own request contexts.
+// Without PAT credentials it returns a nil client; OAuth configuration errors
+// are returned without falling back to PAT.
+func (f *JiraFlags) GetJiraClient(ctx context.Context) (*jira.Client, error) {
+	if f.ServiceAccount {
+		httpClient, baseURL, err := f.GetServiceAccountHTTPClient(ctx)
+		if err != nil {
+			return nil, err
+		}
+		client, err := jira.NewClient(httpClient, baseURL)
+		if err != nil {
+			return nil, fmt.Errorf("create Jira service-account client: %w", err)
+		}
+		return client, nil
+	}
 	var jiraToken string
 	authorizationType := "Bearer"
 
@@ -87,4 +110,20 @@ func (f *JiraFlags) GetJiraClient() (*jira.Client, error) {
 		return nil, err
 	}
 	return jiraClient, nil
+}
+
+// GetServiceAccountHTTPClient shares credential selection and token renewal
+// with raw HTTP consumers. OAuth retains ctx for token acquisition and renewal;
+// use a server or job lifetime context. API requests use their own contexts.
+func (f *JiraFlags) GetServiceAccountHTTPClient(ctx context.Context) (*http.Client, string, error) {
+	config := jiraauth.Config{
+		ClientID:     os.Getenv("JIRA_CLIENT_ID"),
+		ClientSecret: os.Getenv("JIRA_CLIENT_SECRET"),
+		CloudID:      os.Getenv("JIRA_CLOUD_ID"),
+	}
+	httpClient, baseURL, err := config.NewClient(ctx)
+	if err != nil {
+		return nil, "", fmt.Errorf("configure Jira service-account client (JIRA_CLIENT_ID, JIRA_CLIENT_SECRET, JIRA_CLOUD_ID): %w", err)
+	}
+	return httpClient, baseURL, nil
 }

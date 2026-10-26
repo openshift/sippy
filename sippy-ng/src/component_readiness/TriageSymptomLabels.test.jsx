@@ -1,7 +1,8 @@
 import '@testing-library/jest-dom'
 import { filterFor, pathForJobRunsWithFilter } from '../helpers'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router'
 import { render, screen, waitFor, within } from '@testing-library/react'
+import { SippyCapabilitiesContext } from '../App'
 import React from 'react'
 import TriageSymptomLabels, {
   aggregateLabelSummaries,
@@ -15,6 +16,7 @@ describe('aggregateLabelSummaries', () => {
       id: 'ManualLabel',
       label_title: 'Manual label',
       explanation: 'Applied manually after investigation',
+      bugs: ['OCPBUGS-12345', 'TRT-2896'],
     },
     { id: 'KnownFailure', label_title: 'Known failure' },
   ]
@@ -44,6 +46,7 @@ describe('aggregateLabelSummaries', () => {
       })
     )
     expect(summaries[1].percentage).toBeCloseTo(100 / 3)
+    expect(summaries[1].label.bugs).toEqual(['OCPBUGS-12345', 'TRT-2896'])
   })
 
   it('counts each triage regression once per label', () => {
@@ -107,6 +110,11 @@ describe('aggregateLabelSummaries', () => {
     )
 
     expect(screen.getByText('Failure Labels (1)')).toBeInTheDocument()
+    expect(screen.getByText('Bugs')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'OCPBUGS-12345' })).toHaveAttribute(
+      'href',
+      'https://redhat.atlassian.net/browse/OCPBUGS-12345'
+    )
     const expectedJobRunsPath = pathForJobRunsWithFilter('4.22', {
       items: [filterFor('labels', 'has entry', 'ManualLabel')],
     })
@@ -116,17 +124,22 @@ describe('aggregateLabelSummaries', () => {
     expect(jobRunsLink).toHaveAttribute('href', expectedJobRunsPath)
     expect(jobRunsLink).toHaveAttribute('target', '_blank')
     expect(jobRunsLink).toHaveAttribute('rel', 'noopener noreferrer')
-    userEvent.hover(jobRunsLink)
+    await userEvent.hover(jobRunsLink)
     expect(
       await screen.findByText('View job runs with this label')
     ).toBeInTheDocument()
 
-    userEvent.click(screen.getByRole('button', { name: 'Manual label' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Manual label' }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(
       screen.getByText('Applied manually after investigation')
     ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).getByRole('link', {
+        name: 'TRT-2896',
+      })
+    ).toHaveAttribute('href', 'https://redhat.atlassian.net/browse/TRT-2896')
     const link = within(screen.getByRole('dialog')).getByRole('link', {
       name: 'View job runs with this label',
     })
@@ -134,7 +147,7 @@ describe('aggregateLabelSummaries', () => {
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
 
-    userEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }))
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     )
@@ -157,16 +170,16 @@ describe('aggregateLabelSummaries', () => {
     )
 
     const labelRow = screen.getByRole('row', { name: /Manual label/ })
-    const regressionCell = within(labelRow).getAllByRole('cell')[1]
+    const regressionCell = within(labelRow).getAllByRole('cell')[2]
     const filterButton = within(regressionCell).getByRole('button', {
       name: 'Filter regressions to Manual label',
     })
     expect(filterButton).toHaveAttribute('aria-pressed', 'false')
-    userEvent.hover(filterButton)
+    await userEvent.hover(filterButton)
     expect(
       await screen.findByText('Filter regressions to this label')
     ).toBeInTheDocument()
-    userEvent.click(filterButton)
+    await userEvent.click(filterButton)
     expect(setLabelFilter).toHaveBeenCalledWith('ManualLabel')
 
     rerender(
@@ -183,7 +196,7 @@ describe('aggregateLabelSummaries', () => {
         name: 'Filter regressions to Manual label',
       })
     ).toHaveAttribute('aria-pressed', 'true')
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole('button', {
         name: 'Filter regressions to Manual label',
       })
@@ -191,7 +204,30 @@ describe('aggregateLabelSummaries', () => {
     expect(setLabelFilter).toHaveBeenLastCalledWith(null)
   })
 
-  it('handles empty labels and unavailable label details', () => {
+  it('shows a new-tab edit link in writable label details', async () => {
+    const summaries = aggregateLabelSummaries(
+      [{ job_labels: ['ManualLabel'] }],
+      labels
+    )
+    render(
+      <MemoryRouter>
+        <SippyCapabilitiesContext.Provider value={['write_endpoints']}>
+          <TriageSymptomLabels labelSummaries={summaries} release="4.22" />
+        </SippyCapabilitiesContext.Provider>
+      </MemoryRouter>
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Manual label' }))
+
+    const editLink = within(screen.getByRole('dialog')).getByRole('link', {
+      name: 'Edit label ManualLabel',
+    })
+    expect(editLink).toHaveAttribute('href', '/labels/edit/ManualLabel')
+    expect(editLink).toHaveAttribute('target', '_blank')
+    expect(editLink).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('handles empty labels and unavailable label details', async () => {
     const { rerender } = render(
       <MemoryRouter>
         <TriageSymptomLabels labelSummaries={[]} release="4.22" />
@@ -208,7 +244,7 @@ describe('aggregateLabelSummaries', () => {
         <TriageSymptomLabels labelSummaries={summaries} />
       </MemoryRouter>
     )
-    userEvent.click(screen.getByRole('button', { name: 'Known failure' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Known failure' }))
 
     expect(screen.getByText('No description available.')).toBeInTheDocument()
     expect(screen.getByText('Job run link unavailable.')).toBeInTheDocument()

@@ -1,14 +1,15 @@
 import './chartSetup'
 import { AccessibilityModeProvider } from './components/AccessibilityModeProvider'
-import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
-import { createTheme, useTheme } from '@mui/material/styles'
 import {
+  Box,
   CssBaseline,
   Grid,
   StyledEngineProvider,
   ThemeProvider,
   Tooltip,
 } from '@mui/material'
+import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
+import { createTheme, useTheme } from '@mui/material/styles'
 import { cyan, green, orange, red } from '@mui/material/colors'
 import { DarkMode, LightMode, ToggleOff, ToggleOn } from '@mui/icons-material'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -19,17 +20,11 @@ import {
   relativeTime,
 } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
-import { makeStyles, styled } from '@mui/styles'
-import {
-  Navigate,
-  Route,
-  Routes,
-  useNavigate,
-  useParams,
-} from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
+import { styled } from '@mui/material/styles'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import AccessibilityToggle from './components/AccessibilityToggle'
@@ -48,6 +43,7 @@ import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
 import IntervalsChart from './prow_job_runs/IntervalsChart'
 import Jobs from './jobs/Jobs'
+import LabelEditor from './components/LabelEditor'
 import MenuIcon from '@mui/icons-material/Menu'
 import MuiAppBar from '@mui/material/AppBar'
 import PayloadStream from './releases/PayloadStream'
@@ -122,21 +118,23 @@ const ColorModeContext = React.createContext({
   toggleColorMode: () => {},
 })
 
-const useStyles = makeStyles(() => ({
-  root: {
-    display: 'flex',
-    flexGrow: 1,
+const dataGridCellOverride = {
+  MuiDataGrid: {
+    styleOverrides: {
+      cell: {
+        paddingTop: 8,
+        paddingBottom: 8,
+      },
+    },
   },
-  title: {
-    flexGrow: 1,
-  },
-}))
+}
 
 const themes = {
   dark: {
     palette: {
       mode: 'dark',
     },
+    components: dataGridCellOverride,
   },
   light: {
     palette: {
@@ -162,6 +160,7 @@ const themes = {
         dark: red[700],
       },
     },
+    components: dataGridCellOverride,
   },
 }
 
@@ -392,7 +391,6 @@ const EventsChartWrapper = () => {
 }
 
 function App(_props) {
-  const classes = useStyles()
   const theme = useTheme()
 
   const [cookies, setCookie] = useCookies([
@@ -560,7 +558,7 @@ function App(_props) {
                       objectToSearchString: stringify,
                     }}
                   >
-                    <div className={classes.root}>
+                    <Box sx={{ display: 'flex', flexGrow: 1 }}>
                       <AppBar
                         position="fixed"
                         open={drawerOpen}
@@ -584,7 +582,7 @@ function App(_props) {
                             justifyContent="space-between"
                             alignItems="center"
                           >
-                            <Typography variant="h6" className={classes.title}>
+                            <Typography variant="h6" sx={{ flexGrow: 1 }}>
                               Sippy
                             </Typography>
                             {showWithCapability(
@@ -781,6 +779,11 @@ function App(_props) {
                             />
 
                             <Route
+                              path="/labels/edit/:labelId?"
+                              element={<LabelEditor />}
+                            />
+
+                            <Route
                               path="/chat/*"
                               element={<ChatTransition />}
                             />
@@ -801,7 +804,7 @@ function App(_props) {
                           </Routes>
                         </ErrorBoundary>
                       </Main>
-                    </div>
+                    </Box>
                   </QueryParamProvider>
                 </AccessibilityModeProvider>
               </SippyCapabilitiesContext.Provider>

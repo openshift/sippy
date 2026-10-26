@@ -13,8 +13,10 @@ import {
 } from '@mui/material'
 import { filterFor, pathForJobRunsWithFilter } from '../helpers'
 import { FilterList } from '@mui/icons-material'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { symptomColor } from './CompReadyUtils'
+import JiraBugLinks from '../components/JiraBugLinks'
+import LabelEditButton from '../components/LabelEditButton'
 import PropTypes from 'prop-types'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -39,6 +41,7 @@ export function aggregateLabelSummaries(jobRuns, labels, totalRegressions) {
             id: labelID,
             label_title: label?.label_title || labelID,
             explanation: label?.explanation || '',
+            bugs: label?.bugs || [],
           },
           regression_ids: new Set(),
           job_run_count: 0,
@@ -137,6 +140,7 @@ export default function TriageSymptomLabels({
           <TableHead>
             <TableRow>
               <TableCell>Label</TableCell>
+              <TableCell>Bugs</TableCell>
               {showRegressions && <TableCell>Regressions</TableCell>}
               <TableCell sx={{ minWidth: 120 }}>
                 <Tooltip
@@ -192,6 +196,9 @@ export default function TriageSymptomLabels({
                         </Tooltip>
                       )}
                     </Box>
+                  </TableCell>
+                  <TableCell>
+                    <JiraBugLinks bugs={summary.label.bugs} />
                   </TableCell>
                   {showRegressions && (
                     <TableCell>
@@ -249,7 +256,10 @@ export default function TriageSymptomLabels({
         fullWidth
       >
         <DialogTitle>
-          {selectedLabel?.label_title || 'Label details'}
+          <Box display="flex" alignItems="center" gap={0.5}>
+            {selectedLabel?.label_title || 'Label details'}
+            {selectedLabel && <LabelEditButton labelId={selectedLabel.id} />}
+          </Box>
         </DialogTitle>
         <DialogContent>
           {selectedLabel?.explanation ? (
@@ -257,6 +267,11 @@ export default function TriageSymptomLabels({
           ) : (
             <Typography color="text.secondary">
               No description available.
+            </Typography>
+          )}
+          {selectedLabel?.bugs?.length > 0 && (
+            <Typography component="div" sx={{ mt: 1 }}>
+              <JiraBugLinks bugs={selectedLabel.bugs} showLabel />
             </Typography>
           )}
           {selectedLabelJobRunsPath ? (

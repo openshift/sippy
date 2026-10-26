@@ -10,7 +10,11 @@ import SyncAltRoundedIcon from '@mui/icons-material/SyncAltRounded'
  * indicating whether something improved, regressed, or stayed
  * the same.
  */
-export default function PassRateIcon(props) {
+export default function PassRateIcon({
+  inverted = false,
+  tooltip = false,
+  ...props
+}) {
   let icon = ''
 
   if (Math.abs(props.improvement) <= 2) {
@@ -25,9 +29,9 @@ export default function PassRateIcon(props) {
       <ArrowUpwardRoundedIcon
         data-icon="ArrowUpwardRoundedIcon"
         style={{
-          stroke: props.inverted ? 'darkred' : 'green',
+          stroke: inverted ? 'darkred' : 'green',
           strokeWidth: 3,
-          color: props.inverted ? 'darkred' : 'green',
+          color: inverted ? 'darkred' : 'green',
         }}
       />
     )
@@ -36,24 +40,19 @@ export default function PassRateIcon(props) {
       <ArrowDownwardRoundedIcon
         data-icon="ArrowDownwardRoundedIcon"
         style={{
-          stroke: props.inverted ? 'green' : 'darkred',
+          stroke: inverted ? 'green' : 'darkred',
           strokeWidth: 3,
-          color: props.inverted ? 'green' : 'darkred',
+          color: inverted ? 'green' : 'darkred',
         }}
       />
     )
   }
 
-  if (props.tooltip) {
+  if (tooltip) {
     return <Tooltip title={props.improvement.toFixed(2) + '%'}>{icon}</Tooltip>
   } else {
     return icon
   }
-}
-
-PassRateIcon.defaultProps = {
-  inverted: false,
-  tooltip: false,
 }
 
 PassRateIcon.propTypes = {

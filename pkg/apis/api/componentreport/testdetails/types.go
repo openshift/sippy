@@ -111,6 +111,5 @@ type JobRunStats struct {
 	// there are cases multiple junits are generated for the same test.
 	TestStats    crtest.Stats `json:"test_stats"`
 	JobLabels    []string     `json:"job_labels,omitempty"`
-	JobSymptoms  []string     `json:"job_symptoms,omitempty"`
 	TestFailures int          `json:"test_failures"`
 }

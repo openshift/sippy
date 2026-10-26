@@ -1,5 +1,6 @@
+import { Box } from '@mui/material'
 import { GridToolbarDensitySelector } from '@mui/x-data-grid'
-import { makeStyles, useTheme } from '@mui/styles'
+import { styled } from '@mui/material/styles'
 import ClearIcon from '@mui/icons-material/Clear'
 import GridToolbarBookmarkMenu from '../datagrid/GridToolbarBookmarkMenu'
 import GridToolbarDownload from './GridToolbarDownload'
@@ -12,46 +13,25 @@ import React, { Fragment, useEffect } from 'react'
 import SearchIcon from '@mui/icons-material/Search'
 import TextField from '@mui/material/TextField'
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    padding: theme.spacing(0.5, 0.5, 0),
-    justifyContent: 'space-between',
-    display: 'flex',
-    alignItems: 'flex-start',
-    flexWrap: 'wrap',
-  },
-  textField: {
-    [theme.breakpoints.down('sm')]: {
-      width: '100%',
-    },
-    margin: theme.spacing(1, 0.5, 1.5),
-    '& .MuiSvgIcon-root': {
-      marginRight: theme.spacing(0.5),
-    },
-    '& .MuiInput-underline:before': {
-      borderBottom: `1px solid ${theme.palette.divider}`,
-    },
-  },
+const ToolbarContainer = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(0.5, 0.5, 0),
+  justifyContent: 'space-between',
+  display: 'flex',
+  alignItems: 'flex-start',
+  flexWrap: 'wrap',
 }))
 
 export default function GridToolbar(props) {
-  const theme = useTheme()
-  const classes = useStyles(theme)
-
   const [search, setSearch] = React.useState('')
 
   const filterSearchValue = (() => {
     if (!props.searchField || !props.filterModel?.items) return undefined
     const filtersForField = props.filterModel.items.filter(
-      (f) => f.columnField === props.searchField
+      (f) => f.field === props.searchField
     )
     if (filtersForField.length !== 1) return undefined
     const filter = filtersForField[0]
-    if (
-      filter.operatorValue === 'contains' &&
-      filter.not !== true &&
-      filter.value
-    ) {
+    if (filter.operator === 'contains' && filter.not !== true && filter.value) {
       return filter.value
     }
     return undefined
@@ -62,7 +42,7 @@ export default function GridToolbar(props) {
   }, [filterSearchValue])
 
   return (
-    <div className={classes.root}>
+    <ToolbarContainer>
       <div>
         <GridToolbarFilterMenu
           columns={props.columns}
@@ -144,7 +124,7 @@ export default function GridToolbar(props) {
       ) : (
         ''
       )}
-    </div>
+    </ToolbarContainer>
   )
 }
 

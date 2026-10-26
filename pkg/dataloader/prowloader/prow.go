@@ -51,10 +51,6 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-// gcsPathStrip is used to strip out everything but the path, i.e. match "/view/gs/origin-ci-test/"
-// from the path "/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-sdn/1737420379221135360"
-var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
-
 type ProwLoader struct {
 	ctx                  context.Context
 	dbc                  *db.DB
@@ -840,10 +836,9 @@ func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, 
 		return "", err
 	}
 
-	// Get the path in the gcs bucket, strip out the bucket name and anything before it
-	path := gcsPathStrip.ReplaceAllString(pjURL.Path, "")
+	path := util.GCSObjectPathFromURL(prowJobURL)
 	pjLog.Debugf("gcs bucket path: %+v", path)
-	if path == "" || len(path) == len(pjURL.Path) {
+	if path == "" {
 		return "", fmt.Errorf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
 	}
 

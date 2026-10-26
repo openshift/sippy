@@ -6,7 +6,7 @@ Simple commands (migrate, lint, test) are documented in project instructions via
 
 ## Setup
 
-**`mcp/run.sh`** is the entry point. It auto-creates the virtualenv (`mcp/.venv`) and installs dependencies on first run — no manual setup required. The devcontainer's `post-create.sh` pre-warms the venv during build.
+**`mcp/run.sh`** is the entry point. It auto-creates the virtualenv (`mcp/.venv`) and installs dependencies on first run. No manual setup is required. The devcontainer's `post-create.sh` pre-warms the venv with `uv venv --seed` so `mcp/.venv/bin/pip` exists. `make test` and `mcp/run.sh` call that pip. `uv venv` without `--seed` does not install it.
 
 - **Python 3.12** required. The devcontainer image installs it; on macOS use `brew install python@3.12`.
 - **Manual venv setup** (if you prefer not to use `run.sh`):

@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/sippy/pkg/flags/configflags"
 )
 
+// AutomateJiraFlags configures regression issue discovery, filing, and dry runs.
 type AutomateJiraFlags struct {
 	BigQueryFlags           *flags.BigQueryFlags
 	GoogleCloudFlags        *flags.GoogleCloudFlags
@@ -53,9 +54,11 @@ func NewAutomateJiraFlags() *AutomateJiraFlags {
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
 		ColumnThresholds:        map[jiraautomator.Variant]int{},
+		JiraFlags:               *flags.NewJiraFlags(),
 	}
 }
 
+// BindFlags exposes the data sources and issue selection options for Jira automation.
 func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(fs)
 	f.PostgresFlags.BindFlags(fs)
@@ -120,6 +123,7 @@ func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
 	return f.GoogleCloudFlags.Validate()
 }
 
+// NewAutomateJiraCommand maintains regression issues for configured component-readiness views.
 func NewAutomateJiraCommand() *cobra.Command {
 	f := NewAutomateJiraFlags()
 
@@ -128,8 +132,16 @@ func NewAutomateJiraCommand() *cobra.Command {
 		Short: "Automate jira with component readiness regressions",
 		Long:  "Check the component report for each view with automate jira enabled. Maintains jira cards for current regressions automatically.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+			ctx, cancel := context.WithTimeout(cmd.Context(), time.Hour*1)
 			defer cancel()
+
+			jiraClient, err := f.JiraFlags.GetJiraClient(ctx)
+			if err != nil {
+				return errors.WithMessage(err, "couldn't get jira client")
+			}
+			if jiraClient == nil {
+				return fmt.Errorf("couldn't get jira client: jira auth is not configured")
+			}
 
 			cacheClient, err := f.CacheFlags.GetCacheClient()
 			if err != nil {
@@ -153,14 +165,6 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("unable to load views")
 			}
-			jiraClient, err := f.JiraFlags.GetJiraClient()
-			if err != nil {
-				return errors.WithMessage(err, "couldn't get jira client")
-			}
-			if jiraClient == nil {
-				return fmt.Errorf("couldn't get jira client: jira auth is not configured")
-			}
-
 			dbc, err := f.PostgresFlags.GetDBClient()
 			if err != nil {
 				log.WithError(err).Warn("unable to connect to postgres, will use BigQuery for release metadata")

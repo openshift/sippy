@@ -29,7 +29,7 @@ import {
   jiraProjectForRelease,
   pathForExactTestAnalysisWithFilter,
 } from '../helpers'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ReleasesContext, SippyCapabilitiesContext } from '../App'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
@@ -41,6 +41,7 @@ import CopyPageURL from './CopyPageURL'
 import FileBug from '../bugs/FileBug'
 import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
+import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
 import Sidebar from './Sidebar'
@@ -436,9 +437,12 @@ View the [test details report|${document.location.href}] for additional context.
       {latestReportUrl && (
         <Alert severity="warning" sx={{ marginTop: 2, marginBottom: 2 }}>
           This report shows data from more than 48 hours ago.{' '}
-          <Link to={latestReportUrl} style={{ textDecoration: 'underline' }}>
+          <LaunderedLink
+            address={latestReportUrl}
+            sx={{ textDecoration: 'underline' }}
+          >
             View the latest report with data from the last 7 days
-          </Link>
+          </LaunderedLink>
         </Alert>
       )}
       <h3>
@@ -462,6 +466,7 @@ View the [test details report|${document.location.href}] for additional context.
           {writeEndpointsEnabled && regressionId > 0 && (
             <UpsertTriageModal
               regressionIds={[regressionId]}
+              fields={['id', 'url', 'description', 'updated_at']}
               setComplete={setHasBeenTriaged}
               buttonText="Triage"
               submissionDelay={2000}

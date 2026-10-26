@@ -1,8 +1,15 @@
-import { Card, Container, Grid, Tab, Typography } from '@mui/material'
+import {
+  Box,
+  Card,
+  Container,
+  Grid,
+  Tab,
+  Tabs,
+  Typography,
+} from '@mui/material'
 import { filterFor } from '../helpers'
 import { JobStackedChart } from './JobStackedChart'
-import { Link } from 'react-router-dom'
-import { TabContext, TabList, TabPanel } from '@mui/lab'
+import { Link } from 'react-router'
 import JobRunsTable from './JobRunsTable'
 import JobTable from './JobTable'
 import PropTypes from 'prop-types'
@@ -33,8 +40,8 @@ export default function VariantStatus(props) {
                 filter={{
                   items: [
                     {
-                      columnField: 'variants',
-                      operatorValue: 'has entry',
+                      field: 'variants',
+                      operator: 'has entry',
                       value: props.variant,
                     },
                   ],
@@ -45,17 +52,33 @@ export default function VariantStatus(props) {
 
           <Grid item md={12}>
             <Card elevation={5} style={{ padding: 20 }}>
-              <TabContext value={tab}>
-                <TabList
-                  onChange={(e, newValue) => setTab(newValue)}
-                  indicatorColor="primary"
-                  variant="fullWidth"
-                >
-                  <Tab label="Jobs" value={0} />
-                  <Tab label="Job runs" value={1} />
-                </TabList>
+              <Tabs
+                value={tab}
+                onChange={(e, newValue) => setTab(newValue)}
+                indicatorColor="primary"
+                variant="fullWidth"
+              >
+                <Tab
+                  label="Jobs"
+                  value={0}
+                  id="variant-tab-0"
+                  aria-controls="variant-tabpanel-0"
+                />
+                <Tab
+                  label="Job runs"
+                  value={1}
+                  id="variant-tab-1"
+                  aria-controls="variant-tabpanel-1"
+                />
+              </Tabs>
 
-                <TabPanel value={0}>
+              {tab === 0 && (
+                <Box
+                  role="tabpanel"
+                  id="variant-tabpanel-0"
+                  aria-labelledby="variant-tab-0"
+                  sx={{ pt: 3 }}
+                >
                   <JobTable
                     hideControls={true}
                     pageSize={5}
@@ -66,8 +89,15 @@ export default function VariantStatus(props) {
                       ],
                     }}
                   />
-                </TabPanel>
-                <TabPanel value={1}>
+                </Box>
+              )}
+              {tab === 1 && (
+                <Box
+                  role="tabpanel"
+                  id="variant-tabpanel-1"
+                  aria-labelledby="variant-tab-1"
+                  sx={{ pt: 3 }}
+                >
                   <JobRunsTable
                     pageSize={5}
                     hideControls={true}
@@ -78,8 +108,8 @@ export default function VariantStatus(props) {
                       ],
                     }}
                   />
-                </TabPanel>
-              </TabContext>
+                </Box>
+              )}
             </Card>
           </Grid>
         </Grid>

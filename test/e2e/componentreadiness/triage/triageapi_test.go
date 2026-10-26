@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var view = crview.View{
@@ -148,6 +150,10 @@ func Test_TriageAPI(t *testing.T) {
 		// TODO(sgoeddel): If we ever have a need for another view available within e2e tests we could verify that we could get regressed_tests
 		// for multiple views at once here, but it isn't worth the overhead now.
 
+		// Associate an unknown view with the first regression to verify it gets skipped gracefully
+		unknownViewName := "99.99-nonexistent-view"
+		require.NoError(t, tracker.UpsertRegressionView(r.Regression.ID, unknownViewName))
+
 		// Create a triage with the test regressions
 		triage := models.Triage{
 			URL:  jiraBug.URL,
@@ -198,6 +204,7 @@ func Test_TriageAPI(t *testing.T) {
 
 		assert.Equal(t, crtest.ExtremeTriagedRegression, statusMap[r.Regression.ID], "First regressed test should have ExtremeTriagedRegression status")
 		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[r2.Regression.ID], "Second regressed test should have SignificantTriagedRegression status")
+		assert.NotContains(t, expandedTriage.RegressedTests, unknownViewName, "unknown view should not appear in regressed tests")
 	})
 	t.Run("list", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
@@ -229,6 +236,91 @@ func Test_TriageAPI(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d/audit", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triage.ID),
 				triage.Links["audit_logs"])
 		}
+	})
+	t.Run("list selected fields", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triage := models.Triage{
+			URL: jiraBug.URL, Description: "sparse triage", Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{{ID: testRegression1.ID}},
+		}
+		var created models.Triage
+		require.NoError(t, util.SippyPost("/api/component_readiness/triages", &triage, &created))
+		path := fmt.Sprintf("/api/component_readiness/triages/%d", created.ID)
+		require.NoError(t, util.SippyGet(path, &created))
+
+		var full []models.Triage
+		require.NoError(t, util.SippyGet("/api/component_readiness/triages", &full))
+		expectedIDs := sets.New[uint]()
+		for _, record := range full {
+			expectedIDs.Insert(record.ID)
+		}
+
+		for _, tc := range []struct {
+			name, fields string
+			expected     map[string]any
+		}{
+			{"minimal", "id,description", map[string]any{
+				"id": created.ID, "description": created.Description, "links": created.Links,
+			}},
+			{"modal", "id,url,description,updated_at", map[string]any{
+				"id": created.ID, "url": created.URL, "description": created.Description,
+				"updated_at": created.UpdatedAt, "links": created.Links,
+			}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				var records []map[string]json.RawMessage
+				require.NoError(t, util.SippyGet("/api/component_readiness/triages?fields="+url.QueryEscape(tc.fields), &records))
+				foundIDs := sets.New[uint]()
+				for _, record := range records {
+					var id uint
+					require.NoError(t, json.Unmarshal(record["id"], &id))
+					foundIDs.Insert(id)
+					if id == created.ID {
+						expected, err := json.Marshal(tc.expected)
+						require.NoError(t, err)
+						actual, err := json.Marshal(record)
+						require.NoError(t, err)
+						require.JSONEq(t, string(expected), string(actual), "only requested fields and links should be returned")
+					}
+				}
+				require.Equal(t, expectedIDs, foundIDs, "field selection must still return all triages")
+			})
+		}
+
+		var unchanged []models.Triage
+		require.NoError(t, util.SippyGet("/api/component_readiness/triages?fields=", &unchanged))
+		require.ElementsMatch(t, full, unchanged, "empty fields should preserve the full response")
+
+		t.Run("combines fields and view", func(t *testing.T) {
+			const sparseView = "fields-test-view"
+			require.NoError(t, tracker.UpsertRegressionView(testRegression1.ID, sparseView))
+			defer dbc.DB.Where("test_regression_id = ? AND view_name = ?", testRegression1.ID, sparseView).Delete(&models.RegressionView{})
+			var records []map[string]json.RawMessage
+			require.NoError(t, util.SippyGet("/api/component_readiness/triages?view="+sparseView+"&fields=id", &records))
+			require.Len(t, records, 1)
+			require.Equal(t, fmt.Sprint(created.ID), string(records[0]["id"]))
+		})
+
+		t.Run("invalid fields return bad request", func(t *testing.T) {
+			for _, fields := range []string{"unknown", "id,", "regressions.id"} {
+				var response any
+				err := util.SippyGet("/api/component_readiness/triages?fields="+url.QueryEscape(fields), &response)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "code 400")
+			}
+		})
+
+		t.Run("full lookup permits safe update after sparse listing", func(t *testing.T) {
+			var triage models.Triage
+			require.NoError(t, util.SippyGet(path, &triage))
+			triage.Regressions = append(triage.Regressions, models.TestRegression{ID: testRegression2.ID})
+			var updated models.Triage
+			require.NoError(t, util.SippyPut(path, &triage, &updated))
+			require.Equal(t, triage.Type, updated.Type)
+			require.Equal(t, triage.Description, updated.Description)
+			require.Equal(t, triage.CreatedAt, updated.CreatedAt)
+			require.Len(t, updated.Regressions, 2)
+		})
 	})
 	t.Run("list filtered by view", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
@@ -422,171 +514,6 @@ func Test_TriageAPI(t *testing.T) {
 		err = json.Unmarshal(auditLog.OldData, &oldTriageData)
 		require.NoError(t, err, "OldData should be valid JSON")
 		assertTriageDataMatches(t, originalTriage, oldTriageData, "OldData")
-	})
-
-	t.Run("expanded triage includes symptom summaries", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-		defer util.CleanupTriageSymptoms(dbc)
-
-		symA := util.SeedSymptom(t, dbc, "e2e-sym-a", "E2E Symptom A")
-		defer dbc.DB.Delete(symA)
-		symB := util.SeedSymptom(t, dbc, "e2e-sym-b", "E2E Symptom B")
-		defer dbc.DB.Delete(symB)
-
-		reg := createTestRegression(t, tracker, view, "sym-expand-test-1")
-		defer dbc.DB.Delete(reg)
-
-		triage := models.Triage{
-			URL:  jiraBug.URL,
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				{ID: reg.ID},
-			},
-		}
-		var triageResp models.Triage
-		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResp)
-		require.NoError(t, err)
-
-		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "sym-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"e2e-sym-a", "e2e-sym-b"}},
-			{ProwJobRunID: "sym-run-2", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"e2e-sym-a"}},
-		})
-		require.NoError(t, err)
-
-		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
-		require.NoError(t, err)
-
-		var et sippyserver.ExpandedTriage
-		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d?expand=regressions,symptoms", triageResp.ID), &et)
-		require.NoError(t, err)
-		require.NotNil(t, et.SymptomSummaries)
-		require.Len(t, et.SymptomSummaries, 2, "should have 2 symptom summaries")
-
-		symMap := make(map[string]componentreadiness.TriageSymptomSummary)
-		for _, ss := range et.SymptomSummaries {
-			symMap[ss.Symptom.ID] = ss
-		}
-		require.Contains(t, symMap, "e2e-sym-a")
-		assert.Equal(t, 1, symMap["e2e-sym-a"].RegressionCount)
-		assert.Equal(t, 2, symMap["e2e-sym-a"].JobRunCount)
-		assert.Contains(t, symMap["e2e-sym-a"].RegressionIDs, reg.ID)
-
-		require.Contains(t, symMap, "e2e-sym-b")
-		assert.Equal(t, 1, symMap["e2e-sym-b"].RegressionCount)
-		assert.Equal(t, 1, symMap["e2e-sym-b"].JobRunCount)
-		assert.Contains(t, symMap["e2e-sym-b"].RegressionIDs, reg.ID)
-	})
-
-	t.Run("expand=symptoms only returns symptoms without regressed_tests", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-		defer util.CleanupTriageSymptoms(dbc)
-
-		sym := util.SeedSymptom(t, dbc, "e2e-sym-only", "E2E Symptom Only")
-		defer dbc.DB.Delete(sym)
-
-		reg := createTestRegression(t, tracker, view, "sym-only-test-1")
-		defer dbc.DB.Delete(reg)
-
-		triage := models.Triage{
-			URL:  jiraBug.URL,
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				{ID: reg.ID},
-			},
-		}
-		var triageResp models.Triage
-		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResp)
-		require.NoError(t, err)
-
-		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "sym-only-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"e2e-sym-only"}},
-		})
-		require.NoError(t, err)
-
-		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
-		require.NoError(t, err)
-
-		var et sippyserver.ExpandedTriage
-		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d?expand=symptoms", triageResp.ID), &et)
-		require.NoError(t, err)
-		require.NotNil(t, et.SymptomSummaries)
-		assert.Len(t, et.SymptomSummaries, 1)
-		assert.Nil(t, et.RegressedTests, "regressed_tests should be nil when only symptoms is expanded")
-	})
-
-	t.Run("delete triage cascades to triage_symptoms", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-		defer util.CleanupTriageSymptoms(dbc)
-
-		sym := util.SeedSymptom(t, dbc, "e2e-sym-cascade", "E2E Symptom Cascade")
-		defer dbc.DB.Delete(sym)
-
-		reg := createTestRegression(t, tracker, view, "sym-cascade-test-1")
-		defer dbc.DB.Delete(reg)
-
-		triage := models.Triage{
-			URL:  jiraBug.URL,
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				{ID: reg.ID},
-			},
-		}
-		var triageResp models.Triage
-		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResp)
-		require.NoError(t, err)
-
-		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "cascade-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"e2e-sym-cascade"}},
-		})
-		require.NoError(t, err)
-
-		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
-		require.NoError(t, err)
-
-		// Verify junction row exists
-		var count int64
-		dbc.DB.Model(&models.TriageSymptom{}).Where("triage_id = ?", triageResp.ID).Count(&count)
-		require.Equal(t, int64(1), count, "should have 1 junction row before delete")
-
-		// Delete via API
-		err = util.SippyDelete(fmt.Sprintf("/api/component_readiness/triages/%d", triageResp.ID))
-		require.NoError(t, err)
-
-		// Verify junction rows are gone
-		dbc.DB.Model(&models.TriageSymptom{}).Where("triage_id = ?", triageResp.ID).Count(&count)
-		assert.Equal(t, int64(0), count, "triage_symptoms should be cascade deleted with triage")
-	})
-
-	t.Run("expanded triage with no symptoms returns nil symptom summaries", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
-		reg := createTestRegression(t, tracker, view, "no-sym-expand-test")
-		defer dbc.DB.Delete(reg)
-
-		triage := models.Triage{
-			URL:  jiraBug.URL,
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				{ID: reg.ID},
-			},
-		}
-		var triageResp models.Triage
-		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResp)
-		require.NoError(t, err)
-
-		// Merge job runs without any symptoms
-		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "no-sym-run-1", ProwJobName: "job-1", TestFailed: true},
-		})
-		require.NoError(t, err)
-
-		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
-		require.NoError(t, err)
-
-		var et sippyserver.ExpandedTriage
-		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d?expand=symptoms", triageResp.ID), &et)
-		require.NoError(t, err)
-		assert.Nil(t, et.SymptomSummaries, "symptom summaries should be nil when no symptoms exist")
 	})
 
 	t.Run("audit endpoint returns full lifecycle operations", func(t *testing.T) {
@@ -1213,242 +1140,6 @@ func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 
 	require.NoError(t, err)
 	assert.Equal(t, models.TriageTypeProduct, lookupTriage.Type)
 	return lookupTriage
-}
-
-func Test_GetTriageSymptomSummaries(t *testing.T) {
-	dbc := util.CreateE2EPostgresConnection(t)
-	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
-	dbCtx := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "e2e-test"))
-
-	cleanup := func() {
-		util.CleanupTriageSymptoms(dbc)
-		dbc.DB.Exec("DELETE FROM regression_job_runs WHERE 1=1")
-		dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1")
-		dbc.DB.Where("1 = 1").Delete(&models.Triage{})
-		dbc.DB.Where("1 = 1").Delete(&models.TestRegression{})
-	}
-
-	t.Run("returns nil when totalRegressions is zero", func(t *testing.T) {
-		result, err := componentreadiness.GetTriageSymptomSummaries(dbc, 999, 0)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("returns nil when no triage_symptoms exist", func(t *testing.T) {
-		defer cleanup()
-
-		reg := createTestRegression(t, tracker, view, "no-syms-1")
-		triage := models.Triage{
-			URL:  "https://redhat.atlassian.net/browse/TEST-NOSYM-1",
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				*reg,
-			},
-		}
-		require.NoError(t, dbCtx.Create(&triage).Error)
-
-		result, err := componentreadiness.GetTriageSymptomSummaries(dbc, triage.ID, 1)
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("percentage calculation", func(t *testing.T) {
-		defer cleanup()
-
-		symA := util.SeedSymptom(t, dbc, "pct-sym-a", "Pct Symptom A")
-		symB := util.SeedSymptom(t, dbc, "pct-sym-b", "Pct Symptom B")
-		defer util.CleanupSymptoms(dbc, symA.ID, symB.ID)
-
-		var regs []*models.TestRegression
-		for i := 1; i <= 3; i++ {
-			reg := createTestRegression(t, tracker, view, fmt.Sprintf("pct-test-%d", i))
-			regs = append(regs, reg)
-		}
-
-		triage := models.Triage{
-			URL:  "https://redhat.atlassian.net/browse/TEST-PCT-1",
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				*regs[0], *regs[1], *regs[2],
-			},
-		}
-		require.NoError(t, dbCtx.Create(&triage).Error)
-
-		// SymA on all 3 regressions, SymB on 1
-		for _, reg := range regs {
-			err := tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
-				{ProwJobRunID: fmt.Sprintf("pct-run-%d", reg.ID), ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"pct-sym-a"}},
-			})
-			require.NoError(t, err)
-		}
-		err := tracker.MergeJobRuns(regs[0].ID, []models.RegressionJobRun{
-			{ProwJobRunID: "pct-run-b", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"pct-sym-b"}},
-		})
-		require.NoError(t, err)
-
-		syncRegs := make([]*models.TestRegression, len(regs))
-		for i, r := range regs {
-			syncRegs[i] = &models.TestRegression{ID: r.ID}
-		}
-		err = tracker.SyncTriageSymptoms(syncRegs)
-		require.NoError(t, err)
-
-		result, err := componentreadiness.GetTriageSymptomSummaries(dbc, triage.ID, 3)
-		require.NoError(t, err)
-		require.Len(t, result, 2)
-
-		symMap := make(map[string]componentreadiness.TriageSymptomSummary)
-		for _, s := range result {
-			symMap[s.Symptom.ID] = s
-		}
-
-		require.Contains(t, symMap, "pct-sym-a")
-		assert.Equal(t, 3, symMap["pct-sym-a"].RegressionCount)
-		assert.Equal(t, 3, symMap["pct-sym-a"].TotalCount)
-		assert.InDelta(t, 100.0, symMap["pct-sym-a"].Percentage, 0.01)
-
-		require.Contains(t, symMap, "pct-sym-b")
-		assert.Equal(t, 1, symMap["pct-sym-b"].RegressionCount)
-		assert.Equal(t, 3, symMap["pct-sym-b"].TotalCount)
-		assert.InDelta(t, 33.33, symMap["pct-sym-b"].Percentage, 0.01)
-	})
-
-	t.Run("sorts by regression_count descending", func(t *testing.T) {
-		defer cleanup()
-
-		symA := util.SeedSymptom(t, dbc, "sort-sym-a", "Sort Symptom A")
-		symB := util.SeedSymptom(t, dbc, "sort-sym-b", "Sort Symptom B")
-		defer util.CleanupSymptoms(dbc, symA.ID, symB.ID)
-
-		reg1 := createTestRegression(t, tracker, view, "sort-test-1")
-		reg2 := createTestRegression(t, tracker, view, "sort-test-2")
-
-		triage := models.Triage{
-			URL:  "https://redhat.atlassian.net/browse/TEST-SORT-1",
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				*reg1, *reg2,
-			},
-		}
-		require.NoError(t, dbCtx.Create(&triage).Error)
-
-		// SymB on both regressions, SymA on only one
-		err := tracker.MergeJobRuns(reg1.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "sort-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"sort-sym-a", "sort-sym-b"}},
-		})
-		require.NoError(t, err)
-		err = tracker.MergeJobRuns(reg2.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "sort-run-2", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"sort-sym-b"}},
-		})
-		require.NoError(t, err)
-
-		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg1.ID}, {ID: reg2.ID}})
-		require.NoError(t, err)
-
-		result, err := componentreadiness.GetTriageSymptomSummaries(dbc, triage.ID, 2)
-		require.NoError(t, err)
-		require.Len(t, result, 2)
-
-		assert.Equal(t, "sort-sym-b", result[0].Symptom.ID, "symptom with higher regression_count should come first")
-		assert.Equal(t, 2, result[0].RegressionCount)
-		assert.Equal(t, "sort-sym-a", result[1].Symptom.ID)
-		assert.Equal(t, 1, result[1].RegressionCount)
-	})
-
-	t.Run("multiple regressions with shared symptom counts distinct regressions", func(t *testing.T) {
-		defer cleanup()
-
-		sym := util.SeedSymptom(t, dbc, "shared-sym", "Shared Symptom")
-		defer util.CleanupSymptoms(dbc, sym.ID)
-
-		reg1 := createTestRegression(t, tracker, view, "shared-test-1")
-		reg2 := createTestRegression(t, tracker, view, "shared-test-2")
-
-		triage := models.Triage{
-			URL:  "https://redhat.atlassian.net/browse/TEST-SHARED-1",
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				*reg1, *reg2,
-			},
-		}
-		require.NoError(t, dbCtx.Create(&triage).Error)
-
-		// Same symptom on both regressions, multiple job runs each
-		err := tracker.MergeJobRuns(reg1.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "shared-run-1a", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"shared-sym"}},
-			{ProwJobRunID: "shared-run-1b", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"shared-sym"}},
-		})
-		require.NoError(t, err)
-		err = tracker.MergeJobRuns(reg2.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "shared-run-2a", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"shared-sym"}},
-		})
-		require.NoError(t, err)
-
-		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg1.ID}, {ID: reg2.ID}})
-		require.NoError(t, err)
-
-		result, err := componentreadiness.GetTriageSymptomSummaries(dbc, triage.ID, 2)
-		require.NoError(t, err)
-		require.Len(t, result, 1)
-
-		assert.Equal(t, "shared-sym", result[0].Symptom.ID)
-		assert.Equal(t, 2, result[0].RegressionCount, "regression_count should be distinct regressions, not job runs")
-		assert.Equal(t, 3, result[0].JobRunCount, "job_run_count should be total across all regressions")
-		assert.InDelta(t, 100.0, result[0].Percentage, 0.01)
-	})
-
-	t.Run("collects regression IDs per symptom", func(t *testing.T) {
-		defer cleanup()
-
-		symA := util.SeedSymptom(t, dbc, "regid-sym-a", "RegID Symptom A")
-		symB := util.SeedSymptom(t, dbc, "regid-sym-b", "RegID Symptom B")
-		defer util.CleanupSymptoms(dbc, symA.ID, symB.ID)
-
-		reg1 := createTestRegression(t, tracker, view, "regid-test-1")
-		reg2 := createTestRegression(t, tracker, view, "regid-test-2")
-		reg3 := createTestRegression(t, tracker, view, "regid-test-3")
-
-		triage := models.Triage{
-			URL:  "https://redhat.atlassian.net/browse/TEST-REGID-1",
-			Type: models.TriageTypeProduct,
-			Regressions: []models.TestRegression{
-				*reg1, *reg2, *reg3,
-			},
-		}
-		require.NoError(t, dbCtx.Create(&triage).Error)
-
-		// SymA on reg1 and reg2, SymB on reg2 and reg3
-		err := tracker.MergeJobRuns(reg1.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "regid-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"regid-sym-a"}},
-		})
-		require.NoError(t, err)
-		err = tracker.MergeJobRuns(reg2.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "regid-run-2", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"regid-sym-a", "regid-sym-b"}},
-		})
-		require.NoError(t, err)
-		err = tracker.MergeJobRuns(reg3.ID, []models.RegressionJobRun{
-			{ProwJobRunID: "regid-run-3", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"regid-sym-b"}},
-		})
-		require.NoError(t, err)
-
-		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg1.ID}, {ID: reg2.ID}, {ID: reg3.ID}})
-		require.NoError(t, err)
-
-		result, err := componentreadiness.GetTriageSymptomSummaries(dbc, triage.ID, 3)
-		require.NoError(t, err)
-		require.Len(t, result, 2)
-
-		symMap := make(map[string]componentreadiness.TriageSymptomSummary)
-		for _, s := range result {
-			symMap[s.Symptom.ID] = s
-		}
-
-		require.Contains(t, symMap, "regid-sym-a")
-		assert.ElementsMatch(t, []uint{reg1.ID, reg2.ID}, symMap["regid-sym-a"].RegressionIDs)
-
-		require.Contains(t, symMap, "regid-sym-b")
-		assert.ElementsMatch(t, []uint{reg2.ID, reg3.ID}, symMap["regid-sym-b"].RegressionIDs)
-	})
 }
 
 func createBug(t *testing.T, dbc *gorm.DB) *models.Bug {

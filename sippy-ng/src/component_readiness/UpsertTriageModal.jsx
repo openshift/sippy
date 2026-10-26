@@ -1,6 +1,14 @@
-import { Button, DialogActions, Snackbar, Tooltip } from '@mui/material'
+import {
+  Button,
+  CircularProgress,
+  DialogActions,
+  DialogTitle,
+  Snackbar,
+  Tooltip,
+  Typography,
+} from '@mui/material'
 import { getTriagesAPIUrl } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
+import { LoadingContainer, TriageDialogContent } from './TriageStyledComponents'
 import AddRegressionPanel from './AddRegressionPanel'
 import Alert from '@mui/material/Alert'
 import Dialog from '@mui/material/Dialog'
@@ -8,79 +16,72 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import UpdateTriagePanel from './UpdateTriagePanel'
 
-const useCommonTriageStyles = makeStyles((theme) => ({
-  tabsContainer: {
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    '& .MuiTab-root': {
-      border: `1px solid ${theme.palette.divider}`,
-      borderBottom: 'none',
-      margin: '0 2px',
-      '&:hover': {
-        backgroundColor: theme.palette.action.hover,
-      },
-      '&.Mui-selected': {
-        backgroundColor: theme.palette.background.paper,
-        borderColor: theme.palette.primary.main,
-      },
-    },
-  },
-  dialogContent: {
-    overflow: 'auto',
-    flex: 1,
-    paddingTop: '8px',
-    paddingBottom: '8px',
-  },
-  centeredHeading: {
-    textAlign: 'center',
-  },
-}))
-
 export default function UpsertTriageModal({
   regressionIds,
   triage,
   setComplete,
   buttonText,
   submissionDelay = 0,
+  fields = [],
 }) {
-  const commonClasses = useCommonTriageStyles()
   const regressionAddMode =
     regressionIds !== undefined && regressionIds.length > 0
   const triageDetailsUpdateMode = triage !== undefined
 
   const [triages, setTriages] = React.useState([])
+  const [triagesLoading, setTriagesLoading] = React.useState(false)
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
+  const triagesRequestGeneration = React.useRef(0)
   const handleTriageModalOpen = () => {
-    // Only get all existing entries when actually adding/editing a triage
-    fetch(getTriagesAPIUrl())
+    // Updating uses the triage supplied by the parent, not the triage list.
+    if (triageDetailsUpdateMode) {
+      setTriageModalOpen(true)
+      return
+    }
+
+    const requestGeneration = ++triagesRequestGeneration.current
+    const triagesAPIUrl = getTriagesAPIUrl(null, null, fields)
+    setTriagesLoading(true)
+    setTriageModalOpen(true)
+    // Only get existing entries when actually adding regressions
+    fetch(triagesAPIUrl)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error(
-            `API call failed ${getTriagesAPIUrl()} Returned + ${
-              response.status
-            }`
+            `API call failed ${triagesAPIUrl} Returned + ${response.status}`
           )
         }
         return response.json()
       })
       .then((triages) => {
+        if (requestGeneration !== triagesRequestGeneration.current) {
+          return
+        }
         if (regressionAddMode) {
+          // Test Details omits regressions from its compact response, so no triages are filtered out there.
           triages = triages.filter(
             (triage) =>
-              !triage.regressions.some((regression) =>
+              !(triage.regressions || []).some((regression) =>
                 regressionIds.includes(regression.id)
               )
           )
         }
         setTriages(triages)
-        setTriageModalOpen(true)
+        setTriagesLoading(false)
       })
       .catch((error) => {
+        if (requestGeneration !== triagesRequestGeneration.current) {
+          return
+        }
+        setTriagesLoading(false)
+        setTriageModalOpen(false)
         setAlertText('Error retrieving existing triage records')
         setAlertSeverity('error')
         console.error(error)
       })
   }
   const handleTriageModalClosed = () => {
+    ++triagesRequestGeneration.current
     setTriageModalOpen(false)
   }
 
@@ -167,6 +168,7 @@ export default function UpsertTriageModal({
       )}
       {triageModalOpen && (
         <Dialog
+          aria-label="Triage"
           fullWidth
           maxWidth="md"
           open={triageModalOpen}
@@ -180,7 +182,18 @@ export default function UpsertTriageModal({
             },
           }}
         >
-          {triageDetailsUpdateMode && (
+          {triagesLoading && (
+            <Fragment>
+              <DialogTitle>Triage</DialogTitle>
+              <TriageDialogContent>
+                <LoadingContainer>
+                  <CircularProgress aria-label="Loading triage information..." />
+                  <Typography>Loading triage information...</Typography>
+                </LoadingContainer>
+              </TriageDialogContent>
+            </Fragment>
+          )}
+          {!triagesLoading && triageDetailsUpdateMode && (
             <UpdateTriagePanel
               triage={triage}
               setAlertText={setAlertText}
@@ -188,10 +201,9 @@ export default function UpsertTriageModal({
               triageEntryData={triageEntryData}
               setTriageEntryData={setTriageEntryData}
               handleTriageFormCompletion={handleTriageFormCompletion}
-              commonClasses={commonClasses}
             />
           )}
-          {regressionAddMode && (
+          {!triagesLoading && regressionAddMode && (
             <AddRegressionPanel
               triages={triages}
               regressionIds={regressionIds}
@@ -201,7 +213,6 @@ export default function UpsertTriageModal({
               setAlertSeverity={setAlertSeverity}
               handleNewTriageFormCompletion={handleTriageFormCompletion}
               completeTriageSubmission={completeTriageSubmission}
-              commonClasses={commonClasses}
             />
           )}
           <DialogActions sx={{ justifyContent: 'flex-start' }}>
@@ -225,4 +236,5 @@ UpsertTriageModal.propTypes = {
   setComplete: PropTypes.func.isRequired,
   buttonText: PropTypes.string.isRequired,
   submissionDelay: PropTypes.number,
+  fields: PropTypes.arrayOf(PropTypes.string),
 }

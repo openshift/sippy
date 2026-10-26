@@ -1,13 +1,17 @@
 package verify
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"reflect"
 	"testing"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,6 +20,90 @@ import (
 )
 
 var testDate = civil.Date{Year: 2026, Month: 8, Day: 25}
+
+func TestLogBQProgress(t *testing.T) {
+	logger := logrus.StandardLogger()
+	previousOutput := logger.Out
+	previousFormatter := logger.Formatter
+	previousLevel := logger.Level
+	var output bytes.Buffer
+	logger.SetOutput(&output)
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetLevel(logrus.InfoLevel)
+	t.Cleanup(func() {
+		logger.SetOutput(previousOutput)
+		logger.SetFormatter(previousFormatter)
+		logger.SetLevel(previousLevel)
+	})
+
+	logBQProgress(999, testDate.In(time.UTC), testDate.AddDays(1).In(time.UTC))
+	assert.Empty(t, output.String())
+
+	logBQProgress(1000, testDate.In(time.UTC), testDate.AddDays(1).In(time.UTC))
+	logBQProgress(2000, testDate.In(time.UTC), testDate.AddDays(1).In(time.UTC))
+
+	assert.Contains(t, output.String(), `"rows":1000`)
+	assert.Contains(t, output.String(), `"rows":2000`)
+}
+
+func TestWaitForBigQueryJobLogsStatus(t *testing.T) {
+	logger := logrus.StandardLogger()
+	previousOutput := logger.Out
+	previousFormatter := logger.Formatter
+	previousLevel := logger.Level
+	var output bytes.Buffer
+	logger.SetOutput(&output)
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetLevel(logrus.InfoLevel)
+	t.Cleanup(func() {
+		logger.SetOutput(previousOutput)
+		logger.SetFormatter(previousFormatter)
+		logger.SetLevel(previousLevel)
+	})
+
+	statusCalls := 0
+	err := waitForBigQueryJob(context.Background(), time.Now(), func(context.Context) (*bigquery.JobStatus, error) {
+		statusCalls++
+		return &bigquery.JobStatus{State: bigquery.Done}, nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, statusCalls)
+	assert.Contains(t, output.String(), "BigQuery Prow jobs query complete")
+}
+
+func TestRunnerLogsCheckProgress(t *testing.T) {
+	logger := logrus.StandardLogger()
+	previousOutput := logger.Out
+	previousFormatter := logger.Formatter
+	previousLevel := logger.Level
+	var output bytes.Buffer
+	logger.SetOutput(&output)
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetLevel(logrus.InfoLevel)
+	t.Cleanup(func() {
+		logger.SetOutput(previousOutput)
+		logger.SetFormatter(previousFormatter)
+		logger.SetLevel(previousLevel)
+	})
+
+	runner := Runner{
+		PostgreSQL: &fakePostgreSQL{
+			releases: []string{"4.20"},
+			runIDs:   map[string]map[BuildID]struct{}{"4.20": idSet(1)},
+		},
+		BigQuery: &fakeBigQuery{jobs: []BQJob{{JobName: "job", BuildID: "1"}}},
+		Config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+			"4.20": {Jobs: map[string]bool{"job": true}},
+		}},
+	}
+
+	result := runner.Run(context.Background(), Options{Date: testDate, Checks: []Check{CheckBQCompleteness}})
+
+	require.True(t, result.Passed())
+	assert.Contains(t, output.String(), "verification check started")
+	assert.Contains(t, output.String(), "verification check complete")
+}
 
 func TestParseChecks(t *testing.T) {
 	tests := []struct {
@@ -124,36 +212,122 @@ func TestCountsIsZero(t *testing.T) {
 	assert.False(t, Counts{Runs: 1}.IsZero())
 }
 
-func TestCompareCumulative(t *testing.T) {
-	key := SummaryKey{TestID: 1, ProwJobID: 2, SuiteID: 3, Lifecycle: "blocking"}
-	previous := DailyRow{Key: key, Counts: Counts{Successes: 10, Failures: 2, Flakes: 1, Runs: 13}}
-	daily := DailyRow{Key: key, Counts: Counts{Successes: 2, Failures: 1, Runs: 3}}
+func TestParseCumulativeID(t *testing.T) {
 	tests := []struct {
-		name string
-		rows CumulativeRows
-		pass bool
+		name    string
+		value   sql.NullInt64
+		want    uint64
+		wantErr bool
 	}{
-		{name: "first day", rows: CumulativeRows{Daily: []DailyRow{daily}, Target: []DailyRow{daily}}, pass: true},
-		{name: "accumulation", rows: CumulativeRows{Previous: []DailyRow{previous}, Daily: []DailyRow{daily}, Target: []DailyRow{{Key: key, Counts: previous.Counts.Add(daily.Counts)}}}, pass: true},
-		{name: "carry forward", rows: CumulativeRows{Previous: []DailyRow{previous}, Target: []DailyRow{previous}}, pass: true},
-		{name: "broken carry forward", rows: CumulativeRows{Previous: []DailyRow{previous}}, pass: false},
-		{name: "daily only missing target", rows: CumulativeRows{Daily: []DailyRow{daily}}, pass: false},
-		{name: "unexpected target", rows: CumulativeRows{Target: []DailyRow{daily}}, pass: false},
+		{name: "valid", value: sql.NullInt64{Int64: 42, Valid: true}, want: 42},
+		{name: "null", value: sql.NullInt64{}, wantErr: true},
+		{name: "negative", value: sql.NullInt64{Int64: -1, Valid: true}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			summary, discrepancies := CompareCumulative("4.20", testDate, tt.rows)
-			assert.Equal(t, tt.pass, summary.Passed)
-			assert.Equal(t, tt.pass, len(discrepancies) == 0)
+			got, err := parseCumulativeID(tt.value)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestCumulativeSummariesVerifierStreamsComparison(t *testing.T) {
+	key := SummaryKey{TestID: 1, ProwJobID: 2, SuiteID: 3, Lifecycle: "blocking"}
+	scopedKey := SummaryKey{Release: "4.20", Date: testDate, TestID: 1, ProwJobID: 2, SuiteID: 3, Lifecycle: "blocking"}
+	tests := []struct {
+		name         string
+		comparison   CumulativeComparison
+		differences  []CumulativeComparisonDiscrepancy
+		wantSummary  Summary
+		wantProblems []Discrepancy
+	}{
+		{
+			name:        "passing comparison",
+			comparison:  CumulativeComparison{ExpectedRows: 2, ActualRows: 2},
+			wantSummary: Summary{Check: CheckCumulativeSummaries, Release: "4.20", Date: testDate, Passed: true, ExpectedRows: 2, ActualRows: 2},
+		},
+		{
+			name:        "missing target row",
+			comparison:  CumulativeComparison{ExpectedRows: 1, Discrepancies: 1},
+			differences: []CumulativeComparisonDiscrepancy{{Key: key, Kind: "missing-row", Expected: "present", Actual: "missing"}},
+			wantSummary: Summary{Check: CheckCumulativeSummaries, Release: "4.20", Date: testDate, ExpectedRows: 1, Discrepancies: 1},
+			wantProblems: []Discrepancy{{
+				Check: CheckCumulativeSummaries, Release: "4.20", Date: testDate, Kind: "missing-row", Key: scopedKey.String(), Expected: "present", Actual: "missing",
+			}},
+		},
+		{
+			name:        "non-zero unexpected target row",
+			comparison:  CumulativeComparison{ActualRows: 1, Discrepancies: 1},
+			differences: []CumulativeComparisonDiscrepancy{{Key: key, Kind: "unexpected-row", Expected: "missing", Actual: "present"}},
+			wantSummary: Summary{Check: CheckCumulativeSummaries, Release: "4.20", Date: testDate, ActualRows: 1, Discrepancies: 1},
+			wantProblems: []Discrepancy{{
+				Check: CheckCumulativeSummaries, Release: "4.20", Date: testDate, Kind: "unexpected-row", Key: scopedKey.String(), Expected: "missing", Actual: "present",
+			}},
+		},
+		{
+			name:        "zero-only unexpected target row",
+			comparison:  CumulativeComparison{ActualRows: 1},
+			wantSummary: Summary{Check: CheckCumulativeSummaries, Release: "4.20", Date: testDate, Passed: true, ActualRows: 1},
+		},
+	}
+	for _, field := range []string{"successes", "failures", "flakes", "runs"} {
+		tests = append(tests, struct {
+			name         string
+			comparison   CumulativeComparison
+			differences  []CumulativeComparisonDiscrepancy
+			wantSummary  Summary
+			wantProblems []Discrepancy
+		}{
+			name:        "count mismatch " + field,
+			comparison:  CumulativeComparison{ExpectedRows: 1, ActualRows: 1, Discrepancies: 1},
+			differences: []CumulativeComparisonDiscrepancy{{Key: key, Kind: "count-mismatch", Field: field, Expected: "5", Actual: "4"}},
+			wantSummary: Summary{Check: CheckCumulativeSummaries, Release: "4.20", Date: testDate, ExpectedRows: 1, ActualRows: 1, Discrepancies: 1},
+			wantProblems: []Discrepancy{{
+				Check: CheckCumulativeSummaries, Release: "4.20", Date: testDate, Kind: "count-mismatch", Key: scopedKey.String(), Field: field, Expected: "5", Actual: "4",
+			}},
+		})
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pg := &fakePostgreSQL{
+				cumulative:            map[string]CumulativeComparison{"4.20": tt.comparison},
+				cumulativeDifferences: map[string][]CumulativeComparisonDiscrepancy{"4.20": tt.differences},
+			}
+			result := (&CumulativeSummariesVerifier{PostgreSQL: pg}).Verify(context.Background(), Scope{Date: testDate, Releases: []string{"4.20"}})
+
+			require.Len(t, result.Summaries, 1)
+			assert.Equal(t, tt.wantSummary, result.Summaries[0])
+			assert.Equal(t, tt.wantProblems, result.Discrepancies)
+		})
+	}
+}
+
+func TestCumulativeSummariesVerifierDiscardsPartialStreamOnError(t *testing.T) {
+	pg := &fakePostgreSQL{
+		cumulative: map[string]CumulativeComparison{"4.20": {ExpectedRows: 1, Discrepancies: 1}},
+		cumulativeDifferences: map[string][]CumulativeComparisonDiscrepancy{
+			"4.20": {{Key: SummaryKey{TestID: 1}, Kind: "missing-row", Expected: "present", Actual: "missing"}},
+		},
+		cumulativeErrAfterStream: map[string]error{"4.20": errors.New("stream interrupted")},
+	}
+
+	result := (&CumulativeSummariesVerifier{PostgreSQL: pg}).Verify(context.Background(), Scope{Date: testDate, Releases: []string{"4.20"}})
+
+	require.Len(t, result.Summaries, 1)
+	assert.Equal(t, "stream interrupted", result.Summaries[0].Error)
+	assert.Empty(t, result.Discrepancies)
 }
 
 func TestRunnerRunsAllSelectedChecksAfterFailures(t *testing.T) {
 	pg := &fakePostgreSQL{
 		releases:   []string{"pseudo", "4.20", "pseudo"},
 		dailyErr:   map[string]error{"4.20": errors.New("daily unavailable")},
-		cumulative: map[string]CumulativeRows{},
+		cumulative: map[string]CumulativeComparison{},
 	}
 	bq := &fakeBigQuery{jobs: []BQJob{{JobName: "job", BuildID: "bad"}}}
 	runner := Runner{
@@ -174,7 +348,7 @@ func TestRunnerRunsAllSelectedChecksAfterFailures(t *testing.T) {
 }
 
 func TestRunnerBQInitializationFailureDoesNotSkipPostgreSQLChecks(t *testing.T) {
-	pg := &fakePostgreSQL{releases: []string{"4.20"}, cumulative: map[string]CumulativeRows{}}
+	pg := &fakePostgreSQL{releases: []string{"4.20"}, cumulative: map[string]CumulativeComparison{}}
 	runner := Runner{PostgreSQL: pg, BigQueryInitializationError: errors.New("credentials missing")}
 	result := runner.Run(context.Background(), Options{Date: testDate, Checks: AllChecks})
 	require.Len(t, result.Summaries, 3)
@@ -252,6 +426,57 @@ func TestRunnerNormalizesAndDeduplicatesBQBuildIDs(t *testing.T) {
 	assert.Equal(t, time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC), bq.start)
 	assert.Equal(t, time.Date(2026, 8, 26, 0, 0, 0, 0, time.UTC), bq.end)
 	assert.Equal(t, []string{"4.20"}, pg.runIDCalls)
+}
+
+func TestRunnerBQCompletenessUsesStoredReleaseForExistingRuns(t *testing.T) {
+	pg := &fakePostgreSQL{
+		releases: []string{"4.22", "5.0"},
+		runIDs: map[string]map[BuildID]struct{}{
+			"4.22": idSet(1, 2),
+		},
+	}
+	bq := &fakeBigQuery{jobs: []BQJob{
+		{JobName: "removed-from-config", BuildID: "1"},
+		{JobName: "moved-to-5.0", BuildID: "2"},
+		{JobName: "current-5.0", BuildID: "3"},
+	}}
+	runner := Runner{
+		PostgreSQL: pg,
+		BigQuery:   bq,
+		Config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+			"5.0": {Jobs: map[string]bool{"moved-to-5.0": true, "current-5.0": true}},
+		}},
+	}
+
+	result := runner.Run(context.Background(), Options{Date: testDate, Checks: []Check{CheckBQCompleteness}})
+
+	require.Len(t, result.Summaries, 2)
+	assert.Equal(t, Summary{Check: CheckBQCompleteness, Release: "4.22", Date: testDate, Passed: true, ExpectedRows: 2, ActualRows: 2}, result.Summaries[0])
+	assert.Equal(t, Summary{Check: CheckBQCompleteness, Release: "5.0", Date: testDate, Passed: false, ExpectedRows: 1, Discrepancies: 1}, result.Summaries[1])
+	require.Len(t, result.Discrepancies, 1)
+	assert.Equal(t, "missing-in-postgres", result.Discrepancies[0].Kind)
+	assert.Equal(t, "3", result.Discrepancies[0].Key)
+}
+
+func TestRunnerBQCompletenessStillFindsMissingBigQueryRun(t *testing.T) {
+	pg := &fakePostgreSQL{
+		releases: []string{"4.22"},
+		runIDs:   map[string]map[BuildID]struct{}{"4.22": idSet(1, 2)},
+	}
+	runner := Runner{
+		PostgreSQL: pg,
+		BigQuery:   &fakeBigQuery{jobs: []BQJob{{JobName: "removed-from-config", BuildID: "1"}}},
+	}
+
+	result := runner.Run(context.Background(), Options{Date: testDate, Checks: []Check{CheckBQCompleteness}})
+
+	require.Len(t, result.Summaries, 1)
+	assert.False(t, result.Summaries[0].Passed)
+	assert.Equal(t, 1, result.Summaries[0].ExpectedRows)
+	assert.Equal(t, 2, result.Summaries[0].ActualRows)
+	require.Len(t, result.Discrepancies, 1)
+	assert.Equal(t, "missing-in-bigquery", result.Discrepancies[0].Kind)
+	assert.Equal(t, "2", result.Discrepancies[0].Key)
 }
 
 func TestRunnerBQCompletenessContinuesAfterReleaseReadError(t *testing.T) {
@@ -336,7 +561,10 @@ func TestReadersRejectNilClients(t *testing.T) {
 		{name: "releases", call: func(p *PostgreSQL) error { _, err := p.Releases(ctx); return err }},
 		{name: "Prow job run IDs", call: func(p *PostgreSQL) error { _, err := p.ProwJobRunIDs(ctx, "4.20", start, end); return err }},
 		{name: "daily rows", call: func(p *PostgreSQL) error { _, _, err := p.DailyRows(ctx, "4.20", testDate); return err }},
-		{name: "cumulative rows", call: func(p *PostgreSQL) error { _, err := p.CumulativeRows(ctx, "4.20", testDate); return err }},
+		{name: "cumulative comparison", call: func(p *PostgreSQL) error {
+			_, err := p.CumulativeComparison(ctx, "4.20", testDate, func(CumulativeComparisonDiscrepancy) {})
+			return err
+		}},
 	}
 	for _, tt := range postgresReaders {
 		t.Run(tt.name, func(t *testing.T) {
@@ -347,9 +575,48 @@ func TestReadersRejectNilClients(t *testing.T) {
 
 	bigQueryReaders := []*BigQuery{nil, NewBigQuery(nil), NewBigQuery(&bqcachedclient.Client{})}
 	for _, reader := range bigQueryReaders {
-		_, err := reader.ProwJobs(ctx, start, end)
+		err := reader.ForEachProwJob(ctx, start, end, func(BQJob) error { return nil })
 		require.ErrorContains(t, err, "BigQuery client is not initialized")
 	}
+}
+
+func TestRunnerBQCompletenessConsumesOneBigQueryStream(t *testing.T) {
+	pg := &fakePostgreSQL{
+		releases: []string{"4.20"},
+		runIDs:   map[string]map[BuildID]struct{}{"4.20": idSet(1, 2)},
+	}
+	bq := &fakeBigQuery{jobs: []BQJob{
+		{JobName: "job", BuildID: "1"},
+		{JobName: "job", BuildID: "2"},
+	}}
+	runner := Runner{
+		PostgreSQL: pg,
+		BigQuery:   bq,
+		Config: &v1config.SippyConfig{Releases: map[string]v1config.ReleaseConfig{
+			"4.20": {Jobs: map[string]bool{"job": true}},
+		}},
+	}
+
+	result := runner.Run(context.Background(), Options{Date: testDate, Checks: []Check{CheckBQCompleteness}})
+
+	require.True(t, result.Passed())
+	assert.Equal(t, 1, bq.streamCalls)
+	assert.Equal(t, 2, bq.streamedJobs)
+}
+
+func TestRunnerBQCompletenessBigQueryErrorDoesNotDuplicateReleaseErrors(t *testing.T) {
+	pg := &fakePostgreSQL{
+		releases: []string{"4.20", "4.21"},
+		runIDErr: map[string]error{"4.20": errors.New("release unavailable")},
+	}
+	bq := &fakeBigQuery{err: errors.New("BigQuery unavailable")}
+	runner := Runner{PostgreSQL: pg, BigQuery: bq}
+
+	result := runner.Run(context.Background(), Options{Date: testDate, Checks: []Check{CheckBQCompleteness}})
+
+	require.Len(t, result.Summaries, 2)
+	assert.Equal(t, "BigQuery unavailable", result.Summaries[0].Error)
+	assert.Equal(t, "BigQuery unavailable", result.Summaries[1].Error)
 }
 
 func idSet(ids ...BuildID) map[BuildID]struct{} {
@@ -368,17 +635,19 @@ func sortIsStable(discrepancies []Discrepancy) bool {
 }
 
 type fakePostgreSQL struct {
-	releases        []string
-	releasesErr     error
-	runIDs          map[string]map[BuildID]struct{}
-	runIDErr        map[string]error
-	runIDCalls      []string
-	daily           map[string][2][]DailyRow
-	dailyErr        map[string]error
-	dailyCalls      []string
-	cumulative      map[string]CumulativeRows
-	cumulativeErr   map[string]error
-	cumulativeCalls []string
+	releases                 []string
+	releasesErr              error
+	runIDs                   map[string]map[BuildID]struct{}
+	runIDErr                 map[string]error
+	runIDCalls               []string
+	daily                    map[string][2][]DailyRow
+	dailyErr                 map[string]error
+	dailyCalls               []string
+	cumulative               map[string]CumulativeComparison
+	cumulativeErr            map[string]error
+	cumulativeDifferences    map[string][]CumulativeComparisonDiscrepancy
+	cumulativeErrAfterStream map[string]error
+	cumulativeCalls          []string
 }
 
 func (f *fakePostgreSQL) Releases(context.Context) ([]string, error) {
@@ -402,22 +671,43 @@ func (f *fakePostgreSQL) DailyRows(_ context.Context, release string, _ civil.Da
 	return rows[0], rows[1], nil
 }
 
-func (f *fakePostgreSQL) CumulativeRows(_ context.Context, release string, _ civil.Date) (CumulativeRows, error) {
+func (f *fakePostgreSQL) CumulativeComparison(_ context.Context, release string, _ civil.Date, handle CumulativeComparisonHandler) (CumulativeComparison, error) {
 	f.cumulativeCalls = append(f.cumulativeCalls, release)
-	return f.cumulative[release], f.cumulativeErr[release]
+	if err := f.cumulativeErr[release]; err != nil {
+		return CumulativeComparison{}, err
+	}
+	for _, discrepancy := range f.cumulativeDifferences[release] {
+		handle(discrepancy)
+	}
+	if err := f.cumulativeErrAfterStream[release]; err != nil {
+		return CumulativeComparison{}, err
+	}
+	return f.cumulative[release], nil
 }
 
 type fakeBigQuery struct {
-	jobs  []BQJob
-	err   error
-	calls int
-	start time.Time
-	end   time.Time
+	jobs         []BQJob
+	err          error
+	calls        int
+	streamCalls  int
+	streamedJobs int
+	start        time.Time
+	end          time.Time
 }
 
-func (f *fakeBigQuery) ProwJobs(_ context.Context, start, end time.Time) ([]BQJob, error) {
+func (f *fakeBigQuery) ForEachProwJob(_ context.Context, start, end time.Time, handler ProwJobHandler) error {
 	f.calls++
+	f.streamCalls++
 	f.start = start
 	f.end = end
-	return f.jobs, f.err
+	if f.err != nil {
+		return f.err
+	}
+	for _, job := range f.jobs {
+		f.streamedJobs++
+		if err := handler(job); err != nil {
+			return err
+		}
+	}
+	return nil
 }

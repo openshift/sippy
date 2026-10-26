@@ -6,46 +6,37 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
-import { generateClasses } from '../datagrid/utils'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import { GridView } from '../datagrid/GridView'
 import { Launch } from '@mui/icons-material'
-import { makeStyles } from '@mui/styles'
 import { MERGE_FAILURE_THERSHOLDS } from '../constants'
 import {
   pathForRepository,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
-import { useNavigate } from 'react-router-dom'
-import { withStyles } from '@mui/styles'
+import { useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      '-webkit-line-clamp': 2,
-      '-webkit-box-orient': 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-    backdrop: {
-      zIndex: 999999,
-      color: '#fff',
-    },
-  },
-}))
+const ColoredDataGrid = createColoredDataGrid(MERGE_FAILURE_THERSHOLDS)
 
-function RepositoriesTable(props) {
+function RepositoriesTable({
+  limit = 0,
+  hideControls = false,
+  pageSize = 25,
+  view: viewDefault = 'Default',
+  pageSizeOptions = [5, 10, 25, 50, 100],
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'worst_premerge_job_failures',
+  sort: sortDefault = 'desc',
+  ...props
+}) {
   const PREMERGE_JOB_FAILURES_TOOLTIP =
     'Premerge job failures shows the average number of failures for the worst performing job. ' +
     'Failures exclude developer pushes or successful retests due to code changes.  It only looks ' +
@@ -54,26 +45,29 @@ function RepositoriesTable(props) {
   const REVERT_COUNT_TOOLTIP =
     'Revert count is our best guess for how many reverts this repo has had merged over the last 90 days.'
 
-  const { classes } = props
-  const gridClasses = useStyles()
   const navigate = useNavigate()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [view = props.view, setView] = useQueryParam('view', StringParam)
+  const [view = viewDefault, setView] = useQueryParam('view', StringParam)
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
+
+  const [paginationModel, setPaginationModel] = React.useState({
+    page: 0,
+    pageSize,
+  })
 
   const views = {
     Default: {
@@ -195,8 +189,8 @@ function RepositoriesTable(props) {
         '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
     }
 
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
+    if (limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(limit)
     }
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
@@ -238,11 +232,14 @@ function RepositoriesTable(props) {
   }
 
   if (isLoaded === false) {
-    if (props.briefTable) {
+    if (briefTable) {
       return <p>Loading...</p>
     } else {
       return (
-        <Backdrop className={gridClasses.backdrop} open={true}>
+        <Backdrop
+          sx={(theme) => ({ zIndex: theme.zIndex.drawer + 1, color: '#fff' })}
+          open={true}
+        >
           <CircularProgress color="inherit" />
         </Backdrop>
       )
@@ -259,7 +256,7 @@ function RepositoriesTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -278,11 +275,11 @@ function RepositoriesTable(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'repo')
+    const newItems = filterModel.items.filter((f) => f.field !== 'repo')
     newItems.push({
       id: 99,
-      columnField: 'repo',
-      operatorValue: 'contains',
+      field: 'repo',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -293,22 +290,20 @@ function RepositoriesTable(props) {
 
   return (
     <Fragment>
-      <DataGrid
-        className={gridClasses.root}
-        components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      <ColoredDataGrid
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         density="compact"
         columns={gridView.columns}
         autoHeight={true}
         rowHeight={100}
-        disableColumnFilter={props.briefTable}
+        disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        pageSize={props.pageSize}
-        rowsPerPageOptions={props.rowsPerPageOptions}
+        paginationModel={paginationModel}
+        onPaginationModelChange={setPaginationModel}
+        pageSizeOptions={pageSizeOptions}
         getRowClassName={(params) =>
-          classes[
-            'row-percent-' + Math.round(params.row.worst_premerge_job_failures)
-          ]
+          'row-percent-' + Math.round(params.row.worst_premerge_job_failures)
         }
         onRowClick={(e) =>
           navigate(`/repositories/${props.release}/${e.row.org}/${e.row.repo}`)
@@ -324,7 +319,7 @@ function RepositoriesTable(props) {
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        componentsProps={{
+        slotProps={{
           toolbar: {
             doSearch: requestSearch,
             searchField: 'repo',
@@ -347,35 +342,17 @@ function RepositoriesTable(props) {
   )
 }
 
-RepositoriesTable.defaultProps = {
-  collapse: true,
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  view: 'Default',
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'worst_premerge_job_failures',
-  sort: 'desc',
-}
-
 RepositoriesTable.propTypes = {
   briefTable: PropTypes.bool,
   hideControls: PropTypes.bool,
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   release: PropTypes.string.isRequired,
-  classes: PropTypes.object,
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
 }
 
-export default withStyles(generateClasses(MERGE_FAILURE_THERSHOLDS))(
-  RepositoriesTable
-)
+export default RepositoriesTable

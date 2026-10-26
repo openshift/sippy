@@ -12,7 +12,7 @@ import {
 } from '@mui/icons-material'
 import { DEFAULT_TEST_FILTERS } from '../constants'
 import { LaunderedListItem } from './Laundry'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router'
 import { ListItemButton, ListSubheader, useTheme } from '@mui/material'
 import {
   pathForJobsWithFilter,
@@ -24,7 +24,7 @@ import {
   withSort,
 } from '../helpers'
 import { SippyCapabilitiesContext } from '../App'
-import { styled } from '@mui/styles'
+import { styled } from '@mui/material/styles'
 import ApartmentIcon from '@mui/icons-material/Apartment'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import Collapse from '@mui/material/Collapse'
@@ -246,7 +246,7 @@ export default function Sidebar(props) {
           to={withSort(
             pathForTestsWithFilter(release, {
               items: DEFAULT_TEST_FILTERS,
-              linkOperator: 'and',
+              logicOperator: 'and',
             }),
             'net_improvement',
             'asc'

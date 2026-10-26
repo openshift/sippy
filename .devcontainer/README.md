@@ -79,6 +79,57 @@ devcontainer up --workspace-folder . --remove-existing-container  # add --docker
 
 Or from Cursor: "Dev Containers: Rebuild Container Without Cache".
 
+## Reusing the toolchain
+
+Other devcontainers can build this Dockerfile directly and call
+`post-create.sh` from the Sippy checkout to share tool versions without copying
+them. Rebuild those containers after Dockerfile changes. Recreate them after
+setup script or environment changes to rerun `post-create.sh`.
+
+Claude Code is installed during post-create by default. Set
+`SKIP_CLAUDE_INSTALL=true` to skip it. Set `INSTALL_OPENCODE=true` to install
+OpenCode V2 using `@opencode/cli`; `OPENCODE_VERSION` defaults to `latest` or can
+be an exact package version. Set these in `.devcontainer/.env` for the standalone
+container, or `containerEnv` for a consuming devcontainer. They are runtime
+variables, not build arguments. No OpenCode credentials are mounted automatically.
+
+For example, a devcontainer that covers several related checkouts can build
+this Dockerfile and install OpenCode alongside Claude Code during post-create
+setup:
+
+```json
+"build": {
+  "dockerfile": "../sippy/.devcontainer/Dockerfile",
+  "context": "../sippy/.devcontainer"
+},
+"containerEnv": {
+  "INSTALL_OPENCODE": "true"
+}
+```
+
+Adjust `dockerfile` and `context` relative to the consuming devcontainer's
+configuration file. Mount the Sippy checkout and call its `post-create.sh`
+from `postCreateCommand`, with that checkout as the working directory. Supply
+the database and Redis environment variables from `devcontainer.json`, and run
+`init-services.sh` on the host first. The setup script installs frontend and
+MCP dependencies, builds Sippy, initializes seed data, and migrates the
+prod-like database, so use development databases intended for these operations.
+The MCP virtualenv is created with `uv venv --seed` because `make test` and
+`mcp/run.sh` call `mcp/.venv/bin/pip`. `uv venv` without `--seed` does not
+install pip. Reusing this `post-create.sh` picks up that behavior.
+
+Set `SKIP_CLAUDE_INSTALL` to `"true"` in `containerEnv` to install OpenCode
+instead of Claude Code. Neither coding agent is installed during the image build.
+
+OpenCode is installed as the dev user into `~/.local` (already on `PATH`),
+with only `@opencode/cli`'s install script explicitly allowed. Do not install it
+with `sudo`: its postinstall verifies the binary and can leave root-owned
+OpenCode state in the dev user's home directory.
+
+When composing setup scripts, `SKIP_GO_TOOLS_INSTALL=true` skips installing
+gopls, delve, and staticcheck if another script already installed them. Module
+downloads, frontend setup, MCP setup, and database initialization still run.
+
 ## Cleanup
 
 ```bash

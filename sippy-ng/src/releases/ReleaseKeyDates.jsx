@@ -1,5 +1,5 @@
 import { Box, Chip, Typography } from '@mui/material'
-import { makeStyles } from '@mui/styles'
+import { styled } from '@mui/material/styles'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import Grid from '@mui/material/Grid'
@@ -7,57 +7,44 @@ import PropTypes from 'prop-types'
 import React from 'react'
 import ScheduleIcon from '@mui/icons-material/Schedule'
 
-const useStyles = makeStyles((theme) => ({
-  card: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    marginBottom: theme.spacing(1.5),
-  },
-  icon: {
-    marginRight: theme.spacing(0.75),
-    color: theme.palette.text.secondary,
-    fontSize: 20,
-  },
-  dateItem: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing(1),
-    borderRadius: theme.spacing(0.75),
-    backgroundColor: theme.palette.action.hover,
-    '&:not(:last-child)': {
-      marginBottom: theme.spacing(1),
-    },
-  },
-  dateLabel: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  dateIcon: {
-    marginRight: theme.spacing(0.75),
-    fontSize: 18,
-  },
-  inlineDates: {
-    display: 'flex',
-    gap: theme.spacing(2),
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  inlineDateItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1),
+const CardBox = styled(Box)({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+})
+
+const HeaderBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  marginBottom: theme.spacing(1.5),
+}))
+
+const DateItemBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: theme.spacing(1),
+  borderRadius: theme.spacing(0.75),
+  backgroundColor: theme.palette.action.hover,
+  '&:not(:last-child)': {
+    marginBottom: theme.spacing(1),
   },
 }))
 
-export default function ReleaseKeyDates({ release, releases, inline }) {
-  const classes = useStyles()
+const InlineDatesBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  gap: theme.spacing(2),
+  alignItems: 'center',
+  flexWrap: 'wrap',
+}))
 
+const InlineDateItemBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(1),
+}))
+
+export default function ReleaseKeyDates({ release, releases, inline }) {
   if (
     !releases ||
     !releases.release_attrs ||
@@ -99,17 +86,17 @@ export default function ReleaseKeyDates({ release, releases, inline }) {
   // Inline mode for display next to the title
   if (inline) {
     return (
-      <Box className={classes.inlineDates}>
+      <InlineDatesBox>
         {devStartDate && (
-          <Box className={classes.inlineDateItem}>
+          <InlineDateItemBox>
             <ScheduleIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
             <Typography variant="body2" color="text.secondary">
               Dev Start: {formatDate(devStartDate)}
             </Typography>
-          </Box>
+          </InlineDateItemBox>
         )}
         {gaDate && (
-          <Box className={classes.inlineDateItem}>
+          <InlineDateItemBox>
             <CheckCircleIcon
               sx={{
                 fontSize: 18,
@@ -135,27 +122,36 @@ export default function ReleaseKeyDates({ release, releases, inline }) {
                 sx={{ fontWeight: 500 }}
               />
             )}
-          </Box>
+          </InlineDateItemBox>
         )}
-      </Box>
+      </InlineDatesBox>
     )
   }
 
   // Card mode for grid display
   return (
     <Grid item xs={12} md={4}>
-      <Box className={classes.card}>
-        <Box className={classes.header}>
-          <CalendarTodayIcon className={classes.icon} />
+      <CardBox>
+        <HeaderBox>
+          <CalendarTodayIcon
+            sx={(theme) => ({
+              marginRight: theme.spacing(0.75),
+              color: theme.palette.text.secondary,
+              fontSize: 20,
+            })}
+          />
           <Typography variant="h6">Key Dates</Typography>
-        </Box>
+        </HeaderBox>
 
         <Box>
           {devStartDate && (
-            <Box className={classes.dateItem}>
-              <Box className={classes.dateLabel}>
+            <DateItemBox>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <ScheduleIcon
-                  className={classes.dateIcon}
+                  sx={(theme) => ({
+                    marginRight: theme.spacing(0.75),
+                    fontSize: 18,
+                  })}
                   color="text.secondary"
                 />
                 <Box>
@@ -167,17 +163,18 @@ export default function ReleaseKeyDates({ release, releases, inline }) {
                   </Typography>
                 </Box>
               </Box>
-            </Box>
+            </DateItemBox>
           )}
 
           {gaDate && (
-            <Box className={classes.dateItem}>
-              <Box className={classes.dateLabel}>
+            <DateItemBox>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <CheckCircleIcon
-                  className={classes.dateIcon}
-                  sx={{
+                  sx={(theme) => ({
+                    marginRight: theme.spacing(0.75),
+                    fontSize: 18,
                     color: isDateInPast(gaDate) ? 'success.main' : 'info.main',
-                  }}
+                  })}
                 />
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -204,10 +201,10 @@ export default function ReleaseKeyDates({ release, releases, inline }) {
                   sx={{ fontWeight: 500 }}
                 />
               )}
-            </Box>
+            </DateItemBox>
           )}
         </Box>
-      </Box>
+      </CardBox>
     </Grid>
   )
 }

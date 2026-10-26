@@ -113,7 +113,9 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
           OR prowjob_job_name LIKE 'periodic-ci-quay-quay-redhat-%%'
-          OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
+          OR prowjob_job_name LIKE 'periodic-ci-rhobs-troubleshooting-scenarios-%%'
+          OR prowjob_job_name LIKE 'pull-ci-openshift-%%'
+          OR prowjob_job_name LIKE 'pull-ci-quay-quay-master-%%')
   GROUP BY prowjob_job_name
 )
 SELECT 
@@ -139,8 +141,10 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
 		OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-ocp-compat-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-quay-quay-redhat-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-rhobs-troubleshooting-scenarios-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
-      OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
+      OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%'
+      OR j.prowjob_job_name LIKE 'pull-ci-quay-quay-master-%%')
 GROUP BY j.prowjob_job_name, r.prowjob_url, r.successful_start
 ORDER BY j.prowjob_job_name;
 `
@@ -566,8 +570,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-distributed-tracing", "qe"},
 		{"-oadp-", "oadp"},
 		{"-lp-chaos-", "mpict"},    // MPEX Integrity Engineering Chaos Team
-		{"-interop-opp-", "mpiit"}, // MPEX Integrity Engineering Interop Team (OPP)
-		{"-opp--ocp-", "mpiit"},    // MPEX Integrity Engineering Interop Team (OPP) - new naming
+		{"-interop-opp-", "mpiit"}, // Legacy OPP job naming
 		{"-lp-interop-", "mpiit"},  // MPEX Integrity Engineering Interop Team
 		{"-lp-ocp-compat-", "lp"},  // Layered Product Teams
 	}
@@ -779,6 +782,9 @@ var componentCapabilityPatterns = []componentCapabilityEntry{
 	{[]string{"-aws-ovn-installer-dualstack"}, "Installer", "AWSDualStackInstall", "candidate"},
 	{[]string{"-gcd-"}, "Installer", "GCPSovereignCloudInstall", "standard"},
 	{[]string{"-iso-no-registry"}, "Installer / Agent based installation", "NoRegistryClusterInstall", "candidate"},
+	// ExternalOIDCAsWebhook is TechPreviewNoUpgrade-only; label TPNU jobs, not default FeatureSet.
+	{[]string{"cluster-authentication-operator", "release-5.1-", "external-oidc", "techpreview"}, "apiserver-auth", "ExternalOIDCAsWebhook", "candidate"},
+	{[]string{"hypershift", "release-5.1-", "external-oidc", "techpreview"}, "apiserver-auth", "ExternalOIDCAsWebhook", "candidate"},
 }
 
 // setComponentAndCapability identifies the component and capability owner for a job.
@@ -871,6 +877,13 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// vSphere VCF migration jobs are new and not yet stable enough for component readiness
 		{[]string{"-vcf-migration"}, "candidate"},
 
+		// vSphere vSphere zonal TP jobs are flagged as not stable enough so adding here until we are ready to make blocking.
+		// 5.1 is staying blocking on purpose since vSphere day 2 is GA there and we are making sure things remain stable.
+		{[]string{"5.0-e2e-vsphere-ovn-zones-techpreview"}, "candidate"},
+		{[]string{"4.22-e2e-vsphere-ovn-zones-techpreview"}, "candidate"},
+		{[]string{"4.21-e2e-vsphere-ovn-zones-techpreview"}, "candidate"},
+		{[]string{"4.20-e2e-vsphere-ovn-zones-techpreview"}, "candidate"},
+
 		// Nutanix upgrade job not yet stable due to CSI operator conformance failures
 		{[]string{"-e2e-nutanix-upgrade"}, "candidate"},
 
@@ -947,9 +960,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"-eusc-techpreview"}, "candidate"},
 
 		// AWS DualStack Techpreview jobs - candidate tier to collect data while stabilizing
-		{[]string{"-aws-ovn-dualstack"}, "candidate"},
-		{[]string{"-aws-ovn-installer-dualstack-ipv6-primary-techpreview"}, "candidate"},
-		{[]string{"-aws-ovn-installer-dualstack-ipv4-primary-techpreview"}, "candidate"},
+		{[]string{"-aws-ovn-dualstack"}, "standard"},
+		{[]string{"-aws-ovn-installer-dualstack-ipv6-primary-techpreview"}, "standard"},
+		{[]string{"-aws-ovn-installer-dualstack-ipv4-primary-techpreview"}, "standard"},
 
 		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}
@@ -1246,6 +1259,7 @@ func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName s
 		"-multitenant",
 		"-multiarch",
 		"-multinet",
+		"-multidisk",
 	}
 	for _, ignore := range ignorePatterns {
 		jobNameLower = strings.ReplaceAll(jobNameLower, ignore, "-")
@@ -1395,9 +1409,9 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-lpga-lp-ocp-compat-cr--servicemesh-", "lp-ocp-compat--servicemesh--lpGA"},
 		{"-lpga-lp-ocp-compat-cr--operator-e2e-", "lp-ocp-compat--serverless--lpGA"},
 		{"-coo-", "lp-interop-coo"},
-		{"-acm-virt-", "lp-interop--acm-virt"},
-		{"-opp--ocp-", "lp-interop--OPP"},    // New OPP jobs in RedHatQE/interop-testing
-		{"-interop-opp-", "lp-interop--OPP"}, // Old OPP jobs in stolostron/policy-collection (deprecated)
+		{"-lpmainline-lp-interop--acm-virt-", "lp-interop--acm-virt--lpMainline"},
+		{"-lpmainline-lp-interop--opp-", "lp-interop--opp--lpMainline"},
+		{"-interop-opp-", "lp-interop--opp--lpMainline"}, // Legacy OPP job naming
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},

@@ -12,31 +12,21 @@ import {
   jiraUrlPrefix,
   jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
-import { makeStyles } from '@mui/styles'
+import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  ellipsisText: {
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  customTooltip: {
-    maxWidth: 600,
-    fontSize: '0.875rem',
-    whiteSpace: 'pre-line',
-  },
-  centeredHeading: {
-    textAlign: 'center',
-  },
-  successIcon: {
-    color: theme.palette.success.light,
-  },
-  errorIcon: {
-    color: theme.palette.error.light,
-  },
-}))
+const EllipsisText = styled(Typography)({
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+})
+
+const customTooltipSx = {
+  maxWidth: 600,
+  fontSize: '0.875rem',
+  whiteSpace: 'pre-line',
+}
 
 export default function RegressionPotentialMatchesTab({
   regressionId,
@@ -45,7 +35,6 @@ export default function RegressionPotentialMatchesTab({
   completeTriageSubmission,
   onMatchesFound,
 }) {
-  const classes = useStyles()
   const [matches, setMatches] = useState([])
   const [loadingMatches, setLoadingMatches] = useState(false)
   const [matchesError, setMatchesError] = useState('')
@@ -109,7 +98,7 @@ export default function RegressionPotentialMatchesTab({
       <Tooltip
         title={tooltipText}
         placement="top"
-        classes={{ tooltip: classes.customTooltip }}
+        slotProps={{ tooltip: { sx: customTooltipSx } }}
       >
         <Typography variant="body2">{count}</Typography>
       </Tooltip>
@@ -160,17 +149,15 @@ export default function RegressionPotentialMatchesTab({
       field: 'triage_id',
       headerName: 'Triage ID',
       flex: 3,
-      valueGetter: (params) => {
-        return params.row.triage?.id ?? ''
+      valueGetter: (value, row) => {
+        return row.triage?.id ?? ''
       },
       renderCell: (param) => <div>{param.value}</div>,
     },
     {
       field: 'resolution_date',
-      valueGetter: (params) => {
-        return params.row.triage?.resolved?.Valid
-          ? params.row.triage.resolved.Time
-          : ''
+      valueGetter: (value, row) => {
+        return row.triage?.resolved?.Valid ? row.triage.resolved.Time : ''
       },
       headerName: 'Resolved',
       flex: 4,
@@ -183,11 +170,13 @@ export default function RegressionPotentialMatchesTab({
               new Date()
             )} (${formatDateToSeconds(param.value)})`}
           >
-            <CheckCircle className={classes.successIcon} />
+            <CheckCircle
+              sx={(theme) => ({ color: theme.palette.success.light })}
+            />
           </Tooltip>
         ) : (
           <Tooltip title="Not resolved">
-            <ErrorIcon className={classes.errorIcon} />
+            <ErrorIcon sx={(theme) => ({ color: theme.palette.error.light })} />
           </Tooltip>
         ),
     },
@@ -195,14 +184,12 @@ export default function RegressionPotentialMatchesTab({
       field: 'description',
       headerName: 'Description',
       flex: 25,
-      valueGetter: (params) => {
-        return params.row.triage?.description
+      valueGetter: (value, row) => {
+        return row.triage?.description
       },
       renderCell: (param) => (
         <Tooltip title={param.value || 'No description'}>
-          <Typography className={classes.ellipsisText}>
-            {param.value || 'No description'}
-          </Typography>
+          <EllipsisText>{param.value || 'No description'}</EllipsisText>
         </Tooltip>
       ),
     },
@@ -210,8 +197,8 @@ export default function RegressionPotentialMatchesTab({
       field: 'type',
       headerName: 'Type',
       flex: 8,
-      valueGetter: (params) => {
-        return params.row.triage?.type
+      valueGetter: (value, row) => {
+        return row.triage?.type
       },
       renderCell: (param) => (
         <Typography variant="body2">{param.value}</Typography>
@@ -219,8 +206,8 @@ export default function RegressionPotentialMatchesTab({
     },
     {
       field: 'url',
-      valueGetter: (params) => {
-        const url = params.row.triage?.url
+      valueGetter: (value, row) => {
+        const url = row.triage?.url
         const val = {
           url,
           text: url,
@@ -245,7 +232,7 @@ export default function RegressionPotentialMatchesTab({
       headerName: 'Similar Tests',
       flex: 6,
       align: 'center',
-      valueGetter: (params) => params.row.similarly_named_tests || [],
+      valueGetter: (value, row) => row.similarly_named_tests || [],
       renderCell: (param) => {
         const tests = param.value.map((test) => {
           return test.regression
@@ -258,7 +245,7 @@ export default function RegressionPotentialMatchesTab({
       headerName: 'Overlapping Job Runs',
       flex: 6,
       align: 'center',
-      valueGetter: (params) => params.row.overlapping_job_runs || [],
+      valueGetter: (value, row) => row.overlapping_job_runs || [],
       renderCell: (param) => {
         const overlaps = param.value
         if (overlaps.length === 0) {
@@ -279,7 +266,7 @@ export default function RegressionPotentialMatchesTab({
           <Tooltip
             title={tooltipText}
             placement="top"
-            classes={{ tooltip: classes.customTooltip }}
+            slotProps={{ tooltip: { sx: customTooltipSx } }}
           >
             <Typography variant="body2">
               {Math.round(bestOverlap.overlap_percent)}%
@@ -313,8 +300,8 @@ export default function RegressionPotentialMatchesTab({
       flex: 4,
       align: 'center',
       sortable: false,
-      valueGetter: (value) => {
-        return value.row.triage?.id ?? ''
+      valueGetter: (value, row) => {
+        return row.triage?.id ?? ''
       },
       renderCell: (param) => (
         <a
@@ -347,7 +334,9 @@ export default function RegressionPotentialMatchesTab({
 
   return (
     <Fragment>
-      <h3 className={classes.centeredHeading}>Potential Matching Triages</h3>
+      <Typography variant="h6" sx={{ textAlign: 'center' }}>
+        Potential Matching Triages
+      </Typography>
       {loadingMatches && <Typography>Loading matching triages...</Typography>}
       {matchesError && (
         <Typography color="error">Error: {matchesError}</Typography>
@@ -358,12 +347,16 @@ export default function RegressionPotentialMatchesTab({
           rows={matches}
           columns={columns}
           getRowId={(row) => row.triage?.id}
-          pageSize={Math.max(3, matches.length)}
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: Math.max(3, matches.length) },
+            },
+          }}
           rowHeight={100}
           autoHeight={true}
           hideFooterPagination={matches.length <= 3}
           hideFooter={matches.length <= 3}
-          disableSelectionOnClick
+          disableRowSelectionOnClick
           disableColumnMenu
           disableColumnFilter
           disableColumnSelector

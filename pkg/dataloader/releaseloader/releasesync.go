@@ -937,7 +937,7 @@ func idFromURL(prowURL string) (uint, error) {
 }
 
 // extractBuildIDFromURL extracts the build ID from a prow job URL
-// e.g., https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.16-e2e-gcp-ovn-upgrade/1234567890
+// e.g., https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/periodic-ci-openshift-release-master-ci-4.16-e2e-gcp-ovn-upgrade/1234567890
 // returns "1234567890"
 func extractBuildIDFromURL(prowURL string) string {
 	if prowURL == "" {

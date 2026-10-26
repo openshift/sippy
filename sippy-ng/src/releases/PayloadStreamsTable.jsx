@@ -1,31 +1,36 @@
 import { CheckCircle, Error as ErrorIcon, Help } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
-import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/styles'
+import { Link } from 'react-router'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
+import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
+import { styled } from '@mui/material/styles'
 import { Tooltip } from '@mui/material'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  rowPhaseAccepted: {
+const PhaseColoredDataGrid = styled(DataGrid)(({ theme }) => ({
+  '& .rowPhaseAccepted': {
     backgroundColor: theme.palette.success.light,
   },
-  rowPhaseRejected: {
+  '& .rowPhaseRejected': {
     backgroundColor: theme.palette.error.light,
   },
-  rowPhaseForced: {
+  '& .rowPhaseForced': {
     backgroundColor: theme.palette.warning.light,
   },
 }))
 
-function PayloadStreamsTable(props) {
-  const theme = useTheme()
-  const classes = useStyles(theme)
-
+function PayloadStreamsTable({
+  hideControls = false,
+  pageSize: defaultPageSize = 25,
+  briefTable = false,
+  filterModel: defaultFilterModel = { items: [] },
+  sortField: defaultSortField = 'release_time',
+  sort: defaultSort = 'desc',
+  ...props
+}) {
   const columns = [
     {
       field: 'phase',
@@ -76,7 +81,6 @@ function PayloadStreamsTable(props) {
       field: 'stream',
       headerName: 'Stream',
       flex: 1.5,
-      hide: props.briefTable,
       renderCell: (params) => {
         return (
           <Link
@@ -110,30 +114,29 @@ function PayloadStreamsTable(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
-    props.filterModel
+    defaultFilterModel
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = defaultSortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = defaultPageSize, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
+  const [page, setPage] = React.useState(0)
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -152,7 +155,7 @@ function PayloadStreamsTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -217,21 +220,25 @@ function PayloadStreamsTable(props) {
   }
 
   return (
-    <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+    <PhaseColoredDataGrid
+      columnVisibilityModel={briefTable ? { stream: false } : {}}
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       rowHeight={70}
       autoHeight={true}
-      disableColumnFilter={props.briefTable}
+      disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={[]}
+      paginationModel={{ pageSize, page }}
+      onPaginationModelChange={(model) => {
+        setPageSize(model.pageSize)
+        setPage(model.page)
+      }}
+      pageSizeOptions={[]}
       getRowClassName={(params) =>
         params.row.forced === true
-          ? classes.rowPhaseForced
-          : classes['rowPhase' + params.row.last_phase]
+          ? 'rowPhaseForced'
+          : 'rowPhase' + params.row.last_phase
       }
       filterMode="server"
       sortingMode="server"
@@ -243,7 +250,7 @@ function PayloadStreamsTable(props) {
         },
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),
@@ -256,18 +263,6 @@ function PayloadStreamsTable(props) {
       }}
     />
   )
-}
-
-PayloadStreamsTable.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'release_time',
-  sort: 'desc',
 }
 
 PayloadStreamsTable.propTypes = {

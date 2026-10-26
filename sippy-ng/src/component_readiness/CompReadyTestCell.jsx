@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { Tooltip } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -19,7 +19,7 @@ export default function CompReadyTestCell(props) {
     return (
       <Tooltip title="No data">
         <TableCell
-          className={classes.crCellResult}
+          sx={classes.crCellResult}
           style={{
             textAlign: 'center',
             backgroundColor: theme.palette.text.disabled,
@@ -35,7 +35,7 @@ export default function CompReadyTestCell(props) {
 
   return (
     <TableCell
-      className={classes.crCellResult}
+      sx={classes.crCellResult}
       style={{
         textAlign: 'center',
       }}

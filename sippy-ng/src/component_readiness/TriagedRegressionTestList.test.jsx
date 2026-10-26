@@ -39,8 +39,8 @@ describe('TriagedRegressionTestList force-closed indicator', () => {
     const column = getForceClosedColumn()
 
     expect(column.filterable).toBe(true)
-    expect(column.valueGetter({ row: { force_closed: true } })).toBe('Yes')
-    expect(column.valueGetter({ row: { force_closed: false } })).toBe('No')
+    expect(column.valueGetter(undefined, { force_closed: true })).toBe('Yes')
+    expect(column.valueGetter(undefined, { force_closed: false })).toBe('No')
     expect(column.renderCell({ row: { force_closed: false } })).toBeNull()
   })
 
@@ -62,7 +62,6 @@ describe('TriagedRegressionTestList force-closed indicator', () => {
     const tooltipContent = await screen.findByText(/Reason: stale regression/)
     expect(tooltipContent).toBeInTheDocument()
     expect(tooltipContent).toHaveStyle({ whiteSpace: 'pre-line' })
-    expect(tooltipContent).not.toHaveAttribute('style')
     expect(screen.getByText(/By: developer/)).toBeInTheDocument()
     expect(screen.getByText(/Triage: 42/)).toBeInTheDocument()
   })

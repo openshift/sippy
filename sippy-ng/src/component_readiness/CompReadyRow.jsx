@@ -1,7 +1,7 @@
 import './ComponentReadiness.css'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { Fragment, useContext } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
 import CompReadyCell from './CompReadyCell'
@@ -32,9 +32,9 @@ export default function CompReadyRow(props) {
   // Put the componentName on the left side with a link to a component specific
   // capabilities report.
   const componentNameColumn = (
-    <TableCell className={classes.componentName} key={componentName}>
+    <TableCell sx={classes.componentName} key={componentName}>
       <Tooltip title={'Component report for ' + componentName}>
-        <Typography className={classes.crCellName}>
+        <Typography sx={classes.crCellName}>
           <Link to={capabilitiesReport(filterVals, componentName)}>
             {componentName}
           </Link>

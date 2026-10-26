@@ -6,36 +6,28 @@ import {
   Grid,
   Tooltip,
 } from '@mui/material'
-import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/styles'
+import { Link } from 'react-router'
 import { parseVariantName } from '../helpers'
-import { scale } from 'chroma-js'
+import { useTheme } from '@mui/material/styles'
+import chroma from 'chroma-js'
 import PassRateIcon from './PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-const useStyles = makeStyles({
-  cardContent: {
-    textAlign: 'center',
-  },
-  miniCard: (_props) => ({
-    height: '100%',
-  }),
-})
-
-export default function MiniCard(props) {
-  const classes = useStyles(props)
+export default function MiniCard({ tooltip = '', ...props }) {
   const theme = useTheme()
 
-  const colorScale = scale([
-    theme.palette.error.light,
-    theme.palette.warning.light,
-    theme.palette.success.light,
-  ]).domain([
-    props.threshold.error,
-    props.threshold.warning,
-    props.threshold.success,
-  ])
+  const colorScale = chroma
+    .scale([
+      theme.palette.error.light,
+      theme.palette.warning.light,
+      theme.palette.success.light,
+    ])
+    .domain([
+      props.threshold.error,
+      props.threshold.warning,
+      props.threshold.success,
+    ])
 
   let bgColor = colorScale(props.current).hex()
   if (props.currentRuns === 0) {
@@ -55,16 +47,9 @@ export default function MiniCard(props) {
   )
 
   let card = (
-    <Card
-      elevation={5}
-      className={`${classes.miniCard}`}
-      sx={{ backgroundColor: bgColor }}
-    >
+    <Card elevation={5} sx={{ height: '100%', backgroundColor: bgColor }}>
       <CardHeader title={variantInfo.name} subheader={variantInfo.variant} />
-      <CardContent
-        className={`${classes.cardContent}`}
-        sx={{ textAlign: 'center' }}
-      >
+      <CardContent sx={{ textAlign: 'center' }}>
         <Grid
           container
           direction="row"
@@ -78,9 +63,9 @@ export default function MiniCard(props) {
   )
 
   // Wrap in tooltip if we have one
-  if (props.tooltip !== undefined) {
+  if (tooltip !== undefined) {
     card = (
-      <Tooltip title={props.tooltip} placement="top">
+      <Tooltip title={tooltip} placement="top">
         {card}
       </Tooltip>
     )
@@ -96,13 +81,6 @@ export default function MiniCard(props) {
   } else {
     return card
   }
-}
-
-MiniCard.defaultProps = {
-  flakes: 0,
-  success: 0,
-  fail: 0,
-  tooltip: '',
 }
 
 MiniCard.propTypes = {

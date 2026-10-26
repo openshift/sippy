@@ -12,32 +12,40 @@ import {
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
-import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/styles'
+import { Link } from 'react-router'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
+import { styled, useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  rowPhaseAccepted: {
+const PhaseColoredDataGrid = styled(DataGrid)(({ theme }) => ({
+  '& .rowPhaseAccepted': {
     backgroundColor: theme.palette.success.light,
   },
-  rowPhaseRejected: {
+  '& .rowPhaseRejected': {
     backgroundColor: theme.palette.error.light,
   },
-  rowPhaseForced: {
+  '& .rowPhaseForced': {
     backgroundColor: theme.palette.warning.light,
   },
 }))
 
-function ReleasePayloadTable(props) {
+function ReleasePayloadTable({
+  limit = 0,
+  hideControls = false,
+  pageSize: pageSizeDefault = 25,
+  briefTable = false,
+  filterModel: filterModelDefault = { items: [] },
+  sortField: sortFieldDefault = 'release_time',
+  sort: sortDefault = 'desc',
+  ...props
+}) {
   const theme = useTheme()
-  const classes = useStyles(theme)
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
   const columns = [
     {
@@ -90,7 +98,6 @@ function ReleasePayloadTable(props) {
       headerName: 'Forced',
       align: 'center',
       flex: 0.75,
-      hide: props.briefTable,
       renderCell: (params) => {
         if (params.value === true) {
           if (params.row.phase === 'Accepted') {
@@ -121,7 +128,6 @@ function ReleasePayloadTable(props) {
       field: 'reject_reason',
       headerName: 'Reject reasons',
       flex: 1.5,
-      hide: props.briefTable,
       renderCell: (params) => {
         let display_reasons = []
 
@@ -178,21 +184,19 @@ function ReleasePayloadTable(props) {
       field: 'architecture',
       headerName: 'Architecture',
       flex: 1.5,
-      hide: props.briefTable,
     },
     {
       field: 'stream',
       headerName: 'Stream',
       flex: 1.5,
-      hide: props.briefTable,
     },
     {
       field: 'release_time',
       headerName: 'Time',
       flex: 2,
       type: 'date',
-      valueGetter: (params) => {
-        return params.value ? new Date(params.value) : null
+      valueGetter: (value) => {
+        return value ? new Date(value) : null
       },
       renderCell: (params) => {
         if (!params.value) {
@@ -210,7 +214,6 @@ function ReleasePayloadTable(props) {
       field: 'kubernetes_version',
       headerName: 'Kubernetes version',
       flex: 1.5,
-      hide: props.briefTable,
     },
     {
       field: 'current_os_version',
@@ -219,7 +222,6 @@ function ReleasePayloadTable(props) {
       renderCell: (params) => {
         return <a href={params.row.current_os_url}>{params.value}</a>
       },
-      hide: props.briefTable,
     },
     {
       field: 'os_diff_url',
@@ -241,7 +243,6 @@ function ReleasePayloadTable(props) {
           )
         }
       },
-      hide: props.briefTable,
     },
     {
       field: 'previous_os_version',
@@ -252,7 +253,6 @@ function ReleasePayloadTable(props) {
           return <a href={params.row.previous_os_url}>{params.value}</a>
         }
       },
-      hide: props.briefTable,
     },
     {
       field: 'failed_job_names',
@@ -287,30 +287,30 @@ function ReleasePayloadTable(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
-    props.filterModel
+    filterModelDefault
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = sortFieldDefault, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = sortDefault, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeDefault, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
 
+  const [page, setPage] = React.useState(0)
+
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter(
-      (f) => f.columnField !== 'release_tag'
-    )
+    const newItems = filterModel.items.filter((f) => f.field !== 'release_tag')
     newItems.push({
       id: 99,
-      columnField: 'release_tag',
-      operatorValue: 'contains',
+      field: 'release_tag',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -329,7 +329,7 @@ function ReleasePayloadTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -358,8 +358,8 @@ function ReleasePayloadTable(props) {
       queryString += '&release=' + safeEncodeURIComponent(props.release)
     }
 
-    if (props.limit > 0) {
-      queryString += '&limit=' + safeEncodeURIComponent(props.limit)
+    if (limit > 0) {
+      queryString += '&limit=' + safeEncodeURIComponent(limit)
     }
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
@@ -398,21 +398,38 @@ function ReleasePayloadTable(props) {
   }
 
   return (
-    <DataGrid
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+    <PhaseColoredDataGrid
+      columnVisibilityModel={
+        briefTable
+          ? {
+              forced: false,
+              reject_reason: false,
+              architecture: false,
+              stream: false,
+              kubernetes_version: false,
+              current_os_version: false,
+              os_diff_url: false,
+              previous_os_version: false,
+            }
+          : {}
+      }
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       rowHeight={70}
       autoHeight={true}
-      disableColumnFilter={props.briefTable}
+      disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={[5, 10, 25, 50, 100]}
+      paginationModel={{ page, pageSize }}
+      onPaginationModelChange={(model) => {
+        setPage(model.page)
+        setPageSize(model.pageSize)
+      }}
+      pageSizeOptions={[5, 10, 25, 50, 100]}
       getRowClassName={(params) =>
         params.row.forced === true
-          ? classes.rowPhaseForced
-          : classes['rowPhase' + params.row.phase]
+          ? 'rowPhaseForced'
+          : 'rowPhase' + params.row.phase
       }
       filterMode="server"
       sortingMode="server"
@@ -424,7 +441,7 @@ function ReleasePayloadTable(props) {
         },
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           clearSearch: () => requestSearch(''),
@@ -437,18 +454,6 @@ function ReleasePayloadTable(props) {
       }}
     />
   )
-}
-
-ReleasePayloadTable.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'release_time',
-  sort: 'desc',
 }
 
 ReleasePayloadTable.propTypes = {

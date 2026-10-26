@@ -325,7 +325,7 @@ func TestExtractBuildIDFromURL(t *testing.T) {
 	}{
 		{
 			name: "standard prow URL",
-			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.16-e2e-gcp-ovn-upgrade/1234567890",
+			url:  "https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/periodic-ci-openshift-release-master-ci-4.16-e2e-gcp-ovn-upgrade/1234567890",
 			want: "1234567890",
 		},
 		{

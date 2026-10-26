@@ -185,20 +185,6 @@ func (l *RegressionCacheLoader) Load() {
 		}
 	}
 
-	var allActiveRegs []*models.TestRegression
-	for _, result := range releaseResults {
-		for _, id := range result.activeIDs.UnsortedList() {
-			allActiveRegs = append(allActiveRegs, &models.TestRegression{ID: id})
-		}
-	}
-	if len(allActiveRegs) > 0 {
-		l.logger.Infof("syncing triage symptoms for %d active regressions", len(allActiveRegs))
-		if err := l.regressionStore.SyncTriageSymptoms(allActiveRegs); err != nil {
-			l.logger.WithError(err).Error("error syncing triage symptoms")
-			l.errs = append(l.errs, err)
-		}
-	}
-
 	// ResolveTriages is a global operation (not per-release), so we only run it
 	// once after all releases have been processed, and only if no releases had errors.
 	if !anyErrors {

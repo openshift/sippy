@@ -60,11 +60,6 @@ export default function GridToolbarBookmarkMenu(props) {
   )
 }
 
-GridToolbarBookmarkMenu.defaultProps = {
-  initialFilters: [],
-  allowedFilters: [],
-}
-
 GridToolbarBookmarkMenu.propTypes = {
   bookmarks: PropTypes.arrayOf(
     PropTypes.shape({

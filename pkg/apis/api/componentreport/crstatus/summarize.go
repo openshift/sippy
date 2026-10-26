@@ -51,7 +51,6 @@ func SummarizeTestJobRuns(rows map[string][]TestJobRunRows) map[string][]TestDet
 					StartTime:    row.StartTime,
 					Count:        row.Count,
 					JobLabels:    row.JobLabels,
-					JobSymptoms:  row.JobSymptoms,
 					TestFailures: row.TestFailures,
 				})
 			}

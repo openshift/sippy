@@ -10,6 +10,10 @@ import {
   Typography,
 } from '@mui/material'
 import {
+  buildCRStyles,
+  ComponentReadinessStyleContext,
+} from './ComponentReadinessStyles'
+import {
   cancelledDataTable,
   formColumnName,
   getColumns,
@@ -25,15 +29,8 @@ import {
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { escapeRegex, safeEncodeURIComponent } from '../helpers'
-import { grey } from '@mui/material/colors'
-import { makeStyles, useTheme } from '@mui/styles'
-import {
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-  useParams,
-} from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router'
+import { useTheme } from '@mui/material/styles'
 import ComponentReadinessHelp from './ComponentReadinessHelp'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
@@ -45,7 +42,13 @@ import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import CopyPageURL from './CopyPageURL'
 import GeneratedAt from './GeneratedAt'
-import React, { Fragment, useContext, useEffect, useState } from 'react'
+import React, {
+  Fragment,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import RegressionRedirect from './RegressionRedirect'
 import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
@@ -58,141 +61,11 @@ import Triage from './Triage'
 import TriageList from './TriageList'
 import WarningsBanner from './WarningsBanner'
 
-const drawerWidth = 240
-
-const useStyles = makeStyles((theme) => ({
-  root: {
-    display: 'flex',
-    flexGrow: 1,
-  },
-  title: {
-    flexGrow: 1,
-  },
-  appBar: {
-    transition: theme.transitions.create(['margin', 'width'], {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
-    }),
-  },
-  appBarShift: {
-    width: `calc(100% - ${drawerWidth}px)`,
-    marginLeft: drawerWidth,
-    transition: theme.transitions.create(['margin', 'width'], {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  },
-  backdrop: {
-    zIndex: theme.zIndex.drawer + 1,
-    color: '#fff',
-  },
-  menuButton: {
-    marginRight: theme.spacing(2),
-  },
-  hide: {
-    display: 'none',
-  },
-  drawer: {
-    width: drawerWidth,
-    flexShrink: 0,
-  },
-  drawerPaper: {
-    width: drawerWidth,
-  },
-  drawerHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: theme.spacing(0, 1),
-    // necessary for content to be below app bar
-    ...theme.mixins.toolbar,
-    justifyContent: 'flex-end',
-  },
-  content: {
-    maxWidth: '100%',
-    flexGrow: 1,
-    padding: theme.spacing(3),
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
-    }),
-    marginLeft: -drawerWidth,
-  },
-  contentShift: {
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-    marginLeft: 0,
-  },
-  selectedJobRun: {
-    borderStyle: 'solid',
-    borderWidth: '1px',
-    borderRadius: '5px',
-    // borderColor: theme.palette.mode === 'dark' ? grey[200] : grey['A800'],
-    marginRight: '1px',
-  },
-  unselectedJobRun: {
-    marginRight: '1px',
-  },
-
-  // Table styling
-
-  crColResultFull: {
-    backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
-    fontWeight: 'bold',
-    position: 'sticky',
-    top: 0,
-    left: 0,
-    zIndex: 1,
-  },
-  crColResult: {
-    hyphens: 'auto',
-    verticalAlign: 'top !important',
-    backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
-    fontWeight: 'bold',
-    position: 'sticky',
-    top: 0,
-    left: 0,
-    zIndex: 1,
-    wordBreak: 'break-word',
-  },
-  crColJobName: {
-    verticalAlign: 'top',
-    backgroundColor: theme.palette.mode === 'dark' ? grey[900] : grey['A200'],
-  },
-  componentName: {
-    width: 220,
-    minWidth: 220,
-    maxWidth: 220,
-    backgroundColor: theme.palette.mode === 'dark' ? grey[800] : 'whitesmoke',
-    fontWeight: 'bold',
-    position: 'sticky',
-    left: 0,
-    zIndex: 1,
-  },
-  crCellResult: {
-    backgroundColor: theme.palette.mode === 'dark' ? grey[100] : 'white',
-    minHeight: 60,
-    padding: '8px !important',
-    lineHeight: '16px !important',
-    border: '1px solid #EEE',
-    textAlign: 'center',
-  },
-  crCellName: {
-    fontSize: '14px !important',
-  },
-  crCellCapabCol: {
-    fontSize: '13px !important',
-    width: '300px',
-  },
-}))
-
 function TriageWrapper() {
   const { triageId } = useParams()
   return <Triage id={triageId} />
 }
 
-export const ComponentReadinessStyleContext = React.createContext({})
 export const TestCapabilitiesContext = React.createContext([])
 export const TestLifecyclesContext = React.createContext([])
 
@@ -205,7 +78,7 @@ const _cancelFetch = () => {
 
 export default function ComponentReadiness(_props) {
   const theme = useTheme()
-  const classes = useStyles(theme)
+  const classes = useMemo(() => buildCRStyles(theme), [theme])
 
   const [searchRowRegexURL, setSearchRowRegexURL] = useQueryParam(
     'searchRow',
@@ -624,8 +497,8 @@ export default function ComponentReadiness(_props) {
                           const renderColumnHeaders = (keyPrefix) => (
                             <TableHead>
                               <TableRow>
-                                <TableCell className={classes.crColResultFull}>
-                                  <Typography className={classes.crCellName}>
+                                <TableCell sx={classes.crColResultFull}>
+                                  <Typography sx={classes.crCellName}>
                                     Name
                                   </Typography>
                                 </TableCell>
@@ -633,7 +506,7 @@ export default function ComponentReadiness(_props) {
                                   if (column !== 'Name') {
                                     return (
                                       <TableCell
-                                        className={classes.crColResult}
+                                        sx={classes.crColResult}
                                         key={keyPrefix + '-column' + '-' + idx}
                                       >
                                         <Tooltip
@@ -641,9 +514,7 @@ export default function ComponentReadiness(_props) {
                                             'Single row report for ' + column
                                           }
                                         >
-                                          <Typography
-                                            className={classes.crCellName}
-                                          >
+                                          <Typography sx={classes.crCellName}>
                                             {' '}
                                             {column}
                                           </Typography>

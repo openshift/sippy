@@ -16,7 +16,6 @@ import {
   InputLabel,
   Link,
   MenuItem,
-  Paper,
   Popover,
   Select,
   Stack,
@@ -28,8 +27,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -37,23 +34,21 @@ import {
   Add,
   Close,
   Delete,
-  Edit as EditIcon,
   ExpandMore,
   FileCopy,
   Link as LinkIcon,
   OpenInNew,
-  Preview,
   SavedSearch,
 } from '@mui/icons-material'
 import { getArtifactQueryAPIUrl } from './CompReadyUtils'
+import { isValidJiraKey, normalizeJiraKeys } from '../components/JiraBugLinks'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import { SippyCapabilitiesContext } from '../App'
 import LaunderedLink, { openLaunderedLink } from '../components/Laundry'
+import MarkdownEditor from '../components/MarkdownEditor'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import ReactMarkdown from 'react-markdown'
 import ReEvaluateButton from '../jobs/ReEvaluateSymptoms'
-import remarkGfm from 'remark-gfm'
 
 const emptyContentMatch = {
   type: 'none',
@@ -752,26 +747,38 @@ export default function JobArtifactQuery(props) {
                     <SelectingCheckbox jobRunID={row.job_run_id} />
                   </TableCell>
                   <TableCell className="cr-artifacts-jobname">
-                    <LaunderedLink
-                      address={row.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    {row.url ? (
+                      <LaunderedLink
+                        address={row.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Tooltip title={row.job_name + ' ' + row.job_run_id}>
+                          {row.job_name}/{row.job_run_id}
+                        </Tooltip>
+                      </LaunderedLink>
+                    ) : (
                       <Tooltip title={row.job_name + ' ' + row.job_run_id}>
-                        {row.job_name}/{row.job_run_id}
+                        <span>
+                          {row.job_name}/{row.job_run_id}
+                        </span>
                       </Tooltip>
-                    </LaunderedLink>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Tooltip title={new Date(row.start_time).toUTCString()}>
                       <div className="test-name">
-                        <LaunderedLink
-                          address={row.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {relativeTime(new Date(row.start_time), new Date())}
-                        </LaunderedLink>
+                        {row.url ? (
+                          <LaunderedLink
+                            address={row.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {relativeTime(new Date(row.start_time), new Date())}
+                          </LaunderedLink>
+                        ) : (
+                          relativeTime(new Date(row.start_time), new Date())
+                        )}
                       </div>
                     </Tooltip>
                   </TableCell>
@@ -1032,7 +1039,7 @@ export default function JobArtifactQuery(props) {
     }
 
     function handleAddNewLabel() {
-      setNewLabel({ label_title: '', explanation: '' })
+      setNewLabel({ label_title: '', explanation: '', bugs: [] })
     }
 
     function handleRemoveNewLabel() {
@@ -1080,7 +1087,11 @@ export default function JobArtifactQuery(props) {
     }
 
     function canSaveNewLabel(newLabel) {
-      return newLabel.label_title && isLabelTitleUnique(newLabel.label_title)
+      return (
+        newLabel.label_title &&
+        isLabelTitleUnique(newLabel.label_title) &&
+        newLabel.bugs.every(isValidJiraKey)
+      )
     }
 
     async function handleSaveNewLabel() {
@@ -1101,6 +1112,7 @@ export default function JobArtifactQuery(props) {
             body: JSON.stringify({
               ...newLabel,
               label_title: newLabel.label_title.trim(),
+              bugs: normalizeJiraKeys(newLabel.bugs),
             }),
           }
         )
@@ -1430,6 +1442,37 @@ export default function JobArtifactQuery(props) {
                             label="Explanation (optional, markdown supported)"
                             helperText="Use markdown formatting for rich text"
                           />
+                          <Autocomplete
+                            multiple
+                            freeSolo
+                            autoSelect
+                            options={[]}
+                            value={newLabel.bugs}
+                            onChange={(event, values) =>
+                              handleNewLabelChange(
+                                'bugs',
+                                normalizeJiraKeys(values)
+                              )
+                            }
+                            renderInput={(params) => {
+                              const invalidKeys = newLabel.bugs.filter(
+                                (bug) => !isValidJiraKey(bug)
+                              )
+                              return (
+                                <TextField
+                                  {...params}
+                                  label="Associated Jira Issues (optional)"
+                                  placeholder="OCPBUGS-12345"
+                                  error={invalidKeys.length > 0}
+                                  helperText={
+                                    invalidKeys.length > 0
+                                      ? `Invalid Jira key: ${invalidKeys.join(', ')}`
+                                      : 'Enter one or more Jira keys, pressing Enter after each'
+                                  }
+                                />
+                              )
+                            }}
+                          />
                         </Stack>
                         <IconButton
                           onClick={handleRemoveNewLabel}
@@ -1638,89 +1681,6 @@ export default function JobArtifactQuery(props) {
         </AccordionDetails>
       </Accordion>
     )
-  }
-
-  function MarkdownEditor(props) {
-    const { value, onChange, label, helperText } = props
-    const [viewMode, setViewMode] = React.useState('edit')
-
-    return (
-      <Stack spacing={1}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <Typography variant="caption" color="text.secondary">
-            {label}
-          </Typography>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(e, newMode) => {
-              if (newMode !== null) setViewMode(newMode)
-            }}
-            size="small"
-          >
-            <ToggleButton value="edit">
-              <EditIcon fontSize="small" />
-              <Typography variant="caption" sx={{ ml: 0.5 }}>
-                Edit
-              </Typography>
-            </ToggleButton>
-            <ToggleButton value="preview">
-              <Preview fontSize="small" />
-              <Typography variant="caption" sx={{ ml: 0.5 }}>
-                Preview
-              </Typography>
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
-
-        {viewMode === 'edit' ? (
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={value}
-            onChange={onChange}
-            helperText={helperText}
-            placeholder="Enter markdown text..."
-            size="small"
-          />
-        ) : (
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              minHeight: '120px',
-              backgroundColor: (theme) =>
-                theme.palette.mode === 'dark'
-                  ? 'rgba(255, 255, 255, 0.05)'
-                  : 'grey.50',
-            }}
-          >
-            {value ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
-            ) : (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontStyle: 'italic' }}
-              >
-                No content to preview
-              </Typography>
-            )}
-          </Paper>
-        )}
-      </Stack>
-    )
-  }
-  MarkdownEditor.propTypes = {
-    value: PropTypes.string.isRequired,
-    onChange: PropTypes.func.isRequired,
-    label: PropTypes.string,
-    helperText: PropTypes.string,
   }
 
   /*********************************************************************************

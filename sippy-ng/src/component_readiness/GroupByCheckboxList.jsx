@@ -11,21 +11,13 @@ import {
 } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
-import { makeStyles } from '@mui/styles'
+import { formControlSx } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 import Typography from '@mui/material/Typography'
 
-const useStyles = makeStyles((theme) => ({
-  formControl: {
-    margin: theme.spacing(1),
-    minWidth: '20px',
-  },
-}))
-
 export default function GroupByCheckboxList(props) {
   const varsContext = useContext(CompReadyVarsContext)
-  const classes = useStyles()
   const handleChange = (event) => {
     const item = event.target.name
     const isChecked = event.target.checked
@@ -39,11 +31,7 @@ export default function GroupByCheckboxList(props) {
   }
 
   return (
-    <FormControl
-      variant="standard"
-      className={classes.formControl}
-      component="fieldset"
-    >
+    <FormControl variant="standard" sx={formControlSx} component="fieldset">
       <Accordion className="checkboxlist-headerName">
         <AccordionSummary
           className="checkboxlist-summary"

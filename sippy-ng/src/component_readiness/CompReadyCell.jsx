@@ -1,7 +1,7 @@
 import './ComponentReadiness.css'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { safeEncodeURIComponent } from '../helpers'
 import { sortQueryParams } from './CompReadyUtils'
 import { Tooltip } from '@mui/material'
@@ -45,7 +45,7 @@ export default function CompReadyCell(props) {
     return (
       <Tooltip title="No data">
         <TableCell
-          className={classes.crCellResult}
+          sx={classes.crCellResult}
           style={{
             textAlign: 'center',
             backgroundColor: theme.palette.text.disabled,
@@ -58,7 +58,7 @@ export default function CompReadyCell(props) {
   } else {
     return (
       <TableCell
-        className={classes.crCellResult}
+        sx={classes.crCellResult}
         style={{
           textAlign: 'center',
         }}

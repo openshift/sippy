@@ -112,6 +112,12 @@ func TestIsSuiteImportableMcpchecker(t *testing.T) {
 	}
 }
 
+func TestIsSuiteImportableGCPHCP(t *testing.T) {
+	if !IsSuiteImportable("GCP HCP E2E Test Suite") {
+		t.Fatal("expected GCP HCP E2E Test Suite to be importable")
+	}
+}
+
 func TestIsSuiteImportableKnownAndUnknown(t *testing.T) {
 	if !IsSuiteImportable("openshift-tests") {
 		t.Fatal("expected openshift-tests to remain importable")

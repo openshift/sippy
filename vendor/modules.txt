@@ -83,8 +83,8 @@ github.com/Microsoft/go-winio/pkg/guid
 # github.com/anaskhan96/soup v1.2.5
 ## explicit; go 1.13
 github.com/anaskhan96/soup
-# github.com/andygrunwald/go-jira v1.14.0
-## explicit; go 1.12
+# github.com/andygrunwald/go-jira v1.17.0
+## explicit; go 1.21
 github.com/andygrunwald/go-jira
 # github.com/apache/arrow/go/v15 v15.0.2
 ## explicit; go 1.20
@@ -112,15 +112,9 @@ github.com/apache/arrow/go/v15/internal/utils
 # github.com/apache/thrift v0.23.0
 ## explicit; go 1.25
 github.com/apache/thrift/lib/go/thrift
-# github.com/bahlo/generic-list-go v0.2.0
-## explicit; go 1.18
-github.com/bahlo/generic-list-go
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
-# github.com/buger/jsonparser v1.1.2
-## explicit; go 1.13
-github.com/buger/jsonparser
 # github.com/cenkalti/backoff/v4 v4.3.0
 ## explicit; go 1.18
 github.com/cenkalti/backoff/v4
@@ -261,9 +255,9 @@ github.com/goccy/go-json/internal/encoder/vm_color_indent
 github.com/goccy/go-json/internal/encoder/vm_indent
 github.com/goccy/go-json/internal/errors
 github.com/goccy/go-json/internal/runtime
-# github.com/golang-jwt/jwt v3.2.1+incompatible
-## explicit
-github.com/golang-jwt/jwt
+# github.com/golang-jwt/jwt/v4 v4.5.2
+## explicit; go 1.16
+github.com/golang-jwt/jwt/v4
 # github.com/golang-jwt/jwt/v5 v5.2.2
 ## explicit; go 1.18
 github.com/golang-jwt/jwt/v5
@@ -350,9 +344,6 @@ github.com/hashicorp/go-version
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/invopop/jsonschema v0.13.0
-## explicit; go 1.18
-github.com/invopop/jsonschema
 # github.com/jackc/chunkreader/v2 v2.0.1
 ## explicit; go 1.12
 github.com/jackc/chunkreader/v2
@@ -381,6 +372,23 @@ github.com/jackc/pgtype
 github.com/jackc/pgx/v4
 github.com/jackc/pgx/v4/internal/sanitize
 github.com/jackc/pgx/v4/stdlib
+# github.com/jackc/pgx/v5 v5.10.0
+## explicit; go 1.25.0
+github.com/jackc/pgx/v5
+github.com/jackc/pgx/v5/internal/iobufpool
+github.com/jackc/pgx/v5/internal/pgio
+github.com/jackc/pgx/v5/internal/sanitize
+github.com/jackc/pgx/v5/internal/stmtcache
+github.com/jackc/pgx/v5/pgconn
+github.com/jackc/pgx/v5/pgconn/ctxwatch
+github.com/jackc/pgx/v5/pgconn/internal/bgreader
+github.com/jackc/pgx/v5/pgproto3
+github.com/jackc/pgx/v5/pgtype
+github.com/jackc/pgx/v5/pgxpool
+# github.com/jackc/puddle/v2 v2.2.2
+## explicit; go 1.19
+github.com/jackc/puddle/v2
+github.com/jackc/puddle/v2/internal/genstack
 # github.com/jferrl/go-githubauth v1.1.0
 ## explicit; go 1.22
 github.com/jferrl/go-githubauth
@@ -416,15 +424,6 @@ github.com/lufia/plan9stats
 # github.com/magiconair/properties v1.8.10
 ## explicit; go 1.19
 github.com/magiconair/properties
-# github.com/mailru/easyjson v0.7.7
-## explicit; go 1.12
-github.com/mailru/easyjson/buffer
-github.com/mailru/easyjson/jwriter
-# github.com/mark3labs/mcp-go v0.39.1
-## explicit; go 1.23
-github.com/mark3labs/mcp-go/mcp
-github.com/mark3labs/mcp-go/server
-github.com/mark3labs/mcp-go/util
 # github.com/moby/docker-image-spec v1.3.1
 ## explicit; go 1.18
 github.com/moby/docker-image-spec/specs-go/v1
@@ -549,6 +548,59 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/riverqueue/river v0.44.1
+## explicit; go 1.25.0
+github.com/riverqueue/river
+github.com/riverqueue/river/internal/dblist
+github.com/riverqueue/river/internal/dbunique
+github.com/riverqueue/river/internal/execution
+github.com/riverqueue/river/internal/jobcompleter
+github.com/riverqueue/river/internal/jobexecutor
+github.com/riverqueue/river/internal/jobstats
+github.com/riverqueue/river/internal/leadership
+github.com/riverqueue/river/internal/maintenance
+github.com/riverqueue/river/internal/notifier
+github.com/riverqueue/river/internal/notifylimiter
+github.com/riverqueue/river/internal/pluginconfig
+github.com/riverqueue/river/internal/pluginlookup
+github.com/riverqueue/river/internal/retrypolicy
+github.com/riverqueue/river/internal/rivercommon
+github.com/riverqueue/river/internal/riverplugin
+github.com/riverqueue/river/internal/util/chanutil
+github.com/riverqueue/river/internal/workunit
+github.com/riverqueue/river/rivermigrate
+# github.com/riverqueue/river/riverdriver v0.44.1
+## explicit; go 1.25.0
+github.com/riverqueue/river/riverdriver
+# github.com/riverqueue/river/riverdriver/riverpgxv5 v0.44.1
+## explicit; go 1.25.0
+github.com/riverqueue/river/riverdriver/riverpgxv5
+github.com/riverqueue/river/riverdriver/riverpgxv5/internal/dbsqlc
+# github.com/riverqueue/river/rivershared v0.44.1
+## explicit; go 1.25.0
+github.com/riverqueue/river/rivershared/baseservice
+github.com/riverqueue/river/rivershared/circuitbreaker
+github.com/riverqueue/river/rivershared/levenshtein
+github.com/riverqueue/river/rivershared/riverpilot
+github.com/riverqueue/river/rivershared/riversharedmaintenance
+github.com/riverqueue/river/rivershared/sqlctemplate
+github.com/riverqueue/river/rivershared/startstop
+github.com/riverqueue/river/rivershared/structtag
+github.com/riverqueue/river/rivershared/testsignal
+github.com/riverqueue/river/rivershared/uniquestates
+github.com/riverqueue/river/rivershared/util/dbutil
+github.com/riverqueue/river/rivershared/util/maputil
+github.com/riverqueue/river/rivershared/util/ptrutil
+github.com/riverqueue/river/rivershared/util/randutil
+github.com/riverqueue/river/rivershared/util/serviceutil
+github.com/riverqueue/river/rivershared/util/sliceutil
+github.com/riverqueue/river/rivershared/util/testutil
+github.com/riverqueue/river/rivershared/util/timeoututil
+github.com/riverqueue/river/rivershared/util/timeutil
+github.com/riverqueue/river/rivershared/util/valutil
+# github.com/riverqueue/river/rivertype v0.44.1
+## explicit; go 1.25.0
+github.com/riverqueue/river/rivertype
 # github.com/shirou/gopsutil/v4 v4.26.5
 ## explicit; go 1.24.0
 github.com/shirou/gopsutil/v4/common
@@ -569,9 +621,6 @@ github.com/slok/go-http-metrics/metrics
 github.com/slok/go-http-metrics/metrics/prometheus
 github.com/slok/go-http-metrics/middleware
 github.com/slok/go-http-metrics/middleware/std
-# github.com/spf13/cast v1.7.1
-## explicit; go 1.19
-github.com/spf13/cast
 # github.com/spf13/cobra v1.7.0
 ## explicit; go 1.15
 github.com/spf13/cobra
@@ -609,15 +658,18 @@ github.com/testcontainers/testcontainers-go/wait
 # github.com/testcontainers/testcontainers-go/modules/postgres v0.43.0
 ## explicit; go 1.25.0
 github.com/testcontainers/testcontainers-go/modules/postgres
-# github.com/tidwall/gjson v1.14.4
-## explicit; go 1.12
+# github.com/tidwall/gjson v1.19.0
+## explicit; go 1.23
 github.com/tidwall/gjson
-# github.com/tidwall/match v1.1.1
+# github.com/tidwall/match v1.2.0
 ## explicit; go 1.15
 github.com/tidwall/match
 # github.com/tidwall/pretty v1.2.1
 ## explicit; go 1.16
 github.com/tidwall/pretty
+# github.com/tidwall/sjson v1.2.5
+## explicit; go 1.14
+github.com/tidwall/sjson
 # github.com/tklauser/go-sysconf v0.3.16
 ## explicit; go 1.24.0
 github.com/tklauser/go-sysconf
@@ -628,12 +680,6 @@ github.com/tklauser/numcpus
 ## explicit
 github.com/trivago/tgo/tcontainer
 github.com/trivago/tgo/treflect
-# github.com/wk8/go-ordered-map/v2 v2.1.8
-## explicit; go 1.18
-github.com/wk8/go-ordered-map/v2
-# github.com/yosida95/uritemplate/v3 v3.0.2
-## explicit; go 1.14
-github.com/yosida95/uritemplate/v3
 # github.com/yuin/goldmark v1.7.16
 ## explicit; go 1.22
 github.com/yuin/goldmark
@@ -711,7 +757,7 @@ go.opentelemetry.io/otel/trace
 go.opentelemetry.io/otel/trace/embedded
 go.opentelemetry.io/otel/trace/internal/telemetry
 go.opentelemetry.io/otel/trace/noop
-# golang.org/x/crypto v0.54.0
+# golang.org/x/crypto v0.55.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
@@ -736,12 +782,12 @@ golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 ## explicit; go 1.25.0
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
-# golang.org/x/mod v0.37.0
+# golang.org/x/mod v0.40.0
 ## explicit; go 1.25.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.56.0
+# golang.org/x/net v0.58.0
 ## explicit; go 1.25.0
 golang.org/x/net/html
 golang.org/x/net/html/atom
@@ -758,6 +804,7 @@ golang.org/x/net/trace
 ## explicit; go 1.24.0
 golang.org/x/oauth2
 golang.org/x/oauth2/authhandler
+golang.org/x/oauth2/clientcredentials
 golang.org/x/oauth2/google
 golang.org/x/oauth2/google/externalaccount
 golang.org/x/oauth2/google/internal/externalaccountauthorizeduser
@@ -776,13 +823,13 @@ golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/telemetry v0.0.0-20260625142307-59b4966ccb57
+# golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5
 ## explicit; go 1.25.0
 golang.org/x/telemetry/counter
 golang.org/x/telemetry/internal/counter
 golang.org/x/telemetry/internal/mmap
 golang.org/x/telemetry/internal/telemetry
-# golang.org/x/text v0.40.0
+# golang.org/x/text v0.41.0
 ## explicit; go 1.25.0
 golang.org/x/text/cases
 golang.org/x/text/encoding
@@ -811,7 +858,7 @@ golang.org/x/text/width
 # golang.org/x/time v0.12.0
 ## explicit; go 1.23.0
 golang.org/x/time/rate
-# golang.org/x/tools v0.47.0
+# golang.org/x/tools v0.49.0
 ## explicit; go 1.25.0
 golang.org/x/tools/cmd/goimports
 golang.org/x/tools/cmd/stringer
@@ -821,7 +868,6 @@ golang.org/x/tools/go/ast/inspector
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/packages
 golang.org/x/tools/go/types/objectpath
-golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/internal/aliases
 golang.org/x/tools/internal/event
 golang.org/x/tools/internal/event/core
@@ -831,10 +877,11 @@ golang.org/x/tools/internal/gcimporter
 golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
+golang.org/x/tools/internal/modindex
+golang.org/x/tools/internal/moremaps
 golang.org/x/tools/internal/packagesinternal
 golang.org/x/tools/internal/pkgbits
 golang.org/x/tools/internal/stdlib
-golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/versions
 # golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da

@@ -1,7 +1,7 @@
 import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import { alpha, InputBase, Typography } from '@mui/material'
 import { formatInTimeZone } from 'date-fns-tz'
-import { styled } from '@mui/styles'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import blue from './blue.svg'
 import blue_missing_data from './none-blue.svg'
@@ -95,15 +95,21 @@ export function getComponentReadinessViewsAPIUrl() {
   return getAPIUrl('component_readiness/views')
 }
 
-export function getTriagesAPIUrl(id = null, view = null) {
+export function getTriagesAPIUrl(id = null, view = null, fields = []) {
   const base = id
     ? `component_readiness/triages/${id}`
     : 'component_readiness/triages'
   const url = getAPIUrl(base)
-  if (view && !id) {
-    return `${url}?view=${encodeURIComponent(view)}`
+  const params = []
+  if (!id) {
+    if (view) {
+      params.push(`view=${encodeURIComponent(view)}`)
+    }
+    if (fields.length > 0) {
+      params.push(`fields=${encodeURIComponent(fields.join(','))}`)
+    }
   }
-  return url
+  return params.length > 0 ? `${url}?${params.join('&')}` : url
 }
 
 export function getForceClosePreviewUrl(triageId) {
@@ -744,6 +750,11 @@ export const SearchIconWrapper = styled('div')(({ theme }) => ({
   justifyContent: 'center',
 }))
 
+export const formControlSx = (theme) => ({
+  margin: theme.spacing(1),
+  minWidth: '20px',
+})
+
 export const StyledInputBase = styled(InputBase)(({ theme }) => ({
   color: 'inherit',
   '& .MuiInputBase-input': {
@@ -789,6 +800,9 @@ export const convertVariantItemsToParam = (groupedVariants) => {
 // swapping the /api/ prefix for /sippy-ng/.  Producing a relative path
 // avoids the bug where the backend embeds localhost (or another internal
 // host) as the origin in HATEOAS links.
+// Converted API URLs include /sippy-ng and are intended for native anchor
+// hrefs. Do not pass them directly to a React Router Link under the
+// /sippy-ng basename, because the router would prepend the basename again.
 export function convertApiUrlToUiUrl(apiUrl) {
   const apiIndex = apiUrl.indexOf('/api/')
   if (apiIndex === -1) {

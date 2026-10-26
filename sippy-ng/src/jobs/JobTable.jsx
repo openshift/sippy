@@ -2,26 +2,23 @@ import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
 import { Button, Container, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import {
   escapeRegex,
   pathForExactJobAnalysis,
   pathForExactJobRuns,
   relativeTime,
   safeEncodeURIComponent,
-  useStableJSONQueryParam,
+  useFilterModelParam,
 } from '../helpers'
-import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
-import { Link } from 'react-router-dom'
-import { makeStyles } from '@mui/styles'
+import { Link } from 'react-router'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 const bookmarks = [
   { name: 'New jobs (no previous runs)', model: [BOOKMARKS.NEW_JOBS] },
@@ -87,21 +84,21 @@ export const getColumns = (config, _openBugzillaDialog) => {
       filterable: true,
       flex: 1.25,
       type: 'date',
-      valueGetter: (params) => {
-        return params.value ? new Date(params.value) : null
+      valueGetter: (value) => {
+        return value ? new Date(value) : null
       },
       renderCell: (params) => {
         if (!params.value) {
           return (
             <Tooltip title="Job has not passed within the report window">
-              <Fragment>-</Fragment>
+              <span>-</span>
             </Tooltip>
           )
         }
 
         return (
           <Tooltip title={params.value.toLocaleString()}>
-            <Fragment>{relativeTime(params.value, new Date())}</Fragment>
+            <span>{relativeTime(params.value, new Date())}</span>
           </Tooltip>
         )
       },
@@ -141,7 +138,6 @@ export const getColumns = (config, _openBugzillaDialog) => {
         )
       },
       filterable: false,
-      hide: config.briefTable,
     },
     job_runs: {
       field: 'job_runs',
@@ -161,7 +157,6 @@ export const getColumns = (config, _openBugzillaDialog) => {
         )
       },
       filterable: false,
-      hide: config.briefTable,
     },
     link: {
       field: 'link',
@@ -170,7 +165,6 @@ export const getColumns = (config, _openBugzillaDialog) => {
       flex: 0.4,
 
       filterable: false,
-      hide: config.briefTable,
       renderCell: (params) => {
         return (
           <Tooltip title="Find Bugs">
@@ -199,21 +193,18 @@ export const getColumns = (config, _openBugzillaDialog) => {
       autocomplete: 'orgs',
       type: 'string',
       headerName: 'GitHub Org',
-      hide: true,
     },
     repo: {
       field: 'repo',
       autocomplete: 'repos',
       type: 'string',
       headerName: 'GitHub Repo',
-      hide: true,
     },
     variants: {
       field: 'variants',
       autocomplete: 'variants',
       type: 'array',
       headerName: 'Variants',
-      hide: true,
       renderCell: (params) => (
         <Tooltip
           sx={{ whiteSpace: 'pre' }}
@@ -232,13 +223,11 @@ export const getColumns = (config, _openBugzillaDialog) => {
     current_runs: {
       field: 'current_runs',
       headerName: 'Current runs',
-      hide: true,
       type: 'number',
     },
     previous_runs: {
       field: 'previous_runs',
       headerName: 'Previous runs',
-      hide: true,
       type: 'number',
     },
   }
@@ -379,62 +368,55 @@ export const getViews = (props) => {
   }
 }
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      '-webkit-line-clamp': 2,
-      '-webkit-box-orient': 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-    backdrop: {
-      zIndex: 999999,
-      color: '#fff',
-    },
-  },
-}))
+const ColoredDataGrid = createColoredDataGrid(JOB_THRESHOLDS)
 
 /**
  * JobTable shows the list of all jobs matching any selected filters,
  * including current and previous pass percentages, net improvement, and
  * bug links.
  */
-function JobTable(props) {
-  const { classes } = props
-  const gridClasses = useStyles()
+function JobTable({
+  hideControls = false,
+  pageSize: defaultPageSize = 25,
+  period: defaultPeriod = 'default',
+  briefTable = false,
+  pageSizeOptions = [5, 10, 25, 50, 100],
+  filterModel: defaultFilterModel = { items: [] },
+  sortField: defaultSortField = 'current_pass_percentage',
+  sort: defaultSort = 'asc',
+  view: defaultView = 'Default',
+  ...props
+}) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
   const [selectedJobs, setSelectedJobs] = React.useState([])
 
-  const [view = props.view, setView] = useQueryParam('view', StringParam)
+  const [view = defaultView, setView] = useQueryParam('view', StringParam)
 
-  const [period = props.period, setPeriod] = useQueryParam(
+  const [period = defaultPeriod, setPeriod] = useQueryParam(
     'period',
     StringParam
   )
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
-    props.filterModel
+    defaultFilterModel
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = defaultSortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = defaultPageSize, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
 
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
+  const [page, setPage] = React.useState(0)
   const [_jobDetails, _setJobDetails] = React.useState({ bugs: [] })
 
   const fetchData = () => {
@@ -477,13 +459,15 @@ function JobTable(props) {
   }
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
-    newItems.push({
-      id: 99,
-      columnField: 'name',
-      operatorValue: 'contains',
-      value: searchValue,
-    })
+    const newItems = filterModel.items.filter((f) => f.field !== 'name')
+    if (searchValue) {
+      newItems.push({
+        id: 99,
+        field: 'name',
+        operator: 'contains',
+        value: searchValue,
+      })
+    }
     setFilterModel({
       ...filterModel,
       items: newItems,
@@ -514,8 +498,9 @@ function JobTable(props) {
 
   const addFilters = (filter) => {
     const currentFilters = filterModel.items.filter((item) => {
+      const itemField = item.field
       for (let i = 0; i < filter.length; i++) {
-        if (filter[i].columnField === item.columnField) {
+        if (filter[i].field === itemField) {
           return false
         }
       }
@@ -530,7 +515,7 @@ function JobTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -567,13 +552,13 @@ function JobTable(props) {
     jobs = jobs.map((job, id) => {
       return {
         id: id,
-        columnField: 'name',
-        operatorValue: 'equals',
+        field: 'name',
+        operator: 'equals',
         value: job.name,
       }
     })
     return safeEncodeURIComponent(
-      JSON.stringify({ items: jobs, linkOperator: 'or' })
+      JSON.stringify({ items: jobs, logicOperator: 'or' })
     )
   }
 
@@ -600,7 +585,11 @@ function JobTable(props) {
     </Button>
   )
 
-  const gridView = new GridView(getColumns(props), getViews(props), view)
+  const gridView = new GridView(
+    getColumns({ ...props, briefTable }),
+    getViews({ ...props, briefTable }),
+    view
+  )
 
   const selectView = (v) => {
     setLoaded(false)
@@ -613,11 +602,11 @@ function JobTable(props) {
   return (
     <Container size="xl">
       {pageTitle()}
-      <DataGrid
-        className={gridClasses.root}
-        components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+      <ColoredDataGrid
+        slots={{ toolbar: hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
+        columnVisibilityModel={gridView.columnVisibilityModel}
         autoHeight={true}
         getRowHeight={() => 'auto'}
         sortingOrder={['desc', 'asc']}
@@ -630,19 +619,20 @@ function JobTable(props) {
         // Sorting:
         onSortModelChange={(m) => updateSortModel(m)}
         sortingMode="server"
-        disableColumnFilter={props.briefTable}
+        disableColumnFilter={briefTable}
         disableColumnMenu={true}
-        checkboxSelection={!props.briefTable && !props.hideControls}
-        onSelectionModelChange={(rows) => setSelectedJobs(rows)}
-        rowsPerPageOptions={props.rowsPerPageOptions}
-        pageSize={pageSize}
-        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+        checkboxSelection={!briefTable && !hideControls}
+        onRowSelectionModelChange={(rows) => setSelectedJobs(rows)}
+        pageSizeOptions={pageSizeOptions}
+        paginationModel={{ pageSize, page }}
+        onPaginationModelChange={(model) => {
+          setPageSize(model.pageSize)
+          setPage(model.page)
+        }}
         getRowClassName={(params) =>
-          classes[
-            'row-percent-' + Math.round(params.row.current_pass_percentage)
-          ]
+          'row-percent-' + Math.round(params.row.current_pass_percentage)
         }
-        componentsProps={{
+        slotProps={{
           toolbar: {
             bookmarks: bookmarks,
             views: gridView.views,
@@ -664,29 +654,14 @@ function JobTable(props) {
           },
         }}
       />
-      {props.briefTable || props.hideControls ? '' : detailsButton}
-      {props.briefTable || props.hideControls ? '' : copyButton}
+      {briefTable || hideControls ? '' : detailsButton}
+      {briefTable || hideControls ? '' : copyButton}
     </Container>
   )
 }
 
-JobTable.defaultProps = {
-  hideControls: false,
-  pageSize: 25,
-  period: 'default',
-  briefTable: false,
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  filterModel: {
-    items: [],
-  },
-  sortField: 'current_pass_percentage',
-  sort: 'asc',
-  view: 'Default',
-}
-
 JobTable.propTypes = {
   briefTable: PropTypes.bool,
-  classes: PropTypes.object,
   limit: PropTypes.number,
   pageSize: PropTypes.number,
   release: PropTypes.string.isRequired,
@@ -697,8 +672,8 @@ JobTable.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   view: PropTypes.string,
 }
 
-export default withStyles(generateClasses(JOB_THRESHOLDS))(JobTable)
+export default JobTable

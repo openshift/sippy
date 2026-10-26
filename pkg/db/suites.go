@@ -38,6 +38,9 @@ var testSuites = []string{
 	"OSD e2e suite",
 	"ROSA Regional Platform API E2E Suite",
 
+	// GCP HCP
+	"GCP HCP E2E Test Suite",
+
 	// Performance
 	"olmv1-GCP nightly compare",
 
@@ -62,6 +65,7 @@ var testSuites = []string{
 	"github.com/openshift/cluster-monitoring-operator/test/e2e",
 	"prowjob-junit",
 	"mcpchecker",
+	"troubleshooting-scenarios",
 	"OLM-Catalog-Validation",
 	"insights-operator-tests",
 	"CNV-lp-interop",

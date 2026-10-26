@@ -39,8 +39,6 @@ import (
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
-	"github.com/openshift/sippy/pkg/mcp"
-
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/andygrunwald/go-jira"
@@ -61,6 +59,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/sippyserver/workqueue/symptomre"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -157,30 +156,42 @@ var matViewUniqueNumberOfJobRuns = promauto.NewGaugeVec(prometheus.GaugeOpts{
 }, []string{"lookback_days"})
 
 type Server struct {
-	mode                 Mode
-	listenAddr           string
-	corsAllowedOrigin    string
-	syntheticTestManager synthetictests.SyntheticTestManager
-	variantManager       testidentification.VariantManager
-	jobartifactsManager  *jobartifacts.Manager
-	sippyNG              fs.FS
-	static               fs.FS
-	httpServer           *http.Server
-	db                   *db.DB
-	bigQueryClient       *sippybq.Client
-	crDataProvider       dataprovider.DataProvider
-	pinnedDateTime       *time.Time
-	gcsClient            *storage.Client
-	gcsBucket            string
-	cache                cache.Cache
-	crTimeRoundingFactor time.Duration
-	crTimeRoundingOffset time.Duration
-	capabilities         []string
-	views                *apitype.SippyViews
-	config               *v1.SippyConfig
-	enableWriteAPIs      bool
-	jiraClient           *jira.Client
-	rateLimiters         map[string]*rateLimiter
+	mode                   Mode
+	listenAddr             string
+	corsAllowedOrigin      string
+	syntheticTestManager   synthetictests.SyntheticTestManager
+	variantManager         testidentification.VariantManager
+	jobartifactsManager    *jobartifacts.Manager
+	sippyNG                fs.FS
+	static                 fs.FS
+	httpServer             *http.Server
+	db                     *db.DB
+	bigQueryClient         *sippybq.Client
+	crDataProvider         dataprovider.DataProvider
+	pinnedDateTime         *time.Time
+	gcsClient              *storage.Client
+	gcsBucket              string
+	cache                  cache.Cache
+	crTimeRoundingFactor   time.Duration
+	crTimeRoundingOffset   time.Duration
+	capabilities           []string
+	views                  *apitype.SippyViews
+	config                 *v1.SippyConfig
+	enableWriteAPIs        bool
+	jiraClient             *jira.Client
+	rateLimiters           map[string]*rateLimiter
+	symptomReSubmitter     *symptomre.Submitter
+	symptomReStatusQuerier *symptomre.StatusQuerier
+	symptomReCanceller     *symptomre.BatchCanceller
+}
+
+// SetSymptomReEvaluation wires the async symptom re-evaluation submitter,
+// status querier, and batch canceller. Called during server setup when River
+// is available.
+func (s *Server) SetSymptomReEvaluation(submitter *symptomre.Submitter, querier *symptomre.StatusQuerier, canceller *symptomre.BatchCanceller) {
+	s.symptomReSubmitter = submitter
+	s.symptomReStatusQuerier = querier
+	s.symptomReCanceller = canceller
 }
 
 // getReleases returns release data via the configured data provider.
@@ -1857,19 +1868,32 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 }
 
 func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
+	fields, err := api.ParseFieldSelection(req.URL.Query().Get("fields"), models.Triage{})
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if fields.Len() > 0 {
+		// Keep discoverability links available even in sparse responses.
+		fields.Insert("links")
+	}
 	triages, err := componentreadiness.ListTriages(s.db, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	api.RespondWithJSON(http.StatusOK, w, triages)
+	response, err := fields.Project(triages)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
 // ExpandedTriage allows for additional information to be included in the triage response.
 type ExpandedTriage struct {
 	*models.Triage
-	RegressedTests   map[string][]*componentreport.ReportTestSummary `json:"regressed_tests"`
-	SymptomSummaries []componentreadiness.TriageSymptomSummary       `json:"symptom_summaries,omitempty"`
+	RegressedTests map[string][]*componentreport.ReportTestSummary `json:"regressed_tests"`
 }
 
 func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
@@ -1882,7 +1906,6 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 			expandFields[f] = true
 		}
 	}
-
 	triageID, err := strconv.Atoi(idStr)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
@@ -1899,7 +1922,7 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if len(expandFields) == 0 {
+	if !expandFields["regressions"] {
 		api.RespondWithJSON(http.StatusOK, w, triage)
 		return
 	}
@@ -1908,21 +1931,16 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 		Triage: triage,
 	}
 
-	if expandFields["symptoms"] {
-		symptomSummaries, err := componentreadiness.GetTriageSymptomSummaries(s.db, triage.ID, len(triage.Regressions))
-		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting symptom summaries for triage %d: %v", triage.ID, err))
-			return
-		}
-		et.SymptomSummaries = symptomSummaries
-	}
-
 	if expandFields["regressions"] {
 		et.RegressedTests = make(map[string][]*componentreport.ReportTestSummary)
-		views := componentreadiness.GetViewsForTriage(triage)
-		for _, view := range views {
+		viewNames := componentreadiness.GetViewsForTriage(triage)
+		for _, viewName := range viewNames {
+			if _, ok := componentreadiness.FindViewByName(viewName, s.views.ComponentReadiness); !ok {
+				log.WithField("view", viewName).WithField("triageID", triage.ID).Warn("skipping unknown view for triage regression enrichment")
+				continue
+			}
 			q := req.URL.Query()
-			q.Set("view", view)
+			q.Set("view", viewName)
 			req.URL.RawQuery = q.Encode()
 			componentReport, err := s.getComponentReportFromRequest(req)
 			if err != nil {
@@ -1937,7 +1955,7 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 				}
 			}
 			if len(regressedTests) > 0 {
-				et.RegressedTests[view] = regressedTests
+				et.RegressedTests[viewName] = regressedTests
 			}
 		}
 	}
@@ -2418,7 +2436,7 @@ func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	}
 
 	q := &jobartifacts.JobArtifactQuery{
-		GcsBucket:      s.gcsClient.Bucket(util.GcsBucketRoot),
+		GcsClient:      s.gcsClient,
 		DbClient:       s.db,
 		Cache:          s.cache,
 		JobRunIDs:      []int64{},
@@ -2573,9 +2591,6 @@ func (s *Server) Serve() {
 
 	router.PathPrefix("/static/").Handler(http.FileServer(http.FS(s.static)))
 
-	// Setup MCP Server
-	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
-
 	type apiEndpoints struct {
 		EndpointPath      string                                       `json:"path"`
 		Description       string                                       `json:"description"`
@@ -2589,12 +2604,6 @@ func (s *Server) Serve() {
 
 	var endpoints []apiEndpoints
 	endpoints = []apiEndpoints{
-		{
-			EndpointPath: "/mcp/v1/",
-			Description:  "Handles MCP Requests",
-			Capabilities: []string{},
-			HandlerFunc:  http.StripPrefix("/mcp/v1", mcpServer.Handler()).ServeHTTP,
-		},
 		{
 			EndpointPath: "/api",
 			Description:  "API docs",
@@ -2760,6 +2769,20 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodPost},
 			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonReEvaluateJobRunSymptoms,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/reevaluate/{batch_id}",
+			Description:  "Get status of an async symptom re-evaluation batch",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetReEvaluateBatchStatus,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/reevaluate/{batch_id}",
+			Description:  "Cancel an in-flight symptom re-evaluation batch",
+			Methods:      []string{http.MethodDelete},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCancelReEvaluateBatch,
 		},
 		{
 			EndpointPath: "/api/job_variants",

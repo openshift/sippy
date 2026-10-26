@@ -220,6 +220,11 @@ the comment processing as described in [From GitHub](DEVELOPMENT.md) also within
   --include-repo-commenting=origin
 ```
 
+## Integration tests
+
+Run `make integration` with Docker or Podman available. Tests in `test/integration` provision
+PostgreSQL automatically and use an isolated database per test.
+
 ## Run E2E Tests
 
 Sippy has a currently basic/minimal set of e2e tests which run a temporary postgres container, load the database with an

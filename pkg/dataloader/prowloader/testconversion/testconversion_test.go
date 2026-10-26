@@ -5,6 +5,7 @@ import (
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/types"
+	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,6 +74,24 @@ func TestTestsToRawJobRunResult(t *testing.T) {
 			validate: func(t *testing.T, jrr *v1.RawJobRunResult) {
 				assert.Equal(t, 0, jrr.TestFailures)
 				assert.Empty(t, jrr.FailedTestNames)
+			},
+		},
+		{
+			name:  "normalized step graph failure contributes test signal",
+			tests: []*types.TestCaseEntry{failure("step graph", "Run multi-stage step test0")},
+			validate: func(t *testing.T, jrr *v1.RawJobRunResult) {
+				assert.Equal(t, testidentification.Failure, jrr.TestsStatus)
+				assert.Equal(t, 1, jrr.TestFailures)
+				assert.Equal(t, []string{"Run multi-stage step test0"}, jrr.FailedTestNames)
+			},
+		},
+		{
+			name:  "normalized step graph install failure sets InstallStatus",
+			tests: []*types.TestCaseEntry{failure("step graph", "Run multi-stage step ipi-install-install-stableinitial")},
+			validate: func(t *testing.T, jrr *v1.RawJobRunResult) {
+				assert.Equal(t, testidentification.Failure, jrr.InstallStatus)
+				assert.Equal(t, 1, jrr.TestFailures)
+				assert.Equal(t, []string{"Run multi-stage step ipi-install-install-stableinitial"}, jrr.FailedTestNames)
 			},
 		},
 		{

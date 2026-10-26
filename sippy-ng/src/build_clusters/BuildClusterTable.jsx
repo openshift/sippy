@@ -1,60 +1,48 @@
 import { BUILD_CLUSTER_THRESHOLDS } from '../constants'
 import { CircularProgress, Tooltip } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
-import { generateClasses } from '../datagrid/utils'
-import { Link } from 'react-router-dom'
-import { makeStyles } from '@mui/styles'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
+import { Link } from 'react-router'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
-import { withStyles } from '@mui/styles'
+import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
-const useStyles = makeStyles((_theme) => ({
-  root: {
-    '& .wrapHeader .MuiDataGrid-columnHeaderTitle': {
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      '-webkit-line-clamp': 2,
-      '-webkit-box-orient': 'vertical',
-      overflow: 'hidden',
-      overflowWrap: 'break-word',
-      lineHeight: '20px',
-      whiteSpace: 'normal',
-    },
-  },
-}))
+const ColoredDataGrid = createColoredDataGrid(BUILD_CLUSTER_THRESHOLDS)
 
-function BuildClusterTable(props) {
-  const gridClasses = useStyles()
-  const { classes } = props
-
+function BuildClusterTable({
+  briefTable = false,
+  hideControls = false,
+  pageSize: pageSizeProp = 25,
+  period: periodProp = 'default',
+  pageSizeOptions = [5, 10, 25, 50, 100],
+  filterModel: filterModelProp = { items: [] },
+  ...props
+}) {
   // place to store state (i.e., our table data, error message, etc)
   const [rows, setRows] = React.useState([])
   const [error, setError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
 
-  const [period = props.period, setPeriod] = useQueryParam(
-    'period',
-    StringParam
-  )
+  const [period = periodProp, setPeriod] = useQueryParam('period', StringParam)
   const [sortField = props.sortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = pageSizeProp, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const [page, setPage] = React.useState(0)
+
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
-    SafeJSONParam
+    filterModelProp
   )
 
   // define table columns
@@ -109,7 +97,7 @@ function BuildClusterTable(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -167,17 +155,19 @@ function BuildClusterTable(props) {
 
   // what we return
   return (
-    <DataGrid
-      className={gridClasses.root}
-      components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+    <ColoredDataGrid
+      slots={{ toolbar: hideControls ? '' : GridToolbar }}
       rows={rows}
       columns={columns}
       autoHeight={true}
-      disableColumnFilter={props.briefTable}
+      disableColumnFilter={briefTable}
       disableColumnMenu={true}
-      pageSize={pageSize}
-      onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-      rowsPerPageOptions={props.rowsPerPageOptions}
+      paginationModel={{ page, pageSize }}
+      onPaginationModelChange={(model) => {
+        setPage(model.page)
+        setPageSize(model.pageSize)
+      }}
+      pageSizeOptions={pageSizeOptions}
       checkboxSelection={false}
       filterMode="server"
       sortingMode="server"
@@ -190,9 +180,9 @@ function BuildClusterTable(props) {
       ]}
       onSortModelChange={(m) => updateSortModel(m)}
       getRowClassName={(params) =>
-        classes['row-percent-' + Math.round(params.row.current_pass_percentage)]
+        'row-percent-' + Math.round(params.row.current_pass_percentage)
       }
-      componentsProps={{
+      slotProps={{
         toolbar: {
           columns: columns,
           period: period,
@@ -210,28 +200,14 @@ function BuildClusterTable(props) {
   )
 }
 
-export default withStyles(generateClasses(BUILD_CLUSTER_THRESHOLDS))(
-  BuildClusterTable
-)
-
-BuildClusterTable.defaultProps = {
-  briefTable: false,
-  hideControls: false,
-  pageSize: 25,
-  period: 'default',
-  rowsPerPageOptions: [5, 10, 25, 50, 100],
-  filterModel: {
-    items: [],
-  },
-}
+export default BuildClusterTable
 
 BuildClusterTable.propTypes = {
   briefTable: PropTypes.bool,
-  classes: PropTypes.object,
   hideControls: PropTypes.bool,
   pageSize: PropTypes.number,
   period: PropTypes.string,
-  rowsPerPageOptions: PropTypes.array,
+  pageSizeOptions: PropTypes.array,
   sort: PropTypes.string,
   sortField: PropTypes.string,
   filterModel: PropTypes.object,

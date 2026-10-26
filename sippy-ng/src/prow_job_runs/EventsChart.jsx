@@ -19,9 +19,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { makeStyles } from '@mui/styles'
-import { Link as RouterLink, useParams } from 'react-router-dom'
+import { Link as RouterLink, useParams } from 'react-router'
 import { StringParam, useQueryParam } from 'use-query-params'
+import { styled } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
@@ -33,19 +33,13 @@ import React, {
   useState,
 } from 'react'
 
-const useStyles = makeStyles({
-  filterRow: {
-    padding: '10px 0',
-    paddingBottom: '1rem',
-  },
-  controls: {
-    marginBottom: '1rem',
-  },
-  columnToggle: {
-    marginRight: '0.5rem',
-    marginBottom: '0.5rem',
-  },
+const SortableHeaderCell = styled(TableCell)({
+  cursor: 'pointer',
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
 })
+
+const filterRowSx = { padding: '10px 0', paddingBottom: '1rem' }
 
 const COLUMNS = [
   { id: 'firstTimestamp', label: 'First Timestamp', visible: true },
@@ -83,7 +77,6 @@ function buildIntervalsPath(jobrunid, jobname, repoinfo, pullnumber) {
 }
 
 export default function EventsChart(props) {
-  const classes = useStyles()
   const { jobrunid, jobname, repoinfo, pullnumber } = useParams()
   const { jobRunID, jobName, repoInfo, pullNumber } = props
   const effectiveJobRunID = jobRunID ?? jobrunid
@@ -334,8 +327,8 @@ export default function EventsChart(props) {
         , filtered down to {filteredEvents.length}.
       </Typography>
 
-      <Paper className={classes.controls} sx={{ p: 2 }}>
-        <Box className={classes.filterRow}>
+      <Paper sx={{ mb: '1rem', p: 2 }}>
+        <Box sx={filterRowSx}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Time Range Filter (UTC)
           </Typography>
@@ -359,7 +352,7 @@ export default function EventsChart(props) {
           </Box>
         </Box>
 
-        <Box className={classes.filterRow}>
+        <Box sx={filterRowSx}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Filters
           </Typography>
@@ -446,7 +439,7 @@ export default function EventsChart(props) {
           </Box>
         </Box>
 
-        <Box className={classes.filterRow}>
+        <Box sx={filterRowSx}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Toggle Columns
           </Typography>
@@ -461,7 +454,7 @@ export default function EventsChart(props) {
                   />
                 }
                 label={col.label}
-                className={classes.columnToggle}
+                sx={{ mr: '0.5rem', mb: '0.5rem' }}
               />
             ))}
           </Box>
@@ -485,19 +478,14 @@ export default function EventsChart(props) {
           <TableHead>
             <TableRow>
               {visibleColumns.map((col) => (
-                <TableCell
+                <SortableHeaderCell
                   key={col.id}
                   onClick={() => handleSort(col.id)}
-                  sx={{
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                  }}
                 >
                   {col.label}
                   {sortColumn === col.id &&
                     (sortDirection === 'asc' ? ' ▲' : ' ▼')}
-                </TableCell>
+                </SortableHeaderCell>
               ))}
             </TableRow>
           </TableHead>

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -69,6 +70,39 @@ func WithPartitionwise(enable bool) Option {
 	}
 }
 
+const postgresApplicationNameLimit = 63
+
+func defaultPostgresApplicationName(hostname string) string {
+	name := "sippy/" + hostname
+	if len(name) > postgresApplicationNameLimit {
+		return name[:postgresApplicationNameLimit]
+	}
+	return name
+}
+
+// DefaultApplicationName returns the PostgreSQL application name used when one
+// is not explicitly configured. Kubernetes sets HOSTNAME to the pod name.
+func DefaultApplicationName() (string, error) {
+	if name := os.Getenv("SIPPY_PG_APPLICATION_NAME"); name != "" {
+		if len(name) > postgresApplicationNameLimit {
+			return "", fmt.Errorf("SIPPY_PG_APPLICATION_NAME exceeds PostgreSQL's %d-byte limit", postgresApplicationNameLimit)
+		}
+		return name, nil
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" {
+		hostname = "unknown"
+	}
+	return defaultPostgresApplicationName(hostname), nil
+}
+
+func configurePgxApplicationName(config *pgx.ConnConfig, name string) {
+	if name != "" {
+		config.RuntimeParams["application_name"] = name
+	}
+}
+
 func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) {
 	var cfg options
 	for _, o := range opts {
@@ -88,6 +122,11 @@ func New(dsn string, logLevel gormlogger.LogLevel, opts ...Option) (*DB, error) 
 	if err != nil {
 		return nil, err
 	}
+	applicationName, err := DefaultApplicationName()
+	if err != nil {
+		return nil, fmt.Errorf("getting PostgreSQL application name: %w", err)
+	}
+	configurePgxApplicationName(pgxConfig, applicationName)
 	// Prevent PostgreSQL from generating generic plans for prepared statements.
 	// After 5 executions PostgreSQL normally switches to a generic plan that
 	// cannot use parameter values for partition pruning. GORM generates
@@ -176,7 +215,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.RegressionJobRun{},
 		&models.RegressionView{},
 		&models.Triage{},
-		&models.TriageSymptom{},
 		&models.AuditLog{},
 		&jobrunscan.Label{},
 		&jobrunscan.Symptom{},
@@ -189,10 +227,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	if err := createAuditLogIndexes(d.DB); err != nil {
-		return err
-	}
-
-	if err := ensureTriageSymptomCascade(d.DB); err != nil {
 		return err
 	}
 
@@ -520,42 +554,6 @@ func createAuditLogIndexes(db *gorm.DB) error {
 		return fmt.Errorf("failed to create GIN index on audit_logs.old_data: %w", err)
 	}
 
-	return nil
-}
-
-// ensureTriageSymptomCascade adds foreign keys to triage_symptoms with ON DELETE CASCADE
-// so that deleting a symptom definition or a regression automatically cleans up the
-// associated triage_symptoms rows.
-func ensureTriageSymptomCascade(db *gorm.DB) error {
-	constraints := []struct {
-		name string
-		sql  string
-	}{
-		{
-			name: "fk_triage_symptoms_symptom",
-			sql:  "ALTER TABLE triage_symptoms ADD CONSTRAINT fk_triage_symptoms_symptom FOREIGN KEY (symptom_id) REFERENCES job_run_symptoms(id) ON DELETE CASCADE",
-		},
-		{
-			name: "fk_triage_symptoms_regression",
-			sql:  "ALTER TABLE triage_symptoms ADD CONSTRAINT fk_triage_symptoms_regression FOREIGN KEY (regression_id) REFERENCES test_regressions(id) ON DELETE CASCADE",
-		},
-	}
-
-	for _, c := range constraints {
-		err := db.Exec(fmt.Sprintf(`
-			DO $$
-			BEGIN
-				IF NOT EXISTS (
-					SELECT 1 FROM pg_constraint
-					WHERE conname = '%s'
-				) THEN
-					%s;
-				END IF;
-			END $$`, c.name, c.sql)).Error
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

@@ -164,85 +164,80 @@ func TestVerifyDailyRowsProductionSemanticsAndMismatches(t *testing.T) {
 	assert.Contains(t, kinds, "missing-row")
 }
 
-func TestVerifyCumulativeFirstDayAccumulationCarryForwardAndBreakage(t *testing.T) {
+func TestVerifyCumulativeComparisonStreamsDiscrepancies(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	release := "4.20"
 	date := civil.Date{Year: 2026, Month: 8, Day: 25}
 	job := intutil.CreateProwJob(t, dbc, "cumulative-job", release, nil)
-	test := intutil.CreateTest(t, dbc, "cumulative test")
+	suite := intutil.CreateSuite(t, dbc, "cumulative suite")
 
-	createDaily := func(testID uint, lifecycle string, counts dbverify.Counts) {
+	createDaily := func(testID, suiteID uint, lifecycle string, counts dbverify.Counts) {
 		require.NoError(t, dbc.DB.Create(&models.TestDailyTotal{
-			Release: release, Date: date, TestID: testID, ProwJobID: job.ID, SuiteID: 0, Lifecycle: lifecycle,
+			Release: release, Date: date, TestID: testID, ProwJobID: job.ID, SuiteID: suiteID, Lifecycle: lifecycle,
 			Successes: fixtureInt32(counts.Successes), Failures: fixtureInt32(counts.Failures),
 			Flakes: fixtureInt32(counts.Flakes), Runs: fixtureInt32(counts.Runs),
 		}).Error)
 	}
-	createCumulative := func(targetDate civil.Date, testID uint, lifecycle string, counts dbverify.Counts) models.TestCumulativeSummary {
+	createCumulative := func(targetDate civil.Date, testID, suiteID uint, lifecycle string, counts dbverify.Counts) {
 		row := models.TestCumulativeSummary{
-			Release: release, Date: targetDate, TestID: testID, ProwJobID: job.ID, SuiteID: 0, Lifecycle: lifecycle,
+			Release: release, Date: targetDate, TestID: testID, ProwJobID: job.ID, SuiteID: suiteID, Lifecycle: lifecycle,
 			PrefixSumSuccesses: counts.Successes, PrefixSumFailures: counts.Failures, PrefixSumFlakes: counts.Flakes, PrefixSumRuns: counts.Runs,
 		}
 		require.NoError(t, dbc.DB.Create(&row).Error)
-		return row
+	}
+	comparisonKey := func(testID, suiteID uint, lifecycle string) dbverify.SummaryKey {
+		return dbverify.SummaryKey{TestID: uint64(testID), ProwJobID: uint64(job.ID), SuiteID: uint64(suiteID), Lifecycle: lifecycle}
 	}
 
 	previousCounts := dbverify.Counts{Successes: 10, Failures: 2, Flakes: 1, Runs: 13}
 	dailyCounts := dbverify.Counts{Successes: 2, Failures: 1, Flakes: 1, Runs: 4}
-	createCumulative(date.AddDays(-1), test.ID, "accumulation", previousCounts)
-	createDaily(test.ID, "accumulation", dailyCounts)
-	createCumulative(date, test.ID, "accumulation", previousCounts.Add(dailyCounts))
+	accumulationTest := intutil.CreateTest(t, dbc, "accumulation")
+	createCumulative(date.AddDays(-1), accumulationTest.ID, 0, "accumulation", previousCounts)
+	createDaily(accumulationTest.ID, 0, "accumulation", dailyCounts)
+	createCumulative(date, accumulationTest.ID, 0, "accumulation", previousCounts.Add(dailyCounts))
 
 	carryTest := intutil.CreateTest(t, dbc, "carry forward")
 	carryCounts := dbverify.Counts{Successes: 5, Failures: 1, Runs: 6}
-	createCumulative(date.AddDays(-1), carryTest.ID, "blocking", carryCounts)
-	carryTarget := createCumulative(date, carryTest.ID, "blocking", carryCounts)
+	createCumulative(date.AddDays(-1), carryTest.ID, 0, "blocking", carryCounts)
+	createCumulative(date, carryTest.ID, 0, "blocking", carryCounts)
 
 	firstTest := intutil.CreateTest(t, dbc, "first day")
 	firstCounts := dbverify.Counts{Successes: 1, Runs: 1}
-	createDaily(firstTest.ID, "blocking", firstCounts)
-	firstTarget := createCumulative(date, firstTest.ID, "blocking", firstCounts)
+	createDaily(firstTest.ID, suite.ID, "informing", firstCounts)
+	createCumulative(date, firstTest.ID, suite.ID, "informing", firstCounts)
+
+	mismatchTest := intutil.CreateTest(t, dbc, "count mismatch")
+	mismatchPrevious := dbverify.Counts{Successes: 4, Failures: 1, Flakes: 2, Runs: 7}
+	mismatchDaily := dbverify.Counts{Successes: 1, Failures: 2, Flakes: 3, Runs: 6}
+	createCumulative(date.AddDays(-1), mismatchTest.ID, 0, "blocking", mismatchPrevious)
+	createDaily(mismatchTest.ID, 0, "blocking", mismatchDaily)
+	createCumulative(date, mismatchTest.ID, 0, "blocking", dbverify.Counts{Successes: 4, Failures: 4, Flakes: 6, Runs: 14})
+
+	missingTest := intutil.CreateTest(t, dbc, "missing target")
+	createDaily(missingTest.ID, 0, "blocking", dbverify.Counts{Successes: 3, Runs: 3})
+
+	unexpectedTest := intutil.CreateTest(t, dbc, "unexpected target")
+	createCumulative(date, unexpectedTest.ID, 0, "blocking", dbverify.Counts{Runs: 1})
+	zeroOnlyTest := intutil.CreateTest(t, dbc, "zero-only unexpected target")
+	createCumulative(date, zeroOnlyTest.ID, 0, "blocking", dbverify.Counts{})
 
 	store := dbverify.NewPostgreSQL(dbc)
-	rows, err := store.CumulativeRows(context.Background(), release, date)
-	require.NoError(t, err)
-	summary, discrepancies := dbverify.CompareCumulative(release, date, rows)
-	assert.True(t, summary.Passed)
-	assert.Empty(t, discrepancies)
-
-	// A broken carry-forward is a concrete prefix counter mismatch.
-	require.NoError(t, dbc.DB.Model(&carryTarget).Where(
-		"release = ? AND date = ? AND test_id = ? AND prow_job_id = ? AND suite_id = ? AND lifecycle = ?",
-		carryTarget.Release, carryTarget.Date, carryTarget.TestID, carryTarget.ProwJobID, carryTarget.SuiteID, carryTarget.Lifecycle,
-	).Update("prefix_sum_runs", carryCounts.Runs+1).Error)
-	rows, err = store.CumulativeRows(context.Background(), release, date)
-	require.NoError(t, err)
-	_, discrepancies = dbverify.CompareCumulative(release, date, rows)
-	require.Condition(t, func() bool {
-		for _, discrepancy := range discrepancies {
-			if discrepancy.Key == (dbverify.SummaryKey{Release: release, Date: date, TestID: uint64(carryTest.ID), ProwJobID: uint64(job.ID), Lifecycle: "blocking"}).String() && discrepancy.Field == "runs" {
-				return true
-			}
-		}
-		return false
+	var differences []dbverify.CumulativeComparisonDiscrepancy
+	comparison, err := store.CumulativeComparison(context.Background(), release, date, func(discrepancy dbverify.CumulativeComparisonDiscrepancy) {
+		differences = append(differences, discrepancy)
 	})
-
-	// Removing the first-day target reports the daily-only key as missing.
-	require.NoError(t, dbc.DB.Where(
-		"release = ? AND date = ? AND test_id = ? AND prow_job_id = ? AND suite_id = ? AND lifecycle = ?",
-		firstTarget.Release, firstTarget.Date, firstTarget.TestID, firstTarget.ProwJobID, firstTarget.SuiteID, firstTarget.Lifecycle,
-	).Delete(&models.TestCumulativeSummary{}).Error)
-	rows, err = store.CumulativeRows(context.Background(), release, date)
 	require.NoError(t, err)
-	_, discrepancies = dbverify.CompareCumulative(release, date, rows)
-	require.Condition(t, func() bool {
-		for _, discrepancy := range discrepancies {
-			if discrepancy.Kind == "missing-row" && discrepancy.Key == (dbverify.SummaryKey{Release: release, Date: date, TestID: uint64(firstTest.ID), ProwJobID: uint64(job.ID), Lifecycle: "blocking"}).String() {
-				return true
-			}
-		}
-		return false
-	})
+	assert.Equal(t, 5, comparison.ExpectedRows)
+	assert.Equal(t, 6, comparison.ActualRows)
+	assert.Equal(t, 6, comparison.Discrepancies)
+	assert.ElementsMatch(t, []dbverify.CumulativeComparisonDiscrepancy{
+		{Key: comparisonKey(missingTest.ID, 0, "blocking"), Kind: "missing-row", Expected: "present", Actual: "missing"},
+		{Key: comparisonKey(unexpectedTest.ID, 0, "blocking"), Kind: "unexpected-row", Expected: "missing", Actual: "present"},
+		{Key: comparisonKey(mismatchTest.ID, 0, "blocking"), Kind: "count-mismatch", Field: "successes", Expected: "5", Actual: "4"},
+		{Key: comparisonKey(mismatchTest.ID, 0, "blocking"), Kind: "count-mismatch", Field: "failures", Expected: "3", Actual: "4"},
+		{Key: comparisonKey(mismatchTest.ID, 0, "blocking"), Kind: "count-mismatch", Field: "flakes", Expected: "5", Actual: "6"},
+		{Key: comparisonKey(mismatchTest.ID, 0, "blocking"), Kind: "count-mismatch", Field: "runs", Expected: "13", Actual: "14"},
+	}, differences)
 }
 
 func fixtureInt32(value int64) int32 {

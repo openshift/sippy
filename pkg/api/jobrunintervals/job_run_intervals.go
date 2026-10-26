@@ -14,6 +14,7 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 // JobRunIntervals fetches intervals for a given job run by fetching from the prow job's GCS bucket path
@@ -34,11 +35,14 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 		}
 	} else {
 		jobRunURL = jobRun.URL
-		gcsBucket = jobRun.GCSBucket // in theory jobs might someday come from more than one bucket
-		_, path, found := strings.Cut(jobRunURL, "/"+gcsBucket+"/")
+		bucket, path, found := util.GCSBucketAndPathFromURL(jobRun.GCSBucket, jobRunURL)
 		if !found {
-			return nil, fmt.Errorf("job run URL %q does not contain bucket %q", jobRun.URL, gcsBucket)
+			return nil, fmt.Errorf("could not determine GCS bucket and path from job run URL %q", jobRun.URL)
 		}
+		if bucket != jobRun.GCSBucket {
+			logger.WithFields(log.Fields{"stored_bucket": jobRun.GCSBucket, "url_bucket": bucket}).Warn("job run bucket does not match its URL; using URL bucket")
+		}
+		gcsBucket = bucket
 		gcsPath = path
 	}
 

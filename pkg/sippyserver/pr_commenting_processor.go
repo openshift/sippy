@@ -143,7 +143,7 @@ func SortByJobNameRA(ras []RiskAnalysisSummary) {
 	})
 }
 
-func (wp *WorkProcessor) Run(ctx context.Context) {
+func (wp *WorkProcessor) Run(ctx context.Context) error {
 
 	// create a channel with a max buffer of 5 for github updates
 	// single thread will pull updates from that channel and process them
@@ -223,7 +223,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 	}
 
 	log.Info("No longer active, shutting down")
-
+	return nil
 }
 
 func (wp *WorkProcessor) work(ctx context.Context, prospects chan models.PullRequestComment) error {

@@ -1,10 +1,12 @@
 #!/bin/bash
 set -eu
 
-echo "==> Installing Go IDE tools..."
-go install golang.org/x/tools/gopls@v0.21.1
-go install github.com/go-delve/delve/cmd/dlv@v1.27.1
-go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
+if [[ "${SKIP_GO_TOOLS_INSTALL:-}" != "true" ]]; then
+  echo "==> Installing Go IDE tools..."
+  go install golang.org/x/tools/gopls@v0.21.1
+  go install github.com/go-delve/delve/cmd/dlv@v1.27.1
+  go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
+fi
 
 echo "==> Downloading Go module dependencies..."
 go mod download
@@ -19,9 +21,21 @@ else
   echo "==> Skipping Claude Code install (SKIP_CLAUDE_INSTALL=true)."
 fi
 
+if [[ "${INSTALL_OPENCODE:-}" == "true" ]]; then
+  echo "==> Installing OpenCode..."
+  # Postinstall verifies the binary, which writes OpenCode state under HOME.
+  # Run as the dev user so those files are not owned by root.
+  npm install -g --prefix "$HOME/.local" --allow-scripts=@opencode/cli \
+    "@opencode/cli@${OPENCODE_VERSION:-latest}"
+  opencode --version
+fi
+
 echo "==> Setting up MCP server venv..."
-uv venv --clear mcp/.venv
+# --seed installs pip. make test and mcp/run.sh call mcp/.venv/bin/pip.
+uv venv --clear --seed mcp/.venv
 uv pip install --python mcp/.venv/bin/python3 -r mcp/requirements.txt -q
+mcp/.venv/bin/pip --version
+mcp/.venv/bin/pytest --version
 
 echo "==> Building sippy and seeding database..."
 make sippy

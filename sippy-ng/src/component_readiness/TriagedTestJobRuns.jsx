@@ -1,4 +1,4 @@
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { ComponentReadinessStyleContext } from './ComponentReadinessStyles'
 import { TableContainer, Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
@@ -13,8 +13,8 @@ export default function TriagedTestJobRuns(props) {
   const classes = useContext(ComponentReadinessStyleContext)
   const tableCell = (label, idx) => {
     return (
-      <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
-        <Typography className={classes.crCellName}>{label}</Typography>
+      <TableCell sx={classes.crColResult} key={'column' + '-' + idx}>
+        <Typography sx={classes.crCellName}>{label}</Typography>
       </TableCell>
     )
   }

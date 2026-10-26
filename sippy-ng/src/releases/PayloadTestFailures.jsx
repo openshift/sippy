@@ -1,26 +1,40 @@
 import './PayloadTestFailures.css'
 import { Box, Card, Grid, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
-import { generateClasses } from '../datagrid/utils'
+import { createColoredDataGrid } from '../datagrid/StyledDataGrid'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, useStableJSONQueryParam } from '../helpers'
-import { withStyles } from '@mui/styles'
+import { safeEncodeURIComponent, useFilterModelParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-function PayloadTestFailures(props) {
-  const { classes } = props
+const TEST_FAILURES_IN_PAYLOAD_THRESHOLDS = {
+  success: 0,
+  warning: 2,
+  error: 5,
+}
 
+const ColoredDataGrid = createColoredDataGrid(
+  TEST_FAILURES_IN_PAYLOAD_THRESHOLDS,
+  true
+)
+
+function PayloadTestFailures({
+  hideControls = false,
+  pageSize: defaultPageSize = 25,
+  briefTable = false,
+  filterModel: defaultFilterModel = { items: [] },
+  sortField: defaultSortField = 'kind',
+  sort: defaultSort = 'asc',
+  ...props
+}) {
   // Most things not filterable here, as we are not querying them directly from db,
   // but test name is, and that is likely the most important.
   const columns = [
     {
       field: 'id',
       headerName: 'Test ID',
-      hide: true,
       filterable: false,
       sortable: false,
     },
@@ -78,28 +92,29 @@ function PayloadTestFailures(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useStableJSONQueryParam(
+  const [filterModel, setFilterModel] = useFilterModelParam(
     'filters',
-    props.filterModel
+    defaultFilterModel
   )
 
-  const [sortField = props.sortField, setSortField] = useQueryParam(
+  const [sortField = defaultSortField, setSortField] = useQueryParam(
     'sortField',
     StringParam
   )
-  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+  const [sort = defaultSort, setSort] = useQueryParam('sort', StringParam)
 
-  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+  const [pageSize = defaultPageSize, setPageSize] = useQueryParam(
     'pageSize',
     NumberParam
   )
+  const [page, setPage] = React.useState(0)
 
   const requestSearch = (searchValue) => {
-    const newItems = filterModel.items.filter((f) => f.columnField !== 'name')
+    const newItems = filterModel.items.filter((f) => f.field !== 'name')
     newItems.push({
       id: 99,
-      columnField: 'name',
-      operatorValue: 'contains',
+      field: 'name',
+      operator: 'contains',
       value: searchValue,
     })
     setFilterModel({
@@ -118,7 +133,7 @@ function PayloadTestFailures(props) {
     })
     setFilterModel({
       items: currentFilters,
-      linkOperator: filterModel.linkOperator || 'and',
+      logicOperator: filterModel.logicOperator || 'and',
     })
   }
 
@@ -203,17 +218,21 @@ function PayloadTestFailures(props) {
             <InfoIcon />
           </Tooltip>
         </Typography>
-        <DataGrid
-          components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
+        <ColoredDataGrid
+          columnVisibilityModel={{ id: false }}
+          slots={{ toolbar: hideControls ? '' : GridToolbar }}
           rows={rows}
           columns={columns}
           autoHeight={true}
           rowHeight={125}
-          disableColumnFilter={props.briefTable}
+          disableColumnFilter={briefTable}
           disableColumnMenu={true}
-          pageSize={pageSize}
-          onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          paginationModel={{ pageSize, page }}
+          onPaginationModelChange={(model) => {
+            setPageSize(model.pageSize)
+            setPage(model.page)
+          }}
+          pageSizeOptions={[5, 10, 25, 50]}
           filterMode="server"
           sortingMode="server"
           sortingOrder={['desc', 'asc']}
@@ -225,9 +244,9 @@ function PayloadTestFailures(props) {
           ]}
           onSortModelChange={(m) => updateSortModel(m)}
           getRowClassName={(params) =>
-            classes['row-percent-' + params.row.failure_count]
+            'row-percent-' + params.row.failure_count
           }
-          componentsProps={{
+          slotProps={{
             toolbar: {
               columns: columns,
               clearSearch: () => requestSearch(''),
@@ -244,18 +263,6 @@ function PayloadTestFailures(props) {
   )
 }
 
-PayloadTestFailures.defaultProps = {
-  limit: 0,
-  hideControls: false,
-  pageSize: 25,
-  briefTable: false,
-  filterModel: {
-    items: [],
-  },
-  sortField: 'kind',
-  sort: 'asc',
-}
-
 PayloadTestFailures.propTypes = {
   briefTable: PropTypes.bool,
   hideControls: PropTypes.bool,
@@ -264,17 +271,7 @@ PayloadTestFailures.propTypes = {
   filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
-  classes: PropTypes.object,
-
   payload: PropTypes.string,
 }
 
-const TEST_FAILURES_IN_PAYLOAD_THRESHOLDS = {
-  success: 0,
-  warning: 2,
-  error: 5,
-}
-
-export default withStyles(
-  generateClasses(TEST_FAILURES_IN_PAYLOAD_THRESHOLDS, true)
-)(PayloadTestFailures)
+export default PayloadTestFailures

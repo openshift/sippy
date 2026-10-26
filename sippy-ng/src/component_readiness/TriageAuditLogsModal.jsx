@@ -16,46 +16,27 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { CompactLoadingBox } from './TriageStyledComponents'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import { History } from '@mui/icons-material'
-import { makeStyles } from '@mui/styles'
+import { styled } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment, useState } from 'react'
 
-const useStyles = makeStyles((theme) => ({
-  marginRight: {
-    marginRight: theme.spacing(1),
-  },
-  loadingContainer: {
-    padding: theme.spacing(3),
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  changeContainer: {
-    marginBottom: theme.spacing(2),
-    padding: theme.spacing(2),
-  },
-  changeContent: {
-    marginLeft: theme.spacing(1),
-  },
-  originalValue: {
-    marginBottom: theme.spacing(1),
-    padding: theme.spacing(1),
+const DiffPaper = styled(Paper, {
+  shouldForwardProp: (prop) => prop !== 'difftype',
+})(({ theme, difftype }) => ({
+  padding: 8,
+  ...(difftype === 'original' && {
+    marginBottom: 8,
     backgroundColor: theme.palette.error.light,
-  },
-  modifiedValue: {
-    padding: theme.spacing(1),
+  }),
+  ...(difftype === 'modified' && {
     backgroundColor: theme.palette.success.light,
-  },
-  auditLogContainer: {
-    maxHeight: 400,
-    overflow: 'auto',
-  },
+  }),
 }))
 
 export default function TriageAuditLogsModal({ triage }) {
-  const classes = useStyles()
   const [auditLogs, setAuditLogs] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -121,17 +102,13 @@ export default function TriageAuditLogsModal({ triage }) {
     return (
       <Box>
         {log.changes.map((change, index) => (
-          <Paper
-            key={index}
-            variant="outlined"
-            className={classes.changeContainer}
-          >
+          <Paper key={index} variant="outlined" sx={{ mb: 2, p: 2 }}>
             <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
               {change.field_name}
             </Typography>
-            <Box className={classes.changeContent}>
+            <Box sx={{ ml: 1 }}>
               {change.original && (
-                <Paper variant="outlined" className={classes.originalValue}>
+                <DiffPaper variant="outlined" difftype="original">
                   <Typography
                     variant="caption"
                     color="text.primary"
@@ -139,10 +116,10 @@ export default function TriageAuditLogsModal({ triage }) {
                   >
                     - {change.original}
                   </Typography>
-                </Paper>
+                </DiffPaper>
               )}
               {change.modified && (
-                <Paper variant="outlined" className={classes.modifiedValue}>
+                <DiffPaper variant="outlined" difftype="modified">
                   <Typography
                     variant="caption"
                     color="text.primary"
@@ -150,7 +127,7 @@ export default function TriageAuditLogsModal({ triage }) {
                   >
                     + {change.modified}
                   </Typography>
-                </Paper>
+                </DiffPaper>
               )}
             </Box>
           </Paper>
@@ -165,7 +142,7 @@ export default function TriageAuditLogsModal({ triage }) {
         onClick={handleOpen}
         variant="outlined"
         startIcon={<History />}
-        className={classes.marginRight}
+        sx={{ mr: 1 }}
       >
         View Audit Logs
       </Button>
@@ -176,12 +153,12 @@ export default function TriageAuditLogsModal({ triage }) {
         </DialogTitle>
         <DialogContent>
           {loading && (
-            <Box className={classes.loadingContainer}>
+            <CompactLoadingBox>
               <CircularProgress />
               <Typography variant="body1" sx={{ ml: 2 }}>
                 Loading audit logs...
               </Typography>
-            </Box>
+            </CompactLoadingBox>
           )}
 
           {error && (
@@ -231,7 +208,7 @@ export default function TriageAuditLogsModal({ triage }) {
                     </TableCell>
                     <TableCell>{formatOperation(log.operation)}</TableCell>
                     <TableCell>
-                      <Box className={classes.auditLogContainer}>
+                      <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
                         {renderChangeData(log)}
                       </Box>
                     </TableCell>

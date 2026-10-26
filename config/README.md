@@ -2,6 +2,14 @@
 
 This is currently only used for Prow-based sippy, but could be expanded for general Sippy settings in the future.
 
+## PostgreSQL connection attribution
+
+Sippy sets PostgreSQL's `application_name` connection parameter so active
+connections can be attributed to a Sippy process or pod in `pg_stat_activity`.
+By default it uses `sippy/<hostname>`. In Kubernetes, the hostname is the pod
+name. Set `SIPPY_PG_APPLICATION_NAME` to provide an explicit value. Values are
+truncated to PostgreSQL's 63-byte limit.
+
 Example:
 
 ```yaml
@@ -57,3 +65,95 @@ exclude a job from being part of the Sippy configuration by setting the job to `
       jobs:
         aggregated-aws-ovn-upgrade-4.11-micro-release-openshift-release-analysis-aggregator: false
 ```
+
+## Jira service-account credentials
+
+Consumers explicitly opting into service-account authentication use
+these environment variables, supplied through deployment secrets:
+
+| Variable | Purpose |
+| --- | --- |
+| `JIRA_CLIENT_ID` | OAuth client ID for the selected service-account credential |
+| `JIRA_CLIENT_SECRET` | OAuth client secret for that credential |
+| `JIRA_CLOUD_ID` | Jira cloud UUID for the target site |
+
+All three are required. Permissions come from the selected credential, whose
+scopes are assigned when creating it in Atlassian Administration. Read-only
+consumers should receive the read-only credential with `read:jira-user` and
+`read:jira-work` scopes and access to the projects being queried.
+
+Service-account requests use `https://api.atlassian.com/ex/jira/{cloudId}/`,
+regardless of `--jira-url`. The OAuth library obtains and renews access tokens
+in memory; no access-token file or external renewal job is needed. Missing or
+rejected credentials cause an error, without falling back to PAT authentication.
+
+Setting these variables alone does not switch existing Jira consumers away from
+`--jira-token-file`, `JIRA_TOKEN`, or `JIRA_TOKEN_BASIC`.
+
+`--jira-service-account` is available on commands that bind Jira configuration,
+including `automate-jira`, `load`, `serve`, and `component-readiness`. It defaults
+to false. Each deployment must explicitly supply the credential variables and
+enable the flag to switch its Jira clients to OAuth.
+
+For `serve` and `component-readiness`, configure the read/write credential when
+bug filing or triage comments are enabled. Those writes are attributed to the
+service account. Read-only deployments can use the read-only credential.
+
+### Automator dry-run rollout
+
+For `automate-jira`, after supplying the three
+environment variables above, add these flags to its existing invocation:
+
+```sh
+sippy automate-jira --jira-service-account --dry-run <existing automator flags>
+```
+
+`--jira-service-account` selects authentication independently of `--dry-run`.
+Keep `--dry-run` enabled for the current read-only rollout. Keep the existing
+`--jira-account` value during this authentication rollout, since it selects the
+creator of existing regression issues in searches. Changing it to the
+service-account identity would stop matching issues created by the old account.
+Keep `--sippy-url` and the existing data-source and view configuration.
+
+Before enabling writes, supply the read/write credential and update issue
+discovery to match issues created by both the legacy account and the service
+account.
+
+After merging and building the image, configure only the automator deployment
+with the read-only credential and these flags. Check its next run for successful
+searches and dry-run proposals. Other Sippy commands keep their current PAT
+authentication unless separately opted in. To roll back, remove
+`--jira-service-account` and retain the existing PAT configuration.
+
+### Jira data-loader rollout
+
+`sippy load --jira-service-account` selects OAuth for both the `jira` data
+loader and the Jira client used by regression tracking. Both use the same
+credential variables above. The flag defaults to false, so
+existing deployments keep their PAT or unauthenticated Jira behavior. Setting
+credentials without the flag does not switch authentication. Missing or
+rejected OAuth credentials fail loader construction without falling back to PAT.
+
+The Jira data loader reads components, paginated TRT incidents, and individual
+issue changelogs through the shared OAuth HTTP client and gateway URL. It writes
+the resulting data to PostgreSQL, but never
+modifies Jira issues. Regression tracking can post comments when associated
+triages are resolved. A load process that runs regression tracking must receive
+the read/write credential. Both consumers share one OAuth HTTP client and token
+cache for the lifetime of the load job. Comments
+are attributed to the service account. A process running only the `jira` data
+loader can use the read-only credential.
+
+After merging and building the image, update the `fetchdata` CronJob in
+`dpcr/sippy`: map `JIRA_CLIENT_ID` to `client-id-read-write`,
+`JIRA_CLIENT_SECRET` to `client-secret-read-write`, and `JIRA_CLOUD_ID` to
+`cloud-id` in secret `sippy-jira-trt-service-account`. Add
+`--jira-service-account` to the existing `sippy load` invocation and keep its
+other flags and PAT references. Trigger a one-off run and compare component
+counts, incident counts, load errors, and any triage-resolution comments with
+the PAT baseline. For rollback, remove the flag and use the retained PAT
+references. With the flag enabled, neither of these Jira consumers uses PAT.
+
+An isolated `sippy load --loader=jira --jira-service-account` run still updates
+PostgreSQL; it is not a dry run. Repeated short jobs verify token acquisition,
+while token renewal requires a client that remains active past token expiry.

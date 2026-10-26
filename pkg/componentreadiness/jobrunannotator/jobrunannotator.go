@@ -20,7 +20,6 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/maps"
@@ -352,7 +351,7 @@ func (j JobRunAnnotator) filterJobRunByArtifact(ctx context.Context, jobRunIDs [
 	}
 
 	q := &jobartifacts.JobArtifactQuery{
-		GcsBucket:      j.gcsClient.Bucket(util.GcsBucketRoot),
+		GcsClient:      j.gcsClient,
 		DbClient:       j.dbClient,
 		Cache:          j.cache,
 		JobRunIDs:      []int64{},

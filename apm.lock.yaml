@@ -97,7 +97,7 @@ local_deployed_file_hashes:
   .claude/rules/backend.md: sha256:60f9f7f5315eb4c1f9bc84af897529796e38abb343056c2ed6605cb0ddcf3401
   .claude/rules/config.md: sha256:96c5e42c039230f1e4e7f9ba56d04e6f76f23deeecdd858634c440d6029a6a83
   .claude/rules/dev-commands.md: sha256:171b806b2f75a71f20126b8a9ceabe88592c11cede3fe510498e855d53d43b9e
-  .claude/rules/frontend.md: sha256:3abcacd88759b5d833d36457a89b66b6a0a53c7df29c847d17775db1f879300b
+  .claude/rules/frontend.md: sha256:2355ef2b8f797d6e4f72316f5c17eae909264a9223f7296e0ef9c4d8c100658d
   .claude/rules/general.md: sha256:e6dff95b03237ef5756e873afac2851c8f658d860b7853eb063c7766738533c0
   .claude/rules/mcp.md: sha256:ddfe965e7cf8cddbba1374c6ae582a20ac0af17c958bf10e1a4edff6ff2ad0b8
   .claude/rules/testing.md: sha256:aef755feb8a6829ddb1d2609b98b17380c3c457cc86fd09158c2ec1d7432a893
@@ -115,7 +115,7 @@ local_deployed_file_hashes:
   .cursor/rules/backend.mdc: sha256:c89283fab05858564980b107fd0d0e99fd33e49409b4935ab2401999ed6e5c26
   .cursor/rules/config.mdc: sha256:d6e2195399bbb26a3fef7e54bd01862ffce39d89dce8aabdb0b89c89028192eb
   .cursor/rules/dev-commands.mdc: sha256:7e9635959af4dd2bf54b348dfdf41e3cf2b77c01aa3496a2e42a273c372ff9c0
-  .cursor/rules/frontend.mdc: sha256:1c2e1bd63f186d5794bf7dcf5e07bac7e46544857e8b032e380fdf15ed297f83
+  .cursor/rules/frontend.mdc: sha256:ee9d518297915f72d25a9584c8f70170e8bbd4bb1a24d52c908b6c79402f099a
   .cursor/rules/general.mdc: sha256:9baa2a69757a9a5de30c901fabb48ae1d894e403cde7ae60170d24d25f52664e
   .cursor/rules/mcp.mdc: sha256:c02472afd46e4c89f71d4487dcd5da98b0c1bcbcf7f9cbc4d7ed4e7d3a206ec1
   .cursor/rules/testing.mdc: sha256:06eef9186dd1cec1bcdf067344e5e2e83515da66f8df4102c2b1e85641a21b1f

@@ -101,6 +101,7 @@ var customJobInstallNames = sets.New(
 	"hypershift-launch-wait-for-nodes",
 	"install-install container test",
 	"install-stableinitial container test",
+	"ipi-install-install-stableinitial",
 	"ipi-install-libvirt-install",
 	"ocp-installer-remote-libvirt-ppc64le-ipi-install-libvirt-install",
 	"ocp-installer-remote-libvirt-s390x-ipi-install-libvirt-install",
@@ -233,6 +234,8 @@ var nonSuiteSuitePatterns = []string{
 	"step graph",
 }
 
+const normalizedMultiStageStepPrefix = "Run multi-stage step "
+
 var nonSuiteTestPatterns = []string{
 	"Run pipeline step",
 	"Run multi-stage test",
@@ -241,13 +244,21 @@ var nonSuiteTestPatterns = []string{
 // IsNonSuiteTest returns true if the suite or test name indicates infrastructure/step-level
 // results rather than real test signals.
 func IsNonSuiteTest(suiteName, testName string) bool {
-	for _, pattern := range nonSuiteSuitePatterns {
-		if strings.Contains(suiteName, pattern) {
+	for _, pattern := range nonSuiteTestPatterns {
+		if strings.Contains(testName, pattern) {
 			return true
 		}
 	}
-	for _, pattern := range nonSuiteTestPatterns {
-		if strings.Contains(testName, pattern) {
+
+	// ci-tools emits normalized multi-stage child results in the step graph suite.
+	// Unlike phase and pod-level results, these use the stable step name and are
+	// meaningful job-result signals.
+	if strings.Contains(suiteName, "step graph") && strings.HasPrefix(testName, normalizedMultiStageStepPrefix) {
+		return false
+	}
+
+	for _, pattern := range nonSuiteSuitePatterns {
+		if strings.Contains(suiteName, pattern) {
 			return true
 		}
 	}

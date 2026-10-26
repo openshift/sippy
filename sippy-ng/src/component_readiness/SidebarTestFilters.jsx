@@ -11,7 +11,6 @@ import {
 } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
-import { makeStyles } from '@mui/styles'
 import {
   TestCapabilitiesContext,
   TestLifecyclesContext,
@@ -20,27 +19,17 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import Typography from '@mui/material/Typography'
 
-const useStyles = makeStyles((theme) => ({
-  formControl: {
-    margin: theme.spacing(1),
-  },
-  autocomplete: {
-    width: '100%',
-    '& .MuiAutocomplete-inputRoot': {
-      paddingRight: '9px !important',
-    },
-  },
-  chip: {
-    maxWidth: 'none',
-    flex: '1 1 auto',
-  },
-}))
+const sidebarFilterControlSx = (theme) => ({ margin: theme.spacing(1) })
+const autocompleteSx = {
+  width: '100%',
+  '& .MuiAutocomplete-inputRoot': { paddingRight: '9px !important' },
+}
+const chipSx = { maxWidth: 'none', flex: '1 1 auto' }
 
 export default function SidebarTestFilters(props) {
   const varsContext = useContext(CompReadyVarsContext)
   const testCapabilities = useContext(TestCapabilitiesContext)
   const testLifecycles = useContext(TestLifecyclesContext)
-  const classes = useStyles()
 
   if (
     !props.controlsOpts?.filterByCapabilities &&
@@ -60,7 +49,7 @@ export default function SidebarTestFilters(props) {
   return (
     <FormControl
       variant="standard"
-      className={classes.formControl}
+      sx={sidebarFilterControlSx}
       component="fieldset"
     >
       <Accordion className="checkboxlist-headerName">
@@ -83,7 +72,7 @@ export default function SidebarTestFilters(props) {
             <Autocomplete
               multiple
               disableClearable
-              className={classes.autocomplete}
+              sx={autocompleteSx}
               options={testCapabilities || []}
               value={varsContext.testCapabilities || []}
               onChange={handleCapabilitiesChange}
@@ -101,7 +90,7 @@ export default function SidebarTestFilters(props) {
                     <Chip
                       variant="outlined"
                       label={option}
-                      className={classes.chip}
+                      sx={chipSx}
                       {...getTagProps({ index })}
                     />
                   </Tooltip>
@@ -125,7 +114,7 @@ export default function SidebarTestFilters(props) {
             <Autocomplete
               multiple
               disableClearable
-              className={classes.autocomplete}
+              sx={autocompleteSx}
               options={Array.isArray(testLifecycles) ? testLifecycles : []}
               value={
                 Array.isArray(varsContext.testLifecycles)
@@ -148,7 +137,7 @@ export default function SidebarTestFilters(props) {
                     <Chip
                       variant="outlined"
                       label={option}
-                      className={classes.chip}
+                      sx={chipSx}
                       {...getTagProps({ index })}
                     />
                   </Tooltip>

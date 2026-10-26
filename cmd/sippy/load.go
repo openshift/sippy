@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/andygrunwald/go-jira"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -119,6 +121,55 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.DataProvider, "data-provider", "default", "Data provider for component readiness regression cache loading: default (auto-select from the configured clients), bigquery, or postgres (PostgreSQL-only, requires no BigQuery credentials)")
 }
 
+// loadJiraClients shares one OAuth HTTP client across a load job's Jira consumers.
+type loadJiraClients struct {
+	flags      *flags.JiraFlags
+	ctx        context.Context
+	httpClient *http.Client
+	baseURL    string
+}
+
+// serviceAccountHTTPClient initializes OAuth on first use during loader construction.
+func (c *loadJiraClients) serviceAccountHTTPClient() (*http.Client, string, error) {
+	if c.httpClient == nil {
+		client, baseURL, err := c.flags.GetServiceAccountHTTPClient(c.ctx)
+		if err != nil {
+			return nil, "", err
+		}
+		c.httpClient, c.baseURL = client, baseURL
+	}
+	return c.httpClient, c.baseURL, nil
+}
+
+// jiraClient supplies the regression tracker with the job's shared OAuth client or legacy PAT client.
+func (c *loadJiraClients) jiraClient() (*jira.Client, error) {
+	if !c.flags.ServiceAccount {
+		return c.flags.GetJiraClient(c.ctx)
+	}
+	client, baseURL, err := c.serviceAccountHTTPClient()
+	if err != nil {
+		return nil, err
+	}
+	jiraClient, err := jira.NewClient(client, baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("create Jira service-account client: %w", err)
+	}
+	return jiraClient, nil
+}
+
+// loader selects authentication for Jira data reads without changing legacy loader configuration.
+func (c *loadJiraClients) loader(dbc *db.DB) (*jiraloader.JiraLoader, error) {
+	if !c.flags.ServiceAccount {
+		return jiraloader.New(dbc), nil
+	}
+	client, baseURL, err := c.serviceAccountHTTPClient()
+	if err != nil {
+		return nil, fmt.Errorf("configure Jira data loader: %w", err)
+	}
+	return jiraloader.NewWithClient(c.ctx, dbc, client, baseURL), nil
+}
+
+// NewLoadCommand refreshes configured CI data sources and regression tracking state.
 // nolint:gocyclo
 func NewLoadCommand() *cobra.Command {
 	f := NewLoadFlags()
@@ -137,7 +188,7 @@ func NewLoadCommand() *cobra.Command {
 			allErrs := []error{}
 
 			// Cancel syncing after 4 hours
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
+			ctx, cancel := context.WithTimeout(cmd.Context(), time.Hour*4)
 			defer cancel()
 
 			start := time.Now()
@@ -221,6 +272,7 @@ func NewLoadCommand() *cobra.Command {
 			}
 
 			var regressionCacheAdded bool
+			jiraClients := &loadJiraClients{flags: f.JiraFlags, ctx: ctx}
 			for _, l := range f.Loaders {
 				if l == "release-definitions" {
 					if bigqueryErr != nil {
@@ -271,7 +323,7 @@ func NewLoadCommand() *cobra.Command {
 						return fmt.Errorf("no component readiness views provided")
 					}
 
-					jiraClient, jErr := f.JiraFlags.GetJiraClient()
+					jiraClient, jErr := jiraClients.jiraClient()
 					if jErr != nil {
 						return errors.Wrap(jErr, "CRITICAL error getting jira client which prevents regression tracking")
 					}
@@ -328,7 +380,11 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					loaders = append(loaders, jiraloader.New(dbc))
+					jiraLoader, err := jiraClients.loader(dbc)
+					if err != nil {
+						return err
+					}
+					loaders = append(loaders, jiraLoader)
 				}
 
 				// Load mapping for jira components to tests

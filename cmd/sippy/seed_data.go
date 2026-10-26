@@ -534,7 +534,10 @@ func seedSyntheticData(dbc *db.DB) error {
 		return fmt.Errorf("failed to check for existing data: %w", err)
 	}
 	if count > 0 {
-		log.Infof("Database already contains %d ProwJobs, skipping seed. Drop and recreate the database to re-seed (e.g. docker compose down -v).", count)
+		log.Infof("Database already contains %d ProwJobs, skipping bulk seed and refreshing rerunnable seed records. Drop and recreate the database to fully re-seed (e.g. docker compose down -v).", count)
+		if err := createLabelsAndSymptoms(dbc); err != nil {
+			return errors.WithMessage(err, "failed to create labels and symptoms")
+		}
 		// Feature gates use FirstOrCreate and are safe to re-run on an existing DB.
 		if err := seedFeatureGates(dbc); err != nil {
 			return errors.WithMessage(err, "failed to seed feature gates")
@@ -622,10 +625,10 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 	log.Info("Seeded bugs and triages")
 
-	if err := seedSymptomJobRunLinkage(dbc); err != nil {
-		return errors.WithMessage(err, "failed to seed symptom-job-run linkage")
+	if err := seedJobRunLabels(dbc); err != nil {
+		return errors.WithMessage(err, "failed to seed job run labels")
 	}
-	log.Info("Seeded symptom-to-job-run linkage")
+	log.Info("Seeded job run labels")
 
 	log.Infof("Seeded synthetic data: %d ProwJobRuns, %d test results across %d releases",
 		totalRuns, totalResults, len(syntheticReleases))
@@ -1345,6 +1348,7 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 				ID:          "ClusterDNSFlake",
 				LabelTitle:  "Cluster DNS resolution failure(s)",
 				Explanation: "Job experienced DNS resolution timeouts in the cluster.",
+				Bugs:        pq.StringArray{"OCPBUGS-40002"},
 			},
 			Metadata: metadata,
 		},
@@ -1353,6 +1357,7 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 				ID:          "ClusterInstallTimeout",
 				LabelTitle:  "Cluster install timeout",
 				Explanation: "Cluster installation exceeded timeout threshold.",
+				Bugs:        pq.StringArray{"OCPBUGS-40001"},
 			},
 			Metadata: metadata,
 		},
@@ -1377,8 +1382,12 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 
 	for _, label := range labels {
 		var existing jobrunscan.Label
-		if err := dbc.DB.Where("id = ?", label.ID).FirstOrCreate(&existing, label).Error; err != nil {
-			return fmt.Errorf("failed to create or find label %s: %v", label.ID, err)
+		if err := dbc.DB.
+			Where("id = ?", label.ID).
+			Attrs(label).
+			Assign(map[string]any{"bugs": label.Bugs}).
+			FirstOrCreate(&existing).Error; err != nil {
+			return fmt.Errorf("failed to create or update label %s: %w", label.ID, err)
 		}
 	}
 
@@ -1591,7 +1600,7 @@ func seedReleasePayloads(dbc *db.DB) error {
 				Kind:           jrd.kind,
 				State:          jrd.state,
 				TransitionTime: releaseTime.Add(time.Duration(k) * time.Hour),
-				URL:            fmt.Sprintf("https://prow.ci.openshift.org/view/gs/test-platform-results/logs/%s/%d", jrd.jobName, 90000+i*100+k),
+				URL:            fmt.Sprintf("https://prow.ci.openshift.org/view/gs/test-platform-results-public/logs/%s/%d", jrd.jobName, 90000+i*100+k),
 			}
 			if err := dbc.DB.Create(&jobRun).Error; err != nil {
 				return fmt.Errorf("failed to create release job run: %w", err)
@@ -1822,7 +1831,8 @@ func seedBugsAndTriages(dbc *db.DB) error {
 	return nil
 }
 
-func seedSymptomJobRunLinkage(dbc *db.DB) error {
+// seedJobRunLabels gives synthetic failed runs labels for exercising label displays.
+func seedJobRunLabels(dbc *db.DB) error {
 	// Apply labels to some failed job runs (for label display on job runs)
 	var jobRuns []models.ProwJobRun
 	start, end := releaseTimeWindow("4.22")
@@ -1854,68 +1864,6 @@ func seedSymptomJobRunLinkage(dbc *db.DB) error {
 		labeled++
 	}
 	log.WithField("count", labeled).Info("Applied labels to failed job runs")
-
-	// Assign symptoms to regression job runs by test name.
-	type symptomSpec struct {
-		testName string
-		symptoms pq.StringArray
-	}
-	symptomSpecs := []symptomSpec{
-		{
-			testName: "[sig-network] Services should serve endpoints on same port and different protocol",
-			symptoms: pq.StringArray{"DNSTimeoutSymptom"},
-		},
-		{
-			testName: "[sig-etcd] etcd leader changes are not excessive",
-			symptoms: pq.StringArray{"InstallTimeoutSymptom", "APITimeoutSymptom"},
-		},
-		{
-			testName: "[sig-node] Memory management should handle large allocations",
-			symptoms: pq.StringArray{"DNSTimeoutSymptom", "APITimeoutSymptom"},
-		},
-		{
-			testName: "[sig-node] Memory management should handle large deallocations",
-			symptoms: pq.StringArray{"DNSTimeoutSymptom"},
-		},
-		{
-			testName: "[sig-node] Container lifecycle should start containers promptly",
-			symptoms: pq.StringArray{"InstallTimeoutSymptom"},
-		},
-	}
-
-	updatedCount := 0
-	for _, spec := range symptomSpecs {
-		var regs []models.TestRegression
-		if err := dbc.DB.Preload("JobRuns").
-			Where("test_name = ? AND closed IS NULL", spec.testName).
-			Find(&regs).Error; err != nil {
-			return fmt.Errorf("finding regressions for %q: %w", spec.testName, err)
-		}
-		for _, reg := range regs {
-			for _, jr := range reg.JobRuns {
-				if err := dbc.DB.Model(&models.RegressionJobRun{}).Where("id = ?", jr.ID).
-					Update("job_symptoms", spec.symptoms).Error; err != nil {
-					return fmt.Errorf("failed to update regression job run symptoms: %w", err)
-				}
-				updatedCount++
-			}
-		}
-	}
-	log.WithField("count", updatedCount).Info("Populated job_symptoms on regression job runs")
-
-	// Sync triage symptoms from the regression job run data.
-	backend := componentreadiness.NewPostgresRegressionStore(dbc, nil)
-	var activeRegs []*models.TestRegression
-	var allRegs []models.TestRegression
-	if err := dbc.DB.Where("release = ? AND closed IS NULL", "4.22").Find(&allRegs).Error; err != nil {
-		return fmt.Errorf("finding active regressions: %w", err)
-	}
-	for i := range allRegs {
-		activeRegs = append(activeRegs, &allRegs[i])
-	}
-	if err := backend.SyncTriageSymptoms(activeRegs); err != nil {
-		return fmt.Errorf("syncing triage symptoms: %w", err)
-	}
 
 	return nil
 }

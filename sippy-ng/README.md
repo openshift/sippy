@@ -1,7 +1,11 @@
 # Sippy React Frontend
 
-Sippy's frontend is written in React and [Material-UI](https://v4.mui.com/). The
+Sippy's frontend is written in React and [Material-UI v6](https://mui.com/). The
 dev server and production build are powered by [Vite](https://vite.dev/).
+
+Styling uses MUI's native `styled()` API for reusable or non-trivial styles,
+the `sx` prop for trivial, one-off styles, and the plain `style` prop for
+simple dynamic values (e.g., width or color computed from props).
 
 In development, you can start Sippy as usual, and then run `npm start`
 in the sippy-ng directory. You can also just run `make build`, and use
@@ -52,16 +56,20 @@ followed by "Format Document" to quickly fix them.
 
 Imports must be sorted alphabetically. If using a multi-line import (also sorted alphabetically) then the first entry in that import determines the sort order relative to the other import statements.
 
-```
-import { Link } from 'react-router-dom'
+```javascript
+import { Link } from 'react-router'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 ```
 
 vs.
 
-```
-import { getReportStartDate, relativeTime, safeEncodeURIComponent } from '../helpers'
-import { Link } from 'react-router-dom'
+```javascript
+import {
+  getReportStartDate,
+  relativeTime,
+  safeEncodeURIComponent,
+} from '../helpers'
+import { Link } from 'react-router'
 ```
 
 Helpers for each of these can be configured for on save actions or 'sort-imports'

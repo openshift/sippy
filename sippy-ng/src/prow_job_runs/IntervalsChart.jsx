@@ -18,8 +18,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { escapeRegex } from '../helpers'
-import { makeStyles } from '@mui/styles'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import { stringify } from 'query-string'
 import Alert from '@mui/material/Alert'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -28,6 +27,8 @@ import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'
+
+const filterRowSx = { padding: '10px 0', paddingBottom: '1rem' }
 
 // sourceOrder is our preferred ordering of the sections of the chart (interval sources), assuming that
 // source is selected in the UI and present in the intervals file:
@@ -39,16 +40,11 @@ const sourceOrder = [
   'Disruption',
   'CertificateRotation',
   'KubeletLog',
+  'KernelLog',
   'EtcdLog',
   'EtcdLeadership',
+  'TestBucket',
 ]
-
-const useStyles = makeStyles({
-  filterRow: {
-    padding: '10px 0',
-    paddingBottom: '1rem',
-  },
-})
 
 // These Sources should be sorted on their locator to group lines together by node, pod, etc.
 const sortOnLocatorSources = ['NodeState']
@@ -145,6 +141,16 @@ const intervalColorizers = {
         return ['KubeletLogError', '#d0312d']
     }
   },
+  KernelLog: function (interval) {
+    switch (interval.level) {
+      case 'Warning':
+        return ['KernelLogWarning', '#ff6b35']
+      case 'Error':
+        return ['KernelLogError', '#d0312d']
+      default:
+        return ['KernelLogInfo', '#fada5e']
+    }
+  },
   APIServerGracefulShutdown: function (_interval) {
     return ['GracefulShutdownInterval', '#6E6E6E']
   },
@@ -212,9 +218,29 @@ const intervalColorizers = {
   },
 }
 
-export default function IntervalsChart(props) {
+export default function IntervalsChart({
+  selectedSources: defaultSelectedSources = [
+    'OperatorAvailable',
+    'OperatorProgressing',
+    'OperatorDegraded',
+    'KubeletLog',
+    'KernelLog',
+    'EtcdLog',
+    'EtcdLeadership',
+    'Alert',
+    'Disruption',
+    'E2EFailed',
+    'APIServerGracefulShutdown',
+    'KubeEvent',
+    'NodeState',
+    'CPUMonitor',
+    'TestBucket',
+  ],
+  intervalFile: defaultIntervalFile = '',
+  overrideDisplayFlag: defaultOverrideDisplayFlag = false,
+  ...props
+}) {
   const navigate = useNavigate()
-  const classes = useStyles()
   const { jobrunid, jobname, repoinfo, pullnumber } = useParams()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -229,18 +255,18 @@ export default function IntervalsChart(props) {
 
   // categories is the set of selected categories to display. It is controlled by a combination
   // of default props, the categories query param, and the buttons the user can modify with.
-  const [selectedSources = props.selectedSources, setSelectedSources] =
+  const [selectedSources = defaultSelectedSources, setSelectedSources] =
     useQueryParam('selectedSources', ArrayParam)
 
   const [
-    overrideDisplayFlag = props.overrideDisplayFlag,
+    overrideDisplayFlag = defaultOverrideDisplayFlag,
     setOverrideDisplayFlag,
   ] = useQueryParam('overrideDisplayFlag', BooleanParam)
 
   const [allIntervalFiles, setAllIntervalFiles] = useState([])
   const [allSources, setAllSources] = useState([])
   const [sourceCounts, setSourceCounts] = useState([])
-  const [intervalFile = props.intervalFile, setIntervalFile] = useState(() => {
+  const [intervalFile = defaultIntervalFile, setIntervalFile] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('intervalFile')) {
       console.log(
@@ -589,7 +615,7 @@ export default function IntervalsChart(props) {
         <LaunderedLink address={jobRunUrl}>GCS job run</LaunderedLink>, filtered
         down to {filteredIntervals.length}.
       </p>
-      <div className={classes.filterRow}>
+      <Box sx={filterRowSx}>
         Categories:
         <Box
           display="flex"
@@ -610,8 +636,8 @@ export default function IntervalsChart(props) {
             </Button>
           ))}
         </Box>
-      </div>
-      <div className={classes.filterRow}>
+      </Box>
+      <Box sx={filterRowSx}>
         Files:
         <Select
           labelId="interval-file-label"
@@ -633,8 +659,8 @@ export default function IntervalsChart(props) {
           onChange={handleFilterChange}
           defaultValue={filterText}
         />
-      </div>
-      <div className={classes.filterRow}>
+      </Box>
+      <Box sx={filterRowSx}>
         Time Filter:
         <TextField
           id="start"
@@ -654,7 +680,7 @@ export default function IntervalsChart(props) {
         <Button key="resetTimeFilters" onClick={() => resetTimeFilters()}>
           Reset
         </Button>
-      </div>
+      </Box>
       <div>
         <Tooltip
           title={
@@ -681,27 +707,6 @@ export default function IntervalsChart(props) {
       </div>
     </Fragment>
   )
-}
-
-IntervalsChart.defaultProps = {
-  // default list of pre-selected sources:
-  selectedSources: [
-    'OperatorAvailable',
-    'OperatorProgressing',
-    'OperatorDegraded',
-    'KubeletLog',
-    'EtcdLog',
-    'EtcdLeadership',
-    'Alert',
-    'Disruption',
-    'E2EFailed',
-    'APIServerGracefulShutdown',
-    'KubeEvent',
-    'NodeState',
-    'CPUMonitor',
-  ],
-  intervalFile: '',
-  overrideDisplayFlag: false,
 }
 
 IntervalsChart.propTypes = {

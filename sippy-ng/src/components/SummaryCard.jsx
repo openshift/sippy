@@ -1,49 +1,45 @@
 import { Box, Card, CardContent, Tooltip, Typography } from '@mui/material'
 import { Doughnut } from 'react-chartjs-2'
-import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/styles'
-import { scale } from 'chroma-js'
+import { Link } from 'react-router'
+import { useTheme } from '@mui/material/styles'
+import chroma from 'chroma-js'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React from 'react'
-
-const useStyles = makeStyles({
-  cardContent: {
-    textAlign: 'center',
-  },
-  summaryCard: (_props) => ({
-    height: '100%',
-  }),
-})
 
 /**
  * SummaryCard with a simple pie chart showing some data,
  * along with a caption. Used mainly by the ReleaseOverview
  * page.
  */
-export default function SummaryCard(props) {
-  const classes = useStyles(props)
+export default function SummaryCard({
+  success = 0,
+  fail = 0,
+  flakes = 0,
+  caption = '',
+  tooltip = '',
+  ...props
+}) {
   const theme = useTheme()
 
-  const percent =
-    ((props.success + props.flakes) /
-      ((props.flakes || 0) + props.fail + props.success)) *
-    100
+  const percent = ((success + flakes) / ((flakes || 0) + fail + success)) * 100
 
-  const colors = scale([
-    theme.palette.error.main,
-    theme.palette.warning.main,
-    theme.palette.success.main,
-  ]).domain([
-    props.threshold.error,
-    props.threshold.warning,
-    props.threshold.success,
-  ])
+  const colors = chroma
+    .scale([
+      theme.palette.error.main,
+      theme.palette.warning.main,
+      theme.palette.success.main,
+    ])
+    .domain([
+      props.threshold.error,
+      props.threshold.warning,
+      props.threshold.success,
+    ])
 
   const bgColor = colors(percent).hex()
 
   const labels = ['Pass', 'Flake', 'Fail']
-  const data = [props.success, props.flakes, props.fail]
+  const data = [success, flakes, fail]
   const color = [
     theme.palette.success.dark,
     theme.palette.warning.dark,
@@ -51,15 +47,11 @@ export default function SummaryCard(props) {
   ]
 
   let card = (
-    <Card
-      elevation={5}
-      className={`${classes.summaryCard}`}
-      style={{ backgroundColor: bgColor }}
-    >
-      <CardContent className={`${classes.cardContent}`}>
+    <Card elevation={5} sx={{ height: '100%', backgroundColor: bgColor }}>
+      <CardContent sx={{ textAlign: 'center' }}>
         <Typography variant="h6">
           {props.name}
-          {props.tooltip ? <InfoIcon /> : ''}
+          {tooltip ? <InfoIcon /> : ''}
         </Typography>
         <div align="center">
           <div style={{ width: '70%' }}>
@@ -85,16 +77,16 @@ export default function SummaryCard(props) {
               }}
             />
           </div>
-          {props.caption}
+          {caption}
         </div>
       </CardContent>
     </Card>
   )
 
   // Wrap in tooltip if we have one
-  if (props.tooltip !== undefined) {
+  if (tooltip !== undefined) {
     card = (
-      <Tooltip title={props.tooltip} placement="top">
+      <Tooltip title={tooltip} placement="top">
         {card}
       </Tooltip>
     )
@@ -110,15 +102,6 @@ export default function SummaryCard(props) {
   } else {
     return card
   }
-}
-
-SummaryCard.defaultProps = {
-  success: 0,
-  fail: 0,
-  flakes: 0,
-  caption: '',
-  tooltip: '',
-  units: 'percent',
 }
 
 SummaryCard.propTypes = {
