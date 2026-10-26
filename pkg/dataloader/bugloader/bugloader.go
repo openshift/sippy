@@ -169,6 +169,10 @@ func (bl *BugLoader) Load() {
 
 	if err := bl.loadIntoDB(bugs, testAssocs, jobAssocs); err != nil {
 		bl.addError(logger, err, "error loading bugs into database")
+		return
+	}
+	if err := ReconcileTriages(bl.ctx, bl.dbc.DB); err != nil {
+		bl.addError(logger, err, "error reconciling triages")
 	}
 }
 
@@ -304,7 +308,7 @@ func (bl *BugLoader) loadIntoDB(bugs []bugRow, testAssocs, jobAssocs []assocRow)
 		return fmt.Errorf("committing transaction: %w", err)
 	}
 
-	return ReconcileTriages(bl.ctx, bl.dbc.DB)
+	return nil
 }
 
 func (bl *BugLoader) upsertBugs(conn db.PgxSession) error {
@@ -455,7 +459,9 @@ const reconcileAuditUser = "bug-loader"
 func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	st := time.Now()
 
-	descResult := gormDB.Exec(`
+	dbWithContext := gormDB.WithContext(context.WithValue(ctx, models.CurrentUserKey, reconcileAuditUser))
+
+	descResult := dbWithContext.Exec(`
 		UPDATE triages t
 		SET description = b.summary, updated_at = NOW()
 		FROM bugs b
@@ -469,7 +475,7 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 		return fmt.Errorf("updating triage descriptions: %w", descResult.Error)
 	}
 
-	linkResult := gormDB.Exec(`
+	linkResult := dbWithContext.Exec(`
 		UPDATE triages t
 		SET bug_id = b.id, updated_at = NOW()
 		FROM bugs b
@@ -492,7 +498,7 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	// Auto-resolve triages where the bug has progressed and the triage
 	// covers only a single release.
 	var resolveCandidateIDs []uint
-	if err := gormDB.Raw(`
+	if err := dbWithContext.Raw(`
 		SELECT t.id
 		FROM triages t
 		JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
@@ -510,7 +516,6 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 		return fmt.Errorf("finding auto-resolve candidates: %w", err)
 	}
 
-	dbWithContext := gormDB.WithContext(context.WithValue(ctx, models.CurrentUserKey, reconcileAuditUser))
 	for _, id := range resolveCandidateIDs {
 		var triage models.Triage
 		if err := dbWithContext.Preload("Regressions").First(&triage, id).Error; err != nil {
@@ -527,7 +532,7 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	// open state. Only automatically set resolutions are reversed; manual
 	// (user) and regressions-rolled-off resolutions are never touched.
 	var unresolveCandidateIDs []uint
-	if err := gormDB.Raw(`
+	if err := dbWithContext.Raw(`
 		SELECT t.id
 		FROM triages t
 		JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
