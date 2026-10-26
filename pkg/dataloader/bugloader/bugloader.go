@@ -2,6 +2,7 @@ package bugloader
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -297,14 +299,12 @@ func (bl *BugLoader) loadIntoDB(bugs []bugRow, testAssocs, jobAssocs []assocRow)
 	if err := bl.syncJobAssociations(tx); err != nil {
 		return err
 	}
-	if err := bl.reconcileTriages(tx); err != nil {
-		return err
-	}
 
 	if err := tx.Commit(bl.ctx); err != nil {
 		return fmt.Errorf("committing transaction: %w", err)
 	}
-	return nil
+
+	return ReconcileTriages(bl.ctx, bl.dbc.DB)
 }
 
 func (bl *BugLoader) upsertBugs(conn db.PgxSession) error {
@@ -442,55 +442,20 @@ func (bl *BugLoader) syncJobAssociations(conn db.PgxSession) error {
 	return nil
 }
 
-func (bl *BugLoader) reconcileTriages(conn db.PgxSession) error {
-	return ReconcileTriages(bl.ctx, conn)
-}
-
 // reconcileAuditUser is the attribution recorded in audit logs for automated
 // triage resolution changes made during bug-loader reconciliation.
-const reconcileAuditUser = "system"
-
-// triageAuditJSON builds a SQL expression that constructs a JSONB audit
-// snapshot of a triage row, matching the structure produced by
-// Triage.marshalJSONForAudit. The alias identifies the source table or CTE
-// reference (e.g. "t" or "du"). Only hardcoded aliases are passed; the
-// function is never called with user-supplied input.
-func triageAuditJSON(alias string) string {
-	return `jsonb_build_object(
-		'id', ` + alias + `.id,
-		'created_at', ` + alias + `.created_at,
-		'updated_at', ` + alias + `.updated_at,
-		'url', ` + alias + `.url,
-		'description', COALESCE(` + alias + `.description, ''),
-		'type', ` + alias + `.type,
-		'bug_id', ` + alias + `.bug_id,
-		'resolved', CASE
-			WHEN ` + alias + `.resolved IS NULL
-			THEN jsonb_build_object('Time', '0001-01-01T00:00:00Z', 'Valid', false)
-			ELSE jsonb_build_object('Time',
-				to_char(` + alias + `.resolved AT TIME ZONE 'UTC',
-					'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
-				'Valid', true)
-		END,
-		'resolution_reason', COALESCE(` + alias + `.resolution_reason, ''),
-		'regressions', COALESCE(
-			(SELECT jsonb_agg(jsonb_build_object('id', tr.test_regression_id))
-			FROM triage_regressions tr WHERE tr.triage_id = ` + alias + `.id),
-			'[]'::jsonb
-		)
-	)`
-}
+const reconcileAuditUser = "bug-loader"
 
 // ReconcileTriages synchronizes triage resolution state with linked Jira bug
 // statuses. It updates descriptions from linked bugs, links triages to bug
 // records, auto-resolves single-release triages whose bugs have progressed,
 // and clears automatic jira-progression resolutions when the linked bug
 // returns to an open state. Resolution and un-resolution changes are recorded
-// in the triage audit history with system attribution.
-func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
+// in the triage audit history via GORM model hooks.
+func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	st := time.Now()
 
-	descTag, err := conn.Exec(ctx, `
+	descResult := gormDB.Exec(`
 		UPDATE triages t
 		SET description = b.summary, updated_at = NOW()
 		FROM bugs b
@@ -500,11 +465,11 @@ func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 		  AND b.summary != ''
 		  AND b.summary != t.description
 	`)
-	if err != nil {
-		return fmt.Errorf("updating triage descriptions: %w", err)
+	if descResult.Error != nil {
+		return fmt.Errorf("updating triage descriptions: %w", descResult.Error)
 	}
 
-	linkTag, err := conn.Exec(ctx, `
+	linkResult := gormDB.Exec(`
 		UPDATE triages t
 		SET bug_id = b.id, updated_at = NOW()
 		FROM bugs b
@@ -513,8 +478,8 @@ func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 		  AND t.url != ''
 		  AND (t.bug_id IS NULL OR t.bug_id != b.id)
 	`)
-	if err != nil {
-		return fmt.Errorf("linking triages to bugs: %w", err)
+	if linkResult.Error != nil {
+		return fmt.Errorf("linking triages to bugs: %w", linkResult.Error)
 	}
 
 	resolvedBugStatuses := []string{
@@ -525,89 +490,73 @@ func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 	}
 
 	// Auto-resolve triages where the bug has progressed and the triage
-	// covers only a single release. The CTE captures old state, performs
-	// the update, and writes audit log entries atomically.
-	resolveTag, err := conn.Exec(ctx, `
-		WITH candidates AS (
-			SELECT t.id
-			FROM triages t
-			JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
-			WHERE b.deleted_at IS NULL
-			  AND t.url != ''
-			  AND t.resolved IS NULL
-			  AND b.status = ANY($2)
-			  AND (
-				SELECT COUNT(DISTINCT r.release)
-				FROM triage_regressions tr
-				INNER JOIN test_regressions r ON r.id = tr.test_regression_id
-				WHERE tr.triage_id = t.id
-			  ) = 1
-		),
-		old_snapshots AS (
-			SELECT t.id, `+triageAuditJSON("t")+` AS snapshot
-			FROM triages t
-			WHERE t.id IN (SELECT id FROM candidates)
-		),
-		do_update AS (
-			UPDATE triages t
-			SET resolved = NOW(), resolution_reason = $1, updated_at = NOW()
-			WHERE t.id IN (SELECT id FROM candidates)
-			RETURNING id, created_at, updated_at, url, description,
-				type, bug_id, resolved, resolution_reason
-		)
-		INSERT INTO audit_logs (table_name, operation, row_id, old_data, new_data, "user", created_at)
-		SELECT 'triage', 'UPDATE', du.id, os.snapshot,
-			`+triageAuditJSON("du")+`,
-			$3, NOW()
-		FROM do_update du
-		JOIN old_snapshots os ON os.id = du.id
-	`, string(models.JiraProgression), resolvedBugStatuses, reconcileAuditUser)
-	if err != nil {
-		return fmt.Errorf("auto-resolving triages: %w", err)
+	// covers only a single release.
+	var resolveCandidateIDs []uint
+	if err := gormDB.Raw(`
+		SELECT t.id
+		FROM triages t
+		JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
+		WHERE b.deleted_at IS NULL
+		  AND t.url != ''
+		  AND t.resolved IS NULL
+		  AND b.status = ANY(?)
+		  AND (
+			SELECT COUNT(DISTINCT r.release)
+			FROM triage_regressions tr
+			INNER JOIN test_regressions r ON r.id = tr.test_regression_id
+			WHERE tr.triage_id = t.id
+		  ) = 1
+	`, pq.Array(resolvedBugStatuses)).Scan(&resolveCandidateIDs).Error; err != nil {
+		return fmt.Errorf("finding auto-resolve candidates: %w", err)
+	}
+
+	dbWithContext := gormDB.WithContext(context.WithValue(ctx, models.CurrentUserKey, reconcileAuditUser))
+	for _, id := range resolveCandidateIDs {
+		var triage models.Triage
+		if err := dbWithContext.Preload("Regressions").First(&triage, id).Error; err != nil {
+			return fmt.Errorf("loading triage %d for auto-resolve: %w", id, err)
+		}
+		triage.Resolved = sql.NullTime{Time: time.Now(), Valid: true}
+		triage.ResolutionReason = models.JiraProgression
+		if err := dbWithContext.Save(&triage).Error; err != nil {
+			return fmt.Errorf("auto-resolving triage %d: %w", id, err)
+		}
 	}
 
 	// Clear jira-progression resolutions when the linked bug returns to an
 	// open state. Only automatically set resolutions are reversed; manual
 	// (user) and regressions-rolled-off resolutions are never touched.
-	unresolveTag, err := conn.Exec(ctx, `
-		WITH candidates AS (
-			SELECT t.id
-			FROM triages t
-			JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
-			WHERE b.deleted_at IS NULL
-			  AND t.url != ''
-			  AND t.resolved IS NOT NULL
-			  AND t.resolution_reason = $1
-			  AND NOT (b.status = ANY($2))
-		),
-		old_snapshots AS (
-			SELECT t.id, `+triageAuditJSON("t")+` AS snapshot
-			FROM triages t
-			WHERE t.id IN (SELECT id FROM candidates)
-		),
-		do_update AS (
-			UPDATE triages t
-			SET resolved = NULL, resolution_reason = '', updated_at = NOW()
-			WHERE t.id IN (SELECT id FROM candidates)
-			RETURNING id, created_at, updated_at, url, description,
-				type, bug_id, resolved, resolution_reason
-		)
-		INSERT INTO audit_logs (table_name, operation, row_id, old_data, new_data, "user", created_at)
-		SELECT 'triage', 'UPDATE', du.id, os.snapshot,
-			`+triageAuditJSON("du")+`,
-			$3, NOW()
-		FROM do_update du
-		JOIN old_snapshots os ON os.id = du.id
-	`, string(models.JiraProgression), resolvedBugStatuses, reconcileAuditUser)
-	if err != nil {
-		return fmt.Errorf("clearing jira-progression resolutions: %w", err)
+	var unresolveCandidateIDs []uint
+	if err := gormDB.Raw(`
+		SELECT t.id
+		FROM triages t
+		JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
+		WHERE b.deleted_at IS NULL
+		  AND t.url != ''
+		  AND t.resolved IS NOT NULL
+		  AND t.resolution_reason = ?
+		  AND NOT (b.status = ANY(?))
+	`, string(models.JiraProgression), pq.Array(resolvedBugStatuses)).Scan(&unresolveCandidateIDs).Error; err != nil {
+		return fmt.Errorf("finding unresolve candidates: %w", err)
+	}
+
+	for _, id := range unresolveCandidateIDs {
+		var triage models.Triage
+		if err := dbWithContext.Preload("Regressions").First(&triage, id).Error; err != nil {
+			return fmt.Errorf("loading triage %d for unresolve: %w", id, err)
+		}
+		triage.Resolved = sql.NullTime{}
+		triage.ResolutionReason = ""
+		if err := dbWithContext.Save(&triage).Error; err != nil {
+			return fmt.Errorf("clearing jira-progression resolution for triage %d: %w", id, err)
+		}
 	}
 
 	log.WithFields(log.Fields{
-		"descriptions_updated": descTag.RowsAffected(),
-		"bugs_linked":          linkTag.RowsAffected(),
-		"auto_resolved":        resolveTag.RowsAffected(),
-		"auto_unresolved":      unresolveTag.RowsAffected(),
+		"descriptions_updated": descResult.RowsAffected,
+		"bugs_linked":          linkResult.RowsAffected,
+		"auto_resolved":        len(resolveCandidateIDs),
+		"auto_unresolved":      len(unresolveCandidateIDs),
 		"elapsed":              time.Since(st),
 	}).Info("triage reconciliation complete")
 	return nil

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -306,7 +305,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 
 		audits := getReconcileAuditLogs(t, dbc, triage.ID)
 		require.NotEmpty(t, audits, "audit log should be created for auto-resolve")
-		assert.Equal(t, "system", audits[0].User)
+		assert.Equal(t, "bug-loader", audits[0].User)
 		assert.Equal(t, "UPDATE", audits[0].Operation)
 
 		var oldTriage, newTriage models.Triage
@@ -335,7 +334,7 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 
 		audits := getReconcileAuditLogs(t, dbc, triage.ID)
 		require.NotEmpty(t, audits, "audit log should be created for auto-unresolve")
-		assert.Equal(t, "system", audits[0].User)
+		assert.Equal(t, "bug-loader", audits[0].User)
 		assert.Equal(t, "UPDATE", audits[0].Operation)
 
 		var oldTriage, newTriage models.Triage
@@ -412,14 +411,7 @@ func reloadTriage(t *testing.T, dbc *db.DB, triage *models.Triage) {
 
 func runReconcileTriages(ctx context.Context, t *testing.T, dbc *db.DB) {
 	t.Helper()
-	sqlDB, err := dbc.DB.DB()
-	require.NoError(t, err)
-	conn, err := stdlib.AcquireConn(sqlDB)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, stdlib.ReleaseConn(sqlDB, conn))
-	}()
-	require.NoError(t, bugloader.ReconcileTriages(ctx, conn))
+	require.NoError(t, bugloader.ReconcileTriages(ctx, dbc.DB))
 }
 
 // getReconcileAuditLogs returns audit log entries for a triage that were
@@ -429,7 +421,7 @@ func getReconcileAuditLogs(t *testing.T, dbc *db.DB, triageID uint) []models.Aud
 	t.Helper()
 	var audits []models.AuditLog
 	require.NoError(t, dbc.DB.
-		Where("table_name = 'triage' AND row_id = ? AND \"user\" = 'system'", triageID).
+		Where("table_name = 'triage' AND row_id = ? AND \"user\" = 'bug-loader'", triageID).
 		Order("created_at ASC").
 		Find(&audits).Error)
 	return audits
