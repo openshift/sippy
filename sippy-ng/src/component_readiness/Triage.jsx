@@ -46,12 +46,14 @@ export default function Triage({ id }) {
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
   const triageIdRef = React.useRef(id)
-  triageIdRef.current = id
+  const loadGenerationRef = React.useRef(0)
   const loadedIdRef = React.useRef(id)
   React.useEffect(() => {
     const requestedId = id
+    const generation = ++loadGenerationRef.current
     const idChanged = loadedIdRef.current !== id
     loadedIdRef.current = id
+    triageIdRef.current = id
     setDeleteError('')
     setIsUpdated(false)
     if (idChanged) {
@@ -75,21 +77,35 @@ export default function Triage({ id }) {
       triageFetch = Promise.resolve({})
     }
 
+    const applyResult = (apply) => {
+      if (
+        triageIdRef.current !== requestedId ||
+        loadGenerationRef.current !== generation
+      ) {
+        return
+      }
+      apply()
+    }
+
     triageFetch
       .then((t) => {
-        if (triageIdRef.current !== requestedId) {
-          return
-        }
-        setTriage(t)
-        setIsLoaded(true)
-        document.title = 'Triage "' + t.description + '" (' + t.id + ')'
+        applyResult(() => {
+          setTriage(t)
+          setIsLoaded(true)
+          document.title = 'Triage "' + t.description + '" (' + t.id + ')'
+        })
       })
       .catch((error) => {
-        if (triageIdRef.current !== requestedId) {
-          return
-        }
-        setMessage(error.toString())
+        applyResult(() => {
+          setMessage(error.toString())
+        })
       })
+
+    return () => {
+      if (triageIdRef.current === requestedId) {
+        triageIdRef.current = null
+      }
+    }
   }, [isUpdated, localDBEnabled, id])
 
   React.useEffect(() => {

@@ -53,6 +53,7 @@ export default function CompReadyRow(props) {
         {results.map((columnVal, idx) => (
           <CompReadyCell
             key={'testName-' + idx}
+            columnIndex={idx}
             status={columnVal.status}
             environment={columnNames[idx]}
             componentName={componentName}
