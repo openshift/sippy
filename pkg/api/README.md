@@ -709,6 +709,12 @@ Endpoint: `GET /api/component_readiness/test_details`
 Returns per-job-run test results. Runs may include applied `job_labels` when
 supplied by the selected data provider.
 
+### Parameters
+
+| Option         | Type   | Description |
+|----------------|--------|-------------|
+| testLifecycles | String | Comma-separated lifecycle values (e.g. `blocking`, `informing`) to restrict both the row filter and the `test_failures` count to matching tests. When set, `test_failures` is computed as a COUNT(DISTINCT test) of failures in the requested lifecycles rather than the pre-computed total on the job run. Omit to include all lifecycles. |
+
 ## Component Readiness Triages
 
 Endpoint: `GET /api/component_readiness/triages`

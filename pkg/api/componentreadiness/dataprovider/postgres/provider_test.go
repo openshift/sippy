@@ -12,7 +12,7 @@ func TestTestFailuresExpression(t *testing.T) {
 	tests := []struct {
 		name       string
 		lifecycles []string
-		wantArg    bool
+		wantArgs   int
 		wantSubq   bool
 	}{
 		{
@@ -26,22 +26,22 @@ func TestTestFailuresExpression(t *testing.T) {
 		{
 			name:       "with lifecycles uses correlated subquery",
 			lifecycles: []string{"blocking"},
-			wantArg:    true,
+			wantArgs:   1,
 			wantSubq:   true,
 		},
 		{
 			name:       "multiple lifecycles uses correlated subquery",
 			lifecycles: []string{"blocking", "informing"},
-			wantArg:    true,
+			wantArgs:   1,
 			wantSubq:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expr, needsArg := testFailuresExpression(tt.lifecycles)
-			if needsArg != tt.wantArg {
-				t.Fatalf("needsArg = %t, want %t", needsArg, tt.wantArg)
+			expr, args := testFailuresExpression(tt.lifecycles)
+			if len(args) != tt.wantArgs {
+				t.Fatalf("len(args) = %d, want %d", len(args), tt.wantArgs)
 			}
 			hasSubquery := strings.Contains(expr, "prow_job_run_tests lf")
 			if hasSubquery != tt.wantSubq {

@@ -35,6 +35,7 @@ func releaseFilterClause(release string) string {
 const (
 	DefaultJunitTable        = "junit"
 	jobRunAnnotationToIgnore = "InfraFailure"
+	defaultLifecycle         = "blocking"
 
 	// normalJobNameCol simply uses the prow job name for regular (non-pull-request) component reports.
 	normalJobNameCol = `
@@ -497,7 +498,7 @@ func BuildComponentReportQuery(
 	if isSample && len(reqOptions.Lifecycles) > 0 {
 		// filter by lifecycle : only applied to sample, not basis
 		// treat NULL or empty lifecycle as "blocking"
-		queryString += ` AND COALESCE(NULLIF(lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)`
+		queryString += fmt.Sprintf(` AND COALESCE(NULLIF(lifecycle, ''), '%s') IN UNNEST(@Lifecycles)`, defaultLifecycle)
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Lifecycles",
 			Value: reqOptions.Lifecycles,
@@ -591,7 +592,7 @@ func buildTestDetailsQuery(
 
 	jobRunFailuresFilter := "WHERE adjusted_success_val = 0 AND adjusted_flake_count = 0"
 	if isSample && len(c.Lifecycles) > 0 {
-		jobRunFailuresFilter += ` AND COALESCE(NULLIF(lifecycle, ''), 'blocking') IN UNNEST(@FailureLifecycles)`
+		jobRunFailuresFilter += fmt.Sprintf(` AND COALESCE(NULLIF(lifecycle, ''), '%s') IN UNNEST(@FailureLifecycles)`, defaultLifecycle)
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "FailureLifecycles",
 			Value: c.Lifecycles,
@@ -621,10 +622,10 @@ func buildTestDetailsQuery(
 						SUM(adjusted_flake_count) AS flake_count,
 						ANY_VALUE(agg_labels.job_labels) AS job_labels,
 						ANY_VALUE(agg_failures.job_run_test_failure_count) AS job_run_test_failure_count,
-						COALESCE(NULLIF(ANY_VALUE(lifecycle), ''), 'blocking') AS lifecycle,
+						COALESCE(NULLIF(ANY_VALUE(lifecycle), ''), '%s') AS lifecycle,
 					FROM deduped_testcases junit
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, withClause, selectVariants)
+`, withClause, selectVariants, defaultLifecycle)
 
 	queryString += jobLabelsJoin
 	queryString += jobRunFailuresJoin
@@ -659,7 +660,7 @@ func buildTestDetailsQuery(
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)
 		if len(c.Lifecycles) > 0 {
-			queryString += ` AND COALESCE(NULLIF(junit.lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)`
+			queryString += fmt.Sprintf(` AND COALESCE(NULLIF(junit.lifecycle, ''), '%s') IN UNNEST(@Lifecycles)`, defaultLifecycle)
 			commonParams = append(commonParams, bigquery.QueryParameter{
 				Name:  "Lifecycles",
 				Value: c.Lifecycles,
