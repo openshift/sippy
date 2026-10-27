@@ -2,6 +2,7 @@
 package componentreadiness
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -1925,3 +1926,75 @@ func TestGetNewCellStatusOrderIndependent(t *testing.T) {
 
 // TestCopyIncludeVariantsAndRemoveOverrides moved to dataprovider/bigquery package
 // where the function now lives.
+
+func TestGetCacheKeySpotCheckSamples(t *testing.T) {
+	now := time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC)
+	sample := func(name string, days int, variants map[string][]string) reqopts.SpotCheckJobSampleOpts {
+		return reqopts.SpotCheckJobSampleOpts{
+			Name:            name,
+			Release:         reqopts.Release{Name: "5.0", Start: now.AddDate(0, 0, -days), End: now},
+			IncludeVariants: variants,
+		}
+	}
+	keyFor := func(samples ...reqopts.SpotCheckJobSampleOpts) string {
+		generator := &ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{SpotCheckJobSamples: samples}}
+		key, err := json.Marshal(generator.GetCacheKey())
+		assert.NoError(t, err)
+		return string(key)
+	}
+	tier30 := map[string][]string{"JobTier": {"spotcheck-30d"}}
+
+	baseline := keyFor(sample("spotcheck-30d", 30, tier30))
+
+	tests := []struct {
+		name      string
+		samples   []reqopts.SpotCheckJobSampleOpts
+		wantMatch bool
+	}{
+		{
+			name:    "different window",
+			samples: []reqopts.SpotCheckJobSampleOpts{sample("spotcheck-30d", 7, tier30)},
+		},
+		{
+			name:    "different tier filter",
+			samples: []reqopts.SpotCheckJobSampleOpts{sample("spotcheck-30d", 30, map[string][]string{"JobTier": {"spotcheck-7d"}})},
+		},
+		{
+			name:    "spot-check disabled",
+			samples: nil,
+		},
+		{
+			name:      "identical configuration",
+			samples:   []reqopts.SpotCheckJobSampleOpts{sample("spotcheck-30d", 30, tier30)},
+			wantMatch: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := keyFor(tc.samples...)
+			if tc.wantMatch {
+				assert.Equal(t, baseline, got)
+			} else {
+				assert.NotEqual(t, baseline, got)
+			}
+		})
+	}
+
+	t.Run("sample and variant order do not change the key", func(t *testing.T) {
+		a := keyFor(
+			sample("a", 30, map[string][]string{"JobTier": {"x", "y"}}),
+			sample("b", 7, map[string][]string{"JobTier": {"z"}}),
+		)
+		b := keyFor(
+			sample("b", 7, map[string][]string{"JobTier": {"z"}}),
+			sample("a", 30, map[string][]string{"JobTier": {"y", "x"}}),
+		)
+		assert.Equal(t, a, b)
+	})
+
+	t.Run("normalizing does not reorder the caller's variants", func(t *testing.T) {
+		variants := map[string][]string{"JobTier": {"y", "x"}}
+		keyFor(sample("a", 30, variants))
+		assert.Equal(t, []string{"y", "x"}, variants["JobTier"])
+	})
+}

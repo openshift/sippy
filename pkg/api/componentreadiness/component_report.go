@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -200,6 +201,8 @@ type GeneratorCacheKey struct {
 	TestIDOptions   []reqopts.TestIdentification
 	IncludeAllTests bool   `json:"include_all_tests,omitempty"`
 	DataSource      string `json:",omitempty"`
+	// SpotCheckJobSamples changes which windows and job tiers are queried, so it must distinguish cached results.
+	SpotCheckJobSamples []reqopts.SpotCheckJobSampleOpts `json:"spot_check_job_samples,omitempty"`
 }
 
 // GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -216,6 +219,8 @@ func (c *ComponentReportGenerator) GetCacheKey() GeneratorCacheKey {
 		TestIDOptions:   c.ReqOptions.TestIDOptions,
 		IncludeAllTests: c.ReqOptions.IncludeAllTests,
 		DataSource:      c.ReqOptions.DataSource,
+
+		SpotCheckJobSamples: normalizeSpotCheckSamples(c.ReqOptions.SpotCheckJobSamples),
 	}
 
 	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
@@ -247,6 +252,32 @@ func (c *ComponentReportGenerator) GetCacheKey() GeneratorCacheKey {
 	}
 
 	return cacheKey
+}
+
+// normalizeSpotCheckSamples returns a copy of the samples ordered by name with sorted variant values,
+// so equivalent configurations produce the same cache key. Views hold samples in a map, so their
+// order is otherwise random. The input is copied because callers share the underlying slices and maps.
+func normalizeSpotCheckSamples(samples []reqopts.SpotCheckJobSampleOpts) []reqopts.SpotCheckJobSampleOpts {
+	if len(samples) == 0 {
+		return nil
+	}
+	normalized := make([]reqopts.SpotCheckJobSampleOpts, len(samples))
+	for i, sample := range samples {
+		normalized[i] = sample
+		if sample.IncludeVariants == nil {
+			continue
+		}
+		normalized[i].IncludeVariants = make(map[string][]string, len(sample.IncludeVariants))
+		for name, values := range sample.IncludeVariants {
+			sortedValues := slices.Clone(values)
+			slices.Sort(sortedValues)
+			normalized[i].IncludeVariants[name] = sortedValues
+		}
+	}
+	slices.SortFunc(normalized, func(a, b reqopts.SpotCheckJobSampleOpts) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return normalized
 }
 
 // CacheVariants is used only in the cache key, not in the actual report.
