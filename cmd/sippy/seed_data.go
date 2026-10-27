@@ -1705,7 +1705,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 			TargetVersions:  pq.StringArray{"4.22"},
 			Components:      pq.StringArray{"Installer"},
 			Labels:          pq.StringArray{"ci-test-failure"},
-			URL:             "https://issues.redhat.com/browse/OCPBUGS-40001",
+			URL:             "https://redhat.atlassian.net/browse/OCPBUGS-40001",
 			Tests:           []models.Test{installTest},
 		},
 		{
@@ -1717,7 +1717,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 			TargetVersions:  pq.StringArray{"4.22"},
 			Components:      pq.StringArray{"Networking"},
 			Labels:          pq.StringArray{"ci-test-failure"},
-			URL:             "https://issues.redhat.com/browse/OCPBUGS-40002",
+			URL:             "https://redhat.atlassian.net/browse/OCPBUGS-40002",
 			Tests:           []models.Test{networkTest},
 		},
 		{
@@ -1730,7 +1730,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 			TargetVersions:  pq.StringArray{"4.22"},
 			Components:      pq.StringArray{"etcd"},
 			Labels:          pq.StringArray{"ci-test-failure"},
-			URL:             "https://issues.redhat.com/browse/OCPBUGS-40003",
+			URL:             "https://redhat.atlassian.net/browse/OCPBUGS-40003",
 			Tests:           []models.Test{etcdTest},
 			Jobs:            []models.ProwJob{awsJob},
 		},
@@ -1743,7 +1743,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 			TargetVersions:  pq.StringArray{"4.22"},
 			Components:      pq.StringArray{"etcd"},
 			Labels:          pq.StringArray{"release-blocker"},
-			URL:             "https://issues.redhat.com/browse/OCPBUGS-40004",
+			URL:             "https://redhat.atlassian.net/browse/OCPBUGS-40004",
 			ReleaseBlocker:  "Accepted",
 			Tests:           []models.Test{etcdTest},
 		},
@@ -1756,7 +1756,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 			TargetVersions:  pq.StringArray{"4.22"},
 			Components:      pq.StringArray{"Node"},
 			Labels:          pq.StringArray{"ci-test-failure"},
-			URL:             "https://issues.redhat.com/browse/OCPBUGS-40005",
+			URL:             "https://redhat.atlassian.net/browse/OCPBUGS-40005",
 			Tests:           []models.Test{memoryTest},
 		},
 	}
@@ -1783,7 +1783,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 	// Triage 1: network test regression (single view)
 	if regs, ok := regressionsByTest["[sig-network] Services should serve endpoints on same port and different protocol"]; ok && len(regs) > 0 {
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/OCPBUGS-40002",
+			URL:         "https://redhat.atlassian.net/browse/OCPBUGS-40002",
 			Description: "Network endpoint regression under investigation",
 			Type:        models.TriageTypeCIInfra,
 			BugID:       &bugs[1].ID,
@@ -1797,7 +1797,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 	// Triage 2: etcd test regression (single view)
 	if regs, ok := regressionsByTest["[sig-etcd] etcd leader changes are not excessive"]; ok && len(regs) > 0 {
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/OCPBUGS-40003",
+			URL:         "https://redhat.atlassian.net/browse/OCPBUGS-40003",
 			Description: "Etcd leader changes causing instability",
 			Type:        models.TriageTypeProduct,
 			BugID:       &bugs[2].ID,
@@ -1813,7 +1813,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 	// and the cross-compare view (arm64 vs amd64).
 	if regs, ok := regressionsByTest["[sig-node] Memory management should handle large allocations"]; ok && len(regs) > 0 {
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/OCPBUGS-40005",
+			URL:         "https://redhat.atlassian.net/browse/OCPBUGS-40005",
 			Description: "arm64 memory allocation regression across views",
 			Type:        models.TriageTypeProduct,
 			BugID:       &bugs[4].ID,
