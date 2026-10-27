@@ -2,10 +2,13 @@
 
 Spot-check jobs let Component Readiness show signal from jobs that run too
 rarely, or are too specialized, for the normal statistical comparison. Examples
-are a job for one install configuration or one stable feature that runs about
-once a month. Each such job is owned by a component and a capability, and the
+are a job for one install configuration or one stable feature that runs weekly or
+monthly. Each such job is owned by a component and a capability, and the
 only requirement is that it passes at least once in a sample window. A job that
 keeps failing turns that component and capability red.
+
+In the future an automated process may retry monthly jobs to see if we can get 
+a pass. For now, most spot check jobs are run weekly.
 
 Spot-check analysis is implemented for PostgreSQL only. The BigQuery data
 provider returns no spot-check results, so views served from BigQuery simply
@@ -41,10 +44,9 @@ spot_check_job_samples:
 ```
 
 The sample window is independent of the view's ordinary sample window (7 days
-in the example view), and the release is inherited from the view's sample
-release. `include_variants` selects which jobs belong to the sample. A view
-with no `spot_check_job_samples` has spot-check disabled, both in the API and
-in the background regression cache loader.
+in the example view). `include_variants` selects which jobs belong to the
+sample. A view with no `spot_check_job_samples` has spot-check disabled, both
+in the API and in the background regression cache loader.
 
 ## How results are produced
 
