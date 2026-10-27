@@ -34,8 +34,11 @@ const (
 	partitionedTableProwJobRunTestsOutputs                    = "prow_job_run_test_outputs"
 	partitionedTableTestDailyTotals                           = "test_daily_totals"
 	partitionedTableTestCumulativeSummaries                   = "test_cumulative_summaries"
-	partitionRetentionDays                                    = 365
 )
+
+// DefaultPartitionRetentionDays is the age threshold used when cleaning up
+// managed PostgreSQL partitions.
+const DefaultPartitionRetentionDays = 365
 
 type DB struct {
 	DB *gorm.DB
@@ -402,8 +405,8 @@ func (d *DB) DropDetachedPartitions(retentionDays int, dryRun bool) (int, error)
 }
 
 // CleanupPartitions performs the full partition lifecycle cleanup:
-// 1. Detaches partitions older than partitionRetentionDays
-// 2. Drops detached partitions older than partitionRetentionDays
+// 1. Detaches partitions older than DefaultPartitionRetentionDays
+// 2. Drops detached partitions older than DefaultPartitionRetentionDays
 //
 // Detached partitions could be held and reattached if needed, but no holding
 // period is configured by default.
@@ -416,14 +419,14 @@ func (d *DB) CleanupPartitions(dryRun bool) (detached, dropped int, err error) {
 	log.Info("Starting partition cleanup...")
 
 	// First, detach old attached partitions.
-	detached, err = d.DetachOldPartitions(partitionRetentionDays, dryRun)
+	detached, err = d.DetachOldPartitions(DefaultPartitionRetentionDays, dryRun)
 	if err != nil {
 		return detached, dropped, fmt.Errorf("failed to detach old partitions: %w", err)
 	}
 	log.Infof("Detached %d old partitions", detached)
 
 	// Then, drop old detached partitions
-	dropped, err = d.DropDetachedPartitions(partitionRetentionDays, dryRun)
+	dropped, err = d.DropDetachedPartitions(DefaultPartitionRetentionDays, dryRun)
 	if err != nil {
 		return detached, dropped, fmt.Errorf("failed to drop detached partitions: %w", err)
 	}

@@ -821,6 +821,137 @@ func TestCarryForwardCatchesUpMultipleMissedDays(t *testing.T) {
 	assert.Equal(t, int64(0), count, "should not have data beyond tomorrow")
 }
 
+func TestCarryForwardPrunesUnchangedCumulativeSummaries(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+
+	d := civil.Date{Year: 2026, Month: 7, Day: 15}
+	sourceDate := d.AddDays(1)
+	targetDate := d.AddDays(2)
+	presubmitCutoff := sourceDate.AddDays(-90)
+	releaseCutoff := sourceDate.AddDays(-(db.DefaultPartitionRetentionDays - 1))
+	var summaries []models.TestCumulativeSummary
+	addSummary := func(release string, date civil.Date, testID uint, runs, successes int64) {
+		summaries = append(summaries, models.TestCumulativeSummary{
+			Release:            release,
+			Date:               date,
+			TestID:             testID,
+			ProwJobID:          testID + 1000,
+			Lifecycle:          "blocking",
+			PrefixSumRuns:      runs,
+			PrefixSumSuccesses: successes,
+		})
+	}
+
+	// Presubmits key 1 has an unchanged run sum, even though another prefix
+	// value differs. Pruning must use prefix_sum_runs only and include both ends.
+	addSummary("Presubmits", presubmitCutoff.AddDays(-1), 1, 7, 1)
+	addSummary("Presubmits", presubmitCutoff, 1, 7, 1)
+	addSummary("Presubmits", d, 1, 7, 3)
+	addSummary("Presubmits", sourceDate, 1, 7, 5)
+
+	// A changed run sum keeps the key and carries it to the target date.
+	addSummary("Presubmits", presubmitCutoff, 2, 4, 4)
+	addSummary("Presubmits", sourceDate, 2, 5, 5)
+
+	// This old Presubmits row is outside the 90-day window. A source-date row
+	// with no baseline is compared against zero.
+	addSummary("Presubmits", sourceDate.AddDays(-100), 3, 0, 0)
+	addSummary("5.0", sourceDate, 13, 0, 0)
+
+	// Other releases prune from the oldest partition retained by cleanup.
+	addSummary("5.0", releaseCutoff.AddDays(-1), 11, 3, 1)
+	addSummary("5.0", releaseCutoff, 11, 3, 1)
+	addSummary("5.0", d, 11, 3, 1)
+	addSummary("5.0", sourceDate, 11, 3, 1)
+	addSummary("5.0", releaseCutoff, 12, 4, 4)
+	addSummary("5.0", sourceDate, 12, 5, 5)
+	require.NoError(t, dbc.DB.Create(&summaries).Error)
+
+	carryForward(t, dbc, sourceDate, []string{"Presubmits", "5.0"})
+
+	countFor := func(release string, testID uint, date civil.Date) int64 {
+		t.Helper()
+		var count int64
+		require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).
+			Where("release = ? AND test_id = ? AND date = ?", release, testID, date).
+			Count(&count).Error)
+		return count
+	}
+	countInRange := func(release string, testID uint, start, end civil.Date) int64 {
+		t.Helper()
+		var count int64
+		require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).
+			Where("release = ? AND test_id = ? AND date BETWEEN ? AND ?", release, testID, start, end).
+			Count(&count).Error)
+		return count
+	}
+
+	assert.Equal(t, int64(1), countFor("Presubmits", 1, presubmitCutoff.AddDays(-1)))
+	assert.Equal(t, int64(0), countInRange("Presubmits", 1, presubmitCutoff, sourceDate))
+	assert.Equal(t, int64(0), countFor("Presubmits", 1, targetDate))
+	assert.Equal(t, int64(1), countFor("Presubmits", 3, sourceDate.AddDays(-100)), "older Presubmits rows are outside the 90-day window")
+	assert.Equal(t, int64(0), countFor("Presubmits", 3, targetDate), "a missing source key must not be carried")
+
+	assert.Equal(t, int64(1), countFor("Presubmits", 2, presubmitCutoff))
+	assert.Equal(t, int64(1), countFor("Presubmits", 2, sourceDate))
+	var changedSummary models.TestCumulativeSummary
+	require.NoError(t, dbc.DB.Where("release = ? AND test_id = ? AND date = ?", "Presubmits", 2, targetDate).First(&changedSummary).Error)
+	assert.Equal(t, int64(5), changedSummary.PrefixSumRuns)
+
+	assert.Equal(t, int64(1), countFor("5.0", 11, releaseCutoff.AddDays(-1)))
+	assert.Equal(t, int64(0), countInRange("5.0", 11, releaseCutoff, sourceDate))
+	assert.Equal(t, int64(0), countFor("5.0", 11, targetDate))
+	assert.Equal(t, int64(0), countFor("5.0", 13, sourceDate), "a zero-valued source key with no baseline is stale")
+	assert.Equal(t, int64(1), countFor("5.0", 12, releaseCutoff))
+	assert.Equal(t, int64(1), countFor("5.0", 12, sourceDate))
+	assert.Equal(t, int64(1), countFor("5.0", 12, targetDate))
+}
+
+func TestCarryForwardUsesCurrentDateForPruningBaseline(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+
+	currentDate := civil.Date{Year: 2026, Month: 7, Day: 16}
+	sourceDate := currentDate.AddDays(-1)
+	baselineDate := currentDate.AddDays(-90)
+	targetDate := currentDate.AddDays(1)
+	summaries := []models.TestCumulativeSummary{
+		{Release: "Presubmits", Date: baselineDate, TestID: 1, ProwJobID: 1001, Lifecycle: "blocking", PrefixSumRuns: 7},
+		{Release: "Presubmits", Date: sourceDate, TestID: 1, ProwJobID: 1001, Lifecycle: "blocking", PrefixSumRuns: 7},
+	}
+	require.NoError(t, dbc.DB.Create(&summaries).Error)
+
+	carryForward(t, dbc, currentDate, []string{"Presubmits"})
+
+	for _, date := range []civil.Date{baselineDate, sourceDate, currentDate, targetDate} {
+		var count int64
+		require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).
+			Where("release = ? AND test_id = ? AND date = ?", "Presubmits", 1, date).
+			Count(&count).Error)
+		assert.Zero(t, count, "unchanged key should be removed using currentDate's baseline")
+	}
+}
+
+func TestCarryForwardSkipsPruningWhenAlreadyUpToDate(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+
+	currentDate := civil.Date{Year: 2026, Month: 7, Day: 16}
+	baselineDate := currentDate.AddDays(-(db.DefaultPartitionRetentionDays - 1))
+	tomorrow := currentDate.AddDays(1)
+	summaries := []models.TestCumulativeSummary{
+		{Release: "5.0", Date: baselineDate, TestID: 1, ProwJobID: 1001, Lifecycle: "blocking", PrefixSumRuns: 7},
+		{Release: "5.0", Date: tomorrow, TestID: 1, ProwJobID: 1001, Lifecycle: "blocking", PrefixSumRuns: 7},
+	}
+	require.NoError(t, dbc.DB.Create(&summaries).Error)
+
+	carryForward(t, dbc, currentDate, []string{"5.0"})
+
+	var count int64
+	require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).
+		Where("release = ? AND test_id = ? AND date BETWEEN ? AND ?", "5.0", 1, baselineDate, tomorrow).
+		Count(&count).Error)
+	assert.Equal(t, int64(2), count, "pruning should only run when carry-forward adds dates")
+}
+
 func TestCarryForwardErrorsWhenNoDataWithinLookback(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
