@@ -38,6 +38,7 @@ import {
 } from '../helpers'
 import { Link } from 'react-router'
 import { StringParam, useQueryParam } from 'use-query-params'
+import { styled } from '@mui/material/styles'
 import { TEST_THRESHOLDS } from '../constants'
 import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
@@ -55,6 +56,56 @@ import SummaryCard from '../components/SummaryCard'
 import TestPassRateCharts from './TestPassRateCharts'
 import TestRegressionsTable from './TestRegressionsTable'
 import TestTable from './TestTable'
+
+const HistoryButtonGroup = styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  display: 'flex',
+  gap: theme.spacing(1),
+}))
+
+function HistoryButtons({ release, testName, variantFilters }) {
+  const buttons = [
+    {
+      label: 'Run History',
+      path: pathForJobRunsWithTestHistory(release, testName, variantFilters),
+      color: 'primary',
+      tooltip:
+        'All runs of this test across the available lookback (up to 90 days), without date filtering',
+    },
+    {
+      label: 'Failure History',
+      path: pathForJobRunsWithTestFailureHistory(
+        release,
+        testName,
+        variantFilters
+      ),
+      color: 'error',
+      tooltip:
+        'Failed runs of this test across the available lookback (up to 90 days), without date filtering',
+    },
+  ]
+
+  return buttons.map((btn) => (
+    <Tooltip key={btn.label} title={btn.tooltip}>
+      <Button
+        component={Link}
+        to={withSort(btn.path, 'timestamp', 'desc')}
+        size="small"
+        variant="outlined"
+        color={btn.color}
+        startIcon={<History />}
+      >
+        {btn.label}
+      </Button>
+    </Tooltip>
+  ))
+}
+
+HistoryButtons.propTypes = {
+  release: PropTypes.string.isRequired,
+  testName: PropTypes.string.isRequired,
+  variantFilters: PropTypes.object.isRequired,
+}
 
 export function TestAnalysis({ test: testProp = '', ...props }) {
   const [isLoaded, setLoaded] = React.useState(false)
@@ -145,56 +196,15 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
           {fetchError}
         </Alert>
         {testNotFound && testName && (
-          <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-            <Tooltip title="All runs of this test across the available lookback (up to 90 days), without date filtering">
-              <Button
-                component={Link}
-                to={withSort(
-                  pathForJobRunsWithTestHistory(props.release, testName, {
-                    items: [
-                      ...filterModel.items.filter(
-                        (f) => f.field === 'variants'
-                      ),
-                    ],
-                  }),
-                  'timestamp',
-                  'desc'
-                )}
-                size="small"
-                variant="outlined"
-                color="primary"
-                startIcon={<History />}
-              >
-                Run History
-              </Button>
-            </Tooltip>
-            <Tooltip title="Failed runs of this test across the available lookback (up to 90 days), without date filtering">
-              <Button
-                component={Link}
-                to={withSort(
-                  pathForJobRunsWithTestFailureHistory(
-                    props.release,
-                    testName,
-                    {
-                      items: [
-                        ...filterModel.items.filter(
-                          (f) => f.field === 'variants'
-                        ),
-                      ],
-                    }
-                  ),
-                  'timestamp',
-                  'desc'
-                )}
-                size="small"
-                variant="outlined"
-                color="error"
-                startIcon={<History />}
-              >
-                Failure History
-              </Button>
-            </Tooltip>
-          </Box>
+          <HistoryButtonGroup>
+            <HistoryButtons
+              release={props.release}
+              testName={testName}
+              variantFilters={{
+                items: filterModel.items.filter((f) => f.field === 'variants'),
+              }}
+            />
+          </HistoryButtonGroup>
         )}
       </Fragment>
     )
@@ -396,54 +406,15 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
                   Flaked Runs ({test.current_flakes})
                 </Button>
 
-                <Tooltip title="All runs of this test across the available lookback (up to 90 days), without date filtering">
-                  <Button
-                    component={Link}
-                    to={withSort(
-                      pathForJobRunsWithTestHistory(props.release, testName, {
-                        items: [
-                          ...filterModel.items.filter(
-                            (f) => f.field === 'variants'
-                          ),
-                        ],
-                      }),
-                      'timestamp',
-                      'desc'
-                    )}
-                    size="small"
-                    variant="outlined"
-                    color="primary"
-                    startIcon={<History />}
-                  >
-                    Run History
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Failed runs of this test across the available lookback (up to 90 days), without date filtering">
-                  <Button
-                    component={Link}
-                    to={withSort(
-                      pathForJobRunsWithTestFailureHistory(
-                        props.release,
-                        testName,
-                        {
-                          items: [
-                            ...filterModel.items.filter(
-                              (f) => f.field === 'variants'
-                            ),
-                          ],
-                        }
-                      ),
-                      'timestamp',
-                      'desc'
-                    )}
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    startIcon={<History />}
-                  >
-                    Failure History
-                  </Button>
-                </Tooltip>
+                <HistoryButtons
+                  release={props.release}
+                  testName={testName}
+                  variantFilters={{
+                    items: filterModel.items.filter(
+                      (f) => f.field === 'variants'
+                    ),
+                  }}
+                />
 
                 <div className="test-hero-spacer" />
 
