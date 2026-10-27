@@ -4349,6 +4349,58 @@ periodic-ci-lightspeed-core-lcs-load-generator-main-lcs-load-test-100users:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-medik8s-fence-agents-remediation-main-5.0-e2e-system-tests-far-fbc-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-medik8s-fence-agents-remediation-main-5.0-e2e-system-tests-far-upstream-pr-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-medik8s-fence-agents-remediation-medik8s-5.8-5.0-e2e-system-tests-far-daily-aws:
     Aggregation: none
     Architecture: amd64
@@ -4373,6 +4425,58 @@ periodic-ci-medik8s-fence-agents-remediation-medik8s-5.8-5.0-e2e-system-tests-fa
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-medik8s-machine-deletion-remediation-main-5.0-e2e-system-tests-mdr-fbc-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-medik8s-machine-deletion-remediation-main-5.0-e2e-system-tests-mdr-upstream-pr-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-medik8s-machine-deletion-remediation-medik8s-5.8-5.0-e2e-system-tests-mdr-daily-aws:
     Aggregation: none
     Architecture: amd64
@@ -4397,6 +4501,58 @@ periodic-ci-medik8s-machine-deletion-remediation-medik8s-5.8-5.0-e2e-system-test
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-medik8s-node-healthcheck-operator-main-5.0-e2e-system-tests-nhc-fbc-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-medik8s-node-healthcheck-operator-main-5.0-e2e-system-tests-nhc-upstream-pr-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-medik8s-node-healthcheck-operator-medik8s-5.8-5.0-e2e-system-tests-nhc-daily-aws:
     Aggregation: none
     Architecture: amd64
@@ -4421,6 +4577,58 @@ periodic-ci-medik8s-node-healthcheck-operator-medik8s-5.8-5.0-e2e-system-tests-n
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-medik8s-node-maintenance-operator-main-5.0-e2e-system-tests-nmo-fbc-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-medik8s-node-maintenance-operator-main-5.0-e2e-system-tests-nmo-upstream-pr-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-medik8s-node-maintenance-operator-medik8s-5.8-5.0-e2e-system-tests-nmo-daily-aws:
     Aggregation: none
     Architecture: amd64
@@ -4445,6 +4653,58 @@ periodic-ci-medik8s-node-maintenance-operator-medik8s-5.8-5.0-e2e-system-tests-n
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-medik8s-self-node-remediation-main-5.0-e2e-system-tests-snr-fbc-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-medik8s-self-node-remediation-main-5.0-e2e-system-tests-snr-upstream-pr-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-medik8s-self-node-remediation-medik8s-5.8-5.0-e2e-system-tests-snr-daily-aws:
     Aggregation: none
     Architecture: amd64
@@ -4469,6 +4729,58 @@ periodic-ci-medik8s-self-node-remediation-medik8s-5.8-5.0-e2e-system-tests-snr-d
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-medik8s-storage-based-remediation-main-5.0-e2e-system-tests-sbr-fbc-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
+periodic-ci-medik8s-storage-based-remediation-main-5.0-e2e-system-tests-sbr-upstream-pr-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.0"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "0"
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-medik8s-storage-based-remediation-medik8s-5.8-5.0-e2e-system-tests-sbr-daily-aws-odf:
     Aggregation: none
     Architecture: amd64
@@ -42496,7 +42808,7 @@ periodic-ci-openshift-hypershift-release-5.0-periodics-mce-e2e-ibmz-s390x-mgmt-o
     Suite: parallel
     Topology: external
     Upgrade: none
-periodic-ci-openshift-hypershift-release-5.0-periodics-mce-e2e-ibmz-s390x-mgmt-ovn-conformance-virt:
+periodic-ci-openshift-hypershift-release-5.0-periodics-mce-e2e-ibmz-s390x-mgmt-ovn-conformance-virt-oz:
     Aggregation: none
     Architecture: s390x
     CGroupMode: v2
@@ -42517,29 +42829,6 @@ periodic-ci-openshift-hypershift-release-5.0-periodics-mce-e2e-ibmz-s390x-mgmt-o
     Scheduler: default
     SecurityMode: default
     Suite: parallel
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-hypershift-release-5.0-periodics-mce-e2e-ibmz-s390x-mgmt-ovn-openshifte2e-virt:
-    Aggregation: none
-    Architecture: s390x
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: candidate
-    LayeredProduct: virt
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
     Topology: external
     Upgrade: none
 periodic-ci-openshift-hypershift-release-5.0-periodics-mce-e2e-kubevirt-aws-ovn-gpu:
@@ -184597,30 +184886,6 @@ periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-azure-a
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-azure-aks-hypershift-etcd-disk-encryption-guest-f7:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: qe
-    Platform: azure
-    Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
 periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-azure-aks-hypershift-ext-oidc-tp-guest-f14:
     Aggregation: none
     Architecture: amd64
@@ -199280,30 +199545,6 @@ periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-azure-ak
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-azure-aks-hypershift-etcd-disk-encryption-guest-f7:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: qe
-    Platform: azure
-    Procedure: none
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
 periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-azure-aks-hypershift-ext-oidc-tp-guest-f14:
     Aggregation: none
     Architecture: amd64
@@ -212242,30 +212483,6 @@ periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-azure-ak
     Topology: external
     Upgrade: none
 periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-azure-aks-hypershift-ephemeral-creds-guest-f7:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: qe
-    Platform: azure
-    Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-azure-aks-hypershift-etcd-disk-encryption-guest-f7:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -337166,6 +337383,30 @@ periodic-ci-openshift-rhwa-system-tests-main-5.0-disconnected-e2e-snr-weekly-aws
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-far-daily-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-far-nhc-interop-weekly-aws:
     Aggregation: none
     Architecture: amd64
@@ -337214,7 +337455,55 @@ periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-far-weekly-aws:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-mdr-daily-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-mdr-weekly-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-nhc-daily-aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -337262,7 +337551,55 @@ periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-nhc-weekly-aws:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-nmo-daily-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-nmo-weekly-aws:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-sbr-daily-aws-odf:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -337311,6 +337648,30 @@ periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-sbr-weekly-aws-efs:
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-sbr-weekly-aws-odf:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-rhwa-system-tests-main-5.0-konflux-e2e-snr-daily-aws:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
