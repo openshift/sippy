@@ -113,6 +113,7 @@ func buildDrilldownFilters(reqOptions reqopts.RequestOptions) drilldownFilters {
 type testStatusSpec struct {
 	fromTemplate string // FROM clause template with one %s for the formatted prowJobJoin
 	fromArgs     []any  // args for FROM clause (before filterArgs)
+	suiteIDExpr  string // defaults to e.suite_id; raw rows need NULL normalized to zero
 	selectCols   string // the 4 aggregation column expressions (total_count through last_failure)
 	selectArgs   []any  // args for placeholders within selectCols (e.g., lookupEnd/lookupStart for CASE WHEN)
 	whereFilter  string // WHERE fragment like "e.release = ? AND e.date IN (?, ?)"
@@ -127,6 +128,10 @@ type testStatusSpec struct {
 // flake_count, last_failure.
 func buildInnerAggregation(spec testStatusSpec, prowJobJoin string, filterArgs []any, filters drilldownFilters) (string, []any) {
 	fromClause := fmt.Sprintf(spec.fromTemplate, prowJobJoin)
+	suiteIDExpr := spec.suiteIDExpr
+	if suiteIDExpr == "" {
+		suiteIDExpr = "e.suite_id"
+	}
 
 	lifecycleClause := ""
 	var lifecycleArgs []any
@@ -136,14 +141,16 @@ func buildInnerAggregation(spec testStatusSpec, prowJobJoin string, filterArgs [
 	}
 
 	innerSQL := fmt.Sprintf(`
-            SELECT e.test_id, e.suite_id, vg.group_id AS variant_group_id,
+            SELECT e.test_id, %s AS suite_id, vg.group_id AS variant_group_id,
                 %s
             %s
             WHERE %s%s%s
-            GROUP BY e.test_id, e.suite_id, vg.group_id%s`,
+            GROUP BY e.test_id, %s, vg.group_id%s`,
+		suiteIDExpr,
 		spec.selectCols,
 		fromClause,
 		spec.whereFilter, lifecycleClause, filters.innerClause,
+		suiteIDExpr,
 		spec.havingClause)
 
 	var args []any
@@ -358,6 +365,37 @@ func prefixSumSpec(release string, lookupEnd, lookupStart civil.Date, lifecycles
 	}
 }
 
+// prOrPayloadSampleSpec counts job-run tests selected by a pull request and/or
+// payload tags. Cumulative summaries do not retain that membership.
+// It uses the same status and infrastructure-failure rules as daily summaries.
+func prOrPayloadSampleSpec(sample reqopts.Release, runFilter string, runFilterArgs []any, lifecycles []string) testStatusSpec {
+	whereFilter := `e.prow_job_run_timestamp >= ? AND e.prow_job_run_timestamp < ?
+                AND pjr.timestamp >= ? AND pjr.timestamp < ?
+                AND e.deleted_at IS NULL AND pjr.deleted_at IS NULL
+                AND (pjr.labels IS NULL OR NOT (pjr.labels @> ARRAY['InfraFailure']))`
+	if runFilter != "" {
+		whereFilter += " AND " + runFilter
+	}
+	whereArgs := []any{sample.Start, sample.End, sample.Start, sample.End}
+	whereArgs = append(whereArgs, runFilterArgs...)
+
+	return testStatusSpec{
+		fromTemplate: `FROM prow_job_run_tests e
+            JOIN prow_job_runs pjr ON pjr.id = e.prow_job_run_id
+                AND pjr.prow_job_release = e.prow_job_run_release
+                AND pjr.timestamp = e.prow_job_run_timestamp
+            %s`,
+		suiteIDExpr: "COALESCE(e.suite_id, 0)",
+		selectCols: `COUNT(*) AS total_count,
+                COUNT(*) FILTER (WHERE e.status = 1) AS success_count,
+                COUNT(*) FILTER (WHERE e.status = 13) AS flake_count,
+                MAX(e.prow_job_run_timestamp) FILTER (WHERE e.status = 12) AS last_failure`,
+		whereFilter: whereFilter,
+		whereArgs:   whereArgs,
+		lifecycles:  lifecycles,
+	}
+}
+
 // queryTestStatusPrefixSum queries test_cumulative_summaries using CASE WHEN
 // on prefix sums to compute aggregated counts for a date range.
 func (p *PostgresProvider) queryTestStatusPrefixSum(
@@ -448,16 +486,26 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 		mergeCompareVariants(reqOptions, reqOptions.VariantOption.IncludeVariants), reqOptions)
 	baseIncludeVariants := mergeRequestedVariants(reqOptions.VariantOption.IncludeVariants, reqOptions)
 
-	sampleRelease := reqOptions.SampleRelease.Name
-	sampleRange := query.DateRange{
-		Start: civil.DateOf(reqOptions.SampleRelease.Start),
-		End:   civil.DateOf(reqOptions.SampleRelease.End).AddDays(1),
-	}
-	if err := query.ResolveDateRanges(p.dbc, sampleRelease, &sampleRange); err != nil {
+	sampleRunFilter, sampleRunArgs, err := buildSamplePullRequestAndPayloadRunFilter(
+		reqOptions.SampleRelease, reqOptions.SampleRelease.Start, reqOptions.SampleRelease.End,
+	)
+	if err != nil {
 		return nil, nil, []error{err}
 	}
-	sampleLookupEnd := sampleRange.End.AddDays(-1)
-	sampleLookupStart := sampleRange.Start.AddDays(-1)
+	var sampleSpec testStatusSpec
+	if sampleRunFilter != "" {
+		sampleSpec = prOrPayloadSampleSpec(reqOptions.SampleRelease, sampleRunFilter, sampleRunArgs, reqOptions.Lifecycles)
+	} else {
+		sampleRelease := reqOptions.SampleRelease.Name
+		sampleRange := query.DateRange{
+			Start: civil.DateOf(reqOptions.SampleRelease.Start),
+			End:   civil.DateOf(reqOptions.SampleRelease.End).AddDays(1),
+		}
+		if err := query.ResolveDateRanges(p.dbc, sampleRelease, &sampleRange); err != nil {
+			return nil, nil, []error{err}
+		}
+		sampleSpec = prefixSumSpec(sampleRelease, sampleRange.End.AddDays(-1), sampleRange.Start.AddDays(-1), reqOptions.Lifecycles)
+	}
 
 	baseRelease := reqOptions.BaseRelease.Name
 	baseRange := query.DateRange{
@@ -495,6 +543,18 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 		return map[string]crstatus.TestStatus{}, map[string]crstatus.TestStatus{}, nil
 	}
 
+	sampleReleases, lookupErr := findSampleReleases(
+		ctx, p.dbc.DB, reqOptions.SampleRelease, reqOptions.SampleRelease.Start, reqOptions.SampleRelease.End,
+	)
+	if lookupErr != nil {
+		return nil, nil, []error{lookupErr}
+	}
+	sampleReleaseFilter, sampleReleaseArgs := buildSampleRunReleasePartitionFilter(sampleReleases, "e")
+	if sampleReleaseFilter != "" {
+		sampleSpec.whereFilter += " AND " + sampleReleaseFilter
+		sampleSpec.whereArgs = append(sampleSpec.whereArgs, sampleReleaseArgs...)
+	}
+
 	mergedLookup := make(map[uint]map[string]string, len(sampleVF.lookup)+len(baseVF.lookup))
 	maps.Copy(mergedLookup, sampleVF.lookup)
 	maps.Copy(mergedLookup, baseVF.lookup)
@@ -504,7 +564,6 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 	sampleProwJobJoin := prowJobVariantJoin(sampleVF.variantSubquery)
 	baseProwJobJoin := prowJobVariantJoin(baseVF.variantSubquery)
 
-	sampleSpec := prefixSumSpec(sampleRelease, sampleLookupEnd, sampleLookupStart, reqOptions.Lifecycles)
 	sampleInnerSQL, sampleInnerArgs := buildInnerAggregation(sampleSpec, sampleProwJobJoin, sampleVF.filterArgs, filters)
 	sampleCTE, sampleCTEArgs := buildStatusCTE("sample_agg", sampleInnerSQL, sampleInnerArgs, "cm", filters)
 
