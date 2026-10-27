@@ -2,6 +2,8 @@ package bugloader
 
 import (
 	"context"
+	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -13,6 +15,9 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -167,6 +172,13 @@ func (bl *BugLoader) Load() {
 
 	if err := bl.loadIntoDB(bugs, testAssocs, jobAssocs); err != nil {
 		bl.addError(logger, err, "error loading bugs into database")
+		return
+	}
+	// Reconciliation runs outside the pgx bulk-load transaction so GORM
+	// audit hooks can fire. A partial failure here self-heals on the next
+	// bug-loader run because each candidate is re-evaluated independently.
+	if err := ReconcileTriages(bl.ctx, bl.dbc.DB); err != nil {
+		bl.addError(logger, err, "error reconciling triages")
 	}
 }
 
@@ -297,13 +309,11 @@ func (bl *BugLoader) loadIntoDB(bugs []bugRow, testAssocs, jobAssocs []assocRow)
 	if err := bl.syncJobAssociations(tx); err != nil {
 		return err
 	}
-	if err := bl.reconcileTriages(tx); err != nil {
-		return err
-	}
 
 	if err := tx.Commit(bl.ctx); err != nil {
 		return fmt.Errorf("committing transaction: %w", err)
 	}
+
 	return nil
 }
 
@@ -442,19 +452,22 @@ func (bl *BugLoader) syncJobAssociations(conn db.PgxSession) error {
 	return nil
 }
 
-func (bl *BugLoader) reconcileTriages(conn db.PgxSession) error {
-	return ReconcileTriages(bl.ctx, conn)
-}
+// ReconcileAuditUser is the attribution recorded in audit logs for automated
+// triage resolution changes made during bug-loader reconciliation.
+const ReconcileAuditUser = "bug-loader"
 
 // ReconcileTriages synchronizes triage resolution state with linked Jira bug
 // statuses. It updates descriptions from linked bugs, links triages to bug
 // records, auto-resolves single-release triages whose bugs have progressed,
 // and clears automatic jira-progression resolutions when the linked bug
-// returns to an open state.
-func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
+// returns to an open state. Resolution and un-resolution changes are recorded
+// in the triage audit history via GORM model hooks.
+func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	st := time.Now()
 
-	descTag, err := conn.Exec(ctx, `
+	dbWithContext := gormDB.WithContext(context.WithValue(ctx, models.CurrentUserKey, ReconcileAuditUser))
+
+	descResult := dbWithContext.Exec(`
 		UPDATE triages t
 		SET description = b.summary, updated_at = NOW()
 		FROM bugs b
@@ -464,11 +477,11 @@ func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 		  AND b.summary != ''
 		  AND b.summary != t.description
 	`)
-	if err != nil {
-		return fmt.Errorf("updating triage descriptions: %w", err)
+	if descResult.Error != nil {
+		return fmt.Errorf("updating triage descriptions: %w", descResult.Error)
 	}
 
-	linkTag, err := conn.Exec(ctx, `
+	linkResult := dbWithContext.Exec(`
 		UPDATE triages t
 		SET bug_id = b.id, updated_at = NOW()
 		FROM bugs b
@@ -477,62 +490,112 @@ func ReconcileTriages(ctx context.Context, conn db.PgxSession) error {
 		  AND t.url != ''
 		  AND (t.bug_id IS NULL OR t.bug_id != b.id)
 	`)
-	if err != nil {
-		return fmt.Errorf("linking triages to bugs: %w", err)
+	if linkResult.Error != nil {
+		return fmt.Errorf("linking triages to bugs: %w", linkResult.Error)
 	}
 
-	// Auto-resolve triages where the bug has progressed and the triage
-	// covers only a single release
 	resolvedBugStatuses := []string{
 		jiratype.StatusOnQA,
 		jiratype.StatusVerified,
 		jiratype.StatusReleasePending,
 		jiratype.StatusClosed,
 	}
-	resolveTag, err := conn.Exec(ctx, `
-		UPDATE triages t
-		SET resolved = NOW(), resolution_reason = $1, updated_at = NOW()
-		FROM bugs b
-		WHERE (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
-		  AND b.deleted_at IS NULL
+
+	// Auto-resolve triages where the bug has progressed and the triage
+	// covers only a single release.
+	var resolveCandidateIDs []uint
+	if err := dbWithContext.Raw(`
+		SELECT DISTINCT t.id
+		FROM triages t
+		JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
+		WHERE b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND t.resolved IS NULL
-		  AND b.status = ANY($2)
+		  AND b.status = ANY(?)
 		  AND (
 			SELECT COUNT(DISTINCT r.release)
 			FROM triage_regressions tr
 			INNER JOIN test_regressions r ON r.id = tr.test_regression_id
 			WHERE tr.triage_id = t.id
 		  ) = 1
-	`, string(models.JiraProgression), resolvedBugStatuses)
-	if err != nil {
-		return fmt.Errorf("auto-resolving triages: %w", err)
+	`, pq.Array(resolvedBugStatuses)).Scan(&resolveCandidateIDs).Error; err != nil {
+		return fmt.Errorf("finding auto-resolve candidates: %w", err)
+	}
+	resolveIDs := sets.New[uint](resolveCandidateIDs...)
+
+	var reconcileErrs []error
+	for _, id := range resolveIDs.UnsortedList() {
+		if err := dbWithContext.Transaction(func(tx *gorm.DB) error {
+			var triage models.Triage
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Preload("Regressions").First(&triage, id).Error; err != nil {
+				return err
+			}
+			if triage.Resolved.Valid {
+				return nil
+			}
+			triage.Resolved = sql.NullTime{Time: time.Now(), Valid: true}
+			triage.ResolutionReason = models.JiraProgression
+			return tx.Save(&triage).Error
+		}); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.WithField("triage_id", id).Warn("triage deleted before auto-resolve, skipping")
+				continue
+			}
+			log.WithError(err).WithField("triage_id", id).Error("auto-resolving triage")
+			reconcileErrs = append(reconcileErrs, fmt.Errorf("auto-resolving triage %d: %w", id, err))
+			continue
+		}
 	}
 
 	// Clear jira-progression resolutions when the linked bug returns to an
 	// open state. Only automatically set resolutions are reversed; manual
 	// (user) and regressions-rolled-off resolutions are never touched.
-	unresolveTag, err := conn.Exec(ctx, `
-		UPDATE triages t
-		SET resolved = NULL, resolution_reason = '', updated_at = NOW()
-		FROM bugs b
-		WHERE (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
-		  AND b.deleted_at IS NULL
+	var unresolveCandidateIDs []uint
+	if err := dbWithContext.Raw(`
+		SELECT DISTINCT t.id
+		FROM triages t
+		JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
+		WHERE b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND t.resolved IS NOT NULL
-		  AND t.resolution_reason = $1
-		  AND NOT (b.status = ANY($2))
-	`, string(models.JiraProgression), resolvedBugStatuses)
-	if err != nil {
-		return fmt.Errorf("clearing jira-progression resolutions: %w", err)
+		  AND t.resolution_reason = ?
+		  AND NOT (b.status = ANY(?))
+	`, string(models.JiraProgression), pq.Array(resolvedBugStatuses)).Scan(&unresolveCandidateIDs).Error; err != nil {
+		return fmt.Errorf("finding unresolve candidates: %w", err)
+	}
+	unresolveIDs := sets.New[uint](unresolveCandidateIDs...)
+
+	for _, id := range unresolveIDs.UnsortedList() {
+		if err := dbWithContext.Transaction(func(tx *gorm.DB) error {
+			var triage models.Triage
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Preload("Regressions").First(&triage, id).Error; err != nil {
+				return err
+			}
+			if !triage.Resolved.Valid || triage.ResolutionReason != models.JiraProgression {
+				return nil
+			}
+			triage.Resolved = sql.NullTime{}
+			triage.ResolutionReason = ""
+			return tx.Save(&triage).Error
+		}); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.WithField("triage_id", id).Warn("triage deleted before unresolve, skipping")
+				continue
+			}
+			log.WithError(err).WithField("triage_id", id).Error("clearing jira-progression resolution")
+			reconcileErrs = append(reconcileErrs, fmt.Errorf("unresolving triage %d: %w", id, err))
+			continue
+		}
 	}
 
 	log.WithFields(log.Fields{
-		"descriptions_updated": descTag.RowsAffected(),
-		"bugs_linked":          linkTag.RowsAffected(),
-		"auto_resolved":        resolveTag.RowsAffected(),
-		"auto_unresolved":      unresolveTag.RowsAffected(),
+		"descriptions_updated": descResult.RowsAffected,
+		"bugs_linked":          linkResult.RowsAffected,
+		"auto_resolved":        resolveIDs.Len(),
+		"auto_unresolved":      unresolveIDs.Len(),
 		"elapsed":              time.Since(st),
 	}).Info("triage reconciliation complete")
-	return nil
+	return stderrors.Join(reconcileErrs...)
 }
