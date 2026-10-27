@@ -3,8 +3,10 @@ package testconversion
 import (
 	"testing"
 
+	"github.com/openshift/sippy/pkg/apis/prow"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/types"
+	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/stretchr/testify/assert"
 )
@@ -177,6 +179,79 @@ func TestTestsToRawJobRunResult(t *testing.T) {
 			jrr := &v1.RawJobRunResult{}
 			testsToRawJobRunResult(jrr, tc.tests)
 			tc.validate(t, jrr)
+		})
+	}
+}
+
+// TestOpenShiftTestsShouldWorkAcrossJobStates guards the spot-check analyzer, which treats any passing
+// run of the synthetic test as healthy: runs that never completed must not produce a pass.
+func TestOpenShiftTestsShouldWorkAcrossJobStates(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    prow.ProwJobState
+		tests    []*types.TestCaseEntry
+		wantPass bool
+		wantFail bool
+	}{
+		{
+			name:     "successful job with passing tests",
+			state:    prow.SuccessState,
+			tests:    []*types.TestCaseEntry{success("openshift-tests", "[sig-apps] example test")},
+			wantPass: true,
+		},
+		{
+			name:  "successful job with only informing failures",
+			state: prow.SuccessState,
+			tests: []*types.TestCaseEntry{
+				success("openshift-tests", "[sig-apps] example test"),
+				failure("openshift-tests", "[sig-apps] informing test"),
+			},
+			wantPass: true,
+		},
+		{
+			name:     "successful job without any test results",
+			state:    prow.SuccessState,
+			wantPass: true,
+		},
+		{
+			name:     "failed job with failing tests",
+			state:    prow.FailureState,
+			tests:    []*types.TestCaseEntry{failure("openshift-tests", "[sig-apps] example test")},
+			wantFail: true,
+		},
+		{
+			name:  "failed job without test results",
+			state: prow.FailureState,
+		},
+		{
+			name:  "aborted job without test results",
+			state: prow.AbortedState,
+		},
+		{
+			name:  "errored job without test results",
+			state: prow.ErrorState,
+		},
+	}
+
+	manager := synthetictests.NewOpenshiftSyntheticTestManager()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			job := prow.ProwJob{Status: prow.ProwJobStatus{State: tc.state}}
+			suite, _ := ConvertProwJobRunToSyntheticTests(job, tc.tests, manager)
+
+			var gotPass, gotFail bool
+			for _, c := range suite.TestCases {
+				if c.Name != testidentification.OpenShiftTestsName {
+					continue
+				}
+				if c.FailureOutput != nil {
+					gotFail = true
+				} else {
+					gotPass = true
+				}
+			}
+			assert.Equal(t, tc.wantPass, gotPass, "synthetic test pass")
+			assert.Equal(t, tc.wantFail, gotFail, "synthetic test failure")
 		})
 	}
 }

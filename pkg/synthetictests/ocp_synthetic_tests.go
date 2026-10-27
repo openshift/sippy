@@ -149,7 +149,9 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 	switch {
 	case jrr.Failed && jrr.TestsStatus == testidentification.Failure:
 		syntheticTests[testidentification.OpenShiftTestsName].fail = 1
-	case !jrr.Failed:
+	// A job that passed overall counts even when informing tests failed. Aborted and errored runs
+	// are not Failed but never established success, so they must not count as a pass.
+	case jrr.TestsStatus == testidentification.Success || (jrr.Succeeded && !jrr.Failed):
 		syntheticTests[testidentification.OpenShiftTestsName].pass = 1
 	}
 
