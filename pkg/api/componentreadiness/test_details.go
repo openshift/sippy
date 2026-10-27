@@ -25,7 +25,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/spotcheckjobs"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
@@ -257,7 +256,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	if testIDOption.TestID == "" {
 		return testdetails.Report{}, []error{&api.ValidationError{Message: "test_id has to be defined for test details"}}
 	}
-	isSpotCheck := strings.HasPrefix(testIDOption.TestID, "spotcheck-")
+	isSpotCheck := crtest.IsSpotCheckTestID(testIDOption.TestID)
 	if !isSpotCheck {
 		for _, v := range sets.List(c.ReqOptions.VariantOption.DBGroupBy) {
 			if _, ok := testIDOption.RequestedVariants[v]; !ok {
@@ -471,10 +470,10 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 	var spotCheckMu sync.Mutex
 	var spotCheckDetails []map[string][]crstatus.TestDetailsSummary
 	for _, tOpt := range c.ReqOptions.TestIDOptions {
-		if !spotcheckjobs.IsSpotCheckTestID(tOpt.TestID) {
+		if !crtest.IsSpotCheckTestID(tOpt.TestID) {
 			continue
 		}
-		sampleName, _, _ := spotcheckjobs.ParseTestID(tOpt.TestID)
+		sampleName, _, _ := crtest.ParseSpotCheckTestID(tOpt.TestID)
 		for _, sample := range c.ReqOptions.SpotCheckJobSamples {
 			if sample.Name != sampleName {
 				continue

@@ -3,7 +3,6 @@ package spotcheckjobs
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
@@ -60,11 +59,11 @@ func (s *SpotCheckJobs) PreTestDetailsAnalysis(_ crtest.KeyWithVariants, _ *crst
 func (s *SpotCheckJobs) Analyze(testKey crtest.Identification,
 	testStats *testdetails.TestComparison) (bool, error) {
 
-	if !IsSpotCheckTestID(testKey.TestID) {
+	if !crtest.IsSpotCheckTestID(testKey.TestID) {
 		return false, nil
 	}
 
-	sampleName, _, _ := ParseTestID(testKey.TestID)
+	sampleName, _, _ := crtest.ParseSpotCheckTestID(testKey.TestID)
 	sample := s.findSample(sampleName)
 	sampleDays := 0
 	if sample != nil {
@@ -115,21 +114,4 @@ func (s *SpotCheckJobs) findSample(name string) *reqopts.SpotCheckJobSampleOpts 
 		}
 	}
 	return nil
-}
-
-// IsSpotCheckTestID returns true if the test ID was generated for a spot-check test.
-func IsSpotCheckTestID(testID string) bool {
-	return strings.HasPrefix(testID, "spotcheck-")
-}
-
-// ParseTestID extracts the sample name, component and capability from
-// a spot-check test ID. The format is "spotcheck-30d:component:capability".
-func ParseTestID(testID string) (string, string, string) {
-	parts := strings.SplitN(testID, ":", 3)
-	if len(parts) != 3 {
-		return "", "", ""
-	}
-	component := parts[1]
-	capability := strings.ReplaceAll(parts[2], "-", " ")
-	return parts[0], component, capability
 }

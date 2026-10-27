@@ -992,7 +992,7 @@ func (p *PostgresProvider) QuerySpotCheckTestStatus(
 
 	result := make(map[string]crstatus.TestStatus, len(groups))
 	for _, g := range groups {
-		testID := SpotCheckTestID(sampleName, g.component, g.capability)
+		testID := crtest.SpotCheckTestID(sampleName, g.component, g.capability)
 		testKey := crtest.KeyWithVariants{
 			TestID:   testID,
 			Variants: g.variants,
@@ -1001,7 +1001,7 @@ func (p *PostgresProvider) QuerySpotCheckTestStatus(
 
 		result[keyStr] = crstatus.TestStatus{
 			TestID:       testID,
-			TestName:     SpotCheckTestName(g.component, g.capability),
+			TestName:     crtest.SpotCheckTestName(g.component, g.capability),
 			Component:    g.component,
 			Capabilities: []string{g.capability},
 			Variants:     g.variants,
@@ -1099,7 +1099,7 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 
 	// Parse component and capability from the synthetic test ID to filter
 	// results to only the specific spot-check group being drilled into.
-	_, wantComponent, wantCapability := parseSpotCheckTestID(syntheticTestID)
+	_, wantComponent, wantCapability := crtest.ParseSpotCheckTestID(syntheticTestID)
 
 	result := map[string][]crstatus.TestDetailsSummary{}
 	for _, row := range rows {
@@ -1143,7 +1143,7 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 			TestKey:    testKey,
 			TestKeyStr: testKey.Encode(),
 			ProwJob:    normalizedName,
-			TestName:   SpotCheckTestName(jobVariants["Component"], jobVariants["Capability"]),
+			TestName:   crtest.SpotCheckTestName(jobVariants["Component"], jobVariants["Capability"]),
 			Stats:      crtest.NewTestStats(successCount, failCount, 0, false),
 			JobRuns: []crstatus.JobRunDetail{
 				{
@@ -1160,28 +1160,4 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 	}
 
 	return result, nil
-}
-
-// parseSpotCheckTestID extracts sample name, component, and capability from a
-// synthetic test ID like "spotcheck-30d:etcd:scaling".
-func parseSpotCheckTestID(testID string) (string, string, string) {
-	parts := strings.SplitN(testID, ":", 3)
-	if len(parts) != 3 {
-		return "", "", ""
-	}
-	return parts[0], parts[1], strings.ReplaceAll(parts[2], "-", " ")
-}
-
-// SpotCheckTestID creates a synthetic test ID for a spot-check component/capability group.
-func SpotCheckTestID(sampleName, component, capability string) string {
-	return fmt.Sprintf("%s:%s:%s",
-		sampleName,
-		strings.ToLower(component),
-		strings.ToLower(strings.ReplaceAll(capability, " ", "-")))
-}
-
-// SpotCheckTestName creates a display name for a spot-check test.
-func SpotCheckTestName(component, capability string) string {
-	return fmt.Sprintf("[spot-check] %s / %s job must pass at least once per sample window",
-		component, capability)
 }

@@ -11,52 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsSpotCheckTestID(t *testing.T) {
-	assert.True(t, IsSpotCheckTestID("spotcheck-30d:etcd:scaling"))
-	assert.False(t, IsSpotCheckTestID("openshift-tests:some-real-test"))
-	assert.False(t, IsSpotCheckTestID(""))
-}
-
-func TestParseTestID(t *testing.T) {
-	tests := []struct {
-		name           string
-		testID         string
-		wantSample     string
-		wantComponent  string
-		wantCapability string
-	}{
-		{
-			name:           "valid ID",
-			testID:         "spotcheck-30d:etcd:scaling",
-			wantSample:     "spotcheck-30d",
-			wantComponent:  "etcd",
-			wantCapability: "scaling",
-		},
-		{
-			name:           "capability with dashes becomes spaces",
-			testID:         "spotcheck-30d:node-/-kubelet:cpu-partitioning",
-			wantSample:     "spotcheck-30d",
-			wantComponent:  "node-/-kubelet",
-			wantCapability: "cpu partitioning",
-		},
-		{
-			name:           "too few parts",
-			testID:         "spotcheck-30d:etcd",
-			wantSample:     "",
-			wantComponent:  "",
-			wantCapability: "",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sample, comp, capability := ParseTestID(tt.testID)
-			assert.Equal(t, tt.wantSample, sample)
-			assert.Equal(t, tt.wantComponent, comp)
-			assert.Equal(t, tt.wantCapability, capability)
-		})
-	}
-}
-
 func TestAnalyze(t *testing.T) {
 	now := time.Now()
 	sampleStart := now.Add(-30 * 24 * time.Hour)

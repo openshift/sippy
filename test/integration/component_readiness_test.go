@@ -4882,7 +4882,7 @@ func TestQuerySpotCheckTestDetails(t *testing.T) {
 	}
 
 	t.Run("passing job shows individual runs", func(t *testing.T) {
-		etcdTestID := postgres.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")
+		etcdTestID := crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")
 		requestedVariants := map[string]string{
 			"Platform": "aws",
 			"Network":  "ovn",
@@ -4907,7 +4907,7 @@ func TestQuerySpotCheckTestDetails(t *testing.T) {
 	})
 
 	t.Run("failing job shows all failed runs", func(t *testing.T) {
-		cpuTestID := postgres.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning")
+		cpuTestID := crtest.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning")
 		requestedVariants := map[string]string{
 			"Platform": "aws",
 			"Network":  "ovn",
@@ -5034,7 +5034,7 @@ func TestQuerySpotCheckTestStatus_MultiJobAggregation(t *testing.T) {
 	})
 
 	t.Run("details shows runs from both jobs separately", func(t *testing.T) {
-		etcdTestID := postgres.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")
+		etcdTestID := crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")
 
 		result, err := provider.QuerySpotCheckTestDetails(
 			context.Background(), opts, etcdTestID, includeVariants,
