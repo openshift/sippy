@@ -15,6 +15,7 @@ import {
 import {
   cancelledDataTable,
   convertApiUrlToUiUrl,
+  createLatestRequest,
   getAPIUrl,
   getColumns,
   getStatusAndIcon,
@@ -58,6 +59,9 @@ import UpsertTriageModal from './UpsertTriageModal'
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
+// A new report does not cancel the one already in flight. Drop the older
+// response so it cannot replace the newer selection. Loading still settles.
+const reportRequests = createLatestRequest()
 const _cancelFetch = () => {
   console.log('Aborting page5a')
   abortController.abort()
@@ -165,6 +169,7 @@ export default function TestDetailsReport(props) {
     if (!testId) return // wait until the vars are initialized from params
 
     // fetch the test_details data followed by any triage records that match the regressionId (if found)
+    const requestId = reportRequests.start()
     fetch(testDetailsApiCall, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
@@ -179,6 +184,9 @@ export default function TestDetailsReport(props) {
         return data
       })
       .then((json) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         // If the basics are not present, consider it no data
         if (!json.component || !json.analyses?.[0]?.sample_stats) {
           // The api call returned 200 OK but the data was empty
@@ -193,6 +201,9 @@ export default function TestDetailsReport(props) {
         }
       })
       .catch((error) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (error.name === 'AbortError') {
           setData(cancelledDataTable)
 

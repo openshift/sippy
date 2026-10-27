@@ -2,6 +2,7 @@ import './ComponentReadiness.css'
 import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
+  createLatestRequest,
   formColumnName,
   getColumns,
   getCRMainAPIUrl,
@@ -35,6 +36,9 @@ import WarningsBanner from './WarningsBanner'
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
+// A new report does not cancel the one already in flight. Drop the older
+// response so it cannot replace the newer selection. Loading still settles.
+const reportRequests = createLatestRequest()
 const _cancelFetch = () => {
   console.log('Aborting page2a')
   abortController.abort()
@@ -79,6 +83,7 @@ export default function CompReadyEnvCapabilities(props) {
   }, [triageActionTaken, component, urlParams])
 
   const fetchData = () => {
+    const requestId = reportRequests.start()
     fetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
@@ -91,6 +96,9 @@ export default function CompReadyEnvCapabilities(props) {
         return data
       })
       .then((json) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (Object.keys(json).length === 0 || json.rows.length === 0) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
@@ -103,6 +111,9 @@ export default function CompReadyEnvCapabilities(props) {
         }
       })
       .catch((error) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (error.name === 'AbortError') {
           setData(cancelledDataTable)
 

@@ -47,6 +47,9 @@ export default function Triage({ id }) {
   const localDBEnabled = capabilitiesContext.includes('local_db')
   const loadedIdRef = React.useRef(id)
   React.useEffect(() => {
+    // The detail route reuses this component when the id changes. Clear the
+    // previous record immediately so it is not shown during the next fetch.
+    // The response is still applied: a same-id reload must update this page.
     const idChanged = loadedIdRef.current !== id
     loadedIdRef.current = id
     setDeleteError('')

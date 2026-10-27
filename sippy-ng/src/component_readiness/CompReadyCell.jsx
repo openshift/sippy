@@ -14,7 +14,6 @@ import TableCell from '@mui/material/TableCell'
 
 export default function CompReadyCell(props) {
   const {
-    columnIndex,
     status,
     environment,
     componentName,
@@ -65,7 +64,7 @@ export default function CompReadyCell(props) {
         }}
       >
         <Link
-          data-testid={`cr-cell-${componentName}-${columnIndex}`}
+          data-testid={`cr-cell-${componentName}-${environment}`}
           to={componentReport(componentName, environment, filterVals)}
         >
           <CompSeverityIcon
@@ -81,7 +80,6 @@ export default function CompReadyCell(props) {
 }
 
 CompReadyCell.propTypes = {
-  columnIndex: PropTypes.number.isRequired,
   status: PropTypes.number.isRequired,
   environment: PropTypes.string.isRequired,
   componentName: PropTypes.string.isRequired,

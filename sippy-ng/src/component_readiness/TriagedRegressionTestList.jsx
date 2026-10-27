@@ -64,19 +64,18 @@ export default function TriagedRegressionTestList(props) {
     })
   }
 
-  const [triagedRegressions, setTriagedRegressions] = React.useState(
-    props.regressions !== undefined ? props.regressions : []
-  )
-  const [showView, setShowView] = React.useState(
-    props.regressions !== undefined && props.regressions.length > 0
-  )
+  const [triagedRegressions, setTriagedRegressions] = React.useState([])
+  const [showView, setShowView] = React.useState(false)
 
   React.useEffect(() => {
+    // undefined means the parent has not selected a triage yet, so keep a list
+    // an event already filled. null is an empty triage (mass triage).
     if (props.regressions === undefined) {
       return
     }
-    setTriagedRegressions(props.regressions)
-    setShowView(props.regressions.length > 0)
+    const regressions = props.regressions ?? []
+    setTriagedRegressions(regressions)
+    setShowView(regressions.length > 0)
   }, [props.regressions])
 
   const handleTriagedRegressionGroupSelectionChanged = (data) => {

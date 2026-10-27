@@ -24,13 +24,10 @@ const releaseSelectorFormControlSx = (theme) => ({
   minWidth: 80,
 })
 const labelSx = { display: 'flex', whiteSpace: 'nowrap' }
+const whitespacePattern = /\s+/g
 
 function ReleaseSelector(props) {
   const releases = useContext(ReleasesContext)
-  const [versions, setVersions] = useState({})
-  const labelId = String(props.label || 'Version')
-    .toLowerCase()
-    .replace(/\s+/g, '-')
   const {
     label = 'Version',
     setStartTime,
@@ -50,6 +47,8 @@ function ReleaseSelector(props) {
     payloadTags,
     setPayloadTags,
   } = props
+  const [versions, setVersions] = useState({})
+  const labelId = label.toLowerCase().replace(whitespacePattern, '-')
 
   const days = 24 * 60 * 60 * 1000
   const oneWeekStart = new Date(new Date().getTime() - 7 * days)

@@ -15,6 +15,7 @@ import {
 } from './ComponentReadinessStyles'
 import {
   cancelledDataTable,
+  createLatestRequest,
   formColumnName,
   getColumns,
   getCRMainAPIUrl,
@@ -72,6 +73,9 @@ export const TestLifecyclesContext = React.createContext([])
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
+// A new report does not cancel the one already in flight. Drop the older
+// response so it cannot replace the newer selection. Loading still settles.
+const reportRequests = createLatestRequest()
 const _cancelFetch = () => {
   abortController.abort()
 }
@@ -188,6 +192,7 @@ export default function ComponentReadiness(_props) {
     }
 
     let formattedApiCallStr = showValuesForReport()
+    const requestId = reportRequests.start()
     console.log('fetchData api call str: ' + formattedApiCallStr)
     fetch(formattedApiCallStr, { signal: abortController.signal })
       .then((response) => {
@@ -197,6 +202,9 @@ export default function ComponentReadiness(_props) {
         return response.json()
       })
       .then((json) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (
           Object.keys(json).length === 0 ||
           json.rows === undefined ||
@@ -212,6 +220,9 @@ export default function ComponentReadiness(_props) {
         }
       })
       .catch((error) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (error.name === 'AbortError') {
           setData(cancelledDataTable)
 

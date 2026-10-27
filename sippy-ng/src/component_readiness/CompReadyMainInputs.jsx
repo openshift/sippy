@@ -144,12 +144,18 @@ export default function CompReadyMainInputs({ controlsOpts }) {
         ></ReleaseSelector>
       </CrReleaseBox>
 
-      <ReportButton handler={varsContext.handleGenerateReport} />
+      <ReportButton
+        testId="generate-report-top"
+        handler={varsContext.handleGenerateReport}
+      />
 
       {controlsOpts?.isTestDetails || (
         <>
           {compReadyEnvOptions}
-          <ReportButton handler={varsContext.handleGenerateReport} />
+          <ReportButton
+            testId="generate-report-bottom"
+            handler={varsContext.handleGenerateReport}
+          />
         </>
       )}
     </Fragment>
@@ -160,7 +166,7 @@ function ReportButton(props) {
   return (
     <div className="cr-report-button">
       <Button
-        data-testid="generate-report"
+        data-testid={props.testId}
         size="large"
         variant="contained"
         color="primary"
@@ -179,7 +185,10 @@ function ReportButton(props) {
   )
 }
 
-ReportButton.propTypes = { handler: PropTypes.func }
+ReportButton.propTypes = {
+  handler: PropTypes.func,
+  testId: PropTypes.string,
+}
 
 // component and environment may be null so they are not required
 CompReadyMainInputs.propTypes = {
