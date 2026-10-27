@@ -136,6 +136,11 @@ func createProwJobRunForCR(t *testing.T, dbc *db.DB, prowJobID uint, release str
 
 func createProwJobRunTest(t *testing.T, dbc *db.DB, runID, prowJobID, testID uint, suiteID *uint, status int, release string, timestamp time.Time) {
 	t.Helper()
+	createProwJobRunTestWithLifecycle(t, dbc, runID, prowJobID, testID, suiteID, status, release, timestamp, "")
+}
+
+func createProwJobRunTestWithLifecycle(t *testing.T, dbc *db.DB, runID, prowJobID, testID uint, suiteID *uint, status int, release string, timestamp time.Time, lifecycle string) {
+	t.Helper()
 	pjrt := models.ProwJobRunTest{
 		ProwJobRunID:        runID,
 		ProwJobID:           prowJobID,
@@ -144,6 +149,9 @@ func createProwJobRunTest(t *testing.T, dbc *db.DB, runID, prowJobID, testID uin
 		TestID:              testID,
 		SuiteID:             suiteID,
 		Status:              status,
+	}
+	if lifecycle != "" {
+		pjrt.Lifecycle = lifecycle
 	}
 	require.NoError(t, dbc.DB.Create(&pjrt).Error)
 }
@@ -3772,6 +3780,81 @@ func TestTestDetailsReport_AggregateBaseStats(t *testing.T) {
 	require.NotNil(t, report.JiraComponentID)
 	assert.Equal(t, 0, report.JiraComponentID.Cmp(new(big.Rat).SetUint64(42)))
 	assert.Equal(t, test.Name, report.TestName)
+}
+
+func TestTestDetailsReport_LifecycleFilteredTestFailures(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-td-lf-mass-aws", release, vc)
+
+	blockingTest1 := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] blocking test 1")
+	blockingTest2 := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] blocking test 2")
+	informingTest1 := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] informing test 1")
+	informingTest2 := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] informing test 2")
+	informingTest3 := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] informing test 3")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-td-lf-mass")
+	tow := createTestOwnership(t, dbc, blockingTest1.ID, &suite.ID, "openshift-tests:td-lf-mass-1", "Storage", []string{"PVC"})
+	createTestOwnership(t, dbc, blockingTest2.ID, &suite.ID, "openshift-tests:td-lf-mass-2", "Storage", []string{"PVC"})
+	createTestOwnership(t, dbc, informingTest1.ID, &suite.ID, "openshift-tests:td-lf-mass-3", "Storage", []string{"PVC"})
+	createTestOwnership(t, dbc, informingTest2.ID, &suite.ID, "openshift-tests:td-lf-mass-4", "Storage", []string{"PVC"})
+	createTestOwnership(t, dbc, informingTest3.ID, &suite.ID, "openshift-tests:td-lf-mass-5", "Storage", []string{"PVC"})
+
+	// Base: aggregate data
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	createCumulativeSummary(t, dbc, baseLookupStart, release, blockingTest1.ID, job.ID, suite.ID, 80, 75, 3)
+	createCumulativeSummary(t, dbc, baseLookupEnd, release, blockingTest1.ID, job.ID, suite.ID, 100, 90, 5)
+
+	// Sample: one run with 2 blocking failures and 3 informing failures.
+	// Pre-computed test_failures = 5 (all lifecycles combined).
+	sampleTS := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+	run := createProwJobRunForCR(t, dbc, job.ID, release, sampleTS)
+	require.NoError(t, dbc.DB.Model(&models.ProwJobRun{}).
+		Where("id = ? AND prow_job_release = ? AND timestamp = ?", run.ID, release, sampleTS).
+		Update("test_failures", 5).Error)
+
+	createProwJobRunTestWithLifecycle(t, dbc, run.ID, job.ID, blockingTest1.ID, &suite.ID, 12, release, sampleTS, "blocking")
+	createProwJobRunTestWithLifecycle(t, dbc, run.ID, job.ID, blockingTest2.ID, &suite.ID, 12, release, sampleTS, "blocking")
+	createProwJobRunTestWithLifecycle(t, dbc, run.ID, job.ID, informingTest1.ID, &suite.ID, 12, release, sampleTS, "informing")
+	createProwJobRunTestWithLifecycle(t, dbc, run.ID, job.ID, informingTest2.ID, &suite.ID, 12, release, sampleTS, "informing")
+	createProwJobRunTestWithLifecycle(t, dbc, run.ID, job.ID, informingTest3.ID, &suite.ID, 12, release, sampleTS, "informing")
+
+	variants := map[string]string{"Platform": "aws", "Network": "ovn"}
+
+	t.Run("lifecycle filter counts only matching failures", func(t *testing.T) {
+		opts := testDetailsReqOptions(tow.UniqueID, variants)
+		opts.Lifecycles = []string{"blocking"}
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+		report, errs := generator.GenerateTestDetailsReport(context.Background())
+		require.Empty(t, errs)
+
+		require.Len(t, report.Analyses, 1)
+		require.Len(t, report.Analyses[0].JobStats, 1)
+		require.Len(t, report.Analyses[0].JobStats[0].SampleJobRunStats, 1)
+
+		assert.Equal(t, 2, report.Analyses[0].JobStats[0].SampleJobRunStats[0].TestFailures,
+			"lifecycle-filtered test_failures should count only blocking failures")
+	})
+
+	t.Run("no lifecycle filter uses pre-computed total", func(t *testing.T) {
+		opts := testDetailsReqOptions(tow.UniqueID, variants)
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+		report, errs := generator.GenerateTestDetailsReport(context.Background())
+		require.Empty(t, errs)
+
+		require.Len(t, report.Analyses, 1)
+		require.Len(t, report.Analyses[0].JobStats, 1)
+		require.Len(t, report.Analyses[0].JobStats[0].SampleJobRunStats, 1)
+
+		assert.Equal(t, 5, report.Analyses[0].JobStats[0].SampleJobRunStats[0].TestFailures,
+			"unfiltered test_failures should use pre-computed total from prow_job_runs")
+	})
 }
 
 func TestTestDetailsReport_LastFailureTracking(t *testing.T) {

@@ -3,12 +3,17 @@ package postgres
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lib/pq"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func TestTestFailuresExpression(t *testing.T) {
+	release := "4.16"
+	start := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+
 	tests := []struct {
 		name       string
 		lifecycles []string
@@ -26,20 +31,20 @@ func TestTestFailuresExpression(t *testing.T) {
 		{
 			name:       "with lifecycles uses correlated subquery",
 			lifecycles: []string{"blocking"},
-			wantArgs:   2,
+			wantArgs:   5,
 			wantSubq:   true,
 		},
 		{
 			name:       "multiple lifecycles uses correlated subquery",
 			lifecycles: []string{"blocking", "informing"},
-			wantArgs:   2,
+			wantArgs:   5,
 			wantSubq:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expr, args := testFailuresExpression(tt.lifecycles)
+			expr, args := testFailuresExpression(release, start, end, tt.lifecycles)
 			if len(args) != tt.wantArgs {
 				t.Fatalf("len(args) = %d, want %d", len(args), tt.wantArgs)
 			}
@@ -53,6 +58,12 @@ func TestTestFailuresExpression(t *testing.T) {
 				}
 				if !strings.Contains(expr, "lf.status = ?") {
 					t.Fatal("subquery should use placeholder for failure status")
+				}
+				if !strings.Contains(expr, "lf.prow_job_run_release = ?") {
+					t.Fatal("subquery should include explicit release filter")
+				}
+				if !strings.Contains(expr, "lf.prow_job_run_timestamp >= ?") {
+					t.Fatal("subquery should include explicit time range filter")
 				}
 			} else if !strings.Contains(expr, "COALESCE(pjr.test_failures, 0)") {
 				t.Fatal("should use pre-computed column when no lifecycles")

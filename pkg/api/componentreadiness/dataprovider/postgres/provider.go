@@ -383,7 +383,7 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 		args = append(args, testIDs)
 	}
 
-	testFailuresExpr, testFailuresArgs := testFailuresExpression(lifecycles)
+	testFailuresExpr, testFailuresArgs := testFailuresExpression(release, start, end, lifecycles)
 
 	sqlQuery += fmt.Sprintf(`)
 SELECT
@@ -504,18 +504,19 @@ WHERE pj.release = ?
 // lifecycle (unlike the pre-computed column which counts all lifecycles), so the
 // same run may report a different failure count depending on the filter. This
 // matches the BigQuery provider's COUNT(DISTINCT test_name) semantics.
-func testFailuresExpression(lifecycles []string) (string, []any) {
+func testFailuresExpression(release string, start, end time.Time, lifecycles []string) (string, []any) {
 	if len(lifecycles) == 0 {
 		return "COALESCE(pjr.test_failures, 0) AS test_failures", nil
 	}
 	return `(SELECT COUNT(DISTINCT lf.test_id) FROM prow_job_run_tests lf
             WHERE lf.prow_job_run_id = pjr.id
-            AND lf.prow_job_run_release = pjr.prow_job_release
+            AND lf.prow_job_run_release = ?
+            AND lf.prow_job_run_timestamp >= ? AND lf.prow_job_run_timestamp < ?
             AND lf.prow_job_run_timestamp = pjr.timestamp
             AND lf.status = ?
             AND lf.lifecycle = ANY(?)
             AND lf.deleted_at IS NULL) AS test_failures`,
-		[]any{int(sippyprocessingv1.TestStatusFailure), pq.Array(lifecycles)}
+		[]any{release, start, end, int(sippyprocessingv1.TestStatusFailure), pq.Array(lifecycles)}
 }
 
 // appendTestDetailsLifecycleFilter keeps sample test details aligned with the
