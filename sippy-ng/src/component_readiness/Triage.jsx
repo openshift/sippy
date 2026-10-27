@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Tooltip } from '@mui/material'
+import { Alert, Box, Button, Chip, Tooltip } from '@mui/material'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
@@ -38,15 +38,27 @@ export default function Triage({ id }) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')
+  const [deleteError, setDeleteError] = React.useState('')
   const [isUpdated, setIsUpdated] = React.useState(false)
   const [labelFilter, setLabelFilter] = React.useState(null)
   const [labelSummaries, setLabelSummaries] = React.useState([])
   const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
+  const loadedIdRef = React.useRef(id)
   React.useEffect(() => {
-    setIsLoaded(false)
+    // The detail route reuses this component when the id changes. Clear the
+    // previous record immediately so it is not shown during the next fetch.
+    // The response is still applied: a same-id reload must update this page.
+    const idChanged = loadedIdRef.current !== id
+    loadedIdRef.current = id
+    setDeleteError('')
     setIsUpdated(false)
+    if (idChanged) {
+      setTriage({})
+      setIsLoaded(false)
+      setMessage('')
+    }
 
     let triageFetch
     // triage entries will only be available when there is a postgres connection
@@ -124,7 +136,7 @@ export default function Triage({ id }) {
           setMessage('Triage record has been deleted.')
         })
         .catch((error) => {
-          setMessage(error.toString())
+          setDeleteError(error.toString())
         })
     }
   }
@@ -149,6 +161,11 @@ export default function Triage({ id }) {
 
   return (
     <Fragment>
+      {deleteError !== '' && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {deleteError}
+        </Alert>
+      )}
       <Box
         display="flex"
         justifyContent="space-between"
@@ -176,6 +193,7 @@ export default function Triage({ id }) {
                 setIsUpdated={setIsUpdated}
               />
               <Button
+                data-testid="delete-triage"
                 onClick={deleteTriage}
                 variant="contained"
                 color="secondary"

@@ -43,7 +43,10 @@ export default function CompCapRow(props) {
     <TableCell sx={classes.componentName} key={capabilityName}>
       <Tooltip title={'Capabilities report for ' + capabilityName}>
         <Typography sx={classes.crCellName}>
-          <Link to={capabilityLink(filterVals, capabilityName, environment)}>
+          <Link
+            data-testid={`cr-capability-${capabilityName}`}
+            to={capabilityLink(filterVals, capabilityName, environment)}
+          >
             {capabilityName}
           </Link>
         </Typography>

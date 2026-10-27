@@ -35,7 +35,10 @@ export default function CompReadyRow(props) {
     <TableCell sx={classes.componentName} key={componentName}>
       <Tooltip title={'Component report for ' + componentName}>
         <Typography sx={classes.crCellName}>
-          <Link to={capabilitiesReport(filterVals, componentName)}>
+          <Link
+            data-testid={`cr-component-${componentName}`}
+            to={capabilitiesReport(filterVals, componentName)}
+          >
             {componentName}
           </Link>
         </Typography>

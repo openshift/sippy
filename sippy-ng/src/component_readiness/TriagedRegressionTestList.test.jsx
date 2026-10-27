@@ -34,6 +34,16 @@ function getForceClosedColumn() {
   )
 }
 
+test('renders an empty grid when regressions is null', () => {
+  mocks.dataGridProps = null
+  render(
+    <ThemeProvider theme={createTheme()}>
+      <TriagedRegressionTestList regressions={null} />
+    </ThemeProvider>
+  )
+  expect(mocks.dataGridProps.rows).toEqual([])
+})
+
 describe('TriagedRegressionTestList force-closed indicator', () => {
   test('is filterable, provides Yes and No values, and hides the icon when not force closed', () => {
     const column = getForceClosedColumn()

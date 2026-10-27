@@ -174,7 +174,10 @@ export default function ComponentReadinessToolBar(props) {
                 </SearchIconWrapper>
                 <StyledInputBase
                   placeholder="Search Row"
-                  inputProps={{ 'aria-label': 'search' }}
+                  inputProps={{
+                    'aria-label': 'search',
+                    'data-testid': 'search-row',
+                  }}
                   value={searchRowRegex}
                   onChange={handleSearchRowRegexChange}
                 />
@@ -202,6 +205,7 @@ export default function ComponentReadinessToolBar(props) {
                 <FormControlLabel
                   control={
                     <SwitchControl
+                      data-testid="red-only"
                       checked={redOnlyChecked}
                       onChange={handleRedOnlyCheckboxChange}
                       color="primary"

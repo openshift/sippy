@@ -104,15 +104,19 @@ export default function UpsertTriageModal({
     return () => clearTimeout(timer)
   }
 
-  let initialTriage = {
+  const [triageEntryData, setTriageEntryData] = React.useState({
     url: '',
     type: 'type',
     description: '',
-  }
-  if (triageDetailsUpdateMode) {
-    initialTriage = triage
-  }
-  const [triageEntryData, setTriageEntryData] = React.useState(initialTriage)
+  })
+
+  // The modal stays mounted across a same-record reload, so the form has to
+  // follow that prop or a save would submit the previous copy.
+  useEffect(() => {
+    if (triage !== undefined) {
+      setTriageEntryData(triage)
+    }
+  }, [triage])
 
   // when the regressionIds prop is changed in the parent, we must update the triageEntryData to reflect that
   useEffect(() => {

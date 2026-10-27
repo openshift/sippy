@@ -78,6 +78,22 @@ export const cancelledDataTable = {
 export const jiraUrlPrefixDeprecated = 'https://issues.redhat.com/browse/'
 export const jiraUrlPrefix = 'https://redhat.atlassian.net/browse/'
 
+// createLatestRequest tracks the newest in-flight report fetch. Pages start a
+// new request when the URL changes and do not cancel the previous one, so a
+// slow response must not replace a newer selection or clear its loading state.
+export function createLatestRequest() {
+  let seq = 0
+  return {
+    start() {
+      seq += 1
+      return seq
+    },
+    isCurrent(id) {
+      return id === seq
+    },
+  }
+}
+
 // Make one place to create the Component Readiness api call
 export function getAPIUrl(endpoint) {
   return `${import.meta.env.VITE_API_URL}/api/${endpoint}`
@@ -142,11 +158,12 @@ export const gotoCompReadyMain = () => {
 
 // When we get a fetch error, this will print a standard message.
 export function gotFetchError(fetchError) {
+  const text = typeof fetchError === 'string' ? fetchError : String(fetchError)
   return (
     <Alert severity="error">
       <h2>Failed to load component readiness data</h2>
       <h3>
-        {fetchError.split('\n').map((item) => (
+        {text.split('\n').map((item) => (
           <>
             <hr />
             {item}

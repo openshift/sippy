@@ -15,6 +15,7 @@ import {
 } from './ComponentReadinessStyles'
 import {
   cancelledDataTable,
+  createLatestRequest,
   formColumnName,
   getColumns,
   getCRMainAPIUrl,
@@ -72,6 +73,10 @@ export const TestLifecyclesContext = React.createContext([])
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
+// A new report does not cancel the one already in flight. Drop the older
+// response so it cannot replace the newer selection. Only the newest request
+// clears loading.
+const reportRequests = createLatestRequest()
 const _cancelFetch = () => {
   abortController.abort()
 }
@@ -144,9 +149,6 @@ export default function ComponentReadiness(_props) {
   }
 
   document.title = `Sippy > Component Readiness`
-  if (fetchError !== '') {
-    return gotFetchError(fetchError)
-  }
 
   // Show the current state of the filter variables and the url.
   // Create API call string and return it.
@@ -175,20 +177,6 @@ export default function ComponentReadiness(_props) {
       ? getKeeperColumns(data, columnNames, redOnlyChecked)
       : []
 
-  // Handle special cases for main route
-  if (
-    isMainRoute &&
-    columnNames.length > 0 &&
-    (columnNames[0] === 'Cancelled' || columnNames[0] === 'None')
-  ) {
-    return (
-      <CompReadyCancelled
-        message={columnNames[0]}
-        apiCallStr={showValuesForReport()}
-      />
-    )
-  }
-
   const fetchData = () => {
     // prevent a slightly expensive duplicate request when user navs to /main with no query params,
     // and we're still in the process of setting the default view to use
@@ -205,6 +193,7 @@ export default function ComponentReadiness(_props) {
     }
 
     let formattedApiCallStr = showValuesForReport()
+    const requestId = reportRequests.start()
     console.log('fetchData api call str: ' + formattedApiCallStr)
     fetch(formattedApiCallStr, { signal: abortController.signal })
       .then((response) => {
@@ -214,6 +203,9 @@ export default function ComponentReadiness(_props) {
         return response.json()
       })
       .then((json) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (
           Object.keys(json).length === 0 ||
           json.rows === undefined ||
@@ -229,6 +221,9 @@ export default function ComponentReadiness(_props) {
         }
       })
       .catch((error) => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         if (error.name === 'AbortError') {
           setData(cancelledDataTable)
 
@@ -239,6 +234,9 @@ export default function ComponentReadiness(_props) {
         }
       })
       .finally(() => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
@@ -323,8 +321,45 @@ export default function ComponentReadiness(_props) {
     setTriageActionTaken(false)
   }, [triageActionTaken, location.pathname, reportParams])
 
+  // These returns stay below every hook. An earlier return skips useState
+  // and useEffect on the next render and React unmounts the page.
+  if (fetchError !== '') {
+    return gotFetchError(fetchError)
+  }
+  if (
+    isMainRoute &&
+    columnNames.length > 0 &&
+    (columnNames[0] === 'Cancelled' || columnNames[0] === 'None')
+  ) {
+    return (
+      <CompReadyCancelled
+        message={columnNames[0]}
+        apiCallStr={showValuesForReport()}
+      />
+    )
+  }
+
   if (!isLoaded) {
-    return <CompReadyProgress apiLink={showValuesForReport()} />
+    if (!isMainRoute) {
+      return <CompReadyProgress apiLink={showValuesForReport()} />
+    }
+    return (
+      <ComponentReadinessStyleContext.Provider value={classes}>
+        <TestCapabilitiesContext.Provider value={testCapabilities}>
+          <TestLifecyclesContext.Provider value={testLifecycles}>
+            <div className="cr-view">
+              <Sidebar
+                controlsOpts={{
+                  filterByCapabilities: true,
+                  filterByLifecycles: true,
+                }}
+              />
+              <CompReadyProgress apiLink={showValuesForReport()} />
+            </div>
+          </TestLifecyclesContext.Provider>
+        </TestCapabilitiesContext.Provider>
+      </ComponentReadinessStyleContext.Provider>
+    )
   }
 
   const pageTitle = makePageTitle(
@@ -638,7 +673,9 @@ export default function ComponentReadiness(_props) {
                                     variant="body1"
                                     sx={{ padding: 2 }}
                                   >
-                                    No regressions detected.
+                                    {data === noDataTable
+                                      ? 'No Data found'
+                                      : 'No regressions detected.'}
                                   </Typography>
                                 ))}
                               {componentTab === 1 &&
