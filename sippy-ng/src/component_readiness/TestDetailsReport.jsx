@@ -60,7 +60,8 @@ import UpsertTriageModal from './UpsertTriageModal'
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
 // A new report does not cancel the one already in flight. Drop the older
-// response so it cannot replace the newer selection. Loading still settles.
+// response so it cannot replace the newer selection. Only the newest request
+// clears loading.
 const reportRequests = createLatestRequest()
 const _cancelFetch = () => {
   console.log('Aborting page5a')
@@ -214,6 +215,9 @@ export default function TestDetailsReport(props) {
         }
       })
       .finally(() => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         setIsLoaded(true)
       })
   }, [hasBeenTriaged, urlParams, testId])

@@ -80,8 +80,7 @@ export const jiraUrlPrefix = 'https://redhat.atlassian.net/browse/'
 
 // createLatestRequest tracks the newest in-flight report fetch. Pages start a
 // new request when the URL changes and do not cancel the previous one, so a
-// slow response must not replace a newer selection. Callers still let the
-// loading flag settle when any request finishes.
+// slow response must not replace a newer selection or clear its loading state.
 export function createLatestRequest() {
   let seq = 0
   return {

@@ -36,7 +36,8 @@ import WarningsBanner from './WarningsBanner'
 // abort in case they inadvertently requested a huge dataset.
 let abortController = new AbortController()
 // A new report does not cancel the one already in flight. Drop the older
-// response so it cannot replace the newer selection. Loading still settles.
+// response so it cannot replace the newer selection. Only the newest request
+// clears loading.
 const reportRequests = createLatestRequest()
 const _cancelFetch = () => {
   console.log('Aborting page4')
@@ -170,6 +171,9 @@ export default function CompReadyEnvCapabilityTest(props) {
         }
       })
       .finally(() => {
+        if (!reportRequests.isCurrent(requestId)) {
+          return
+        }
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
