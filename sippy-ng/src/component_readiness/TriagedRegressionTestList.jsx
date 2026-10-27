@@ -260,8 +260,18 @@ export default function TriagedRegressionTestList(props) {
             headerName: viewName,
             filterable: false,
             renderHeader: () => (
-              <Tooltip title="Status for this view (base vs sample). Only available when the regression has not rolled off the reporting window.">
-                <span>{viewName}</span>
+              <Tooltip
+                title={`${viewName} — Status for this view (base vs sample). Only available when the regression has not rolled off the reporting window.`}
+              >
+                <span
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {viewName}
+                </span>
               </Tooltip>
             ),
             valueGetter: (value, row) => {
