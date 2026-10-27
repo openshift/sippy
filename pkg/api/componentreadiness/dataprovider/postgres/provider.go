@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -382,7 +383,9 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 		args = append(args, testIDs)
 	}
 
-	sqlQuery += `)
+	testFailuresExpr, testFailuresArgs := testFailuresExpression(release, start, end, lifecycles)
+
+	sqlQuery += fmt.Sprintf(`)
 SELECT
     tt.unique_id AS test_id,
     t.name AS test_name,
@@ -392,7 +395,7 @@ SELECT
     pjr.timestamp AS prowjob_start,
     pj.id AS prow_job_id,
     pjr.labels AS job_labels,
-    COALESCE(pjr.test_failures, 0) AS test_failures,
+    %s,
     pjrt.status,
     COALESCE(tt.jira_component, '') AS jira_component,
     tt.jira_component_id
@@ -410,8 +413,9 @@ WHERE pj.release = ?
     AND pjrt.prow_job_run_release = ?
     AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
     AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
-    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`
+    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`, testFailuresExpr)
 
+	args = append(args, testFailuresArgs...)
 	args = append(args, release, start, end, release, release, start, end)
 	sqlQuery, args = appendTestDetailsLifecycleFilter(sqlQuery, args, lifecycles)
 
@@ -491,6 +495,28 @@ WHERE pj.release = ?
 	}
 
 	return crstatus.SummarizeTestJobRuns(result), nil
+}
+
+// testFailuresExpression returns the SQL expression and any additional query
+// arguments for the test_failures column. Without a lifecycle filter, it uses
+// the pre-computed prow_job_runs.test_failures count. With a filter, it returns
+// a correlated subquery that counts DISTINCT test_id values matching the
+// lifecycle (unlike the pre-computed column which counts all lifecycles), so the
+// same run may report a different failure count depending on the filter. This
+// matches the BigQuery provider's COUNT(DISTINCT test_name) semantics.
+func testFailuresExpression(release string, start, end time.Time, lifecycles []string) (string, []any) {
+	if len(lifecycles) == 0 {
+		return "COALESCE(pjr.test_failures, 0) AS test_failures", nil
+	}
+	return `(SELECT COUNT(DISTINCT lf.test_id) FROM prow_job_run_tests lf
+            WHERE lf.prow_job_run_id = pjr.id
+            AND lf.prow_job_run_release = ?
+            AND lf.prow_job_run_timestamp >= ? AND lf.prow_job_run_timestamp < ?
+            AND lf.prow_job_run_timestamp = pjr.timestamp
+            AND lf.status = ?
+            AND lf.lifecycle = ANY(?)
+            AND lf.deleted_at IS NULL) AS test_failures`,
+		[]any{release, start, end, int(sippyprocessingv1.TestStatusFailure), pq.Array(lifecycles)}
 }
 
 // appendTestDetailsLifecycleFilter keeps sample test details aligned with the

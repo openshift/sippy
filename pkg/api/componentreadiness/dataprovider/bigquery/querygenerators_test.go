@@ -185,18 +185,22 @@ func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
 	}
 
 	tests := []struct {
-		name             string
-		isSample         bool
-		lifecycles       []string
-		wantFilter       bool
-		wantLifecycleArg bool
+		name                    string
+		isSample                bool
+		lifecycles              []string
+		wantFilter              bool
+		wantLifecycleArg        bool
+		wantFailureCountFilter  bool
+		wantFailureLifecycleArg bool
 	}{
 		{
-			name:             "sample details use lifecycle filter",
-			isSample:         true,
-			lifecycles:       []string{"blocking"},
-			wantFilter:       true,
-			wantLifecycleArg: true,
+			name:                    "sample details use lifecycle filter on rows and failure count",
+			isSample:                true,
+			lifecycles:              []string{"blocking"},
+			wantFilter:              true,
+			wantLifecycleArg:        true,
+			wantFailureCountFilter:  true,
+			wantFailureLifecycleArg: true,
 		},
 		{
 			name:       "base details remain unfiltered",
@@ -228,14 +232,24 @@ func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
 			assert.Equal(t, tt.wantFilter,
 				strings.Contains(query, "COALESCE(NULLIF(junit.lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)"))
 
+			assert.Equal(t, tt.wantFailureCountFilter,
+				strings.Contains(query, "COALESCE(NULLIF(lifecycle, ''), 'blocking') IN UNNEST(@FailureLifecycles)"),
+				"agg_failures subquery should apply lifecycle filter when isSample and lifecycles are set")
+
 			var lifecycleParamFound bool
+			var failureLifecycleParamFound bool
 			for _, queryParam := range params {
 				if queryParam.Name == "Lifecycles" {
 					lifecycleParamFound = true
 					assert.Equal(t, tt.lifecycles, queryParam.Value)
 				}
+				if queryParam.Name == "FailureLifecycles" {
+					failureLifecycleParamFound = true
+					assert.Equal(t, tt.lifecycles, queryParam.Value)
+				}
 			}
 			assert.Equal(t, tt.wantLifecycleArg, lifecycleParamFound)
+			assert.Equal(t, tt.wantFailureLifecycleArg, failureLifecycleParamFound)
 		})
 	}
 }

@@ -3,10 +3,74 @@ package postgres
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/lib/pq"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
+
+func TestTestFailuresExpression(t *testing.T) {
+	release := "4.16"
+	start := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name       string
+		lifecycles []string
+		wantArgs   int
+		wantSubq   bool
+	}{
+		{
+			name:       "no lifecycles uses pre-computed column",
+			lifecycles: nil,
+		},
+		{
+			name:       "empty lifecycles uses pre-computed column",
+			lifecycles: []string{},
+		},
+		{
+			name:       "with lifecycles uses correlated subquery",
+			lifecycles: []string{"blocking"},
+			wantArgs:   5,
+			wantSubq:   true,
+		},
+		{
+			name:       "multiple lifecycles uses correlated subquery",
+			lifecycles: []string{"blocking", "informing"},
+			wantArgs:   5,
+			wantSubq:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expr, args := testFailuresExpression(release, start, end, tt.lifecycles)
+			if len(args) != tt.wantArgs {
+				t.Fatalf("len(args) = %d, want %d", len(args), tt.wantArgs)
+			}
+			hasSubquery := strings.Contains(expr, "prow_job_run_tests lf")
+			if hasSubquery != tt.wantSubq {
+				t.Fatalf("has subquery = %t, want %t", hasSubquery, tt.wantSubq)
+			}
+			if tt.wantSubq {
+				if !strings.Contains(expr, "lf.lifecycle = ANY(?)") {
+					t.Fatal("subquery should filter by lifecycle")
+				}
+				if !strings.Contains(expr, "lf.status = ?") {
+					t.Fatal("subquery should use placeholder for failure status")
+				}
+				if !strings.Contains(expr, "lf.prow_job_run_release = ?") {
+					t.Fatal("subquery should include explicit release filter")
+				}
+				if !strings.Contains(expr, "lf.prow_job_run_timestamp >= ?") {
+					t.Fatal("subquery should include explicit time range filter")
+				}
+			} else if !strings.Contains(expr, "COALESCE(pjr.test_failures, 0)") {
+				t.Fatal("should use pre-computed column when no lifecycles")
+			}
+		})
+	}
+}
 
 func TestAppendTestDetailsLifecycleFilter(t *testing.T) {
 	tests := []struct {
