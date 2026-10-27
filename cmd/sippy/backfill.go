@@ -22,6 +22,7 @@ type BackfillFlags struct {
 	StartDate        string
 	EndDate          string
 	ExcludedReleases []string
+	Release          string
 }
 
 // NewBackfillFlags starts with the standard PostgreSQL connection flags.
@@ -35,8 +36,9 @@ func NewBackfillFlags() *BackfillFlags {
 func (f *BackfillFlags) BindFlags(fs *pflag.FlagSet) {
 	f.DBFlags.BindFlags(fs)
 	fs.StringVar(&f.Table, "table", "", "Table to backfill (daily-totals, cumulative-summaries)")
+	fs.StringVar(&f.Release, "release", "", "Only backfill this release (default: all releases)")
 	fs.StringVar(&f.StartDate, "start-date", "", "Start date (YYYY-MM-DD)")
-	fs.StringVar(&f.EndDate, "end-date", "", "End date (YYYY-MM-DD)")
+	fs.StringVar(&f.EndDate, "end-date", "", "End date (YYYY-MM-DD; defaults to today, or tomorrow for cumulative summaries)")
 	fs.StringArrayVar(&f.ExcludedReleases, "exclude-release", nil, "Release to skip; repeat for multiple releases (for example, Presubmits)")
 }
 
@@ -70,6 +72,8 @@ func NewBackfillCommand() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("invalid --end-date %q: %w", f.EndDate, err)
 				}
+			} else if f.Table == "cumulative-summaries" {
+				endDate = endDate.AddDays(1)
 			}
 
 			if startDate.After(endDate) {
@@ -83,6 +87,7 @@ func NewBackfillCommand() *cobra.Command {
 
 			log.WithFields(log.Fields{
 				"table":             f.Table,
+				"release":           f.Release,
 				"start":             startDate,
 				"end":               endDate,
 				"excluded_releases": f.ExcludedReleases,
@@ -95,6 +100,12 @@ func NewBackfillCommand() *cobra.Command {
 				return fmt.Errorf("querying releases: %w", err)
 			}
 			releaseSet := sets.New(releases...)
+			if f.Release != "" {
+				if !releaseSet.Has(f.Release) {
+					return fmt.Errorf("release %q not found in release_definitions", f.Release)
+				}
+				releases = []string{f.Release}
+			}
 			for _, excluded := range f.ExcludedReleases {
 				if !releaseSet.Has(excluded) {
 					log.WithField("release", excluded).Warn("excluded release is not present in release definitions")
