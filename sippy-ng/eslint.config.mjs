@@ -9,7 +9,14 @@ import vitestPlugin from '@vitest/eslint-plugin'
 
 export default [
   {
-    ignores: ['node_modules/**', 'build/**', 'coverage/**'],
+    ignores: [
+      'node_modules/**',
+      'build/**',
+      'coverage/**',
+      'bdd/.features-gen/**',
+      'playwright-report/**',
+      'test-results/**',
+    ],
   },
   js.configs.recommended,
   {
@@ -89,6 +96,20 @@ export default [
         ...vitestPlugin.configs.env.languageOptions.globals,
         ...globals.node,
       },
+    },
+  },
+  {
+    files: ['bdd/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off',
+      // This plugin's autofix crashes on the current ESLint for these files.
+      'sort-imports-es6-autofix/sort-imports-es6': 'off',
     },
   },
 ]

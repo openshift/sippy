@@ -49,6 +49,15 @@ endif
 		fi && \
 		.venv/bin/pip install -r requirements.txt -q && \
 		.venv/bin/pytest test_server.py -v $(if $(ARTIFACT_DIR),--junitxml=$(ARTIFACT_DIR)/mcp-junit.xml)
+	$(MAKE) test-bdd
+
+.PHONY: test-bdd
+# Playwright's worker sets FORCE_COLOR, so drop NO_COLOR or Node warns.
+test-bdd: npm
+	cd sippy-ng && \
+		npx playwright install chromium && \
+		unset NO_COLOR && \
+		CI=true npm run test:bdd
 
 lint: builddir npm
 	./hack/go-lint.sh run ./...

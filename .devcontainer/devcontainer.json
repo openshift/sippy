@@ -6,7 +6,7 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "runArgs": ["--name", "sippy-dev", "--network", "sippy-net", "--env-file", ".devcontainer/.env", "-p", "8080:8080", "-p", "3000:3000"],
+  "runArgs": ["--name", "sippy-dev", "--network", "sippy-net", "--shm-size=1g", "--env-file", ".devcontainer/.env", "-p", "8080:8080", "-p", "3000:3000"],
   "mounts": [
     "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,readonly",
     "source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind,readonly",

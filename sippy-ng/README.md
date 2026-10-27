@@ -199,3 +199,11 @@ Builds the app for production into the `build/` folder.
 ### `npm test`
 
 Runs the Vitest test suite.
+
+### `npm run test:bdd`
+
+Runs the Component Readiness Playwright BDD suite in `bdd/`. The scenarios
+are Gherkin feature files. API calls are intercepted, so the suite does not
+need the Go server or a database. `make test` runs this suite after the
+Go tests, Vitest, and mcp pytest. `make test-bdd` installs Playwright's
+Chromium and runs only this suite.

@@ -22,6 +22,26 @@ RUN dnf install -y \
     libstdc++ \
     postgresql \
     chromium-headless \
+    alsa-lib \
+    at-spi2-atk \
+    at-spi2-core \
+    atk \
+    cairo \
+    cups-libs \
+    dbus-libs \
+    libX11 \
+    libXcomposite \
+    libXdamage \
+    libXext \
+    libXfixes \
+    libXrandr \
+    libdrm \
+    libxcb \
+    libxkbcommon \
+    mesa-libgbm \
+    nspr \
+    nss \
+    pango \
     which \
     && dnf clean all
 

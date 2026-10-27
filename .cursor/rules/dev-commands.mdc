@@ -26,7 +26,11 @@ Run lint: `make lint`
 
 Run unit tests: `make test`
 
-This runs Go tests via gotestsum and sippy-ng Vitest tests.
+This runs Go tests via gotestsum, sippy-ng Vitest tests, mcp pytest, and then the Component Readiness Playwright BDD suite.
+
+Run only the Component Readiness browser tests: `make test-bdd`
+
+That target installs Playwright's Chromium and runs `npm run test:bdd` in `sippy-ng`. The suite uses that browser, not `CHROME_PATH`. The **sippy-dev-bdd** slash command runs this target. Instructions are in **`.apm/prompts/sippy-dev-bdd.prompt.md`**.
 
 Run integration tests: `make integration`
 
