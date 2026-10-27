@@ -5131,6 +5131,43 @@ func TestSpotCheckEndToEnd(t *testing.T) {
 	assert.True(t, foundCPURegression, "CPU Partitioning spot-check should show ExtremeRegression (3 failures)")
 }
 
+func TestQuerySpotCheckTestStatus_TestFilters(t *testing.T) {
+	dbc := crTestDB(t)
+	seed := seedSpotCheckData(t, dbc)
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	includeVariants := map[string][]string{"JobTier": {"spotcheck-30d"}}
+
+	componentsFor := func(opts reqopts.RequestOptions) []string {
+		result, err := provider.QuerySpotCheckTestStatus(
+			context.Background(), opts, "spotcheck-30d", includeVariants,
+			opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.NoError(t, err)
+		var components []string
+		for _, ts := range result {
+			components = append(components, ts.Component)
+		}
+		return components
+	}
+
+	t.Run("capability filter", func(t *testing.T) {
+		opts := spotCheckReqOptions(seed.release)
+		opts.Capabilities = []string{"Scaling"}
+		assert.Equal(t, []string{"Etcd"}, componentsFor(opts))
+	})
+
+	t.Run("exact test ID", func(t *testing.T) {
+		opts := spotCheckReqOptions(seed.release)
+		opts.TestIDOptions = []reqopts.TestIdentification{
+			{TestID: crtest.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning")},
+		}
+		assert.Equal(t, []string{"Node / Kubelet"}, componentsFor(opts))
+	})
+
+	t.Run("no filter returns every spot-check group", func(t *testing.T) {
+		assert.ElementsMatch(t, []string{"Etcd", "Node / Kubelet"}, componentsFor(spotCheckReqOptions(seed.release)))
+	})
+}
+
 // --- Helpers ---
 
 func isPlaceholderKey(testID string) bool {

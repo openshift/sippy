@@ -6,6 +6,9 @@ import (
 
 	"github.com/lib/pq"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 )
 
 func TestAppendTestDetailsLifecycleFilter(t *testing.T) {
@@ -187,6 +190,89 @@ func TestMatchesIncludeVariants(t *testing.T) {
 			got := matchesIncludeVariants(tc.variants, tc.includeVariants)
 			if got != tc.want {
 				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSpotCheckMatchesTestFilters(t *testing.T) {
+	scalingID := crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")
+	recoveryID := crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Recovery")
+
+	tests := []struct {
+		name       string
+		reqOptions reqopts.RequestOptions
+		testID     string
+		capability string
+		want       bool
+	}{
+		{
+			name:       "no filters keeps everything",
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       true,
+		},
+		{
+			name:       "capability filter keeps a match",
+			reqOptions: reqopts.RequestOptions{TestFilters: reqopts.TestFilters{Capabilities: []string{"Scaling"}}},
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       true,
+		},
+		{
+			name:       "capability filter matches case-insensitively",
+			reqOptions: reqopts.RequestOptions{TestFilters: reqopts.TestFilters{Capabilities: []string{"cpu partitioning"}}},
+			testID:     crtest.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning"),
+			capability: "CPU Partitioning",
+			want:       true,
+		},
+		{
+			name:       "capability filter drops other capabilities",
+			reqOptions: reqopts.RequestOptions{TestFilters: reqopts.TestFilters{Capabilities: []string{"Scaling"}}},
+			testID:     crtest.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning"),
+			capability: "CPU Partitioning",
+			want:       false,
+		},
+		{
+			name:       "an empty test identification filters nothing",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{}}},
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       true,
+		},
+		{
+			name:       "exact test ID keeps its own result",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: scalingID}}},
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       true,
+		},
+		{
+			name:       "exact test ID drops sibling spot-check tests",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: scalingID}}},
+			testID:     recoveryID,
+			capability: "Recovery",
+			want:       false,
+		},
+		{
+			name:       "exact test ID of a regular test drops spot-check results",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: "openshift-tests:abc123"}}},
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       false,
+		},
+		{
+			name:       "requested capability drops other capabilities",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd", Capability: "Scaling"}}},
+			testID:     recoveryID,
+			capability: "Recovery",
+			want:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := spotCheckMatchesTestFilters(tt.reqOptions, tt.testID, tt.capability); got != tt.want {
+				t.Errorf("spotCheckMatchesTestFilters() = %v, want %v", got, tt.want)
 			}
 		})
 	}

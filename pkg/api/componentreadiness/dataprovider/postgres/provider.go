@@ -966,6 +966,9 @@ func (p *PostgresProvider) QuerySpotCheckTestStatus(
 		if component == "" || capability == "" {
 			continue
 		}
+		if !spotCheckMatchesTestFilters(reqOptions, crtest.SpotCheckTestID(sampleName, component, capability), capability) {
+			continue
+		}
 
 		filteredVariants := filterByDBGroupBy(jobVariants, dbGroupBy)
 		key := groupKey{
@@ -1017,6 +1020,28 @@ func (p *PostgresProvider) QuerySpotCheckTestStatus(
 		WithField("groups", len(result)).
 		Info("spot-check query completed")
 	return result, nil
+}
+
+// spotCheckMatchesTestFilters applies the requested capability and exact test filters to a synthetic
+// spot-check result. The regular status queries filter on these in SQL before the report is built, and
+// spot-check results are merged in afterwards, so without this they would bypass those filters.
+// The component filter is intentionally not applied here, matching the regular queries, which leave it
+// to report generation.
+func spotCheckMatchesTestFilters(reqOptions reqopts.RequestOptions, testID, capability string) bool {
+	if len(reqOptions.Capabilities) > 0 &&
+		!slices.ContainsFunc(reqOptions.Capabilities, func(c string) bool { return strings.EqualFold(c, capability) }) {
+		return false
+	}
+	if len(reqOptions.TestIDOptions) == 1 {
+		tid := reqOptions.TestIDOptions[0]
+		if tid.TestID != "" && tid.TestID != testID {
+			return false
+		}
+		if tid.Capability != "" && !strings.EqualFold(tid.Capability, capability) {
+			return false
+		}
+	}
+	return true
 }
 
 // QuerySpotCheckTestDetails returns per-job-run test details for a spot-check
