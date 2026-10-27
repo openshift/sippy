@@ -3,6 +3,7 @@ import { expect } from '@playwright/test'
 import {
   BASE_RELEASE,
   CAPABILITY,
+  COLUMN_NAME,
   COMPONENT,
   SAMPLE_RELEASE,
   TEST_ID,
@@ -35,7 +36,9 @@ When('I open test {string}', async ({ page }, testId) => {
 })
 
 When('I open the test details from the test row', async ({ page }) => {
-  await page.getByTestId('cr-test-details-link-0').click()
+  await page
+    .getByTestId(`cr-test-details-link-${TEST_ID}-${COLUMN_NAME}`)
+    .click()
 })
 
 When('I open the test details deep link', async ({ page }) => {

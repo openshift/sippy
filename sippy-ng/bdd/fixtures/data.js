@@ -16,6 +16,10 @@ export const FAILED_RUN_ID = '9001'
 export const PASSED_RUN_ID = '9002'
 export const JIRA_URL = 'https://redhat.atlassian.net/browse/TRT-2631'
 export const COLUMN_VARIANTS = { Platform: 'aws', Architecture: 'amd64' }
+// formColumnName joins variant keys in this order for data-testid values.
+export const COLUMN_NAME = Object.keys(COLUMN_VARIANTS)
+  .map((key) => `${key}:${COLUMN_VARIANTS[key]}`)
+  .join(' ')
 
 export const GENERATED_AT = '2026-10-26T12:00:00Z'
 export const PINNED_DATE = '2026-10-26T00:00:00Z'

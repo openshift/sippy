@@ -43,7 +43,7 @@ When('I open the component readiness report directly', async ({ page }) => {
 
 When('I open the loading component readiness report', async ({ page }) => {
   await page.goto('component_readiness/main')
-  await page.getByTestId('generate-report').first().waitFor()
+  await page.getByTestId('generate-report-top').waitFor()
 })
 
 When('I search rows for {string}', async ({ page }, text) => {

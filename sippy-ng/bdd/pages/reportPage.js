@@ -1,5 +1,6 @@
 import {
   ALT_SAMPLE_RELEASE,
+  COLUMN_NAME,
   COMPONENT,
   OTHER_COMPONENT,
 } from '../fixtures/data.js'
@@ -22,7 +23,7 @@ export class ReportPage {
   }
 
   cellLink(name = COMPONENT) {
-    return this.page.getByTestId(`cr-cell-${name}`)
+    return this.page.getByTestId(`cr-cell-${name}-${COLUMN_NAME}`)
   }
 
   async expectComponent(name) {
@@ -63,7 +64,7 @@ export class ReportPage {
   }
 
   async generate() {
-    await this.page.getByTestId('generate-report').first().click()
+    await this.page.getByTestId('generate-report-top').click()
   }
 
   async openRegressedTests() {
