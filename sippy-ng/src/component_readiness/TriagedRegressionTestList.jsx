@@ -71,6 +71,14 @@ export default function TriagedRegressionTestList(props) {
     props.regressions !== undefined && props.regressions.length > 0
   )
 
+  React.useEffect(() => {
+    if (props.regressions === undefined) {
+      return
+    }
+    setTriagedRegressions(props.regressions)
+    setShowView(props.regressions.length > 0)
+  }, [props.regressions])
+
   const handleTriagedRegressionGroupSelectionChanged = (data) => {
     let displayView = false
     if (data) {

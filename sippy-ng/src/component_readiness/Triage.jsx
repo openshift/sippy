@@ -45,15 +45,10 @@ export default function Triage({ id }) {
   const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
-  const triageIdRef = React.useRef(id)
-  const loadGenerationRef = React.useRef(0)
   const loadedIdRef = React.useRef(id)
   React.useEffect(() => {
-    const requestedId = id
-    const generation = ++loadGenerationRef.current
     const idChanged = loadedIdRef.current !== id
     loadedIdRef.current = id
-    triageIdRef.current = id
     setDeleteError('')
     setIsUpdated(false)
     if (idChanged) {
@@ -77,35 +72,15 @@ export default function Triage({ id }) {
       triageFetch = Promise.resolve({})
     }
 
-    const applyResult = (apply) => {
-      if (
-        triageIdRef.current !== requestedId ||
-        loadGenerationRef.current !== generation
-      ) {
-        return
-      }
-      apply()
-    }
-
     triageFetch
       .then((t) => {
-        applyResult(() => {
-          setTriage(t)
-          setIsLoaded(true)
-          document.title = 'Triage "' + t.description + '" (' + t.id + ')'
-        })
+        setTriage(t)
+        setIsLoaded(true)
+        document.title = 'Triage "' + t.description + '" (' + t.id + ')'
       })
       .catch((error) => {
-        applyResult(() => {
-          setMessage(error.toString())
-        })
+        setMessage(error.toString())
       })
-
-    return () => {
-      if (triageIdRef.current === requestedId) {
-        triageIdRef.current = null
-      }
-    }
   }, [isUpdated, localDBEnabled, id])
 
   React.useEffect(() => {
@@ -147,14 +122,10 @@ export default function Triage({ id }) {
       'Are you sure you want to delete this triage record?'
     )
     if (confirmed) {
-      const requestedId = id
       fetch(triage.links.self, {
         method: 'DELETE',
       })
         .then((response) => {
-          if (triageIdRef.current !== requestedId) {
-            return
-          }
           if (response.status !== 200) {
             throw new Error('API server returned ' + response.status)
           }
@@ -162,9 +133,6 @@ export default function Triage({ id }) {
           setMessage('Triage record has been deleted.')
         })
         .catch((error) => {
-          if (triageIdRef.current !== requestedId) {
-            return
-          }
           setDeleteError(error.toString())
         })
     }

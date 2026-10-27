@@ -114,6 +114,12 @@ export default function UpsertTriageModal({
   }
   const [triageEntryData, setTriageEntryData] = React.useState(initialTriage)
 
+  useEffect(() => {
+    if (triage !== undefined) {
+      setTriageEntryData(triage)
+    }
+  }, [triage])
+
   // when the regressionIds prop is changed in the parent, we must update the triageEntryData to reflect that
   useEffect(() => {
     if (regressionAddMode) {

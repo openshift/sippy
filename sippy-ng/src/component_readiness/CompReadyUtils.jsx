@@ -78,22 +78,6 @@ export const cancelledDataTable = {
 export const jiraUrlPrefixDeprecated = 'https://issues.redhat.com/browse/'
 export const jiraUrlPrefix = 'https://redhat.atlassian.net/browse/'
 
-// createLatestRequest tracks the newest in-flight report fetch. Pages start a
-// new request when the URL changes and do not cancel the previous one, so a
-// slow response must not replace a newer selection.
-export function createLatestRequest() {
-  let seq = 0
-  return {
-    start() {
-      seq += 1
-      return seq
-    },
-    isCurrent(id) {
-      return id === seq
-    },
-  }
-}
-
 // Make one place to create the Component Readiness api call
 export function getAPIUrl(endpoint) {
   return `${import.meta.env.VITE_API_URL}/api/${endpoint}`

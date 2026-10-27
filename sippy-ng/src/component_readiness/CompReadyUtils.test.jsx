@@ -1,7 +1,6 @@
 //import HelloWorld from './HelloWorld'
 import {
   convertApiUrlToUiUrl,
-  createLatestRequest,
   dateEndFormat,
   dateFormat,
   formatLongDate,
@@ -11,14 +10,6 @@ import {
   getTestDetailsLink,
   getTriagesAPIUrl,
 } from './CompReadyUtils'
-
-test('createLatestRequest keeps only the newest id current', () => {
-  const requests = createLatestRequest()
-  const first = requests.start()
-  const second = requests.start()
-  expect(requests.isCurrent(first)).toBe(false)
-  expect(requests.isCurrent(second)).toBe(true)
-})
 
 test('parses a query param start time without timezone', () => {
   let result = formatLongDate('2024-09-05 00:00:00', dateFormat)
