@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -116,9 +117,11 @@ func ParseComponentReportRequest(
 		opts.DataSource = dataSource
 	}
 
-	// If no view provided SpotCheckJobSamples, default from the sample release dates
-	// so spot-check middleware runs on drill-down requests too.
-	if len(opts.SpotCheckJobSamples) == 0 && !opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
+	// A view without spot-check samples has spot-check disabled, and ordinary custom reports never ask for it.
+	// Only a drill-down on a spot-check test with no configured samples needs a default, taken from the
+	// sample release dates, so the test details can still be queried.
+	if len(opts.SpotCheckJobSamples) == 0 && requestsSpotCheckTest(opts.TestIDOptions) &&
+		!opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
 		opts.SpotCheckJobSamples = []reqopts.SpotCheckJobSampleOpts{
 			{
 				Name: "spotcheck-30d",
@@ -141,6 +144,13 @@ func ParseComponentReportRequest(
 	}
 
 	return
+}
+
+// requestsSpotCheckTest returns true if any requested test is a synthetic spot-check test.
+func requestsSpotCheckTest(testIDOptions []reqopts.TestIdentification) bool {
+	return slices.ContainsFunc(testIDOptions, func(tid reqopts.TestIdentification) bool {
+		return crtest.IsSpotCheckTestID(tid.TestID)
+	})
 }
 
 func applyViewDefaults(

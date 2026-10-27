@@ -618,3 +618,108 @@ func TestHATEOASLinkCacheConsistency(t *testing.T) {
 	assert.JSONEq(t, string(preloaderJSON), string(requestJSON),
 		fmt.Sprintf("cache key mismatch — preloader and HATEOAS link produce different keys.\nPreloader: %s\nRequest:   %s", preloaderJSON, requestJSON))
 }
+
+func TestParseComponentReportRequestSpotCheckSamples(t *testing.T) {
+	releases := []v1.Release{
+		{Release: "4.16", GADate: util.CivilDatePtr(2024, time.June, 27)},
+		{Release: "4.17", GADate: util.CivilDatePtr(2024, time.December, 10)},
+	}
+	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
+		"Architecture": {"amd64"},
+		"JobTier":      {"stable", "spotcheck-30d"},
+	}}
+	newView := func(name string, spotCheck map[string]crview.SpotCheckJobSample) crview.View {
+		return crview.View{
+			Name: name,
+			BaseRelease: reqopts.RelativeRelease{
+				Release:       reqopts.Release{Name: "4.16"},
+				RelativeStart: "ga-30d",
+				RelativeEnd:   "ga",
+			},
+			SampleRelease: reqopts.RelativeRelease{
+				Release:       reqopts.Release{Name: "4.17"},
+				RelativeStart: "now-7d",
+				RelativeEnd:   "now",
+			},
+			SpotCheckJobSamples: spotCheck,
+		}
+	}
+	tier30 := map[string][]string{"JobTier": {"spotcheck-30d"}}
+	views := []crview.View{
+		newView("no-spot-check", nil),
+		newView("empty-spot-check", map[string]crview.SpotCheckJobSample{}),
+		newView("with-spot-check", map[string]crview.SpotCheckJobSample{
+			"spotcheck-30d": {RelativeStart: "now-30d", RelativeEnd: "now", IncludeVariants: tier30},
+		}),
+	}
+	customDates := [][2]string{
+		{"baseRelease", "4.16"},
+		{"sampleRelease", "4.17"},
+		{"baseStartTime", "2024-05-01T00:00:00Z"},
+		{"baseEndTime", "2024-05-31T23:59:59Z"},
+		{"sampleStartTime", "2024-11-04T00:00:00Z"},
+		{"sampleEndTime", "2024-11-11T00:00:00Z"},
+	}
+	spotCheckTestID := [][2]string{{"testId", crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")}}
+
+	tests := []struct {
+		name        string
+		queryParams [][2]string
+		wantSamples []string // sample names, in order
+		wantWindow  time.Duration
+	}{
+		{
+			name:        "view without spot-check config stays disabled",
+			queryParams: [][2]string{{"view", "no-spot-check"}},
+		},
+		{
+			name:        "view with empty spot-check config stays disabled",
+			queryParams: [][2]string{{"view", "empty-spot-check"}},
+		},
+		{
+			name:        "custom report without a spot-check test is not given spot-check results",
+			queryParams: customDates,
+		},
+		{
+			name:        "view with spot-check config uses its own window",
+			queryParams: [][2]string{{"view", "with-spot-check"}},
+			wantSamples: []string{"spotcheck-30d"},
+			wantWindow:  30 * 24 * time.Hour,
+		},
+		{
+			name:        "spot-check drilldown keeps the view's window",
+			queryParams: append([][2]string{{"view", "with-spot-check"}}, spotCheckTestID...),
+			wantSamples: []string{"spotcheck-30d"},
+			wantWindow:  30 * 24 * time.Hour,
+		},
+		{
+			name:        "spot-check drilldown without configured samples falls back to the sample dates",
+			queryParams: append(append([][2]string{}, customDates...), spotCheckTestID...),
+			wantSamples: []string{"spotcheck-30d"},
+			wantWindow:  7 * 24 * time.Hour,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			params := url.Values{}
+			for _, tuple := range tc.queryParams {
+				params.Add(tuple[0], tuple[1])
+			}
+			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
+			require.NoError(t, err)
+
+			opts, _, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, 12*time.Hour, 4*time.Hour)
+			require.NoError(t, err)
+
+			var gotSamples []string
+			for _, sample := range opts.SpotCheckJobSamples {
+				gotSamples = append(gotSamples, sample.Name)
+				// view windows are rounded to the cache rounding factor, so allow one step of slack
+				assert.InDelta(t, tc.wantWindow.Hours(), sample.End.Sub(sample.Start).Hours(), 12)
+				assert.Equal(t, tier30, sample.IncludeVariants)
+			}
+			assert.Equal(t, tc.wantSamples, gotSamples)
+		})
+	}
+}
