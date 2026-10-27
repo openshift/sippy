@@ -154,3 +154,65 @@ func TestAnalyze(t *testing.T) {
 		})
 	}
 }
+
+// The ordinary sample is typically shorter than the spot-check window, and the report labels the
+// returned dates as the window the counts came from.
+func TestAnalyzeReportsSpotCheckWindow(t *testing.T) {
+	now := time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC)
+	ordinaryStart, spotCheckStart := now.AddDate(0, 0, -7), now.AddDate(0, 0, -30)
+
+	mw := &SpotCheckJobs{
+		reqOptions: reqopts.RequestOptions{
+			SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
+				{
+					Name:    "spotcheck-30d",
+					Release: reqopts.Release{Name: "5.0", Start: spotCheckStart, End: now},
+				},
+			},
+		},
+	}
+	newStats := func() *testdetails.TestComparison {
+		return &testdetails.TestComparison{
+			SampleStats: testdetails.ReleaseStats{
+				Release: "5.0",
+				Start:   &ordinaryStart,
+				End:     &now,
+				Stats:   crtest.NewTestStats(1, 3, 0, false),
+			},
+		}
+	}
+	testKey := func(testID string) crtest.Identification {
+		return crtest.Identification{RowIdentification: crtest.RowIdentification{TestID: testID}}
+	}
+
+	t.Run("matched sample sets the reported window", func(t *testing.T) {
+		stats := newStats()
+		handled, err := mw.Analyze(testKey("spotcheck-30d:etcd:scaling"), stats)
+		require.NoError(t, err)
+		require.True(t, handled)
+
+		assert.Equal(t, "5.0", stats.SampleStats.Release)
+		require.NotNil(t, stats.SampleStats.Start)
+		require.NotNil(t, stats.SampleStats.End)
+		assert.Equal(t, spotCheckStart, *stats.SampleStats.Start)
+		assert.Equal(t, now, *stats.SampleStats.End)
+	})
+
+	t.Run("the reported window does not alias the request options", func(t *testing.T) {
+		stats := newStats()
+		_, err := mw.Analyze(testKey("spotcheck-30d:etcd:scaling"), stats)
+		require.NoError(t, err)
+
+		*stats.SampleStats.Start = time.Time{}
+		assert.Equal(t, spotCheckStart, mw.reqOptions.SpotCheckJobSamples[0].Start)
+	})
+
+	t.Run("a sample that is not configured leaves the ordinary window", func(t *testing.T) {
+		stats := newStats()
+		handled, err := mw.Analyze(testKey("spotcheck-7d:etcd:scaling"), stats)
+		require.NoError(t, err)
+		require.True(t, handled)
+
+		assert.Equal(t, ordinaryStart, *stats.SampleStats.Start)
+	})
+}

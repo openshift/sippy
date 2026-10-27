@@ -68,6 +68,13 @@ func (s *SpotCheckJobs) Analyze(testKey crtest.Identification,
 	sampleDays := 0
 	if sample != nil {
 		sampleDays = int(sample.End.Sub(sample.Start).Hours() / 24)
+		// The counts come from the spot-check window, not the ordinary sample the stats were initialized with.
+		start, end := sample.Start, sample.End
+		if sample.Release.Name != "" {
+			testStats.SampleStats.Release = sample.Release.Name
+		}
+		testStats.SampleStats.Start = &start
+		testStats.SampleStats.End = &end
 	}
 
 	totalRuns := testStats.SampleStats.Total()
