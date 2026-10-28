@@ -117,6 +117,29 @@ func TestOpenShiftTestsShouldWorkSyntheticTest(t *testing.T) {
 			},
 			wantAbsent: true,
 		},
+		{
+			name: "aborted job with a passing test entry is not a pass",
+			jrr: v1.RawJobRunResult{
+				Aborted:     true,
+				TestsStatus: testidentification.Success,
+			},
+			wantAbsent: true,
+		},
+		{
+			name: "errored job with a passing test entry is not a pass",
+			jrr: v1.RawJobRunResult{
+				Errored:     true,
+				TestsStatus: testidentification.Success,
+			},
+			wantAbsent: true,
+		},
+		{
+			name: "aborted job without test results is not a pass",
+			jrr: v1.RawJobRunResult{
+				Aborted: true,
+			},
+			wantAbsent: true,
+		},
 	}
 
 	for _, tc := range testCases {

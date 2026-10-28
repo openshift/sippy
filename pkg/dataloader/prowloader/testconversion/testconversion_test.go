@@ -231,6 +231,16 @@ func TestOpenShiftTestsShouldWorkAcrossJobStates(t *testing.T) {
 			name:  "errored job without test results",
 			state: prow.ErrorState,
 		},
+		{
+			name:  "aborted job that ran a passing test",
+			state: prow.AbortedState,
+			tests: []*types.TestCaseEntry{success("openshift-tests", "[sig-apps] example test")},
+		},
+		{
+			name:  "errored job that ran a passing test",
+			state: prow.ErrorState,
+			tests: []*types.TestCaseEntry{success("openshift-tests", "[sig-apps] example test")},
+		},
 	}
 
 	manager := synthetictests.NewOpenshiftSyntheticTestManager()

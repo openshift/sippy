@@ -54,8 +54,9 @@ in the API and in the background regression cache loader.
    `[sig-sippy] openshift-tests should work` for every job run
    (`pkg/synthetictests/ocp_synthetic_tests.go`). It passes when the job passed
    overall, including when only informing tests failed. It fails when the job
-   failed with test failures. Aborted and errored runs that never established
-   success produce no pass, so an interrupted retry cannot clear real failures.
+   failed with test failures. Aborted and errored runs never produce a result,
+   even if some tests passed before the interruption, so an interrupted retry
+   cannot clear real failures.
 2. When a report is generated, `ComponentReportGenerator.getTestStatus` runs one
    `QuerySpotCheckTestStatus` query per configured sample, concurrently with the
    normal status query. The PostgreSQL implementation counts runs of the
