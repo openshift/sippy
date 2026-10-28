@@ -191,15 +191,19 @@ Then('the all components tab shows {string}', async ({ page }, name) => {
 })
 
 Then('the report says there are no regressions', async ({ page }) => {
-  await expect(page.getByText('No regressions detected.')).toBeVisible()
+  await expect(
+    page.getByText('No regressions detected.', { exact: true })
+  ).toBeVisible()
 })
 
 Then('the report says no data was found', async ({ page }) => {
-  await expect(page.getByText('No Data found')).toBeVisible()
+  await expect(page.getByText('No Data found', { exact: true })).toBeVisible()
 })
 
 Then('the report says the operation was cancelled', async ({ page }) => {
-  await expect(page.getByText(/Operation Cancelled/)).toBeVisible()
+  await expect(
+    page.getByText('Operation Cancelled: Cancelled', { exact: true })
+  ).toBeVisible()
 })
 
 Then('the report shows a load failure', async ({ page }) => {

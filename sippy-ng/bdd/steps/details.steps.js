@@ -28,11 +28,15 @@ Then(
   'the test details show the sample and basis statistics',
   async ({ page }) => {
     const basis = page.getByText(/Basis \(historical\) Release:/)
-    await expect(basis.getByText('Successes: 120')).toBeVisible()
-    await expect(basis.getByText('Failures: 0')).toBeVisible()
+    await expect(
+      basis.getByText('Successes: 120', { exact: true })
+    ).toBeVisible()
+    await expect(basis.getByText('Failures: 0', { exact: true })).toBeVisible()
     const sample = page.getByText(/Sample \(being evaluated\) Release:/)
-    await expect(sample.getByText('Successes: 80')).toBeVisible()
-    await expect(sample.getByText('Failures: 4')).toBeVisible()
+    await expect(
+      sample.getByText('Successes: 80', { exact: true })
+    ).toBeVisible()
+    await expect(sample.getByText('Failures: 4', { exact: true })).toBeVisible()
   }
 )
 
@@ -42,8 +46,16 @@ Then(
     await expect(page.getByText('Assessment:')).toBeVisible()
     await expect(page.getByAltText('SignificantRegression')).toBeVisible()
     await expect(
-      page.getByText('pass rate dropped from 99% to 80%').first()
+      page.getByText('pass rate dropped from 99% to 80%', { exact: true })
     ).toBeVisible()
+  }
+)
+
+Then(
+  'the header assessment stays a significant regression',
+  async ({ page }) => {
+    await expect(page.getByText('Assessment:')).toBeVisible()
+    await expect(page.getByAltText('SignificantRegression')).toBeVisible()
   }
 )
 

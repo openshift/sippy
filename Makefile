@@ -33,7 +33,7 @@ sippy: builddir
 sippy-daemon: builddir
 	go build $(LDFLAGS) -mod=vendor ./cmd/sippy-daemon/...
 
-test: builddir npm
+test: builddir npm test-bdd
 ifeq ($(ARTIFACT_DIR),)
 	@echo "ARTIFACT_DIR is not defined. Using default JUnit file location."
 	gotestsum --junitfile ./junit.xml ./pkg/...
@@ -49,11 +49,6 @@ endif
 		fi && \
 		.venv/bin/pip install -r requirements.txt -q && \
 		.venv/bin/pytest test_server.py -v $(if $(ARTIFACT_DIR),--junitxml=$(ARTIFACT_DIR)/mcp-junit.xml)
-ifneq ($(SKIP_BDD),)
-	@echo "SKIP_BDD is set. Skipping the Component Readiness browser suite."
-else
-	$(MAKE) test-bdd
-endif
 
 .PHONY: test-bdd
 # Playwright's worker sets FORCE_COLOR, so drop NO_COLOR or Node warns.

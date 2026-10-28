@@ -288,7 +288,9 @@ Then('the triage update keeps both regressions', async ({ api }) => {
 
 Then('the existing triage success message is shown', async ({ page }) => {
   await expect(
-    page.getByText(`successfully added test to triage record: ${JIRA_URL}`)
+    page.getByText(`successfully added test to triage record: ${JIRA_URL}`, {
+      exact: true,
+    })
   ).toBeVisible()
 })
 
@@ -310,7 +312,7 @@ Then('the triage create request includes the regression', async ({ api }) => {
 
 Then('the triage success message is shown', async ({ page }) => {
   await expect(
-    page.getByText('successfully created triage entry')
+    page.getByText('successfully created triage entry', { exact: true })
   ).toBeVisible()
 })
 
@@ -319,7 +321,7 @@ Then(
   async ({ page }) => {
     await expect(page.getByText(/error creating triage entry/)).toBeVisible()
     await expect(
-      page.getByText('successfully created triage entry')
+      page.getByText('successfully created triage entry', { exact: true })
     ).toHaveCount(0)
   }
 )
@@ -349,7 +351,7 @@ Then(
   async ({ page }) => {
     await expect(page.getByText(/error updating triage entry/)).toBeVisible()
     await expect(
-      page.getByText('successfully updated triage entry')
+      page.getByText('successfully updated triage entry', { exact: true })
     ).toHaveCount(0)
     await expect(page.getByRole('dialog', { name: 'Triage' })).toBeVisible()
     await expect(page).toHaveURL(/triages\/7/)
@@ -358,7 +360,10 @@ Then(
 
 Then('removing every regression is rejected', async ({ page }) => {
   await expect(
-    page.getByText('Cannot remove all regressions, must leave at least one')
+    page.getByText(
+      'Cannot remove all regressions, must leave at least one associated with the triage record',
+      { exact: true }
+    )
   ).toBeVisible()
 })
 
@@ -372,7 +377,9 @@ Then('one regression was removed', async ({ api, page }) => {
 })
 
 Then('the triage is deleted', async ({ page, api }) => {
-  await expect(page.getByText('Triage record has been deleted.')).toBeVisible()
+  await expect(
+    page.getByText('Triage record has been deleted.', { exact: true })
+  ).toBeVisible()
   const deleted = latestRequest(api.deleteRequests())
   expect(deleted.pathname).toBe(
     `/api/component_readiness/triages/${SEEDED_TRIAGE_ID}`
@@ -405,13 +412,15 @@ Then('the force-close preview shows the fixture test', async ({ page }) => {
 
 Then('a force-close reason is required', async ({ page }) => {
   await expect(
-    page.getByText('A reason is required to force close regressions')
+    page.getByText('A reason is required to force close regressions', {
+      exact: true,
+    })
   ).toBeVisible()
 })
 
 Then('force close succeeds', async ({ page, api }) => {
   await expect(
-    page.getByText('Successfully force closed 1 regression')
+    page.getByText('Successfully force closed 1 regression', { exact: true })
   ).toBeVisible()
   const post = latestRequest(api.forceCloseRequests())
   expect(post.body).toEqual({
@@ -441,7 +450,7 @@ Then(
 
 Then('there is nothing to force close', async ({ page }) => {
   await expect(
-    page.getByText('There are no regressions to force close.')
+    page.getByText('There are no regressions to force close.', { exact: true })
   ).toBeVisible()
   await expect(page.getByTestId('force-close-confirm')).toBeDisabled()
 })

@@ -24,7 +24,7 @@ Feature: Test details report
     When I open the test details deep link
     And I open the "4.22 Basis" historical tab
     Then the historical comparison shows basis release "4.22"
-    And the test details assessment is a significant regression
+    And the header assessment stays a significant regression
 
   Scenario: The stale warning opens the latest report
     Given a component readiness API

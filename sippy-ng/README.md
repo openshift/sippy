@@ -185,8 +185,8 @@ make test-bdd
 That installs Playwright's Chromium and runs `npm run test:bdd` in this
 directory. If a dev server is already on port 3000, the suite reuses it.
 A run where `CI` is already set starts its own server and will not reuse
-one. `make test` also runs this suite after the Go tests, the helper
-unit tests, and mcp pytest.
+one. `make test` depends on `test-bdd`, so the browser suite runs before
+the Go tests, the helper unit tests, and mcp pytest.
 
 ### Helper unit tests
 
@@ -232,5 +232,6 @@ Runs the Vitest suite for helper functions. See [Testing](#testing).
 
 Runs the Playwright BDD suite in `bdd/`. This is how frontend behavior is
 tested. From the repo root, `make test-bdd` installs Playwright's Chromium
-and runs only this suite. `make test` runs it after the Go tests, the
-helper unit tests, and mcp pytest.
+and runs only this suite. `make test` depends on `test-bdd`, so the
+browser suite runs before the Go tests, the helper unit tests, and mcp
+pytest.

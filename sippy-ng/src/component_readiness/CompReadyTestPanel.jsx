@@ -231,9 +231,9 @@ export default function CompReadyTestPanel(props) {
 
   return (
     <Fragment>
-      {(data.explanations || []).length > 0 && (
-        <Typography>{data.explanations.join('\n')}</Typography>
-      )}
+      {(data.explanations || []).map((explanation, index) => (
+        <Typography key={index}>{explanation}</Typography>
+      ))}
       <Grid container spacing={2} style={{ marginTop: '10px' }}>
         {data.base_stats && (
           <Grid item xs={6}>
