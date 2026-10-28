@@ -135,6 +135,23 @@ func TestBuildInfraFailureQueryRejectsUnsafeDataset(t *testing.T) {
 	}
 }
 
+func TestGroupRunIDsByPartitionDay(t *testing.T) {
+	keys := []runPartitionKey{
+		{ID: 1, Release: "5.1", Timestamp: time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)},
+		{ID: 2, Release: "5.1", Timestamp: time.Date(2026, 10, 1, 23, 30, 0, 0, time.FixedZone("west", -2*60*60))},
+		{ID: 3, Release: "5.2", Timestamp: time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)},
+		{ID: 4, Release: "5.1", Timestamp: time.Date(2026, 10, 3, 1, 0, 0, 0, time.UTC)},
+	}
+	want := map[partitionDay][]int64{
+		{release: "5.1", date: civil.Date{Year: 2026, Month: time.October, Day: 2}}: {1, 2},
+		{release: "5.2", date: civil.Date{Year: 2026, Month: time.October, Day: 2}}: {3},
+		{release: "5.1", date: civil.Date{Year: 2026, Month: time.October, Day: 3}}: {4},
+	}
+	if got := groupRunIDsByPartitionDay(keys); !reflect.DeepEqual(got, want) {
+		t.Errorf("groups = %v, want %v", got, want)
+	}
+}
+
 func TestBatchIDs(t *testing.T) {
 	tests := []struct {
 		name string
