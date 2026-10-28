@@ -340,47 +340,49 @@ export default function TriagedRegressionTestList(props) {
 
   return (
     <Fragment>
-      <div hidden={!showView} className="cr-triage-panel-element">
-        <Typography>Test Failures</Typography>
-        <DataGrid
-          sortModel={sortModel}
-          onSortModelChange={setSortModel}
-          slots={{ toolbar: GridToolbar }}
-          rows={filteredRegressions}
-          columns={columns}
-          getRowHeight={() => 'auto'}
-          getRowId={(row) => row.id}
-          rowSelectionModel={activeRow != null ? [activeRow] : []}
-          onRowSelectionModelChange={(newRow) => {
-            if (newRow.length > 0) {
-              setActiveRow(Number(newRow[0]), 'replaceIn')
-            }
-          }}
-          paginationModel={{ pageSize: 10, page: activePage || 0 }}
-          onPaginationModelChange={(model) => {
-            setActivePage(model.page, 'replaceIn')
-          }}
-          rowHeight={60}
-          autoHeight={true}
-          checkboxSelection={false}
-          slotProps={{
-            toolbar: {
-              columns: columns,
-              addFilters: addFilters,
-              filterModel: filterModel,
-              setFilterModel: setFilterModel,
-              clearSearch: () => requestSearch(''),
-              doSearch: requestSearch,
-              searchField: 'test_name',
-              autocompleteData: triagedRegressions,
-              downloadDataFunc: () => {
-                return filteredRegressions
+      {showView && (
+        <div className="cr-triage-panel-element">
+          <Typography>Test Failures</Typography>
+          <DataGrid
+            sortModel={sortModel}
+            onSortModelChange={setSortModel}
+            slots={{ toolbar: GridToolbar }}
+            rows={filteredRegressions}
+            columns={columns}
+            getRowHeight={() => 'auto'}
+            getRowId={(row) => row.id}
+            rowSelectionModel={activeRow != null ? [activeRow] : []}
+            onRowSelectionModelChange={(newRow) => {
+              if (newRow.length > 0) {
+                setActiveRow(Number(newRow[0]), 'replaceIn')
+              }
+            }}
+            paginationModel={{ pageSize: 10, page: activePage || 0 }}
+            onPaginationModelChange={(model) => {
+              setActivePage(model.page, 'replaceIn')
+            }}
+            rowHeight={60}
+            autoHeight={true}
+            checkboxSelection={false}
+            slotProps={{
+              toolbar: {
+                columns: columns,
+                addFilters: addFilters,
+                filterModel: filterModel,
+                setFilterModel: setFilterModel,
+                clearSearch: () => requestSearch(''),
+                doSearch: requestSearch,
+                searchField: 'test_name',
+                autocompleteData: triagedRegressions,
+                downloadDataFunc: () => {
+                  return filteredRegressions
+                },
+                downloadFilePrefix: 'triaged_test_regressions',
               },
-              downloadFilePrefix: 'triaged_test_regressions',
-            },
-          }}
-        />
-      </div>
+            }}
+          />
+        </div>
+      )}
     </Fragment>
   )
 }
