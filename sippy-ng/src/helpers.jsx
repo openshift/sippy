@@ -110,6 +110,15 @@ export function relativeTime(date, startDate) {
   }
 }
 
+export function ageColor(date, theme) {
+  if (!date) return undefined
+  const now = new Date()
+  const daysAgo = (now - date) / (1000 * 60 * 60 * 24)
+  if (daysAgo >= 14) return theme.palette.error.main
+  if (daysAgo >= 7) return theme.palette.warning.main
+  return undefined
+}
+
 // relativeDuration shows a plain English rendering of a duration, e.g. "30 minutes".
 export function relativeDuration(secondsAgo) {
   if (secondsAgo === undefined) {
