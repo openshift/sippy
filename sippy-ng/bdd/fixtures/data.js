@@ -12,6 +12,16 @@ export const TEST_NAME = 'should maintain pod network'
 export const TEST_SUITE = 'openshift-tests'
 export const REGRESSION_ID = 101
 export const SECOND_REGRESSION_ID = 102
+export const THIRD_REGRESSION_ID = 103
+export const SEEDED_TRIAGE_ID = 7
+export const KEPT_TEST_NAME = 'should keep routes'
+export const KEPT_TEST_ID = 'test-sdn-routes'
+export const FIXED_TEST_NAME = 'should recover after a flake'
+export const FIXED_TEST_ID = 'test-sdn-flake'
+export const VIEW_BASE_START = '2026-05-01T00:00:00Z'
+export const VIEW_BASE_END = '2026-06-01T00:00:00Z'
+export const VIEW_SAMPLE_START = '2026-10-19T00:00:00Z'
+export const VIEW_SAMPLE_END = '2026-10-26T00:00:00Z'
 export const FAILED_RUN_ID = '9001'
 export const PASSED_RUN_ID = '9002'
 export const JIRA_URL = 'https://redhat.atlassian.net/browse/TRT-2631'
@@ -61,13 +71,13 @@ export function views() {
       name: VIEW,
       base_release: {
         release: BASE_RELEASE,
-        start: '2026-05-01T00:00:00Z',
-        end: '2026-06-01T00:00:00Z',
+        start: VIEW_BASE_START,
+        end: VIEW_BASE_END,
       },
       sample_release: {
         release: SAMPLE_RELEASE,
-        start: statsStart,
-        end: statsEnd,
+        start: VIEW_SAMPLE_START,
+        end: VIEW_SAMPLE_END,
       },
       test_id_options: {},
       test_filters: {},
@@ -98,26 +108,46 @@ export function views() {
   ]
 }
 
-export function regressedTest(id = REGRESSION_ID) {
+function testDetailsQuery(testId, component) {
+  const params = new URLSearchParams()
+  params.set('view', VIEW)
+  params.set('testId', testId)
+  params.set('component', component)
+  params.set('capability', CAPABILITY)
+  params.set('baseRelease', BASE_RELEASE)
+  params.set('sampleRelease', SAMPLE_RELEASE)
+  params.set('baseStartTime', VIEW_BASE_START)
+  params.set('baseEndTime', VIEW_BASE_END)
+  params.set('sampleStartTime', VIEW_SAMPLE_START)
+  params.set('sampleEndTime', VIEW_SAMPLE_END)
+  params.append('includeVariant', 'Platform:aws')
+  params.append('includeVariant', 'Architecture:amd64')
+  params.set('columnGroupBy', 'Architecture,Platform')
+  return `/api/component_readiness/test_details?${params.toString()}`
+}
+
+export function regressedTest(id = REGRESSION_ID, overrides = {}) {
+  const testId = overrides.test_id || TEST_ID
+  const component = overrides.component || COMPONENT
+  const { regression, links, ...rest } = overrides
   return {
-    component: COMPONENT,
+    component,
     capability: CAPABILITY,
     test_name: TEST_NAME,
     test_suite: TEST_SUITE,
-    test_id: TEST_ID,
+    test_id: testId,
     status: -400,
     variants: COLUMN_VARIANTS,
     explanations: ['pass rate dropped from 99% to 80%'],
     last_failure: lastFailure,
+    ...rest,
     regression: {
       id,
       opened: regressionOpened,
+      ...regression,
     },
-    links: {
-      test_details:
-        `/api/component_readiness/test_details?testId=${TEST_ID}` +
-        `&component=${COMPONENT}&capability=${CAPABILITY}` +
-        `&baseRelease=${BASE_RELEASE}&sampleRelease=${SAMPLE_RELEASE}`,
+    links: links || {
+      test_details: testDetailsQuery(testId, component),
     },
   }
 }
@@ -159,6 +189,74 @@ export function mainReport() {
   }
 }
 
+function reportWithRows(rows) {
+  return {
+    generated_at: GENERATED_AT,
+    warnings: [],
+    rows,
+  }
+}
+
+export function pairReport() {
+  return reportWithRows([
+    {
+      component: COMPONENT,
+      columns: [
+        column(-400, [
+          regressedTest(REGRESSION_ID),
+          regressedTest(SECOND_REGRESSION_ID, {
+            test_name: KEPT_TEST_NAME,
+            test_id: KEPT_TEST_ID,
+          }),
+        ]),
+      ],
+    },
+  ])
+}
+
+export function membershipReport() {
+  return reportWithRows([
+    {
+      component: COMPONENT,
+      columns: [
+        column(-400, [
+          regressedTest(REGRESSION_ID),
+          regressedTest(SECOND_REGRESSION_ID, {
+            test_name: KEPT_TEST_NAME,
+            test_id: KEPT_TEST_ID,
+          }),
+          regressedTest(THIRD_REGRESSION_ID, {
+            test_name: FIXED_TEST_NAME,
+            test_id: FIXED_TEST_ID,
+            status: -150,
+          }),
+        ]),
+      ],
+    },
+  ])
+}
+
+export function pagedReport() {
+  const rows = []
+  for (let n = 1; n <= 11; n++) {
+    const label = String(n).padStart(2, '0')
+    const component = `Alpha ${label}`
+    rows.push({
+      component,
+      columns: [
+        column(-400, [
+          regressedTest(200 + n, {
+            component,
+            test_name: `paged regression ${label}`,
+            test_id: `paged-${label}`,
+          }),
+        ]),
+      ],
+    })
+  }
+  return reportWithRows(rows)
+}
+
 export function capabilitiesReport() {
   return {
     generated_at: GENERATED_AT,
@@ -188,28 +286,12 @@ export function testsReport() {
   }
 }
 
-export function singleTestReport() {
-  return {
-    generated_at: GENERATED_AT,
-    rows: [
-      {
-        component: COMPONENT,
-        capability: CAPABILITY,
-        test_id: TEST_ID,
-        test_name: TEST_NAME,
-        test_suite: TEST_SUITE,
-        columns: [column(-400, [regressedTest()])],
-      },
-    ],
-  }
-}
-
-function releaseStats(release, failures) {
+function releaseStats(release, failures, successes) {
   return {
     release,
     Start: statsStart,
     End: statsEnd,
-    success_count: 80,
+    success_count: successes,
     failure_count: failures,
     flake_count: 1,
     success_rate: failures === 0 ? 0.99 : 0.8,
@@ -222,8 +304,8 @@ export function testDetailsReport(options = {}) {
       status: -400,
       comparison: 'fisher_exact',
       explanations: ['pass rate dropped from 99% to 80%'],
-      sample_stats: releaseStats(SAMPLE_RELEASE, 4),
-      base_stats: releaseStats(options.baseRelease || PREVIOUS_RELEASE, 0),
+      sample_stats: releaseStats(SAMPLE_RELEASE, 4, 80),
+      base_stats: releaseStats(options.baseRelease || PREVIOUS_RELEASE, 0, 120),
       fisher_exact: 0.99,
       last_failure: lastFailure,
       regression: {
@@ -236,8 +318,8 @@ export function testDetailsReport(options = {}) {
           sample_job_name: 'periodic-ci-sample',
           base_job_name: 'periodic-ci-base',
           significant: true,
-          sample_stats: releaseStats(SAMPLE_RELEASE, 4),
-          base_stats: releaseStats(BASE_RELEASE, 0),
+          sample_stats: releaseStats(SAMPLE_RELEASE, 4, 80),
+          base_stats: releaseStats(BASE_RELEASE, 0, 120),
           sample_job_run_stats: [
             {
               job_url: `https://prow.example/view/${FAILED_RUN_ID}`,
@@ -274,8 +356,8 @@ export function testDetailsReport(options = {}) {
       status: 0,
       comparison: 'fisher_exact',
       explanations: ['historical basis did not regress'],
-      sample_stats: releaseStats(SAMPLE_RELEASE, 4),
-      base_stats: releaseStats(BASE_RELEASE, 0),
+      sample_stats: releaseStats(SAMPLE_RELEASE, 4, 80),
+      base_stats: releaseStats(BASE_RELEASE, 0, 120),
       job_stats: [],
     })
   }
@@ -315,7 +397,7 @@ export function cancelledReport() {
 }
 
 export function triageRecord(overrides = {}) {
-  const id = overrides.id || 7
+  const id = overrides.id || SEEDED_TRIAGE_ID
   return {
     id,
     url: overrides.url || JIRA_URL,

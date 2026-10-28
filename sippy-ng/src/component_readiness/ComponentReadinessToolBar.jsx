@@ -192,7 +192,10 @@ export default function ComponentReadinessToolBar(props) {
                 </SearchIconWrapper>
                 <StyledInputBase
                   placeholder="Search Column"
-                  inputProps={{ 'aria-label': 'search' }}
+                  inputProps={{
+                    'aria-label': 'search',
+                    'data-testid': 'search-column',
+                  }}
                   value={searchColumnRegex}
                   onChange={handleSearchColumnRegexChange}
                 />

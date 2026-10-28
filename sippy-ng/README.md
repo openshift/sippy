@@ -168,16 +168,44 @@ was just a matter of having them allow cookie 0.7.x.
 
 ## Testing
 
-To run the tests run `npm test`.
+Frontend behavior is tested with the Playwright BDD suite in `bdd/`.
+Scenarios are Gherkin feature files. API calls are intercepted, so the
+suite does not need the Go server or a database.
 
-Tests use [Vitest](https://vitest.dev/) (Vite's native test runner) and
-[React Testing Library](https://testing-library.com/docs/react-testing-library/intro/).
+Add or update a feature under `bdd/features/` for new or changed pages,
+components, and user flows. Step definitions live in `bdd/steps/`, page
+objects in `bdd/pages/`, and shared fixtures in `bdd/fixtures/`.
 
-### Managing time
+Run the suite from the repo root:
 
-When testing pages that use date or time, the test must mock out
-Date.now() to ensure consistent results. You can use Vitest's spy
-functions:
+```
+make test-bdd
+```
+
+That installs Playwright's Chromium and runs `npm run test:bdd` in this
+directory. If a dev server is already on port 3000, the suite reuses it.
+A run where `CI` is already set starts its own server and will not reuse
+one. `make test` also runs this suite after the Go tests, the helper
+unit tests, and mcp pytest.
+
+### Helper unit tests
+
+Vitest is only for helper functions: pure utilities such as those in
+`src/helpers.js`. Do not add Vitest or React Testing Library tests for
+components, pages, or other UI behavior.
+
+Run the helper unit tests from this directory:
+
+```
+npm test
+```
+
+Tests use [Vitest](https://vitest.dev/).
+
+#### Managing time
+
+When a helper depends on the current time, mock `Date.now()` so results
+stay stable:
 
 ```javascript
 vi.spyOn(Date, 'now').mockImplementation(() => 1628691480000)
@@ -198,12 +226,11 @@ Builds the app for production into the `build/` folder.
 
 ### `npm test`
 
-Runs the Vitest test suite.
+Runs the Vitest suite for helper functions. See [Testing](#testing).
 
 ### `npm run test:bdd`
 
-Runs the Component Readiness Playwright BDD suite in `bdd/`. The scenarios
-are Gherkin feature files. API calls are intercepted, so the suite does not
-need the Go server or a database. `make test` runs this suite after the
-Go tests, Vitest, and mcp pytest. `make test-bdd` installs Playwright's
-Chromium and runs only this suite.
+Runs the Playwright BDD suite in `bdd/`. This is how frontend behavior is
+tested. From the repo root, `make test-bdd` installs Playwright's Chromium
+and runs only this suite. `make test` runs it after the Go tests, the
+helper unit tests, and mcp pytest.

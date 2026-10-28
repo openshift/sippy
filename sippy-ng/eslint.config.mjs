@@ -15,6 +15,7 @@ export default [
       'coverage/**',
       'bdd/.features-gen/**',
       'playwright-report/**',
+      'blob-report/**',
       'test-results/**',
     ],
   },
@@ -104,12 +105,6 @@ export default [
       globals: {
         ...globals.node,
       },
-    },
-    rules: {
-      'react/react-in-jsx-scope': 'off',
-      'react/prop-types': 'off',
-      // This plugin's autofix crashes on the current ESLint for these files.
-      'sort-imports-es6-autofix/sort-imports-es6': 'off',
     },
   },
 ]

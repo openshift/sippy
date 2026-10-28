@@ -1,8 +1,22 @@
+import {
+  ALT_COMPONENT,
+  ALT_SAMPLE_RELEASE,
+  COMPONENT,
+} from '../fixtures/data.js'
 import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
-import { ALT_COMPONENT, COMPONENT, OTHER_COMPONENT } from '../fixtures/data.js'
-import { test } from '../fixtures/test.js'
+import { expectSettledEmpty, latestRequest } from '../fixtures/expectations.js'
 import { ReportPage } from '../pages/reportPage.js'
+import { test } from '../fixtures/test.js'
+
+function isComponentReportResponse(response) {
+  return new URL(response.url()).pathname.endsWith('/api/component_readiness')
+}
+
+// Same replacement as escapeRegex in src/helpers.jsx. That module imports React, so the pattern stays here.
+function escapeRegex(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 const { Given, When, Then } = createBdd(test)
 
@@ -50,6 +64,10 @@ When('I search rows for {string}', async ({ page }, text) => {
   await new ReportPage(page).searchRows(text)
 })
 
+When('I search columns for {string}', async ({ page }, text) => {
+  await new ReportPage(page).searchColumns(text)
+})
+
 When('I clear the report search', async ({ page }) => {
   await new ReportPage(page).clearSearch()
 })
@@ -59,6 +77,10 @@ When('I show only red rows', async ({ page }) => {
   await new ReportPage(page).setRedOnly(true)
 })
 
+When('I open the all components tab', async ({ page }) => {
+  await new ReportPage(page).openAllComponents()
+})
+
 When(
   'I change the sample release to {string} without generating',
   async ({ page }, release) => {
@@ -66,11 +88,37 @@ When(
   }
 )
 
+When(
+  'I change the basis release to {string} without generating',
+  async ({ page }, release) => {
+    await new ReportPage(page).changeBasisRelease(release)
+  }
+)
+
+When('I set sample and basis dates without generating', async ({ page }) => {
+  const report = new ReportPage(page)
+  await report.setReleaseDate('Sample Release', 'From', '2026-01-15 00:00:00')
+  await report.setReleaseDate('Basis Release', 'From', '2026-03-01 00:00:00')
+})
+
+When('I include the gcp variant without generating', async ({ page }) => {
+  await new ReportPage(page).setIncludeVariant('Platform', 'gcp')
+})
+
+When(
+  'I filter by the blocking lifecycle without generating',
+  async ({ page }) => {
+    await new ReportPage(page).selectTestLifecycle('blocking')
+  }
+)
+
+When('I copy the search link and open it', async ({ page }) => {
+  const copied = await new ReportPage(page).copySearchLink()
+  await page.goto(copied)
+})
+
 async function generateAndWait(page) {
-  const reportResponse = page.waitForResponse((response) => {
-    const path = new URL(response.url()).pathname
-    return path.endsWith('/api/component_readiness')
-  })
+  const reportResponse = page.waitForResponse(isComponentReportResponse)
   await new ReportPage(page).generate()
   await reportResponse
 }
@@ -115,12 +163,10 @@ When('I filter by the sdn capability and generate', async ({ page }) => {
 })
 
 When('I release the held report', async ({ api, page }) => {
-  const heldResponse = page.waitForResponse((response) => {
-    const path = new URL(response.url()).pathname
-    return path.endsWith('/api/component_readiness')
-  })
+  const heldResponse = page.waitForResponse(isComponentReportResponse)
   api.releaseHeldReport()
-  await heldResponse
+  const response = await heldResponse
+  await response.finished()
 })
 
 Then('I see component {string}', async ({ page }, name) => {
@@ -164,32 +210,33 @@ Then('the report shows a load failure', async ({ page }) => {
   ).toBeVisible()
 })
 
+function decodedUrl(url) {
+  return decodeURIComponent(url)
+}
+
 Then('the latest report request includes {string}', async ({ api }, text) => {
-  const reports = api.reportRequests()
-  expect(reports.length).toBeGreaterThan(0)
-  const url = reports[reports.length - 1].url
+  const url = decodedUrl(latestRequest(api.reportRequests()).url)
   expect(url, url).toContain(text)
 })
 
 Then(
   'the latest report request does not include {string}',
   async ({ api }, text) => {
-    const reports = api.reportRequests()
-    expect(reports[reports.length - 1].url).not.toContain(text)
+    const url = decodedUrl(latestRequest(api.reportRequests()).url)
+    expect(url).not.toContain(text)
   }
 )
 
 Then('no report request includes {string}', async ({ api }, text) => {
-  const matched = api
-    .reportRequests()
-    .filter((request) => request.url.includes(text))
-  expect(matched).toEqual([])
+  await expectSettledEmpty(() =>
+    api
+      .reportRequests()
+      .filter((request) => decodedUrl(request.url).includes(text))
+  )
 })
 
 Then('the page URL includes {string}', async ({ page }, text) => {
-  await expect(page).toHaveURL(
-    new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  )
+  await expect(page).toHaveURL(new RegExp(escapeRegex(text)))
 })
 
 Then('triage write controls are hidden', async ({ page }) => {
@@ -197,12 +244,30 @@ Then('triage write controls are hidden', async ({ page }) => {
 })
 
 Then('no mutation requests were sent', async ({ api }) => {
-  expect(api.mutationRequests()).toEqual([])
+  await expectSettledEmpty(() => api.mutationRequests())
 })
 
 Then('I still see the generated component', async ({ page }) => {
   await expect(page.getByTestId(`cr-component-${ALT_COMPONENT}`)).toBeVisible()
-  await expect(page.getByTestId(`cr-component-${OTHER_COMPONENT}`)).toHaveCount(
-    0
+  await expect(page.getByTestId(`cr-component-${COMPONENT}`)).toHaveCount(0)
+  await expect(page).toHaveURL(
+    new RegExp(`sampleRelease=${ALT_SAMPLE_RELEASE}`)
   )
+})
+
+Then(
+  'the {string} cell assessment is {string}',
+  async ({ page }, component, alt) => {
+    await expect(
+      new ReportPage(page).cellLink(component).getByAltText(alt)
+    ).toBeVisible()
+  }
+)
+
+Then('the column {string} is hidden', async ({ page }, name) => {
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0)
+})
+
+Then('the column {string} is shown', async ({ page }, name) => {
+  await expect(page.getByText(name, { exact: true }).first()).toBeVisible()
 })

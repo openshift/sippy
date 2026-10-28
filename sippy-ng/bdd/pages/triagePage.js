@@ -1,4 +1,4 @@
-import { JIRA_URL } from '../fixtures/data.js'
+import { JIRA_URL, REGRESSION_ID } from '../fixtures/data.js'
 
 export class TriagePage {
   constructor(page) {
@@ -14,21 +14,28 @@ export class TriagePage {
     await this.page.getByTestId(`regressed-tab-${name}`).click()
   }
 
-  async selectRegression() {
+  async selectRegression(id = REGRESSION_ID) {
     const button = this.page.getByTestId('triage-regressions')
-    const box = this.page.locator('input[name="triage-test-id"]')
-    if ((await button.innerText()) === 'Triage') {
-      await button.click()
-    }
+    const box = this.page.locator(`input[name="triage-test-id"][value="${id}"]`)
     if (!(await box.isVisible())) {
       await button.click()
     }
-    await box.click({ force: true })
+    await box.waitFor()
+    await box.click()
   }
 
   async startTriage() {
     await this.selectRegression()
+    const matchesSettled = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/matches') &&
+        response.request().method() === 'GET'
+    )
     await this.page.getByRole('button', { name: 'Set Triage Info' }).click()
+    await matchesSettled
+    await this.page
+      .getByRole('tab', { name: 'Potential Matches (none found)' })
+      .waitFor()
     await this.page.getByRole('tab', { name: 'New Triage' }).click()
   }
 
@@ -46,5 +53,33 @@ export class TriagePage {
 
   async submitTriage() {
     await this.page.getByTestId('triage-submit').click()
+  }
+
+  async addSelectedToExisting() {
+    await this.selectRegression()
+    const triageDialog = this.page.getByRole('dialog', { name: 'Triage' })
+    await this.page.getByRole('button', { name: 'Set Triage Info' }).click()
+    await triageDialog.getByRole('tab', { name: 'Existing Triage' }).click()
+    await triageDialog.getByRole('button', { name: 'Add to Entry' }).click()
+  }
+
+  async triageFromTestDetails() {
+    await this.page.getByRole('button', { name: 'Triage', exact: true }).click()
+    await this.page
+      .getByRole('tab', { name: 'Potential Matches (none found)' })
+      .waitFor()
+    await this.page.getByRole('tab', { name: 'New Triage' }).click()
+    await this.fillNewTriage()
+    await this.submitTriage()
+  }
+
+  async searchRegressedTests(text) {
+    const search = this.page.getByPlaceholder('Search…')
+    await search.fill(text)
+    await search.press('Enter')
+  }
+
+  async openNextRegressedPage() {
+    await this.page.getByRole('button', { name: 'Go to next page' }).click()
   }
 }

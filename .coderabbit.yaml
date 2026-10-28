@@ -21,7 +21,7 @@ reviews:
   review_status: true
   collapse_walkthrough: false
   path_instructions:
-    - path: "sippy-ng/**/*.js"
+    - path: "sippy-ng/**/*.{js,jsx}"
       instructions: |
         Avoid nested ternary expressions in JSX. When there are more than two
         branches, use if/else if chains, early returns, or a lookup object instead.
@@ -31,6 +31,13 @@ reviews:
         utilities inline, check sippy-ng/src/helpers.js for existing functions
         like relativeDuration, safeEncodeURIComponent, etc. Prefer reusing
         existing helpers over reimplementing similar logic.
+
+        Frontend behavior is tested with the Playwright BDD suite in
+        sippy-ng/bdd/. A new feature or a large behavior change (new page,
+        route, dialog, or user flow, or a substantial change to an existing
+        screen) needs a new or updated Gherkin feature under
+        sippy-ng/bdd/features/. Vitest is only for helper functions. Do not
+        treat a new component unit test as coverage for UI behavior.
     - path: "pkg/**/query/**"
       instructions: |
         BigQuery and SQL query-building code should have inline comments
@@ -120,12 +127,44 @@ reviews:
           - Bug fixes should include a regression test that fails without the fix
           - Pure functions (no DB/external dependencies) should always be tested
           - If a function is hard to test, consider refactoring to separate pure logic from side effects
-          - Frontend components with non-trivial logic should have tests
+          - Frontend behavior (pages, components, user flows) is covered by the
+            Playwright BDD suite in sippy-ng/bdd/. See "Frontend BDD Coverage".
+          - Vitest unit tests are only for helper functions (pure utilities
+            such as those in sippy-ng/src/helpers.js)
 
           Exceptions (do not flag):
           - Trivial changes (renaming, formatting, comments)
           - Generated code or configuration-only changes
           - Refactors that are already covered by existing tests
+
+      - name: "Frontend BDD Coverage"
+        mode: warning
+        instructions: |
+          Frontend behavior is tested with the Playwright BDD suite in
+          sippy-ng/bdd/ (Gherkin features, step definitions, and page objects).
+          Flag the pull request when it adds a new frontend feature or makes a
+          large change under sippy-ng/ and does not add or update a feature
+          file under sippy-ng/bdd/features/.
+
+          Flag these when BDD coverage is missing:
+          - A new page, route, dialog, or user-facing workflow
+          - A substantial change to how an existing screen behaves (new
+            filters, actions, navigation, or empty and error states)
+          - A new component with user-visible behavior
+
+          Vitest is only for helper functions (pure utilities such as those in
+          sippy-ng/src/helpers.js). A new Vitest or React Testing Library test
+          for a component or page does not satisfy this check. If the change
+          is only a helper, require a Vitest test next to that helper instead
+          of a BDD scenario.
+
+          Do not flag:
+          - Trivial changes (renaming, formatting, comments, copy tweaks,
+            style-only edits)
+          - Dependency, config, or generated-file-only changes
+          - Changes already covered by an existing BDD scenario that still
+            describes the behavior
+          - Backend-only changes with no sippy-ng behavior change
 
       - name: "Single Responsibility and Clear Naming"
         mode: warning

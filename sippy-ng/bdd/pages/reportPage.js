@@ -1,9 +1,4 @@
-import {
-  ALT_SAMPLE_RELEASE,
-  COLUMN_NAME,
-  COMPONENT,
-  OTHER_COMPONENT,
-} from '../fixtures/data.js'
+import { COLUMN_NAME, COMPONENT } from '../fixtures/data.js'
 
 export class ReportPage {
   constructor(page) {
@@ -12,10 +7,14 @@ export class ReportPage {
 
   async open(path = 'component_readiness/main') {
     await this.page.goto(path)
+    // Variant loading and the report fetch use the same status text, and that
+    // text is missing for a moment between them. The generate control is on
+    // screen only for the report fetch, so wait for it before deciding the
+    // fetch has finished.
+    await this.page.getByTestId('generate-report-top').waitFor()
     await this.page
       .getByText('Please wait while we fetch your data')
       .waitFor({ state: 'hidden', timeout: 30_000 })
-      .catch(() => {})
   }
 
   componentLink(name = COMPONENT) {
@@ -36,6 +35,10 @@ export class ReportPage {
 
   async searchRows(text) {
     await this.page.getByTestId('search-row').fill(text)
+  }
+
+  async searchColumns(text) {
+    await this.page.getByTestId('search-column').fill(text)
   }
 
   async clearSearch() {
@@ -61,6 +64,52 @@ export class ReportPage {
   async changeSampleRelease(release) {
     await this.page.getByLabel('Sample Release').click()
     await this.page.getByRole('option', { name: release, exact: true }).click()
+  }
+
+  async changeBasisRelease(release) {
+    await this.page.getByLabel('Basis Release').click()
+    await this.page.getByRole('option', { name: release, exact: true }).click()
+  }
+
+  releaseSection(label) {
+    const labelId = `${label.toLowerCase().replaceAll(' ', '-')}-label`
+    return this.page
+      .locator(`#${labelId}`)
+      .locator('xpath=ancestor::*[contains(@class,"MuiBox-root")][1]')
+  }
+
+  async setReleaseDate(releaseLabel, which, value) {
+    const field = this.releaseSection(releaseLabel).getByRole('textbox', {
+      name: which,
+    })
+    await field.click()
+    await field.fill(value)
+    await field.press('Tab')
+  }
+
+  async setIncludeVariant(group, value) {
+    await this.expandSection(`Include ${group}`)
+    const box = this.page.locator(`input[name="${value}"]`)
+    if (!(await box.isChecked())) {
+      await box.click()
+    }
+  }
+
+  async selectTestLifecycle(name) {
+    await this.expandSection('Test Options')
+    await this.page.getByLabel('Lifecycles').fill(name)
+    await this.page.getByRole('option', { name, exact: true }).click()
+  }
+
+  async copySearchLink() {
+    await this.page
+      .context()
+      .grantPermissions(['clipboard-read', 'clipboard-write'], {
+        origin: 'http://127.0.0.1:3000',
+      })
+    await this.page.getByRole('button', { name: 'Copy Link' }).click()
+    await this.page.getByText('Link copied!').waitFor()
+    return this.page.evaluate(() => navigator.clipboard.readText())
   }
 
   async generate() {
@@ -105,5 +154,3 @@ export class ReportPage {
     await this.page.getByRole('option', { name, exact: true }).click()
   }
 }
-
-export { ALT_SAMPLE_RELEASE, OTHER_COMPONENT }

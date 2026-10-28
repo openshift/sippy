@@ -41,7 +41,7 @@ else
 	@echo "ARTIFACT_DIR is defined. Using $(ARTIFACT_DIR)/junit.xml."
 	gotestsum --junitfile $(ARTIFACT_DIR)/junit.xml ./pkg/...
 endif
-	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage
+	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; npm test -- --coverage
 	@which python3 > /dev/null 2>&1 || { echo "ERROR: python3 not found in PATH"; exit 1; }
 	cd mcp && \
 		if [ ! -x .venv/bin/python ]; then \
@@ -49,7 +49,11 @@ endif
 		fi && \
 		.venv/bin/pip install -r requirements.txt -q && \
 		.venv/bin/pytest test_server.py -v $(if $(ARTIFACT_DIR),--junitxml=$(ARTIFACT_DIR)/mcp-junit.xml)
+ifneq ($(SKIP_BDD),)
+	@echo "SKIP_BDD is set. Skipping the Component Readiness browser suite."
+else
 	$(MAKE) test-bdd
+endif
 
 .PHONY: test-bdd
 # Playwright's worker sets FORCE_COLOR, so drop NO_COLOR or Node warns.
@@ -57,7 +61,7 @@ test-bdd: npm
 	cd sippy-ng && \
 		npx playwright install chromium && \
 		unset NO_COLOR && \
-		CI=true npm run test:bdd
+		npm run test:bdd
 
 lint: builddir npm
 	./hack/go-lint.sh run ./...

@@ -1,14 +1,18 @@
 import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
+import { expectSettledEmpty, latestRequest } from '../fixtures/expectations.js'
 import {
   JIRA_URL,
+  KEPT_TEST_ID,
+  KEPT_TEST_NAME,
   REGRESSION_ID,
   SECOND_REGRESSION_ID,
+  SEEDED_TRIAGE_ID,
   TEST_NAME,
+  triageRecord,
 } from '../fixtures/data.js'
-import { test } from '../fixtures/test.js'
-import { triageRecord } from '../fixtures/data.js'
 import { ReportPage } from '../pages/reportPage.js'
+import { test } from '../fixtures/test.js'
 import { TriagePage } from '../pages/triagePage.js'
 
 const { Given, When, Then } = createBdd(test)
@@ -37,7 +41,38 @@ Given('a triage with two regressions exists', async ({ api }) => {
         },
         {
           id: SECOND_REGRESSION_ID,
-          test_name: 'should keep routes',
+          test_name: KEPT_TEST_NAME,
+          opened: '2026-10-22T00:00:00Z',
+          variants: ['Platform:aws'],
+        },
+      ],
+    })
+  )
+})
+
+Given(
+  'the report lists the fixture regression and another',
+  async ({ api }) => {
+    api.reportMode = 'pair'
+  }
+)
+
+Given('the report lists distinct regression tabs', async ({ api }) => {
+  api.reportMode = 'membership'
+})
+
+Given('the report lists more regressions than one page', async ({ api }) => {
+  api.reportMode = 'paged'
+})
+
+Given('a triage exists for the other regression', async ({ api }) => {
+  api.triages.push(
+    triageRecord({
+      regressions: [
+        {
+          id: SECOND_REGRESSION_ID,
+          test_name: KEPT_TEST_NAME,
+          test_id: KEPT_TEST_ID,
           opened: '2026-10-22T00:00:00Z',
           variants: ['Platform:aws'],
         },
@@ -68,6 +103,25 @@ When('I check the regression for triage', async ({ page }) => {
 
 When('I open the new triage form', async ({ page }) => {
   await new TriagePage(page).startTriage()
+})
+
+When(
+  'I add the selected regression to the existing triage',
+  async ({ page }) => {
+    await new TriagePage(page).addSelectedToExisting()
+  }
+)
+
+When('I triage the test from its details', async ({ page }) => {
+  await new TriagePage(page).triageFromTestDetails()
+})
+
+When('I search the regressed tests for {string}', async ({ page }, text) => {
+  await new TriagePage(page).searchRegressedTests(text)
+})
+
+When('I open the next regressed page', async ({ page }) => {
+  await new TriagePage(page).openNextRegressedPage()
 })
 
 When('I create a triage for the selected regression', async ({ page }) => {
@@ -170,6 +224,74 @@ Then('the triaged list shows the new triage', async ({ page }) => {
   await expect(page.getByText('pod network regression').first()).toBeVisible()
 })
 
+Then('the untriaged list does not show the fixture test', async ({ page }) => {
+  await expect(page.getByRole('gridcell', { name: TEST_NAME })).toHaveCount(0)
+})
+
+Then(
+  'the {string} regressed tab shows {string}',
+  async ({ page }, tab, name) => {
+    await new TriagePage(page).openRegressedTab(tab)
+    await expect(page.getByRole('gridcell', { name }).first()).toBeVisible()
+  }
+)
+
+Then(
+  'the {string} regressed tab does not show {string}',
+  async ({ page }, tab, name) => {
+    await new TriagePage(page).openRegressedTab(tab)
+    await expect(page.getByRole('gridcell', { name })).toHaveCount(0)
+  }
+)
+
+Then('the regressed tests badge shows {int}', async ({ page }, count) => {
+  await expect(
+    page.locator('[aria-label="Show Regressed Tests"] .MuiBadge-badge')
+  ).toHaveText(String(count))
+})
+
+Then('the regressed page is {int}', async ({ page }, pageNumber) => {
+  await expect(page).toHaveURL(new RegExp(`regressedModalPage=${pageNumber}`))
+})
+
+function decodedPageUrl(page) {
+  let url = page.url()
+  for (let i = 0; i < 3; i++) {
+    try {
+      const next = decodeURIComponent(url)
+      if (next === url) {
+        break
+      }
+      url = next
+    } catch {
+      break
+    }
+  }
+  return url
+}
+
+Then('the regressed filters stay in the URL', async ({ page }) => {
+  await expect.poll(() => decodedPageUrl(page)).toContain('paged regression 01')
+  await expect(page).not.toHaveURL(/regressedModalPage=/)
+  await expect
+    .poll(() => decodedPageUrl(page))
+    .toContain('regressedModalFilters=')
+})
+
+Then('the triage update keeps both regressions', async ({ api }) => {
+  const put = latestRequest(
+    api.putRequests().filter((request) => request.url.includes('/triages/7'))
+  )
+  const ids = put.body.regressions.map((regression) => regression.id).sort()
+  expect(ids).toEqual([REGRESSION_ID, SECOND_REGRESSION_ID])
+})
+
+Then('the existing triage success message is shown', async ({ page }) => {
+  await expect(
+    page.getByText(`successfully added test to triage record: ${JIRA_URL}`)
+  ).toBeVisible()
+})
+
 Then('the triage form shows validation errors', async ({ page }) => {
   await expect(page.getByText(/invalid url/)).toBeVisible()
   await expect(page.getByText(/invalid description/)).toBeVisible()
@@ -177,17 +299,11 @@ Then('the triage form shows validation errors', async ({ page }) => {
 })
 
 Then('the triage was not created', async ({ api }) => {
-  const posts = api
-    .mutationRequests()
-    .filter((request) => request.method === 'POST')
-  expect(posts).toEqual([])
+  await expectSettledEmpty(() => api.postRequests())
 })
 
 Then('the triage create request includes the regression', async ({ api }) => {
-  const post = api
-    .mutationRequests()
-    .filter((request) => request.method === 'POST')
-    .at(-1)
+  const post = latestRequest(api.postRequests())
   expect(post.body.regressions).toEqual([{ id: REGRESSION_ID }])
   expect(post.body.url).toBe(JIRA_URL)
 })
@@ -219,11 +335,26 @@ Then('the triage selection was cleared', async ({ page }) => {
 
 Then('the updated triage description is shown', async ({ api, page }) => {
   await expect(page.getByText('updated pod network note')).toBeVisible()
-  const put = api.requests.filter((request) => request.method === 'PUT').at(-1)
+  const put = latestRequest(api.putRequests())
   expect(put.body.description).toBe('updated pod network note')
   expect(put.body.url).toBe(JIRA_URL)
   expect(put.body.type).toBe('product')
+  expect(put.body.regressions.map((regression) => regression.id)).toEqual([
+    REGRESSION_ID,
+  ])
 })
+
+Then(
+  'the update error is shown without a success message',
+  async ({ page }) => {
+    await expect(page.getByText(/error updating triage entry/)).toBeVisible()
+    await expect(
+      page.getByText('successfully updated triage entry')
+    ).toHaveCount(0)
+    await expect(page.getByRole('dialog', { name: 'Triage' })).toBeVisible()
+    await expect(page).toHaveURL(/triages\/7/)
+  }
+)
 
 Then('removing every regression is rejected', async ({ page }) => {
   await expect(
@@ -235,13 +366,18 @@ Then('one regression was removed', async ({ api, page }) => {
   await expect(
     page.getByText(/successfully removed 1 regression/)
   ).toBeVisible()
-  const put = api.requests.filter((request) => request.method === 'PUT').at(-1)
+  const put = latestRequest(api.putRequests())
   const ids = put.body.regressions.map((regression) => regression.id)
   expect(ids).toEqual([SECOND_REGRESSION_ID])
 })
 
-Then('the triage is deleted', async ({ page }) => {
+Then('the triage is deleted', async ({ page, api }) => {
   await expect(page.getByText('Triage record has been deleted.')).toBeVisible()
+  const deleted = latestRequest(api.deleteRequests())
+  expect(deleted.pathname).toBe(
+    `/api/component_readiness/triages/${SEEDED_TRIAGE_ID}`
+  )
+  expect(deleted.method).toBe('DELETE')
 })
 
 Then('the triage details stay open', async ({ page }) => {
@@ -277,15 +413,31 @@ Then('force close succeeds', async ({ page, api }) => {
   await expect(
     page.getByText('Successfully force closed 1 regression')
   ).toBeVisible()
-  const post = api.requests.filter(
-    (request) =>
-      request.method === 'POST' &&
-      request.url.includes('/triages/7/force_close_regressions')
-  )
-  expect(post.at(-1).body).toEqual({
+  const post = latestRequest(api.forceCloseRequests())
+  expect(post.body).toEqual({
     reason: 'fixed outside the sample window',
   })
+  const closed = page.locator('[data-field="force_closed"][role="gridcell"]')
+  await expect(closed.getByTestId('CheckCircleIcon')).toBeVisible()
+  await closed.getByTestId('CheckCircleIcon').hover()
+  await expect(
+    page.getByRole('tooltip', { name: /fixed outside the sample window/ })
+  ).toBeVisible()
 })
+
+Then(
+  'the force-close error is shown without a success message',
+  async ({ page }) => {
+    await expect(
+      page.getByText(/Error force closing regressions/)
+    ).toBeVisible()
+    await expect(page.getByText(/Successfully force closed/)).toHaveCount(0)
+    await expect(
+      page.getByRole('heading', { name: 'Force Close Regressions' })
+    ).toBeVisible()
+    await expect(page).toHaveURL(/triages\/7/)
+  }
+)
 
 Then('there is nothing to force close', async ({ page }) => {
   await expect(
@@ -295,12 +447,7 @@ Then('there is nothing to force close', async ({ page }) => {
 })
 
 Then('force close was not submitted', async ({ api }) => {
-  const posts = api.requests.filter(
-    (request) =>
-      request.method === 'POST' &&
-      request.url.includes('force_close_regressions')
-  )
-  expect(posts).toEqual([])
+  await expectSettledEmpty(() => api.forceCloseRequests())
 })
 
 Then('the delete request failed', async ({ page }) => {

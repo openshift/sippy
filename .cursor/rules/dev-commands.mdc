@@ -26,7 +26,7 @@ Run lint: `make lint`
 
 Run unit tests: `make test`
 
-This runs Go tests via gotestsum, sippy-ng Vitest tests, mcp pytest, and then the Component Readiness Playwright BDD suite.
+This runs Go tests via gotestsum, sippy-ng Vitest tests, mcp pytest, and then the Component Readiness Playwright BDD suite. Set `SKIP_BDD` to skip that browser suite.
 
 Run only the Component Readiness browser tests: `make test-bdd`
 

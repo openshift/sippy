@@ -10,6 +10,24 @@ Feature: Component readiness main report
     And I see component "Networking"
     And the all components tab shows "Storage"
 
+  Scenario: Regressed and healthy cells show the expected assessments
+    Given a component readiness API
+    When I open the component readiness report
+    Then the "Networking" cell assessment is "SignificantRegression"
+    When I open the all components tab
+    Then the "Storage" cell assessment is "NotSignificant"
+    And the "Networking" cell assessment is "SignificantRegression"
+
+  Scenario: Column search hides environments that do not match
+    Given a component readiness API
+    When I open the component readiness report
+    And I search columns for "gcp"
+    Then the column "Platform:aws Architecture:amd64" is hidden
+    And the report says there are no regressions
+    When I clear the report search
+    Then the column "Platform:aws Architecture:amd64" is shown
+    And I see component "Networking"
+
   Scenario: Search and red only can be cleared without losing the regression
     Given a component readiness API
     When I open the component readiness report
@@ -63,6 +81,54 @@ Feature: Component readiness main report
     When I set advanced options and generate
     Then the latest report request includes "passRateNewTests=90"
     And the latest report request includes "flakeAsFailure=true"
+
+  Scenario: Changing the basis release is sent only after generate
+    Given a component readiness API
+    When I open the component readiness report
+    And I change the basis release to "5.1" without generating
+    Then no report request includes "baseRelease=5.1"
+    When I generate the report
+    Then the latest report request includes "baseRelease=5.1"
+
+  Scenario: Sample and basis dates are included in the generated query
+    Given a component readiness API
+    When I open the component readiness report
+    And I set sample and basis dates without generating
+    Then no report request includes "2026-01-15"
+    And no report request includes "2026-03-01"
+    When I generate the report
+    Then the latest report request includes "sampleStartTime=2026-01-15"
+    And the latest report request includes "baseStartTime=2026-03-01"
+
+  Scenario: Variant selections are included in the generated query
+    Given a component readiness API
+    When I open the component readiness report
+    And I include the gcp variant without generating
+    Then no report request includes "includeVariant=Platform:gcp"
+    When I generate the report
+    Then the latest report request includes "includeVariant=Platform:gcp"
+
+  Scenario: A lifecycle filter is sent with the generated report
+    Given a component readiness API
+    When I open the component readiness report
+    And I filter by the blocking lifecycle without generating
+    Then no report request includes "testLifecycles=blocking"
+    When I generate the report
+    Then the latest report request includes "testLifecycles=blocking"
+
+  Scenario: Copy link restores search and red-only after open
+    Given a component readiness API
+    When I open the component readiness report
+    And I search rows for "Networking"
+    And I search columns for "aws"
+    And I show only red rows
+    And I copy the search link and open it
+    Then the page URL includes "searchRow=Networking"
+    And the page URL includes "searchColumn=aws"
+    And the page URL includes "redOnly=1"
+    When I open the all components tab
+    Then I see component "Networking"
+    And I do not see component "Storage"
 
   Scenario: A capability filter is sent with the generated report
     Given a component readiness API

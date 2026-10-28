@@ -17,6 +17,9 @@ async function launchReadyBrowser(browserType, launchOptions) {
       return browser
     } catch (error) {
       lastError = error
+      console.warn(
+        `browser launch attempt ${attempt} of ${launchAttempts} failed: ${error}`
+      )
       await browser?.close().catch(() => {})
     }
   }

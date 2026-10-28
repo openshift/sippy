@@ -36,6 +36,14 @@ Feature: Triage detail page
     When I delete the triage
     Then the triage is deleted
 
+  Scenario: A rejected triage update does not claim success
+    Given a component readiness API
+    And an unresolved triage exists
+    And the next mutation is rejected
+    When I open triage 7
+    And I update the triage description
+    Then the update error is shown without a success message
+
   Scenario: A rejected delete does not claim the triage is gone
     Given a component readiness API
     And an unresolved triage exists
@@ -56,6 +64,15 @@ Feature: Triage detail page
     And force close was not submitted
     When I force close with a reason
     Then force close succeeds
+
+  Scenario: A rejected force close does not claim success
+    Given a component readiness API
+    And a resolved triage exists
+    And the next mutation is rejected
+    When I open triage 7
+    And I open force close
+    And I force close with a reason
+    Then the force-close error is shown without a success message
 
   Scenario: An empty force-close preview cannot be submitted
     Given a component readiness API

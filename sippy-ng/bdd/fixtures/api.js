@@ -1,16 +1,20 @@
 import {
+  ALT_COMPONENT,
+  ALT_SAMPLE_RELEASE,
   cancelledReport,
   capabilitiesReport,
   componentReport,
-  ALT_COMPONENT,
-  ALT_SAMPLE_RELEASE,
+  GENERATED_AT,
   mainReport,
+  membershipReport,
+  pagedReport,
+  pairReport,
+  PINNED_DATE,
+  REGRESSION_ID,
   releaseCatalog,
-  singleTestReport,
+  SEEDED_TRIAGE_ID,
   testDetailsReport,
   testsReport,
-  GENERATED_AT,
-  PINNED_DATE,
   views,
 } from './data.js'
 
@@ -28,14 +32,9 @@ export function createApi() {
     failNextMutation: false,
     requests: [],
     triages: [],
-    nextTriageId: 7,
-    _reportQueue: [],
+    nextTriageId: SEEDED_TRIAGE_ID + 1,
     _hold: null,
     _releaseHold: null,
-
-    queueReport(body) {
-      this._reportQueue.push(body)
-    },
 
     holdCurrentReport() {
       this._hold = new Promise((resolve) => {
@@ -63,6 +62,30 @@ export function createApi() {
         ['POST', 'PUT', 'DELETE'].includes(request.method)
       )
     },
+
+    postRequests() {
+      return this.mutationRequests().filter(
+        (request) => request.method === 'POST'
+      )
+    },
+
+    putRequests() {
+      return this.requests.filter((request) => request.method === 'PUT')
+    },
+
+    forceCloseRequests() {
+      return this.postRequests().filter((request) =>
+        request.url.includes(
+          `/triages/${SEEDED_TRIAGE_ID}/force_close_regressions`
+        )
+      )
+    },
+
+    deleteRequests() {
+      return this.mutationRequests().filter(
+        (request) => request.method === 'DELETE'
+      )
+    },
   }
 }
 
@@ -75,14 +98,14 @@ export async function installApi(page, api) {
     }
     const url = new URL(request.url())
     const bodyText = request.postData() || ''
-    api.requests.push({
-      method: request.method(),
-      url: request.url(),
-      pathname: url.pathname,
-      search: url.search,
-      body: bodyText ? JSON.parse(bodyText) : null,
-    })
     try {
+      api.requests.push({
+        method: request.method(),
+        url: request.url(),
+        pathname: url.pathname,
+        search: url.search,
+        body: bodyText ? JSON.parse(bodyText) : null,
+      })
       const response = await responseFor(api, request.method(), url, bodyText)
       if (response.hold) {
         await response.hold
@@ -160,11 +183,29 @@ async function responseFor(api, method, url, bodyText) {
     })
   }
   if (path.endsWith('/force_close_regressions') && method === 'POST') {
-    if (api.failNextMutation) {
-      api.failNextMutation = false
-      return fail(400, 'rejected')
+    const rejected = rejectedMutation(api)
+    if (rejected) {
+      return rejected
     }
-    return ok({ closed_regression_ids: [101] })
+    const payload = JSON.parse(bodyText || '{}')
+    const triage = api.triages.find(
+      (entry) => String(entry.id) === String(SEEDED_TRIAGE_ID)
+    )
+    if (triage) {
+      triage.regressions = triage.regressions.map((regression) => {
+        if (regression.id !== REGRESSION_ID) {
+          return regression
+        }
+        return {
+          ...regression,
+          force_closed: true,
+          force_closed_reason: payload.reason,
+          force_closed_by: 'developer',
+          force_closed_by_triage_id: SEEDED_TRIAGE_ID,
+        }
+      })
+    }
+    return ok({ closed_regression_ids: [REGRESSION_ID] })
   }
   if (path.includes('/api/component_readiness/triages')) {
     return triageResponse(api, method, url, bodyText)
@@ -192,16 +233,14 @@ async function responseFor(api, method, url, bodyText) {
 
 function componentReportResponse(api, url) {
   let body
-  if (api._reportQueue.length > 0) {
-    body = api._reportQueue.shift()
-  } else if (api.reportMode === 'empty') {
+  if (api.reportMode === 'empty') {
     body = { generated_at: GENERATED_AT, rows: [] }
   } else if (api.reportMode === 'cancelled') {
     body = cancelledReport()
   } else if (api.reportMode === 'error') {
     return fail(500, 'report failed')
   } else {
-    body = reportForQuery(url)
+    body = reportForQuery(api, url)
   }
   // The view query stays pending, including a repeat of that same query, until
   // the test releases it. The replacement sample is the newer selection.
@@ -214,15 +253,12 @@ function componentReportResponse(api, url) {
   return ok(body)
 }
 
-function reportForQuery(url) {
+function reportForQuery(api, url) {
   const component = url.searchParams.get('component')
   const capability = url.searchParams.get('capability')
   const testId = url.searchParams.get('testId')
   const sample = url.searchParams.get('sampleRelease')
-  if (testId) {
-    return singleTestReport()
-  }
-  if (capability) {
+  if (testId || capability) {
     return testsReport()
   }
   if (component) {
@@ -231,15 +267,24 @@ function reportForQuery(url) {
   if (sample === ALT_SAMPLE_RELEASE) {
     return componentReport(ALT_COMPONENT, -400, [])
   }
+  if (api.reportMode === 'pair') {
+    return pairReport()
+  }
+  if (api.reportMode === 'membership') {
+    return membershipReport()
+  }
+  if (api.reportMode === 'paged') {
+    return pagedReport()
+  }
   return mainReport()
 }
 
 function triageResponse(api, method, url, bodyText) {
   const idMatch = url.pathname.match(/\/triages\/(\d+)/)
   if (method === 'POST') {
-    if (api.failNextMutation) {
-      api.failNextMutation = false
-      return fail(400, 'rejected')
+    const rejected = rejectedMutation(api)
+    if (rejected) {
+      return rejected
     }
     const payload = JSON.parse(bodyText || '{}')
     const created = {
@@ -264,9 +309,9 @@ function triageResponse(api, method, url, bodyText) {
     return ok(found)
   }
   if (idMatch && method === 'PUT') {
-    if (api.failNextMutation) {
-      api.failNextMutation = false
-      return fail(400, 'rejected')
+    const rejected = rejectedMutation(api)
+    if (rejected) {
+      return rejected
     }
     const payload = JSON.parse(bodyText || '{}')
     const index = api.triages.findIndex(
@@ -284,9 +329,9 @@ function triageResponse(api, method, url, bodyText) {
     return ok(api.triages[index])
   }
   if (idMatch && method === 'DELETE') {
-    if (api.failNextMutation) {
-      api.failNextMutation = false
-      return fail(400, 'rejected')
+    const rejected = rejectedMutation(api)
+    if (rejected) {
+      return rejected
     }
     api.triages = api.triages.filter(
       (triage) => String(triage.id) !== idMatch[1]
@@ -301,6 +346,14 @@ function triageResponse(api, method, url, bodyText) {
 
 function isComponentReport(pathname) {
   return pathname.endsWith('/api/component_readiness')
+}
+
+function rejectedMutation(api) {
+  if (!api.failNextMutation) {
+    return null
+  }
+  api.failNextMutation = false
+  return fail(400, 'rejected')
 }
 
 function ok(body) {
