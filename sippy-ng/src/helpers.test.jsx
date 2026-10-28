@@ -12,7 +12,7 @@ const darkTheme = {
   palette: {
     mode: 'dark',
     warning: { dark: '#f57c00' },
-    error: { dark: '#d32f2f' },
+    error: { dark: '#d32f2f', light: '#e57373' },
   },
 }
 
@@ -36,9 +36,14 @@ describe('ageColor', () => {
     expect(ageColor(sevenDays, darkTheme)).toBe('#f57c00')
   })
 
-  test('returns error color for date 14+ days ago', () => {
+  test('returns dark error color in light mode for 14+ days', () => {
     const twoWeeks = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)
     expect(ageColor(twoWeeks, lightTheme)).toBe('#d32f2f')
+  })
+
+  test('returns light error color in dark mode for 14+ days', () => {
+    const twoWeeks = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)
+    expect(ageColor(twoWeeks, darkTheme)).toBe('#e57373')
   })
 
   test('returns warning at exactly 7 days', () => {

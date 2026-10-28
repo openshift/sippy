@@ -115,7 +115,8 @@ export function ageColor(date, theme) {
   const now = new Date()
   const daysAgo = (now - date) / (1000 * 60 * 60 * 24)
   const isDark = theme.palette.mode === 'dark'
-  if (daysAgo >= 14) return theme.palette.error.dark
+  if (daysAgo >= 14)
+    return isDark ? theme.palette.error.light : theme.palette.error.dark
   if (daysAgo >= 7) return isDark ? theme.palette.warning.dark : '#9a6700'
   return undefined
 }
