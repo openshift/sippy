@@ -1,7 +1,16 @@
 import { ageColor, jiraProjectForRelease } from './helpers'
 
-const mockTheme = {
+const lightTheme = {
   palette: {
+    mode: 'light',
+    warning: { dark: '#f57c00' },
+    error: { dark: '#d32f2f' },
+  },
+}
+
+const darkTheme = {
+  palette: {
+    mode: 'dark',
     warning: { dark: '#f57c00' },
     error: { dark: '#d32f2f' },
   },
@@ -9,32 +18,37 @@ const mockTheme = {
 
 describe('ageColor', () => {
   test('returns undefined for null date', () => {
-    expect(ageColor(null, mockTheme)).toBeUndefined()
+    expect(ageColor(null, lightTheme)).toBeUndefined()
   })
 
   test('returns undefined for date less than 7 days ago', () => {
     const recent = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-    expect(ageColor(recent, mockTheme)).toBeUndefined()
+    expect(ageColor(recent, lightTheme)).toBeUndefined()
   })
 
-  test('returns warning color for date 7-13 days ago', () => {
+  test('returns WCAG-compliant warning color in light mode for 7-13 days', () => {
     const sevenDays = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
-    expect(ageColor(sevenDays, mockTheme)).toBe('#f57c00')
+    expect(ageColor(sevenDays, lightTheme)).toBe('#9a6700')
+  })
+
+  test('returns theme warning color in dark mode for 7-13 days', () => {
+    const sevenDays = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
+    expect(ageColor(sevenDays, darkTheme)).toBe('#f57c00')
   })
 
   test('returns error color for date 14+ days ago', () => {
     const twoWeeks = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)
-    expect(ageColor(twoWeeks, mockTheme)).toBe('#d32f2f')
+    expect(ageColor(twoWeeks, lightTheme)).toBe('#d32f2f')
   })
 
   test('returns warning at exactly 7 days', () => {
     const exactlySeven = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    expect(ageColor(exactlySeven, mockTheme)).toBe('#f57c00')
+    expect(ageColor(exactlySeven, lightTheme)).toBe('#9a6700')
   })
 
   test('returns error at exactly 14 days', () => {
     const exactlyFourteen = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
-    expect(ageColor(exactlyFourteen, mockTheme)).toBe('#d32f2f')
+    expect(ageColor(exactlyFourteen, lightTheme)).toBe('#d32f2f')
   })
 })
 
