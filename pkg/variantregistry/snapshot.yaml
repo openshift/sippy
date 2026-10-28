@@ -238275,6 +238275,102 @@ periodic-ci-openshift-ovn-kubernetes-release-5.1-periodics-downstream-merge:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-ovn-kubernetes-release-5.1-periodics-e2e-aws-core-networking-serial-ote:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-ovn-kubernetes-release-5.1-periodics-e2e-azure-core-networking-serial-ote:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: azure
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-ovn-kubernetes-release-5.1-periodics-e2e-gcp-core-networking-serial-ote:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: gcp
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-ovn-kubernetes-release-5.1-periodics-e2e-metal-ipi-core-networking-dualstack-serial-ote:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-ovn-kubernetes-release-5.1-periodics-e2e-metal-ipi-ovn-bgp-virt-dualstack:
     Aggregation: none
     Architecture: amd64
