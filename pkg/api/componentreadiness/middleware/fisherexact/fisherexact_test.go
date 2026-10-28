@@ -139,6 +139,17 @@ func TestFisherExactAnalyze(t *testing.T) {
 			explanationContains: "Extreme",
 		},
 		{
+			name: "sample has runs, no base stats → MissingBasis",
+			opts: reqopts.Advanced{Confidence: 95},
+			inputStats: &testdetails.TestComparison{
+				SampleStats: sampleStats(9, 1),
+			},
+			wantHandled:      true,
+			wantStatus:       crtest.MissingBasis,
+			wantFisherZero:   true,
+			wantExplanations: 0,
+		},
+		{
 			name: "RequiredConfidence=0 inherits opts.Confidence",
 			// Use missing-sample to keep the outcome predictable; focus is the confidence field.
 			opts: reqopts.Advanced{IgnoreMissing: true, Confidence: 97},
