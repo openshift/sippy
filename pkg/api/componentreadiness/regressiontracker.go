@@ -207,9 +207,18 @@ func (prs *PostgresRegressionStore) ResolveTriages() error {
 		triage.Resolved = mostRecentClosedRegression.Closed
 		triage.ResolutionReason = models.RegressionsRolledOff
 		dbWithContext := prs.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "regression-tracker"))
-		res = dbWithContext.Save(&triage)
+		res = dbWithContext.Model(&triage).
+			Where("resolved IS NULL").
+			Updates(map[string]any{
+				"resolved":          triage.Resolved,
+				"resolution_reason": triage.ResolutionReason,
+			})
 		if res.Error != nil {
 			log.WithError(res.Error).Errorf("error resolving triage %d", triage.ID)
+			continue
+		}
+		if res.RowsAffected == 0 {
+			log.WithField("triage_id", triage.ID).Info("triage already resolved concurrently, skipping")
 			continue
 		}
 
