@@ -14,6 +14,8 @@ report.sh
 *.log
 sippy-dev-logs/
 mcp/.venv/
+mcp/.venv-setup.lock
+mcp/.venv.stale.*
 __pycache__/
 *.py[cod]
 e2e-coverage*
