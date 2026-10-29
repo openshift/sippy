@@ -208,6 +208,7 @@ func (prs *PostgresRegressionStore) ResolveTriages() error {
 		triage.ResolutionReason = models.RegressionsRolledOff
 		dbWithContext := prs.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "regression-tracker"))
 		res = dbWithContext.Model(&triage).
+			Omit(clause.Associations).
 			Where("resolved IS NULL").
 			Updates(map[string]any{
 				"resolved":          triage.Resolved,
