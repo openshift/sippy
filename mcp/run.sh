@@ -71,13 +71,22 @@ _setup_venv() {
     fi
 }
 
-if command -v flock >/dev/null 2>&1; then
-    (
-        flock 9
-        _setup_venv
-    ) 9>"$LOCK_FILE"
-else
+if [ "${SIPPY_DEV_SETUP_ONLY:-}" = "1" ]; then
     _setup_venv
+    exit 0
 fi
+
+# fcntl works on Unix systems, including macOS where flock is not installed.
+python3 - "$LOCK_FILE" "$0" <<'PY'
+import fcntl
+import os
+import subprocess
+import sys
+
+with open(sys.argv[1], "a+") as lock_file:
+    fcntl.flock(lock_file, fcntl.LOCK_EX)
+    env = dict(os.environ, SIPPY_DEV_SETUP_ONLY="1")
+    subprocess.run(["/bin/sh", sys.argv[2]], env=env, check=True)
+PY
 
 exec "$VENV_DIR/bin/python" "$SCRIPT_DIR/server.py" "$@"

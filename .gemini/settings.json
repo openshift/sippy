@@ -8,8 +8,11 @@
       ]
     },
     "sippy-dev": {
-      "command": "mcp/run.sh",
-      "args": []
+      "command": "sh",
+      "args": [
+        "-c",
+        "exec \"$(git rev-parse --show-toplevel)/mcp/run.sh\""
+      ]
     },
     "atlassian": {
       "httpUrl": "https://mcp.atlassian.com/v1/mcp"

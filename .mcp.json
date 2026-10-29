@@ -10,8 +10,11 @@
     },
     "sippy-dev": {
       "type": "stdio",
-      "command": "mcp/run.sh",
-      "args": []
+      "command": "sh",
+      "args": [
+        "-c",
+        "exec \"$(git rev-parse --show-toplevel)/mcp/run.sh\""
+      ]
     },
     "atlassian": {
       "type": "http",

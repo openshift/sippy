@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-11-02T18:21:24.215695+00:00'
+generated_at: '2026-11-02T18:21:44.634390+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -887,15 +887,6 @@ deployments:
   content_hash: null
 - kind: uri
   target: mcp
-  value: sippy-dev
-  runtime: claude
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: null
-- kind: uri
-  target: mcp
   value: atlassian
   runtime: codex
   scope: project
@@ -906,15 +897,6 @@ deployments:
 - kind: uri
   target: mcp
   value: playwright
-  runtime: codex
-  scope: project
-  owners:
-  - .
-  active_owner: .
-  content_hash: null
-- kind: uri
-  target: mcp
-  value: sippy-dev
   runtime: codex
   scope: project
   owners:
@@ -1114,18 +1096,18 @@ mcp_configs:
   sippy-dev:
     name: sippy-dev
     transport: stdio
-    args: []
+    args:
+    - -c
+    - exec "$(git rev-parse --show-toplevel)/mcp/run.sh"
     registry: false
-    command: mcp/run.sh
+    command: sh
 mcp_target_servers:
   claude:
   - atlassian
   - playwright
-  - sippy-dev
   codex:
   - atlassian
   - playwright
-  - sippy-dev
   cursor:
   - atlassian
   - playwright
