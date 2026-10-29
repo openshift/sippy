@@ -7,7 +7,7 @@ monthly. Each such job is owned by a component and a capability, and the
 only requirement is that it passes at least once in a sample window. A job that
 keeps failing turns that component and capability red.
 
-In the future an automated process may retry monthly jobs to see if we can get 
+In the future an automated process may retry monthly jobs to see if we can get
 a pass. For now, most spot check jobs are run weekly.
 
 Spot-check analysis is implemented for PostgreSQL only. The BigQuery data
@@ -45,8 +45,11 @@ spot_check_job_samples:
 
 The sample window is independent of the view's ordinary sample window (7 days
 in the example view). `include_variants` selects which jobs belong to the
-sample. A view with no `spot_check_job_samples` has spot-check disabled, both
-in the API and in the background regression cache loader.
+sample. Its `JobTier` replaces the request's tiers, and any other variant it
+sets narrows the request's own filter for that variant instead of replacing it.
+For cross-compare views, spot-check results use the sample-side variant values.
+A view with no `spot_check_job_samples` has spot-check disabled, both in the API
+and in the background regression cache loader.
 
 ## How results are produced
 
@@ -79,10 +82,13 @@ in the API and in the background regression cache loader.
    | One failure, no passes | `MissingSample` (awaiting retry) |
    | Two failures, no passes | `SignificantRegression` |
    | Three or more failures, no passes | `ExtremeRegression` |
-   | No runs | `MissingSample` |
 
    The comparison is reported as `spot_check`, and the sample statistics carry
    the spot-check window rather than the ordinary sample window.
+
+   Groups are built from the runs found in the sample window, so a job with no
+   runs in the window has no row at all. The analyzer returns `MissingSample` for
+   zero runs, but the queries never produce that case.
 
 ## Drill-down
 
