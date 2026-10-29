@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 
@@ -131,6 +132,11 @@ func createProwJobRunForCR(t *testing.T, dbc *db.DB, prowJobID uint, release str
 		Succeeded:      true,
 	}
 	require.NoError(t, dbc.DB.Create(&run).Error)
+	require.NoError(t, dbc.DB.Create(&models.ProwJobRunIDMap{
+		ID:             run.ID,
+		ProwJobRelease: run.ProwJobRelease,
+		Timestamp:      run.Timestamp,
+	}).Error, "creating ProwJobRunIDMap for Component Readiness run %d", run.ID)
 	return run
 }
 
@@ -1060,6 +1066,155 @@ func TestQueryTestStatus_SampleResults(t *testing.T) {
 		assert.Equal(t, "ovn", ts.Variants["Network"])
 		assert.Equal(t, 10, ts.TotalCount)
 	})
+}
+
+func TestQueryTestStatus_SamplePullRequestAndPayloadFilters(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-cr-sample-filters", release, vc)
+	differentReleaseJob := createProwJobWithVC(t, dbc, "periodic-cr-sample-filters-4.17", "4.17", vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] sample filter test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-sample-filters")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:sample-filters", "Storage", []string{"PVC"})
+
+	pr123 := models.ProwPullRequest{Org: "openshift", Repo: "origin", Number: 123, SHA: "sample-filter-pr-123"}
+	pr456 := models.ProwPullRequest{Org: "openshift", Repo: "origin", Number: 456, SHA: "sample-filter-pr-456"}
+	pr123OtherRepoAndOrg := models.ProwPullRequest{Org: "kubernetes", Repo: "kubernetes", Number: 123, SHA: "sample-filter-pr-123-other-repo-org"}
+	require.NoError(t, dbc.DB.Create(&pr123).Error)
+	require.NoError(t, dbc.DB.Create(&pr456).Error)
+	require.NoError(t, dbc.DB.Create(&pr123OtherRepoAndOrg).Error)
+
+	payloadA := intutil.CreateReleaseTag(t, dbc, "4.16-payload-a", release, "nightly", "amd64", time.Date(2024, 6, 5, 0, 0, 0, 0, time.UTC))
+	payloadB := intutil.CreateReleaseTag(t, dbc, "4.16-payload-b", release, "nightly", "amd64", time.Date(2024, 6, 8, 0, 0, 0, 0, time.UTC))
+	payloadOther := intutil.CreateReleaseTag(t, dbc, "4.16-payload-other", release, "nightly", "amd64", time.Date(2024, 6, 10, 0, 0, 0, 0, time.UTC))
+
+	type sampleRun struct {
+		name       string
+		at         time.Time
+		pr         *models.ProwPullRequest
+		tag        *models.ReleaseTag
+		runRelease string
+		status     int
+	}
+	fixtureRuns := []sampleRun{
+		{name: "pr123-payload-a-fail", at: time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC), pr: &pr123, tag: &payloadA, status: 12},
+		{name: "pr123-payload-a-pass", at: time.Date(2024, 6, 6, 12, 0, 0, 0, time.UTC), pr: &pr123, tag: &payloadA, status: 1},
+		{name: "no-pr-payload-a-flake", at: time.Date(2024, 6, 7, 12, 0, 0, 0, time.UTC), tag: &payloadA, status: 13},
+		{name: "no-pr-payload-b-pass", at: time.Date(2024, 6, 8, 12, 0, 0, 0, time.UTC), tag: &payloadB, status: 1},
+		{name: "pr456-payload-a-fail", at: time.Date(2024, 6, 9, 12, 0, 0, 0, time.UTC), pr: &pr456, tag: &payloadA, status: 12},
+		{name: "pr123-other-payload-pass", at: time.Date(2024, 6, 10, 12, 0, 0, 0, time.UTC), pr: &pr123, tag: &payloadOther, status: 1},
+		// The payload is a 4.16 tag, but the Prow run is partitioned under 4.17.
+		// Payload release pruning must use the authoritative Prow run release.
+		{name: "pr123-payload-a-different-release-pass", at: time.Date(2024, 6, 11, 12, 0, 0, 0, time.UTC), pr: &pr123, tag: &payloadA, runRelease: "4.17", status: 1},
+		{name: "same-pr-number-different-org-and-repo-fail", at: time.Date(2024, 6, 12, 12, 0, 0, 0, time.UTC), pr: &pr123OtherRepoAndOrg, tag: &payloadA, status: 12},
+		{name: "pr123-payload-a-out-of-window", at: time.Date(2024, 5, 31, 12, 0, 0, 0, time.UTC), pr: &pr123, tag: &payloadA, status: 12},
+	}
+	runIDsByName := make(map[string]string, len(fixtureRuns))
+	for _, fixture := range fixtureRuns {
+		runRelease := fixture.runRelease
+		if runRelease == "" {
+			runRelease = release
+		}
+		fixtureJob := job
+		if runRelease == differentReleaseJob.Release {
+			fixtureJob = differentReleaseJob
+		}
+		run := createProwJobRunForCR(t, dbc, fixtureJob.ID, runRelease, fixture.at)
+		runIDsByName[fixture.name] = strconv.FormatUint(uint64(run.ID), 10)
+		createProwJobRunTest(t, dbc, run.ID, fixtureJob.ID, test.ID, &suite.ID, fixture.status, runRelease, fixture.at)
+		if fixture.pr != nil {
+			require.NoError(t, dbc.DB.Create(&models.ProwJobRunProwPullRequest{
+				ProwJobRunID: run.ID, ProwPullRequestID: fixture.pr.ID,
+				ProwJobRunRelease: runRelease, ProwJobRunTimestamp: fixture.at,
+			}).Error, "linking %s to pull request", fixture.name)
+		}
+		if fixture.tag != nil {
+			intutil.CreateReleaseJobRun(t, dbc, fixture.tag.ID, run.ID, fixtureJob.Name, "periodic", "success", "")
+		}
+		if fixture.name == "pr123-payload-a-different-release-pass" {
+			// Exercise the fallback to prow_job_runs when the lookup map is stale.
+			require.NoError(t, dbc.DB.Model(&models.ProwJobRunIDMap{}).
+				Where("id = ?", run.ID).Update("prow_job_release", release).Error)
+		}
+	}
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	baseOpts := defaultReqOptions(release)
+	baseOpts.IncludeAllTests = true
+	baseOpts.VariantOption.IncludeVariants = map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}
+	baseOpts.TestIDOptions = []reqopts.TestIdentification{{TestID: tow.UniqueID}}
+
+	filterCases := []struct {
+		name          string
+		pullRequest   *reqopts.PullRequest
+		payload       *reqopts.Payload
+		wantTotal     int
+		wantSuccesses int
+		wantFlakes    int
+		wantRunNames  []string
+	}{
+		{
+			name:          "pull request only excludes other PRs and out of window runs",
+			pullRequest:   &reqopts.PullRequest{Org: "openshift", Repo: "origin", PRNumber: "123"},
+			wantTotal:     4,
+			wantSuccesses: 3,
+			wantRunNames:  []string{"pr123-payload-a-fail", "pr123-payload-a-pass", "pr123-other-payload-pass", "pr123-payload-a-different-release-pass"},
+		},
+		{
+			name:          "multiple payload tags include either tag and exclude out of window runs",
+			payload:       &reqopts.Payload{Tags: []string{payloadA.ReleaseTag, payloadB.ReleaseTag}},
+			wantTotal:     7,
+			wantSuccesses: 3,
+			wantFlakes:    1,
+			wantRunNames:  []string{"pr123-payload-a-fail", "pr123-payload-a-pass", "no-pr-payload-a-flake", "no-pr-payload-b-pass", "pr456-payload-a-fail", "pr123-payload-a-different-release-pass", "same-pr-number-different-org-and-repo-fail"},
+		},
+		{
+			name:          "pull request and payload are intersected",
+			pullRequest:   &reqopts.PullRequest{Org: "openshift", Repo: "origin", PRNumber: "123"},
+			payload:       &reqopts.Payload{Tags: []string{payloadA.ReleaseTag, payloadB.ReleaseTag}},
+			wantTotal:     3,
+			wantSuccesses: 2,
+			wantRunNames:  []string{"pr123-payload-a-fail", "pr123-payload-a-pass", "pr123-payload-a-different-release-pass"},
+		},
+	}
+
+	for _, tc := range filterCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := baseOpts
+			opts.SampleRelease.PullRequestOptions = tc.pullRequest
+			opts.SampleRelease.PayloadOptions = tc.payload
+
+			_, sample, errs := provider.QueryTestStatus(context.Background(), opts)
+			require.Empty(t, errs)
+			key := crtest.KeyWithVariants{TestID: tow.UniqueID, Variants: map[string]string{"Platform": "aws", "Network": "ovn"}}
+			status, ok := sample[key.Encode()]
+			require.True(t, ok, "expected filtered sample result for %s", key.Encode())
+			assert.Equal(t, tc.wantTotal, status.TotalCount)
+			assert.Equal(t, tc.wantSuccesses, status.SuccessCount)
+			assert.Equal(t, tc.wantFlakes, status.FlakeCount)
+
+			details, detailErrs := provider.QuerySampleJobRunTestStatus(context.Background(), opts,
+				map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
+				opts.SampleRelease.Start, opts.SampleRelease.End)
+			require.Empty(t, detailErrs)
+			var summaries []crstatus.TestDetailsSummary
+			for _, jobSummaries := range details {
+				summaries = append(summaries, jobSummaries...)
+			}
+			require.Len(t, summaries, 2, "the two release-specific ProwJobs produce separate job summaries")
+			gotRunIDs := sets.New[string]()
+			for _, summary := range summaries {
+				for _, run := range summary.JobRuns {
+					gotRunIDs.Insert(run.ProwJobRunID)
+				}
+			}
+			assert.Len(t, gotRunIDs, tc.wantTotal)
+			for _, name := range tc.wantRunNames {
+				assert.True(t, gotRunIDs.Has(runIDsByName[name]), "expected sample details to include %s", name)
+			}
+		})
+	}
 }
 
 func TestQueryBaseTestStatus_PrefixSum(t *testing.T) {
@@ -3782,6 +3937,60 @@ func TestTestDetailsReport_AggregateBaseStats(t *testing.T) {
 	assert.Equal(t, test.Name, report.TestName)
 }
 
+func TestQuerySampleJobRunTestStatus_PRFilterGroupsByReleaseJobName(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	jobNames := []string{
+		"openshift-origin-123-ci-4.16-e2e-aws-ovn",
+		"openshift-origin-456-ci-4.16-e2e-aws-ovn",
+	}
+	jobs := []models.ProwJob{
+		createProwJobWithVC(t, dbc, jobNames[0], release, vc),
+		createProwJobWithVC(t, dbc, jobNames[1], release, vc),
+	}
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] release job name test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-release-job-name")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:release-job-name", "Storage", []string{"PVC"})
+	pr := models.ProwPullRequest{Org: "openshift", Repo: "origin", Number: 123, SHA: "release-job-name-pr-123"}
+	require.NoError(t, dbc.DB.Create(&pr).Error)
+	releaseJobName := "periodic-ci-openshift-origin-master-nightly-4.16-e2e-aws-ovn"
+
+	for i, job := range jobs {
+		timestamp := time.Date(2024, 6, 5+i, 12, 0, 0, 0, time.UTC)
+		run := createProwJobRunForCR(t, dbc, job.ID, release, timestamp)
+		createProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, &suite.ID, 1, release, timestamp)
+		require.NoError(t, dbc.DB.Create(&models.ProwJobRunProwPullRequest{
+			ProwJobRunID: run.ID, ProwPullRequestID: pr.ID,
+			ProwJobRunRelease: release, ProwJobRunTimestamp: timestamp,
+		}).Error)
+		annotationValue := releaseJobName
+		if i == 0 {
+			annotationValue += ",release-4.16"
+		}
+		require.NoError(t, dbc.DB.Create(&models.ProwJobRunAnnotation{
+			ProwJobRunID: run.ID, Key: "releaseJobName", Value: annotationValue,
+			ProwJobRunRelease: release, ProwJobRunTimestamp: timestamp,
+		}).Error)
+	}
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := testDetailsReqOptions(tow.UniqueID, map[string]string{"Platform": "aws", "Network": "ovn"})
+	includeVariants := map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}
+	opts.SampleRelease.PullRequestOptions = &reqopts.PullRequest{Org: "openshift", Repo: "origin", PRNumber: "123"}
+	filtered, errs := provider.QuerySampleJobRunTestStatus(context.Background(), opts, includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+	require.Len(t, filtered, 1, "PR-filtered runs should share their annotated release job grouping")
+	assert.Contains(t, filtered, utils.NormalizeProwJobName(releaseJobName))
+
+	opts.SampleRelease.PullRequestOptions = nil
+	unfiltered, errs := provider.QuerySampleJobRunTestStatus(context.Background(), opts, includeVariants,
+		opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+	assert.Len(t, unfiltered, 2, "without a PR filter, runs should retain their Prow job names")
+}
+
 func TestTestDetailsReport_LifecycleFilteredTestFailures(t *testing.T) {
 	dbc := crTestDB(t)
 	release := "4.16"
@@ -3855,6 +4064,45 @@ func TestTestDetailsReport_LifecycleFilteredTestFailures(t *testing.T) {
 		assert.Equal(t, 5, report.Analyses[0].JobStats[0].SampleJobRunStats[0].TestFailures,
 			"unfiltered test_failures should use pre-computed total from prow_job_runs")
 	})
+}
+
+func TestQuerySampleJobRunTestStatus_PRLifecycleFailureCountUsesRunRelease(t *testing.T) {
+	dbc := crTestDB(t)
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-pr-lifecycle-release", "4.17", vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] PR lifecycle release test")
+	informingTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] PR lifecycle informing test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-pr-lifecycle-release")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:pr-lifecycle-release", "Storage", []string{"PVC"})
+	pr := models.ProwPullRequest{Org: "openshift", Repo: "origin", Number: 234, SHA: "pr-lifecycle-release-sha"}
+	require.NoError(t, dbc.DB.Create(&pr).Error)
+
+	runTime := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+	run := createProwJobRunForCR(t, dbc, job.ID, "4.17", runTime)
+	createProwJobRunTestWithLifecycle(t, dbc, run.ID, job.ID, test.ID, &suite.ID, 12, "4.17", runTime, "blocking")
+	createProwJobRunTestWithLifecycle(t, dbc, run.ID, job.ID, informingTest.ID, &suite.ID, 12, "4.17", runTime, "informing")
+	require.NoError(t, dbc.DB.Create(&models.ProwJobRunProwPullRequest{
+		ProwJobRunID: run.ID, ProwPullRequestID: pr.ID,
+		ProwJobRunRelease: "4.17", ProwJobRunTimestamp: runTime,
+	}).Error)
+
+	opts := testDetailsReqOptions(tow.UniqueID, map[string]string{"Platform": "aws", "Network": "ovn"})
+	opts.Lifecycles = []string{"blocking"}
+	opts.SampleRelease.PullRequestOptions = &reqopts.PullRequest{Org: "openshift", Repo: "origin", PRNumber: "234"}
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	details, errs := provider.QuerySampleJobRunTestStatus(context.Background(), opts,
+		opts.VariantOption.IncludeVariants, opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+
+	var jobRuns []crstatus.JobRunDetail
+	for _, summaries := range details {
+		for _, summary := range summaries {
+			jobRuns = append(jobRuns, summary.JobRuns...)
+		}
+	}
+	require.Len(t, jobRuns, 1)
+	assert.Equal(t, 1, jobRuns[0].TestFailures,
+		"lifecycle failure count should use the run's 4.17 release, even though the request selects 4.16")
 }
 
 func TestTestDetailsReport_LastFailureTracking(t *testing.T) {

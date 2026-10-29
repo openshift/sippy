@@ -351,11 +351,48 @@ type testDetailRow struct {
 	JiraComponentID *uint          `gorm:"column:jira_component_id"`
 }
 
+// buildTestDetailsRunScope keeps the sample details query on the same run
+// selection as its report while preserving release scoping for ordinary and
+// basis details. Both timestamp predicates support the partitioned run tables.
+func buildTestDetailsRunScope(release string, start, end time.Time, runFilter string, runArgs []any) (string, []any) {
+	clause := `pjr.timestamp >= ? AND pjr.timestamp < ?
+        AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?`
+	args := []any{start, end, start, end}
+	if runFilter == "" {
+		clause += ` AND pj.release = ?
+        AND pjr.prow_job_release = ? AND pjrt.prow_job_run_release = ?`
+		args = append(args, release, release, release)
+	} else {
+		clause += " AND " + runFilter
+		args = append(args, runArgs...)
+	}
+	return clause, args
+}
+
+// testDetailsJobNameSQL uses releaseJobName to group PR-filtered test runs
+// under their canonical release job while limiting the partitioned annotation
+// lookup to the requested sample range.
+func testDetailsJobNameSQL(useReleaseJobName bool, start, end time.Time) (string, string, []any) {
+	if !useReleaseJobName {
+		return "pj.name", "", nil
+	}
+
+	return "COALESCE(NULLIF(split_part(release_job_name.value, ',', 1), ''), pj.name)", `
+LEFT JOIN prow_job_run_annotations release_job_name
+    ON release_job_name.prow_job_run_id = pjr.id
+    AND release_job_name.prow_job_run_release = pjr.prow_job_release
+    AND release_job_name.prow_job_run_timestamp = pjr.timestamp
+    AND release_job_name.key = 'releaseJobName'
+    AND release_job_name.deleted_at IS NULL
+    AND release_job_name.prow_job_run_timestamp >= ?
+    AND release_job_name.prow_job_run_timestamp < ?`, []any{start, end}
+}
+
 func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
 	reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string,
-	lifecycles []string) (map[string][]crstatus.TestDetailsSummary, []error) {
-
+	lifecycles []string,
+	runFilter string, runArgs []any, sampleReleases []string, useReleaseJobName bool) (map[string][]crstatus.TestDetailsSummary, []error) {
 	if includeVariants == nil {
 		includeVariants = map[string][]string{}
 	}
@@ -383,13 +420,15 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 		args = append(args, testIDs)
 	}
 
-	testFailuresExpr, testFailuresArgs := testFailuresExpression(release, start, end, lifecycles)
+	testFailuresExpr, testFailuresArgs := testFailuresExpression(release, start, end, lifecycles, sampleReleases)
+	scope, scopeArgs := buildTestDetailsRunScope(release, start, end, runFilter, runArgs)
+	jobNameExpr, jobNameJoin, jobNameArgs := testDetailsJobNameSQL(useReleaseJobName, start, end)
 
 	sqlQuery += fmt.Sprintf(`)
 SELECT
     tt.unique_id AS test_id,
     t.name AS test_name,
-    pj.name AS prowjob_name,
+    %s AS prowjob_name,
     CAST(pjr.id AS TEXT) AS prowjob_run_id,
     COALESCE(pjr.url, '') AS prowjob_url,
     pjr.timestamp AS prowjob_start,
@@ -406,17 +445,15 @@ JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
     AND pjr.prow_job_release = pjrt.prow_job_run_release
     AND pjr.timestamp = pjrt.prow_job_run_timestamp
 JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
+%s
 JOIN tests t ON t.id = pjrt.test_id
-WHERE pj.release = ?
-    AND pjr.timestamp >= ? AND pjr.timestamp < ?
-    AND pjr.prow_job_release = ?
-    AND pjrt.prow_job_run_release = ?
-    AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
+WHERE %s
     AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
-    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`, testFailuresExpr)
+    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`, jobNameExpr, testFailuresExpr, jobNameJoin, scope)
 
 	args = append(args, testFailuresArgs...)
-	args = append(args, release, start, end, release, release, start, end)
+	args = append(args, jobNameArgs...)
+	args = append(args, scopeArgs...)
 	sqlQuery, args = appendTestDetailsLifecycleFilter(sqlQuery, args, lifecycles)
 
 	if len(includeVariants) > 0 {
@@ -501,22 +538,34 @@ WHERE pj.release = ?
 // arguments for the test_failures column. Without a lifecycle filter, it uses
 // the pre-computed prow_job_runs.test_failures count. With a filter, it returns
 // a correlated subquery that counts DISTINCT test_id values matching the
-// lifecycle (unlike the pre-computed column which counts all lifecycles), so the
-// same run may report a different failure count depending on the filter. This
-// matches the BigQuery provider's COUNT(DISTINCT test_name) semantics.
-func testFailuresExpression(release string, start, end time.Time, lifecycles []string) (string, []any) {
+// lifecycle. Ordinary requests bind the release explicitly so PostgreSQL can
+// prune partitions; filtered samples bind their candidate release set and also
+// correlate to the outer run's release.
+func testFailuresExpression(release string, start, end time.Time, lifecycles, sampleReleases []string) (string, []any) {
 	if len(lifecycles) == 0 {
 		return "COALESCE(pjr.test_failures, 0) AS test_failures", nil
 	}
+
+	var releasePredicate string
+	var args []any
+	if sampleReleases == nil {
+		releasePredicate = "lf.prow_job_run_release = ?"
+		args = append(args, release)
+	} else {
+		releasePredicate = "lf.prow_job_run_release = ANY(?) AND lf.prow_job_run_release = pjr.prow_job_release"
+		args = append(args, pq.Array(sampleReleases))
+	}
+	args = append(args, start, end, int(sippyprocessingv1.TestStatusFailure), pq.Array(lifecycles))
+
 	return `(SELECT COUNT(DISTINCT lf.test_id) FROM prow_job_run_tests lf
             WHERE lf.prow_job_run_id = pjr.id
-            AND lf.prow_job_run_release = ?
+            AND ` + releasePredicate + `
             AND lf.prow_job_run_timestamp >= ? AND lf.prow_job_run_timestamp < ?
             AND lf.prow_job_run_timestamp = pjr.timestamp
             AND lf.status = ?
             AND lf.lifecycle = ANY(?)
             AND lf.deleted_at IS NULL) AS test_failures`,
-		[]any{release, start, end, int(sippyprocessingv1.TestStatusFailure), pq.Array(lifecycles)}
+		args
 }
 
 // appendTestDetailsLifecycleFilter keeps sample test details aligned with the
@@ -534,7 +583,7 @@ func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOpt
 		ctx,
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End,
-		reqOptions, reqOptions.VariantOption.IncludeVariants, nil,
+		reqOptions, reqOptions.VariantOption.IncludeVariants, nil, "", nil, nil, false,
 	)
 	if len(errs) > 0 {
 		return result, errs
@@ -754,12 +803,28 @@ func (p *PostgresProvider) processAggregateRows(rows []aggregateTestDetailRow, r
 func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestDetailsSummary, []error) {
-	return p.queryTestDetails(
+	runFilter, runArgs, err := buildSamplePullRequestAndPayloadRunFilter(reqOptions.SampleRelease, start, end)
+	if err != nil {
+		return nil, []error{err}
+	}
+	sampleReleases, lookupErr := findSampleReleases(ctx, p.dbc.DB, reqOptions.SampleRelease, start, end)
+	if lookupErr != nil {
+		return nil, []error{lookupErr}
+	}
+	sampleReleaseFilter, sampleReleaseArgs := buildSampleRunReleasePartitionFilter(sampleReleases, "pjrt")
+	if sampleReleaseFilter != "" {
+		runFilter += " AND " + sampleReleaseFilter
+		runArgs = append(runArgs, sampleReleaseArgs...)
+	}
+
+	result, errs := p.queryTestDetails(
 		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
-		reqOptions, mergeCompareVariants(reqOptions, includeVariants), reqOptions.Lifecycles,
+		reqOptions, mergeCompareVariants(reqOptions, includeVariants), reqOptions.Lifecycles, runFilter, runArgs,
+		sampleReleases, reqOptions.SampleRelease.PullRequestOptions != nil,
 	)
+	return result, errs
 }
 
 // --- JobQuerier ---
