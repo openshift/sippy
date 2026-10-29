@@ -29,8 +29,9 @@ type RequestOptions struct {
 	// When generating test details URLs, if a view is present, we include just the view parameter
 	// plus test-specific overrides, rather than expanding all view parameters into the URL.
 	ViewName string `json:"view_name,omitempty" yaml:"view_name,omitempty"`
-	// DataSource controls which backend is used for CR test queries.
-	// Valid values: "" (default, uses BigQuery), DataSourceBigQuery, DataSourcePostgres.
+	// DataSource optionally overrides the backend used for CR test queries.
+	// DataSourceBigQuery and DataSourcePostgres explicitly select the
+	// corresponding backend.
 	DataSource string `json:"data_source,omitempty" yaml:"data_source,omitempty"`
 }
 

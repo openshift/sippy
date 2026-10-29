@@ -6,8 +6,30 @@ import (
 	"testing"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db/models"
 )
+
+func TestValidateCRDataSource(t *testing.T) {
+	for _, dataSource := range []string{"", reqopts.DataSourceBigQuery, reqopts.DataSourcePostgres} {
+		t.Run(dataSource, func(t *testing.T) {
+			if err := validateCRDataSource(dataSource); err != nil {
+				t.Fatalf("validateCRDataSource(%q) returned error: %v", dataSource, err)
+			}
+		})
+	}
+
+	err := validateCRDataSource("bigquey")
+	if err == nil {
+		t.Fatal("validateCRDataSource(bigquey) returned nil")
+	}
+	if !strings.Contains(err.Error(), "invalid dataSource") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "must be empty, \"bigquery\", or \"postgres\"") {
+		t.Fatalf("error does not describe all valid values: %v", err)
+	}
+}
 
 func TestValidateProwJobRun(t *testing.T) {
 

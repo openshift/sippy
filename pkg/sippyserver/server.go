@@ -1147,7 +1147,12 @@ func (s *Server) jsonJobVariants(w http.ResponseWriter, req *http.Request) {
 		failureResponse(w, http.StatusBadRequest, "job variants API is only available when a data provider is configured")
 		return
 	}
-	reqOptions := reqopts.RequestOptions{DataSource: param.SafeRead(req, "dataSource")}
+	dataSource := param.SafeRead(req, "dataSource")
+	if err := validateCRDataSource(dataSource); err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	reqOptions := reqopts.RequestOptions{DataSource: dataSource}
 	outputs, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying job variants:", len(errs))
@@ -1214,6 +1219,17 @@ func (s *Server) getRegressedTestsForRegressions(req *http.Request, regressions 
 
 // parseCRRequest validates the data provider, resolves variants and releases,
 // and parses query parameters into RequestOptions. Shared by all CR handlers.
+func validateCRDataSource(dataSource string) error {
+	switch dataSource {
+	case "", reqopts.DataSourceBigQuery, reqopts.DataSourcePostgres:
+		return nil
+	default:
+		return &api.ValidationError{
+			Message: fmt.Sprintf("invalid dataSource %q, must be empty, %q, or %q", dataSource, reqopts.DataSourceBigQuery, reqopts.DataSourcePostgres),
+		}
+	}
+}
+
 func (s *Server) parseCRRequest(req *http.Request) (reqopts.RequestOptions, []sippyv1.Release, []string, error) {
 	if s.crDataProvider == nil {
 		return reqopts.RequestOptions{}, nil, nil, &api.ValidationError{
@@ -1221,7 +1237,11 @@ func (s *Server) parseCRRequest(req *http.Request) (reqopts.RequestOptions, []si
 		}
 	}
 
-	variantReqOptions := reqopts.RequestOptions{DataSource: param.SafeRead(req, "dataSource")}
+	dataSource := param.SafeRead(req, "dataSource")
+	if err := validateCRDataSource(dataSource); err != nil {
+		return reqopts.RequestOptions{}, nil, nil, err
+	}
+	variantReqOptions := reqopts.RequestOptions{DataSource: dataSource}
 	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, variantReqOptions)
 	if len(errs) > 0 {
 		return reqopts.RequestOptions{}, nil, nil, fmt.Errorf("failed to get job variants: %v", errs)
