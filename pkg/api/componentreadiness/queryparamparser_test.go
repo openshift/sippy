@@ -715,8 +715,10 @@ func TestParseComponentReportRequestSpotCheckSamples(t *testing.T) {
 			var gotSamples []string
 			for _, sample := range opts.SpotCheckJobSamples {
 				gotSamples = append(gotSamples, sample.Name)
-				// view windows are rounded to the cache rounding factor, so allow one step of slack
-				assert.InDelta(t, tc.wantWindow.Hours(), sample.End.Sub(sample.Start).Hours(), 12)
+				// A relative window starts at UTC midnight and ends at the cache-rounded current time, so its width
+				// shifts with the hour the test runs (712h to 736h for 30 days). A day of slack covers every hour
+				// and still tells these windows apart.
+				assert.InDelta(t, tc.wantWindow.Hours(), sample.End.Sub(sample.Start).Hours(), 24)
 				assert.Equal(t, tier30, sample.IncludeVariants)
 			}
 			assert.Equal(t, tc.wantSamples, gotSamples)
