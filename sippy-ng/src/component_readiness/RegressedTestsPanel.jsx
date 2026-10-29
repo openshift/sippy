@@ -1,11 +1,12 @@
+import { ageColor, relativeTime, useFilterModelParam } from '../helpers'
 import { applyFilterModel } from '../datagrid/filterUtils'
 import { DataGrid } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
 import { formColumnName, generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
-import { relativeTime, useFilterModelParam } from '../helpers'
 import { SippyCapabilitiesContext } from '../App'
+import { useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -16,6 +17,7 @@ import React, { Fragment } from 'react'
 import UpsertTriageModal from './UpsertTriageModal'
 
 export default function RegressedTestsPanel(props) {
+  const theme = useTheme()
   const [activeRow, setActiveRow] = useQueryParam(
     'regressedModalRow',
     StringParam,
@@ -224,15 +226,19 @@ export default function RegressedTestsPanel(props) {
       renderCell: (params) => {
         if (!params.value) return ''
         const regressedSinceDate = params.value
+        const color = ageColor(regressedSinceDate, theme)
         return (
           <Tooltip
-            title={`WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default. 
+            title={`WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.
             Click to copy the regression ID (${params.row.regression.id}) if one is defined. Useful for triage.`}
             onClick={(event) =>
               copyTestToClipboard(event, params.row.regression.id)
             }
           >
-            <div className="regressed-since">
+            <div
+              className="regressed-since"
+              style={color ? { color } : undefined}
+            >
               {relativeTime(regressedSinceDate, new Date())}
             </div>
           </Tooltip>

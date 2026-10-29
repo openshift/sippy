@@ -1,11 +1,12 @@
-import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
-import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
-import { DataGrid } from '@mui/x-data-grid'
 import {
+  ageColor,
   formatDateToSeconds,
   relativeTime,
   useFilterModelParam,
 } from '../helpers'
+import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
+import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
+import { DataGrid } from '@mui/x-data-grid'
 import {
   hasFailedFixRegression,
   jiraUrlPrefix,
@@ -255,11 +256,19 @@ export default function TriagedRegressions({
       headerName: 'Jira',
       flex: 4,
       autocomplete: 'jira_key',
-      renderCell: (param) => (
-        <a target="_blank" href={param.row.url} rel="noreferrer">
-          <div className="test-name">{param.value}</div>
-        </a>
-      ),
+      renderCell: (param) => {
+        const lastChange = param.row.bug?.last_change_time
+        const tooltipText = lastChange
+          ? `Jira updated: ${relativeTime(new Date(lastChange), new Date())} (${new Date(lastChange).toISOString()})`
+          : ''
+        return (
+          <Tooltip title={tooltipText}>
+            <a target="_blank" href={param.row.url} rel="noreferrer">
+              <div className="test-name">{param.value}</div>
+            </a>
+          </Tooltip>
+        )
+      },
     },
     {
       field: 'bug_component',
@@ -304,23 +313,30 @@ export default function TriagedRegressions({
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
-      field: 'last_change',
+      field: 'regressed_since',
       type: 'date',
       valueGetter: (value, row) => {
-        const ts = row.bug?.last_change_time
-        return ts ? new Date(ts) : null
+        if (!row.regressions || row.regressions.length === 0) return null
+        const dates = row.regressions
+          .filter((r) => r.opened)
+          .map((r) => new Date(r.opened))
+        if (dates.length === 0) return null
+        return new Date(Math.min(...dates.map((d) => d.getTime())))
       },
-      headerName: 'Jira updated',
+      headerName: 'Regressed Since',
       flex: 4,
       filterable: false,
-      renderCell: (param) =>
-        param.value ? (
+      renderCell: (param) => {
+        if (!param.value) return null
+        const color = ageColor(param.value, theme)
+        return (
           <Tooltip title={param.value.toISOString()}>
-            <div className="test-name">
+            <div className="test-name" style={color ? { color } : undefined}>
               {relativeTime(param.value, new Date())}
             </div>
           </Tooltip>
-        ) : null,
+        )
+      },
     },
     {
       field: 'created_at',

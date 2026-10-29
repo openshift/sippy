@@ -1,3 +1,4 @@
+import { ageColor, relativeTime, useFilterModelParam } from '../helpers'
 import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
 import { Box, Tooltip, Typography } from '@mui/material'
 import { CheckCircle } from '@mui/icons-material'
@@ -5,13 +6,14 @@ import { DataGrid } from '@mui/x-data-grid'
 import { filterRegressionsByLabel } from './TriageSymptomLabels'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, useQueryParam } from 'use-query-params'
-import { relativeTime, useFilterModelParam } from '../helpers'
+import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
 export default function TriagedRegressionTestList(props) {
+  const theme = useTheme()
   const [activeRow, setActiveRow] = useQueryParam(
     'regressedModalTestRow',
     NumberParam,
@@ -162,13 +164,20 @@ export default function TriagedRegressionTestList(props) {
         }
         return new Date(row.opened)
       },
-      renderCell: (param) => (
-        <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
-          <div className="regressed-since">
-            {param.value ? relativeTime(param.value, new Date()) : ''}
-          </div>
-        </Tooltip>
-      ),
+      renderCell: (param) => {
+        if (!param.value) return ''
+        const color = ageColor(param.value, theme)
+        return (
+          <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
+            <div
+              className="regressed-since"
+              style={color ? { color } : undefined}
+            >
+              {relativeTime(param.value, new Date())}
+            </div>
+          </Tooltip>
+        )
+      },
     },
     {
       field: 'last_failure',
