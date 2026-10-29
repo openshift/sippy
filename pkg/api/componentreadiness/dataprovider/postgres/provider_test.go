@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -276,4 +277,42 @@ func TestSpotCheckMatchesTestFilters(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSpotCheckSampleVariants(t *testing.T) {
+	tier := map[string][]string{"JobTier": {"spotcheck-30d"}}
+
+	t.Run("without cross-compare the request's variants are kept", func(t *testing.T) {
+		reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{
+			IncludeVariants: map[string][]string{"Platform": {"aws"}},
+		}}
+		got := spotCheckSampleVariants(reqOptions, tier)
+		want := map[string][]string{"Platform": {"aws"}, "JobTier": {"spotcheck-30d"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("cross-compare selects the sample-side values", func(t *testing.T) {
+		reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{
+			IncludeVariants:     map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
+			CompareVariants:     map[string][]string{"Platform": {"gcp"}},
+			VariantCrossCompare: []string{"Platform"},
+		}}
+		got := spotCheckSampleVariants(reqOptions, tier)
+		want := map[string][]string{"Platform": {"gcp"}, "Network": {"ovn"}, "JobTier": {"spotcheck-30d"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("the request's variants are not modified", func(t *testing.T) {
+		reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{
+			IncludeVariants: map[string][]string{"Platform": {"aws"}},
+		}}
+		spotCheckSampleVariants(reqOptions, tier)
+		if _, ok := reqOptions.VariantOption.IncludeVariants["JobTier"]; ok {
+			t.Error("sample variants leaked into the request's IncludeVariants")
+		}
+	})
 }

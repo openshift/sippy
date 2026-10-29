@@ -5168,6 +5168,75 @@ func TestQuerySpotCheckTestStatus_TestFilters(t *testing.T) {
 	})
 }
 
+// seedSpotCheckPlatformData creates one spot-check group (Etcd / Scaling) on two platforms:
+// aws has a single pass and gcp has three failures.
+func seedSpotCheckPlatformData(t *testing.T, dbc *db.DB) string {
+	t.Helper()
+	release := "4.17"
+	syntheticTest := intutil.CreateTest(t, dbc, "[sig-sippy] openshift-tests should work")
+	now := time.Now().UTC()
+
+	for _, platform := range []string{"aws", "gcp"} {
+		vc := createVariantCombination(t, dbc, []string{
+			"Platform:" + platform, "Network:ovn", "Component:Etcd", "Capability:Scaling",
+			"JobTier:spotcheck-30d",
+		})
+		job := createProwJobWithVC(t, dbc, "periodic-ci-etcd-scaling-spot-check-"+platform, release, vc)
+		runs := 3
+		status := 12 // fail
+		if platform == "aws" {
+			runs, status = 1, 1 // pass
+		}
+		for i := range runs {
+			run := intutil.CreateProwJobRun(t, dbc, job.ID, release,
+				now.Add(time.Duration(-(10+i))*24*time.Hour), status == 1, "S",
+				intutil.WithURL(fmt.Sprintf("https://prow.ci/etcd-%s-%d", platform, i)))
+			createProwJobRunTest(t, dbc, run.ID, job.ID, syntheticTest.ID, nil, status, release, run.Timestamp)
+		}
+	}
+	return release
+}
+
+// A cross-compare view holds base-side values in IncludeVariants and sample-side values in CompareVariants,
+// and spot-check results belong to the sample side.
+func TestQuerySpotCheck_CrossCompareUsesSampleSideVariants(t *testing.T) {
+	dbc := crTestDB(t)
+	release := seedSpotCheckPlatformData(t, dbc)
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	includeVariants := map[string][]string{"JobTier": {"spotcheck-30d"}}
+
+	opts := spotCheckReqOptions(release)
+	opts.VariantOption.IncludeVariants = map[string][]string{"Platform": {"aws"}} // base side
+	opts.VariantOption.CompareVariants = map[string][]string{"Platform": {"gcp"}} // sample side
+	opts.VariantOption.VariantCrossCompare = []string{"Platform"}
+
+	t.Run("status", func(t *testing.T) {
+		result, err := provider.QuerySpotCheckTestStatus(context.Background(), opts, "spotcheck-30d",
+			includeVariants, opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.NoError(t, err)
+		require.Len(t, result, 1)
+		for _, ts := range result {
+			assert.Equal(t, "gcp", ts.Variants["Platform"])
+			assert.Equal(t, 3, ts.TotalCount, "gcp runs")
+			assert.Equal(t, 0, ts.SuccessCount, "gcp successes")
+		}
+	})
+
+	t.Run("details for the sample-side environment", func(t *testing.T) {
+		result, err := provider.QuerySpotCheckTestDetails(context.Background(), opts,
+			crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling"), includeVariants,
+			map[string]string{"Platform": "gcp"}, opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.NoError(t, err)
+		runs := 0
+		for _, summaries := range result {
+			for _, summary := range summaries {
+				runs += len(summary.JobRuns)
+			}
+		}
+		assert.Equal(t, 3, runs, "gcp runs")
+	})
+}
+
 // --- Helpers ---
 
 func isPlaceholderKey(testID string) bool {

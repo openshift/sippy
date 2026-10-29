@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
 	"math/big"
 	"slices"
 	"sort"
@@ -325,6 +326,17 @@ func mergeCompareVariants(reqOptions reqopts.RequestOptions, includeVariants map
 			merged[k] = v
 		}
 	}
+	return merged
+}
+
+// spotCheckSampleVariants returns the job variant filter for a spot-check sample. Spot-check results belong
+// to the sample side of a report, so this starts from the sample-side variants (which for cross-compare
+// views differ from IncludeVariants) and applies the sample's own job selection, such as its tier, on top.
+func spotCheckSampleVariants(reqOptions reqopts.RequestOptions, sampleVariants map[string][]string) map[string][]string {
+	sideVariants := mergeCompareVariants(reqOptions, reqOptions.VariantOption.IncludeVariants)
+	merged := make(map[string][]string, len(sideVariants)+len(sampleVariants))
+	maps.Copy(merged, sideVariants)
+	maps.Copy(merged, sampleVariants)
 	return merged
 }
 
@@ -884,15 +896,7 @@ func (p *PostgresProvider) QuerySpotCheckTestStatus(
 
 	dbGroupBy := reqOptions.VariantOption.DBGroupBy
 
-	// Build variant filter for spot-check jobs
-	mergedVariants := make(map[string][]string)
-	for k, v := range reqOptions.VariantOption.IncludeVariants {
-		mergedVariants[k] = v
-	}
-	for k, v := range includeVariants {
-		mergedVariants[k] = v
-	}
-	filterClause, filterArgs := buildVariantFilterClause(mergedVariants)
+	filterClause, filterArgs := buildVariantFilterClause(spotCheckSampleVariants(reqOptions, includeVariants))
 	if filterClause == "" {
 		return nil, nil
 	}
@@ -1057,14 +1061,7 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 
 	dbGroupBy := reqOptions.VariantOption.DBGroupBy
 
-	mergedVariants := make(map[string][]string)
-	for k, v := range reqOptions.VariantOption.IncludeVariants {
-		mergedVariants[k] = v
-	}
-	for k, v := range includeVariants {
-		mergedVariants[k] = v
-	}
-	filterClause, filterArgs := buildVariantFilterClause(mergedVariants)
+	filterClause, filterArgs := buildVariantFilterClause(spotCheckSampleVariants(reqOptions, includeVariants))
 	if filterClause == "" {
 		return nil, nil
 	}
