@@ -5,8 +5,8 @@ args = ["-c", "npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH
 [mcp_servers.playwright.env]
 
 [mcp_servers.sippy-dev]
-command = "mcp/run.sh"
-args = []
+command = "sh"
+args = ["-c", "exec \"$(git rev-parse --show-toplevel)/mcp/run.sh\""]
 
 [mcp_servers.sippy-dev.env]
 

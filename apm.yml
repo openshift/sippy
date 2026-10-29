@@ -24,8 +24,10 @@ dependencies:
     - name: sippy-dev
       registry: false
       transport: stdio
-      command: mcp/run.sh
-      args: []
+      command: sh
+      args:
+        - "-c"
+        - "exec \"$(git rev-parse --show-toplevel)/mcp/run.sh\""
     - name: atlassian
       registry: false
       transport: http

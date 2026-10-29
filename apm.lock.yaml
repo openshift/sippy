@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-10-29T19:24:30.259612+00:00'
+generated_at: '2026-10-29T23:18:40.555702+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -866,7 +866,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: null
+  content_hash: sha256:b9d738d5f05b7f452f610fc95c5463b7619a650e9519193d50cd6bf040b18c2b
 - kind: uri
   target: mcp
   value: atlassian
@@ -893,7 +893,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:fd923c3b8c76b2f27132869283c17916cfdd332c304392d99b793ceb88e03b0e
+  content_hash: sha256:05af8f64d8c5dec8fca614c393ebc8f11ed3b154af60743feebf7114bfc26544
 - kind: uri
   target: mcp
   value: atlassian
@@ -1087,9 +1087,11 @@ mcp_configs:
   sippy-dev:
     name: sippy-dev
     transport: stdio
-    args: []
+    args:
+    - -c
+    - exec "$(git rev-parse --show-toplevel)/mcp/run.sh"
     registry: false
-    command: mcp/run.sh
+    command: sh
 mcp_target_servers:
   claude:
   - atlassian
