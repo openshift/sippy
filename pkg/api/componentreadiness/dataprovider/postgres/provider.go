@@ -329,15 +329,34 @@ func mergeCompareVariants(reqOptions reqopts.RequestOptions, includeVariants map
 	return merged
 }
 
-// spotCheckSampleVariants returns the job variant filter for a spot-check sample. Spot-check results belong
-// to the sample side of a report, so this starts from the sample-side variants (which for cross-compare
-// views differ from IncludeVariants) and applies the sample's own job selection, such as its tier, on top.
-func spotCheckSampleVariants(reqOptions reqopts.RequestOptions, sampleVariants map[string][]string) map[string][]string {
+// spotCheckTierVariant is the variant a spot-check sample uses to select its jobs. The sample replaces any
+// tier the request filters on, since the request's tiers describe ordinary jobs.
+const spotCheckTierVariant = "JobTier"
+
+// spotCheckSampleVariants returns the job variant filter for a spot-check sample, and false if no job can
+// match it. Spot-check results belong to the sample side of a report, so this starts from the sample-side
+// variants (which for cross-compare views differ from IncludeVariants). The sample's tier replaces the
+// request's. Any other variant the sample sets narrows the request's values instead, so that an explicit
+// environment restriction in the request is never widened by the sample's configuration.
+func spotCheckSampleVariants(reqOptions reqopts.RequestOptions, sampleVariants map[string][]string) (map[string][]string, bool) {
 	sideVariants := mergeCompareVariants(reqOptions, reqOptions.VariantOption.IncludeVariants)
 	merged := make(map[string][]string, len(sideVariants)+len(sampleVariants))
 	maps.Copy(merged, sideVariants)
-	maps.Copy(merged, sampleVariants)
-	return merged
+	for name, sampleValues := range sampleVariants {
+		requestValues := merged[name]
+		if name == spotCheckTierVariant || len(requestValues) == 0 {
+			merged[name] = sampleValues
+			continue
+		}
+		narrowed := slices.DeleteFunc(slices.Clone(sampleValues), func(v string) bool {
+			return !slices.Contains(requestValues, v)
+		})
+		if len(narrowed) == 0 {
+			return nil, false
+		}
+		merged[name] = narrowed
+	}
+	return merged, true
 }
 
 func (p *PostgresProvider) QueryTestStatus(
@@ -896,7 +915,11 @@ func (p *PostgresProvider) QuerySpotCheckTestStatus(
 
 	dbGroupBy := reqOptions.VariantOption.DBGroupBy
 
-	filterClause, filterArgs := buildVariantFilterClause(spotCheckSampleVariants(reqOptions, includeVariants))
+	variantFilter, ok := spotCheckSampleVariants(reqOptions, includeVariants)
+	if !ok {
+		return nil, nil
+	}
+	filterClause, filterArgs := buildVariantFilterClause(variantFilter)
 	if filterClause == "" {
 		return nil, nil
 	}
@@ -1061,7 +1084,11 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 
 	dbGroupBy := reqOptions.VariantOption.DBGroupBy
 
-	filterClause, filterArgs := buildVariantFilterClause(spotCheckSampleVariants(reqOptions, includeVariants))
+	variantFilter, ok := spotCheckSampleVariants(reqOptions, includeVariants)
+	if !ok {
+		return nil, nil
+	}
+	filterClause, filterArgs := buildVariantFilterClause(variantFilter)
 	if filterClause == "" {
 		return nil, nil
 	}

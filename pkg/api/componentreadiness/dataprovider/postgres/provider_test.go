@@ -286,7 +286,10 @@ func TestSpotCheckSampleVariants(t *testing.T) {
 		reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{
 			IncludeVariants: map[string][]string{"Platform": {"aws"}},
 		}}
-		got := spotCheckSampleVariants(reqOptions, tier)
+		got, ok := spotCheckSampleVariants(reqOptions, tier)
+		if !ok {
+			t.Fatal("expected variants to match")
+		}
 		want := map[string][]string{"Platform": {"aws"}, "JobTier": {"spotcheck-30d"}}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("got %v, want %v", got, want)
@@ -299,7 +302,10 @@ func TestSpotCheckSampleVariants(t *testing.T) {
 			CompareVariants:     map[string][]string{"Platform": {"gcp"}},
 			VariantCrossCompare: []string{"Platform"},
 		}}
-		got := spotCheckSampleVariants(reqOptions, tier)
+		got, ok := spotCheckSampleVariants(reqOptions, tier)
+		if !ok {
+			t.Fatal("expected variants to match")
+		}
 		want := map[string][]string{"Platform": {"gcp"}, "Network": {"ovn"}, "JobTier": {"spotcheck-30d"}}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("got %v, want %v", got, want)
@@ -315,4 +321,60 @@ func TestSpotCheckSampleVariants(t *testing.T) {
 			t.Error("sample variants leaked into the request's IncludeVariants")
 		}
 	})
+}
+
+func TestSpotCheckSampleVariantsNarrowing(t *testing.T) {
+	tests := []struct {
+		name          string
+		request       map[string][]string
+		sample        map[string][]string
+		want          map[string][]string
+		wantSomeMatch bool
+	}{
+		{
+			name:          "sample tier replaces the request's tiers",
+			request:       map[string][]string{"JobTier": {"standard", "blocking"}},
+			sample:        map[string][]string{"JobTier": {"spotcheck-30d"}},
+			want:          map[string][]string{"JobTier": {"spotcheck-30d"}},
+			wantSomeMatch: true,
+		},
+		{
+			name:          "sample variant the request does not set is applied",
+			request:       map[string][]string{"Network": {"ovn"}},
+			sample:        map[string][]string{"Platform": {"aws"}},
+			want:          map[string][]string{"Network": {"ovn"}, "Platform": {"aws"}},
+			wantSomeMatch: true,
+		},
+		{
+			name:          "overlapping values are intersected",
+			request:       map[string][]string{"Platform": {"aws", "gcp"}},
+			sample:        map[string][]string{"Platform": {"aws", "azure"}},
+			want:          map[string][]string{"Platform": {"aws"}},
+			wantSomeMatch: true,
+		},
+		{
+			name:    "disjoint values match nothing",
+			request: map[string][]string{"Platform": {"gcp"}},
+			sample:  map[string][]string{"Platform": {"aws"}},
+		},
+		{
+			name:          "an empty request value does not restrict",
+			request:       map[string][]string{"Platform": {}},
+			sample:        map[string][]string{"Platform": {"aws"}},
+			want:          map[string][]string{"Platform": {"aws"}},
+			wantSomeMatch: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{IncludeVariants: tt.request}}
+			got, ok := spotCheckSampleVariants(reqOptions, tt.sample)
+			if ok != tt.wantSomeMatch {
+				t.Fatalf("ok = %v, want %v", ok, tt.wantSomeMatch)
+			}
+			if ok && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

@@ -5237,6 +5237,38 @@ func TestQuerySpotCheck_CrossCompareUsesSampleSideVariants(t *testing.T) {
 	})
 }
 
+// A sample may restrict environments as well as select a tier. Those restrictions must narrow the request's
+// environment filter, not replace it.
+func TestQuerySpotCheck_SampleVariantsNarrowRequest(t *testing.T) {
+	dbc := crTestDB(t)
+	release := seedSpotCheckPlatformData(t, dbc)
+	provider := postgres.NewPostgresProvider(dbc, nil)
+
+	platformsFor := func(requestPlatforms, samplePlatforms []string) []string {
+		opts := spotCheckReqOptions(release)
+		opts.VariantOption.IncludeVariants = map[string][]string{"Platform": requestPlatforms}
+		sampleVariants := map[string][]string{"JobTier": {"spotcheck-30d"}, "Platform": samplePlatforms}
+		result, err := provider.QuerySpotCheckTestStatus(context.Background(), opts, "spotcheck-30d",
+			sampleVariants, opts.SampleRelease.Start, opts.SampleRelease.End)
+		require.NoError(t, err)
+		var platforms []string
+		for _, ts := range result {
+			platforms = append(platforms, ts.Variants["Platform"])
+		}
+		return platforms
+	}
+
+	t.Run("conflicting sample platform does not replace the request's", func(t *testing.T) {
+		assert.Empty(t, platformsFor([]string{"gcp"}, []string{"aws"}))
+	})
+	t.Run("overlapping platforms are intersected", func(t *testing.T) {
+		assert.Equal(t, []string{"aws"}, platformsFor([]string{"aws", "gcp"}, []string{"aws"}))
+	})
+	t.Run("matching platform is kept", func(t *testing.T) {
+		assert.Equal(t, []string{"gcp"}, platformsFor([]string{"gcp"}, []string{"gcp"}))
+	})
+}
+
 // --- Helpers ---
 
 func isPlaceholderKey(testID string) bool {
