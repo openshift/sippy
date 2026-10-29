@@ -73,13 +73,13 @@ clean:
 
 _uvx_env = $(if $(filter true,$(CI)),UV_CACHE_DIR=/tmp/uv-cache UV_TOOL_DIR=/tmp/uv-tools)
 apm:
-	$(_uvx_env) uvx --from apm-cli@0.13.0 apm install
-	$(_uvx_env) uvx --from apm-cli@0.13.0 apm compile
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm install
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm compile
 
 verify-migrations:
 	./hack/verify-migrations.sh
 
-APM_GENERATED_FILES := .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md pkg/db/query/AGENTS.md pkg/db/query/CLAUDE.md
+APM_GENERATED_FILES := .agents .claude .codex .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md apm.lock.yaml config/AGENTS.md config/CLAUDE.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md pkg/db/query/AGENTS.md pkg/db/query/CLAUDE.md
 
 verify-apm: apm
 	@if [ -n "$$(git status --porcelain -- $(APM_GENERATED_FILES))" ]; then \

@@ -6,6 +6,7 @@ targets:
   - cursor
   - gemini
   - opencode
+  - codex
 
 dependencies:
   # External dependencies can be pulled from GitHub, e.g.:

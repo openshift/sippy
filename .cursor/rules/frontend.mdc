@@ -1,6 +1,6 @@
 ---
 description: React/Material-UI frontend guidelines for Sippy
-globs: "sippy-ng/**"
+globs: sippy-ng/**
 ---
 
 * The frontend uses `npm`. If you must install or update any dependencies, always use the `--ignore-scripts` flag.

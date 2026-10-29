@@ -11,4 +11,3 @@ applyTo: "pkg/**/query/**"
   CTEs into helper functions when they grow beyond that.
 * When constructing SQL queries, prefer using a format string and/or multi-line string rather than
   concatenation of short strings; and always use placeholders for parameters.
-  
