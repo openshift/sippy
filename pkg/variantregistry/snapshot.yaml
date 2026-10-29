@@ -43975,6 +43975,30 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-v2-aws-backuprestore:
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-v2-aws-backuprestore-cross-cluster:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-v2-azure-self-managed:
     Aggregation: none
     Architecture: amd64
@@ -69086,6 +69110,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.16-upgrade-from-stable-4.15-ocp-e
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-openshift-multiarch-main-nightly-4.17-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.17"
+    ReleaseMajor: "4"
+    ReleaseMinor: "17"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.17-ocp-e2e-aws-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -70411,6 +70458,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.17-upgrade-from-stable-4.16-ocp-e
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-openshift-multiarch-main-nightly-4.18-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.18"
+    ReleaseMajor: "4"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.18-ocp-e2e-aws-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -71784,6 +71854,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.18-upgrade-from-stable-4.17-ocp-e
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-openshift-multiarch-main-nightly-4.19-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.19"
+    ReleaseMajor: "4"
+    ReleaseMinor: "19"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.19-ocp-e2e-aws-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -73208,6 +73301,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.19-upgrade-from-stable-4.18-ocp-e
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-openshift-multiarch-main-nightly-4.20-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.20"
+    ReleaseMajor: "4"
+    ReleaseMinor: "20"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.20-ocp-e2e-aws-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -74779,6 +74895,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.20-upgrade-from-stable-4.19-ocp-e
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-openshift-multiarch-main-nightly-4.21-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.21"
+    ReleaseMajor: "4"
+    ReleaseMinor: "21"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.21-ocp-e2e-aws-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -76373,6 +76512,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.21-upgrade-from-stable-4.20-ocp-e
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-openshift-multiarch-main-nightly-4.22-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.22-ocp-e2e-agent-sno-power:
     Aggregation: none
     Architecture: amd64
@@ -78013,6 +78175,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.22-upgrade-from-stable-4.21-ocp-e
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-openshift-multiarch-main-nightly-4.23-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-4.23-ocp-e2e-aws-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -79630,6 +79815,29 @@ periodic-ci-openshift-multiarch-main-nightly-4.23-upgrade-from-stable-4.22-ocp-e
     Suite: unknown
     Topology: ha
     Upgrade: minor
+periodic-ci-openshift-multiarch-main-nightly-5.0-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-multiarch-main-nightly-5.0-ocp-e2e-aws-ovn-arm64:
     Aggregation: none
     Architecture: arm64
@@ -81295,7 +81503,30 @@ periodic-ci-openshift-multiarch-main-nightly-5.0-upgrade-from-stable-4.22-ocp-e2
     Suite: unknown
     Topology: ha
     Upgrade: major
-periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-external-ibmz-agent-libvirt:
+periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-agent-ibmz-sno:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: agent
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-external-ibmz-agent-libvirt-z-z:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -81319,7 +81550,7 @@ periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-external-ibmz-agent-libvirt
     Suite: parallel
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-external-ibmz-upi-libvirt:
+periodic-ci-openshift-multiarch-main-nightly-5.1-e2e-external-ibmz-upi-libvirt-z-z:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -360224,6 +360455,102 @@ periodic-ci-quay-quay-operator-redhat-5.0-aws-ocp50-e2e-chainsaw-aws-odf-nightly
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-redhat-3.9-aws-ocp414-e2e-legacy-aws-s3:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "3.9"
+    ReleaseMajor: "3"
+    ReleaseMinor: "9"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.10-aws-ocp415-e2e-legacy-aws-s3:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.10
+    ReleaseMajor: "3"
+    ReleaseMinor: "10"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.12-aws-ocp417-e2e-legacy-aws-s3:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.12
+    ReleaseMajor: "3"
+    ReleaseMinor: "12"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.14-aws-ocp419-e2e-legacy-aws-s3:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.14
+    ReleaseMajor: "3"
+    ReleaseMinor: "14"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-redhat-3.15-aws-ocp419-e2e-legacy-aws-s3:
     Aggregation: none
     Architecture: amd64
@@ -363727,6 +364054,29 @@ periodic-ci-redhat-developer-web-terminal-operator-main-web-terminal-ocp4.17-lp-
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-redhat-openshift-ecosystem-certified-operators-preprod-ocp-4.23-preflight-preprod-claim:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-redhat-openshift-ecosystem-certified-operators-preprod-ocp-5.0-preflight-preprod-claim:
     Aggregation: none
     Architecture: amd64
@@ -363768,6 +364118,29 @@ periodic-ci-redhat-openshift-ecosystem-certified-operators-preprod-ocp-5.1-prefl
     Release: "5.1"
     ReleaseMajor: "5"
     ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-redhat-openshift-ecosystem-certified-operators-prod-ocp-4.23-preflight-prod-claim:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
     Scheduler: default
     SecurityMode: default
     Suite: unknown
