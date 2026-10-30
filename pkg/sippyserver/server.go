@@ -405,17 +405,23 @@ func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error
 // BackfillData refreshes a specific table for a given date range,
 // bypassing the normal incremental logic. Used for backfilling.
 func BackfillData(dbc *db.DB, table string, startDate, endDate civil.Date) error {
+	return BackfillDataForRelease(dbc, table, startDate, endDate, "")
+}
+
+// BackfillDataForRelease refreshes one summary table for a date range, optionally limiting it to one release.
+func BackfillDataForRelease(dbc *db.DB, table string, startDate, endDate civil.Date, release string) error {
 	log.WithFields(log.Fields{
-		"table": table,
-		"start": startDate,
-		"end":   endDate,
+		"table":   table,
+		"release": release,
+		"start":   startDate,
+		"end":     endDate,
 	}).Info("Backfilling table")
 
 	switch table {
 	case "daily-totals":
-		return dailysummary.Backfill(dbc, startDate, endDate)
+		return dailysummary.BackfillForRelease(dbc, startDate, endDate, release)
 	case "cumulative-summaries":
-		return cumulativesummary.Backfill(dbc, startDate, endDate)
+		return cumulativesummary.BackfillForRelease(dbc, startDate, endDate, release)
 	default:
 		return fmt.Errorf("unknown table: %s", table)
 	}

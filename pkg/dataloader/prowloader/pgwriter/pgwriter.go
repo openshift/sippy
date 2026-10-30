@@ -2,6 +2,7 @@ package pgwriter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -389,6 +390,14 @@ type releaseDate struct {
 	date    civil.Date
 }
 
+const (
+	presubmitsRelease              = "Presubmits"
+	presubmitsSummaryRetentionDays = 90
+	// DefaultCumulativeSummaryPruneBatchSize is the default maximum number of
+	// stale key combinations deleted in one pruning transaction.
+	DefaultCumulativeSummaryPruneBatchSize = 100
+)
+
 func upsertSummaryTables(ctx context.Context, tx pgx.Tx, currentDate civil.Date) error {
 	if err := createBatchDeltas(ctx, tx); err != nil {
 		return err
@@ -597,6 +606,71 @@ func updateCumulativeSummaries(ctx context.Context, tx pgx.Tx, day civil.Date, r
 	return nil
 }
 
+// cumulativeSummaryBaselineOffsetDays selects the lookback to the oldest
+// summary date that remains available after partition cleanup.
+func cumulativeSummaryBaselineOffsetDays(release string) int {
+	if release == presubmitsRelease {
+		return presubmitsSummaryRetentionDays
+	}
+	// Partition cleanup compares a date partition's midnight with a timestamp
+	// cutoff, so the partition exactly retentionDays old can already be removed.
+	return db.DefaultPartitionRetentionDays - 1
+}
+
+// pruneUnchangedCumulativeSummaries removes keys whose run sum did not change
+// between the current date's retention baseline and throughDate.
+func pruneUnchangedCumulativeSummaries(ctx context.Context, dbc *db.DB, release string, currentDate, throughDate civil.Date, batchSize int) (int64, error) {
+	retentionStart := currentDate.AddDays(-cumulativeSummaryBaselineOffsetDays(release))
+	if batchSize < 1 {
+		return 0, fmt.Errorf("cumulative summary prune batch size must be positive, got %d", batchSize)
+	}
+	if throughDate.Before(retentionStart) {
+		return 0, nil
+	}
+
+	sqlDB, err := dbc.DB.DB()
+	if err != nil {
+		return 0, fmt.Errorf("getting sql.DB: %w", err)
+	}
+	return pruneUnchangedCumulativeSummariesParallel(ctx, sqlDB, release, retentionStart, throughDate, batchSize)
+}
+
+// CumulativeSummaryPruneResult describes the date range and rows affected by
+// pruning one release's cumulative summaries. Skipped is true when the release
+// has no snapshot in the bounded search window.
+type CumulativeSummaryPruneResult struct {
+	RetentionStart civil.Date
+	ThroughDate    civil.Date
+	RowsDeleted    int64
+	Skipped        bool
+}
+
+// PruneCumulativeSummaries removes unchanged keys for one release through its
+// latest available snapshot, allowing operators to run retention pruning
+// without invoking carry-forward.
+func PruneCumulativeSummaries(ctx context.Context, dbc *db.DB, currentDate civil.Date, release string, batchSize int) (CumulativeSummaryPruneResult, error) {
+	throughDate, err := findLatestDateWithData(ctx, dbc, release, currentDate.AddDays(1))
+	if err != nil {
+		if errors.Is(err, errNoCumulativeSummaryDataFound) {
+			return CumulativeSummaryPruneResult{
+				RetentionStart: currentDate.AddDays(-cumulativeSummaryBaselineOffsetDays(release)),
+				Skipped:        true,
+			}, nil
+		}
+		return CumulativeSummaryPruneResult{}, fmt.Errorf("finding latest cumulative summary date for release %s: %w", release, err)
+	}
+
+	prunedRows, err := pruneUnchangedCumulativeSummaries(ctx, dbc, release, currentDate, throughDate, batchSize)
+	if err != nil {
+		return CumulativeSummaryPruneResult{}, fmt.Errorf("pruning cumulative summaries for release %s through %s: %w", release, throughDate, err)
+	}
+	return CumulativeSummaryPruneResult{
+		RetentionStart: currentDate.AddDays(-cumulativeSummaryBaselineOffsetDays(release)),
+		ThroughDate:    throughDate,
+		RowsDeleted:    prunedRows,
+	}, nil
+}
+
 // CarryForwardCumulativeSummaries fills any gap days between the latest
 // existing cumulative summary data and currentDate+1 (tomorrow) for each
 // release. If the loader was down for multiple days, this catches up all
@@ -604,20 +678,19 @@ func updateCumulativeSummaries(ctx context.Context, tx pgx.Tx, day civil.Date, r
 // Releases are processed in parallel with up to 4 workers.
 func CarryForwardCumulativeSummaries(ctx context.Context, dbc *db.DB, currentDate civil.Date, releases []string) error {
 	tomorrow := currentDate.AddDays(1)
-
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(4)
 
 	for _, release := range releases {
 		g.Go(func() error {
-			return carryForwardRelease(ctx, dbc, release, tomorrow)
+			return carryForwardRelease(ctx, dbc, release, currentDate, tomorrow)
 		})
 	}
 
 	return g.Wait()
 }
 
-func carryForwardRelease(ctx context.Context, dbc *db.DB, release string, tomorrow civil.Date) error {
+func carryForwardRelease(ctx context.Context, dbc *db.DB, release string, currentDate, tomorrow civil.Date) error {
 	var hasData bool
 	if err := dbc.DB.WithContext(ctx).Raw(`
 		SELECT EXISTS(
@@ -646,7 +719,7 @@ func carryForwardRelease(ctx context.Context, dbc *db.DB, release string, tomorr
 	var totalRows int64
 	for day := nextDay; !day.After(tomorrow); day = day.AddDays(1) {
 		prevDay := day.AddDays(-1)
-		result := dbc.DB.WithContext(ctx).Exec(`
+		carryResult := dbc.DB.WithContext(ctx).Exec(`
 			INSERT INTO test_cumulative_summaries (date, test_id, prow_job_id, suite_id, lifecycle, release,
 				prefix_sum_successes, prefix_sum_failures, prefix_sum_flakes, prefix_sum_runs,
 				prefix_max_last_failure, prefix_max_last_success)
@@ -656,25 +729,41 @@ func carryForwardRelease(ctx context.Context, dbc *db.DB, release string, tomorr
 				prefix_max_last_failure, prefix_max_last_success
 			FROM test_cumulative_summaries
 			WHERE date = ? AND release = ?`, day, prevDay, release)
-		if result.Error != nil {
-			return fmt.Errorf("carrying forward cumulative summaries for release %s to %s: %w", release, day, result.Error)
+		if carryResult.Error != nil {
+			return fmt.Errorf("carrying forward cumulative summaries for release %s to %s: %w", release, day, carryResult.Error)
 		}
-		totalRows += result.RowsAffected
+		totalRows += carryResult.RowsAffected
+	}
+	totalPrunedRows, err := pruneUnchangedCumulativeSummaries(ctx, dbc, release, currentDate, tomorrow, DefaultCumulativeSummaryPruneBatchSize)
+	if err != nil {
+		log.WithError(err).WithFields(log.Fields{
+			"release":                    release,
+			"through":                    tomorrow,
+			"rows_pruned_before_failure": totalPrunedRows,
+		}).Warn("failed to prune cumulative summaries after carry-forward; pruning will retry on a later run")
+		if ctx.Err() != nil {
+			return fmt.Errorf("pruning cumulative summaries for release %s through %s: %w", release, tomorrow, ctx.Err())
+		}
 	}
 	log.WithFields(log.Fields{
-		"release": release,
-		"rows":    totalRows,
-		"from":    nextDay,
-		"through": tomorrow,
-		"elapsed": time.Since(start),
+		"release":     release,
+		"rows":        totalRows,
+		"pruned_rows": totalPrunedRows,
+		"from":        nextDay,
+		"through":     tomorrow,
+		"elapsed":     time.Since(start),
 	}).Info("carried forward cumulative summaries")
 	return nil
 }
 
+// errNoCumulativeSummaryDataFound indicates that a release has no snapshot in
+// the bounded lookback window used to avoid scanning older partitions.
+var errNoCumulativeSummaryDataFound = errors.New("no cumulative summary data found")
+
 // findLatestDateWithData walks backwards from startDate looking for the most
 // recent date that has cumulative summary rows for the given release. Each
 // EXISTS check targets a single partition, avoiding a full MAX(date) scan.
-// Returns an error if no data is found within maxLookbackDays.
+// Returns errNoCumulativeSummaryDataFound when no data exists in its lookback.
 func findLatestDateWithData(ctx context.Context, dbc *db.DB, release string, startDate civil.Date) (civil.Date, error) {
 	const maxLookbackDays = 30
 	earliest := startDate.AddDays(-maxLookbackDays)
@@ -691,5 +780,5 @@ func findLatestDateWithData(ctx context.Context, dbc *db.DB, release string, sta
 			return day, nil
 		}
 	}
-	return civil.Date{}, fmt.Errorf("no cumulative summary data found for release %s within %d days of %s", release, maxLookbackDays, startDate)
+	return civil.Date{}, fmt.Errorf("%w for release %s within %d days of %s", errNoCumulativeSummaryDataFound, release, maxLookbackDays, startDate)
 }
