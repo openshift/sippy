@@ -48281,6 +48281,24 @@ periodic-ci-openshift-insights-operator-release-5.1-periodics-vsphere-insights-r
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-karpenter-operator-main-periodics-e2e-karpenter-core-regression:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-knative-serverless-operator-main-4.21-techpreview-olmv1-operator-e2e:
     Aggregation: none
     Architecture: amd64
@@ -51146,6 +51164,292 @@ periodic-ci-openshift-kueue-operator-release-1.4-test-e2e-upstream-5-0:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.18-e2e-ocp-upgrade-4-18-to-4-19-kueue-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.18"
+    ReleaseMajor: "4"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.18-e2e-operator-upgrade-4-18-kueue-1-3-to-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.18"
+    ReleaseMajor: "4"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.19-e2e-ocp-upgrade-4-19-to-4-20-kueue-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.19"
+    ReleaseMajor: "4"
+    ReleaseMinor: "19"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.19-e2e-operator-upgrade-4-19-kueue-1-3-to-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.19"
+    ReleaseMajor: "4"
+    ReleaseMinor: "19"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.20-e2e-ocp-upgrade-4-20-to-4-21-kueue-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.20"
+    ReleaseMajor: "4"
+    ReleaseMinor: "20"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.20-e2e-operator-upgrade-4-20-kueue-1-3-to-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.20"
+    ReleaseMajor: "4"
+    ReleaseMinor: "20"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.21-e2e-ocp-upgrade-4-21-to-4-22-kueue-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.21"
+    ReleaseMajor: "4"
+    ReleaseMinor: "21"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.21-e2e-operator-upgrade-4-21-kueue-1-3-to-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.21"
+    ReleaseMajor: "4"
+    ReleaseMinor: "21"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.22-e2e-ocp-upgrade-4-22-to-5-0-kueue-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-4.22-e2e-operator-upgrade-4-22-kueue-1-3-to-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-kueue-operator-release-1.4-upgrade-from-5.0-e2e-operator-upgrade-5-0-kueue-1-3-to-1-4:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    FromRelease: "1.4"
+    FromReleaseMajor: "1"
+    FromReleaseMinor: "4"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
 periodic-ci-openshift-kueue-operator-release-1.5-test-e2e-4-18:
     Aggregation: none
     Architecture: amd64
@@ -360575,6 +360879,30 @@ periodic-ci-quay-quay-redhat-3.15-aws-ocp419-e2e-legacy-aws-s3:
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-quay-quay-redhat-3.16-aws-ocp421-e2e-install-aws-odf-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.16
+    ReleaseMajor: "3"
+    ReleaseMinor: "16"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-quay-quay-redhat-3.16-aws-ocp421-e2e-install-aws-s3-nightly:
     Aggregation: none
     Architecture: amd64
@@ -360590,6 +360918,54 @@ periodic-ci-quay-quay-redhat-3.16-aws-ocp421-e2e-install-aws-s3-nightly:
     OS: unknown
     Owner: eng
     Platform: aws
+    Procedure: none
+    Release: quay-3.16
+    ReleaseMajor: "3"
+    ReleaseMinor: "16"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.16-azure-ocp421-e2e-install-azure-blob-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: azure
+    Procedure: none
+    Release: quay-3.16
+    ReleaseMajor: "3"
+    ReleaseMinor: "16"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.16-gcp-ocp421-e2e-install-gcp-gcs-nightly:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: gcp
     Procedure: none
     Release: quay-3.16
     ReleaseMajor: "3"
