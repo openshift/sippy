@@ -90,6 +90,7 @@ exit 1
         "STALE_MARKER": str(stale_marker),
         "MIN_PYTHON_MAJOR": "3",
         "MIN_PYTHON_MINOR": "12",
+        "SIPPY_DEV_SETUP_ONLY": "1",
     }
     processes = [
         subprocess.Popen(
