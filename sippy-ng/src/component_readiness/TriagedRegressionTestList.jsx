@@ -5,7 +5,9 @@ import { CheckCircle } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { filterRegressionsByLabel } from './TriageSymptomLabels'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
+import { Link } from 'react-router'
 import { NumberParam, useQueryParam } from 'use-query-params'
+import { pathForExactTestAnalysisWithVariants } from '../helpers'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -124,7 +126,19 @@ export default function TriagedRegressionTestList(props) {
       valueGetter: (value, row) => {
         return row.test_name
       },
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      renderCell: (params) => (
+        <Link
+          to={pathForExactTestAnalysisWithVariants(
+            params.row.release,
+            params.row.test_name,
+            params.row.variants
+          )}
+          className="test-name"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {params.value}
+        </Link>
+      ),
     },
     {
       field: 'release',
@@ -246,8 +260,18 @@ export default function TriagedRegressionTestList(props) {
             headerName: viewName,
             filterable: false,
             renderHeader: () => (
-              <Tooltip title="Status for this view (base vs sample). Only available when the regression has not rolled off the reporting window.">
-                <span>{viewName}</span>
+              <Tooltip
+                title={`${viewName} — Status for this view (base vs sample). Only available when the regression has not rolled off the reporting window.`}
+              >
+                <span
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {viewName}
+                </span>
               </Tooltip>
             ),
             valueGetter: (value, row) => {
@@ -316,47 +340,49 @@ export default function TriagedRegressionTestList(props) {
 
   return (
     <Fragment>
-      <div hidden={!showView} className="cr-triage-panel-element">
-        <Typography>Test Failures</Typography>
-        <DataGrid
-          sortModel={sortModel}
-          onSortModelChange={setSortModel}
-          slots={{ toolbar: GridToolbar }}
-          rows={filteredRegressions}
-          columns={columns}
-          getRowHeight={() => 'auto'}
-          getRowId={(row) => row.id}
-          rowSelectionModel={activeRow != null ? [activeRow] : []}
-          onRowSelectionModelChange={(newRow) => {
-            if (newRow.length > 0) {
-              setActiveRow(Number(newRow[0]), 'replaceIn')
-            }
-          }}
-          paginationModel={{ pageSize: 10, page: activePage || 0 }}
-          onPaginationModelChange={(model) => {
-            setActivePage(model.page, 'replaceIn')
-          }}
-          rowHeight={60}
-          autoHeight={true}
-          checkboxSelection={false}
-          slotProps={{
-            toolbar: {
-              columns: columns,
-              addFilters: addFilters,
-              filterModel: filterModel,
-              setFilterModel: setFilterModel,
-              clearSearch: () => requestSearch(''),
-              doSearch: requestSearch,
-              searchField: 'test_name',
-              autocompleteData: triagedRegressions,
-              downloadDataFunc: () => {
-                return filteredRegressions
+      {showView && (
+        <div className="cr-triage-panel-element">
+          <Typography>Test Failures</Typography>
+          <DataGrid
+            sortModel={sortModel}
+            onSortModelChange={setSortModel}
+            slots={{ toolbar: GridToolbar }}
+            rows={filteredRegressions}
+            columns={columns}
+            getRowHeight={() => 'auto'}
+            getRowId={(row) => row.id}
+            rowSelectionModel={activeRow != null ? [activeRow] : []}
+            onRowSelectionModelChange={(newRow) => {
+              if (newRow.length > 0) {
+                setActiveRow(Number(newRow[0]), 'replaceIn')
+              }
+            }}
+            paginationModel={{ pageSize: 10, page: activePage || 0 }}
+            onPaginationModelChange={(model) => {
+              setActivePage(model.page, 'replaceIn')
+            }}
+            rowHeight={60}
+            autoHeight={true}
+            checkboxSelection={false}
+            slotProps={{
+              toolbar: {
+                columns: columns,
+                addFilters: addFilters,
+                filterModel: filterModel,
+                setFilterModel: setFilterModel,
+                clearSearch: () => requestSearch(''),
+                doSearch: requestSearch,
+                searchField: 'test_name',
+                autocompleteData: triagedRegressions,
+                downloadDataFunc: () => {
+                  return filteredRegressions
+                },
+                downloadFilePrefix: 'triaged_test_regressions',
               },
-              downloadFilePrefix: 'triaged_test_regressions',
-            },
-          }}
-        />
-      </div>
+            }}
+          />
+        </div>
+      )}
     </Fragment>
   )
 }

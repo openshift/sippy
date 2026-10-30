@@ -17,6 +17,7 @@ import {
   ContentCopy,
   ErrorOutline,
   FormatListBulleted,
+  History,
   OpenInNew,
   SyncProblem,
 } from '@mui/icons-material'
@@ -26,7 +27,9 @@ import {
   not,
   pathForJobRunsWithTest,
   pathForJobRunsWithTestFailure,
+  pathForJobRunsWithTestFailureHistory,
   pathForJobRunsWithTestFlake,
+  pathForJobRunsWithTestHistory,
   safeEncodeURIComponent,
   SafeStringParam,
   searchCI,
@@ -35,6 +38,7 @@ import {
 } from '../helpers'
 import { Link } from 'react-router'
 import { StringParam, useQueryParam } from 'use-query-params'
+import { styled } from '@mui/material/styles'
 import { TEST_THRESHOLDS } from '../constants'
 import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
@@ -53,15 +57,67 @@ import TestPassRateCharts from './TestPassRateCharts'
 import TestRegressionsTable from './TestRegressionsTable'
 import TestTable from './TestTable'
 
+const HistoryButtonGroup = styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  display: 'flex',
+  gap: theme.spacing(1),
+}))
+
+function HistoryButtons({ release, testName, variantFilters }) {
+  const buttons = [
+    {
+      label: 'Run History',
+      path: pathForJobRunsWithTestHistory(release, testName, variantFilters),
+      color: 'primary',
+      tooltip:
+        'All runs of this test across the available lookback (up to 90 days), without date filtering',
+    },
+    {
+      label: 'Failure History',
+      path: pathForJobRunsWithTestFailureHistory(
+        release,
+        testName,
+        variantFilters
+      ),
+      color: 'error',
+      tooltip:
+        'Failed runs of this test across the available lookback (up to 90 days), without date filtering',
+    },
+  ]
+
+  return buttons.map((btn) => (
+    <Tooltip key={btn.label} title={btn.tooltip}>
+      <Button
+        component={Link}
+        to={withSort(btn.path, 'timestamp', 'desc')}
+        size="small"
+        variant="outlined"
+        color={btn.color}
+        startIcon={<History />}
+      >
+        {btn.label}
+      </Button>
+    </Tooltip>
+  ))
+}
+
+HistoryButtons.propTypes = {
+  release: PropTypes.string.isRequired,
+  testName: PropTypes.string.isRequired,
+  variantFilters: PropTypes.object.isRequired,
+}
+
 export function TestAnalysis({ test: testProp = '', ...props }) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
+  const [testNotFound, setTestNotFound] = React.useState(false)
   const [testName = testProp] = useQueryParam('test', SafeStringParam)
   const [period = 'default'] = useQueryParam('period', StringParam)
   const [filterModel, setFilterModel] = useFilterModelParam('filters', {
     items: [
       filterFor('name', 'equals', testName),
+      not(filterFor('variants', 'has entry', 'Aggregation:aggregated')),
       not(filterFor('variants', 'has entry', 'aggregated')),
       not(filterFor('variants', 'has entry', 'never-stable')),
     ],
@@ -101,7 +157,13 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
       })
       .then(([test]) => {
         if (test.length === 0) {
-          throw new Error('test not found')
+          setTestNotFound(true)
+          setFetchError(
+            'Could not retrieve test analysis ' +
+              props.release +
+              ', test not found in the current reporting period'
+          )
+          return
         }
         setTest(test[0])
         setLoaded(true)
@@ -133,6 +195,17 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
         <Alert style={{ marginTop: 25 }} severity="error">
           {fetchError}
         </Alert>
+        {testNotFound && testName && (
+          <HistoryButtonGroup>
+            <HistoryButtons
+              release={props.release}
+              testName={testName}
+              variantFilters={{
+                items: filterModel.items.filter((f) => f.field === 'variants'),
+              }}
+            />
+          </HistoryButtonGroup>
+        )}
       </Fragment>
     )
   }
@@ -332,6 +405,16 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
                 >
                   Flaked Runs ({test.current_flakes})
                 </Button>
+
+                <HistoryButtons
+                  release={props.release}
+                  testName={testName}
+                  variantFilters={{
+                    items: filterModel.items.filter(
+                      (f) => f.field === 'variants'
+                    ),
+                  }}
+                />
 
                 <div className="test-hero-spacer" />
 

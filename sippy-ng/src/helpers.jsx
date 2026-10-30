@@ -229,6 +229,23 @@ export function pathForExactTestAnalysisWithFilter(
   return path
 }
 
+export function pathForExactTestAnalysisWithVariants(release, test, variants) {
+  let filters = [
+    filterFor('name', 'equals', test),
+    not(filterFor('variants', 'has entry', 'Aggregation:aggregated')),
+    not(filterFor('variants', 'has entry', 'aggregated')),
+    not(filterFor('variants', 'has entry', 'never-stable')),
+  ]
+  if (Array.isArray(variants) && variants.length > 0) {
+    variants.forEach((variant) => {
+      filters.push(filterFor('variants', 'has entry', variant))
+    })
+  }
+  return `/tests/${release}/analysis?test=${safeEncodeURIComponent(
+    test
+  )}&${multiple(...filters)}`
+}
+
 export function pathForExactTest(release, test) {
   return `/tests/${release}?${single(filterFor('name', 'equals', test))}`
 }
@@ -265,10 +282,38 @@ export function pathForJobRunsWithTestFailure(release, test, filter, period) {
   return `/jobs/${release}/runs?${multiple(...filters)}`
 }
 
+export function pathForJobRunsWithTestFailureHistory(release, test, filter) {
+  let filters = []
+  filters.push(filterFor('failed_test_names', 'has entry', test))
+  if (filter && filter.items) {
+    filter.items.forEach((item) => {
+      if (item.field === 'variants') {
+        filters.push(item)
+      }
+    })
+  }
+
+  return `/jobs/${release}/runs?${multiple(...filters)}`
+}
+
 export function pathForJobRunsWithTest(release, test, filter, period) {
   let filters = []
   filters.push(filterFor('ran_test_names', 'has entry', test))
   filters.push(timestampFilterForPeriod(period))
+  if (filter && filter.items) {
+    filter.items.forEach((item) => {
+      if (item.field === 'variants') {
+        filters.push(item)
+      }
+    })
+  }
+
+  return `/jobs/${release}/runs?${multiple(...filters)}`
+}
+
+export function pathForJobRunsWithTestHistory(release, test, filter) {
+  let filters = []
+  filters.push(filterFor('ran_test_names', 'has entry', test))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.field === 'variants') {
