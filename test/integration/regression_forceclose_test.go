@@ -272,6 +272,43 @@ func TestResolveTriagesForceClose(t *testing.T) {
 	})
 }
 
+func TestResolveTriagesConcurrentRace(t *testing.T) {
+	t.Run("concurrent resolution preserves winner and skips duplicate", func(t *testing.T) {
+		dbc := intutil.NewTestDB(t, pgContainer)
+		store := componentreadiness.NewPostgresRegressionStore(dbc, nil)
+
+		closedLongAgo := time.Now().Add(-10 * 24 * time.Hour).Truncate(time.Second)
+		reg := intutil.CreateTestRegression(t, dbc, "race-resolve", "4.19",
+			intutil.WithOpened(closedLongAgo.Add(-5*24*time.Hour)))
+		triage := intutil.CreateTriage(t, dbc, "https://issues.example.com/RACE-1",
+			intutil.WithRegressions(reg))
+
+		// Close the regression beyond the hysteresis window so the triage is eligible.
+		require.NoError(t, dbc.DB.Model(&models.TestRegression{}).Where("id = ?", reg.ID).
+			Update("closed", sql.NullTime{Valid: true, Time: closedLongAgo}).Error)
+
+		// Simulate another resolver winning the race by pre-resolving the triage.
+		winnerResolved := sql.NullTime{Valid: true, Time: closedLongAgo}
+		require.NoError(t, dbc.DB.Model(&models.Triage{}).Where("id = ?", triage.ID).
+			Updates(map[string]any{
+				models.ColResolved:         winnerResolved,
+				models.ColResolutionReason: string(models.RegressionsRolledOff),
+			}).Error)
+
+		// ResolveTriages should skip the already-resolved triage (the initial
+		// SELECT filters it out) and produce no error.
+		require.NoError(t, store.ResolveTriages())
+
+		// Verify the winner's resolution is preserved unchanged.
+		var got models.Triage
+		require.NoError(t, dbc.DB.First(&got, triage.ID).Error)
+		assert.True(t, got.Resolved.Valid, "triage should still be resolved")
+		assert.Equal(t, winnerResolved.Time, got.Resolved.Time,
+			"resolution timestamp set by the winning resolver must be preserved")
+		assert.Equal(t, string(models.RegressionsRolledOff), string(got.ResolutionReason))
+	})
+}
+
 func TestForceCloseRegressionsErrorPaths(t *testing.T) {
 	t.Run("nonexistent triage returns a not found error", func(t *testing.T) {
 		dbc := intutil.NewTestDB(t, pgContainer)

@@ -537,8 +537,8 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 			triage.Resolved = sql.NullTime{Time: time.Now(), Valid: true}
 			triage.ResolutionReason = models.JiraProgression
 			return tx.Model(&triage).Omit(clause.Associations).Updates(map[string]any{
-				"resolved":          triage.Resolved,
-				"resolution_reason": triage.ResolutionReason,
+				models.ColResolved:         triage.Resolved,
+				models.ColResolutionReason: triage.ResolutionReason,
 			}).Error
 		}); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -582,8 +582,8 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 			triage.Resolved = sql.NullTime{}
 			triage.ResolutionReason = ""
 			return tx.Model(&triage).Omit(clause.Associations).Updates(map[string]any{
-				"resolved":          triage.Resolved,
-				"resolution_reason": triage.ResolutionReason,
+				models.ColResolved:         triage.Resolved,
+				models.ColResolutionReason: triage.ResolutionReason,
 			}).Error
 		}); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -67,6 +67,11 @@ const (
 	JiraProgression      resolutionReason = "jira-progression"
 )
 
+const (
+	ColResolved         = "resolved"
+	ColResolutionReason = "resolution_reason"
+)
+
 type contextKey string
 
 const (
@@ -98,9 +103,6 @@ func (t *Triage) before(db *gorm.DB) error {
 }
 
 func (t *Triage) AfterUpdate(db *gorm.DB) error {
-	if db.RowsAffected == 0 {
-		return nil
-	}
 	return t.after(db, Update)
 }
 

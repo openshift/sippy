@@ -211,15 +211,15 @@ func (prs *PostgresRegressionStore) ResolveTriages() error {
 			Omit(clause.Associations).
 			Where("resolved IS NULL").
 			Updates(map[string]any{
-				"resolved":          triage.Resolved,
-				"resolution_reason": triage.ResolutionReason,
+				models.ColResolved:         triage.Resolved,
+				models.ColResolutionReason: triage.ResolutionReason,
 			})
 		if res.Error != nil {
 			log.WithError(res.Error).Errorf("error resolving triage %d", triage.ID)
 			continue
 		}
 		if res.RowsAffected == 0 {
-			log.WithField("triage_id", triage.ID).Info("triage already resolved concurrently, skipping")
+			log.WithField("triage_id", triage.ID).Warn("triage already resolved concurrently, skipping")
 			continue
 		}
 
