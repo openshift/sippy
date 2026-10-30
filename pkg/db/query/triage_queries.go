@@ -12,6 +12,8 @@ import (
 
 // ordinaryTriagePredicate keeps recent or unresolved triages and protects the entire
 // triage if any associated release lacks a known GA date that has arrived in UTC.
+// Resolution age alone is insufficient: a triage shared by GA and pre-GA releases
+// must remain visible until every associated release reaches GA.
 // The correlated subquery deliberately ignores view activity and regression closure.
 const ordinaryTriagePredicate = `(
     triages.resolved IS NULL
