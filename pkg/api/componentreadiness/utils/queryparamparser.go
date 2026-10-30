@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -83,6 +84,28 @@ func ParseComponentReportRequest(
 		}
 	}
 
+	// Resolve spot-check samples after all URL overrides (sampleRelease, date ranges)
+	// so they use the final release name and time context.
+	if view != nil {
+		for name, sample := range view.SpotCheckJobSamples {
+			spotCheckRelative := reqopts.RelativeRelease{
+				Release:       reqopts.Release{Name: opts.SampleRelease.Name},
+				RelativeStart: sample.RelativeStart,
+				RelativeEnd:   sample.RelativeEnd,
+			}
+			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check_"+name, spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
+			if resolveErr != nil {
+				err = resolveErr
+				return
+			}
+			opts.SpotCheckJobSamples = append(opts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
+				Name:            name,
+				Release:         resolved,
+				IncludeVariants: sample.IncludeVariants,
+			})
+		}
+	}
+
 	opts.TestIDOptions = parseTestIDOptions(req, releases, opts.BaseRelease, opts.AdvancedOption, opts.VariantOption)
 
 	opts.IncludeAllTests, err = ParseBoolArg(req, "includeAllTests", false)
@@ -94,6 +117,26 @@ func ParseComponentReportRequest(
 		opts.DataSource = dataSource
 	}
 
+	// A view without spot-check samples has spot-check disabled, and ordinary custom reports never ask for it.
+	// Only a drill-down on a spot-check test with no configured samples needs a default, taken from the
+	// sample release dates, so the test details can still be queried.
+	if len(opts.SpotCheckJobSamples) == 0 && requestsSpotCheckTest(opts.TestIDOptions) &&
+		!opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
+		opts.SpotCheckJobSamples = []reqopts.SpotCheckJobSampleOpts{
+			{
+				Name: "spotcheck-30d",
+				Release: reqopts.Release{
+					Name:  opts.SampleRelease.Name,
+					Start: opts.SampleRelease.Start,
+					End:   opts.SampleRelease.End,
+				},
+				IncludeVariants: map[string][]string{
+					"JobTier": {"spotcheck-30d"},
+				},
+			},
+		}
+	}
+
 	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
 	if err != nil {
@@ -101,6 +144,13 @@ func ParseComponentReportRequest(
 	}
 
 	return
+}
+
+// requestsSpotCheckTest returns true if any requested test is a synthetic spot-check test.
+func requestsSpotCheckTest(testIDOptions []reqopts.TestIdentification) bool {
+	return slices.ContainsFunc(testIDOptions, func(tid reqopts.TestIdentification) bool {
+		return crtest.IsSpotCheckTestID(tid.TestID)
+	})
 }
 
 func applyViewDefaults(

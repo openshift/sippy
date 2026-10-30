@@ -146,18 +146,24 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 			Variants: tOpt.RequestedVariants,
 		}
 		testKeyStr := testKey.Encode()
-		if statuses, ok := testKeyTestJobRunStatuses[testKeyStr]; ok {
-			report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
-			if len(generateReportErrs) > 0 {
-				errs = append(errs, generateReportErrs...)
-				continue
+		statuses, ok := testKeyTestJobRunStatuses[testKeyStr]
+		if !ok {
+			// Spot-check synthetic tests won't appear in junit query results.
+			// Create an empty status so GenerateDetailsReportForTest can still run;
+			// the middleware will populate it via PreTestDetailsAnalysis.
+			statuses = crstatus.TestJobRunStatuses{
+				BaseStatus:         map[string][]crstatus.TestDetailsSummary{},
+				BaseOverrideStatus: map[string][]crstatus.TestDetailsSummary{},
+				SampleStatus:       map[string][]crstatus.TestDetailsSummary{},
+				GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
 			}
-			reports = append(reports, report)
-		} else {
-			logrus.Errorf("missing test key in results: %v", testKeyStr)
-
 		}
-
+		report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
+		if len(generateReportErrs) > 0 {
+			errs = append(errs, generateReportErrs...)
+			continue
+		}
+		reports = append(reports, report)
 	}
 	return reports, errs
 }
@@ -250,11 +256,14 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	if testIDOption.TestID == "" {
 		return testdetails.Report{}, []error{&api.ValidationError{Message: "test_id has to be defined for test details"}}
 	}
-	for _, v := range sets.List(c.ReqOptions.VariantOption.DBGroupBy) {
-		if _, ok := testIDOption.RequestedVariants[v]; !ok {
-			return testdetails.Report{}, []error{
-				&api.ValidationError{Message: fmt.Sprintf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
-					v, testIDOption.RequestedVariants)},
+	isSpotCheck := crtest.IsSpotCheckTestID(testIDOption.TestID)
+	if !isSpotCheck {
+		for _, v := range sets.List(c.ReqOptions.VariantOption.DBGroupBy) {
+			if _, ok := testIDOption.RequestedVariants[v]; !ok {
+				return testdetails.Report{}, []error{
+					&api.ValidationError{Message: fmt.Sprintf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
+						v, testIDOption.RequestedVariants)},
+				}
 			}
 		}
 	}
@@ -266,6 +275,15 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 
 	now := time.Now().UTC()
 	componentJobRunTestReportStatus.GeneratedAt = &now
+
+	// Let middleware inject data (e.g. spot-check job runs) before generating reports.
+	testKey := crtest.KeyWithVariants{
+		TestID:   testIDOption.TestID,
+		Variants: testIDOption.RequestedVariants,
+	}
+	if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
+		return testdetails.Report{}, []error{err}
+	}
 
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(
@@ -285,14 +303,6 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	var baseOverrideReport *testdetails.Report
 	if testIDOption.BaseOverrideRelease != "" &&
 		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name {
-
-		testKey := crtest.KeyWithVariants{
-			TestID:   testIDOption.TestID,
-			Variants: testIDOption.RequestedVariants,
-		}
-		if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
-			return testdetails.Report{}, []error{err}
-		}
 
 		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, testIDOption.BaseOverrideRelease)
 		if err != nil {
@@ -456,6 +466,37 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 		}
 	}()
 
+	// Query spot-check test details for any spot-check test IDs in the request.
+	var spotCheckMu sync.Mutex
+	var spotCheckDetails []map[string][]crstatus.TestDetailsSummary
+	for _, tOpt := range c.ReqOptions.TestIDOptions {
+		if !crtest.IsSpotCheckTestID(tOpt.TestID) {
+			continue
+		}
+		sampleName, _, _ := crtest.ParseSpotCheckTestID(tOpt.TestID)
+		for _, sample := range c.ReqOptions.SpotCheckJobSamples {
+			if sample.Name != sampleName {
+				continue
+			}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				details, err := c.dataProvider.QuerySpotCheckTestDetails(ctx, c.ReqOptions,
+					tOpt.TestID, sample.IncludeVariants, tOpt.RequestedVariants,
+					sample.Start, sample.End)
+				if err != nil {
+					errCh <- fmt.Errorf("spot-check test details for %s: %w", tOpt.TestID, err)
+					return
+				}
+				if len(details) > 0 {
+					spotCheckMu.Lock()
+					spotCheckDetails = append(spotCheckDetails, details)
+					spotCheckMu.Unlock()
+				}
+			}()
+		}
+	}
+
 	go func() {
 		wg.Wait()
 		close(errCh)
@@ -464,6 +505,16 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 	var middlewareErrs []error
 	for err := range errCh {
 		middlewareErrs = append(middlewareErrs, err)
+	}
+
+	// Merge spot-check details into sample status.
+	if len(spotCheckDetails) > 0 && sampleStatus == nil {
+		sampleStatus = make(map[string][]crstatus.TestDetailsSummary)
+	}
+	for _, scDetails := range spotCheckDetails {
+		for jobName, summaries := range scDetails {
+			sampleStatus[jobName] = append(sampleStatus[jobName], summaries...)
+		}
 	}
 
 	fLog.Infof("total test statuses: %d", len(sampleStatus))
@@ -524,7 +575,9 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 		logrus.WithError(err).Error("Failure from middleware analysis")
 	}
 
-	c.assessComponentStatus(&testStats, log)
+	if _, err := c.middlewares.Analyze(testKey, &testStats); err != nil {
+		logrus.WithError(err).Error("Failure from middleware Analyze")
+	}
 	report.TestComparison = testStats
 	result.Analyses = []testdetails.Analysis{report}
 

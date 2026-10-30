@@ -2,8 +2,10 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
 	"math/big"
 	"slices"
 	"sort"
@@ -28,6 +30,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 var _ dataprovider.DataProvider = &PostgresProvider{}
@@ -325,6 +328,36 @@ func mergeCompareVariants(reqOptions reqopts.RequestOptions, includeVariants map
 		}
 	}
 	return merged
+}
+
+// spotCheckTierVariant is the variant a spot-check sample uses to select its jobs. The sample replaces any
+// tier the request filters on, since the request's tiers describe ordinary jobs.
+const spotCheckTierVariant = "JobTier"
+
+// spotCheckSampleVariants returns the job variant filter for a spot-check sample, and false if no job can
+// match it. Spot-check results belong to the sample side of a report, so this starts from the sample-side
+// variants (which for cross-compare views differ from IncludeVariants). The sample's tier replaces the
+// request's. Any other variant the sample sets narrows the request's values instead, so that an explicit
+// environment restriction in the request is never widened by the sample's configuration.
+func spotCheckSampleVariants(reqOptions reqopts.RequestOptions, sampleVariants map[string][]string) (map[string][]string, bool) {
+	sideVariants := mergeCompareVariants(reqOptions, reqOptions.VariantOption.IncludeVariants)
+	merged := make(map[string][]string, len(sideVariants)+len(sampleVariants))
+	maps.Copy(merged, sideVariants)
+	for name, sampleValues := range sampleVariants {
+		requestValues := merged[name]
+		if name == spotCheckTierVariant || len(requestValues) == 0 {
+			merged[name] = sampleValues
+			continue
+		}
+		narrowed := slices.DeleteFunc(slices.Clone(sampleValues), func(v string) bool {
+			return !slices.Contains(requestValues, v)
+		})
+		if len(narrowed) == 0 {
+			return nil, false
+		}
+		merged[name] = narrowed
+	}
+	return merged, true
 }
 
 func (p *PostgresProvider) QueryTestStatus(
@@ -957,4 +990,314 @@ func (p *PostgresProvider) LookupJobVariants(ctx context.Context, _ reqopts.Requ
 		return nil, fmt.Errorf("looking up job variants: %w", err)
 	}
 	return parseVariants(row.Variants), nil
+}
+
+// QuerySpotCheckTestStatus queries the [sig-sippy] openshift-tests should work
+// synthetic test for spot-check jobs, returning test status entries keyed by
+// synthetic spot-check test IDs. Component and Capability are derived from
+// the job's variants rather than from test_ownerships.
+func (p *PostgresProvider) QuerySpotCheckTestStatus(
+	ctx context.Context,
+	reqOptions reqopts.RequestOptions,
+	sampleName string,
+	includeVariants map[string][]string,
+	start, end time.Time,
+) (map[string]crstatus.TestStatus, error) {
+
+	dbGroupBy := reqOptions.VariantOption.DBGroupBy
+
+	variantFilter, ok := spotCheckSampleVariants(reqOptions, includeVariants)
+	if !ok {
+		return nil, nil
+	}
+	filterClause, filterArgs := buildVariantFilterClause(variantFilter)
+	if filterClause == "" {
+		return nil, nil
+	}
+
+	sqlQuery := `
+		SELECT
+			pj.id AS prow_job_id,
+			pj.variants,
+			COUNT(*) AS total_count,
+			COUNT(CASE WHEN pjrt.status IN (1, 13) THEN 1 END) AS success_count,
+			MAX(CASE WHEN pjrt.status NOT IN (1, 13) THEN pjr.timestamp END) AS last_failure
+		FROM prow_job_run_tests pjrt
+		JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
+			AND pjr.prow_job_release = pjrt.prow_job_run_release
+			AND pjr.timestamp = pjrt.prow_job_run_timestamp
+		JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
+		JOIN tests t ON t.id = pjrt.test_id
+		WHERE t.name = ?
+			AND pj.release = ?
+			AND pjr.timestamp >= ? AND pjr.timestamp < ?
+			AND pjr.prow_job_release = ?
+			AND pjrt.prow_job_run_release = ?
+			AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
+			AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
+			AND pj.variant_combination_id IN (
+				SELECT vc.id FROM variant_combinations vc WHERE ` + filterClause + `
+			)
+		GROUP BY pj.id, pj.variants`
+
+	release := reqOptions.SampleRelease.Name
+	var args []any
+	args = append(args,
+		testidentification.OpenShiftTestsName,
+		release, start, end, release, release, start, end,
+	)
+	args = append(args, filterArgs...)
+
+	type spotCheckRow struct {
+		ProwJobID    uint           `gorm:"column:prow_job_id"`
+		Variants     pq.StringArray `gorm:"column:variants"`
+		TotalCount   int            `gorm:"column:total_count"`
+		SuccessCount int            `gorm:"column:success_count"`
+		LastFailure  sql.NullTime   `gorm:"column:last_failure"`
+	}
+
+	var rows []spotCheckRow
+	if err := p.dbc.DB.WithContext(ctx).Raw(sqlQuery, args...).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("querying spot-check test status: %w", err)
+	}
+
+	// Aggregate by component + capability + DBGroupBy variants
+	type groupKey struct {
+		component  string
+		capability string
+		variants   string
+	}
+	type groupData struct {
+		component    string
+		capability   string
+		variants     map[string]string
+		totalCount   int
+		successCount int
+		lastFailure  time.Time
+	}
+	groups := map[groupKey]*groupData{}
+
+	for _, row := range rows {
+		jobVariants := parseVariants(row.Variants)
+		component := jobVariants["Component"]
+		capability := jobVariants["Capability"]
+		if component == "" || capability == "" {
+			continue
+		}
+		if !spotCheckMatchesTestFilters(reqOptions, crtest.SpotCheckTestID(sampleName, component, capability), capability) {
+			continue
+		}
+
+		filteredVariants := filterByDBGroupBy(jobVariants, dbGroupBy)
+		key := groupKey{
+			component:  component,
+			capability: capability,
+			variants:   fmt.Sprintf("%v", filteredVariants),
+		}
+
+		g, ok := groups[key]
+		if !ok {
+			g = &groupData{
+				component:  component,
+				capability: capability,
+				variants:   filteredVariants,
+			}
+			groups[key] = g
+		}
+		g.totalCount += row.TotalCount
+		g.successCount += row.SuccessCount
+		if row.LastFailure.Valid && row.LastFailure.Time.After(g.lastFailure) {
+			g.lastFailure = row.LastFailure.Time
+		}
+	}
+
+	result := make(map[string]crstatus.TestStatus, len(groups))
+	for _, g := range groups {
+		testID := crtest.SpotCheckTestID(sampleName, g.component, g.capability)
+		testKey := crtest.KeyWithVariants{
+			TestID:   testID,
+			Variants: g.variants,
+		}
+		keyStr := testKey.Encode()
+
+		result[keyStr] = crstatus.TestStatus{
+			TestID:       testID,
+			TestName:     crtest.SpotCheckTestName(g.component, g.capability),
+			Component:    g.component,
+			Capabilities: []string{g.capability},
+			Variants:     g.variants,
+			Count: crtest.Count{
+				TotalCount:   g.totalCount,
+				SuccessCount: g.successCount,
+			},
+			LastFailure: g.lastFailure,
+		}
+	}
+
+	log.WithField("sampleName", sampleName).
+		WithField("groups", len(result)).
+		Info("spot-check query completed")
+	return result, nil
+}
+
+// spotCheckMatchesTestFilters applies the requested capability and exact test filters to a synthetic
+// spot-check result. The regular status queries filter on these in SQL before the report is built, and
+// spot-check results are merged in afterwards, so without this they would bypass those filters.
+// The component filter is intentionally not applied here, matching the regular queries, which leave it
+// to report generation.
+func spotCheckMatchesTestFilters(reqOptions reqopts.RequestOptions, testID, capability string) bool {
+	if len(reqOptions.Capabilities) > 0 &&
+		!slices.ContainsFunc(reqOptions.Capabilities, func(c string) bool { return strings.EqualFold(c, capability) }) {
+		return false
+	}
+	if len(reqOptions.TestIDOptions) == 1 {
+		tid := reqOptions.TestIDOptions[0]
+		if tid.TestID != "" && tid.TestID != testID {
+			return false
+		}
+		if tid.Capability != "" && !strings.EqualFold(tid.Capability, capability) {
+			return false
+		}
+	}
+	return true
+}
+
+// QuerySpotCheckTestDetails returns per-job-run test details for a spot-check
+// synthetic test ID, used for drill-down into individual job runs.
+func (p *PostgresProvider) QuerySpotCheckTestDetails(
+	ctx context.Context,
+	reqOptions reqopts.RequestOptions,
+	syntheticTestID string,
+	includeVariants map[string][]string,
+	requestedVariants map[string]string,
+	start, end time.Time,
+) (map[string][]crstatus.TestDetailsSummary, error) {
+
+	dbGroupBy := reqOptions.VariantOption.DBGroupBy
+
+	variantFilter, ok := spotCheckSampleVariants(reqOptions, includeVariants)
+	if !ok {
+		return nil, nil
+	}
+	filterClause, filterArgs := buildVariantFilterClause(variantFilter)
+	if filterClause == "" {
+		return nil, nil
+	}
+
+	release := reqOptions.SampleRelease.Name
+
+	sqlQuery := `
+		SELECT
+			pj.id AS prow_job_id,
+			pj.name AS prowjob_name,
+			pj.variants,
+			pjrt.status,
+			pjr.url AS prow_job_url,
+			CAST(pjr.id AS TEXT) AS prow_job_run_id,
+			pjr.timestamp AS start_time,
+			pjr.test_failures
+		FROM prow_job_run_tests pjrt
+		JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
+			AND pjr.prow_job_release = pjrt.prow_job_run_release
+			AND pjr.timestamp = pjrt.prow_job_run_timestamp
+		JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
+		JOIN tests t ON t.id = pjrt.test_id
+		WHERE t.name = ?
+			AND pj.release = ?
+			AND pjr.timestamp >= ? AND pjr.timestamp < ?
+			AND pjr.prow_job_release = ?
+			AND pjrt.prow_job_run_release = ?
+			AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
+			AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
+			AND pj.variant_combination_id IN (
+				SELECT vc.id FROM variant_combinations vc WHERE ` + filterClause + `
+			)
+		ORDER BY pjr.timestamp`
+
+	var args []any
+	args = append(args,
+		testidentification.OpenShiftTestsName,
+		release, start, end, release, release, start, end,
+	)
+	args = append(args, filterArgs...)
+
+	type detailRow struct {
+		ProwJobID    uint           `gorm:"column:prow_job_id"`
+		ProwJobName  string         `gorm:"column:prowjob_name"`
+		Variants     pq.StringArray `gorm:"column:variants"`
+		Status       int            `gorm:"column:status"`
+		ProwJobURL   string         `gorm:"column:prow_job_url"`
+		ProwJobRunID string         `gorm:"column:prow_job_run_id"`
+		StartTime    time.Time      `gorm:"column:start_time"`
+		TestFailures int            `gorm:"column:test_failures"`
+	}
+
+	var rows []detailRow
+	if err := p.dbc.DB.WithContext(ctx).Raw(sqlQuery, args...).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("querying spot-check test details: %w", err)
+	}
+
+	// Parse component and capability from the synthetic test ID to filter
+	// results to only the specific spot-check group being drilled into.
+	_, wantComponent, wantCapability := crtest.ParseSpotCheckTestID(syntheticTestID)
+
+	result := map[string][]crstatus.TestDetailsSummary{}
+	for _, row := range rows {
+		jobVariants := parseVariants(row.Variants)
+
+		// Filter by component/capability from the synthetic test ID
+		if !strings.EqualFold(jobVariants["Component"], wantComponent) ||
+			!strings.EqualFold(jobVariants["Capability"], wantCapability) {
+			continue
+		}
+
+		// Filter by requested variants (environment dimensions like Platform/Network)
+		if requestedVariants != nil {
+			match := true
+			for k, v := range requestedVariants {
+				if jobVariants[k] != v {
+					match = false
+					break
+				}
+			}
+			if !match {
+				continue
+			}
+		}
+
+		filteredVariants := filterByDBGroupBy(jobVariants, dbGroupBy)
+
+		testKey := crtest.KeyWithVariants{
+			TestID:   syntheticTestID,
+			Variants: filteredVariants,
+		}
+
+		successCount := 0
+		if row.Status == 1 || row.Status == 13 {
+			successCount = 1
+		}
+		failCount := 1 - successCount
+
+		normalizedName := utils.NormalizeProwJobName(row.ProwJobName)
+		entry := crstatus.TestDetailsSummary{
+			TestKey:    testKey,
+			TestKeyStr: testKey.Encode(),
+			ProwJob:    normalizedName,
+			TestName:   crtest.SpotCheckTestName(jobVariants["Component"], jobVariants["Capability"]),
+			Stats:      crtest.NewTestStats(successCount, failCount, 0, false),
+			JobRuns: []crstatus.JobRunDetail{
+				{
+					ProwJobRunID: row.ProwJobRunID,
+					ProwJobURL:   row.ProwJobURL,
+					StartTime:    row.StartTime,
+					Count:        crtest.Count{TotalCount: 1, SuccessCount: successCount},
+					TestFailures: row.TestFailures,
+				},
+			},
+		}
+
+		result[normalizedName] = append(result[normalizedName], entry)
+	}
+
+	return result, nil
 }

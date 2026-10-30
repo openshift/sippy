@@ -8,6 +8,9 @@ import (
 
 	"github.com/lib/pq"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 )
 
 func TestTestFailuresExpression(t *testing.T) {
@@ -363,6 +366,189 @@ func TestMatchesIncludeVariants(t *testing.T) {
 			got := matchesIncludeVariants(tc.variants, tc.includeVariants)
 			if got != tc.want {
 				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSpotCheckMatchesTestFilters(t *testing.T) {
+	scalingID := crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")
+	recoveryID := crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Recovery")
+
+	tests := []struct {
+		name       string
+		reqOptions reqopts.RequestOptions
+		testID     string
+		capability string
+		want       bool
+	}{
+		{
+			name:       "no filters keeps everything",
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       true,
+		},
+		{
+			name:       "capability filter keeps a match",
+			reqOptions: reqopts.RequestOptions{TestFilters: reqopts.TestFilters{Capabilities: []string{"Scaling"}}},
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       true,
+		},
+		{
+			name:       "capability filter matches case-insensitively",
+			reqOptions: reqopts.RequestOptions{TestFilters: reqopts.TestFilters{Capabilities: []string{"cpu partitioning"}}},
+			testID:     crtest.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning"),
+			capability: "CPU Partitioning",
+			want:       true,
+		},
+		{
+			name:       "capability filter drops other capabilities",
+			reqOptions: reqopts.RequestOptions{TestFilters: reqopts.TestFilters{Capabilities: []string{"Scaling"}}},
+			testID:     crtest.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning"),
+			capability: "CPU Partitioning",
+			want:       false,
+		},
+		{
+			name:       "an empty test identification filters nothing",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{}}},
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       true,
+		},
+		{
+			name:       "exact test ID keeps its own result",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: scalingID}}},
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       true,
+		},
+		{
+			name:       "exact test ID drops sibling spot-check tests",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: scalingID}}},
+			testID:     recoveryID,
+			capability: "Recovery",
+			want:       false,
+		},
+		{
+			name:       "exact test ID of a regular test drops spot-check results",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: "openshift-tests:abc123"}}},
+			testID:     scalingID,
+			capability: "Scaling",
+			want:       false,
+		},
+		{
+			name:       "requested capability drops other capabilities",
+			reqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd", Capability: "Scaling"}}},
+			testID:     recoveryID,
+			capability: "Recovery",
+			want:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := spotCheckMatchesTestFilters(tt.reqOptions, tt.testID, tt.capability); got != tt.want {
+				t.Errorf("spotCheckMatchesTestFilters() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSpotCheckSampleVariants(t *testing.T) {
+	tier := map[string][]string{"JobTier": {"spotcheck-30d"}}
+
+	t.Run("without cross-compare the request's variants are kept", func(t *testing.T) {
+		reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{
+			IncludeVariants: map[string][]string{"Platform": {"aws"}},
+		}}
+		got, ok := spotCheckSampleVariants(reqOptions, tier)
+		if !ok {
+			t.Fatal("expected variants to match")
+		}
+		want := map[string][]string{"Platform": {"aws"}, "JobTier": {"spotcheck-30d"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("cross-compare selects the sample-side values", func(t *testing.T) {
+		reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{
+			IncludeVariants:     map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
+			CompareVariants:     map[string][]string{"Platform": {"gcp"}},
+			VariantCrossCompare: []string{"Platform"},
+		}}
+		got, ok := spotCheckSampleVariants(reqOptions, tier)
+		if !ok {
+			t.Fatal("expected variants to match")
+		}
+		want := map[string][]string{"Platform": {"gcp"}, "Network": {"ovn"}, "JobTier": {"spotcheck-30d"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("the request's variants are not modified", func(t *testing.T) {
+		reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{
+			IncludeVariants: map[string][]string{"Platform": {"aws"}},
+		}}
+		spotCheckSampleVariants(reqOptions, tier)
+		if _, ok := reqOptions.VariantOption.IncludeVariants["JobTier"]; ok {
+			t.Error("sample variants leaked into the request's IncludeVariants")
+		}
+	})
+}
+
+func TestSpotCheckSampleVariantsNarrowing(t *testing.T) {
+	tests := []struct {
+		name          string
+		request       map[string][]string
+		sample        map[string][]string
+		want          map[string][]string
+		wantSomeMatch bool
+	}{
+		{
+			name:          "sample tier replaces the request's tiers",
+			request:       map[string][]string{"JobTier": {"standard", "blocking"}},
+			sample:        map[string][]string{"JobTier": {"spotcheck-30d"}},
+			want:          map[string][]string{"JobTier": {"spotcheck-30d"}},
+			wantSomeMatch: true,
+		},
+		{
+			name:          "sample variant the request does not set is applied",
+			request:       map[string][]string{"Network": {"ovn"}},
+			sample:        map[string][]string{"Platform": {"aws"}},
+			want:          map[string][]string{"Network": {"ovn"}, "Platform": {"aws"}},
+			wantSomeMatch: true,
+		},
+		{
+			name:          "overlapping values are intersected",
+			request:       map[string][]string{"Platform": {"aws", "gcp"}},
+			sample:        map[string][]string{"Platform": {"aws", "azure"}},
+			want:          map[string][]string{"Platform": {"aws"}},
+			wantSomeMatch: true,
+		},
+		{
+			name:    "disjoint values match nothing",
+			request: map[string][]string{"Platform": {"gcp"}},
+			sample:  map[string][]string{"Platform": {"aws"}},
+		},
+		{
+			name:          "an empty request value does not restrict",
+			request:       map[string][]string{"Platform": {}},
+			sample:        map[string][]string{"Platform": {"aws"}},
+			want:          map[string][]string{"Platform": {"aws"}},
+			wantSomeMatch: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqOptions := reqopts.RequestOptions{VariantOption: reqopts.Variants{IncludeVariants: tt.request}}
+			got, ok := spotCheckSampleVariants(reqOptions, tt.sample)
+			if ok != tt.wantSomeMatch {
+				t.Fatalf("ok = %v, want %v", ok, tt.wantSomeMatch)
+			}
+			if ok && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
 			}
 		})
 	}

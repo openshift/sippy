@@ -311,6 +311,8 @@ export default function TestDetailsReport(props) {
     0,
     accessibilityModeOn
   )
+  const isSpotCheck = data.analyses[0].comparison === 'spot_check'
+
   let url
   if (testDetailsApiCall.startsWith('/')) {
     // In production mode, there is no hostname so we add it so that 'new URL' will work
@@ -565,7 +567,7 @@ View the [test details report|${document.location.href}] for additional context.
             <TableCell>Environment:</TableCell>
             <TableCell>{environment}</TableCell>
           </TableRow>
-          {isBaseOverride && (
+          {isBaseOverride && !isSpotCheck && (
             <TableRow>
               <TableCell>{baseRelease} Override:</TableCell>
               <TableCell>Earlier release had a higher threshold</TableCell>
@@ -614,6 +616,7 @@ View the [test details report|${document.location.href}] for additional context.
           <TestsReportTabPanel activeIndex={activeTabIndex} index={0}>
             <CompReadyTestPanel
               data={data.analyses[0]}
+              comparison={data.analyses[0].comparison}
               versions={versions}
               loadedParams={loadedParams}
               testName={data.test_name}
@@ -624,6 +627,7 @@ View the [test details report|${document.location.href}] for additional context.
           <TestsReportTabPanel activeIndex={activeTabIndex} index={1}>
             <CompReadyTestPanel
               data={data.analyses[1]}
+              comparison={data.analyses[1].comparison}
               versions={versions}
               loadedParams={loadedParams}
               testName={data.test_name}
@@ -635,6 +639,7 @@ View the [test details report|${document.location.href}] for additional context.
       ) : (
         <CompReadyTestPanel
           data={data.analyses[0]}
+          comparison={data.analyses[0].comparison}
           versions={versions}
           loadedParams={loadedParams}
           testName={data.test_name}

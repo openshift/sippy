@@ -35,6 +35,7 @@ export default function CompReadyTestDetailRow(props) {
   const {
     element,
     idx,
+    isSpotCheck,
     showOnlyFailures,
     searchJobArtifacts,
     searchJobRunIds,
@@ -196,27 +197,29 @@ export default function CompReadyTestDetailRow(props) {
   return (
     <Fragment>
       <TableRow key={'jobheader-' + idx}>
-        <TableCell
-          sx={classes.crColJobName}
-          key={'basisJob-' + idx}
-          colSpan={3}
-        >
-          <Typography sx={classes.crCellName}>
-            {element.base_job_name ? (
-              <Fragment>
-                {element.base_job_name}
-                {searchJobArtifacts &&
-                  getSelectingCheckBox(element.base_job_run_stats)}
-              </Fragment>
-            ) : (
-              '(No basis equivalent)'
-            )}
-          </Typography>
-        </TableCell>
+        {!isSpotCheck && (
+          <TableCell
+            sx={classes.crColJobName}
+            key={'basisJob-' + idx}
+            colSpan={3}
+          >
+            <Typography sx={classes.crCellName}>
+              {element.base_job_name ? (
+                <Fragment>
+                  {element.base_job_name}
+                  {searchJobArtifacts &&
+                    getSelectingCheckBox(element.base_job_run_stats)}
+                </Fragment>
+              ) : (
+                '(No basis equivalent)'
+              )}
+            </Typography>
+          </TableCell>
+        )}
         <TableCell
           sx={classes.crColJobName}
           key={'sampleJob-' + idx}
-          colSpan={3}
+          colSpan={isSpotCheck ? 2 : 3}
         >
           <Typography sx={classes.crCellName}>
             {element.sample_job_name ? (
@@ -232,20 +235,24 @@ export default function CompReadyTestDetailRow(props) {
         </TableCell>
       </TableRow>
       <TableRow key={idx}>
-        <TableCell style={{ verticalAlign: 'top' }}>
-          {element.base_job_name ? infoCell(element.base_stats) : ''}
-        </TableCell>
-        {testJobDetailCell(element, 'base')}
-        <TableCell></TableCell>
+        {!isSpotCheck && (
+          <TableCell style={{ verticalAlign: 'top' }}>
+            {element.base_job_name ? infoCell(element.base_stats) : ''}
+          </TableCell>
+        )}
+        {!isSpotCheck && testJobDetailCell(element, 'base')}
+        {!isSpotCheck && <TableCell></TableCell>}
         <TableCell style={{ verticalAlign: 'top' }}>
           {element.sample_job_name ? infoCell(element.sample_stats) : ''}
         </TableCell>
         {testJobDetailCell(element, 'sample')}
-        <TableCell style={{ verticalAlign: 'top' }}>
-          <Typography sx={classes.crCellName}>
-            {element.significant ? 'True' : 'False'}
-          </Typography>
-        </TableCell>
+        {!isSpotCheck && (
+          <TableCell style={{ verticalAlign: 'top' }}>
+            <Typography sx={classes.crCellName}>
+              {element.significant ? 'True' : 'False'}
+            </Typography>
+          </TableCell>
+        )}
       </TableRow>
     </Fragment>
   )
@@ -254,6 +261,7 @@ export default function CompReadyTestDetailRow(props) {
 CompReadyTestDetailRow.propTypes = {
   element: PropTypes.object.isRequired,
   idx: PropTypes.number.isRequired,
+  isSpotCheck: PropTypes.bool,
   showOnlyFailures: PropTypes.bool.isRequired,
   searchJobArtifacts: PropTypes.bool.isRequired,
   searchJobRunIds: PropTypes.object.isRequired,
