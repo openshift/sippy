@@ -288,12 +288,13 @@ func TestResolveTriagesConcurrentRace(t *testing.T) {
 			Update("closed", sql.NullTime{Valid: true, Time: closedLongAgo}).Error)
 
 		// Simulate another resolver winning the race by pre-resolving the triage.
+		// Use raw Exec to bypass Triage hooks (BeforeUpdate/AfterUpdate), which
+		// require a populated model ID and audit-user context.
 		winnerResolved := sql.NullTime{Valid: true, Time: closedLongAgo}
-		require.NoError(t, dbc.DB.Model(&models.Triage{}).Where("id = ?", triage.ID).
-			Updates(map[string]any{
-				models.ColResolved:         winnerResolved,
-				models.ColResolutionReason: string(models.RegressionsRolledOff),
-			}).Error)
+		require.NoError(t, dbc.DB.Exec(
+			"UPDATE triages SET resolved = ?, resolution_reason = ? WHERE id = ?",
+			winnerResolved, string(models.RegressionsRolledOff), triage.ID,
+		).Error)
 
 		// ResolveTriages should skip the already-resolved triage (the initial
 		// SELECT filters it out) and produce no error.
