@@ -721,13 +721,28 @@ Endpoint: `GET /api/component_readiness/triages`
 
 Lists triage records. Supports an optional `view` query parameter to filter triages
 to those associated with regressions active in the specified component readiness view.
-When `view` is omitted, all triages are returned (original behavior).
+When `view` is omitted, triages from all views are eligible. Archived triages are
+excluded by default. A triage is archived when its resolution is strictly more than
+90 elapsed days (2160 hours) ago and every associated regression release has a
+known `release_definitions.ga_date` on or before the current UTC date. Regression
+closure and view activity do not affect archival eligibility. Missing release
+metadata or GA dates keep a triage visible. Reopening a triage or adding a non-GA
+release association automatically restores it to ordinary listings.
+
+Use `include_archived=true` for historical listings. This bypasses only archival,
+so `view` and `fields` still apply. Records and regression associations are retained;
+all other triage endpoints, regression triage associations, and the regression
+potential-match endpoint continue to access historical triages. Frontend listings
+and reuse selectors use ordinary listings, with view filters where applicable,
+preserving non-archived cross-release candidates. There is no separate BigQuery
+triage listing implementation or MCP triage listing tool.
 
 ### Parameters
 
 | Option | Type   | Description                                                                 | Acceptable values |
 |--------|--------|-----------------------------------------------------------------------------|-------------------|
-| view   | String | Filter triages to those linked to regressions active in this view (e.g., 4.18-main). Optional; omit to return all triages. | N/A               |
+| view   | String | Filter triages to those linked to regressions active in this view (e.g., 4.18-main). Optional; omit to list across all views. | N/A               |
+| include_archived | Boolean | Set to `true` to include archived triages. Defaults to `false`. | `true`, `false` |
 | fields | String | Comma-separated top-level JSON field names to include, such as `id,description` or `id,url,description,updated_at`. Omit or leave empty for the full response. Nested field selection is not supported. | Public JSON fields on a triage record. |
 
 Field selection changes the response shape, not which triages are returned, and can be

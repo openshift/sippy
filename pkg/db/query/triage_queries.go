@@ -10,9 +10,37 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ListTriages(dbc *db.DB, view string) ([]models.Triage, error) {
+// ordinaryTriagePredicate keeps recent or unresolved triages and protects the entire
+// triage if any associated release lacks a known GA date that has arrived in UTC.
+// Resolution age alone is insufficient: a triage shared by GA and pre-GA releases
+// must remain visible until every associated release reaches GA.
+// The correlated subquery deliberately ignores view activity and regression closure.
+const ordinaryTriagePredicate = `(
+    triages.resolved IS NULL
+    OR triages.resolved >= CURRENT_TIMESTAMP - INTERVAL '2160 hours'
+    OR NOT EXISTS (SELECT 1 FROM triage_regressions WHERE triage_id = triages.id)
+    OR EXISTS (
+        SELECT 1
+        FROM triage_regressions AS archival_links
+        JOIN test_regressions AS archival_regressions
+            ON archival_regressions.id = archival_links.test_regression_id
+        LEFT JOIN release_definitions AS archival_releases
+            ON archival_releases.release = archival_regressions.release
+            AND archival_releases.deleted_at IS NULL
+        WHERE archival_links.triage_id = triages.id
+            AND (archival_releases.ga_date IS NULL
+                OR archival_releases.ga_date > (CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::date)
+    )
+)`
+
+// ListTriages loads triages visible in a view; includeArchived also returns historical triages.
+func ListTriages(dbc *db.DB, view string, includeArchived bool) ([]models.Triage, error) {
 	var triages []models.Triage
 	q := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions")
+
+	if !includeArchived {
+		q = q.Where(ordinaryTriagePredicate)
+	}
 
 	if view != "" {
 		// Join through triage_regressions to regression_views to find triages with active regressions in the requested view.
