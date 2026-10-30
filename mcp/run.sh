@@ -36,7 +36,14 @@ _needs_install() {
     if [ ! -d "$VENV_DIR" ]; then
         return 0
     fi
-    if [ -n "$REQ_HASH" ] && { [ ! -f "$HASH_FILE" ] || [ "$(cat "$HASH_FILE" 2>/dev/null)" != "$REQ_HASH" ]; }; then
+    if [ -n "$REQ_HASH" ] && [ ! -f "$HASH_FILE" ]; then
+        if _venv_ok; then
+            echo "$REQ_HASH" > "$HASH_FILE"
+            return 1
+        fi
+        return 0
+    fi
+    if [ -n "$REQ_HASH" ] && [ "$(cat "$HASH_FILE" 2>/dev/null)" != "$REQ_HASH" ]; then
         return 0
     fi
     if ! _venv_ok; then

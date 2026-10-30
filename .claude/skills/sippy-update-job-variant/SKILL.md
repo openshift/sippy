@@ -34,7 +34,7 @@ You will guide the user through the following steps (skipping steps where argume
 1. **Prompt for a Job Pattern**: Ask the user to enter a pattern that identifies the CI job(s) they want to update. This can be either a full job name or a substring. This will be used to add pattern matching logic to the Go code.
    - Example full job name: `periodic-ci-openshift-hypershift-release-4.16-periodics-e2e-aws-ovn`
    - Example substrings: `-hypershift-`, `-metal-ipi-`, `-fips-`
-   - **Important**: Both full job names and substrings are acceptable. Accept whatever the user provides without asking for clarification.
+   - **Important**: Both full job names and substrings are acceptable. Accept whatever the user provides without asking for clarification, then trim surrounding whitespace, reject a blank result, and normalize a nonblank result to lowercase before writing it.
    - Advise the user that more specific patterns avoid unintended matches (e.g., `-metal-ipi-ovn-ipv6-` instead of just `-metal-`)
 
 2. **Select Variant Category**: Extract variant categories programmatically and present as a numbered list:
@@ -59,7 +59,7 @@ You will guide the user through the following steps (skipping steps where argume
    - Check if the new pattern might overlap with existing patterns and ensure correct precedence
 
 5. **Preview Changes with Test**: Run the variant snapshot test to see what will change:
-   - Execute: `go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1 | grep -A 200 "Summary of changes:"`
+   - Execute: `go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1 | awk '/Summary of changes:/{show=1} show'`
    - Parse this output to extract the variant category changed, old/new values, affected jobs, and total count
    - Display the summary to the user
 
@@ -93,7 +93,7 @@ grep "^    <CategoryName>:" pkg/variantregistry/snapshot.yaml | cut -d: -f2 | se
 
 ### Previewing Changes
 ```bash
-go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1 | grep -A 200 "Summary of changes:"
+go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1 | awk '/Summary of changes:/{show=1} show'
 ```
 
 ### Finding Setter Functions

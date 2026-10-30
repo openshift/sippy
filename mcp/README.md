@@ -67,6 +67,7 @@ Agent-oriented shortcuts are defined in **`.apm/skills/`** and deployed by **`ma
 - `sippy-dev-migrate`, `sippy-dev-regression-cache`, `sippy-dev-serve`, `sippy-dev-frontend`
 - `sippy-dev-app` (backend + frontend)
 - `sippy-dev-tests` (order: `CI=true make lint` → `make test` → `make e2e`)
+- `sippy-generate-release-views` (create next-release Component Readiness views from an existing release)
 
 ## Changing the server
 

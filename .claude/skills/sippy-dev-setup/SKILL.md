@@ -3,7 +3,7 @@ name: sippy-dev-setup
 description: "Set up the Sippy devcontainer (Podman, env, GCP auth)"
 ---
 
-# Sippy dev — devcontainer setup
+# Sippy dev: devcontainer setup
 
 Interactive setup for the Sippy devcontainer. Automates what can be detected, prompts for what can't.
 
@@ -80,7 +80,7 @@ If missing, copy from the example:
 cp .devcontainer/.env.example .devcontainer/.env
 ```
 
-Then read `.devcontainer/.env` and check for empty required values. If any are blank (e.g. `ANTHROPIC_VERTEX_PROJECT_ID`), tell the user which values need to be filled in and ask them to edit `.devcontainer/.env` and let you know when they're done. **Do not** ask for the values directly or write to the file yourself — the user should edit it. Wait for them to confirm before continuing.
+Then read `.devcontainer/.env` and check for empty required values. If any are blank (e.g. `ANTHROPIC_VERTEX_PROJECT_ID`), tell the user which values need to be filled in and ask them to edit `.devcontainer/.env` and let you know when they're done. **Do not** ask for the values directly or write to the file yourself; the user should edit it. Wait for them to confirm before continuing.
 
 ### 6. Start the container
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import hashlib
 from pathlib import Path
 
 
@@ -106,3 +107,32 @@ exit 1
     results = [process.communicate() for process in processes]
     assert [process.returncode for process in processes] == [0, 0], results
     assert not stale_marker.exists()
+
+
+def test_healthy_venv_without_hash_is_preserved(tmp_path: Path):
+    repo = tmp_path / "repo"
+    script_dir = repo / "mcp"
+    script_dir.mkdir(parents=True)
+    shutil.copy2(Path(__file__).with_name("run.sh"), script_dir / "run.sh")
+    requirements = script_dir / "requirements.txt"
+    requirements.write_text("fastmcp\n", encoding="utf-8")
+
+    venv_bin = script_dir / ".venv" / "bin"
+    venv_bin.mkdir(parents=True)
+    venv_python = venv_bin / "python"
+    venv_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    venv_python.chmod(0o755)
+
+    result = subprocess.run(
+        ["/bin/sh", str(script_dir / "run.sh")],
+        cwd=repo,
+        env=os.environ.copy(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    expected_hash = hashlib.sha256(requirements.read_bytes()).hexdigest()
+    hash_file = script_dir / ".venv" / ".requirements.hash"
+    assert hash_file.read_text(encoding="utf-8").strip() == expected_hash
+    assert venv_python.read_text(encoding="utf-8") == "#!/bin/sh\nexit 0\n"
