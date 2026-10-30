@@ -12,6 +12,11 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 )
 
+// defaultPostgresDSN is the local development fallback, which is safe to show in flag usage.
+//
+//nolint:gosec // G101: the local development fallback is not a real credential.
+const defaultPostgresDSN = "postgresql://postgres:password@localhost:5432/postgres"
+
 // Gorm Log Level Custom Flag Type
 type logLevel logger.LogLevel
 
@@ -105,7 +110,7 @@ type PostgresFlags struct {
 func NewPostgresDatabaseFlags() *PostgresFlags {
 	dsn := os.Getenv("SIPPY_DATABASE_DSN")
 	if dsn == "" {
-		dsn = "postgresql://postgres:password@localhost:5432/postgres" //nolint:gosec // G101: dev default DSN, not a real credential
+		dsn = defaultPostgresDSN
 	}
 
 	return &PostgresFlags{
@@ -117,7 +122,9 @@ func NewPostgresDatabaseFlags() *PostgresFlags {
 func (f *PostgresFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.Var(&f.LogLevel, "db-log-level", "GORM database log level")
 	fs.StringVar(&f.DSN, "database-dsn", f.DSN, "Database DSN for connecting to Postgres")
-	fs.Lookup("database-dsn").DefValue = "<redacted>"
+	if f.DSN != defaultPostgresDSN {
+		fs.Lookup("database-dsn").DefValue = "<redacted>"
+	}
 	fs.Var(&f.pinnedTime, "pinned-date-time", "Pin database results to a fixed end date/time")
 	fs.BoolVar(&f.EnablePartitionwise, "enable-partitionwise", true, "Enable PostgreSQL partitionwise aggregate and join optimizations")
 }
