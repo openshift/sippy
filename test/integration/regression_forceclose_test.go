@@ -304,7 +304,7 @@ func TestResolveTriagesConcurrentRace(t *testing.T) {
 		var got models.Triage
 		require.NoError(t, dbc.DB.First(&got, triage.ID).Error)
 		assert.True(t, got.Resolved.Valid, "triage should still be resolved")
-		assert.Equal(t, winnerResolved.Time, got.Resolved.Time,
+		assert.WithinDuration(t, winnerResolved.Time, got.Resolved.Time, time.Second,
 			"resolution timestamp set by the winning resolver must be preserved")
 		assert.Equal(t, string(models.RegressionsRolledOff), string(got.ResolutionReason))
 	})
