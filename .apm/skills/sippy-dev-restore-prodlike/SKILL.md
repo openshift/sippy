@@ -3,7 +3,7 @@ name: sippy-dev-restore-prodlike
 description: "Restore prod-like PostgreSQL from a backup file"
 ---
 
-# Sippy dev — restore prod-like DB
+# Sippy dev: restore prod-like DB
 
 Restore the **`prodlike`** database from a backup that lives **under the repo root** (path relative to checkout, no `..`).
 
@@ -11,7 +11,7 @@ Restore the **`prodlike`** database from a backup that lives **under the repo ro
 
 - **`SIPPY_PRODLIKE_DATABASE_DSN`** must end with **`/prodlike`** and use host **`localhost`** or **`sippy-postgres`** (script refuses other hosts).
 - Stop **`sippy serve`** (and anything else connected to `prodlike`) so `DROP DATABASE` can run.
-- **`pg_restore`** must match the dump format (devcontainer: PostgreSQL 17 client on `PATH`).
+- **`pg_restore`** must match the dump format (devcontainer: PostgreSQL client on `PATH`).
 
 ## Steps
 
