@@ -328,7 +328,9 @@ func Test_TriageAPI(t *testing.T) {
 		gaDate := civil.DateOf(time.Now().UTC())
 		release := models.ReleaseDefinition{Release: "archival-e2e", GADate: &gaDate}
 		require.NoError(t, dbc.DB.Create(&release).Error)
-		defer dbc.DB.Delete(&release)
+		defer func() {
+			require.NoError(t, dbc.DB.Unscoped().Delete(&release).Error)
+		}()
 		regression := *testRegression1
 		regression.ID = 0
 		regression.Release = release.Release
