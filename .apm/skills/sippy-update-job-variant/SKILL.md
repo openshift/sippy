@@ -59,7 +59,19 @@ You will guide the user through the following steps (skipping steps where argume
    - Check if the new pattern might overlap with existing patterns and ensure correct precedence
 
 5. **Preview Changes with Test**: Run the variant snapshot test to see what will change:
-   - Execute: `go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1 | awk '/Summary of changes:/{show=1} show'`
+   - Execute:
+
+     ```bash
+     status=0
+     output="$(go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1)" || status=$?
+     if printf '%s\n' "$output" | grep -q "Summary of changes:"; then
+         printf '%s\n' "$output" | awk '/Summary of changes:/{show=1} show'
+     else
+         printf '%s\n' "$output"
+     fi
+     exit "$status"
+     ```
+
    - Parse this output to extract the variant category changed, old/new values, affected jobs, and total count
    - Display the summary to the user
 
@@ -93,7 +105,14 @@ grep "^    <CategoryName>:" pkg/variantregistry/snapshot.yaml | cut -d: -f2 | se
 
 ### Previewing Changes
 ```bash
-go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1 | awk '/Summary of changes:/{show=1} show'
+status=0
+output="$(go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1)" || status=$?
+if printf '%s\n' "$output" | grep -q "Summary of changes:"; then
+    printf '%s\n' "$output" | awk '/Summary of changes:/{show=1} show'
+else
+    printf '%s\n' "$output"
+fi
+exit "$status"
 ```
 
 ### Finding Setter Functions

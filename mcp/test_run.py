@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
-import hashlib
+import sys
 from pathlib import Path
 
 
@@ -126,7 +127,10 @@ def test_healthy_venv_without_hash_is_preserved(tmp_path: Path):
     result = subprocess.run(
         ["/bin/sh", str(script_dir / "run.sh")],
         cwd=repo,
-        env=os.environ.copy(),
+        env={
+            **os.environ,
+            "PATH": f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}",
+        },
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
