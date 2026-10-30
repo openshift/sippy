@@ -117,7 +117,7 @@ func NewPostgresDatabaseFlags() *PostgresFlags {
 func (f *PostgresFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.Var(&f.LogLevel, "db-log-level", "GORM database log level")
 	dsn := f.DSN
-	fs.StringVar(&f.DSN, "database-dsn", "<configured>", "Database DSN for connecting to Postgres")
+	fs.StringVar(&f.DSN, "database-dsn", "<redacted>", "Database DSN for connecting to Postgres")
 	f.DSN = dsn
 	fs.Var(&f.pinnedTime, "pinned-date-time", "Pin database results to a fixed end date/time")
 	fs.BoolVar(&f.EnablePartitionwise, "enable-partitionwise", true, "Enable PostgreSQL partitionwise aggregate and join optimizations")
