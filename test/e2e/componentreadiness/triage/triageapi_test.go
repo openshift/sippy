@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -321,6 +322,60 @@ func Test_TriageAPI(t *testing.T) {
 			require.Equal(t, triage.CreatedAt, updated.CreatedAt)
 			require.Len(t, updated.Regressions, 2)
 		})
+	})
+	t.Run("archival affects only default listings", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		gaDate := civil.DateOf(time.Now().UTC())
+		release := models.ReleaseDefinition{Release: "archival-e2e", GADate: &gaDate}
+		require.NoError(t, dbc.DB.Create(&release).Error)
+		defer dbc.DB.Delete(&release)
+		regression := *testRegression1
+		regression.ID = 0
+		regression.Release = release.Release
+		regression.TestID = "archival-e2e"
+		regression.Views = nil
+		require.NoError(t, dbc.DB.Omit("Triages", "JobRuns", "Views").Create(&regression).Error)
+		defer dbc.DB.Delete(&regression)
+		require.NoError(t, tracker.UpsertRegressionView(regression.ID, "archival-e2e-view"))
+		defer dbc.DB.Where("test_regression_id = ?", regression.ID).Delete(&models.RegressionView{})
+		triage := createAndValidateTriageRecord(t, jiraBug.URL, &regression)
+		require.NoError(t, dbc.DB.Model(&models.Triage{}).Where("id = ?", triage.ID).
+			UpdateColumn("resolved", time.Now().Add(-91*24*time.Hour)).Error)
+		for _, tc := range []struct {
+			query   string
+			visible bool
+		}{
+			{"", false}, {"?include_archived=false", false}, {"?include_archived=true", true},
+			{"?include_archived=true&view=archival-e2e-view&fields=id", true},
+			{"?include_archived=true&view=nonexistent", false},
+		} {
+			var records []models.Triage
+			require.NoError(t, util.SippyGet("/api/component_readiness/triages"+tc.query, &records))
+			found := false
+			for _, record := range records {
+				if record.ID == triage.ID {
+					found = true
+					require.NotEmpty(t, record.Links["self"])
+				}
+			}
+			require.Equal(t, tc.visible, found, tc.query)
+		}
+		var invalid map[string]interface{}
+		require.Error(t, util.SippyGet("/api/component_readiness/triages?include_archived=true&fields=not_a_field", &invalid))
+		var historical models.Triage
+		path := fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID)
+		require.NoError(t, util.SippyGet(path, &historical))
+		require.Equal(t, triage.ID, historical.ID)
+		historical.Description = "archived triage is still editable"
+		var updated models.Triage
+		require.NoError(t, util.SippyPut(path, &historical, &updated))
+		require.Equal(t, historical.Description, updated.Description)
+		updated.Resolved = sql.NullTime{}
+		require.NoError(t, util.SippyPut(path, &updated, &historical))
+		var reactivated []models.Triage
+		require.NoError(t, util.SippyGet("/api/component_readiness/triages?view=archival-e2e-view", &reactivated))
+		require.Len(t, reactivated, 1)
+		require.Equal(t, triage.ID, reactivated[0].ID)
 	})
 	t.Run("list filtered by view", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)

@@ -1897,7 +1897,7 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
 		// Keep discoverability links available even in sparse responses.
 		fields.Insert("links")
 	}
-	triages, err := componentreadiness.ListTriages(s.db, req)
+	triages, err := componentreadiness.ListTriages(s.db, req, req.URL.Query().Get("include_archived") == "true")
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -2325,7 +2325,8 @@ func (s *Server) jsonRegressionPotentialMatchingTriages(w http.ResponseWriter, r
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting regression: %v", err))
 	}
-	triages, err := componentreadiness.ListTriages(s.db, req)
+	// Potential matches retain historical candidates independently of listing archival.
+	triages, err := componentreadiness.ListTriages(s.db, req, true)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("failed to list triages: %v", err))
 		return
