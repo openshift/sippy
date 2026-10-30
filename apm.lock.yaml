@@ -29,6 +29,7 @@ mcp_configs:
     command: mcp/run.sh
 local_deployed_files:
 - .claude/commands/sippy-dev-app.md
+- .claude/commands/sippy-dev-bdd.md
 - .claude/commands/sippy-dev-frontend.md
 - .claude/commands/sippy-dev-migrate.md
 - .claude/commands/sippy-dev-regression-cache.md
@@ -46,6 +47,7 @@ local_deployed_files:
 - .claude/rules/mcp.md
 - .claude/rules/testing.md
 - .cursor/commands/sippy-dev-app.md
+- .cursor/commands/sippy-dev-bdd.md
 - .cursor/commands/sippy-dev-frontend.md
 - .cursor/commands/sippy-dev-migrate.md
 - .cursor/commands/sippy-dev-regression-cache.md
@@ -64,6 +66,7 @@ local_deployed_files:
 - .cursor/rules/mcp.mdc
 - .cursor/rules/testing.mdc
 - .gemini/commands/sippy-dev-app.toml
+- .gemini/commands/sippy-dev-bdd.toml
 - .gemini/commands/sippy-dev-frontend.toml
 - .gemini/commands/sippy-dev-migrate.toml
 - .gemini/commands/sippy-dev-regression-cache.toml
@@ -74,6 +77,7 @@ local_deployed_files:
 - .gemini/commands/sippy-update-ga-release-views.toml
 - .gemini/commands/sippy-update-job-variant.toml
 - .opencode/commands/sippy-dev-app.md
+- .opencode/commands/sippy-dev-bdd.md
 - .opencode/commands/sippy-dev-frontend.md
 - .opencode/commands/sippy-dev-migrate.md
 - .opencode/commands/sippy-dev-regression-cache.md
@@ -85,6 +89,7 @@ local_deployed_files:
 - .opencode/commands/sippy-update-job-variant.md
 local_deployed_file_hashes:
   .claude/commands/sippy-dev-app.md: sha256:656276ed961940c137dde32ecdb0501427d4d811502a27125ba073adc770d266
+  .claude/commands/sippy-dev-bdd.md: sha256:340124ac30761472a87c09d2d3287df20f3a2e37cd62d40e40dd352555d92ebe
   .claude/commands/sippy-dev-frontend.md: sha256:42eae4b3bc610c9fcb43533a6fed229a6d1c409d279f3d6f93672986ede62e3a
   .claude/commands/sippy-dev-migrate.md: sha256:80160e88e0cc0fc09ab3dd9cc6fc496fe87dd8873800eb65d700868034d59da2
   .claude/commands/sippy-dev-regression-cache.md: sha256:683448f4a553c4511c909fc2711b13edb7ee27d0c437aa9e7689bc9ba6fc0b6a
@@ -96,12 +101,13 @@ local_deployed_file_hashes:
   .claude/commands/sippy-update-job-variant.md: sha256:f88742dddeec5024931959a8330fdce362ffdd9b8825e808830ac346605cbd16
   .claude/rules/backend.md: sha256:60f9f7f5315eb4c1f9bc84af897529796e38abb343056c2ed6605cb0ddcf3401
   .claude/rules/config.md: sha256:96c5e42c039230f1e4e7f9ba56d04e6f76f23deeecdd858634c440d6029a6a83
-  .claude/rules/dev-commands.md: sha256:171b806b2f75a71f20126b8a9ceabe88592c11cede3fe510498e855d53d43b9e
-  .claude/rules/frontend.md: sha256:2355ef2b8f797d6e4f72316f5c17eae909264a9223f7296e0ef9c4d8c100658d
+  .claude/rules/dev-commands.md: sha256:69cbb440076f91176dd6cf54368de3117d82ed5d1370d6dd738096fc5b231913
+  .claude/rules/frontend.md: sha256:28db16aa2c794b6e075e7fb5eaec5f27063da1624c4fad1121b0fd3faa06ba66
   .claude/rules/general.md: sha256:e6dff95b03237ef5756e873afac2851c8f658d860b7853eb063c7766738533c0
   .claude/rules/mcp.md: sha256:ddfe965e7cf8cddbba1374c6ae582a20ac0af17c958bf10e1a4edff6ff2ad0b8
   .claude/rules/testing.md: sha256:aef755feb8a6829ddb1d2609b98b17380c3c457cc86fd09158c2ec1d7432a893
   .cursor/commands/sippy-dev-app.md: sha256:656276ed961940c137dde32ecdb0501427d4d811502a27125ba073adc770d266
+  .cursor/commands/sippy-dev-bdd.md: sha256:340124ac30761472a87c09d2d3287df20f3a2e37cd62d40e40dd352555d92ebe
   .cursor/commands/sippy-dev-frontend.md: sha256:42eae4b3bc610c9fcb43533a6fed229a6d1c409d279f3d6f93672986ede62e3a
   .cursor/commands/sippy-dev-migrate.md: sha256:80160e88e0cc0fc09ab3dd9cc6fc496fe87dd8873800eb65d700868034d59da2
   .cursor/commands/sippy-dev-regression-cache.md: sha256:683448f4a553c4511c909fc2711b13edb7ee27d0c437aa9e7689bc9ba6fc0b6a
@@ -114,12 +120,13 @@ local_deployed_file_hashes:
   .cursor/commands/sippy-update-job-variant.md: sha256:f88742dddeec5024931959a8330fdce362ffdd9b8825e808830ac346605cbd16
   .cursor/rules/backend.mdc: sha256:c89283fab05858564980b107fd0d0e99fd33e49409b4935ab2401999ed6e5c26
   .cursor/rules/config.mdc: sha256:d6e2195399bbb26a3fef7e54bd01862ffce39d89dce8aabdb0b89c89028192eb
-  .cursor/rules/dev-commands.mdc: sha256:7e9635959af4dd2bf54b348dfdf41e3cf2b77c01aa3496a2e42a273c372ff9c0
-  .cursor/rules/frontend.mdc: sha256:ee9d518297915f72d25a9584c8f70170e8bbd4bb1a24d52c908b6c79402f099a
+  .cursor/rules/dev-commands.mdc: sha256:7d01e2f65a79e8072cdbe807686855dfd88e79a7a1e0beb597731669c920a2a6
+  .cursor/rules/frontend.mdc: sha256:4802483fdea4efdf84e701a5765f1481f036dbfa747c2110aba22a147dac24fa
   .cursor/rules/general.mdc: sha256:9baa2a69757a9a5de30c901fabb48ae1d894e403cde7ae60170d24d25f52664e
   .cursor/rules/mcp.mdc: sha256:c02472afd46e4c89f71d4487dcd5da98b0c1bcbcf7f9cbc4d7ed4e7d3a206ec1
   .cursor/rules/testing.mdc: sha256:06eef9186dd1cec1bcdf067344e5e2e83515da66f8df4102c2b1e85641a21b1f
   .gemini/commands/sippy-dev-app.toml: sha256:fc28174eeab4e440694a823bd838d429241997a018d8a13f32e0f67ca4d973c5
+  .gemini/commands/sippy-dev-bdd.toml: sha256:415f1a2a9f967d98c0ba893626d8a208d1b5dc1d371d6397cea7655f728db744
   .gemini/commands/sippy-dev-frontend.toml: sha256:ec4ab5e1fb7581f09473e33b3ed4f53ce40509f23aac581e3b100ad1f59de5e5
   .gemini/commands/sippy-dev-migrate.toml: sha256:25c98ba4bfdb95270dfcb4238ae688f9a66f0e645d8a4a6c5e03b1cf8db5cb7e
   .gemini/commands/sippy-dev-regression-cache.toml: sha256:e00021f336c5d35c8d23d87c230530145734ab68ac183fb2a462dd375bcde2ff
@@ -130,6 +137,7 @@ local_deployed_file_hashes:
   .gemini/commands/sippy-update-ga-release-views.toml: sha256:662ac8d503d883cf6142c801b79e46616afb3d806e1d936e952d918b257ddf73
   .gemini/commands/sippy-update-job-variant.toml: sha256:3b044dfaddeafa1a6d375918d5860785f8d315b593c355bbb7293a87c50361b8
   .opencode/commands/sippy-dev-app.md: sha256:656276ed961940c137dde32ecdb0501427d4d811502a27125ba073adc770d266
+  .opencode/commands/sippy-dev-bdd.md: sha256:340124ac30761472a87c09d2d3287df20f3a2e37cd62d40e40dd352555d92ebe
   .opencode/commands/sippy-dev-frontend.md: sha256:42eae4b3bc610c9fcb43533a6fed229a6d1c409d279f3d6f93672986ede62e3a
   .opencode/commands/sippy-dev-migrate.md: sha256:80160e88e0cc0fc09ab3dd9cc6fc496fe87dd8873800eb65d700868034d59da2
   .opencode/commands/sippy-dev-regression-cache.md: sha256:683448f4a553c4511c909fc2711b13edb7ee27d0c437aa9e7689bc9ba6fc0b6a

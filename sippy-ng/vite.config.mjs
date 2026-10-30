@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+import { configDefaults } from 'vitest/config'
 
 export default defineConfig({
   plugins: [react()],
@@ -29,5 +30,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.jsx'],
     css: false,
+    // bddgen writes Playwright specs here. Vitest's default include matches *.spec.js.
+    exclude: [...configDefaults.exclude, 'bdd/.features-gen/**'],
   },
 })
