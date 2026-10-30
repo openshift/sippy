@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restore the prod-like PostgreSQL database from a backup file under the repo root.
+# Restore the prod-like PostgreSQL database from a backup file or directory under the repo root.
 # Usage: scripts/restore_prodlike_db.sh <backup-path-relative-to-repo>
 # Env: SIPPY_PRODLIKE_DATABASE_DSN (must end with /prodlike; host localhost or sippy-postgres only).
 set -euo pipefail
@@ -9,7 +9,7 @@ cd "$REPO_ROOT"
 
 if [ "${#}" -lt 1 ]; then
 	echo "usage: $0 <backup-file>" >&2
-	echo "  backup-file: path relative to repo root (e.g. backups/foo.dump)" >&2
+	echo "  backup-path: file or directory relative to repo root (e.g. backups/foo.dump)" >&2
 	exit 1
 fi
 
@@ -20,7 +20,7 @@ if [[ "${rel}" == /* ]]; then
 fi
 
 backup="${REPO_ROOT}/${rel}"
-if [ ! -f "${backup}" ]; then
+if [ ! -e "${backup}" ]; then
 	echo "error: backup not found: ${backup}" >&2
 	exit 1
 fi
@@ -62,7 +62,7 @@ psql "${admin}" -v ON_ERROR_STOP=1 -c \
 psql "${admin}" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS prodlike;"
 psql "${admin}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE prodlike;"
 
-if [[ "${backup}" == *.sql ]]; then
+if [[ -f "${backup}" && "${backup}" == *.sql ]]; then
 	psql "${prodl}" -v ON_ERROR_STOP=1 -f "${backup}"
 else
 	pg_restore --no-owner --exit-on-error -d "${prodl}" "${backup}"

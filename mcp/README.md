@@ -1,6 +1,6 @@
 # Sippy dev MCP server
 
-Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor** and **Claude Code**.
+Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor**, **Claude Code**, and **Codex**.
 
 Simple commands (migrate, lint, test) are documented in project instructions via [APM](../apm.yml) and can be run directly — see `.apm/instructions/dev-commands.instructions.md`.
 
@@ -23,8 +23,9 @@ Simple commands (migrate, lint, test) are documented in project instructions via
 | ----------- | ----------------------- |
 | Cursor      | `.cursor/mcp.json`      |
 | Claude Code | `.mcp.json` (repo root) |
+| Codex       | `.codex/config.toml`    |
 
-Both point to `mcp/run.sh`. This works on the host and inside the devcontainer without path changes.
+All point to `mcp/run.sh`. This works on the host and inside the devcontainer without path changes.
 
 ## Server id in Cursor
 
@@ -59,13 +60,14 @@ Optional parameters (timeouts, paths, DSNs, etc.) are documented on each functio
 
 `sippy_serve` and `sippy_ng_start` spawn detached processes. A second start is refused if a matching process is already running (see `server.py` for detection logic).
 
-## Cursor skills
+## Agent skills
 
-Agent-oriented shortcuts live under **`.cursor/skills/`**, for example:
+Agent-oriented shortcuts are defined in **`.apm/skills/`** and deployed by **`make apm`** to editor command and skill directories, including **`.claude/commands/`**, **`.claude/skills/`**, and **`.agents/skills/`**, for example:
 
 - `sippy-dev-migrate`, `sippy-dev-regression-cache`, `sippy-dev-serve`, `sippy-dev-frontend`
 - `sippy-dev-app` (backend + frontend)
 - `sippy-dev-tests` (order: `CI=true make lint` → `make test` → `make e2e`)
+- `sippy-generate-release-views` (create next-release Component Readiness views from an existing release)
 
 ## Changing the server
 

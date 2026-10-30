@@ -1,6 +1,6 @@
 ---
 description: MCP server (sippy-dev) for AI-callable dev tasks
-globs: "mcp/**"
+globs: mcp/**
 ---
 
 Shared MCP server for AI-callable dev tasks (migrate, serve, restore prod-like DB, lint, test, e2e). Configuration, tool list, logs, and extension notes: **[README.md](../../mcp/README.md)**.

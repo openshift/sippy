@@ -1,6 +1,6 @@
 ---
 description: How Sippy configuration files work, especially release/job config
-globs: "config/**"
+globs: config/**
 ---
 
 ### Configuration files

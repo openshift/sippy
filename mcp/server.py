@@ -726,7 +726,8 @@ async def restore_prodlike_db(
     """Drop and recreate the ``prodlike`` database from a backup under the repo.
 
     ``backup_file`` is resolved with the same path rules as other MCP tools (repo-relative,
-    no ``..``). Supports custom-format ``.dump`` (``pg_restore``) or ``.sql`` (``psql -f``).
+    no ``..``). Supports custom-format or directory backups (``pg_restore``) and ``.sql``
+    files (``psql -f``).
 
     Uses ``SIPPY_PRODLIKE_DATABASE_DSN`` (must end with ``/prodlike``; host must be
     ``localhost`` or ``sippy-postgres``). Stop ``sippy serve`` (and anything else using
@@ -740,8 +741,8 @@ async def restore_prodlike_db(
         backup_p = _repo_path(backup_file)
     except ValueError as e:
         return str(e)
-    if not backup_p.is_file():
-        return f"backup file not found: {backup_p}"
+    if not (backup_p.is_file() or backup_p.is_dir()):
+        return f"backup path not found: {backup_p}"
 
     script = REPO_ROOT / "scripts" / "restore_prodlike_db.sh"
     if not script.is_file():
