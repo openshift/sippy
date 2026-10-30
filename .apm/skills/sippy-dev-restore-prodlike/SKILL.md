@@ -5,7 +5,7 @@ description: "Restore prod-like PostgreSQL from a backup file"
 
 # Sippy dev: restore prod-like DB
 
-Restore the **`prodlike`** database from a backup that lives **under the repo root** (path relative to checkout, no `..`).
+Restore the **`prodlike`** database from a backup file or directory that lives **under the repo root** (path relative to checkout, no `..`).
 
 ## Preconditions
 
@@ -23,7 +23,7 @@ Restore the **`prodlike`** database from a backup that lives **under the repo ro
 
    Examples: `backups/sippy-prodlike.dump`, `sippy-backup-dev-2026-05-07.dump` if that file is in the repo.
 
-   - Custom / directory format: **`pg_restore`**
+   - Custom archive or directory format: **`pg_restore`**
    - **`*.sql`**: **`psql -f`**
 
 2. **MCP** (server **`sippy-dev`**): call **`restore_prodlike_db`** with **`backup_file`** set to the same repo-relative path. Large dumps: **`timeout_seconds=0`**. Log: **`sippy-dev-logs/restore_prodlike_db.log`**.

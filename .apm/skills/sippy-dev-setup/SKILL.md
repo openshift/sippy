@@ -80,7 +80,7 @@ If missing, copy from the example:
 cp .devcontainer/.env.example .devcontainer/.env
 ```
 
-Then read `.devcontainer/.env` and check for empty required values. If any are blank (e.g. `ANTHROPIC_VERTEX_PROJECT_ID`), tell the user which values need to be filled in and ask them to edit `.devcontainer/.env` and let you know when they're done. **Do not** ask for the values directly or write to the file yourself; the user should edit it. Wait for them to confirm before continuing.
+Then read `.devcontainer/.env` and check for empty required values. Only check `ANTHROPIC_VERTEX_PROJECT_ID` when the user confirms they use Claude Code through Vertex AI. For those users, a blank value must be filled in; tell them to edit `.devcontainer/.env` themselves and wait for confirmation. **Do not** ask for the value directly or write to the file yourself. Do not require or block on this value for other users.
 
 ### 6. Start the container
 

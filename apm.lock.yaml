@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-10-30T18:22:59.426879+00:00'
+generated_at: '2026-10-30T19:14:38.504561+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -272,7 +272,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:5d55e39e9c79f1fc186aa5f0337ed30c44bdfca7ff07f69b16f92c852e9e603d
+  content_hash: sha256:8188c4c1f27f18f2b7eea6fb7a340402aa8c51bed1e649d6c2e350770aaf800a
 - kind: project-relative
   target: claude
   value: .claude/skills/sippy-dev-serve
@@ -308,7 +308,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:50c654b676b334bc4ae75927b0866f18ae3aa2b7cdc7f3ea8ede28a55706e526
+  content_hash: sha256:0cb7a25b3ce25bdb9a9beca9f73f6dd2a263c07bdf541ad3b3e1ca2f49b4e7df
 - kind: project-relative
   target: claude
   value: .claude/skills/sippy-dev-tests
@@ -380,7 +380,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:3365db12b08ac4ce5e58c043e853d610ebe385d36bfca226d62ae5695d68eba6
+  content_hash: sha256:c0924fa12a2b49b775970c0429226bd96524c1be572eaa7971df206c2eddfc55
 - kind: project-relative
   target: codex
   value: .agents/skills/sippy-dev-app
@@ -470,7 +470,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:5d55e39e9c79f1fc186aa5f0337ed30c44bdfca7ff07f69b16f92c852e9e603d
+  content_hash: sha256:8188c4c1f27f18f2b7eea6fb7a340402aa8c51bed1e649d6c2e350770aaf800a
 - kind: project-relative
   target: codex
   value: .agents/skills/sippy-dev-serve
@@ -506,7 +506,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:50c654b676b334bc4ae75927b0866f18ae3aa2b7cdc7f3ea8ede28a55706e526
+  content_hash: sha256:0cb7a25b3ce25bdb9a9beca9f73f6dd2a263c07bdf541ad3b3e1ca2f49b4e7df
 - kind: project-relative
   target: codex
   value: .agents/skills/sippy-dev-tests
@@ -578,7 +578,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:3365db12b08ac4ce5e58c043e853d610ebe385d36bfca226d62ae5695d68eba6
+  content_hash: sha256:c0924fa12a2b49b775970c0429226bd96524c1be572eaa7971df206c2eddfc55
 - kind: project-relative
   target: cursor
   value: .cursor/commands/sippy-dev-app.md
@@ -1252,13 +1252,13 @@ local_deployed_file_hashes:
   .agents/skills/sippy-dev-frontend/SKILL.md: sha256:6b8e15bd8161303e0ad43544081e7868574380ef7128668c39e5893adaabfdd3
   .agents/skills/sippy-dev-migrate/SKILL.md: sha256:19bc567f22af37802b2841c966969d1632353359daa8038b7aa1c9154bebc713
   .agents/skills/sippy-dev-regression-cache/SKILL.md: sha256:978125943af247ab293f3314b03419409f38f833939a31e1fa4a45cd1490c474
-  .agents/skills/sippy-dev-restore-prodlike/SKILL.md: sha256:5d55e39e9c79f1fc186aa5f0337ed30c44bdfca7ff07f69b16f92c852e9e603d
+  .agents/skills/sippy-dev-restore-prodlike/SKILL.md: sha256:8188c4c1f27f18f2b7eea6fb7a340402aa8c51bed1e649d6c2e350770aaf800a
   .agents/skills/sippy-dev-serve/SKILL.md: sha256:b7838a513236ea915a54fc41fe03260b95943e70cf3a6c7c9fbc4232c1162cd4
-  .agents/skills/sippy-dev-setup/SKILL.md: sha256:50c654b676b334bc4ae75927b0866f18ae3aa2b7cdc7f3ea8ede28a55706e526
+  .agents/skills/sippy-dev-setup/SKILL.md: sha256:0cb7a25b3ce25bdb9a9beca9f73f6dd2a263c07bdf541ad3b3e1ca2f49b4e7df
   .agents/skills/sippy-dev-tests/SKILL.md: sha256:eed3d8927aebc30a380886523db9e1ca4f821a7dd28888bad4ce2f6463b252d0
   .agents/skills/sippy-generate-release-views/SKILL.md: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
   .agents/skills/sippy-update-ga-release-views/SKILL.md: sha256:8fb3e633d401b21187499a5b4f70354ee07a9097e4e6a4095e1b152d0aa1d834
-  .agents/skills/sippy-update-job-variant/SKILL.md: sha256:3365db12b08ac4ce5e58c043e853d610ebe385d36bfca226d62ae5695d68eba6
+  .agents/skills/sippy-update-job-variant/SKILL.md: sha256:c0924fa12a2b49b775970c0429226bd96524c1be572eaa7971df206c2eddfc55
   .claude/commands/sippy-dev-app.md: sha256:7f0b4e574aa9de57873332bddf83dcf1afe14fcf90e61d8d10dc2ff1d0e1625e
   .claude/commands/sippy-dev-frontend.md: sha256:9451f98d96c38c758ce25b6568a4c2ac8811481c11e2438b1e80ec14ff2a5f7a
   .claude/commands/sippy-dev-migrate.md: sha256:b331255b4f3199450a7f0c3facaad7ea150326cf1c944288b10eda311b2518b8
@@ -1283,13 +1283,13 @@ local_deployed_file_hashes:
   .claude/skills/sippy-dev-frontend/SKILL.md: sha256:6b8e15bd8161303e0ad43544081e7868574380ef7128668c39e5893adaabfdd3
   .claude/skills/sippy-dev-migrate/SKILL.md: sha256:19bc567f22af37802b2841c966969d1632353359daa8038b7aa1c9154bebc713
   .claude/skills/sippy-dev-regression-cache/SKILL.md: sha256:978125943af247ab293f3314b03419409f38f833939a31e1fa4a45cd1490c474
-  .claude/skills/sippy-dev-restore-prodlike/SKILL.md: sha256:5d55e39e9c79f1fc186aa5f0337ed30c44bdfca7ff07f69b16f92c852e9e603d
+  .claude/skills/sippy-dev-restore-prodlike/SKILL.md: sha256:8188c4c1f27f18f2b7eea6fb7a340402aa8c51bed1e649d6c2e350770aaf800a
   .claude/skills/sippy-dev-serve/SKILL.md: sha256:b7838a513236ea915a54fc41fe03260b95943e70cf3a6c7c9fbc4232c1162cd4
-  .claude/skills/sippy-dev-setup/SKILL.md: sha256:50c654b676b334bc4ae75927b0866f18ae3aa2b7cdc7f3ea8ede28a55706e526
+  .claude/skills/sippy-dev-setup/SKILL.md: sha256:0cb7a25b3ce25bdb9a9beca9f73f6dd2a263c07bdf541ad3b3e1ca2f49b4e7df
   .claude/skills/sippy-dev-tests/SKILL.md: sha256:eed3d8927aebc30a380886523db9e1ca4f821a7dd28888bad4ce2f6463b252d0
   .claude/skills/sippy-generate-release-views/SKILL.md: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
   .claude/skills/sippy-update-ga-release-views/SKILL.md: sha256:8fb3e633d401b21187499a5b4f70354ee07a9097e4e6a4095e1b152d0aa1d834
-  .claude/skills/sippy-update-job-variant/SKILL.md: sha256:3365db12b08ac4ce5e58c043e853d610ebe385d36bfca226d62ae5695d68eba6
+  .claude/skills/sippy-update-job-variant/SKILL.md: sha256:c0924fa12a2b49b775970c0429226bd96524c1be572eaa7971df206c2eddfc55
   .cursor/commands/sippy-dev-app.md: sha256:7f0b4e574aa9de57873332bddf83dcf1afe14fcf90e61d8d10dc2ff1d0e1625e
   .cursor/commands/sippy-dev-frontend.md: sha256:9451f98d96c38c758ce25b6568a4c2ac8811481c11e2438b1e80ec14ff2a5f7a
   .cursor/commands/sippy-dev-migrate.md: sha256:b331255b4f3199450a7f0c3facaad7ea150326cf1c944288b10eda311b2518b8
