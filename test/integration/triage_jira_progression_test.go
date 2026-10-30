@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -262,6 +263,81 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 		audits := getReconcileAuditLogs(t, dbc, triage.ID)
 		assert.Len(t, audits, 1, "second run should not create additional audit entries")
 	})
+
+	noopCases := []struct {
+		name              string
+		bugStatus         string
+		bugSummary        string
+		preResolve        bool
+		expectResolved    bool
+		expectDescription string
+		expectReason      string
+	}{
+		{
+			name:              "no-op reconcile does not advance updated_at",
+			bugStatus:         jiratype.StatusNew,
+			bugSummary:        "stable summary",
+			expectResolved:    false,
+			expectDescription: "stable summary",
+		},
+		{
+			name:              "no-op reconcile after auto-resolve does not advance updated_at",
+			bugStatus:         jiratype.StatusVerified,
+			bugSummary:        "resolved bug",
+			expectResolved:    true,
+			expectDescription: "resolved bug",
+			expectReason:      string(models.JiraProgression),
+		},
+		{
+			name:              "no-op reconcile after auto-unresolve does not advance updated_at",
+			bugStatus:         jiratype.StatusInProgress,
+			bugSummary:        "reopened bug",
+			preResolve:        true,
+			expectResolved:    false,
+			expectDescription: "reopened bug",
+		},
+	}
+	for i, tc := range noopCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dbc := intutil.NewTestDB(t, pgContainer)
+			ctx := context.Background()
+
+			key := fmt.Sprintf("NOOP-TS-%d", i+1)
+			bugURL := fmt.Sprintf("https://issues.example.com/%s", key)
+			bug := createBug(t, dbc, key, tc.bugStatus, tc.bugSummary, bugURL)
+			reg := intutil.CreateTestRegression(t, dbc, fmt.Sprintf("test-noop-ts-%d", i+1), "4.19")
+			var opts []intutil.TriageOption
+			opts = append(opts, intutil.WithRegressions(reg))
+			if tc.preResolve {
+				opts = append(opts, intutil.WithResolved(time.Now()))
+			}
+			triage := intutil.CreateTriage(t, dbc, bugURL, opts...)
+			if tc.preResolve {
+				setResolutionReason(t, dbc, triage.ID, string(models.JiraProgression))
+			}
+
+			// First run: establishes the steady state
+			runReconcileTriages(ctx, t, dbc)
+			reloadTriage(t, dbc, &triage)
+			if tc.expectResolved {
+				require.True(t, triage.Resolved.Valid, "triage should be resolved after first run")
+			} else if tc.preResolve {
+				require.False(t, triage.Resolved.Valid, "triage should be unresolved after first run")
+			}
+			firstUpdatedAt := triage.UpdatedAt
+
+			// Second run: everything is already in sync, should be a complete no-op
+			runReconcileTriages(ctx, t, dbc)
+			reloadTriage(t, dbc, &triage)
+			assert.Equal(t, firstUpdatedAt, triage.UpdatedAt,
+				"updated_at must not advance when reconciliation produces no changes")
+			assert.Equal(t, tc.expectDescription, triage.Description)
+			assert.NotNil(t, triage.BugID, "bug_id should be linked")
+			assert.Equal(t, bug.ID, *triage.BugID)
+			assert.Equal(t, tc.expectResolved, triage.Resolved.Valid)
+			assert.Equal(t, tc.expectReason, string(triage.ResolutionReason))
+		})
+	}
 
 	t.Run("updates triage description from bug summary", func(t *testing.T) {
 		dbc := intutil.NewTestDB(t, pgContainer)

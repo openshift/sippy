@@ -536,7 +536,10 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 			}
 			triage.Resolved = sql.NullTime{Time: time.Now(), Valid: true}
 			triage.ResolutionReason = models.JiraProgression
-			return tx.Save(&triage).Error
+			return tx.Model(&triage).Omit(clause.Associations).Updates(map[string]any{
+				models.ColResolved:         triage.Resolved,
+				models.ColResolutionReason: triage.ResolutionReason,
+			}).Error
 		}); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				log.WithField("triage_id", id).Warn("triage deleted before auto-resolve, skipping")
@@ -578,7 +581,10 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 			}
 			triage.Resolved = sql.NullTime{}
 			triage.ResolutionReason = ""
-			return tx.Save(&triage).Error
+			return tx.Model(&triage).Omit(clause.Associations).Updates(map[string]any{
+				models.ColResolved:         triage.Resolved,
+				models.ColResolutionReason: triage.ResolutionReason,
+			}).Error
 		}); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				log.WithField("triage_id", id).Warn("triage deleted before unresolve, skipping")
