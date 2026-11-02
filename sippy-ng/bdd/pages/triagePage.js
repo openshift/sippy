@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test'
 import { JIRA_URL, REGRESSION_ID } from '../fixtures/data.js'
 
 export class TriagePage {
@@ -11,7 +12,9 @@ export class TriagePage {
   }
 
   async openRegressedTab(name) {
-    await this.page.getByTestId(`regressed-tab-${name}`).click()
+    const tab = this.page.getByTestId(`regressed-tab-${name}`)
+    await tab.click()
+    await expect(tab).toHaveAttribute('aria-selected', 'true')
   }
 
   async selectRegression(id = REGRESSION_ID) {
@@ -22,6 +25,7 @@ export class TriagePage {
     }
     await box.waitFor()
     await box.click()
+    await expect(box).toBeChecked()
   }
 
   async startTriage() {
@@ -60,7 +64,16 @@ export class TriagePage {
     const triageDialog = this.page.getByRole('dialog', { name: 'Triage' })
     await this.page.getByRole('button', { name: 'Set Triage Info' }).click()
     await triageDialog.getByRole('tab', { name: 'Existing Triage' }).click()
+    const updateSettled = this.page.waitForResponse((response) => {
+      const path = new URL(response.url()).pathname
+      return (
+        response.request().method() === 'PUT' &&
+        /\/api\/component_readiness\/triages\/\d+$/.test(path)
+      )
+    })
     await triageDialog.getByRole('button', { name: 'Add to Entry' }).click()
+    const response = await updateSettled
+    await response.finished()
   }
 
   async triageFromTestDetails() {
