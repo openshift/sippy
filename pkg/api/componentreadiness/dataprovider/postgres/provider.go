@@ -82,20 +82,26 @@ func filterByDBGroupBy(variants map[string]string, dbGroupBy sets.Set[string]) m
 	return filtered
 }
 
-// matchRequestedVariants checks whether a row's job variants satisfy the
-// requested variant filters for the given testID, and returns the filtered
+// matchRequestedVariants checks whether a row's job variants satisfy
+// any requested variant combination for the given testID, and returns the filtered
 // key. Returns ok=false if the row should be skipped.
 func matchRequestedVariants(
 	testID string,
 	variants map[string]string,
-	requestedVariants map[string]map[string]string,
+	requestedVariants map[string][]map[string]string,
 	dbGroupBy sets.Set[string],
 ) (crtest.KeyWithVariants, bool) {
-	if rv, ok := requestedVariants[testID]; ok {
-		for k, v := range rv {
-			if variants[k] != v {
-				return crtest.KeyWithVariants{}, false
+	if combinations, ok := requestedVariants[testID]; ok {
+		matched := slices.ContainsFunc(combinations, func(rv map[string]string) bool {
+			for k, v := range rv {
+				if actual, exists := variants[k]; !exists || actual != v {
+					return false
+				}
 			}
+			return true
+		})
+		if !matched {
+			return crtest.KeyWithVariants{}, false
 		}
 	}
 	filtered := filterByDBGroupBy(variants, dbGroupBy)
@@ -105,14 +111,12 @@ func matchRequestedVariants(
 	}, true
 }
 
-// buildRequestedVariantsMap builds a testID -> requested variants lookup
-// from the request options.
-func buildRequestedVariantsMap(testIDOptions []reqopts.TestIdentification) map[string]map[string]string {
-	m := map[string]map[string]string{}
+// buildRequestedVariantsMap preserves all requested variant combinations for each
+// test ID. Empty combinations are retained so an unfiltered request matches all variants.
+func buildRequestedVariantsMap(testIDOptions []reqopts.TestIdentification) map[string][]map[string]string {
+	m := map[string][]map[string]string{}
 	for _, tid := range testIDOptions {
-		if len(tid.RequestedVariants) > 0 {
-			m[tid.TestID] = tid.RequestedVariants
-		}
+		m[tid.TestID] = append(m[tid.TestID], tid.RequestedVariants)
 	}
 	return m
 }

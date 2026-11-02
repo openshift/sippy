@@ -2,12 +2,15 @@ package postgres
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/lib/pq"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 )
 
 func TestTestFailuresExpression(t *testing.T) {
@@ -314,6 +317,111 @@ func TestFilterByDBGroupBy(t *testing.T) {
 				if gotV := got[k]; gotV != wantV {
 					t.Errorf("got[%q] = %q, want %q", k, gotV, wantV)
 				}
+			}
+		})
+	}
+}
+
+func TestMatchRequestedVariantsRepeatedTestID(t *testing.T) {
+	for _, architectures := range [][]string{{"amd64", "arm64"}, {"arm64", "amd64"}} {
+		t.Run(strings.Join(architectures, " then "), func(t *testing.T) {
+			options := []reqopts.TestIdentification{
+				{TestID: "test-1", RequestedVariants: map[string]string{"Architecture": architectures[0]}},
+				{TestID: "test-1", RequestedVariants: map[string]string{"Architecture": architectures[1]}},
+			}
+			requestedVariants := buildRequestedVariantsMap(options)
+			for _, architecture := range []string{"amd64", "arm64", "s390x"} {
+				variants := map[string]string{"Architecture": architecture, "Platform": "aws"}
+				key, matched := matchRequestedVariants("test-1", variants, requestedVariants, sets.New[string]("Architecture"))
+				wantMatch := architecture != "s390x"
+				if matched != wantMatch {
+					t.Errorf("architecture %s matched = %t, want %t", architecture, matched, wantMatch)
+				}
+				if matched && (key.TestID != "test-1" || !reflect.DeepEqual(key.Variants, map[string]string{"Architecture": architecture})) {
+					t.Errorf("architecture %s returned unexpected key: %+v", architecture, key)
+				}
+			}
+		})
+	}
+}
+
+func TestMatchRequestedVariants(t *testing.T) {
+	options := []reqopts.TestIdentification{
+		{TestID: "test-1", RequestedVariants: map[string]string{"Architecture": "amd64", "Platform": "aws"}},
+		{TestID: "test-1", RequestedVariants: map[string]string{"Architecture": "arm64", "Platform": "gcp"}},
+		{TestID: "test-2", RequestedVariants: map[string]string{"Architecture": "amd64", "Platform": "azure"}},
+		{TestID: "test-3"},
+		{TestID: "test-3", RequestedVariants: map[string]string{"Architecture": "amd64"}},
+		{TestID: "test-4", RequestedVariants: map[string]string{"Architecture": "amd64"}},
+		{TestID: "test-4", RequestedVariants: map[string]string{}},
+		{TestID: "test-5", RequestedVariants: map[string]string{"Architecture": ""}},
+	}
+	tests := []struct {
+		name     string
+		testID   string
+		variants map[string]string
+		want     bool
+	}{
+		{
+			name: "first complete combination matches", testID: "test-1",
+			variants: map[string]string{"Architecture": "amd64", "Platform": "aws", "Network": "ovn"}, want: true,
+		},
+		{
+			name: "second complete combination matches", testID: "test-1",
+			variants: map[string]string{"Architecture": "arm64", "Platform": "gcp"}, want: true,
+		},
+		{
+			name: "crossed combination does not match", testID: "test-1",
+			variants: map[string]string{"Architecture": "amd64", "Platform": "gcp"},
+		},
+		{
+			name: "missing required variant does not match", testID: "test-1",
+			variants: map[string]string{"Architecture": "amd64"},
+		},
+		{
+			name: "another test's combination does not match", testID: "test-1",
+			variants: map[string]string{"Architecture": "amd64", "Platform": "azure"},
+		},
+		{
+			name: "separate test matches its own combination", testID: "test-2",
+			variants: map[string]string{"Architecture": "amd64", "Platform": "azure"}, want: true,
+		},
+		{
+			name: "nil combination allows any variants", testID: "test-3",
+			variants: map[string]string{"Architecture": "s390x"}, want: true,
+		},
+		{
+			name: "empty combination allows any variants", testID: "test-4",
+			variants: map[string]string{"Architecture": "s390x"}, want: true,
+		},
+		{
+			name: "missing variant is not an empty value", testID: "test-5",
+			variants: map[string]string{},
+		},
+		{
+			name: "explicit empty value matches", testID: "test-5",
+			variants: map[string]string{"Architecture": ""}, want: true,
+		},
+		{
+			name: "test without requested filters matches", testID: "unfiltered-test",
+			variants: map[string]string{"Architecture": "s390x"}, want: true,
+		},
+	}
+
+	for _, order := range []string{"original", "reversed"} {
+		t.Run(order, func(t *testing.T) {
+			orderedOptions := slices.Clone(options)
+			if order == "reversed" {
+				slices.Reverse(orderedOptions)
+			}
+			requestedVariants := buildRequestedVariantsMap(orderedOptions)
+			for _, tc := range tests {
+				t.Run(tc.name, func(t *testing.T) {
+					_, matched := matchRequestedVariants(tc.testID, tc.variants, requestedVariants, sets.New[string]("Architecture", "Platform"))
+					if matched != tc.want {
+						t.Errorf("matched = %t, want %t", matched, tc.want)
+					}
+				})
 			}
 		})
 	}
