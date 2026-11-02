@@ -390,6 +390,7 @@ export default function RegressedTestsPanel(props) {
       {triaging && (
         <UpsertTriageModal
           regressionIds={regressionIds}
+          fields={['id', 'url', 'description', 'updated_at']}
           buttonText="Set Triage Info"
           setComplete={handleTriageFormCompletion}
           submissionDelay={1500}
