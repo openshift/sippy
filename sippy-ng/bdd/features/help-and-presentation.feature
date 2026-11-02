@@ -23,7 +23,7 @@ Feature: Help and presentation modes
     When I return to the report from the help breadcrumb
     Then the page uses the dark theme
     And the "Networking" cell assessment is "SignificantRegression"
-    And the "Networking" cell tooltip says "SignificantRegression detected"
+    And the "Networking" cell tooltip says "-400: SignificantRegression detected"
     When I reload the report
     Then the page uses the dark theme
 
@@ -34,5 +34,5 @@ Feature: Help and presentation modes
     When I turn on accessibility mode
     Then the "Networking" cell uses the accessible regression icon
     And the "Networking" cell assessment is "SignificantRegression"
-    And the "Networking" cell tooltip says "SignificantRegression detected"
+    And the "Networking" cell tooltip says "-400: SignificantRegression detected"
     And accessibility mode can be turned off

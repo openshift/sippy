@@ -85,7 +85,7 @@ Then(
   async ({ page }, component, text) => {
     await cellIcon(page, component).hover()
     await expect(
-      page.getByRole('tooltip', { name: new RegExp(text) })
+      page.getByRole('tooltip', { name: text, exact: true })
     ).toBeVisible()
   }
 )
