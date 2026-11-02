@@ -461,7 +461,7 @@ const ReconcileAuditUser = "bug-loader"
 // issue URL; always choosing the most recently changed row (highest ID on
 // ties, rows without a change time last) keeps triage links stable across
 // reconciliation passes instead of oscillating between duplicates.
-const latestBugPerURL = `
+const latestBugPerURL string = `
 	SELECT DISTINCT ON (url) id, url
 	FROM bugs
 	WHERE deleted_at IS NULL

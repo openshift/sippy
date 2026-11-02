@@ -540,7 +540,7 @@ func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
 		changeTime *time.Time // nil stores a NULL last_change_time
 		deleted    bool
 	}
-	ts := func(d time.Duration) *time.Time { v := base.Add(d); return &v }
+	changeTimeAt := func(d time.Duration) *time.Time { v := base.Add(d); return &v }
 
 	cases := []struct {
 		name           string
@@ -553,8 +553,8 @@ func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
 		{
 			name: "newer row with lower id wins over legacy row with higher id",
 			bugs: []dupBug{
-				{id: 900001, status: jiratype.StatusVerified, summary: "current", changeTime: ts(time.Minute)},
-				{id: 900002, status: jiratype.StatusNew, summary: "legacy", changeTime: ts(0)},
+				{id: 900001, status: jiratype.StatusVerified, summary: "current", changeTime: changeTimeAt(time.Minute)},
+				{id: 900002, status: jiratype.StatusNew, summary: "legacy", changeTime: changeTimeAt(0)},
 			},
 			expectBugID:    900001,
 			expectDesc:     "current",
@@ -563,8 +563,8 @@ func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
 		{
 			name: "newer row with higher id wins over legacy row with lower id",
 			bugs: []dupBug{
-				{id: 900011, status: jiratype.StatusClosed, summary: "legacy", changeTime: ts(0)},
-				{id: 900012, status: jiratype.StatusNew, summary: "current", changeTime: ts(time.Minute)},
+				{id: 900011, status: jiratype.StatusClosed, summary: "legacy", changeTime: changeTimeAt(0)},
+				{id: 900012, status: jiratype.StatusNew, summary: "current", changeTime: changeTimeAt(time.Minute)},
 			},
 			expectBugID:    900012,
 			expectDesc:     "current",
@@ -573,10 +573,10 @@ func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
 		{
 			name: "triage already linked to legacy row relinks to latest",
 			bugs: []dupBug{
-				{id: 900021, status: jiratype.StatusNew, summary: "legacy", changeTime: ts(0)},
-				{id: 900022, status: jiratype.StatusOnQA, summary: "current", changeTime: ts(time.Minute)},
+				{id: 900021, status: jiratype.StatusNew, summary: "legacy", changeTime: changeTimeAt(0)},
+				{id: 900022, status: jiratype.StatusOnQA, summary: "current", changeTime: changeTimeAt(time.Minute)},
 			},
-			preLinkID:      ptrUint(900021),
+			preLinkID:      uintPtr(900021),
 			expectBugID:    900022,
 			expectDesc:     "current",
 			expectResolved: true,
@@ -584,8 +584,8 @@ func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
 		{
 			name: "identical change times break ties by highest id",
 			bugs: []dupBug{
-				{id: 900031, status: jiratype.StatusNew, summary: "lower id", changeTime: ts(0)},
-				{id: 900032, status: jiratype.StatusNew, summary: "higher id", changeTime: ts(0)},
+				{id: 900031, status: jiratype.StatusNew, summary: "lower id", changeTime: changeTimeAt(0)},
+				{id: 900032, status: jiratype.StatusNew, summary: "higher id", changeTime: changeTimeAt(0)},
 			},
 			expectBugID: 900032,
 			expectDesc:  "higher id",
@@ -593,7 +593,7 @@ func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
 		{
 			name: "missing change time sorts after rows with a change time",
 			bugs: []dupBug{
-				{id: 900041, status: jiratype.StatusNew, summary: "dated", changeTime: ts(0)},
+				{id: 900041, status: jiratype.StatusNew, summary: "dated", changeTime: changeTimeAt(0)},
 				{id: 900042, status: jiratype.StatusNew, summary: "undated", changeTime: nil},
 			},
 			expectBugID: 900041,
@@ -602,8 +602,8 @@ func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
 		{
 			name: "soft-deleted newer row is ignored",
 			bugs: []dupBug{
-				{id: 900051, status: jiratype.StatusNew, summary: "live", changeTime: ts(0)},
-				{id: 900052, status: jiratype.StatusNew, summary: "deleted", changeTime: ts(time.Minute), deleted: true},
+				{id: 900051, status: jiratype.StatusNew, summary: "live", changeTime: changeTimeAt(0)},
+				{id: 900052, status: jiratype.StatusNew, summary: "deleted", changeTime: changeTimeAt(time.Minute), deleted: true},
 			},
 			expectBugID: 900051,
 			expectDesc:  "live",
@@ -659,8 +659,6 @@ func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
 		})
 	}
 }
-
-func ptrUint(v uint) *uint { return &v }
 
 func createBug(t *testing.T, dbc *db.DB, key, status, summary, url string) models.Bug {
 	t.Helper()
