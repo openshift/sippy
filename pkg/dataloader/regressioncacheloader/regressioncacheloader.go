@@ -30,6 +30,10 @@ import (
 // When regressions exceed this limit, test details caching is skipped, though we still do the query for job run tracking.
 const MaxRegressionsToCache = 300
 
+// reportGeneratorFunc generates (and caches) the component report for one view. It is a field on
+// the loader so tests can exercise view processing without a BigQuery or Postgres backed report.
+type reportGeneratorFunc func(ctx context.Context, generator *componentreadiness.ComponentReportGenerator) (*crtype.ComponentReport, error)
+
 // RegressionCacheLoader is a unified loader that handles both component readiness cache priming
 // and regression tracking in a single pass. This eliminates duplicate BigQuery queries that
 // occurred when these were separate loaders.
@@ -52,6 +56,9 @@ type RegressionCacheLoader struct {
 
 	// Regression tracking deps
 	regressionStore componentreadiness.RegressionStore
+
+	// generateReport is the seam used to produce a view's component report.
+	generateReport reportGeneratorFunc
 }
 
 func New(
@@ -71,7 +78,7 @@ func New(
 		return nil, fmt.Errorf("regressionStore must not be nil")
 	}
 
-	return &RegressionCacheLoader{
+	loader := &RegressionCacheLoader{
 		dbc:                  dbc,
 		dataProvider:         dataProvider,
 		config:               config,
@@ -81,7 +88,9 @@ func New(
 		crTimeRoundingOffset: crTimeRoundingOffset,
 		regressionStore:      regressionStore,
 		logger:               log.WithField("loader", "regression-cache"),
-	}, nil
+	}
+	loader.generateReport = loader.generateAndCacheReport
+	return loader, nil
 }
 
 func (l *RegressionCacheLoader) Name() string {
@@ -218,7 +227,7 @@ func (l *RegressionCacheLoader) processView(
 	}
 
 	// Step 1: Generate and cache the component report through the configured provider.
-	report, err := l.generateAndCacheReport(ctx, generator)
+	report, err := l.generateReport(ctx, generator)
 	if err != nil {
 		return nil, err
 	}

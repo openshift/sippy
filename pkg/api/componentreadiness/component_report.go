@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -43,6 +42,42 @@ const (
 	ComponentReportCacheKeyPrefix   = "ComponentReport~"
 	TestDetailsReportCacheKeyPrefix = "TestDetailsReportV2~"
 )
+
+// errEmptySampleStatus reports that the sample side of a report came back with no test status
+// rows at all. A healthy release window yields thousands of rows, so an empty sample means the
+// data was unavailable (while the cumulative summary tables are rebuilt, for example) rather
+// than that every test passed. Reporting it as an error keeps regression tracking from reading
+// an empty report as "every regression resolved".
+var errEmptySampleStatus = errors.New("sample test status query returned no rows")
+
+// validateSampleStatus rejects a report whose release window sample query returned nothing.
+// sampleCount is the number of sample test status rows read for reqOpts.SampleRelease, counted
+// before any spot-check rows are merged in.
+//
+// Only a report covering a whole release can read an empty sample as an outage, so four kinds
+// of request are exempt:
+//
+//   - Filtered requests (component, capability or test drilldowns) ask about a slice of the
+//     release, and both providers apply that filter before returning. A test that was removed or
+//     renamed therefore has baseline rows and no sample rows while the release itself is healthy.
+//     These reports have to reach the regular analysis, which reports that as MissingSample.
+//     Note that an unfiltered request still carries one empty TestIdentification, so the
+//     exemption turns on whether a filter was actually set, not on the slice length.
+//   - Spot-check requests draw their rows from other windows and job tiers, so those rows may be
+//     the only ones the report has.
+//   - Pull request and payload samples have no rows until their jobs run.
+func validateSampleStatus(sampleCount int, reqOpts reqopts.RequestOptions) error {
+	sampleRelease := reqOpts.SampleRelease
+	if sampleCount > 0 ||
+		reqopts.AnyAreFiltered(reqOpts.TestIDOptions) ||
+		len(reqOpts.SpotCheckJobSamples) > 0 ||
+		sampleRelease.PullRequestOptions != nil ||
+		sampleRelease.PayloadOptions != nil {
+		return nil
+	}
+	return fmt.Errorf("%w: release %s between %s and %s",
+		errEmptySampleStatus, sampleRelease.Name, sampleRelease.Start, sampleRelease.End)
+}
 
 type GeneratorType string
 
@@ -223,18 +258,11 @@ func (c *ComponentReportGenerator) GetCacheKey() GeneratorCacheKey {
 		SpotCheckJobSamples: normalizeSpotCheckSamples(c.ReqOptions.SpotCheckJobSamples),
 	}
 
-	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
-	// them all and ensure we end up with the same cache key if the slice is null, empty, or has one empty element
-	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], reqopts.TestIdentification{}) ||
-		(c.ReqOptions.TestIDOptions[0].Component == "" &&
-			c.ReqOptions.TestIDOptions[0].Capability == "" &&
-			c.ReqOptions.TestIDOptions[0].TestID == "" &&
-			len(c.ReqOptions.TestIDOptions[0].RequestedVariants) == 0 &&
-			c.ReqOptions.TestIDOptions[0].BaseOverrideRelease == "")) {
-		// some code instantiates an empty request test ID options, standardize on null if we see this to keep cache keys
-		// from missing.
-		cacheKey.TestIDOptions = nil
-	} else if len(c.ReqOptions.TestIDOptions) == 0 {
+	// TestIDOptions initialization differences caused many cache misses. Some code instantiates an
+	// empty request test ID options; standardize on null for the unfiltered cases (null slice,
+	// empty slice, or one empty element) so those all share a cache key.
+	if len(c.ReqOptions.TestIDOptions) == 0 ||
+		(len(c.ReqOptions.TestIDOptions) == 1 && c.ReqOptions.TestIDOptions[0].IsEmpty()) {
 		cacheKey.TestIDOptions = nil
 	}
 
@@ -428,6 +456,14 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 
 	var errs []error
 	for err := range errCh {
+		errs = append(errs, err)
+	}
+
+	// Validate before spot-check rows are merged in, so the count reflects what the release
+	// window itself returned. validateSampleStatus exempts the request shapes whose release
+	// window sample is legitimately empty, including spot-check and drilldown requests.
+	if err := validateSampleStatus(len(sampleStatus), c.ReqOptions); err != nil {
+		log.WithError(err).Error("refusing to build a report with no sample results")
 		errs = append(errs, err)
 	}
 

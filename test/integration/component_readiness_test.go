@@ -4644,6 +4644,84 @@ func TestGenerateReport_MissingSampleAndBasis(t *testing.T) {
 	assert.GreaterOrEqual(t, int(sharedCol.Status), int(crtest.NotSignificant))
 }
 
+// TestGenerateReport_FilteredMissingSample checks the empty sample guard against a real
+// provider. Drilling into a capability whose only test was removed leaves the sample side of
+// the query empty while the release itself is healthy, so the report has to come back with
+// MissingSample rather than being refused as an empty release window.
+func TestGenerateReport_FilteredMissingSample(t *testing.T) {
+	dbc := crTestDB(t)
+	baseRelease := "4.16"
+	sampleRelease := "4.17"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	baseJob := createProwJobWithVC(t, dbc, "periodic-base-filtered-missing", baseRelease, vc)
+	sampleJob := createProwJobWithVC(t, dbc, "periodic-sample-filtered-missing", sampleRelease, vc)
+
+	removedTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] removed filtered test")
+	liveTest := intutil.CreateTest(t, dbc, "openshift-tests:[sig-network] live filtered test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-filtered-missing")
+
+	createTestOwnership(t, dbc, removedTest.ID, &suite.ID, "openshift-tests:removed-filtered", "OldComponent", []string{"Legacy"})
+	createTestOwnership(t, dbc, liveTest.ID, &suite.ID, "openshift-tests:live-filtered", "LiveComponent", []string{"Current"})
+
+	baseLookupStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	sampleLookupStart := civil.Date{Year: 2024, Month: 5, Day: 31}
+	sampleLookupEnd := civil.Date{Year: 2024, Month: 6, Day: 14}
+
+	// removedTest ran in the basis and is gone from the sample release.
+	createCumulativeSummary(t, dbc, baseLookupStart, baseRelease, removedTest.ID, baseJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, baseRelease, removedTest.ID, baseJob.ID, suite.ID, 100, 90, 0)
+
+	// liveTest keeps the sample release populated, so this is not a release wide outage.
+	createCumulativeSummary(t, dbc, baseLookupStart, baseRelease, liveTest.ID, baseJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, baseLookupEnd, baseRelease, liveTest.ID, baseJob.ID, suite.ID, 100, 90, 0)
+	createCumulativeSummary(t, dbc, sampleLookupStart, sampleRelease, liveTest.ID, sampleJob.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, sampleLookupEnd, sampleRelease, liveTest.ID, sampleJob.ID, suite.ID, 100, 90, 0)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := reqopts.RequestOptions{
+		BaseRelease: reqopts.Release{
+			Name:  baseRelease,
+			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		},
+		SampleRelease: reqopts.Release{
+			Name:  sampleRelease,
+			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+		},
+		VariantOption: reqopts.Variants{
+			DBGroupBy:       sets.New[string]("Platform", "Network"),
+			ColumnGroupBy:   sets.New[string]("Platform"),
+			IncludeVariants: map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
+		},
+		AdvancedOption: reqopts.Advanced{
+			MinimumFailure: 1,
+			Confidence:     95,
+		},
+		TestIDOptions: []reqopts.TestIdentification{{
+			Component:  "OldComponent",
+			Capability: "Legacy",
+		}},
+	}
+
+	// The provider applies the drilldown itself, which is what leaves the sample side empty.
+	base, sample, queryErrs := provider.QueryTestStatus(context.Background(), opts)
+	require.Empty(t, queryErrs)
+	require.NotEmpty(t, base, "the removed test still has baseline rows")
+	require.Empty(t, sample, "the drilldown filters every sample row out")
+
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateReport(context.Background())
+	require.Empty(t, errs, "a filtered report with an empty sample must not be refused")
+
+	oldRow := findReportRow(t, report, "OldComponent")
+	oldCol := findReportColumn(t, oldRow, map[string]string{"Platform": "aws"})
+	assert.Equal(t, crtest.MissingSample, oldCol.Status)
+	assert.Empty(t, oldCol.RegressedTests, "MissingSample should not appear in regressed tests")
+}
+
 func TestGenerateReport_VariantGroupingCollapse(t *testing.T) {
 	dbc := crTestDB(t)
 	release := "4.16"
