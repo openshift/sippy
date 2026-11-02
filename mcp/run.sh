@@ -6,14 +6,22 @@ MIN_PYTHON_MINOR=12
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/.venv"
+REQUIREMENTS_LOCK_FILE="$SCRIPT_DIR/requirements.lock"
 HASH_FILE="$VENV_DIR/.requirements.hash"
 LOCK_FILE="$SCRIPT_DIR/.venv-setup.lock"
 
-REQ_HASH=""
-if command -v shasum >/dev/null 2>&1; then
-    REQ_HASH=$(shasum -a 256 "$SCRIPT_DIR/requirements.txt" | cut -d' ' -f1)
-elif command -v sha256sum >/dev/null 2>&1; then
-    REQ_HASH=$(sha256sum "$SCRIPT_DIR/requirements.txt" | cut -d' ' -f1)
+_hash_requirements() {
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$REQUIREMENTS_LOCK_FILE" | cut -d' ' -f1
+    elif command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$REQUIREMENTS_LOCK_FILE" | cut -d' ' -f1
+    fi
+}
+
+REQ_HASH=$(_hash_requirements)
+if [ -z "$REQ_HASH" ]; then
+    echo "unable to hash requirements file: $REQUIREMENTS_LOCK_FILE" >&2
+    exit 1
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -70,11 +78,8 @@ _setup_venv() {
     if _needs_install; then
         _remove_venv
         python3 -m venv "$VENV_DIR"
-        "$VENV_DIR/bin/pip" install --upgrade pip -q
-        "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt" -q
-        if [ -n "$REQ_HASH" ]; then
-            echo "$REQ_HASH" > "$HASH_FILE"
-        fi
+        "$VENV_DIR/bin/pip" install --require-hashes -r "$REQUIREMENTS_LOCK_FILE" -q
+        echo "$REQ_HASH" > "$HASH_FILE"
     fi
 }
 

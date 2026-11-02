@@ -80,7 +80,13 @@ If missing, copy from the example:
 cp .devcontainer/.env.example .devcontainer/.env
 ```
 
-Then read `.devcontainer/.env` and check for empty required values. Only check `ANTHROPIC_VERTEX_PROJECT_ID` when the user confirms they use Claude Code through Vertex AI. For those users, a blank value must be filled in; tell them to edit `.devcontainer/.env` themselves and wait for confirmation. **Do not** ask for the value directly or write to the file yourself. Do not require or block on this value for other users.
+Only check `ANTHROPIC_VERTEX_PROJECT_ID` when the user confirms they use Claude Code through Vertex AI. For those users, check whether the key is present and non-empty without reading or printing its value:
+
+```bash
+grep -Eq '^ANTHROPIC_VERTEX_PROJECT_ID=.+$' .devcontainer/.env
+```
+
+If the check fails, tell them to edit `.devcontainer/.env` themselves and wait for confirmation. **Do not** ask for the value directly, read the value, print the value, or write to the file yourself. Do not require or block on this value for other users.
 
 ### 6. Start the container
 

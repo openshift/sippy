@@ -15,7 +15,7 @@ def test_concurrent_stale_venv_repair_serializes_without_flock(tmp_path: Path):
     script_dir = repo / "mcp"
     script_dir.mkdir(parents=True)
     shutil.copy2(Path(__file__).with_name("run.sh"), script_dir / "run.sh")
-    (script_dir / "requirements.txt").write_text("fastmcp\n", encoding="utf-8")
+    (script_dir / "requirements.lock").write_text("fastmcp\n", encoding="utf-8")
 
     stale_marker = tmp_path / "stale"
     stale_marker.write_text("", encoding="utf-8")
@@ -28,6 +28,7 @@ def test_concurrent_stale_venv_repair_serializes_without_flock(tmp_path: Path):
         "dirname",
         "pwd",
         "shasum",
+        "sha256sum",
         "cut",
         "chmod",
         "mv",
@@ -115,7 +116,7 @@ def test_healthy_venv_without_hash_is_preserved(tmp_path: Path):
     script_dir = repo / "mcp"
     script_dir.mkdir(parents=True)
     shutil.copy2(Path(__file__).with_name("run.sh"), script_dir / "run.sh")
-    requirements = script_dir / "requirements.txt"
+    requirements = script_dir / "requirements.lock"
     requirements.write_text("fastmcp\n", encoding="utf-8")
 
     venv_bin = script_dir / ".venv" / "bin"
@@ -140,3 +141,169 @@ def test_healthy_venv_without_hash_is_preserved(tmp_path: Path):
     hash_file = script_dir / ".venv" / ".requirements.hash"
     assert hash_file.read_text(encoding="utf-8").strip() == expected_hash
     assert venv_python.read_text(encoding="utf-8") == "#!/bin/sh\nexit 0\n"
+
+
+def _launcher_stub_bin(tmp_path: Path) -> Path:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for command in (
+        "dirname",
+        "shasum",
+        "sha256sum",
+        "cut",
+        "chmod",
+        "mv",
+        "rm",
+        "mkdir",
+        "cat",
+    ):
+        source = shutil.which(command)
+        if source is not None:
+            os.symlink(source, bin_dir / command)
+    return bin_dir
+
+
+def _write_python_stub(bin_dir: Path) -> None:
+    python_stub = """#!/bin/sh
+if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then
+    mkdir -p "$3/bin"
+    cat > "$3/bin/python" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+    chmod +x "$3/bin/python"
+    cat > "$3/bin/pip" <<'EOF'
+#!/bin/sh
+echo "$@" >> "$PIP_LOG"
+EOF
+    chmod +x "$3/bin/pip"
+    exit 0
+fi
+if [ "$1" = "-c" ]; then
+    if [ "$2" = "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" ]; then
+        echo 3.12
+        exit 0
+    fi
+    if [ "$2" = "import sys; print(int(sys.version_info >= ($MIN_PYTHON_MAJOR, $MIN_PYTHON_MINOR)))" ]; then
+        echo 1
+        exit 0
+    fi
+fi
+exit 1
+"""
+    python_path = bin_dir / "python3"
+    python_path.write_text(python_stub, encoding="utf-8")
+    python_path.chmod(0o755)
+
+
+def _run_setup_only(script_dir: Path, env: dict[str, str]):
+    return subprocess.run(
+        ["/bin/sh", str(script_dir / "run.sh"), "--sippy-dev-setup-only"],
+        cwd=script_dir.parent,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def test_stale_requirements_hash_rebuilds_venv(tmp_path: Path):
+    repo = tmp_path / "repo"
+    script_dir = repo / "mcp"
+    script_dir.mkdir(parents=True)
+    shutil.copy2(Path(__file__).with_name("run.sh"), script_dir / "run.sh")
+    requirements = script_dir / "requirements.lock"
+    requirements.write_text("locked dependencies\n", encoding="utf-8")
+
+    venv_bin = script_dir / ".venv" / "bin"
+    venv_bin.mkdir(parents=True)
+    old_python = venv_bin / "python"
+    old_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    old_python.chmod(0o755)
+    (script_dir / ".venv" / ".requirements.hash").write_text(
+        "stale-hash\n", encoding="utf-8"
+    )
+
+    bin_dir = _launcher_stub_bin(tmp_path)
+    _write_python_stub(bin_dir)
+    pip_log = tmp_path / "pip.log"
+    result = _run_setup_only(
+        script_dir,
+        {
+            "PATH": str(bin_dir),
+            "HOME": str(tmp_path),
+            "PIP_LOG": str(pip_log),
+            "MIN_PYTHON_MAJOR": "3",
+            "MIN_PYTHON_MINOR": "12",
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    expected_hash = hashlib.sha256(requirements.read_bytes()).hexdigest()
+    hash_file = script_dir / ".venv" / ".requirements.hash"
+    assert hash_file.read_text(encoding="utf-8").strip() == expected_hash
+    pip_args = pip_log.read_text(encoding="utf-8")
+    assert "--require-hashes" in pip_args
+    assert "requirements.lock" in pip_args
+
+
+def test_matching_hash_with_unusable_venv_rebuilds(tmp_path: Path):
+    repo = tmp_path / "repo"
+    script_dir = repo / "mcp"
+    script_dir.mkdir(parents=True)
+    shutil.copy2(Path(__file__).with_name("run.sh"), script_dir / "run.sh")
+    requirements = script_dir / "requirements.lock"
+    requirements.write_text("locked dependencies\n", encoding="utf-8")
+    expected_hash = hashlib.sha256(requirements.read_bytes()).hexdigest()
+
+    venv_bin = script_dir / ".venv" / "bin"
+    venv_bin.mkdir(parents=True)
+    unusable_python = venv_bin / "python"
+    unusable_python.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    unusable_python.chmod(0o755)
+    (script_dir / ".venv" / ".requirements.hash").write_text(
+        expected_hash, encoding="utf-8"
+    )
+
+    bin_dir = _launcher_stub_bin(tmp_path)
+    _write_python_stub(bin_dir)
+    result = _run_setup_only(
+        script_dir,
+        {
+            "PATH": str(bin_dir),
+            "HOME": str(tmp_path),
+            "PIP_LOG": str(tmp_path / "pip.log"),
+            "MIN_PYTHON_MAJOR": "3",
+            "MIN_PYTHON_MINOR": "12",
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "pip.log").is_file()
+    hash_file = script_dir / ".venv" / ".requirements.hash"
+    assert hash_file.read_text(encoding="utf-8").strip() == expected_hash
+
+
+def test_requirements_hashing_failure_fails_with_clear_error(tmp_path: Path):
+    repo = tmp_path / "repo"
+    script_dir = repo / "mcp"
+    script_dir.mkdir(parents=True)
+    shutil.copy2(Path(__file__).with_name("run.sh"), script_dir / "run.sh")
+    requirements = script_dir / "requirements.lock"
+    requirements.write_text("locked dependencies\n", encoding="utf-8")
+
+    bin_dir = _launcher_stub_bin(tmp_path)
+    (bin_dir / "shasum").unlink(missing_ok=True)
+    failing_shasum = bin_dir / "shasum"
+    failing_shasum.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    failing_shasum.chmod(0o755)
+
+    result = _run_setup_only(
+        script_dir,
+        {
+            "PATH": str(bin_dir),
+            "HOME": str(tmp_path),
+            "MIN_PYTHON_MAJOR": "3",
+            "MIN_PYTHON_MINOR": "12",
+        },
+    )
+    assert result.returncode != 0
+    assert f"unable to hash requirements file: {requirements}" in result.stderr

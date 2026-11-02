@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-11-02T18:22:16.455471+00:00'
+generated_at: '2026-11-02T19:58:11.027719+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -155,7 +155,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:3e6d95d12765586d91d19ad4cb23bd6fd5944af43d1daf40c2ab8ef5d73cb260
+  content_hash: sha256:fdf3a4a6bda21a9a61d5880f67c1b5275025e2bcc8fccea53bdb704a3287c714
 - kind: project-relative
   target: claude
   value: .claude/rules/mcp.md
@@ -308,7 +308,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:0cb7a25b3ce25bdb9a9beca9f73f6dd2a263c07bdf541ad3b3e1ca2f49b4e7df
+  content_hash: sha256:c8d6d34a7e7fdb41c4f4428ae79ae036e06b83c81061be51cf733914689a2df1
 - kind: project-relative
   target: claude
   value: .claude/skills/sippy-dev-tests
@@ -506,7 +506,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:0cb7a25b3ce25bdb9a9beca9f73f6dd2a263c07bdf541ad3b3e1ca2f49b4e7df
+  content_hash: sha256:c8d6d34a7e7fdb41c4f4428ae79ae036e06b83c81061be51cf733914689a2df1
 - kind: project-relative
   target: codex
   value: .agents/skills/sippy-dev-tests
@@ -740,7 +740,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:f5bf4422bfd3253e9cf3a6e602ff60aec31acac83755a9bc50d1a36182ff6236
+  content_hash: sha256:bbfb570fdd965d1e0e93d4e44463af2e1aacb1aa5667387e838de501b34ac037
 - kind: project-relative
   target: cursor
   value: .cursor/rules/mcp.mdc
@@ -884,7 +884,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: null
+  content_hash: sha256:4bcc3248c4ac857ab84e5a35408a9011691dc7728ba80e7ff231843c54f8a46e
 - kind: uri
   target: mcp
   value: atlassian
@@ -902,7 +902,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: null
+  content_hash: sha256:5f2ab24f1e0fb0382a15201bd47f1b03b78a543ab2d2d5b15e6773410f5412b7
 - kind: uri
   target: mcp
   value: atlassian
@@ -1089,7 +1089,7 @@ mcp_configs:
     transport: stdio
     args:
     - -c
-    - npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH:+--executable-path
+    - npx @playwright/mcp@0.0.84 --viewport-size 1440,900 ${CHROME_PATH:+--executable-path
       "$CHROME_PATH"}
     registry: false
     command: sh
@@ -1234,7 +1234,7 @@ local_deployed_file_hashes:
   .agents/skills/sippy-dev-regression-cache/SKILL.md: sha256:978125943af247ab293f3314b03419409f38f833939a31e1fa4a45cd1490c474
   .agents/skills/sippy-dev-restore-prodlike/SKILL.md: sha256:8188c4c1f27f18f2b7eea6fb7a340402aa8c51bed1e649d6c2e350770aaf800a
   .agents/skills/sippy-dev-serve/SKILL.md: sha256:b7838a513236ea915a54fc41fe03260b95943e70cf3a6c7c9fbc4232c1162cd4
-  .agents/skills/sippy-dev-setup/SKILL.md: sha256:0cb7a25b3ce25bdb9a9beca9f73f6dd2a263c07bdf541ad3b3e1ca2f49b4e7df
+  .agents/skills/sippy-dev-setup/SKILL.md: sha256:c8d6d34a7e7fdb41c4f4428ae79ae036e06b83c81061be51cf733914689a2df1
   .agents/skills/sippy-dev-tests/SKILL.md: sha256:eed3d8927aebc30a380886523db9e1ca4f821a7dd28888bad4ce2f6463b252d0
   .agents/skills/sippy-generate-release-views/SKILL.md: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
   .agents/skills/sippy-update-ga-release-views/SKILL.md: sha256:8fb3e633d401b21187499a5b4f70354ee07a9097e4e6a4095e1b152d0aa1d834
@@ -1255,7 +1255,7 @@ local_deployed_file_hashes:
   .claude/rules/dev-commands.md: sha256:85313f945794f58edc91896146112a2dfb0647a99007fa63a0a3fa8230582f42
   .claude/rules/docs.md: sha256:0025ced9676e2ddc19c1b32e2ff5724fbbfee9e20d1f0976ed5a59ccdbf8285b
   .claude/rules/frontend.md: sha256:28db16aa2c794b6e075e7fb5eaec5f27063da1624c4fad1121b0fd3faa06ba66
-  .claude/rules/general.md: sha256:3e6d95d12765586d91d19ad4cb23bd6fd5944af43d1daf40c2ab8ef5d73cb260
+  .claude/rules/general.md: sha256:fdf3a4a6bda21a9a61d5880f67c1b5275025e2bcc8fccea53bdb704a3287c714
   .claude/rules/mcp.md: sha256:ddfe965e7cf8cddbba1374c6ae582a20ac0af17c958bf10e1a4edff6ff2ad0b8
   .claude/rules/query.md: sha256:794e82b9f9684609c1aae538fcd2b7062c06d85c99a79d81345650124d16750b
   .claude/rules/testing.md: sha256:aef755feb8a6829ddb1d2609b98b17380c3c457cc86fd09158c2ec1d7432a893
@@ -1265,7 +1265,7 @@ local_deployed_file_hashes:
   .claude/skills/sippy-dev-regression-cache/SKILL.md: sha256:978125943af247ab293f3314b03419409f38f833939a31e1fa4a45cd1490c474
   .claude/skills/sippy-dev-restore-prodlike/SKILL.md: sha256:8188c4c1f27f18f2b7eea6fb7a340402aa8c51bed1e649d6c2e350770aaf800a
   .claude/skills/sippy-dev-serve/SKILL.md: sha256:b7838a513236ea915a54fc41fe03260b95943e70cf3a6c7c9fbc4232c1162cd4
-  .claude/skills/sippy-dev-setup/SKILL.md: sha256:0cb7a25b3ce25bdb9a9beca9f73f6dd2a263c07bdf541ad3b3e1ca2f49b4e7df
+  .claude/skills/sippy-dev-setup/SKILL.md: sha256:c8d6d34a7e7fdb41c4f4428ae79ae036e06b83c81061be51cf733914689a2df1
   .claude/skills/sippy-dev-tests/SKILL.md: sha256:eed3d8927aebc30a380886523db9e1ca4f821a7dd28888bad4ce2f6463b252d0
   .claude/skills/sippy-generate-release-views/SKILL.md: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
   .claude/skills/sippy-update-ga-release-views/SKILL.md: sha256:8fb3e633d401b21187499a5b4f70354ee07a9097e4e6a4095e1b152d0aa1d834
@@ -1287,7 +1287,7 @@ local_deployed_file_hashes:
   .cursor/rules/dev-commands.mdc: sha256:652a0a5c6746175c5a5350164aa2d143a0ba626d6aca567945d8c42ba08244b0
   .cursor/rules/docs.mdc: sha256:5cfb465cf2b81b824db529b792747fc9e7b66c57ff7d6701b070da016ee85a57
   .cursor/rules/frontend.mdc: sha256:6d92ebb3168603d8783912b6269b5021a5055d3ab60e7a7cbfd828adeef403d0
-  .cursor/rules/general.mdc: sha256:f5bf4422bfd3253e9cf3a6e602ff60aec31acac83755a9bc50d1a36182ff6236
+  .cursor/rules/general.mdc: sha256:bbfb570fdd965d1e0e93d4e44463af2e1aacb1aa5667387e838de501b34ac037
   .cursor/rules/mcp.mdc: sha256:d3df4022abb1fb83eedf950f82ddcf003bae72642f8b8199364d7655d6003ddd
   .cursor/rules/query.mdc: sha256:0140b0629330fa02022fd7a87c0f767f9baa30ed0864a3926b6b1b4a8017edec
   .cursor/rules/testing.mdc: sha256:cbaf253403eeee589131bd310b511fb0db3ed2fd8cc2d8b6cecb4cd0f1d46a5d

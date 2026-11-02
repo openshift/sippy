@@ -1,6 +1,6 @@
 [mcp_servers.playwright]
 command = "sh"
-args = ["-c", "npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"]
+args = ["-c", "npx @playwright/mcp@0.0.84 --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"]
 
 [mcp_servers.playwright.env]
 

@@ -8,6 +8,7 @@ AGENTS.md linguist-generated=true
 CLAUDE.md linguist-generated=true
 GEMINI.md linguist-generated=true
 apm.lock.yaml linguist-generated=true
+mcp/requirements.lock linguist-generated=true
 config/AGENTS.md linguist-generated=true
 config/CLAUDE.md linguist-generated=true
 mcp/AGENTS.md linguist-generated=true

@@ -2,19 +2,25 @@
 
 Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor**, **Claude Code**, and **Codex**.
 
-Simple commands (migrate, lint, test) are documented in project instructions via [APM](../apm.yml) and can be run directly — see `.apm/instructions/dev-commands.instructions.md`.
+Simple commands (migrate, lint, test) are documented in project instructions via [APM](../apm.yml) and can be run directly; see `.apm/instructions/dev-commands.instructions.md`.
 
 ## Setup
 
 **`mcp/run.sh`** is the entry point. It auto-creates the virtualenv (`mcp/.venv`) and installs dependencies on first run. No manual setup is required. The devcontainer's `post-create.sh` pre-warms the venv with `uv venv --seed` so `mcp/.venv/bin/pip` exists. `make test` and `mcp/run.sh` call that pip. `uv venv` without `--seed` does not install it.
 
 - **Python 3.12** required. The devcontainer image installs it; on macOS use `brew install python@3.12`.
+- Dependencies are installed from the hashed lockfile at `mcp/requirements.lock`.
+- Regenerate the lockfile after changing `mcp/requirements.txt`:
+
+  ```bash
+  uv pip compile mcp/requirements.txt --generate-hashes --python-version 3.12 --output-file mcp/requirements.lock
+  ```
+
 - **Manual venv setup** (if you prefer not to use `run.sh`):
 
   ```bash
   python3.12 -m venv mcp/.venv
-  mcp/.venv/bin/pip install --upgrade pip
-  mcp/.venv/bin/pip install -r mcp/requirements.txt
+  mcp/.venv/bin/pip install --require-hashes -r mcp/requirements.lock
   ```
 
 ## Editor configuration
@@ -41,7 +47,7 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 | `restore_prodlike_db`| `scripts/restore_prodlike_db.sh` (drop/recreate `prodlike` from backup)    | `sippy-dev-logs/restore_prodlike_db.log`|
 | `sippy_serve`        | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)     | `sippy-dev-logs/sippy_serve.log`        |
 | `sippy_ng_start`     | Background `npm start` in `sippy-ng/` (typically port **3000**)             | `sippy-dev-logs/sippy_ng_start.log`     |
-| `sippy_stop`         | Stops background `sippy_serve` and `sippy_ng_start` processes               | —                                       |
+| `sippy_stop`         | Stops background `sippy_serve` and `sippy_ng_start` processes               | none                                    |
 | `run_e2e`            | `make e2e` (BigQuery coverage is opt-in)                                    | `sippy-dev-logs/run_e2e.log`            |
 
 Optional parameters (timeouts, paths, DSNs, etc.) are documented on each function in **`server.py`**.
@@ -63,11 +69,11 @@ Optional parameters (timeouts, paths, DSNs, etc.) are documented on each functio
 
 ## Agent skills
 
-Agent-oriented shortcuts are defined in **`.apm/skills/`** and deployed by **`make apm`** to editor command and skill directories, including **`.claude/commands/`**, **`.claude/skills/`**, and **`.agents/skills/`**, for example:
+Agent-oriented shortcuts are defined in **`.apm/skills/`** and deployed by **`make apm`** to editor command and skill directories, including **`.claude/commands/`**, **`.claude/skills/`**, **`.agents/skills/`**, and **`.codex/`**, for example:
 
 - `sippy-dev-migrate`, `sippy-dev-regression-cache`, `sippy-dev-serve`, `sippy-dev-frontend`
 - `sippy-dev-app` (backend + frontend)
-- `sippy-dev-tests` (order: `CI=true make lint` → `make test` → `make e2e`)
+- `sippy-dev-tests` (order: `make lint` → `make test` → `make e2e`)
 - `sippy-generate-release-views` (create next-release Component Readiness views from an existing release)
 
 ## Changing the server

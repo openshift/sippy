@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import os
 import secrets
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -9,6 +10,7 @@ from unittest import mock
 
 import pytest
 
+import server
 from server import (
     REPO_ROOT,
     _data_mode,
@@ -19,6 +21,7 @@ from server import (
     _repo_path,
     _resolve_bigquery_creds,
     _validate_dsn,
+    _validate_prodlike_backup,
     _validate_redis_url,
     _trim,
     _wait_for_url,
@@ -27,6 +30,19 @@ from server import (
 )
 
 E2E_SCRIPT = REPO_ROOT / "scripts" / "e2e.sh"
+
+
+class FakeProcess:
+    returncode = 0
+
+    async def wait(self) -> int:
+        return 0
+
+    async def terminate(self) -> None:
+        return None
+
+    async def kill(self) -> None:
+        return None
 
 
 class TestRepoPath:
@@ -74,6 +90,124 @@ class TestRepoPath:
     def test_normalizes_inner_dotdot(self):
         result = _repo_path("config/../config/views.yaml")
         assert result == (REPO_ROOT / "config" / "views.yaml").resolve()
+
+
+class TestValidateProdlikeBackup:
+    def test_ordinary_directory_rejected(self):
+        error = _validate_prodlike_backup(REPO_ROOT / "mcp")
+        assert error is not None
+        assert "toc.dat not found" in error
+
+    def test_directory_backup_with_toc_accepted(self, tmp_path: Path):
+        backup = tmp_path / "backup.dump"
+        backup.mkdir()
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        assert _validate_prodlike_backup(backup) is None
+
+    def test_sql_file_accepted(self, tmp_path: Path):
+        backup = tmp_path / "backup.sql"
+        backup.write_text("", encoding="utf-8")
+        assert _validate_prodlike_backup(backup) is None
+
+    def test_dump_file_accepted(self, tmp_path: Path):
+        backup = tmp_path / "backup.dump"
+        backup.write_text("", encoding="utf-8")
+        assert _validate_prodlike_backup(backup) is None
+
+    def test_missing_path_rejected(self, tmp_path: Path):
+        error = _validate_prodlike_backup(tmp_path / "missing")
+        assert error is not None
+        assert "not found" in error
+
+
+def _restore_with_stub_subprocess(backup_path: Path | str):
+    create_subprocess = mock.AsyncMock(return_value=FakeProcess())
+    with mock.patch("server.asyncio.create_subprocess_exec", create_subprocess):
+        result = asyncio.run(server.restore_prodlike_db(str(backup_path)))
+    return result, create_subprocess
+
+
+class TestRestoreProdlikeDb:
+    def test_ordinary_directory_rejected_before_restore_script(self):
+        result, create_subprocess = _restore_with_stub_subprocess(
+            REPO_ROOT / "mcp"
+        )
+        assert "toc.dat not found" in result
+        create_subprocess.assert_not_awaited()
+
+    def test_missing_path_rejected_before_restore_script(self):
+        result, create_subprocess = _restore_with_stub_subprocess(
+            REPO_ROOT / "missing-backup"
+        )
+        assert "not found" in result
+        create_subprocess.assert_not_awaited()
+
+    def test_empty_path_rejected_before_restore_script(self):
+        result, create_subprocess = _restore_with_stub_subprocess("")
+        assert result == "backup path is empty"
+        create_subprocess.assert_not_awaited()
+
+    def test_repository_root_rejected_before_restore_script(self):
+        result, create_subprocess = _restore_with_stub_subprocess(".")
+        assert "repository root" in result
+        create_subprocess.assert_not_awaited()
+
+    def _run_restore_script(self, tmp_path: Path, backup_name: str):
+        repo = tmp_path / "repo"
+        script_dir = repo / "scripts"
+        script_dir.mkdir(parents=True)
+        shutil.copy2(
+            REPO_ROOT / "scripts" / "restore_prodlike_db.sh",
+            script_dir / "restore_prodlike_db.sh",
+        )
+
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        for command in ("bash", "dirname", "realpath", "sed"):
+            source = shutil.which(command)
+            assert source is not None
+            os.symlink(source, bin_dir / command)
+        command_log = tmp_path / "commands.log"
+        for command in ("psql", "pg_restore"):
+            stub = bin_dir / command
+            stub.write_text(
+                f'#!/bin/sh\necho "{command} $*" >> "$COMMAND_LOG"\n',
+                encoding="utf-8",
+            )
+            stub.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(script_dir / "restore_prodlike_db.sh"), backup_name],
+            cwd=repo,
+            env={
+                "PATH": str(bin_dir),
+                "HOME": str(tmp_path),
+                "COMMAND_LOG": str(command_log),
+                "SIPPY_PRODLIKE_DATABASE_DSN": (
+                    "postgresql://postgres:password@localhost:5432/prodlike"
+                ),
+            },
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        return command_log.read_text(encoding="utf-8")
+
+    def test_valid_directory_backup_reaches_pg_restore(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "valid.dump"
+        backup.mkdir(parents=True)
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        commands = self._run_restore_script(tmp_path, "backups/valid.dump")
+        assert "pg_restore " in commands
+
+    def test_sql_backup_reaches_psql(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "backup.sql"
+        backup.parent.mkdir(parents=True)
+        backup.write_text("", encoding="utf-8")
+        commands = self._run_restore_script(tmp_path, "backups/backup.sql")
+        assert "psql " in commands
+        assert "backup.sql" in commands
 
 
 class TestTrim:

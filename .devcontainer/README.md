@@ -1,19 +1,19 @@
 # Devcontainer Setup
 
 The devcontainer provides a full-stack development environment with Go, Node.js,
-PostgreSQL, Redis, and all build tools. It runs on **Podman** and works with both
-**Cursor** and **Claude Code**.
+PostgreSQL, Redis, and all build tools. It runs on **Podman** and works with
+**Cursor**, **Claude Code**, and **Codex**.
 
 ## Quick start
 
-Run the `/sippy-dev-setup` slash command in Claude Code or Cursor. It detects your
-OS, checks prerequisites, creates the `.env` file, starts the container, and walks
-you through GCP authentication.
+Run the `/sippy-dev-setup` slash command in Claude Code, Cursor, or Codex. It detects
+your OS, checks prerequisites, creates the `.env` file, starts the container, and
+walks you through GCP authentication.
 
 ## What you'll need to provide
 
-- **GCP project ID** (`ANTHROPIC_VERTEX_PROJECT_ID`) — for Claude Code via Vertex AI
-- **GCP auth** — run `gcloud auth application-default login` on the host before starting the container (credentials are mounted read-only)
+- **GCP project ID** (`ANTHROPIC_VERTEX_PROJECT_ID`) for Claude Code via Vertex AI
+- **GCP auth**: run `gcloud auth application-default login` on the host before starting the container (credentials are mounted read-only)
 - **BigQuery job SA JSON** at **`/workspace/sippy-bigquery-job-importer-key.json`** (gitignored); **`SIPPY_BIGQUERY_CREDENTIALS_FILE`** defaults to that path in `devcontainer.json`. Override in `.devcontainer/.env` if your key lives elsewhere.
 
 ## Manual setup
@@ -63,6 +63,11 @@ claude
 ### Cursor
 
 Open the command palette and run "Dev Containers: Attach to Running Container" > `sippy-dev`.
+
+### Codex
+
+Open the repository in Codex with this checkout as the workspace. The repository
+MCP and skill configuration is generated under `.codex/` and `.agents/`.
 
 ## Lint and e2e
 
@@ -115,8 +120,9 @@ the database and Redis environment variables from `devcontainer.json`, and run
 MCP dependencies, builds Sippy, initializes seed data, and migrates the
 prod-like database, so use development databases intended for these operations.
 The MCP virtualenv is created with `uv venv --seed` because `make test` and
-`mcp/run.sh` call `mcp/.venv/bin/pip`. `uv venv` without `--seed` does not
-install pip. Reusing this `post-create.sh` picks up that behavior.
+`mcp/run.sh` call `mcp/.venv/bin/pip`. Both install the hashed lockfile at
+`mcp/requirements.lock` with `pip --require-hashes`. `uv venv` without `--seed`
+does not install pip. Reusing this `post-create.sh` picks up that behavior.
 
 `make test-bdd` installs Playwright Chromium when it runs. That browser is
 not part of the image build.
