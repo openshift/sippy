@@ -30,6 +30,23 @@ import (
 // When regressions exceed this limit, test details caching is skipped, though we still do the query for job run tracking.
 const MaxRegressionsToCache = 300
 
+// viewTimeout bounds the time a single view may spend generating its reports. Views are
+// processed sequentially and a Postgres backed component report can take tens of minutes,
+// so each view needs its own budget. A deadline shared by every view lets the first few
+// consume it all, leaving the rest to fail instantly with context.DeadlineExceeded.
+// The -main views are the slowest at roughly 20 minutes on Postgres, so 45 minutes leaves
+// comfortable headroom while still catching a view that is genuinely wedged.
+const viewTimeout = 45 * time.Minute
+
+// loadTimeout is a generous safety net for an entire load cycle, so a wedged query cannot
+// keep the loader running indefinitely. Per-view budgeting is done with viewTimeout.
+const loadTimeout = 6 * time.Hour
+
+// reportGeneratorFunc generates (and caches) the component report for one view. It is a
+// field on the loader so tests can exercise view processing, including its deadline
+// handling, without a BigQuery or Postgres backed report generation.
+type reportGeneratorFunc func(ctx context.Context, generator *componentreadiness.ComponentReportGenerator) (*crtype.ComponentReport, error)
+
 // RegressionCacheLoader is a unified loader that handles both component readiness cache priming
 // and regression tracking in a single pass. This eliminates duplicate BigQuery queries that
 // occurred when these were separate loaders.
@@ -52,6 +69,11 @@ type RegressionCacheLoader struct {
 
 	// Regression tracking deps
 	regressionStore componentreadiness.RegressionStore
+
+	// viewTimeout is the per-view deadline, defaulted to the viewTimeout constant.
+	viewTimeout time.Duration
+	// generateReport is the seam used to produce a view's component report.
+	generateReport reportGeneratorFunc
 }
 
 func New(
@@ -71,7 +93,7 @@ func New(
 		return nil, fmt.Errorf("regressionStore must not be nil")
 	}
 
-	return &RegressionCacheLoader{
+	loader := &RegressionCacheLoader{
 		dbc:                  dbc,
 		dataProvider:         dataProvider,
 		config:               config,
@@ -80,8 +102,11 @@ func New(
 		crTimeRoundingFactor: crTimeRoundingFactor,
 		crTimeRoundingOffset: crTimeRoundingOffset,
 		regressionStore:      regressionStore,
+		viewTimeout:          viewTimeout,
 		logger:               log.WithField("loader", "regression-cache"),
-	}, nil
+	}
+	loader.generateReport = loader.generateAndCacheReport
+	return loader, nil
 }
 
 func (l *RegressionCacheLoader) Name() string {
@@ -93,7 +118,7 @@ func (l *RegressionCacheLoader) Errors() []error {
 }
 
 func (l *RegressionCacheLoader) Load() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+	ctx, cancel := context.WithTimeout(context.Background(), loadTimeout)
 	defer cancel()
 
 	start := time.Now()
@@ -200,16 +225,43 @@ func (l *RegressionCacheLoader) Load() {
 // processView handles a single view: generates the component report, caches it if needed,
 // syncs regressions if needed, generates test details, caches them, and syncs job runs.
 // Returns the list of active regressions for this view (nil if regression tracking is disabled).
+// The view gets its own deadline, so a slow view fails on its own rather than consuming the
+// time budget of the views processed after it.
 func (l *RegressionCacheLoader) processView(
 	ctx context.Context,
 	view crview.View,
 	cacheOpts cache.RequestOptions,
 	vLog *log.Entry,
-) ([]*models.TestRegression, error) {
+) (activeRegressions []*models.TestRegression, err error) {
+
+	parentCtx := ctx
+	ctx, cancel := context.WithTimeout(ctx, l.viewTimeout)
+	defer cancel()
 
 	start := time.Now()
 	defer func() {
-		vLog.WithField("duration", time.Since(start)).Info("processed view")
+		vLog := vLog.WithField("duration", time.Since(start))
+		if err != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			// A load cycle deadline reaches the view context as DeadlineExceeded too, so
+			// attribute the expiry to whichever deadline actually passed. Blaming the view
+			// would send readers hunting for a slow view that was merely last in line.
+			timeoutDesc := fmt.Sprintf("the %s per-view timeout", l.viewTimeout)
+			if errors.Is(parentCtx.Err(), context.DeadlineExceeded) {
+				timeoutDesc = "the load cycle timeout"
+			}
+			err = fmt.Errorf("view %s exceeded %s (%w): %v",
+				view.Name, timeoutDesc, context.DeadlineExceeded, err)
+			// Only regression tracking views feed the closing decision.
+			if view.RegressionTracking.Enabled {
+				vLog.WithError(err).Warnf(
+					"view %s timed out, regression closing will be skipped for release %s",
+					view.Name, view.SampleRelease.Name)
+			} else {
+				vLog.WithError(err).Warnf("view %s timed out", view.Name)
+			}
+			return
+		}
+		vLog.Info("processed view")
 	}()
 
 	generator, err := l.buildGenerator(view, cacheOpts, []reqopts.TestIdentification{{}})
@@ -218,13 +270,12 @@ func (l *RegressionCacheLoader) processView(
 	}
 
 	// Step 1: Generate and cache the component report through the configured provider.
-	report, err := l.generateAndCacheReport(ctx, generator)
+	report, err := l.generateReport(ctx, generator)
 	if err != nil {
 		return nil, err
 	}
 
 	// Step 2: Sync regressions if enabled
-	var activeRegressions []*models.TestRegression
 	if view.RegressionTracking.Enabled {
 		rLog := l.logger.WithField("release", view.SampleRelease.Name)
 		activeRegressions, err = componentreadiness.SyncRegressionsForReport(
