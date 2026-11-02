@@ -2215,18 +2215,12 @@ func TestQueryBaseJobRunTestStatus_AggregateFallback(t *testing.T) {
 		result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
 		require.Empty(t, errs)
 
-		totalSummaries := 0
-		for _, summaries := range result {
-			totalSummaries += len(summaries)
-		}
-		assert.Equal(t, 1, totalSummaries, "per-run data should produce 1 summary per test key")
-
-		for _, summaries := range result {
-			for _, summary := range summaries {
-				assert.Equal(t, 2, summary.Stats.Total(), "summary should aggregate both per-run rows")
-				assert.Len(t, summary.JobRuns, 2, "summary should contain 2 individual job runs")
-			}
-		}
+		require.Len(t, result, 1, "raw and aggregate data for the same test key should remain one job entry")
+		summaries := result[utils.NormalizeProwJobName(job.Name)]
+		require.Len(t, summaries, 1, "per-run data should take precedence without a duplicate aggregate summary")
+		assert.Equal(t, 2, summaries[0].Stats.Total(), "summary should retain both per-run rows")
+		assert.Equal(t, 1, summaries[0].Stats.SuccessCount, "summary should retain raw per-run counts")
+		assert.Len(t, summaries[0].JobRuns, 2, "summary should contain the two individual job runs")
 	})
 
 	t.Run("variant filtering applied in fallback", func(t *testing.T) {
@@ -3863,6 +3857,123 @@ func testDetailsReqOptions(testID string, variants map[string]string) reqopts.Re
 		opts.VariantOption.IncludeVariants[k] = []string{v}
 	}
 	return opts
+}
+
+func TestGenerateTestDetailsReportMultiTest_MultipleVariantsForSameTestID(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vcAWSAMD64 := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn", "Architecture:amd64"})
+	vcAWSARM64 := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn", "Architecture:arm64"})
+	vcGCPAMD64 := createVariantCombination(t, dbc, []string{"Platform:gcp", "Network:ovn", "Architecture:amd64"})
+	jobAWSAMD64 := createProwJobWithVC(t, dbc, "periodic-cache-primer-aws-ovn-amd64", release, vcAWSAMD64)
+	jobAWSARM64 := createProwJobWithVC(t, dbc, "periodic-cache-primer-aws-ovn-arm64", release, vcAWSARM64)
+	jobGCPAMD64 := createProwJobWithVC(t, dbc, "periodic-cache-primer-gcp-ovn-amd64", release, vcGCPAMD64)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] shared cache primer test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-cache-primer")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:cache-primer-shared", "Storage", []string{"PVC"})
+
+	baseStart := civil.Date{Year: 2024, Month: 5, Day: 14}
+	baseEnd := civil.Date{Year: 2024, Month: 6, Day: 1}
+	for _, job := range []models.ProwJob{jobAWSAMD64, jobAWSARM64, jobGCPAMD64} {
+		createCumulativeSummary(t, dbc, baseStart, release, test.ID, job.ID, suite.ID, 0, 0, 0)
+		createCumulativeSummary(t, dbc, baseEnd, release, test.ID, job.ID, suite.ID, 100, 100, 0)
+	}
+
+	requested := []struct {
+		variants   map[string]string
+		job        models.ProwJob
+		sampleRuns int
+	}{
+		{variants: map[string]string{"Platform": "aws", "Network": "ovn", "Architecture": "amd64"}, job: jobAWSAMD64, sampleRuns: 10},
+		{variants: map[string]string{"Platform": "aws", "Network": "ovn", "Architecture": "arm64"}, job: jobAWSARM64, sampleRuns: 6},
+		{variants: map[string]string{"Platform": "gcp", "Network": "ovn", "Architecture": "amd64"}, job: jobGCPAMD64, sampleRuns: 8},
+	}
+	for _, tc := range requested {
+		for i := range tc.sampleRuns {
+			timestamp := time.Date(2024, 6, 2+i, 12, 0, 0, 0, time.UTC)
+			run := createProwJobRunForCR(t, dbc, tc.job.ID, release, timestamp)
+			createProwJobRunTest(t, dbc, run.ID, tc.job.ID, test.ID, &suite.ID, 12, release, timestamp)
+		}
+	}
+
+	opts := defaultReqOptions(release)
+	opts.TestIDOptions = []reqopts.TestIdentification{
+		{TestID: tow.UniqueID, RequestedVariants: requested[0].variants},
+		{TestID: tow.UniqueID, RequestedVariants: requested[1].variants},
+		{TestID: tow.UniqueID, RequestedVariants: requested[2].variants},
+	}
+	opts.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws", "gcp"},
+		"Network":  {"ovn"},
+	}
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	reports, errs := generator.GenerateTestDetailsReportMultiTest(ctx)
+	require.Empty(t, errs)
+	require.Len(t, reports, len(requested))
+	for i, tc := range requested {
+		report := reports[i]
+		assert.Equal(t, tow.UniqueID, report.TestID)
+		assert.Equal(t, tc.variants, report.Variants)
+		require.Len(t, report.Analyses, 1)
+		analysis := report.Analyses[0]
+		require.NotNil(t, analysis.BaseStats)
+		assert.Equal(t, 100, analysis.BaseStats.Total())
+		assert.Equal(t, 100, analysis.BaseStats.SuccessCount)
+		assert.Equal(t, tc.sampleRuns, analysis.SampleStats.Total())
+		assert.Equal(t, 0, analysis.SampleStats.SuccessCount)
+		require.Len(t, analysis.JobStats, 1)
+		assert.Equal(t, tc.job.Name, analysis.JobStats[0].SampleJobName)
+		assert.Len(t, analysis.JobStats[0].SampleJobRunStats, tc.sampleRuns)
+	}
+}
+
+func TestQueryBaseJobRunTestStatus_MixedRawAndAggregateKeys(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+	vcAWS := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	vcGCP := createVariantCombination(t, dbc, []string{"Platform:gcp", "Network:ovn"})
+	jobAWS := createProwJobWithVC(t, dbc, "periodic-td-mixed-aws", release, vcAWS)
+	jobGCP := createProwJobWithVC(t, dbc, "periodic-td-mixed-gcp", release, vcGCP)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] mixed base sources test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-td-mixed")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:td-mixed", "Storage", []string{"PVC"})
+
+	for _, job := range []models.ProwJob{jobAWS, jobGCP} {
+		createCumulativeSummary(t, dbc, civil.Date{Year: 2024, Month: 5, Day: 14}, release, test.ID, job.ID, suite.ID, 80, 75, 3)
+		createCumulativeSummary(t, dbc, civil.Date{Year: 2024, Month: 6, Day: 1}, release, test.ID, job.ID, suite.ID, 100, 90, 5)
+	}
+	baseTimestamp := time.Date(2024, 5, 20, 12, 0, 0, 0, time.UTC)
+	run := createProwJobRunForCR(t, dbc, jobAWS.ID, release, baseTimestamp)
+	createProwJobRunTest(t, dbc, run.ID, jobAWS.ID, test.ID, &suite.ID, 1, release, baseTimestamp)
+
+	opts := defaultReqOptions(release)
+	opts.TestIDOptions = []reqopts.TestIdentification{
+		{TestID: tow.UniqueID, RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"}},
+		{TestID: tow.UniqueID, RequestedVariants: map[string]string{"Platform": "gcp", "Network": "ovn"}},
+	}
+	opts.VariantOption.IncludeVariants = map[string][]string{"Platform": {"aws", "gcp"}, "Network": {"ovn"}}
+	provider := postgres.NewPostgresProvider(dbc, nil)
+
+	statuses, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+
+	require.Empty(t, errs)
+	require.Len(t, statuses, 2, "aggregate-only keys should be included alongside per-run keys")
+	raw := statuses[utils.NormalizeProwJobName(jobAWS.Name)]
+	require.Len(t, raw, 1)
+	assert.Equal(t, 1, raw[0].Stats.Total(), "aggregate data must not replace or double-count raw keys")
+	assert.Equal(t, 1, raw[0].Stats.SuccessCount)
+	assert.Len(t, raw[0].JobRuns, 1)
+	aggregate := statuses[utils.NormalizeProwJobName(jobGCP.Name)]
+	require.Len(t, aggregate, 1)
+	assert.Equal(t, 20, aggregate[0].Stats.Total())
+	assert.Equal(t, 15, aggregate[0].Stats.SuccessCount)
+	assert.Empty(t, aggregate[0].JobRuns)
 }
 
 func TestTestDetailsReport_AggregateBaseStats(t *testing.T) {

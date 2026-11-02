@@ -274,6 +274,25 @@ func TestBuildTestDetailsQuery_ParameterizedTestIDs(t *testing.T) {
 	}
 }
 
+func TestBuildTestDetailsQuery_MultipleVariantsForSameTestID(t *testing.T) {
+	client := &bqcachedclient.Client{Dataset: "test_dataset"}
+	testIDOptions := []reqopts.TestIdentification{
+		{TestID: "shared-test", RequestedVariants: map[string]string{"Platform": "aws", "Upgrade": "none"}},
+		{TestID: "shared-test", RequestedVariants: map[string]string{"Platform": "gcp", "Upgrade": "micro"}},
+	}
+
+	query, _, params := buildTestDetailsQuery(client, testIDOptions, reqopts.RequestOptions{}, crtest.JobVariants{}, nil, true, "")
+
+	assert.Contains(t, query, "cm.id = @TestID0")
+	assert.Contains(t, query, "cm.id = @TestID1")
+	assert.Contains(t, query, `jv_Platform.variant_value = "aws"`)
+	assert.Contains(t, query, `jv_Upgrade.variant_value = "none"`)
+	assert.Contains(t, query, `jv_Platform.variant_value = "gcp"`)
+	assert.Contains(t, query, `jv_Upgrade.variant_value = "micro"`)
+	assert.Contains(t, params, bigquery.QueryParameter{Name: "TestID0", Value: "shared-test"})
+	assert.Contains(t, params, bigquery.QueryParameter{Name: "TestID1", Value: "shared-test"})
+}
+
 func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 	// This test verifies the specific logic: we only exclude OTHER tests from jobs
 	// where key tests FAILED (not just present)
