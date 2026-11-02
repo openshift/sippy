@@ -1,4 +1,5 @@
 import { COLUMN_NAME, COMPONENT } from '../fixtures/data.js'
+import { expect } from '@playwright/test'
 
 export class ReportPage {
   constructor(page) {
@@ -55,10 +56,10 @@ export class ReportPage {
 
   async expandSection(name) {
     const summary = this.page.getByRole('button', { name, exact: true })
-    await summary.scrollIntoViewIfNeeded()
     if ((await summary.getAttribute('aria-expanded')) !== 'true') {
       await summary.click()
     }
+    await expect(summary).toHaveAttribute('aria-expanded', 'true')
   }
 
   async changeSampleRelease(release) {
