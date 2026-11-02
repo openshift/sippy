@@ -223,26 +223,26 @@ async function responseFor(api, method, url, bodyText) {
   }
   if (/\/triages\/\d+\/matches$/.test(path) && method === 'GET') {
     if (api.triageMatchesMode === 'error') {
-      return fail(500, 'matches failed')
+      return fail(500, `matches failed for ${path}`)
     }
     return ok(api.triageMatchesMode === 'ok' ? triagePotentialMatches() : [])
   }
   if (/\/triages\/\d+\/audit$/.test(path) && method === 'GET') {
     if (api.auditMode === 'error') {
-      return fail(500, 'audit failed')
+      return fail(500, `audit failed for ${path}`)
     }
     return ok(api.auditMode === 'empty' ? [] : auditLogs())
   }
   if (/\/regressions\/\d+\/matches$/.test(path) && method === 'GET') {
     if (api.regressionMatchesMode === 'error') {
-      return ok({ code: 500, message: 'matching failed' })
+      return ok({ code: 500, message: `matching failed for ${path}` })
     }
     return ok(
       api.regressionMatchesMode === 'ok' ? regressionPotentialMatches() : []
     )
   }
   if (/\/regressions\/\d+$/.test(path) && method === 'GET') {
-    return regressionResponse(api)
+    return regressionResponse(api, path)
   }
   if (path.endsWith('/force_close_preview')) {
     if (api.reportMode === 'empty-preview') {
@@ -291,7 +291,7 @@ async function responseFor(api, method, url, bodyText) {
       return ok({})
     }
     if (api.testDetailsMode === 'error') {
-      return fail(500, 'test details failed')
+      return fail(500, `test details failed for ${url.search}`)
     }
     return ok(
       testDetailsReport({
@@ -308,10 +308,10 @@ async function responseFor(api, method, url, bodyText) {
   return unexpected()
 }
 
-function regressionResponse(api) {
+function regressionResponse(api, path) {
   switch (api.regressionMode) {
     case 'missing':
-      return fail(404, 'regression not found')
+      return fail(404, `regression not found: ${path}`)
     case 'no-links':
       return ok(regressionRecord({}))
     case 'bad-path':
@@ -363,7 +363,7 @@ function jobsApiResponse(api, method, url, bodyText) {
   if (path.endsWith('/api/jobs/artifacts') && method === 'GET') {
     const runs = (url.searchParams.get('prowJobRuns') || '').split(',')
     if (api.artifactMode === 'error') {
-      return fail(500, 'artifact search failed')
+      return fail(500, `artifact search failed for ${url.search}`)
     }
     if (api.artifactMode === 'empty') {
       return ok(emptyArtifactResults(runs))
@@ -412,7 +412,7 @@ function componentReportResponse(api, url) {
   } else if (api.reportMode === 'cancelled') {
     body = cancelledReport()
   } else if (api.reportMode === 'error') {
-    return fail(500, 'report failed')
+    return fail(500, `report failed for ${url.search}`)
   } else {
     body = reportForQuery(api, url)
   }
@@ -480,7 +480,7 @@ function triageResponse(api, method, url, bodyText) {
   if (idMatch && method === 'GET') {
     const found = api.triages.find((triage) => String(triage.id) === idMatch[1])
     if (!found) {
-      return fail(404, 'triage not found')
+      return fail(404, `triage ${idMatch[1]} not found`)
     }
     return ok(found)
   }
@@ -494,7 +494,7 @@ function triageResponse(api, method, url, bodyText) {
       (triage) => String(triage.id) === idMatch[1]
     )
     if (index === -1) {
-      return fail(404, 'triage not found')
+      return fail(404, `triage ${idMatch[1]} not found`)
     }
     api.triages[index] = {
       ...api.triages[index],
@@ -519,7 +519,7 @@ function triageResponse(api, method, url, bodyText) {
   }
   if (method === 'GET') {
     if (api.triageListMode === 'error') {
-      return fail(500, 'triage list failed')
+      return fail(500, `triage list failed for ${url.pathname}`)
     }
     return ok(api.triages)
   }

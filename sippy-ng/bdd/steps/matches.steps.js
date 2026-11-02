@@ -168,7 +168,9 @@ Then('the match lookup error is shown', async ({ page }) => {
     page.getByText(/Error: API call failed: .*\/regressions\/101\/matches/)
   ).toBeVisible()
   await expect(
-    page.getByText(/Return code = 500 \(matching failed\)/)
+    page.getByText(
+      /Return code = 500 \(matching failed for .*\/regressions\/101\/matches\)/
+    )
   ).toBeVisible()
 })
 

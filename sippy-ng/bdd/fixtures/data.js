@@ -468,7 +468,6 @@ export const ARTIFACT_PATH = 'build-log.txt'
 export const ARTIFACT_MATCH_LINE = 'level=error msg="etcd leader changed"'
 export const CREATED_LABEL_ID = 'created-label'
 export const REEVALUATE_BATCH_ID = 'batch-0001'
-export const REGRESSION_BASE_URL = '/api/component_readiness/regressions'
 
 // Same shape the triage API returns once regressions are expanded. A PUT only
 // sends ids, so the mock looks members up here.

@@ -26,8 +26,12 @@ Given('artifact searches find nothing', async ({ api }) => {
   api.artifactMode = 'empty'
 })
 
-Given('artifact searches fail', async ({ api }) => {
+When('artifact searches start failing', async ({ api }) => {
   api.artifactMode = 'error'
+})
+
+When('artifact searches succeed again', async ({ api }) => {
+  api.artifactMode = 'matches'
 })
 
 When('I compare the sample failures', async ({ page }) => {
@@ -204,6 +208,15 @@ Then('the artifact query shows a search error', async ({ page }) => {
       .getByRole('alert')
       .filter({ hasText: 'Artifact query failed: Return code = 500' })
   ).toBeVisible()
+})
+
+Then('the artifact query shows no search error', async ({ page }) => {
+  await expect(
+    new ArtifactQueryPage(page)
+      .dialog()
+      .getByRole('alert')
+      .filter({ hasText: 'Artifact query failed' })
+  ).toHaveCount(0)
 })
 
 Then('the label create request is for {string}', async ({ api }, title) => {

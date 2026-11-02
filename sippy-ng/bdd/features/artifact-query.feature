@@ -57,14 +57,20 @@ Feature: Job artifact comparison and symptoms
     Then the artifact query says no results were found
     And no artifact is listed
 
-  Scenario: A failed search is shown as an error
+  Scenario: A failed search clears earlier results and a later success clears the error
     Given a component readiness API
-    And artifact searches fail
     When I open the test details deep link
     And I compare the sample failures
     And I search artifacts with the path glob "build-log.txt"
+    Then job run "9001" lists the artifact "build-log.txt"
+    When artifact searches start failing
+    And I search artifacts with the path glob "*.log"
     Then the artifact query shows a search error
     And no artifact is listed
+    When artifact searches succeed again
+    And I search artifacts with the path glob "build-log.txt"
+    Then job run "9001" lists the artifact "build-log.txt"
+    And the artifact query shows no search error
 
   Scenario: Saving a symptom records the label and this search
     Given a component readiness API

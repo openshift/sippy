@@ -503,12 +503,10 @@ export const CompReadyVarsProvider = ({ children }) => {
         setAllJobVariants(variants.variants)
         setViews(views)
 
-        if (views.length > 0) {
-          // If no view was requested and we were not given fully qualified params,
-          // select the default view: (first in the list matching our default sample release)
-          if (shouldLoadDefaultView()) {
-            syncView(defaultView(views))
-          } else updateVarsFromView(params.view, views)
+        // When no view was requested, the default-view effect below selects one
+        // once views are in state.
+        if (views.length > 0 && !shouldLoadDefaultView()) {
+          updateVarsFromView(params.view, views)
         }
         setIsLoaded(true)
       })
@@ -533,9 +531,12 @@ export const CompReadyVarsProvider = ({ children }) => {
       (v) => v.sample_release.release === defaultSampleRelease
     ) || loadedViews[0]
 
-  // Views load once, but an in-app link to a bare report URL (the help
-  // breadcrumb, the app sidebar) drops the view afterwards. Without one the
-  // report never requests data. Replace rather than push so Back still works.
+  // The single path that selects the default view, both when views first load
+  // and when an in-app link to a bare report URL (the help breadcrumb, the app
+  // sidebar) later drops the view. Without a view the report never requests
+  // data. Unlike syncView it keeps other params, since pages such as triage
+  // details carry their own (openMatches). The params effect then syncs the
+  // controls from the view. Replace rather than push so Back still works.
   useEffect(() => {
     if (views.length === 0 || !shouldLoadDefaultView()) return
     setParams(
