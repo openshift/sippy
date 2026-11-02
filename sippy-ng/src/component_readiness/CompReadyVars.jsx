@@ -534,13 +534,23 @@ export const CompReadyVarsProvider = ({ children }) => {
   // The single path that selects the default view, both when views first load
   // and when an in-app link to a bare report URL (the help breadcrumb, the app
   // sidebar) later drops the view. Without a view the report never requests
-  // data. Unlike syncView it keeps other params, since pages such as triage
-  // details carry their own (openMatches). The params effect then syncs the
-  // controls from the view. Replace rather than push so Back still works.
+  // data. Like syncView it clears the other report params (e.g. samplePR*) so
+  // the controls and the report both reflect the view; page-only params that
+  // are not declared above (openMatches on triage details) are left alone by
+  // setParams. The params effect then syncs the controls from the view.
+  // Replace rather than push so Back still works.
   useEffect(() => {
     if (views.length === 0 || !shouldLoadDefaultView()) return
+    let nonView = {}
+    for (const key in params) {
+      nonView[key] = undefined
+    }
     setParams(
-      { view: defaultView(views).name, crDataSource: dataSource || undefined },
+      {
+        ...nonView,
+        view: defaultView(views).name,
+        crDataSource: dataSource || undefined,
+      },
       'replaceIn'
     )
   }, [params.view, params.baseRelease, views])
