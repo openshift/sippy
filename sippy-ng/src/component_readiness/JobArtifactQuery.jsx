@@ -158,6 +158,8 @@ export default function JobArtifactQuery(props) {
   const [apiCallURL, setApiCallURL] = React.useState('')
   // give a visual indicator while loading data
   const [loading, setLoading] = React.useState(false)
+  // a failed search must not look like a search with no matches
+  const [fetchError, setFetchError] = React.useState('')
 
   // filters for what to display in the table
   const [displayOnlySelected, setDisplayOnlySelected] = React.useState(false)
@@ -186,6 +188,7 @@ export default function JobArtifactQuery(props) {
     // reset loading state when the query changes, even to empty
     jobRunSearches.current.clear()
     setLoading(false)
+    setFetchError('')
 
     // enable canceling this search when no longer needed
     const abortController = new AbortController()
@@ -232,8 +235,9 @@ export default function JobArtifactQuery(props) {
           console.log(`request aborted: ${url}`)
           // don't want to clear Loading in the case where next query already started
         } else {
-          // setFetchError(`API call failed: ${url}\n${error}`)
           console.log(`API call failed: ${url}`, error)
+          setRows(emptyRows)
+          setFetchError(`Artifact query failed: ${error.message}`)
           setLoading(false)
         }
       })
@@ -1742,6 +1746,7 @@ export default function JobArtifactQuery(props) {
           </LaunderedLink>
         )}
       </Stack>
+      {fetchError && <Alert severity="error">{fetchError}</Alert>}
       <JAQResultTable />
       <Stack direction="row" spacing={2} alignItems="center">
         <JAQOpenJobRunsButton />

@@ -1,20 +1,30 @@
 import {
   ALT_COMPONENT,
   ALT_SAMPLE_RELEASE,
+  artifactResults,
+  auditLogs,
   cancelledReport,
   capabilitiesReport,
   componentReport,
+  CREATED_LABEL_ID,
+  emptyArtifactResults,
   GENERATED_AT,
+  jobLabels,
   mainReport,
   membershipReport,
   pagedReport,
   pairReport,
   PINNED_DATE,
+  REEVALUATE_BATCH_ID,
   REGRESSION_ID,
+  regressionCatalog,
+  regressionPotentialMatches,
+  regressionRecord,
   releaseCatalog,
   SEEDED_TRIAGE_ID,
   testDetailsReport,
   testsReport,
+  triagePotentialMatches,
   views,
 } from './data.js'
 
@@ -30,7 +40,17 @@ export function createApi() {
     reportMode: 'ok',
     testDetailsMode: 'ok',
     failNextMutation: false,
+    triageListMode: 'ok',
+    auditMode: 'ok',
+    triageMatchesMode: 'none',
+    regressionMatchesMode: 'none',
+    regressionMode: 'ok',
+    artifactMode: 'matches',
+    labels: jobLabels(),
+    symptoms: [],
     requests: [],
+    // Calls the mock has no answer for. The fixture fails the scenario if any arrive.
+    unexpectedRequests: [],
     triages: [],
     nextTriageId: SEEDED_TRIAGE_ID + 1,
     _hold: null,
@@ -81,6 +101,10 @@ export function createApi() {
       )
     },
 
+    requestsTo(pattern) {
+      return this.requests.filter((request) => pattern.test(request.pathname))
+    },
+
     deleteRequests() {
       return this.mutationRequests().filter(
         (request) => request.method === 'DELETE'
@@ -89,43 +113,66 @@ export function createApi() {
   }
 }
 
+function isLocal(url) {
+  return ['127.0.0.1', 'localhost'].includes(url.hostname)
+}
+
 export async function installApi(page, api) {
-  await page.route('**/api/**', async (route) => {
-    const request = route.request()
-    if (request.method() === 'OPTIONS') {
-      await route.fulfill({ status: 204, headers: cors })
-      return
+  // Nothing leaves the machine: Jira, Prow, GCS, and any other host are refused.
+  await page.context().route(
+    (url) => ['http:', 'https:'].includes(url.protocol) && !isLocal(url),
+    async (route) => {
+      api.unexpectedRequests.push(
+        `external ${route.request().method()} ${route.request().url()}`
+      )
+      await route.abort('blockedbyclient')
     }
-    const url = new URL(request.url())
-    const bodyText = request.postData() || ''
-    try {
-      api.requests.push({
-        method: request.method(),
-        url: request.url(),
-        pathname: url.pathname,
-        search: url.search,
-        body: bodyText ? JSON.parse(bodyText) : null,
-      })
-      const response = await responseFor(api, request.method(), url, bodyText)
-      if (response.hold) {
-        await response.hold
+  )
+  // Context-wide so a triage opened in a new tab is answered by the same mock.
+  await page.context().route(
+    (url) => isLocal(url) && url.pathname.startsWith('/api/'),
+    async (route) => {
+      const request = route.request()
+      if (request.method() === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: cors })
+        return
       }
-      await route.fulfill({
-        status: response.status,
-        contentType: 'application/json',
-        headers: cors,
-        body: JSON.stringify(response.body),
-      })
-    } catch (error) {
-      await route.fulfill({
-        status: 500,
-        contentType: 'text/plain',
-        headers: cors,
-        body: String(error),
-      })
-      throw error
+      const url = new URL(request.url())
+      const bodyText = request.postData() || ''
+      try {
+        api.requests.push({
+          method: request.method(),
+          url: request.url(),
+          pathname: url.pathname,
+          search: url.search,
+          body: bodyText ? JSON.parse(bodyText) : null,
+        })
+        const response = await responseFor(api, request.method(), url, bodyText)
+        if (response.unexpected) {
+          api.unexpectedRequests.push(
+            `${request.method()} ${url.pathname}${url.search}`
+          )
+        }
+        if (response.hold) {
+          await response.hold
+        }
+        await route.fulfill({
+          status: response.status,
+          contentType: 'application/json',
+          headers: cors,
+          body: JSON.stringify(response.body),
+        })
+      } catch (error) {
+        api.unexpectedRequests.push(`mock error ${request.url()}: ${error}`)
+        await route.fulfill({
+          status: 500,
+          contentType: 'text/plain',
+          headers: cors,
+          body: String(error),
+        })
+      }
     }
-  })
+  )
 }
 
 async function responseFor(api, method, url, bodyText) {
@@ -165,8 +212,32 @@ async function responseFor(api, method, url, bodyText) {
   if (path.endsWith('/api/tests/bugs')) {
     return ok([])
   }
-  if (path.includes('/matches')) {
-    return ok([])
+  const jobsResponse = jobsApiResponse(api, method, url, bodyText)
+  if (jobsResponse) {
+    return jobsResponse
+  }
+  if (/\/triages\/\d+\/matches$/.test(path) && method === 'GET') {
+    if (api.triageMatchesMode === 'error') {
+      return fail(500, 'matches failed')
+    }
+    return ok(api.triageMatchesMode === 'ok' ? triagePotentialMatches() : [])
+  }
+  if (/\/triages\/\d+\/audit$/.test(path) && method === 'GET') {
+    if (api.auditMode === 'error') {
+      return fail(500, 'audit failed')
+    }
+    return ok(api.auditMode === 'empty' ? [] : auditLogs())
+  }
+  if (/\/regressions\/\d+\/matches$/.test(path) && method === 'GET') {
+    if (api.regressionMatchesMode === 'error') {
+      return ok({ code: 500, message: 'matching failed' })
+    }
+    return ok(
+      api.regressionMatchesMode === 'ok' ? regressionPotentialMatches() : []
+    )
+  }
+  if (/\/regressions\/\d+$/.test(path) && method === 'GET') {
+    return regressionResponse(api)
   }
   if (path.endsWith('/force_close_preview')) {
     if (api.reportMode === 'empty-preview') {
@@ -222,13 +293,111 @@ async function responseFor(api, method, url, bodyText) {
         historical: true,
         stale: true,
         lifecycle: 'informing',
+        basisFailure: api.testDetailsMode === 'basis-failure',
       })
     )
   }
   if (isComponentReport(path) && method === 'GET') {
     return componentReportResponse(api, url)
   }
-  throw new Error(`unexpected API ${method} ${url.pathname}${url.search}`)
+  return unexpected()
+}
+
+function regressionResponse(api) {
+  switch (api.regressionMode) {
+    case 'missing':
+      return fail(404, 'regression not found')
+    case 'no-links':
+      return ok(regressionRecord({}))
+    case 'bad-path':
+      return ok(
+        regressionRecord({
+          'test_details:5.0-main': '/api/jobs/runs?release=5.0',
+        })
+      )
+    default:
+      return ok(regressionRecord())
+  }
+}
+
+// Labels, symptoms, artifact searches, and symptom re-evaluation.
+function jobsApiResponse(api, method, url, bodyText) {
+  const path = url.pathname
+  if (path.endsWith('/api/jobs/labels')) {
+    if (method === 'GET') {
+      return ok(api.labels)
+    }
+    if (method === 'POST') {
+      const rejected = rejectedMutation(api)
+      if (rejected) {
+        return rejected
+      }
+      const created = { ...JSON.parse(bodyText), id: CREATED_LABEL_ID }
+      api.labels.push(created)
+      return ok(created)
+    }
+  }
+  if (path.endsWith('/api/jobs/symptoms')) {
+    if (method === 'GET') {
+      return ok(api.symptoms)
+    }
+    if (method === 'POST') {
+      const rejected = rejectedMutation(api)
+      if (rejected) {
+        return rejected
+      }
+      const created = {
+        ...JSON.parse(bodyText),
+        id: 'created-symptom',
+        links: { self: '/api/jobs/symptoms/created-symptom' },
+      }
+      api.symptoms.push(created)
+      return ok(created)
+    }
+  }
+  if (path.endsWith('/api/jobs/artifacts') && method === 'GET') {
+    const runs = (url.searchParams.get('prowJobRuns') || '').split(',')
+    if (api.artifactMode === 'error') {
+      return fail(500, 'artifact search failed')
+    }
+    if (api.artifactMode === 'empty') {
+      return ok(emptyArtifactResults(runs))
+    }
+    const withMatches =
+      url.searchParams.has('textContains') || url.searchParams.has('textRegex')
+    return ok(artifactResults(runs, withMatches))
+  }
+  if (path.endsWith('/api/jobs/runs/reevaluate') && method === 'POST') {
+    const rejected = rejectedMutation(api)
+    if (rejected) {
+      return rejected
+    }
+    const ids = JSON.parse(bodyText).prow_job_build_ids || []
+    api.reevaluateRequested = ids.length
+    return ok({ batch_id: REEVALUATE_BATCH_ID, requested: ids.length })
+  }
+  if (path.endsWith(`/api/jobs/runs/reevaluate/${REEVALUATE_BATCH_ID}`)) {
+    const requested = api.reevaluateRequested || 0
+    return ok({
+      batch_id: REEVALUATE_BATCH_ID,
+      status: 'complete',
+      requested,
+      completed: requested,
+      failed: 0,
+      running: 0,
+      pending: 0,
+    })
+  }
+  return null
+}
+
+// The triage API stores member ids and answers with expanded regressions.
+function expandRegressions(regressions) {
+  const catalog = regressionCatalog()
+  return (regressions || []).map((regression) => ({
+    ...(catalog.get(regression.id) || {}),
+    ...regression,
+  }))
 }
 
 function componentReportResponse(api, url) {
@@ -292,10 +461,12 @@ function triageResponse(api, method, url, bodyText) {
       url: payload.url,
       type: payload.type,
       description: payload.description,
-      regressions: payload.regressions || [],
+      regressions: expandRegressions(payload.regressions),
       resolved: { Time: null, Valid: false },
       links: {
         self: `/api/component_readiness/triages/${api.nextTriageId - 1}`,
+        audit_logs: `/api/component_readiness/triages/${api.nextTriageId - 1}/audit`,
+        potential_matches: `/api/component_readiness/triages/${api.nextTriageId - 1}/matches`,
       },
     }
     api.triages.push(created)
@@ -323,6 +494,9 @@ function triageResponse(api, method, url, bodyText) {
     api.triages[index] = {
       ...api.triages[index],
       ...payload,
+      regressions: payload.regressions
+        ? expandRegressions(payload.regressions)
+        : api.triages[index].regressions,
       id: api.triages[index].id,
       links: api.triages[index].links,
     }
@@ -339,9 +513,12 @@ function triageResponse(api, method, url, bodyText) {
     return ok({})
   }
   if (method === 'GET') {
+    if (api.triageListMode === 'error') {
+      return fail(500, 'triage list failed')
+    }
     return ok(api.triages)
   }
-  throw new Error(`unexpected API ${method} ${url.pathname}`)
+  return unexpected()
 }
 
 function isComponentReport(pathname) {
@@ -354,6 +531,14 @@ function rejectedMutation(api) {
   }
   api.failNextMutation = false
   return fail(400, 'rejected')
+}
+
+function unexpected() {
+  return {
+    status: 501,
+    body: { code: 501, message: 'not mocked' },
+    unexpected: true,
+  }
 }
 
 function ok(body) {

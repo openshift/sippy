@@ -346,7 +346,22 @@ export function testDetailsReport(options = {}) {
               test_failures: 0,
             },
           ],
-          base_job_run_stats: [],
+          base_job_run_stats: options.basisFailure
+            ? [
+                {
+                  job_url: `https://prow.example/view/${BASE_FAILED_RUN_ID}`,
+                  job_run_id: BASE_FAILED_RUN_ID,
+                  start_time: '2026-05-20T00:00:00Z',
+                  test_stats: {
+                    success_count: 0,
+                    failure_count: 1,
+                    flake_count: 0,
+                    success_rate: 0,
+                  },
+                  test_failures: 1,
+                },
+              ]
+            : [],
         },
       ],
     },
@@ -422,6 +437,329 @@ export function triageRecord(overrides = {}) {
     })),
     links: {
       self: `/api/component_readiness/triages/${id}`,
+      audit_logs: `/api/component_readiness/triages/${id}/audit`,
+      potential_matches: `/api/component_readiness/triages/${id}/matches`,
     },
+  }
+}
+
+export const OTHER_VIEW = '5.0-other'
+export const RESOLVED_TRIAGE_ID = 8
+export const FAILED_FIX_TRIAGE_ID = 9
+export const MISSING_TRIAGE_ID = 404
+export const RESOLVED_TRIAGE_URL =
+  'https://redhat.atlassian.net/browse/TRT-3001'
+export const FAILED_FIX_TRIAGE_URL =
+  'https://redhat.atlassian.net/browse/TRT-3002'
+export const TRIAGE_RESOLVED_AT = '2026-10-23T00:00:00Z'
+export const LABEL_ID = 'etcd-leader-timeout'
+export const LABEL_TITLE = 'etcd leader timeout'
+export const LABEL_BUG = 'OCPBUGS-70001'
+export const LABELLED_RUN_URL = `https://prow.example/view/gs/test-platform-results/logs/periodic-ci-sample/${FAILED_RUN_ID}`
+export const AUDIT_USER = 'developer@example.com'
+export const MATCH_SIMILAR_ID = 301
+export const MATCH_SIMILAR_NAME = 'should maintain pod network after upgrade'
+export const MATCH_OVERLAP_ID = 302
+export const MATCH_OVERLAP_NAME = 'should keep service endpoints'
+export const MATCH_TRIAGED_ID = 303
+export const MATCH_TRIAGED_NAME = 'should keep node network'
+export const BASE_FAILED_RUN_ID = '8001'
+export const ARTIFACT_PATH = 'build-log.txt'
+export const ARTIFACT_MATCH_LINE = 'level=error msg="etcd leader changed"'
+export const CREATED_LABEL_ID = 'created-label'
+export const REEVALUATE_BATCH_ID = 'batch-0001'
+export const REGRESSION_BASE_URL = '/api/component_readiness/regressions'
+
+// Same shape the triage API returns once regressions are expanded. A PUT only
+// sends ids, so the mock looks members up here.
+export function regressionCatalog() {
+  const entries = [
+    [REGRESSION_ID, TEST_NAME, regressionOpened],
+    [SECOND_REGRESSION_ID, KEPT_TEST_NAME, '2026-10-22T00:00:00Z'],
+    [MATCH_SIMILAR_ID, MATCH_SIMILAR_NAME, '2026-10-22T00:00:00Z'],
+    [MATCH_OVERLAP_ID, MATCH_OVERLAP_NAME, '2026-10-22T00:00:00Z'],
+    [MATCH_TRIAGED_ID, MATCH_TRIAGED_NAME, '2026-10-22T00:00:00Z'],
+  ]
+  return new Map(
+    entries.map(([id, testName, opened]) => [
+      id,
+      {
+        id,
+        test_name: testName,
+        opened,
+        release: SAMPLE_RELEASE,
+        variants: ['Platform:aws'],
+        last_failure: { Time: null, Valid: false },
+        views: [{ view_name: VIEW, active: true }],
+      },
+    ])
+  )
+}
+
+export function resolvedTriage(overrides = {}) {
+  return triageRecord({
+    id: RESOLVED_TRIAGE_ID,
+    url: RESOLVED_TRIAGE_URL,
+    description: 'route flake fixed upstream',
+    type: 'test',
+    resolved: { Time: TRIAGE_RESOLVED_AT, Valid: true },
+    regressions: [
+      {
+        id: SECOND_REGRESSION_ID,
+        test_name: KEPT_TEST_NAME,
+        opened: '2026-10-22T00:00:00Z',
+        variants: ['Platform:aws'],
+      },
+    ],
+    ...overrides,
+  })
+}
+
+// A resolved triage whose regression still fails in the current view.
+export function failedFixTriage() {
+  const record = triageRecord({
+    id: FAILED_FIX_TRIAGE_ID,
+    url: FAILED_FIX_TRIAGE_URL,
+    description: 'pod network fix did not hold',
+    resolved: { Time: TRIAGE_RESOLVED_AT, Valid: true },
+  })
+  record.regressed_tests = {
+    [VIEW]: [regressedTest(REGRESSION_ID, { status: -1000 })],
+  }
+  return record
+}
+
+// Two members, one of which has a labelled failed run, so the label filter
+// has something to keep and something to hide.
+export function labelledTriage() {
+  const record = triageRecord({
+    regressions: [
+      {
+        id: REGRESSION_ID,
+        test_name: TEST_NAME,
+        opened: regressionOpened,
+        variants: ['Platform:aws'],
+        job_runs: [{ url: LABELLED_RUN_URL, job_labels: [LABEL_ID] }],
+      },
+      {
+        id: SECOND_REGRESSION_ID,
+        test_name: KEPT_TEST_NAME,
+        opened: '2026-10-22T00:00:00Z',
+        variants: ['Platform:aws'],
+        job_runs: [
+          {
+            url: `https://prow.example/view/gs/test-platform-results/logs/periodic-ci-sample/${PASSED_RUN_ID}`,
+            job_labels: [],
+          },
+        ],
+      },
+    ],
+  })
+  record.regressed_tests = {
+    [VIEW]: [regressedTest(REGRESSION_ID)],
+  }
+  return record
+}
+
+export function jobLabels() {
+  return [
+    {
+      id: LABEL_ID,
+      label_title: LABEL_TITLE,
+      explanation: 'The etcd leader changed during the run.',
+      bugs: [LABEL_BUG],
+    },
+  ]
+}
+
+export function auditLogs() {
+  return [
+    {
+      created_at: '2026-10-24T00:00:00Z',
+      user: AUDIT_USER,
+      operation: 'update',
+      changes: [
+        {
+          field_name: 'description',
+          original: 'pod network flake',
+          modified: 'pod network regression',
+        },
+      ],
+    },
+    {
+      created_at: '2026-10-22T00:00:00Z',
+      user: AUDIT_USER,
+      operation: 'create',
+      changes: [],
+    },
+  ]
+}
+
+// A triage whose regressions are active in two views, so the potential match
+// dialog has a view to switch to.
+export function matchableTriage() {
+  const record = triageRecord()
+  record.regressions = record.regressions.map((regression) => ({
+    ...regression,
+    views: [
+      { view_name: OTHER_VIEW, active: true },
+      { view_name: VIEW, active: true },
+    ],
+  }))
+  return record
+}
+
+export function rolledOffTriage() {
+  const record = triageRecord()
+  record.regressions = record.regressions.map((regression) => ({
+    ...regression,
+    views: [{ view_name: VIEW, active: false }],
+  }))
+  return record
+}
+
+function matchedRegression(id, testName, triages = []) {
+  return regressedTest(id, {
+    test_name: testName,
+    test_id: `match-${id}`,
+    regression: {
+      release: SAMPLE_RELEASE,
+      variants: ['Platform:aws', 'Architecture:amd64'],
+      triages,
+    },
+  })
+}
+
+// One match per filter so each checkbox changes what is listed.
+export function triagePotentialMatches() {
+  return [
+    {
+      regressed_test: matchedRegression(MATCH_SIMILAR_ID, MATCH_SIMILAR_NAME),
+      similarly_named_tests: [
+        { regression: { id: REGRESSION_ID, test_name: TEST_NAME } },
+      ],
+      overlapping_job_runs: [],
+      confidence_level: 7,
+    },
+    {
+      regressed_test: matchedRegression(MATCH_OVERLAP_ID, MATCH_OVERLAP_NAME),
+      similarly_named_tests: [],
+      overlapping_job_runs: [
+        {
+          regression: { id: REGRESSION_ID, test_name: TEST_NAME },
+          shared_job_run_ids: [FAILED_RUN_ID],
+          overlap_percent: 50,
+        },
+      ],
+      confidence_level: 5,
+    },
+    {
+      regressed_test: matchedRegression(MATCH_TRIAGED_ID, MATCH_TRIAGED_NAME, [
+        { id: RESOLVED_TRIAGE_ID },
+      ]),
+      similarly_named_tests: [],
+      overlapping_job_runs: [
+        {
+          regression: { id: REGRESSION_ID, test_name: TEST_NAME },
+          shared_job_run_ids: [FAILED_RUN_ID],
+          overlap_percent: 25,
+        },
+      ],
+      confidence_level: 3,
+    },
+  ]
+}
+
+// The regression-to-triage dialog lists triages that look like this regression.
+export function regressionPotentialMatches() {
+  return [
+    {
+      triage: triageRecord({
+        regressions: [
+          {
+            id: SECOND_REGRESSION_ID,
+            test_name: KEPT_TEST_NAME,
+            opened: '2026-10-22T00:00:00Z',
+            variants: ['Platform:aws'],
+          },
+        ],
+      }),
+      similarly_named_tests: [
+        { regression: { id: SECOND_REGRESSION_ID, test_name: KEPT_TEST_NAME } },
+      ],
+      overlapping_job_runs: [],
+      confidence_level: 6,
+    },
+  ]
+}
+
+function testDetailsPath(view) {
+  const params = new URLSearchParams({
+    view,
+    testId: TEST_ID,
+    component: COMPONENT,
+    capability: CAPABILITY,
+    baseRelease: BASE_RELEASE,
+    sampleRelease: SAMPLE_RELEASE,
+  })
+  params.append('includeVariant', 'Platform:aws')
+  return `/api/component_readiness/test_details?${params}`
+}
+
+export function regressionRecord(links) {
+  return {
+    id: REGRESSION_ID,
+    test_name: TEST_NAME,
+    test_id: TEST_ID,
+    release: SAMPLE_RELEASE,
+    opened: regressionOpened,
+    links:
+      links === undefined
+        ? {
+            [`test_details:${OTHER_VIEW}`]: testDetailsPath(OTHER_VIEW),
+            [`test_details:${VIEW}`]: testDetailsPath(VIEW),
+          }
+        : links,
+  }
+}
+
+export function artifactResults(jobRunIds, withMatches) {
+  return {
+    job_runs: jobRunIds.map((id) => ({
+      id,
+      url: `https://prow.example/view/${id}`,
+      job_name: 'periodic-ci-sample',
+      artifacts: [
+        {
+          job_run_id: id,
+          artifact_path: ARTIFACT_PATH,
+          artifact_url: `https://artifacts.example/${id}/${ARTIFACT_PATH}`,
+          matched_content: withMatches
+            ? {
+                line_matches: {
+                  matches: [
+                    {
+                      before: ['starting etcd watch'],
+                      match: ARTIFACT_MATCH_LINE,
+                    },
+                  ],
+                },
+              }
+            : {},
+        },
+      ],
+    })),
+  }
+}
+
+export function emptyArtifactResults(jobRunIds) {
+  return {
+    job_runs: jobRunIds.map((id) => ({
+      id,
+      url: `https://prow.example/view/${id}`,
+      job_name: 'periodic-ci-sample',
+      // The Go API leaves a run with no matching files as a nil slice.
+      artifacts: null,
+    })),
   }
 }

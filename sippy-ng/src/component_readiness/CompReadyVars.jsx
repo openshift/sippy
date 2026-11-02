@@ -507,18 +507,7 @@ export const CompReadyVarsProvider = ({ children }) => {
           // If no view was requested and we were not given fully qualified params,
           // select the default view: (first in the list matching our default sample release)
           if (shouldLoadDefaultView()) {
-            for (let v of views) {
-              var foundView = false
-              if (v.sample_release.release === defaultSampleRelease) {
-                foundView = true
-                syncView(v)
-                break
-              }
-            }
-            // Catch case where the views file has no entry for the current default sample release:
-            if (!foundView) {
-              syncView(views[0])
-            }
+            syncView(defaultView(views))
           } else updateVarsFromView(params.view, views)
         }
         setIsLoaded(true)
@@ -536,6 +525,24 @@ export const CompReadyVarsProvider = ({ children }) => {
     // Attempt to decide if we should pre-select the default view, or if we were given params:
     return params.view === undefined && params.baseRelease === undefined
   }
+
+  // The first view for the default sample release, or the first view when the
+  // views file has no entry for that release.
+  const defaultView = (loadedViews) =>
+    loadedViews.find(
+      (v) => v.sample_release.release === defaultSampleRelease
+    ) || loadedViews[0]
+
+  // Views load once, but an in-app link to a bare report URL (the help
+  // breadcrumb, the app sidebar) drops the view afterwards. Without one the
+  // report never requests data. Replace rather than push so Back still works.
+  useEffect(() => {
+    if (views.length === 0 || !shouldLoadDefaultView()) return
+    setParams(
+      { view: defaultView(views).name, crDataSource: dataSource || undefined },
+      'replaceIn'
+    )
+  }, [params.view, params.baseRelease, views])
 
   // Take a string that is an "environment" (environment is a list of strings that describe
   // items in one or more of the lists above) and split it up so that it can be used in

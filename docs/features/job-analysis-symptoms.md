@@ -189,7 +189,7 @@ modified, added, or removed, re-evaluating produces the correct result. Manually
 | `pkg/api/jobartifacts/` | `JobArtifactQuery`, `ContentMatcher` - the artifact querying and matching engine used by JAQ and symptom evaluation. Results (matched lines per file) are cached by `(jobRunID, pathGlob, matcherKey)` to avoid re-scanning the same job run for the same query; this does **not** cache raw GCS file contents. |
 | `pkg/dataloader/prowloader/prow.go` | `GatherLabelsFromBQ` - reads labels from BQ during fetchdata. |
 | `cmd/sippy/seed_data.go` | Bootstrap definitions of symptoms and labels for use in manual testing. |
-| `sippy-ng/src/component_readiness/JobArtifactQuery.jsx` | JAQ dialog including symptom creation UI. |
+| `sippy-ng/src/component_readiness/JobArtifactQuery.jsx` | JAQ dialog including symptom creation UI. A failed artifact search shows an error instead of an empty result table. Browser scenarios live in `sippy-ng/bdd/features/artifact-query.feature`. |
 | `sippy-ng/src/components/JobRunLabelDetails.jsx` | Shared label descriptions and Jira links in job-run and release-payload dialogs. |
 | `sippy-ng/src/components/LabelEditor.jsx` | Write-gated editor for updating and deleting complete label definitions. |
 | `sippy-ng/src/components/LabelEditButton.jsx` | Shared capability-gated new-tab link from label detail dialogs to the editor. |

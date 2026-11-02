@@ -279,9 +279,11 @@ Then('the regressed filters stay in the URL', async ({ page }) => {
 })
 
 Then('the triage update keeps both regressions', async ({ api }) => {
-  const put = latestRequest(
+  const updates = () =>
     api.putRequests().filter((request) => request.url.includes('/triages/7'))
-  )
+  // Adding to an existing triage reads the record first, so the PUT can trail the click.
+  await expect.poll(() => updates().length).toBeGreaterThan(0)
+  const put = latestRequest(updates())
   const ids = put.body.regressions.map((regression) => regression.id).sort()
   expect(ids).toEqual([REGRESSION_ID, SECOND_REGRESSION_ID])
 })
