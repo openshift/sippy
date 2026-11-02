@@ -84,7 +84,9 @@ verify-migrations:
 
 APM_GENERATED_FILES := .agents .claude .codex .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md apm.lock.yaml config/AGENTS.md config/CLAUDE.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md pkg/db/query/AGENTS.md pkg/db/query/CLAUDE.md
 
-verify-apm: apm
+verify-apm:
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm install --frozen
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm compile
 	@if [ -n "$$(git status --porcelain -- $(APM_GENERATED_FILES))" ]; then \
 		echo "ERROR: Generated APM files are out of date. Run 'make apm' and commit the results."; \
 		git status --short -- $(APM_GENERATED_FILES); \

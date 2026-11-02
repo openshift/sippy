@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-11-02T19:58:11.027719+00:00'
+generated_at: '2026-11-02T20:19:55.833350+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -48,6 +48,15 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:03e62b39a89579c47f72a0d585252854e56f3564c890271007b3454fff43ff42
+- kind: project-relative
+  target: claude
+  value: .claude/commands/sippy-dev-restore-prodlike.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:dcdd6d553cd2486e1ed1ebb67af57e465c66bdddd40dbc4a92e49f1fe269869b
 - kind: project-relative
   target: claude
   value: .claude/commands/sippy-dev-serve.md
@@ -815,6 +824,15 @@ deployments:
   content_hash: sha256:aac4d46b1755450303a0c32e1d17f1d3724e754afdc3030cc2565303e26a5909
 - kind: project-relative
   target: gemini
+  value: .gemini/commands/sippy-dev-restore-prodlike.toml
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:733ed2a0140ae0e3ccb5777cd6016ad374963d3dc1b64f52c2c573f4765f35f9
+- kind: project-relative
+  target: gemini
   value: .gemini/commands/sippy-dev-serve.toml
   runtime: null
   scope: project
@@ -875,7 +893,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: null
+  content_hash: sha256:68208cf2eba6bbea61a266dfbec2ecaec4c78d41ac355f553a2b2011f9188346
 - kind: uri
   target: mcp
   value: playwright
@@ -887,13 +905,22 @@ deployments:
   content_hash: sha256:4bcc3248c4ac857ab84e5a35408a9011691dc7728ba80e7ff231843c54f8a46e
 - kind: uri
   target: mcp
+  value: sippy-dev
+  runtime: claude
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:b9d738d5f05b7f452f610fc95c5463b7619a650e9519193d50cd6bf040b18c2b
+- kind: uri
+  target: mcp
   value: atlassian
   runtime: codex
   scope: project
   owners:
   - .
   active_owner: .
-  content_hash: null
+  content_hash: sha256:66d34655ac665e25e08bbdaba822cd890891374d23fbac840d0b49894fc5bfc4
 - kind: uri
   target: mcp
   value: playwright
@@ -903,6 +930,15 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:5f2ab24f1e0fb0382a15201bd47f1b03b78a543ab2d2d5b15e6773410f5412b7
+- kind: uri
+  target: mcp
+  value: sippy-dev
+  runtime: codex
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:05af8f64d8c5dec8fca614c393ebc8f11ed3b154af60743feebf7114bfc26544
 - kind: uri
   target: mcp
   value: atlassian
@@ -969,6 +1005,15 @@ deployments:
 - kind: uri
   target: mcp
   value: playwright
+  runtime: opencode
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: uri
+  target: mcp
+  value: sippy-dev
   runtime: opencode
   scope: project
   owners:
@@ -1020,6 +1065,15 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:03e62b39a89579c47f72a0d585252854e56f3564c890271007b3454fff43ff42
+- kind: project-relative
+  target: opencode
+  value: .opencode/commands/sippy-dev-restore-prodlike.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:dcdd6d553cd2486e1ed1ebb67af57e465c66bdddd40dbc4a92e49f1fe269869b
 - kind: project-relative
   target: opencode
   value: .opencode/commands/sippy-dev-serve.md
@@ -1105,9 +1159,11 @@ mcp_target_servers:
   claude:
   - atlassian
   - playwright
+  - sippy-dev
   codex:
   - atlassian
   - playwright
+  - sippy-dev
   cursor:
   - atlassian
   - playwright
@@ -1119,6 +1175,7 @@ mcp_target_servers:
   opencode:
   - atlassian
   - playwright
+  - sippy-dev
 local_deployed_files:
 - .agents/skills/sippy-dev-app
 - .agents/skills/sippy-dev-app/SKILL.md
@@ -1147,6 +1204,7 @@ local_deployed_files:
 - .claude/commands/sippy-dev-frontend.md
 - .claude/commands/sippy-dev-migrate.md
 - .claude/commands/sippy-dev-regression-cache.md
+- .claude/commands/sippy-dev-restore-prodlike.md
 - .claude/commands/sippy-dev-serve.md
 - .claude/commands/sippy-dev-setup.md
 - .claude/commands/sippy-dev-tests.md
@@ -1210,6 +1268,7 @@ local_deployed_files:
 - .gemini/commands/sippy-dev-frontend.toml
 - .gemini/commands/sippy-dev-migrate.toml
 - .gemini/commands/sippy-dev-regression-cache.toml
+- .gemini/commands/sippy-dev-restore-prodlike.toml
 - .gemini/commands/sippy-dev-serve.toml
 - .gemini/commands/sippy-dev-setup.toml
 - .gemini/commands/sippy-dev-tests.toml
@@ -1221,6 +1280,7 @@ local_deployed_files:
 - .opencode/commands/sippy-dev-frontend.md
 - .opencode/commands/sippy-dev-migrate.md
 - .opencode/commands/sippy-dev-regression-cache.md
+- .opencode/commands/sippy-dev-restore-prodlike.md
 - .opencode/commands/sippy-dev-serve.md
 - .opencode/commands/sippy-dev-setup.md
 - .opencode/commands/sippy-dev-tests.md
@@ -1244,6 +1304,7 @@ local_deployed_file_hashes:
   .claude/commands/sippy-dev-frontend.md: sha256:9451f98d96c38c758ce25b6568a4c2ac8811481c11e2438b1e80ec14ff2a5f7a
   .claude/commands/sippy-dev-migrate.md: sha256:b331255b4f3199450a7f0c3facaad7ea150326cf1c944288b10eda311b2518b8
   .claude/commands/sippy-dev-regression-cache.md: sha256:03e62b39a89579c47f72a0d585252854e56f3564c890271007b3454fff43ff42
+  .claude/commands/sippy-dev-restore-prodlike.md: sha256:dcdd6d553cd2486e1ed1ebb67af57e465c66bdddd40dbc4a92e49f1fe269869b
   .claude/commands/sippy-dev-serve.md: sha256:902eb4538e99ee51b3ed2868827ec8424b79fbcb3304a20be7504ecf40375fb3
   .claude/commands/sippy-dev-setup.md: sha256:8afe518e13771104dc173092856a3b1f715120ea359d0c92d99338f39220c40b
   .claude/commands/sippy-dev-tests.md: sha256:a9bb874d2f176904c84e731ba3e3f1a256e84a31f54d5d166a6aa25ffe7e43be
@@ -1296,6 +1357,7 @@ local_deployed_file_hashes:
   .gemini/commands/sippy-dev-frontend.toml: sha256:1df44b5c570c9002acdc249999bf64085fbb5b10a0de95fb9ed36900d5bc85f3
   .gemini/commands/sippy-dev-migrate.toml: sha256:a3e8b4129121ade76978e125bf25e9834b8af8b2c795684dc38e66639a6d5cc9
   .gemini/commands/sippy-dev-regression-cache.toml: sha256:aac4d46b1755450303a0c32e1d17f1d3724e754afdc3030cc2565303e26a5909
+  .gemini/commands/sippy-dev-restore-prodlike.toml: sha256:733ed2a0140ae0e3ccb5777cd6016ad374963d3dc1b64f52c2c573f4765f35f9
   .gemini/commands/sippy-dev-serve.toml: sha256:8bb28e4a4181ff8592986ef56db1acc1cc8bc93cab7d1ccd4bd1e8f52ab660bb
   .gemini/commands/sippy-dev-setup.toml: sha256:6382798c484e050809a3dd9fd66eea37fbf98367ea0321fe6b50753918b09b7a
   .gemini/commands/sippy-dev-tests.toml: sha256:00d6d4ab7cf645286bd1bdd4c7c103638b5e784cca4d7ae1f83c96a14f03d654
@@ -1307,6 +1369,7 @@ local_deployed_file_hashes:
   .opencode/commands/sippy-dev-frontend.md: sha256:9451f98d96c38c758ce25b6568a4c2ac8811481c11e2438b1e80ec14ff2a5f7a
   .opencode/commands/sippy-dev-migrate.md: sha256:b331255b4f3199450a7f0c3facaad7ea150326cf1c944288b10eda311b2518b8
   .opencode/commands/sippy-dev-regression-cache.md: sha256:03e62b39a89579c47f72a0d585252854e56f3564c890271007b3454fff43ff42
+  .opencode/commands/sippy-dev-restore-prodlike.md: sha256:dcdd6d553cd2486e1ed1ebb67af57e465c66bdddd40dbc4a92e49f1fe269869b
   .opencode/commands/sippy-dev-serve.md: sha256:902eb4538e99ee51b3ed2868827ec8424b79fbcb3304a20be7504ecf40375fb3
   .opencode/commands/sippy-dev-setup.md: sha256:8afe518e13771104dc173092856a3b1f715120ea359d0c92d99338f39220c40b
   .opencode/commands/sippy-dev-tests.md: sha256:a9bb874d2f176904c84e731ba3e3f1a256e84a31f54d5d166a6aa25ffe7e43be
