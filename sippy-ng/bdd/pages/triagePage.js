@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test'
 import { JIRA_URL, REGRESSION_ID } from '../fixtures/data.js'
 
 export class TriagePage {
@@ -11,7 +12,9 @@ export class TriagePage {
   }
 
   async openRegressedTab(name) {
-    await this.page.getByTestId(`regressed-tab-${name}`).click()
+    const tab = this.page.getByTestId(`regressed-tab-${name}`)
+    await tab.click()
+    await expect(tab).toHaveAttribute('aria-selected', 'true')
   }
 
   async selectRegression(id = REGRESSION_ID) {
@@ -22,6 +25,7 @@ export class TriagePage {
     }
     await box.waitFor()
     await box.click()
+    await expect(box).toBeChecked()
   }
 
   async startTriage() {
