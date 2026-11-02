@@ -225,10 +225,13 @@ Then(
 )
 
 Then('the audit logs were requested for triage {int}', async ({ api }, id) => {
-  const requests = api.requestsTo(/\/triages\/\d+\/audit$/)
-  expect(requests.map((request) => request.pathname)).toEqual([
-    `/api/component_readiness/triages/${id}/audit`,
-  ])
+  await expect
+    .poll(() =>
+      api
+        .requestsTo(/\/triages\/\d+\/audit$/)
+        .map((request) => request.pathname)
+    )
+    .toEqual([`/api/component_readiness/triages/${id}/audit`])
 })
 
 Then(

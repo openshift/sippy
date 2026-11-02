@@ -156,20 +156,25 @@ export async function installApi(page, api) {
         if (response.hold) {
           await response.hold
         }
-        await route.fulfill({
-          status: response.status,
-          contentType: 'application/json',
-          headers: cors,
-          body: JSON.stringify(response.body),
-        })
+        // A pending response can be cancelled by navigation; that is not a mock error.
+        await route
+          .fulfill({
+            status: response.status,
+            contentType: 'application/json',
+            headers: cors,
+            body: JSON.stringify(response.body),
+          })
+          .catch(() => {})
       } catch (error) {
         api.unexpectedRequests.push(`mock error ${request.url()}: ${error}`)
-        await route.fulfill({
-          status: 500,
-          contentType: 'text/plain',
-          headers: cors,
-          body: String(error),
-        })
+        await route
+          .fulfill({
+            status: 500,
+            contentType: 'text/plain',
+            headers: cors,
+            body: String(error),
+          })
+          .catch(() => {})
       }
     }
   )

@@ -243,6 +243,15 @@ Then('the page URL includes {string}', async ({ page }, text) => {
   await expect(page).toHaveURL(new RegExp(escapeRegex(text)))
 })
 
+Then(
+  'the page URL query {string} is {string}',
+  async ({ page }, name, value) => {
+    await expect
+      .poll(() => new URL(page.url()).searchParams.getAll(name))
+      .toEqual([value])
+  }
+)
+
 Then('triage write controls are hidden', async ({ page }) => {
   await expect(page.getByTestId('triage-regressions')).toHaveCount(0)
 })

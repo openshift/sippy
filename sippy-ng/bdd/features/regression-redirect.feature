@@ -11,7 +11,7 @@ Feature: Stable regression links
     And the page URL includes "view=5.0-main"
     And the page URL includes "sampleRelease=5.0"
     And the page URL includes "baseRelease=4.22"
-    And the page URL includes "includeVariant=Platform"
+    And the page URL query "includeVariant" is "Platform:aws"
 
   Scenario: A missing regression is reported
     Given a component readiness API

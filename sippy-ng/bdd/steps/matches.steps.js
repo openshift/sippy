@@ -195,6 +195,8 @@ Then('the potential matches do not show {string}', async ({ page }, name) => {
 Then(
   'the triage link request keeps regression {int} and adds {int}',
   async ({ api }, kept, added) => {
+    // The PUT can trail the click that triggers it.
+    await expect.poll(() => api.putRequests().length).toBeGreaterThan(0)
     const put = latestRequest(api.putRequests())
     expect(put.pathname).toBe(
       `/api/component_readiness/triages/${SEEDED_TRIAGE_ID}`
