@@ -456,9 +456,22 @@ func (bl *BugLoader) syncJobAssociations(conn db.PgxSession) error {
 // triage resolution changes made during bug-loader reconciliation.
 const ReconcileAuditUser = "bug-loader"
 
+// latestBugPerURL selects one non-deleted bug row per URL. Legacy on-prem and
+// current cloud Jira records can coexist under different IDs for the same
+// issue URL; always choosing the most recently changed row (highest ID on
+// ties, rows without a change time last) keeps triage links stable across
+// reconciliation passes instead of oscillating between duplicates.
+const latestBugPerURL string = `
+	SELECT DISTINCT ON (url) id, url
+	FROM bugs
+	WHERE deleted_at IS NULL
+	  AND url != ''
+	ORDER BY url, last_change_time DESC NULLS LAST, id DESC
+`
+
 // ReconcileTriages synchronizes triage resolution state with linked Jira bug
-// statuses. It updates descriptions from linked bugs, links triages to bug
-// records, auto-resolves single-release triages whose bugs have progressed,
+// statuses. It links triages to the latest bug record for their URL (see
+// latestBugPerURL), updates descriptions from linked bugs, auto-resolves single-release triages whose bugs have progressed,
 // and clears automatic jira-progression resolutions when the linked bug
 // returns to an open state. Resolution and un-resolution changes are recorded
 // in the triage audit history via GORM model hooks.
@@ -467,31 +480,32 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 
 	dbWithContext := gormDB.WithContext(context.WithValue(ctx, models.CurrentUserKey, ReconcileAuditUser))
 
+	// Linking runs first so the description and resolution steps below all
+	// act on the single bug row chosen per URL, via t.bug_id.
+	linkResult := dbWithContext.Exec(`
+		UPDATE triages t
+		SET bug_id = b.id, updated_at = NOW()
+		FROM (` + latestBugPerURL + `) b
+		WHERE b.url = t.url
+		  AND t.url != ''
+		  AND t.bug_id IS DISTINCT FROM b.id
+	`)
+	if linkResult.Error != nil {
+		return fmt.Errorf("linking triages to bugs: %w", linkResult.Error)
+	}
+
 	descResult := dbWithContext.Exec(`
 		UPDATE triages t
 		SET description = b.summary, updated_at = NOW()
 		FROM bugs b
-		WHERE (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
+		WHERE b.id = t.bug_id
 		  AND b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND b.summary != ''
-		  AND b.summary != t.description
+		  AND b.summary IS DISTINCT FROM t.description
 	`)
 	if descResult.Error != nil {
 		return fmt.Errorf("updating triage descriptions: %w", descResult.Error)
-	}
-
-	linkResult := dbWithContext.Exec(`
-		UPDATE triages t
-		SET bug_id = b.id, updated_at = NOW()
-		FROM bugs b
-		WHERE b.url = t.url
-		  AND b.deleted_at IS NULL
-		  AND t.url != ''
-		  AND (t.bug_id IS NULL OR t.bug_id != b.id)
-	`)
-	if linkResult.Error != nil {
-		return fmt.Errorf("linking triages to bugs: %w", linkResult.Error)
 	}
 
 	resolvedBugStatuses := []string{
@@ -507,7 +521,7 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	if err := dbWithContext.Raw(`
 		SELECT DISTINCT t.id
 		FROM triages t
-		JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
+		JOIN bugs b ON b.id = t.bug_id
 		WHERE b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND t.resolved IS NULL
@@ -558,7 +572,7 @@ func ReconcileTriages(ctx context.Context, gormDB *gorm.DB) error {
 	if err := dbWithContext.Raw(`
 		SELECT DISTINCT t.id
 		FROM triages t
-		JOIN bugs b ON (b.id = t.bug_id OR (t.bug_id IS NULL AND b.url = t.url))
+		JOIN bugs b ON b.id = t.bug_id
 		WHERE b.deleted_at IS NULL
 		  AND t.url != ''
 		  AND t.resolved IS NOT NULL

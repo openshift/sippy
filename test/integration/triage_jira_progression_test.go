@@ -527,6 +527,139 @@ func TestReconcileTriagesJiraProgression(t *testing.T) {
 	})
 }
 
+// TestReconcileTriagesDuplicateBugRows covers legacy and current Jira records
+// coexisting under different IDs for the same URL. Reconciliation must pick
+// one row per URL consistently and stop touching the triage once converged.
+func TestReconcileTriagesDuplicateBugRows(t *testing.T) {
+	base := time.Now().Add(-time.Hour).Truncate(time.Second)
+
+	type dupBug struct {
+		id         uint
+		status     string
+		summary    string
+		changeTime *time.Time // nil stores a NULL last_change_time
+		deleted    bool
+	}
+	changeTimeAt := func(d time.Duration) *time.Time { v := base.Add(d); return &v }
+
+	cases := []struct {
+		name           string
+		bugs           []dupBug
+		preLinkID      *uint
+		expectBugID    uint
+		expectDesc     string
+		expectResolved bool
+	}{
+		{
+			name: "newer row with lower id wins over legacy row with higher id",
+			bugs: []dupBug{
+				{id: 900001, status: jiratype.StatusVerified, summary: "current", changeTime: changeTimeAt(time.Minute)},
+				{id: 900002, status: jiratype.StatusNew, summary: "legacy", changeTime: changeTimeAt(0)},
+			},
+			expectBugID:    900001,
+			expectDesc:     "current",
+			expectResolved: true,
+		},
+		{
+			name: "newer row with higher id wins over legacy row with lower id",
+			bugs: []dupBug{
+				{id: 900011, status: jiratype.StatusClosed, summary: "legacy", changeTime: changeTimeAt(0)},
+				{id: 900012, status: jiratype.StatusNew, summary: "current", changeTime: changeTimeAt(time.Minute)},
+			},
+			expectBugID:    900012,
+			expectDesc:     "current",
+			expectResolved: false,
+		},
+		{
+			name: "triage already linked to legacy row relinks to latest",
+			bugs: []dupBug{
+				{id: 900021, status: jiratype.StatusNew, summary: "legacy", changeTime: changeTimeAt(0)},
+				{id: 900022, status: jiratype.StatusOnQA, summary: "current", changeTime: changeTimeAt(time.Minute)},
+			},
+			preLinkID:      uintPtr(900021),
+			expectBugID:    900022,
+			expectDesc:     "current",
+			expectResolved: true,
+		},
+		{
+			name: "identical change times break ties by highest id",
+			bugs: []dupBug{
+				{id: 900031, status: jiratype.StatusNew, summary: "lower id", changeTime: changeTimeAt(0)},
+				{id: 900032, status: jiratype.StatusNew, summary: "higher id", changeTime: changeTimeAt(0)},
+			},
+			expectBugID: 900032,
+			expectDesc:  "higher id",
+		},
+		{
+			name: "missing change time sorts after rows with a change time",
+			bugs: []dupBug{
+				{id: 900041, status: jiratype.StatusNew, summary: "dated", changeTime: changeTimeAt(0)},
+				{id: 900042, status: jiratype.StatusNew, summary: "undated", changeTime: nil},
+			},
+			expectBugID: 900041,
+			expectDesc:  "dated",
+		},
+		{
+			name: "soft-deleted newer row is ignored",
+			bugs: []dupBug{
+				{id: 900051, status: jiratype.StatusNew, summary: "live", changeTime: changeTimeAt(0)},
+				{id: 900052, status: jiratype.StatusNew, summary: "deleted", changeTime: changeTimeAt(time.Minute), deleted: true},
+			},
+			expectBugID: 900051,
+			expectDesc:  "live",
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dbc := intutil.NewTestDB(t, pgContainer)
+			ctx := context.Background()
+
+			key := fmt.Sprintf("DUP-%d", i+1)
+			bugURL := fmt.Sprintf("https://issues.example.com/%s", key)
+			for _, b := range tc.bugs {
+				bug := models.Bug{ID: b.id, Key: key, Status: b.status, Summary: b.summary, URL: bugURL}
+				if b.changeTime != nil {
+					bug.LastChangeTime = *b.changeTime
+				}
+				require.NoError(t, dbc.DB.Create(&bug).Error)
+				if b.changeTime == nil {
+					require.NoError(t, dbc.DB.Exec("UPDATE bugs SET last_change_time = NULL WHERE id = ?", b.id).Error)
+				}
+				if b.deleted {
+					require.NoError(t, dbc.DB.Delete(&bug).Error)
+				}
+			}
+			reg := intutil.CreateTestRegression(t, dbc, fmt.Sprintf("test-dup-%d", i+1), "4.19")
+			triage := intutil.CreateTriage(t, dbc, bugURL, intutil.WithRegressions(reg))
+			if tc.preLinkID != nil {
+				require.NoError(t, dbc.DB.Exec("UPDATE triages SET bug_id = ? WHERE id = ?", *tc.preLinkID, triage.ID).Error)
+			}
+
+			runReconcileTriages(ctx, t, dbc)
+			reloadTriage(t, dbc, &triage)
+			require.NotNil(t, triage.BugID, "bug_id should be linked")
+			assert.Equal(t, tc.expectBugID, *triage.BugID)
+			assert.Equal(t, tc.expectDesc, triage.Description)
+			assert.Equal(t, tc.expectResolved, triage.Resolved.Valid)
+			convergedUpdatedAt := triage.UpdatedAt
+			auditCount := len(getReconcileAuditLogs(t, dbc, triage.ID))
+
+			for pass := 2; pass <= 4; pass++ {
+				runReconcileTriages(ctx, t, dbc)
+				reloadTriage(t, dbc, &triage)
+				require.NotNil(t, triage.BugID, "pass %d: bug_id should stay linked", pass)
+				assert.Equal(t, tc.expectBugID, *triage.BugID, "pass %d: bug_id must not oscillate", pass)
+				assert.Equal(t, tc.expectDesc, triage.Description, "pass %d: description must not oscillate", pass)
+				assert.Equal(t, tc.expectResolved, triage.Resolved.Valid, "pass %d: resolution must be stable", pass)
+				assert.Equal(t, convergedUpdatedAt, triage.UpdatedAt, "pass %d: updated_at must not advance after convergence", pass)
+			}
+			assert.Len(t, getReconcileAuditLogs(t, dbc, triage.ID), auditCount,
+				"repeated passes must not add audit entries")
+		})
+	}
+}
+
 func createBug(t *testing.T, dbc *db.DB, key, status, summary, url string) models.Bug {
 	t.Helper()
 	bug := models.Bug{
