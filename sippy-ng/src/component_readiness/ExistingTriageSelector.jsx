@@ -31,6 +31,8 @@ export default function ExistingTriageSelector({
         id="existing-triage"
         name="existing-triage"
         options={triages}
+        // Separate records can share a Jira URL and description.
+        getOptionKey={(triage) => triage.id}
         value={triages.find((t) => t.id === existingTriageId)}
         getOptionLabel={(triage) => {
           return formatTriageURLDescription(triage)
