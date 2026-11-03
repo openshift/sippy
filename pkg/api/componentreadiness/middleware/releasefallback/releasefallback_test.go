@@ -10,7 +10,38 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
+
+func TestPreTestDetailsAnalysisUsesDBGroupByStatusKey(t *testing.T) {
+	groupedKey := crtest.KeyWithVariants{
+		TestID:   "shared-test",
+		Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+	}
+	requestedKey := crtest.KeyWithVariants{
+		TestID: groupedKey.TestID,
+		Variants: map[string]string{
+			"Platform":     "aws",
+			"Network":      "ovn",
+			"Architecture": "amd64",
+		},
+	}
+	baseOverrideStatus := map[string][]crstatus.TestDetailsSummary{
+		"job": {{TestKeyStr: groupedKey.Encode()}},
+	}
+	middleware := &ReleaseFallback{
+		reqOptions: reqopts.RequestOptions{
+			VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform", "Network")},
+		},
+		baseOverrideStatus: map[string]map[string][]crstatus.TestDetailsSummary{
+			groupedKey.Encode(): baseOverrideStatus,
+		},
+	}
+	status := &crstatus.TestJobRunStatuses{}
+
+	assert.NoError(t, middleware.PreTestDetailsAnalysis(requestedKey, status))
+	assert.Equal(t, baseOverrideStatus, status.BaseOverrideStatus)
+}
 
 func Test_PreAnalysis(t *testing.T) {
 	reqOpts419 := reqopts.RequestOptions{

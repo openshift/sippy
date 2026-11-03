@@ -217,7 +217,7 @@ func (l *RegressionCacheLoader) processView(
 		return nil, err
 	}
 
-	// Step 1: Generate the component report (one BQ query, cached)
+	// Step 1: Generate and cache the component report through the configured provider.
 	report, err := l.generateAndCacheReport(ctx, generator)
 	if err != nil {
 		return nil, err
@@ -262,7 +262,7 @@ func (l *RegressionCacheLoader) processView(
 	// Step 4: Build test ID options for the multi-test details query
 	testIDOptions := l.buildTestIDOptions(regressedTests, view)
 
-	// Step 5: Generate test details in one BQ query
+	// Step 5: Generate test details from batched status results.
 	tdGenerator, err := l.buildGenerator(view, cacheOpts, testIDOptions)
 	if err != nil {
 		return nil, err
