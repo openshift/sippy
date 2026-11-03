@@ -22,10 +22,10 @@ export default defineConfig({
   timeout: 60_000,
   // Scenarios do not share state, so they run together. Each worker keeps
   // one Chromium that has already opened a page; a fresh process often dies
-  // on its first page. Four is the cap: more browsers share one Vite server
-  // and the suite gets slower, and an unset count becomes one browser per CPU.
+  // on its first page. More than two browsers competing with the shared Vite
+  // server make individual scenarios slower without reducing suite runtime.
   fullyParallel: true,
-  workers: 4,
+  workers: 2,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     // A leading slash replaces the base path, so paths stay relative to this trailing slash.

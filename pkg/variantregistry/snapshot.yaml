@@ -19678,6 +19678,30 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-aws-operator-encryption-kms-perf:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-azure-encryption-kms:
     Aggregation: none
     Architecture: amd64
@@ -59140,6 +59164,78 @@ periodic-ci-openshift-machine-config-operator-release-5.1-arm64-periodics-e2e-aw
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-machine-config-operator-release-5.1-periodics-e2e-aws-mco-disconnected-longduration-1of3:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: machine-config-operator
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-machine-config-operator-release-5.1-periodics-e2e-aws-mco-disconnected-longduration-2of3:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: machine-config-operator
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-machine-config-operator-release-5.1-periodics-e2e-aws-mco-disconnected-longduration-3of3:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: machine-config-operator
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-machine-config-operator-release-5.1-periodics-e2e-aws-mco-disruptive:
     Aggregation: none
     Architecture: amd64
@@ -60453,6 +60549,29 @@ periodic-ci-openshift-microshift-main-e2e-aws-tests-cache-nightly-arm:
     Topology: microshift
     Upgrade: none
 periodic-ci-openshift-microshift-release-4.16-clusterbot:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Procedure: none
+    Release: "4.16"
+    ReleaseMajor: "4"
+    ReleaseMinor: "16"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: microshift
+    Upgrade: none
+periodic-ci-openshift-microshift-release-4.16-periodics-rebase-on-nightlies:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -327019,6 +327138,33 @@ periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-meta
     SecurityMode: default
     Suite: unknown
     Topology: two-node-fencing
+    Upgrade: major
+periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-nutanix-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.22"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "22"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: nutanix
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
     Upgrade: major
 periodic-ci-openshift-release-main-nightly-5.0-upgrade-from-stable-4.22-e2e-platform-external-aws-ccm-upgrade:
     Aggregation: none

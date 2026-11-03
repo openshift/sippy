@@ -266,8 +266,14 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 }
 
 func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {
+	groupedVariants := map[string]string{}
+	for variant := range r.reqOptions.VariantOption.DBGroupBy {
+		if value, ok := testKey.Variants[variant]; ok {
+			groupedVariants[variant] = value
+		}
+	}
+	testKeyStr := crtest.KeyWithVariants{TestID: testKey.TestID, Variants: groupedVariants}.Encode()
 	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
-	testKeyStr := testKey.Encode()
 	if _, ok := r.baseOverrideStatus[testKeyStr]; ok {
 		status.BaseOverrideStatus = r.baseOverrideStatus[testKeyStr]
 	}

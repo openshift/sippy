@@ -82,20 +82,32 @@ func filterByDBGroupBy(variants map[string]string, dbGroupBy sets.Set[string]) m
 	return filtered
 }
 
-// matchRequestedVariants checks whether a row's job variants satisfy the
-// requested variant filters for the given testID, and returns the filtered
+// matchRequestedVariants checks whether a row's job variants satisfy any of
+// the requested variant filters for the given testID, and returns the filtered
 // key. Returns ok=false if the row should be skipped.
 func matchRequestedVariants(
 	testID string,
 	variants map[string]string,
-	requestedVariants map[string]map[string]string,
+	requestedVariants map[string][]map[string]string,
 	dbGroupBy sets.Set[string],
 ) (crtest.KeyWithVariants, bool) {
-	if rv, ok := requestedVariants[testID]; ok {
-		for k, v := range rv {
-			if variants[k] != v {
-				return crtest.KeyWithVariants{}, false
+	if requestedForTest, ok := requestedVariants[testID]; ok {
+		matched := false
+		for _, rv := range requestedForTest {
+			optionMatched := true
+			for k, v := range rv {
+				if actual, exists := variants[k]; !exists || actual != v {
+					optionMatched = false
+					break
+				}
 			}
+			if optionMatched {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return crtest.KeyWithVariants{}, false
 		}
 	}
 	filtered := filterByDBGroupBy(variants, dbGroupBy)
@@ -105,14 +117,11 @@ func matchRequestedVariants(
 	}, true
 }
 
-// buildRequestedVariantsMap builds a testID -> requested variants lookup
-// from the request options.
-func buildRequestedVariantsMap(testIDOptions []reqopts.TestIdentification) map[string]map[string]string {
-	m := map[string]map[string]string{}
+// buildRequestedVariantsMap groups requested variant filters by test ID.
+func buildRequestedVariantsMap(testIDOptions []reqopts.TestIdentification) map[string][]map[string]string {
+	m := map[string][]map[string]string{}
 	for _, tid := range testIDOptions {
-		if len(tid.RequestedVariants) > 0 {
-			m[tid.TestID] = tid.RequestedVariants
-		}
+		m[tid.TestID] = append(m[tid.TestID], tid.RequestedVariants)
 	}
 	return m
 }
@@ -588,12 +597,46 @@ func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOpt
 	if len(errs) > 0 {
 		return result, errs
 	}
+	aggregateOptions := reqOptions
+	presentKeys := sets.New[string]()
 	if len(result) > 0 {
-		return result, nil
+		for _, summaries := range result {
+			for _, summary := range summaries {
+				presentKeys.Insert(summary.TestKeyStr)
+			}
+		}
+		aggregateOptions.TestIDOptions = nil
+		for _, identification := range reqOptions.TestIDOptions {
+			key := crtest.KeyWithVariants{
+				TestID:   identification.TestID,
+				Variants: filterByDBGroupBy(identification.RequestedVariants, reqOptions.VariantOption.DBGroupBy),
+			}
+			if !presentKeys.Has(key.Encode()) {
+				aggregateOptions.TestIDOptions = append(aggregateOptions.TestIDOptions, identification)
+			}
+		}
+		if len(aggregateOptions.TestIDOptions) == 0 {
+			return result, nil
+		}
 	}
 	log.WithField("release", reqOptions.BaseRelease.Name).
-		Info("no per-run base test details found, falling back to aggregate tables")
-	return p.queryBaseAggregateTestDetails(ctx, reqOptions)
+		Info("querying aggregate base test details for keys without per-run data")
+	aggregate, aggregateErrs := p.queryBaseAggregateTestDetails(ctx, aggregateOptions)
+	if len(aggregateErrs) > 0 {
+		return result, aggregateErrs
+	}
+	if result == nil {
+		result = make(map[string][]crstatus.TestDetailsSummary)
+	}
+	for jobName, summaries := range aggregate {
+		for _, summary := range summaries {
+			if presentKeys.Has(summary.TestKeyStr) {
+				continue
+			}
+			result[jobName] = append(result[jobName], summary)
+		}
+	}
+	return result, nil
 }
 
 type aggregateTestDetailRow struct {
@@ -609,8 +652,8 @@ type aggregateTestDetailRow struct {
 }
 
 // queryBaseAggregateTestDetails queries aggregate tables (test_cumulative_summaries
-// or prow_ga_raw_test_data) as a fallback when prow_job_run_tests has no data for
-// the base release. Returns per-job aggregate stats as TestDetailsSummary entries
+// or prow_ga_raw_test_data) as a fallback for keys without prow_job_run_tests data
+// in the base release. Returns per-job aggregate stats as TestDetailsSummary entries
 // with no individual JobRuns, because per-run identifiers do not exist in these tables.
 func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {
 	includeVariants := reqOptions.VariantOption.IncludeVariants
