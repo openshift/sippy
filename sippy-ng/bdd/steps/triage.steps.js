@@ -22,6 +22,20 @@ import { TriagePage } from '../pages/triagePage.js'
 
 const { Given, When, Then } = createBdd(test)
 
+const networkSearchTriages = [7, 8, 9].map((id) =>
+  triageRecord({ id, regressions: [] })
+)
+const storageSearchTriage = triageRecord({
+  id: 10,
+  url: 'https://redhat.atlassian.net/browse/TRT-9999',
+  description: 'storage regression',
+  regressions: [],
+})
+const searchTriageLabel = ({ url, description }) =>
+  `${url.split('/').pop()} - ${description}`
+const networkSearchLabels = networkSearchTriages.map(searchTriageLabel)
+const storageSearchLabel = searchTriageLabel(storageSearchTriage)
+
 Given('an unresolved triage exists', async ({ api }) => {
   api.triages.push(triageRecord())
 })
@@ -470,13 +484,9 @@ Then('the delete request failed', async ({ page }) => {
 
 Given('existing triages have duplicate labels', async ({ api }) => {
   api.triages.push(
-    ...[7, 8, 9].map((id) => triageRecord({ id, regressions: [] })),
-    triageRecord({
-      id: 10,
-      url: 'https://redhat.atlassian.net/browse/TRT-9999',
-      description: 'storage regression',
-      regressions: [],
-    })
+    ...[...networkSearchTriages, storageSearchTriage].map((triage) =>
+      triageRecord({ ...triage, regressions: [] })
+    )
   )
 })
 
@@ -508,25 +518,17 @@ When('I search existing triages for {string}', async ({ page }, text) => {
 
 Then('all searchable triages are listed', async ({ page }) => {
   await expect(page.getByRole('option')).toHaveText([
-    'TRT-2631 - pod network regression',
-    'TRT-2631 - pod network regression',
-    'TRT-2631 - pod network regression',
-    'TRT-9999 - storage regression',
+    ...networkSearchLabels,
+    storageSearchLabel,
   ])
 })
 
 Then('only the storage triage is listed', async ({ page }) => {
-  await expect(page.getByRole('option')).toHaveText([
-    'TRT-9999 - storage regression',
-  ])
+  await expect(page.getByRole('option')).toHaveText([storageSearchLabel])
 })
 
 Then('only the duplicate network triages are listed', async ({ page }) => {
-  await expect(page.getByRole('option')).toHaveText([
-    'TRT-2631 - pod network regression',
-    'TRT-2631 - pod network regression',
-    'TRT-2631 - pod network regression',
-  ])
+  await expect(page.getByRole('option')).toHaveText(networkSearchLabels)
 })
 
 Then('no existing triages match', async ({ page }) => {
@@ -534,18 +536,25 @@ Then('no existing triages match', async ({ page }) => {
   await expect(page.getByText('No options', { exact: true })).toBeVisible()
 })
 
-When('I select the storage triage and add the regression', async ({ page }) => {
-  await page
-    .getByRole('option', { name: 'TRT-9999 - storage regression' })
-    .click()
-  await page.getByRole('button', { name: 'Add to Entry' }).click()
-})
+When(
+  'I select the second duplicate network triage and add the regression',
+  async ({ page }) => {
+    await page
+      .getByRole('option', { name: networkSearchLabels[1], exact: true })
+      .nth(1)
+      .click()
+    await page.getByRole('button', { name: 'Add to Entry' }).click()
+  }
+)
 
-Then('the storage triage received the regression', async ({ api, page }) => {
-  await expect(
-    page.getByText(/successfully added test to triage record:/)
-  ).toBeVisible()
-  const put = latestRequest(api.putRequests())
-  expect(put.pathname).toBe('/api/component_readiness/triages/10')
-  expect(put.body.regressions).toEqual([{ id: REGRESSION_ID }])
-})
+Then(
+  'the second duplicate network triage received the regression',
+  async ({ api, page }) => {
+    await expect(
+      page.getByText(/successfully added test to triage record:/)
+    ).toBeVisible()
+    const put = latestRequest(api.putRequests())
+    expect(put.pathname).toBe('/api/component_readiness/triages/8')
+    expect(put.body.regressions).toEqual([{ id: REGRESSION_ID }])
+  }
+)
