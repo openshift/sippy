@@ -39487,6 +39487,30 @@ periodic-ci-openshift-hypershift-release-4.22-periodics-e2e-aws-conformance-dyna
     Suite: parallel
     Topology: external
     Upgrade: none
+periodic-ci-openshift-hypershift-release-4.22-periodics-e2e-aws-conformance-ipsec:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: ipsec
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: parallel
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-hypershift-release-4.22-periodics-e2e-aws-external-oidc:
     Aggregation: none
     Architecture: amd64
@@ -40753,6 +40777,30 @@ periodic-ci-openshift-hypershift-release-4.23-periodics-e2e-aws-conformance-cili
     Suite: parallel
     Topology: external
     Upgrade: none
+periodic-ci-openshift-hypershift-release-4.23-periodics-e2e-aws-conformance-ipsec:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: ipsec
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: parallel
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-hypershift-release-4.23-periodics-e2e-aws-external-oidc:
     Aggregation: none
     Architecture: amd64
@@ -41685,6 +41733,30 @@ periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-aws-conformance-dynam
     Owner: eng
     Platform: aws
     Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: parallel
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-hypershift-release-5.0-periodics-e2e-aws-conformance-ipsec:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: ipsec
     Release: "5.0"
     ReleaseMajor: "5"
     ReleaseMinor: "0"
@@ -43289,6 +43361,30 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-aws-conformance-dynam
     Owner: eng
     Platform: aws
     Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: parallel
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-hypershift-release-5.1-periodics-e2e-aws-conformance-ipsec:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: ipsec
     Release: "5.1"
     ReleaseMajor: "5"
     ReleaseMinor: "1"
@@ -135686,30 +135782,6 @@ periodic-ci-openshift-openshift-tests-private-release-4.18-amd64-nightly-aws-ipi
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-4.18-amd64-nightly-aws-ipi-ovn-hypershift-guest-ipsec-f14:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: qe
-    Platform: aws
-    Procedure: ipsec
-    Release: "4.18"
-    ReleaseMajor: "4"
-    ReleaseMinor: "18"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
 periodic-ci-openshift-openshift-tests-private-release-4.18-amd64-nightly-aws-ipi-ovn-hypershift-guest-longduration-f14:
     Aggregation: none
     Architecture: amd64
@@ -146602,30 +146674,6 @@ periodic-ci-openshift-openshift-tests-private-release-4.19-amd64-nightly-aws-ipi
     Owner: qe
     Platform: aws
     Procedure: none
-    Release: "4.19"
-    ReleaseMajor: "4"
-    ReleaseMinor: "19"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-4.19-amd64-nightly-aws-ipi-ovn-hypershift-guest-ipsec-f14:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: qe
-    Platform: aws
-    Procedure: ipsec
     Release: "4.19"
     ReleaseMajor: "4"
     ReleaseMinor: "19"
@@ -158292,30 +158340,6 @@ periodic-ci-openshift-openshift-tests-private-release-4.20-amd64-nightly-aws-ipi
     Owner: qe
     Platform: aws
     Procedure: none
-    Release: "4.20"
-    ReleaseMajor: "4"
-    ReleaseMinor: "20"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-4.20-amd64-nightly-aws-ipi-ovn-hypershift-guest-ipsec-f14:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: qe
-    Platform: aws
-    Procedure: ipsec
     Release: "4.20"
     ReleaseMajor: "4"
     ReleaseMinor: "20"
@@ -170437,30 +170461,6 @@ periodic-ci-openshift-openshift-tests-private-release-4.21-amd64-nightly-aws-ipi
     Owner: qe
     Platform: aws
     Procedure: none
-    Release: "4.21"
-    ReleaseMajor: "4"
-    ReleaseMinor: "21"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-4.21-amd64-nightly-aws-ipi-ovn-hypershift-guest-ipsec-f14:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: qe
-    Platform: aws
-    Procedure: ipsec
     Release: "4.21"
     ReleaseMajor: "4"
     ReleaseMinor: "21"
@@ -183686,30 +183686,6 @@ periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-aws-ipi
     Owner: qe
     Platform: aws
     Procedure: none
-    Release: "4.22"
-    ReleaseMajor: "4"
-    ReleaseMinor: "22"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-aws-ipi-ovn-hypershift-guest-ipsec-f14:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos9
-    Owner: qe
-    Platform: aws
-    Procedure: ipsec
     Release: "4.22"
     ReleaseMajor: "4"
     ReleaseMinor: "22"
@@ -198401,30 +198377,6 @@ periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-aws-ipi-
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-aws-ipi-ovn-hypershift-guest-ipsec-f14:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: qe
-    Platform: aws
-    Procedure: ipsec
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
 periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-aws-ipi-ovn-hypershift-guest-longduration-f14:
     Aggregation: none
     Architecture: amd64
@@ -211354,30 +211306,6 @@ periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-aws-ipi-
     Owner: qe
     Platform: aws
     Procedure: none
-    Release: "5.1"
-    ReleaseMajor: "5"
-    ReleaseMinor: "1"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-openshift-tests-private-release-5.1-amd64-nightly-aws-ipi-ovn-hypershift-guest-ipsec-f14:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: hidden
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: qe
-    Platform: aws
-    Procedure: ipsec
     Release: "5.1"
     ReleaseMajor: "5"
     ReleaseMinor: "1"
