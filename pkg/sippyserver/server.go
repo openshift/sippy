@@ -1897,7 +1897,8 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
 		// Keep discoverability links available even in sparse responses.
 		fields.Insert("links")
 	}
-	triages, err := componentreadiness.ListTriages(s.db, req, req.URL.Query().Get("include_archived") == "true")
+	includeArchived := req.URL.Query().Get("include_archived") == "true"
+	triages, err := componentreadiness.ListTriages(s.db, req, includeArchived)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return

@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// triageArchivalAgeHours is the minimum resolution age for archival, measured in
+// elapsed hours so the 90-day retention period is independent of daylight saving.
+const triageArchivalAgeHours = 90 * 24
+
 // ordinaryTriagePredicate keeps recent or unresolved triages and protects the entire
 // triage if any associated release lacks a known GA date that has arrived in UTC.
 // Resolution age alone is insufficient: a triage shared by GA and pre-GA releases
@@ -17,7 +21,7 @@ import (
 // The correlated subquery deliberately ignores view activity and regression closure.
 const ordinaryTriagePredicate = `(
     triages.resolved IS NULL
-    OR triages.resolved >= CURRENT_TIMESTAMP - INTERVAL '2160 hours'
+    OR triages.resolved >= CURRENT_TIMESTAMP - (? * INTERVAL '1 hour')
     OR NOT EXISTS (SELECT 1 FROM triage_regressions WHERE triage_id = triages.id)
     OR EXISTS (
         SELECT 1
@@ -39,7 +43,7 @@ func ListTriages(dbc *db.DB, view string, includeArchived bool) ([]models.Triage
 	q := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions")
 
 	if !includeArchived {
-		q = q.Where(ordinaryTriagePredicate)
+		q = q.Where(ordinaryTriagePredicate, triageArchivalAgeHours)
 	}
 
 	if view != "" {
