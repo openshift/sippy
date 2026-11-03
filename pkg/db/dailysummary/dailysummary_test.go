@@ -85,3 +85,13 @@ func TestBackfill_PropagatesReplaceError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "disk full")
 }
+
+func TestBackfill_ExcludesReleases(t *testing.T) {
+	date := civil.Date{Year: 2026, Month: 7, Day: 1}
+	store := &fakeStore{releases: []string{"4.22", "Presubmits", "4.21"}}
+
+	err := backfillSummaries(store, date, date, "Presubmits", "4.21")
+
+	require.NoError(t, err)
+	assert.Equal(t, []replaceCall{{start: date, end: date, release: "4.22"}}, store.getCalls())
+}

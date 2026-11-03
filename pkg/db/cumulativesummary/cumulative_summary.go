@@ -17,12 +17,12 @@ type summaryStore interface {
 }
 
 // Backfill processes an explicit date range without automatic date detection.
-func Backfill(dbc *db.DB, startDate, endDate civil.Date) error {
+func Backfill(dbc *db.DB, startDate, endDate civil.Date, excludedReleases ...string) error {
 	store := &pgStore{dbc: dbc}
-	return backfillDateRange(store, startDate, endDate)
+	return backfillDateRange(store, startDate, endDate, excludedReleases...)
 }
 
-func backfillDateRange(store summaryStore, startDate, endDate civil.Date) error {
+func backfillDateRange(store summaryStore, startDate, endDate civil.Date, excludedReleases ...string) error {
 	if startDate.After(endDate) {
 		return nil
 	}
@@ -33,6 +33,7 @@ func backfillDateRange(store summaryStore, startDate, endDate civil.Date) error 
 	if err != nil {
 		return fmt.Errorf("querying releases: %w", err)
 	}
+	releases = db.ExcludeReleases(releases, excludedReleases)
 
 	log.WithFields(log.Fields{
 		"start":    startDate,
