@@ -3,7 +3,7 @@ Feature: Triage from the regressed tests dialog
   I want to triage the regressions I selected in the regressed tests dialog
   So that an accepted triage shows up in the dialog, and a cancelled or rejected one does not
 
-  This dialog opens from the main report, except for one scenario that starts on test details and returns here. It is not the triage detail page.
+  This dialog opens from the main report. The scenarios also cover triage from test details and its effect on the dialog. It is not the triage detail page.
 
   Scenario: Creating a triage refreshes membership
     Given a component readiness API
@@ -123,3 +123,27 @@ Feature: Triage from the regressed tests dialog
     And I open the regressed tests dialog
     And I create a triage for the selected regression
     Then the triage error is shown without a success message
+
+  Scenario Outline: Search duplicate triage labels from <entry>
+    Given a component readiness API
+    And existing triages have duplicate labels
+    When I open existing triages from "<entry>"
+    Then all searchable triages are listed
+    When I search existing triages for "storage"
+    Then only the storage triage is listed
+    When I search existing triages for "NETWORK"
+    Then only the duplicate network triages are listed
+    When I search existing triages for "no matching triage"
+    Then no existing triages match
+    When I search existing triages for ""
+    Then all searchable triages are listed
+    When I search existing triages for "TRT-9999"
+    Then only the storage triage is listed
+    When I search existing triages for "network"
+    And I select the second duplicate network triage and add the regression
+    Then the second duplicate network triage received the regression
+
+    Examples:
+      | entry           |
+      | regressed tests |
+      | test details    |
