@@ -626,7 +626,7 @@ func TestParseComponentReportRequestSpotCheckSamples(t *testing.T) {
 	}
 	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
 		"Architecture": {"amd64"},
-		"JobTier":      {"stable", "spotcheck-30d"},
+		"JobTier":      {"stable", "spotcheck-30d", "spotcheck-7d"},
 	}}
 	newView := func(name string, spotCheck map[string]crview.SpotCheckJobSample) crview.View {
 		return crview.View{
@@ -645,11 +645,15 @@ func TestParseComponentReportRequestSpotCheckSamples(t *testing.T) {
 		}
 	}
 	tier30 := map[string][]string{"JobTier": {"spotcheck-30d"}}
+	tier7 := map[string][]string{"JobTier": {"spotcheck-7d"}}
 	views := []crview.View{
 		newView("no-spot-check", nil),
 		newView("empty-spot-check", map[string]crview.SpotCheckJobSample{}),
 		newView("with-spot-check", map[string]crview.SpotCheckJobSample{
 			"spotcheck-30d": {RelativeStart: "now-30d", RelativeEnd: "now", IncludeVariants: tier30},
+		}),
+		newView("with-7d-spot-check", map[string]crview.SpotCheckJobSample{
+			"spotcheck-7d": {RelativeStart: "now-7d", RelativeEnd: "now", IncludeVariants: tier7},
 		}),
 	}
 	customDates := [][2]string{
@@ -661,12 +665,14 @@ func TestParseComponentReportRequestSpotCheckSamples(t *testing.T) {
 		{"sampleEndTime", "2024-11-11T00:00:00Z"},
 	}
 	spotCheckTestID := [][2]string{{"testId", crtest.SpotCheckTestID("spotcheck-30d", "Etcd", "Scaling")}}
+	spotCheck7dTestID := [][2]string{{"testId", crtest.SpotCheckTestID("spotcheck-7d", "Etcd", "Scaling")}}
 
 	tests := []struct {
 		name        string
 		queryParams [][2]string
 		wantSamples []string // sample names, in order
 		wantWindow  time.Duration
+		wantTier    map[string][]string
 	}{
 		{
 			name:        "view without spot-check config stays disabled",
@@ -685,18 +691,35 @@ func TestParseComponentReportRequestSpotCheckSamples(t *testing.T) {
 			queryParams: [][2]string{{"view", "with-spot-check"}},
 			wantSamples: []string{"spotcheck-30d"},
 			wantWindow:  30 * 24 * time.Hour,
+			wantTier:    tier30,
 		},
 		{
 			name:        "spot-check drilldown keeps the view's window",
 			queryParams: append([][2]string{{"view", "with-spot-check"}}, spotCheckTestID...),
 			wantSamples: []string{"spotcheck-30d"},
 			wantWindow:  30 * 24 * time.Hour,
+			wantTier:    tier30,
 		},
 		{
 			name:        "spot-check drilldown without configured samples falls back to the sample dates",
 			queryParams: append(append([][2]string{}, customDates...), spotCheckTestID...),
 			wantSamples: []string{"spotcheck-30d"},
 			wantWindow:  7 * 24 * time.Hour,
+			wantTier:    tier30,
+		},
+		{
+			name:        "non-default tier drilldown uses the view's sample for that tier",
+			queryParams: append([][2]string{{"view", "with-7d-spot-check"}}, spotCheck7dTestID...),
+			wantSamples: []string{"spotcheck-7d"},
+			wantWindow:  7 * 24 * time.Hour,
+			wantTier:    tier7,
+		},
+		{
+			name:        "non-default tier drilldown without configured samples queries the tier in its test ID",
+			queryParams: append(append([][2]string{}, customDates...), spotCheck7dTestID...),
+			wantSamples: []string{"spotcheck-7d"},
+			wantWindow:  7 * 24 * time.Hour,
+			wantTier:    tier7,
 		},
 	}
 
@@ -719,7 +742,7 @@ func TestParseComponentReportRequestSpotCheckSamples(t *testing.T) {
 				// shifts with the hour the test runs (712h to 736h for 30 days). A day of slack covers every hour
 				// and still tells these windows apart.
 				assert.InDelta(t, tc.wantWindow.Hours(), sample.End.Sub(sample.Start).Hours(), 24)
-				assert.Equal(t, tier30, sample.IncludeVariants)
+				assert.Equal(t, tc.wantTier, sample.IncludeVariants)
 			}
 			assert.Equal(t, tc.wantSamples, gotSamples)
 		})

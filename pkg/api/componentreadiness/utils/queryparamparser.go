@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"net/http"
-	"slices"
 	"strconv"
 	"time"
 
@@ -120,21 +119,8 @@ func ParseComponentReportRequest(
 	// A view without spot-check samples has spot-check disabled, and ordinary custom reports never ask for it.
 	// Only a drill-down on a spot-check test with no configured samples needs a default, taken from the
 	// sample release dates, so the test details can still be queried.
-	if len(opts.SpotCheckJobSamples) == 0 && requestsSpotCheckTest(opts.TestIDOptions) &&
-		!opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
-		opts.SpotCheckJobSamples = []reqopts.SpotCheckJobSampleOpts{
-			{
-				Name: "spotcheck-30d",
-				Release: reqopts.Release{
-					Name:  opts.SampleRelease.Name,
-					Start: opts.SampleRelease.Start,
-					End:   opts.SampleRelease.End,
-				},
-				IncludeVariants: map[string][]string{
-					"JobTier": {"spotcheck-30d"},
-				},
-			},
-		}
+	if len(opts.SpotCheckJobSamples) == 0 && !opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
+		opts.SpotCheckJobSamples = fallbackSpotCheckSamples(opts.TestIDOptions, opts.SampleRelease)
 	}
 
 	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)
@@ -146,11 +132,34 @@ func ParseComponentReportRequest(
 	return
 }
 
-// requestsSpotCheckTest returns true if any requested test is a synthetic spot-check test.
-func requestsSpotCheckTest(testIDOptions []reqopts.TestIdentification) bool {
-	return slices.ContainsFunc(testIDOptions, func(tid reqopts.TestIdentification) bool {
-		return crtest.IsSpotCheckTestID(tid.TestID)
-	})
+// fallbackSpotCheckSamples builds one sample spanning the sample release dates for each sample name in the
+// requested spot-check test IDs. Without a view there is no sample config to say which tier a name selects,
+// so the name stands in for its tier, as configured views name each sample after its tier.
+func fallbackSpotCheckSamples(testIDOptions []reqopts.TestIdentification, sampleRelease reqopts.Release) []reqopts.SpotCheckJobSampleOpts {
+	var samples []reqopts.SpotCheckJobSampleOpts
+	seen := sets.New[string]()
+	for _, tid := range testIDOptions {
+		if !crtest.IsSpotCheckTestID(tid.TestID) {
+			continue
+		}
+		name, _, _ := crtest.ParseSpotCheckTestID(tid.TestID)
+		if name == "" || seen.Has(name) {
+			continue
+		}
+		seen.Insert(name)
+		samples = append(samples, reqopts.SpotCheckJobSampleOpts{
+			Name: name,
+			Release: reqopts.Release{
+				Name:  sampleRelease.Name,
+				Start: sampleRelease.Start,
+				End:   sampleRelease.End,
+			},
+			IncludeVariants: map[string][]string{
+				"JobTier": {name},
+			},
+		})
+	}
+	return samples
 }
 
 func applyViewDefaults(

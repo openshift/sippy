@@ -95,8 +95,10 @@ and in the background regression cache loader.
 Test details for a spot-check test ID use `QuerySpotCheckTestDetails` to return
 the individual job runs. The window comes from the view's configured sample. A
 request without a view, or for a view with no configured samples, falls back to
-its own sample dates, but only when it asks for a spot-check test. Ordinary
-custom reports never include spot-check results.
+its own sample dates, but only when it asks for a spot-check test. It queries
+the tier named in the test ID (`spotcheck-7d` for `spotcheck-7d:etcd:scaling`),
+since views name each sample after the tier it selects. Ordinary custom reports
+never include spot-check results.
 
 ## Caching
 

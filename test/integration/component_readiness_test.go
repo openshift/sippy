@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"maps"
 	"math/big"
+	"net/http"
+	"net/url"
 	"strconv"
 	"testing"
 	"time"
@@ -21,9 +23,12 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/util"
 	intutil "github.com/openshift/sippy/test/integration/util"
 )
 
@@ -5725,4 +5730,86 @@ func filterPlaceholders(result map[string]crstatus.TestStatus) []crstatus.TestSt
 		}
 	}
 	return nonPlaceholder
+}
+
+// A drilldown link that drops its view must still query the tier named in the spot-check test ID.
+func TestSpotCheckDrilldownNonDefaultTierWithoutView(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.17"
+	vc := createVariantCombination(t, dbc, []string{
+		"Platform:aws", "Network:ovn", "Component:Etcd", "Capability:Scaling", "JobTier:spotcheck-7d",
+	})
+	job := createProwJobWithVC(t, dbc, "periodic-ci-etcd-scaling-weekly-spot-check", release, vc)
+	syntheticTest := intutil.CreateTest(t, dbc, "[sig-sippy] openshift-tests should work")
+	now := time.Now().UTC()
+	for i := range 2 {
+		run := intutil.CreateProwJobRun(t, dbc, job.ID, release, now.Add(time.Duration(-(i+1))*24*time.Hour), false, "F",
+			intutil.WithURL(fmt.Sprintf("https://prow.ci/weekly-etcd-run-%d", i+1)))
+		createProwJobRunTest(t, dbc, run.ID, job.ID, syntheticTest.ID, nil, 12, release, run.Timestamp)
+	}
+
+	releases := []v1.Release{
+		{Release: "4.16", GADate: util.CivilDatePtr(2024, time.June, 27)},
+		{Release: release},
+	}
+	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
+		"Platform": {"aws"}, "Network": {"ovn"}, "JobTier": {"spotcheck-7d"},
+	}}
+	views := []crview.View{{
+		Name:          "weekly-spot-check",
+		BaseRelease:   reqopts.RelativeRelease{Release: reqopts.Release{Name: "4.16"}, RelativeStart: "ga-30d", RelativeEnd: "ga"},
+		SampleRelease: reqopts.RelativeRelease{Release: reqopts.Release{Name: release}, RelativeStart: "now-7d", RelativeEnd: "now"},
+		VariantOptions: reqopts.Variants{
+			ColumnGroupBy: sets.New[string]("Platform"),
+			DBGroupBy:     sets.New[string]("Platform", "Network"),
+		},
+		AdvancedOptions: reqopts.Advanced{MinimumFailure: 1, Confidence: 95},
+		SpotCheckJobSamples: map[string]crview.SpotCheckJobSample{
+			"spotcheck-7d": {RelativeStart: "now-7d", RelativeEnd: "now",
+				IncludeVariants: map[string][]string{"JobTier": {"spotcheck-7d"}}},
+		},
+	}}
+	drilldown := url.Values{
+		"testId":   {crtest.SpotCheckTestID("spotcheck-7d", "Etcd", "Scaling")},
+		"Platform": {"aws"},
+		"Network":  {"ovn"},
+	}
+	withoutView := url.Values{
+		"baseRelease":     {"4.16"},
+		"sampleRelease":   {release},
+		"baseStartTime":   {"2024-05-01T00:00:00Z"},
+		"baseEndTime":     {"2024-05-31T23:59:59Z"},
+		"sampleStartTime": {now.Add(-7 * 24 * time.Hour).Format(time.RFC3339)},
+		"sampleEndTime":   {now.Add(time.Hour).Format(time.RFC3339)},
+		"dbGroupBy":       {"Platform,Network"},
+		"columnGroupBy":   {"Platform"},
+		"minFail":         {"1"},
+		"confidence":      {"95"},
+	}
+
+	for name, params := range map[string]url.Values{
+		"configured view": {"view": {"weekly-spot-check"}},
+		"no view":         withoutView,
+	} {
+		t.Run(name, func(t *testing.T) {
+			maps.Copy(params, drilldown)
+			req, err := http.NewRequest(http.MethodGet, "https://example.com/details?"+params.Encode(), nil)
+			require.NoError(t, err)
+			opts, _, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, 12*time.Hour, 4*time.Hour)
+			require.NoError(t, err)
+
+			provider := postgres.NewPostgresProvider(dbc, nil)
+			generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+			report, errs := generator.GenerateTestDetailsReport(context.Background())
+			require.Empty(t, errs)
+
+			require.Len(t, report.Analyses, 1)
+			runs := 0
+			for _, stats := range report.Analyses[0].JobStats {
+				runs += len(stats.SampleJobRunStats)
+			}
+			assert.Equal(t, 2, runs, "both spotcheck-7d runs should be found")
+			assert.Equal(t, crtest.SignificantRegression, report.Analyses[0].ReportStatus)
+		})
+	}
 }
