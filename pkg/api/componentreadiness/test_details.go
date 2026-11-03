@@ -92,80 +92,236 @@ func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *testdetails.R
 func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (testdetails.Report, []error) {
 	// This function is called from the API, and we assume only one TestIDOptions entry in that case.
 	testIDOptions := c.ReqOptions.TestIDOptions[0]
+	if err := validateTestDetailsIdentification(testIDOptions, c.ReqOptions.VariantOption.DBGroupBy); err != nil {
+		return testdetails.Report{}, []error{err}
+	}
 	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
-	componentJobRunTestReportStatus, errs := c.getJobRunTestStatus(ctx)
+	statuses, errs := c.getJobRunTestStatus(ctx)
 	if len(errs) > 0 {
 		return testdetails.Report{}, errs
 	}
 
-	return c.GenerateDetailsReportForTest(ctx, testIDOptions, componentJobRunTestReportStatus, true)
+	reports, errs := c.generateTestDetailsReportsFromStatuses(ctx, statuses, []reqopts.TestIdentification{testIDOptions}, true, true)
+	if len(errs) > 0 {
+		return testdetails.Report{}, errs
+	}
+	return reports[0], nil
 }
 
-// GenerateTestDetailsReportMultiTest variant of the function is for multi-test reports, used for cache priming all test detail reports for a view.
+// GenerateTestDetailsReportMultiTest generates reports for several test and variant keys
+// from one status fetch. It is used by cache priming to retain batched database work.
 func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx context.Context) ([]testdetails.Report, []error) {
-	allTestsJobRunStatuses, errs := c.getCompleteMultiTestJobRunStatuses(ctx)
+	var validationErrs []error
+	for _, testIDOption := range c.ReqOptions.TestIDOptions {
+		if err := validateTestDetailsIdentification(testIDOption, c.ReqOptions.VariantOption.DBGroupBy); err != nil {
+			validationErrs = append(validationErrs, err)
+		}
+	}
+	if len(validationErrs) > 0 {
+		return []testdetails.Report{}, validationErrs
+	}
+	if collidingKeys := collidingTestDetailsStatusKeys(c.ReqOptions.TestIDOptions, c.ReqOptions.VariantOption.DBGroupBy); collidingKeys.Len() > 0 {
+		return c.generateTestDetailsReportsForCollidingKeys(ctx, collidingKeys)
+	}
+
+	statuses, errs := c.getCompleteMultiTestJobRunStatuses(ctx)
 	if len(errs) > 0 {
 		return []testdetails.Report{}, errs
 	}
 
-	// We have a struct where the statuses are mapped by prowjob to all rows results for that prowjob,
-	// with multiple tests intermingled in that layer.
-	// Build out a new struct where these are split up by test ID.
-	// split the status on test ID, and pass only that tests data in for reporting:
-	testKeyTestJobRunStatuses := map[string]crstatus.TestJobRunStatuses{}
-	splitByTestKey := func(
-		source map[string][]crstatus.TestDetailsSummary,
-		getTarget func(crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary,
-	) {
-		for jobName, summaries := range source {
-			for _, summary := range summaries {
-				testKeyStr := summary.TestKeyStr
-				if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-					testKeyTestJobRunStatuses[testKeyStr] = crstatus.TestJobRunStatuses{
-						BaseStatus:         map[string][]crstatus.TestDetailsSummary{},
-						BaseOverrideStatus: map[string][]crstatus.TestDetailsSummary{},
-						SampleStatus:       map[string][]crstatus.TestDetailsSummary{},
-						GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
-					}
-				}
-				target := getTarget(testKeyTestJobRunStatuses[testKeyStr])
-				target[jobName] = append(target[jobName], summary)
-			}
+	return c.generateTestDetailsReportsFromStatuses(ctx, statuses, c.ReqOptions.TestIDOptions, false, false)
+}
+
+// generateTestDetailsReportsForCollidingKeys isolates requests that share provider keys while batching the remaining requests.
+func (c *ComponentReportGenerator) generateTestDetailsReportsForCollidingKeys(ctx context.Context, collidingKeys sets.Set[string]) ([]testdetails.Report, []error) {
+	reports := make([]testdetails.Report, 0, len(c.ReqOptions.TestIDOptions))
+	var errs []error
+	batchOptions := c.ReqOptions
+	batchOptions.TestIDOptions = nil
+	for _, testIDOption := range c.ReqOptions.TestIDOptions {
+		if !collidingKeys.Has(testDetailsStatusKey(testIDOption, c.ReqOptions.VariantOption.DBGroupBy).Encode()) {
+			batchOptions.TestIDOptions = append(batchOptions.TestIDOptions, testIDOption)
 		}
 	}
-	splitByTestKey(allTestsJobRunStatuses.BaseStatus, func(s crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary { return s.BaseStatus })
-	splitByTestKey(allTestsJobRunStatuses.BaseOverrideStatus, func(s crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary {
-		return s.BaseOverrideStatus
-	})
-	splitByTestKey(allTestsJobRunStatuses.SampleStatus, func(s crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary { return s.SampleStatus })
+	var batchGenerator ComponentReportGenerator
+	var batchStatusesByKey map[string]crstatus.TestJobRunStatuses
+	var batchErrs []error
+	if len(batchOptions.TestIDOptions) > 0 {
+		batchGenerator = NewComponentReportGenerator(c.dataProvider, batchOptions, c.dbc, c.releaseConfigs, c.baseURL)
+		batchGenerator.jobRunTestStatusFetcher = c.jobRunTestStatusFetcher
+		batchGenerator.multiTestStatusBackoff = c.multiTestStatusBackoff
+		var batchStatuses crstatus.TestJobRunStatuses
+		batchStatuses, batchErrs = batchGenerator.getCompleteMultiTestJobRunStatuses(ctx)
+		batchStatusesByKey = splitTestJobRunStatusesByTestKey(batchStatuses, batchOptions.TestIDOptions, batchOptions.VariantOption.DBGroupBy, false)
+		errs = append(errs, batchErrs...)
+	}
 
-	reports := []testdetails.Report{}
-	for _, tOpt := range c.ReqOptions.TestIDOptions {
-		testKey := crtest.KeyWithVariants{
-			TestID:   tOpt.TestID,
-			Variants: tOpt.RequestedVariants,
-		}
-		testKeyStr := testKey.Encode()
-		statuses, ok := testKeyTestJobRunStatuses[testKeyStr]
-		if !ok {
-			// Spot-check synthetic tests won't appear in junit query results.
-			// Create an empty status so GenerateDetailsReportForTest can still run;
-			// the middleware will populate it via PreTestDetailsAnalysis.
-			statuses = crstatus.TestJobRunStatuses{
-				BaseStatus:         map[string][]crstatus.TestDetailsSummary{},
-				BaseOverrideStatus: map[string][]crstatus.TestDetailsSummary{},
-				SampleStatus:       map[string][]crstatus.TestDetailsSummary{},
-				GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
+	for _, testIDOption := range c.ReqOptions.TestIDOptions {
+		key := testDetailsStatusKey(testIDOption, c.ReqOptions.VariantOption.DBGroupBy).Encode()
+		generator := &batchGenerator
+		statuses := batchStatusesByKey[key]
+		if collidingKeys.Has(key) {
+			reqOptions := c.ReqOptions
+			reqOptions.TestIDOptions = []reqopts.TestIdentification{testIDOption}
+			singleGenerator := NewComponentReportGenerator(c.dataProvider, reqOptions, c.dbc, c.releaseConfigs, c.baseURL)
+			singleGenerator.jobRunTestStatusFetcher = c.jobRunTestStatusFetcher
+			singleGenerator.multiTestStatusBackoff = c.multiTestStatusBackoff
+			generator = &singleGenerator
+			var statusErrs []error
+			statuses, statusErrs = generator.getCompleteMultiTestJobRunStatuses(ctx)
+			if len(statusErrs) > 0 {
+				errs = append(errs, statusErrs...)
+				continue
 			}
+		} else if len(batchErrs) > 0 {
+			continue
 		}
-		report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
-		if len(generateReportErrs) > 0 {
-			errs = append(errs, generateReportErrs...)
+
+		perTestReports, reportErrs := generator.generateTestDetailsReportsFromStatuses(
+			ctx, statuses, []reqopts.TestIdentification{testIDOption}, false, false)
+		if len(reportErrs) > 0 {
+			errs = append(errs, reportErrs...)
+			continue
+		}
+		reports = append(reports, perTestReports...)
+	}
+	return reports, errs
+}
+
+// generateTestDetailsReportsFromStatuses separates one batched status response
+// into ordinary per-test inputs before using the shared report generator.
+func (c *ComponentReportGenerator) generateTestDetailsReportsFromStatuses(
+	ctx context.Context,
+	statuses crstatus.TestJobRunStatuses,
+	testIDOptions []reqopts.TestIdentification,
+	allowUnregressedReports bool,
+	initializeEmptyStatuses bool,
+) ([]testdetails.Report, []error) {
+	dbGroupBy := c.ReqOptions.VariantOption.DBGroupBy
+	statusesByTestKey := splitTestJobRunStatusesByTestKey(statuses, testIDOptions, dbGroupBy, initializeEmptyStatuses)
+	reports := make([]testdetails.Report, 0, len(testIDOptions))
+	var errs []error
+	for _, testIDOption := range testIDOptions {
+		testKey := testDetailsStatusKey(testIDOption, dbGroupBy)
+		status, ok := statusesByTestKey[testKey.Encode()]
+		if !ok {
+			errs = append(errs, fmt.Errorf("missing test key in results: %s", testKey.Encode()))
+			continue
+		}
+
+		report, reportErrs := c.GenerateDetailsReportForTest(ctx, testIDOption, status, allowUnregressedReports)
+		if len(reportErrs) > 0 {
+			errs = append(errs, reportErrs...)
 			continue
 		}
 		reports = append(reports, report)
 	}
 	return reports, errs
+}
+
+// splitTestJobRunStatusesByTestKey returns per-test status maps under provider grouping keys.
+// It can also create empty entries for single-test requests with no returned rows.
+func splitTestJobRunStatusesByTestKey(
+	statuses crstatus.TestJobRunStatuses,
+	testIDOptions []reqopts.TestIdentification,
+	dbGroupBy sets.Set[string],
+	initializeEmptyStatuses bool,
+) map[string]crstatus.TestJobRunStatuses {
+	statusesByTestKey := map[string]crstatus.TestJobRunStatuses{}
+	newStatuses := func() crstatus.TestJobRunStatuses {
+		return crstatus.TestJobRunStatuses{
+			BaseStatus:         map[string][]crstatus.TestDetailsSummary{},
+			BaseOverrideStatus: map[string][]crstatus.TestDetailsSummary{},
+			SampleStatus:       map[string][]crstatus.TestDetailsSummary{},
+			GeneratedAt:        statuses.GeneratedAt,
+		}
+	}
+	for _, testIDOption := range testIDOptions {
+		// Spot-check synthetic tests never appear in junit results; the middleware fills their statuses later.
+		if initializeEmptyStatuses || crtest.IsSpotCheckTestID(testIDOption.TestID) {
+			key := testDetailsStatusKey(testIDOption, dbGroupBy).Encode()
+			if _, ok := statusesByTestKey[key]; !ok {
+				statusesByTestKey[key] = newStatuses()
+			}
+		}
+	}
+
+	splitByTestKey := func(
+		source map[string][]crstatus.TestDetailsSummary,
+		getTarget func(*crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary,
+	) {
+		for jobName, summaries := range source {
+			for _, summary := range summaries {
+				key := summary.TestKeyStr
+				perTestStatuses, ok := statusesByTestKey[key]
+				if !ok {
+					perTestStatuses = newStatuses()
+				}
+				target := getTarget(&perTestStatuses)
+				target[jobName] = append(target[jobName], summary)
+				statusesByTestKey[key] = perTestStatuses
+			}
+		}
+	}
+	splitByTestKey(statuses.BaseStatus, func(s *crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary { return s.BaseStatus })
+	splitByTestKey(statuses.BaseOverrideStatus, func(s *crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary {
+		return s.BaseOverrideStatus
+	})
+	splitByTestKey(statuses.SampleStatus, func(s *crstatus.TestJobRunStatuses) map[string][]crstatus.TestDetailsSummary { return s.SampleStatus })
+	return statusesByTestKey
+}
+
+// testDetailsStatusKey projects a request onto the variant dimensions providers use to group rows.
+func testDetailsStatusKey(testIDOption reqopts.TestIdentification, dbGroupBy sets.Set[string]) crtest.KeyWithVariants {
+	variants := make(map[string]string, dbGroupBy.Len())
+	for variant := range dbGroupBy {
+		if value, ok := testIDOption.RequestedVariants[variant]; ok {
+			variants[variant] = value
+		}
+	}
+	return crtest.KeyWithVariants{TestID: testIDOption.TestID, Variants: variants}
+}
+
+// collidingTestDetailsStatusKeys identifies provider grouping keys shared by distinct requests.
+func collidingTestDetailsStatusKeys(testIDOptions []reqopts.TestIdentification, dbGroupBy sets.Set[string]) sets.Set[string] {
+	optionsByKey := make(map[string]reqopts.TestIdentification, len(testIDOptions))
+	collidingKeys := sets.New[string]()
+	for _, testIDOption := range testIDOptions {
+		key := testDetailsStatusKey(testIDOption, dbGroupBy).Encode()
+		if previous, ok := optionsByKey[key]; ok && !sameTestDetailsIdentification(previous, testIDOption) {
+			collidingKeys.Insert(key)
+		}
+		optionsByKey[key] = testIDOption
+	}
+	return collidingKeys
+}
+
+// sameTestDetailsIdentification compares the fields that distinguish test detail requests.
+func sameTestDetailsIdentification(first, second reqopts.TestIdentification) bool {
+	return first.Component == second.Component &&
+		first.Capability == second.Capability &&
+		first.TestID == second.TestID &&
+		maps.Equal(first.RequestedVariants, second.RequestedVariants) &&
+		first.BaseOverrideRelease == second.BaseOverrideRelease
+}
+
+// validateTestDetailsIdentification requires the dimensions used for provider grouping.
+func validateTestDetailsIdentification(testIDOption reqopts.TestIdentification, dbGroupBy sets.Set[string]) error {
+	if testIDOption.TestID == "" {
+		return &api.ValidationError{Message: "test_id has to be defined for test details"}
+	}
+	// Spot-check synthetic tests are keyed by component and capability, not by the dbGroupBy variants.
+	if crtest.IsSpotCheckTestID(testIDOption.TestID) {
+		return nil
+	}
+	for _, variant := range sets.List(dbGroupBy) {
+		if _, ok := testIDOption.RequestedVariants[variant]; !ok {
+			return &api.ValidationError{Message: fmt.Sprintf(
+				"all dbGroupBy variants have to be defined for test details: %s is missing in %v",
+				variant, testIDOption.RequestedVariants)}
+		}
+	}
+	return nil
 }
 
 // getCompleteMultiTestJobRunStatuses retries a partial status response because
@@ -193,7 +349,7 @@ func (c *ComponentReportGenerator) getCompleteMultiTestJobRunStatuses(ctx contex
 		logrus.Infof("getJobRunTestStatus completed in %s with %d sample results and %d base results",
 			time.Since(before), len(statuses.SampleStatus), len(statuses.BaseStatus))
 
-		missingKeys = missingMultiTestStatusKeys(statuses, c.ReqOptions.TestIDOptions)
+		missingKeys = missingMultiTestStatusKeys(statuses, c.ReqOptions.TestIDOptions, c.ReqOptions.VariantOption.DBGroupBy)
 		if len(missingKeys) == 0 {
 			return true, nil
 		}
@@ -221,7 +377,11 @@ func (c *ComponentReportGenerator) getCompleteMultiTestJobRunStatuses(ctx contex
 }
 
 // missingMultiTestStatusKeys returns requested test keys absent from the returned status response.
-func missingMultiTestStatusKeys(statuses crstatus.TestJobRunStatuses, testIDOptions []reqopts.TestIdentification) []string {
+func missingMultiTestStatusKeys(
+	statuses crstatus.TestJobRunStatuses,
+	testIDOptions []reqopts.TestIdentification,
+	dbGroupBy sets.Set[string],
+) []string {
 	availableKeys := sets.New[string]()
 	for _, statusByJob := range []map[string][]crstatus.TestDetailsSummary{
 		statuses.BaseStatus,
@@ -237,7 +397,7 @@ func missingMultiTestStatusKeys(statuses crstatus.TestJobRunStatuses, testIDOpti
 
 	missingKeys := make([]string, 0)
 	for _, testIDOption := range testIDOptions {
-		testKey := crtest.KeyWithVariants{TestID: testIDOption.TestID, Variants: testIDOption.RequestedVariants}.Encode()
+		testKey := testDetailsStatusKey(testIDOption, dbGroupBy).Encode()
 		if !availableKeys.Has(testKey) {
 			missingKeys = append(missingKeys, testKey)
 		}
@@ -252,20 +412,8 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	componentJobRunTestReportStatus crstatus.TestJobRunStatuses,
 	allowUnregressedReports bool,
 ) (testdetails.Report, []error) {
-
-	if testIDOption.TestID == "" {
-		return testdetails.Report{}, []error{&api.ValidationError{Message: "test_id has to be defined for test details"}}
-	}
-	isSpotCheck := crtest.IsSpotCheckTestID(testIDOption.TestID)
-	if !isSpotCheck {
-		for _, v := range sets.List(c.ReqOptions.VariantOption.DBGroupBy) {
-			if _, ok := testIDOption.RequestedVariants[v]; !ok {
-				return testdetails.Report{}, []error{
-					&api.ValidationError{Message: fmt.Sprintf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
-						v, testIDOption.RequestedVariants)},
-				}
-			}
-		}
+	if err := validateTestDetailsIdentification(testIDOption, c.ReqOptions.VariantOption.DBGroupBy); err != nil {
+		return testdetails.Report{}, []error{err}
 	}
 
 	timeRanges, errs := c.dataProvider.QueryReleaseDates(ctx, c.ReqOptions)

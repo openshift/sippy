@@ -40,9 +40,10 @@ func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 	return existingTriage, res.Error
 }
 
-func ListTriages(dbc *db.DB, req *http.Request) ([]models.Triage, error) {
+// ListTriages adds REST links to triages, optionally including archived history.
+func ListTriages(dbc *db.DB, req *http.Request, includeArchived bool) ([]models.Triage, error) {
 	view := req.URL.Query().Get("view")
-	triages, err := query.ListTriages(dbc, view)
+	triages, err := query.ListTriages(dbc, view, includeArchived)
 	for i := range triages {
 		injectHATEOASLinks(&triages[i], sippyapi.GetBaseURL(req))
 	}

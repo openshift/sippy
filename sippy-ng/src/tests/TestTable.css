@@ -10,6 +10,14 @@
   word-wrap: break-word;
 }
 
+a.test-name {
+  color: #1976d2;
+}
+
+a.test-name:hover {
+  text-decoration: underline;
+}
+
 .variants-list {
   white-space: pre;
 }

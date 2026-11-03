@@ -54,7 +54,10 @@ export default function CompTestRow(props) {
     <TableCell sx={classes.componentName} key={testName}>
       <Tooltip title={'Capabilities report for ' + testName}>
         <Typography sx={classes.crCellName}>
-          <Link to={testLink(filterVals, component, capability, testId)}>
+          <Link
+            data-testid={`cr-test-${testId}`}
+            to={testLink(filterVals, component, capability, testId)}
+          >
             {[testSuite, testName].filter(Boolean).join('.')}
           </Link>
         </Typography>

@@ -17,6 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	resources "github.com/openshift/sippy"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -92,7 +93,10 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
-	return f.GoogleCloudFlags.Validate()
+	if f.DataProvider == reqopts.DataSourceBigQuery {
+		return f.GoogleCloudFlags.Validate()
+	}
+	return nil
 }
 
 // Run starts the component-readiness server, retaining ctx for its shared

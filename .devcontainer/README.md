@@ -118,6 +118,9 @@ The MCP virtualenv is created with `uv venv --seed` because `make test` and
 `mcp/run.sh` call `mcp/.venv/bin/pip`. `uv venv` without `--seed` does not
 install pip. Reusing this `post-create.sh` picks up that behavior.
 
+`make test-bdd` installs Playwright Chromium when it runs. That browser is
+not part of the image build.
+
 Set `SKIP_CLAUDE_INSTALL` to `"true"` in `containerEnv` to install OpenCode
 instead of Claude Code. Neither coding agent is installed during the image build.
 

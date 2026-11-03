@@ -274,6 +274,7 @@ export default function TriageFields({
           </LocalizationProvider>
         )}
         <Button
+          data-testid="triage-submit"
           variant="contained"
           color="primary"
           onClick={handleTriageEntrySubmit}

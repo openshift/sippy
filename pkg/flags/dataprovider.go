@@ -9,6 +9,7 @@ import (
 	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
 	mixedprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/mixed"
 	pgprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
@@ -32,7 +33,7 @@ func NewDataProvider(name string, bigQueryClient *bqcachedclient.Client, dbc *db
 		}
 		return nil, fmt.Errorf("default data provider requires at least one of BigQuery or PostgreSQL to be configured")
 
-	case "bigquery":
+	case reqopts.DataSourceBigQuery:
 		if bigQueryClient != nil {
 			return bqprovider.NewBigQueryProvider(bigQueryClient), nil
 		}

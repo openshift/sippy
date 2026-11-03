@@ -162,7 +162,6 @@ export default function TriagePotentialMatches({
         setFilterSimilarNames(true)
         setFilterOverlappingJobRuns(true)
         setFilterAlreadyTriaged(false)
-        setIsModalOpen(true)
       })
       .catch((error) => {
         console.error('Error finding potential matches:', error)
@@ -203,8 +202,11 @@ export default function TriagePotentialMatches({
         if (!response.ok) {
           throw new Error('Failed to link regressions: ' + response.status)
         }
-        setLinkingComplete(true)
+        setIsLinking(false)
+        setSelectedRegressions([])
+        setIsModalOpen(false)
         setAutoOpenMatches(undefined)
+        setLinkingComplete(true)
       })
       .catch((error) => {
         console.error('Error linking regressions:', error)

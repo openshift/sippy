@@ -16,6 +16,7 @@ import (
 
 	resources "github.com/openshift/sippy"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -72,10 +73,10 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ServerFlags) Validate() error {
-	if f.DataProvider == "postgres" {
-		return nil
+	if f.DataProvider == reqopts.DataSourceBigQuery {
+		return f.GoogleCloudFlags.Validate()
 	}
-	return f.GoogleCloudFlags.Validate()
+	return nil
 }
 
 // NewServeCommand serves the Sippy API and frontend using the configured data sources.
@@ -109,7 +110,7 @@ func NewServeCommand() *cobra.Command {
 			var gcsClient *storage.Client
 			var crDataProvider dataprovider.DataProvider
 			switch f.DataProvider {
-			case "default", "bigquery":
+			case "default", reqopts.DataSourceBigQuery:
 				if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
 					opCtx := bqlabel.OperationalContext{
 						App:     bqlabel.AppSippy,

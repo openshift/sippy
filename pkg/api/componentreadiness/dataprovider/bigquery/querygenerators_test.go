@@ -185,18 +185,22 @@ func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
 	}
 
 	tests := []struct {
-		name             string
-		isSample         bool
-		lifecycles       []string
-		wantFilter       bool
-		wantLifecycleArg bool
+		name                    string
+		isSample                bool
+		lifecycles              []string
+		wantFilter              bool
+		wantLifecycleArg        bool
+		wantFailureCountFilter  bool
+		wantFailureLifecycleArg bool
 	}{
 		{
-			name:             "sample details use lifecycle filter",
-			isSample:         true,
-			lifecycles:       []string{"blocking"},
-			wantFilter:       true,
-			wantLifecycleArg: true,
+			name:                    "sample details use lifecycle filter on rows and failure count",
+			isSample:                true,
+			lifecycles:              []string{"blocking"},
+			wantFilter:              true,
+			wantLifecycleArg:        true,
+			wantFailureCountFilter:  true,
+			wantFailureLifecycleArg: true,
 		},
 		{
 			name:       "base details remain unfiltered",
@@ -228,14 +232,24 @@ func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
 			assert.Equal(t, tt.wantFilter,
 				strings.Contains(query, "COALESCE(NULLIF(junit.lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)"))
 
+			assert.Equal(t, tt.wantFailureCountFilter,
+				strings.Contains(query, "COALESCE(NULLIF(lifecycle, ''), 'blocking') IN UNNEST(@FailureLifecycles)"),
+				"agg_failures subquery should apply lifecycle filter when isSample and lifecycles are set")
+
 			var lifecycleParamFound bool
+			var failureLifecycleParamFound bool
 			for _, queryParam := range params {
 				if queryParam.Name == "Lifecycles" {
 					lifecycleParamFound = true
 					assert.Equal(t, tt.lifecycles, queryParam.Value)
 				}
+				if queryParam.Name == "FailureLifecycles" {
+					failureLifecycleParamFound = true
+					assert.Equal(t, tt.lifecycles, queryParam.Value)
+				}
 			}
 			assert.Equal(t, tt.wantLifecycleArg, lifecycleParamFound)
+			assert.Equal(t, tt.wantFailureLifecycleArg, failureLifecycleParamFound)
 		})
 	}
 }
@@ -258,6 +272,25 @@ func TestBuildTestDetailsQuery_ParameterizedTestIDs(t *testing.T) {
 		assert.NotContains(t, query, testID)
 		assert.Contains(t, params, bigquery.QueryParameter{Name: paramName, Value: testID})
 	}
+}
+
+func TestBuildTestDetailsQuery_MultipleVariantsForSameTestID(t *testing.T) {
+	client := &bqcachedclient.Client{Dataset: "test_dataset"}
+	testIDOptions := []reqopts.TestIdentification{
+		{TestID: "shared-test", RequestedVariants: map[string]string{"Platform": "aws", "Upgrade": "none"}},
+		{TestID: "shared-test", RequestedVariants: map[string]string{"Platform": "gcp", "Upgrade": "micro"}},
+	}
+
+	query, _, params := buildTestDetailsQuery(client, testIDOptions, reqopts.RequestOptions{}, crtest.JobVariants{}, nil, true, "")
+
+	assert.Contains(t, query, "cm.id = @TestID0")
+	assert.Contains(t, query, "cm.id = @TestID1")
+	assert.Contains(t, query, `jv_Platform.variant_value = "aws"`)
+	assert.Contains(t, query, `jv_Upgrade.variant_value = "none"`)
+	assert.Contains(t, query, `jv_Platform.variant_value = "gcp"`)
+	assert.Contains(t, query, `jv_Upgrade.variant_value = "micro"`)
+	assert.Contains(t, params, bigquery.QueryParameter{Name: "TestID0", Value: "shared-test"})
+	assert.Contains(t, params, bigquery.QueryParameter{Name: "TestID1", Value: "shared-test"})
 }
 
 func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {

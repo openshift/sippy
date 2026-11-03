@@ -84,6 +84,20 @@ type batchLabelStatus struct {
 	labeled  sets.Set[int64]
 }
 
+// runPartitionKey carries the ID-map values needed to locate one job run
+// without scanning every prow_job_runs partition.
+type runPartitionKey struct {
+	ID        int64     `gorm:"column:id"`
+	Release   string    `gorm:"column:prow_job_release"`
+	Timestamp time.Time `gorm:"column:timestamp"`
+}
+
+// partitionDay groups IDs so each status query can target one release and day.
+type partitionDay struct {
+	release string
+	date    civil.Date
+}
+
 // Backfiller backfills InfraFailure labels from BigQuery into PostgreSQL.
 type Backfiller struct {
 	bq   *bqclient.Client
@@ -266,29 +280,50 @@ func (b *Backfiller) findLabelStatusInPG(ctx context.Context, batch []int64) (ba
 		return status, nil
 	}
 
-	var rows []struct {
-		ID      int64 `gorm:"column:id"`
-		Labeled bool  `gorm:"column:labeled"`
-	}
-	// 'InfraFailure' is embedded literally (matching pkg/db/infrafailure and the
-	// component readiness postgres provider) to avoid constructing dynamic SQL.
-	// It must stay in sync with infrafailure.LabelInfraFailure.
-	err := b.dbc.DB.WithContext(ctx).
-		Table("prow_job_runs").
-		Select("id, (labels @> ARRAY['InfraFailure']) AS labeled").
+	var keys []runPartitionKey
+	if err := b.dbc.DB.WithContext(ctx).
+		Table("prow_job_run_id_map").
+		Select("id, prow_job_release, timestamp").
 		Where("id IN ?", batch).
-		Scan(&rows).Error
-	if err != nil {
-		return batchLabelStatus{}, err
+		Scan(&keys).Error; err != nil {
+		return batchLabelStatus{}, fmt.Errorf("looking up prow job run partition keys: %w", err)
 	}
 
-	for _, r := range rows {
-		status.existing.Insert(r.ID)
-		if r.Labeled {
-			status.labeled.Insert(r.ID)
+	for partition, ids := range groupRunIDsByPartitionDay(keys) {
+		start := time.Date(partition.date.Year, partition.date.Month, partition.date.Day, 0, 0, 0, 0, time.UTC)
+		end := start.AddDate(0, 0, 1)
+		var rows []struct {
+			ID      int64 `gorm:"column:id"`
+			Labeled bool  `gorm:"column:labeled"`
+		}
+		if err := b.dbc.DB.WithContext(ctx).
+			Table("prow_job_runs").
+			Select("id, (labels @> ARRAY['InfraFailure']) AS labeled").
+			Where("id IN ?", ids).
+			Where("prow_job_release = ?", partition.release).
+			Where("timestamp >= ? AND timestamp < ?", start, end).
+			Scan(&rows).Error; err != nil {
+			return batchLabelStatus{}, fmt.Errorf("looking up InfraFailure labels for release %s on %s: %w", partition.release, partition.date, err)
+		}
+		for _, row := range rows {
+			status.existing.Insert(row.ID)
+			if row.Labeled {
+				status.labeled.Insert(row.ID)
+			}
 		}
 	}
 	return status, nil
+}
+
+// groupRunIDsByPartitionDay groups map entries so each status query has
+// constants for both prow_job_runs partition keys.
+func groupRunIDsByPartitionDay(keys []runPartitionKey) map[partitionDay][]int64 {
+	groups := make(map[partitionDay][]int64)
+	for _, key := range keys {
+		day := partitionDay{release: key.Release, date: civil.DateOf(key.Timestamp.UTC())}
+		groups[day] = append(groups[day], key.ID)
+	}
+	return groups
 }
 
 // resolveStartDate resolves the start of the time window. A non-empty since

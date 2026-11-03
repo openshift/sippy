@@ -24,10 +24,10 @@ const releaseSelectorFormControlSx = (theme) => ({
   minWidth: 80,
 })
 const labelSx = { display: 'flex', whiteSpace: 'nowrap' }
+const whitespacePattern = /\s+/g
 
 function ReleaseSelector(props) {
   const releases = useContext(ReleasesContext)
-  const [versions, setVersions] = useState({})
   const {
     label = 'Version',
     setStartTime,
@@ -47,6 +47,8 @@ function ReleaseSelector(props) {
     payloadTags,
     setPayloadTags,
   } = props
+  const [versions, setVersions] = useState({})
+  const labelId = label.toLowerCase().replace(whitespacePattern, '-')
 
   const days = 24 * 60 * 60 * 1000
   const oneWeekStart = new Date(new Date().getTime() - 7 * days)
@@ -226,9 +228,16 @@ function ReleaseSelector(props) {
         <Grid item md={12}>
           <FormControl variant="standard" sx={releaseSelectorFormControlSx}>
             <Tooltip title={props.tooltip}>
-              <InputLabel sx={labelSx}>{label}</InputLabel>
+              <InputLabel id={`${labelId}-label`} sx={labelSx}>
+                {label}
+              </InputLabel>
             </Tooltip>
-            <Select variant="standard" value={version} onChange={onChange}>
+            <Select
+              labelId={`${labelId}-label`}
+              variant="standard"
+              value={version}
+              onChange={onChange}
+            >
               {Object.keys(versions).map((v) => (
                 <MenuItem key={v} value={v}>
                   {v}

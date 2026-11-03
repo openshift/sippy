@@ -12,7 +12,7 @@ import TableRow from '@mui/material/TableRow'
 export default function CompCapTestRow(props) {
   const classes = useContext(ComponentReadinessStyleContext)
 
-  const { testCols, columnNames: _columnNames } = props
+  const { testCols, columnNames } = props
 
   // Put the testName on the left side with no link.
   const testNameColumn = (
@@ -32,10 +32,12 @@ export default function CompCapTestRow(props) {
         {testCols.columns.map((columnVal, idx) => (
           <CompReadyTestCell
             key={'testName-' + idx}
+            environment={columnNames[idx]}
             status={columnVal.status}
             test={
               columnVal.all_tests?.[0] || columnVal.regressed_tests?.[0] || null
             }
+            testId={testCols.test_id}
           />
         ))}
       </TableRow>

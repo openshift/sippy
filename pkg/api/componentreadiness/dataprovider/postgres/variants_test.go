@@ -76,6 +76,97 @@ func TestBuildVariantFilterClause(t *testing.T) {
 	}
 }
 
+func TestMatchRequestedVariantsWhenTestHasMultipleVariantCombinations(t *testing.T) {
+	requested := buildRequestedVariantsMap([]reqopts.TestIdentification{
+		{TestID: "test-id", RequestedVariants: map[string]string{"Platform": "gcp"}},
+		{TestID: "test-id", RequestedVariants: map[string]string{"Platform": "aws"}},
+	})
+
+	for _, tc := range []struct {
+		platform string
+		want     bool
+	}{
+		{platform: "gcp", want: true},
+		{platform: "aws", want: true},
+		{platform: "azure", want: false},
+	} {
+		t.Run(tc.platform, func(t *testing.T) {
+			key, matched := matchRequestedVariants(
+				"test-id",
+				map[string]string{"Platform": tc.platform},
+				requested,
+				sets.New[string]("Platform"),
+			)
+			if matched != tc.want {
+				t.Fatalf("matched = %t, want %t", matched, tc.want)
+			}
+			if matched && key.Variants["Platform"] != tc.platform {
+				t.Fatalf("matched Platform = %q, want %q", key.Variants["Platform"], tc.platform)
+			}
+		})
+	}
+}
+
+func TestMatchRequestedVariantsWithEmptyRequestMatchesAllVariants(t *testing.T) {
+	requested := buildRequestedVariantsMap([]reqopts.TestIdentification{{TestID: "test-id"}})
+
+	for _, platform := range []string{"aws", "gcp"} {
+		t.Run(platform, func(t *testing.T) {
+			key, matched := matchRequestedVariants(
+				"test-id",
+				map[string]string{"Platform": platform},
+				requested,
+				sets.New[string]("Platform"),
+			)
+
+			if !matched {
+				t.Fatal("empty RequestedVariants should not restrict the row")
+			}
+			if key.Variants["Platform"] != platform {
+				t.Fatalf("matched Platform = %q, want %q", key.Variants["Platform"], platform)
+			}
+		})
+	}
+}
+
+func TestMatchRequestedVariantsRequiresRequestedVariantKey(t *testing.T) {
+	requested := buildRequestedVariantsMap([]reqopts.TestIdentification{{
+		TestID:            "test-id",
+		RequestedVariants: map[string]string{"Architecture": ""},
+	}})
+
+	tests := []struct {
+		name     string
+		variants map[string]string
+		want     bool
+	}{
+		{
+			name:     "missing key does not match empty requested value",
+			variants: map[string]string{},
+			want:     false,
+		},
+		{
+			name:     "present key with empty value matches",
+			variants: map[string]string{"Architecture": ""},
+			want:     true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, matched := matchRequestedVariants(
+				"test-id",
+				tc.variants,
+				requested,
+				sets.New[string]("Architecture"),
+			)
+			if matched != tc.want {
+				t.Fatalf("matched = %t, want %t", matched, tc.want)
+			}
+		})
+	}
+}
+
 func TestMergeRequestedVariants(t *testing.T) {
 	tests := []struct {
 		name            string

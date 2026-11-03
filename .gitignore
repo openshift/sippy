@@ -19,6 +19,10 @@ __pycache__/
 e2e-coverage*
 junit.xml
 integration-junit.xml
+sippy-ng/bdd/.features-gen/
+sippy-ng/playwright-report/
+sippy-ng/test-results/
+sippy-ng/blob-report/
 
 
 # APM dependencies

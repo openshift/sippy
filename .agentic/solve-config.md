@@ -19,9 +19,14 @@ code without corresponding tests are incomplete.
 
 ### React (frontend)
 
-The frontend testing framework is not yet mature enough to require tests for
-all new components. Testing of utility functions and shared hooks is
-recommended. Follow existing Vitest patterns in `sippy-ng/` when adding tests.
+Test UI behavior with the Playwright BDD suite in `sippy-ng/bdd/`. Add or
+update Gherkin scenarios under `sippy-ng/bdd/features/` for new or changed
+pages, components, and user flows. Step definitions, page objects, and
+fixtures live next to the existing suite. Run it with `make test-bdd`.
+
+Use Vitest only for helper functions (pure utilities such as those in
+`sippy-ng/src/helpers.js`). Do not add Vitest or React Testing Library tests
+for components, pages, or other UI behavior.
 
 ### API endpoints
 

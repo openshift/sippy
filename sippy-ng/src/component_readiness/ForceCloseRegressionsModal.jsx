@@ -267,6 +267,7 @@ export default function ForceCloseRegressionsModal({
       <Tooltip title={tooltipTitle}>
         <span>
           <Button
+            data-testid="force-close-regressions"
             onClick={handleOpen}
             variant="contained"
             color="warning"
@@ -358,6 +359,7 @@ export default function ForceCloseRegressionsModal({
             Cancel
           </Button>
           <Button
+            data-testid="force-close-confirm"
             onClick={handleConfirm}
             variant="contained"
             color="warning"

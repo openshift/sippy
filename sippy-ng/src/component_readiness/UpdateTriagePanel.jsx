@@ -18,12 +18,14 @@ export default function UpdateTriagePanel({
 }) {
   const [removedRegressions, setRemovedRegressions] = React.useState([])
   const [validationMessage, setValidationMessage] = React.useState('')
+  // An empty triage serializes regressions as null.
+  const regressions = triage.regressions ?? []
 
   const handleRegressionChange = (e) => {
     setValidationMessage('')
     const { value, checked } = e.target
     if (checked) {
-      if (removedRegressions.length + 1 === triage.regressions.length) {
+      if (removedRegressions.length + 1 === regressions.length) {
         setValidationMessage(
           'Cannot remove all regressions, must leave at least one associated with the triage record'
         )
@@ -45,7 +47,7 @@ export default function UpdateTriagePanel({
       return
     }
 
-    const updatedRegressions = triage.regressions.filter(
+    const updatedRegressions = regressions.filter(
       (regression) => !removedRegressions.includes(String(regression.id))
     )
 
@@ -98,10 +100,7 @@ export default function UpdateTriagePanel({
           variant="fullWidth"
         >
           <Tab label="Update Fields" />
-          <Tab
-            label="Remove Regressions"
-            disabled={triage.regressions.length < 2}
-          />
+          <Tab label="Remove Regressions" disabled={regressions.length < 2} />
         </TriageTabs>
 
         {updateFields && (
@@ -126,7 +125,7 @@ export default function UpdateTriagePanel({
               Remove Regressions
             </Typography>
             <DataGrid
-              rows={triage.regressions}
+              rows={regressions}
               columns={[
                 {
                   field: 'id',
@@ -196,7 +195,7 @@ export default function UpdateTriagePanel({
               autoHeight={true}
               getRowHeight={() => 80}
               disableRowSelectionOnClick
-              hideFooter={triage.regressions.length <= 10}
+              hideFooter={regressions.length <= 10}
               initialState={{
                 pagination: { paginationModel: { pageSize: 10 } },
               }}

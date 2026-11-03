@@ -1,6 +1,28 @@
 package infrafailure
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"cloud.google.com/go/civil"
+
+	"github.com/openshift/sippy/pkg/db/query"
+)
+
+func TestSummaryPartitionBoundsUseUTCDate(t *testing.T) {
+	keys := query.ProwJobRunPartitionKeys{
+		ProwJobRelease: "5.1",
+		Timestamp:      time.Date(2026, time.October, 1, 23, 30, 0, 0, time.FixedZone("west", -2*60*60)),
+	}
+
+	release, date := summaryPartitionBounds(keys)
+	if release != "5.1" {
+		t.Errorf("release = %q, want 5.1", release)
+	}
+	if date != (civil.Date{Year: 2026, Month: time.October, Day: 2}) {
+		t.Errorf("date = %s, want 2026-10-02", date)
+	}
+}
 
 // The DB-backed behavior of RecordInfraFailure and RecordInfraFailureWithOutcome
 // (label gating, summary subtraction, idempotency, and the per-run outcome

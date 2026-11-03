@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -84,20 +85,32 @@ func filterByDBGroupBy(variants map[string]string, dbGroupBy sets.Set[string]) m
 	return filtered
 }
 
-// matchRequestedVariants checks whether a row's job variants satisfy the
-// requested variant filters for the given testID, and returns the filtered
+// matchRequestedVariants checks whether a row's job variants satisfy any of
+// the requested variant filters for the given testID, and returns the filtered
 // key. Returns ok=false if the row should be skipped.
 func matchRequestedVariants(
 	testID string,
 	variants map[string]string,
-	requestedVariants map[string]map[string]string,
+	requestedVariants map[string][]map[string]string,
 	dbGroupBy sets.Set[string],
 ) (crtest.KeyWithVariants, bool) {
-	if rv, ok := requestedVariants[testID]; ok {
-		for k, v := range rv {
-			if variants[k] != v {
-				return crtest.KeyWithVariants{}, false
+	if requestedForTest, ok := requestedVariants[testID]; ok {
+		matched := false
+		for _, rv := range requestedForTest {
+			optionMatched := true
+			for k, v := range rv {
+				if actual, exists := variants[k]; !exists || actual != v {
+					optionMatched = false
+					break
+				}
 			}
+			if optionMatched {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return crtest.KeyWithVariants{}, false
 		}
 	}
 	filtered := filterByDBGroupBy(variants, dbGroupBy)
@@ -107,14 +120,11 @@ func matchRequestedVariants(
 	}, true
 }
 
-// buildRequestedVariantsMap builds a testID -> requested variants lookup
-// from the request options.
-func buildRequestedVariantsMap(testIDOptions []reqopts.TestIdentification) map[string]map[string]string {
-	m := map[string]map[string]string{}
+// buildRequestedVariantsMap groups requested variant filters by test ID.
+func buildRequestedVariantsMap(testIDOptions []reqopts.TestIdentification) map[string][]map[string]string {
+	m := map[string][]map[string]string{}
 	for _, tid := range testIDOptions {
-		if len(tid.RequestedVariants) > 0 {
-			m[tid.TestID] = tid.RequestedVariants
-		}
+		m[tid.TestID] = append(m[tid.TestID], tid.RequestedVariants)
 	}
 	return m
 }
@@ -383,11 +393,48 @@ type testDetailRow struct {
 	JiraComponentID *uint          `gorm:"column:jira_component_id"`
 }
 
+// buildTestDetailsRunScope keeps the sample details query on the same run
+// selection as its report while preserving release scoping for ordinary and
+// basis details. Both timestamp predicates support the partitioned run tables.
+func buildTestDetailsRunScope(release string, start, end time.Time, runFilter string, runArgs []any) (string, []any) {
+	clause := `pjr.timestamp >= ? AND pjr.timestamp < ?
+        AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?`
+	args := []any{start, end, start, end}
+	if runFilter == "" {
+		clause += ` AND pj.release = ?
+        AND pjr.prow_job_release = ? AND pjrt.prow_job_run_release = ?`
+		args = append(args, release, release, release)
+	} else {
+		clause += " AND " + runFilter
+		args = append(args, runArgs...)
+	}
+	return clause, args
+}
+
+// testDetailsJobNameSQL uses releaseJobName to group PR-filtered test runs
+// under their canonical release job while limiting the partitioned annotation
+// lookup to the requested sample range.
+func testDetailsJobNameSQL(useReleaseJobName bool, start, end time.Time) (string, string, []any) {
+	if !useReleaseJobName {
+		return "pj.name", "", nil
+	}
+
+	return "COALESCE(NULLIF(split_part(release_job_name.value, ',', 1), ''), pj.name)", `
+LEFT JOIN prow_job_run_annotations release_job_name
+    ON release_job_name.prow_job_run_id = pjr.id
+    AND release_job_name.prow_job_run_release = pjr.prow_job_release
+    AND release_job_name.prow_job_run_timestamp = pjr.timestamp
+    AND release_job_name.key = 'releaseJobName'
+    AND release_job_name.deleted_at IS NULL
+    AND release_job_name.prow_job_run_timestamp >= ?
+    AND release_job_name.prow_job_run_timestamp < ?`, []any{start, end}
+}
+
 func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
 	reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string,
-	lifecycles []string) (map[string][]crstatus.TestDetailsSummary, []error) {
-
+	lifecycles []string,
+	runFilter string, runArgs []any, sampleReleases []string, useReleaseJobName bool) (map[string][]crstatus.TestDetailsSummary, []error) {
 	if includeVariants == nil {
 		includeVariants = map[string][]string{}
 	}
@@ -415,17 +462,21 @@ func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string,
 		args = append(args, testIDs)
 	}
 
-	sqlQuery += `)
+	testFailuresExpr, testFailuresArgs := testFailuresExpression(release, start, end, lifecycles, sampleReleases)
+	scope, scopeArgs := buildTestDetailsRunScope(release, start, end, runFilter, runArgs)
+	jobNameExpr, jobNameJoin, jobNameArgs := testDetailsJobNameSQL(useReleaseJobName, start, end)
+
+	sqlQuery += fmt.Sprintf(`)
 SELECT
     tt.unique_id AS test_id,
     t.name AS test_name,
-    pj.name AS prowjob_name,
+    %s AS prowjob_name,
     CAST(pjr.id AS TEXT) AS prowjob_run_id,
     COALESCE(pjr.url, '') AS prowjob_url,
     pjr.timestamp AS prowjob_start,
     pj.id AS prow_job_id,
     pjr.labels AS job_labels,
-    COALESCE(pjr.test_failures, 0) AS test_failures,
+    %s,
     pjrt.status,
     COALESCE(tt.jira_component, '') AS jira_component,
     tt.jira_component_id
@@ -436,16 +487,15 @@ JOIN prow_job_runs pjr ON pjr.id = pjrt.prow_job_run_id
     AND pjr.prow_job_release = pjrt.prow_job_run_release
     AND pjr.timestamp = pjrt.prow_job_run_timestamp
 JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
+%s
 JOIN tests t ON t.id = pjrt.test_id
-WHERE pj.release = ?
-    AND pjr.timestamp >= ? AND pjr.timestamp < ?
-    AND pjr.prow_job_release = ?
-    AND pjrt.prow_job_run_release = ?
-    AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
+WHERE %s
     AND pjrt.deleted_at IS NULL AND pjr.deleted_at IS NULL AND pj.deleted_at IS NULL
-    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`
+    AND (pjr.labels IS NULL OR NOT pjr.labels @> ARRAY['InfraFailure'])`, jobNameExpr, testFailuresExpr, jobNameJoin, scope)
 
-	args = append(args, release, start, end, release, release, start, end)
+	args = append(args, testFailuresArgs...)
+	args = append(args, jobNameArgs...)
+	args = append(args, scopeArgs...)
 	sqlQuery, args = appendTestDetailsLifecycleFilter(sqlQuery, args, lifecycles)
 
 	if len(includeVariants) > 0 {
@@ -526,6 +576,40 @@ WHERE pj.release = ?
 	return crstatus.SummarizeTestJobRuns(result), nil
 }
 
+// testFailuresExpression returns the SQL expression and any additional query
+// arguments for the test_failures column. Without a lifecycle filter, it uses
+// the pre-computed prow_job_runs.test_failures count. With a filter, it returns
+// a correlated subquery that counts DISTINCT test_id values matching the
+// lifecycle. Ordinary requests bind the release explicitly so PostgreSQL can
+// prune partitions; filtered samples bind their candidate release set and also
+// correlate to the outer run's release.
+func testFailuresExpression(release string, start, end time.Time, lifecycles, sampleReleases []string) (string, []any) {
+	if len(lifecycles) == 0 {
+		return "COALESCE(pjr.test_failures, 0) AS test_failures", nil
+	}
+
+	var releasePredicate string
+	var args []any
+	if sampleReleases == nil {
+		releasePredicate = "lf.prow_job_run_release = ?"
+		args = append(args, release)
+	} else {
+		releasePredicate = "lf.prow_job_run_release = ANY(?) AND lf.prow_job_run_release = pjr.prow_job_release"
+		args = append(args, pq.Array(sampleReleases))
+	}
+	args = append(args, start, end, int(sippyprocessingv1.TestStatusFailure), pq.Array(lifecycles))
+
+	return `(SELECT COUNT(DISTINCT lf.test_id) FROM prow_job_run_tests lf
+            WHERE lf.prow_job_run_id = pjr.id
+            AND ` + releasePredicate + `
+            AND lf.prow_job_run_timestamp >= ? AND lf.prow_job_run_timestamp < ?
+            AND lf.prow_job_run_timestamp = pjr.timestamp
+            AND lf.status = ?
+            AND lf.lifecycle = ANY(?)
+            AND lf.deleted_at IS NULL) AS test_failures`,
+		args
+}
+
 // appendTestDetailsLifecycleFilter keeps sample test details aligned with the
 // lifecycle-filtered component report that selected the tests for analysis.
 func appendTestDetailsLifecycleFilter(sqlQuery string, args []any, lifecycles []string) (string, []any) {
@@ -541,17 +625,51 @@ func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOpt
 		ctx,
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End,
-		reqOptions, reqOptions.VariantOption.IncludeVariants, nil,
+		reqOptions, reqOptions.VariantOption.IncludeVariants, nil, "", nil, nil, false,
 	)
 	if len(errs) > 0 {
 		return result, errs
 	}
+	aggregateOptions := reqOptions
+	presentKeys := sets.New[string]()
 	if len(result) > 0 {
-		return result, nil
+		for _, summaries := range result {
+			for _, summary := range summaries {
+				presentKeys.Insert(summary.TestKeyStr)
+			}
+		}
+		aggregateOptions.TestIDOptions = nil
+		for _, identification := range reqOptions.TestIDOptions {
+			key := crtest.KeyWithVariants{
+				TestID:   identification.TestID,
+				Variants: filterByDBGroupBy(identification.RequestedVariants, reqOptions.VariantOption.DBGroupBy),
+			}
+			if !presentKeys.Has(key.Encode()) {
+				aggregateOptions.TestIDOptions = append(aggregateOptions.TestIDOptions, identification)
+			}
+		}
+		if len(aggregateOptions.TestIDOptions) == 0 {
+			return result, nil
+		}
 	}
 	log.WithField("release", reqOptions.BaseRelease.Name).
-		Info("no per-run base test details found, falling back to aggregate tables")
-	return p.queryBaseAggregateTestDetails(ctx, reqOptions)
+		Info("querying aggregate base test details for keys without per-run data")
+	aggregate, aggregateErrs := p.queryBaseAggregateTestDetails(ctx, aggregateOptions)
+	if len(aggregateErrs) > 0 {
+		return result, aggregateErrs
+	}
+	if result == nil {
+		result = make(map[string][]crstatus.TestDetailsSummary)
+	}
+	for jobName, summaries := range aggregate {
+		for _, summary := range summaries {
+			if presentKeys.Has(summary.TestKeyStr) {
+				continue
+			}
+			result[jobName] = append(result[jobName], summary)
+		}
+	}
+	return result, nil
 }
 
 type aggregateTestDetailRow struct {
@@ -567,8 +685,8 @@ type aggregateTestDetailRow struct {
 }
 
 // queryBaseAggregateTestDetails queries aggregate tables (test_cumulative_summaries
-// or prow_ga_raw_test_data) as a fallback when prow_job_run_tests has no data for
-// the base release. Returns per-job aggregate stats as TestDetailsSummary entries
+// or prow_ga_raw_test_data) as a fallback for keys without prow_job_run_tests data
+// in the base release. Returns per-job aggregate stats as TestDetailsSummary entries
 // with no individual JobRuns, because per-run identifiers do not exist in these tables.
 func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {
 	includeVariants := reqOptions.VariantOption.IncludeVariants
@@ -761,12 +879,28 @@ func (p *PostgresProvider) processAggregateRows(rows []aggregateTestDetailRow, r
 func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestDetailsSummary, []error) {
-	return p.queryTestDetails(
+	runFilter, runArgs, err := buildSamplePullRequestAndPayloadRunFilter(reqOptions.SampleRelease, start, end)
+	if err != nil {
+		return nil, []error{err}
+	}
+	sampleReleases, lookupErr := findSampleReleases(ctx, p.dbc.DB, reqOptions.SampleRelease, start, end)
+	if lookupErr != nil {
+		return nil, []error{lookupErr}
+	}
+	sampleReleaseFilter, sampleReleaseArgs := buildSampleRunReleasePartitionFilter(sampleReleases, "pjrt")
+	if sampleReleaseFilter != "" {
+		runFilter += " AND " + sampleReleaseFilter
+		runArgs = append(runArgs, sampleReleaseArgs...)
+	}
+
+	result, errs := p.queryTestDetails(
 		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
-		reqOptions, mergeCompareVariants(reqOptions, includeVariants), reqOptions.Lifecycles,
+		reqOptions, mergeCompareVariants(reqOptions, includeVariants), reqOptions.Lifecycles, runFilter, runArgs,
+		sampleReleases, reqOptions.SampleRelease.PullRequestOptions != nil,
 	)
+	return result, errs
 }
 
 // --- JobQuerier ---

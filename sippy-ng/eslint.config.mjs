@@ -9,7 +9,15 @@ import vitestPlugin from '@vitest/eslint-plugin'
 
 export default [
   {
-    ignores: ['node_modules/**', 'build/**', 'coverage/**'],
+    ignores: [
+      'node_modules/**',
+      'build/**',
+      'coverage/**',
+      'bdd/.features-gen/**',
+      'playwright-report/**',
+      'blob-report/**',
+      'test-results/**',
+    ],
   },
   js.configs.recommended,
   {
@@ -87,6 +95,14 @@ export default [
     languageOptions: {
       globals: {
         ...vitestPlugin.configs.env.languageOptions.globals,
+        ...globals.node,
+      },
+    },
+  },
+  {
+    files: ['bdd/**/*.js'],
+    languageOptions: {
+      globals: {
         ...globals.node,
       },
     },

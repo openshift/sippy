@@ -67,6 +67,11 @@ const (
 	JiraProgression      resolutionReason = "jira-progression"
 )
 
+const (
+	ColResolved         = "resolved"
+	ColResolutionReason = "resolution_reason"
+)
+
 type contextKey string
 
 const (
