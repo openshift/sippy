@@ -9,11 +9,11 @@ const (
 	// MockUser is the identity attributed to requests that arrive without an authenticated user when
 	// DEV_MODE is enabled. It lets developers exercise user-attributed write flows (triage audit logs,
 	// regression force close) without the oauth proxy that sets X-Forwarded-User in production.
-	MockUser = "developer"
+	MockUser string = "developer"
 
 	// devModeEnvVar is the existing development toggle; non-production deployments such as local
 	// development and agentic-staging set it to "1". Production leaves it unset.
-	devModeEnvVar = "DEV_MODE"
+	devModeEnvVar string = "DEV_MODE"
 )
 
 // mockAuthEnabled reports whether requests without an authenticated user should be attributed to

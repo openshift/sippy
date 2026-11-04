@@ -234,9 +234,11 @@ sippy load \
 ### Mock authentication (local and agentic-staging)
 
 In production, the oauth proxy sets the `X-Forwarded-User` header, and user-attributed write
-endpoints (triage create/update/delete audit logs, regression force close, symptom edits) refuse
-requests without it. Local development and the `agentic-staging` environment have no oauth proxy,
-so `sippy serve` can authenticate those requests as a mock user instead.
+endpoints (triage create/update/delete audit logs, regression force close, symptom edits) record
+that user. The server itself only rejects requests without the header on a few endpoints (regression
+force close and Jira bug filing); the other write paths rely on the oauth proxy to set it. Local
+development and the `agentic-staging` environment have no oauth proxy, so `sippy serve` can
+attribute those requests to a mock user instead.
 
 * **Mock user:** `developer` (`sippyserver.MockUser`).
 * **Enabling:** set `DEV_MODE=1`, the existing development toggle that the audit logs already use
@@ -246,8 +248,8 @@ so `sippy serve` can authenticate those requests as a mock user instead.
   bypasses the component report cache.
 * **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
   the header is missing.
-* **Production:** production leaves `DEV_MODE` unset, so unauthenticated requests are still
-  rejected (for example, force close returns `401 Unauthorized`).
+* **Production:** production leaves `DEV_MODE` unset, so endpoints that check for a user still
+  reject requests without one (for example, force close returns `401 Unauthorized`).
 * **Isolation:** with the mock active, any client that can reach the server can perform
   user-attributed writes as `developer`. Only enable it on deployments that are not reachable from
   untrusted networks and that do not use production data.
