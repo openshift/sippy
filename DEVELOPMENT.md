@@ -258,59 +258,6 @@ attribute those requests to a mock user instead.
 
 On startup, the server logs the warning `mock authentication enabled` when the mock is active.
 
-#### Testing regression force close against a seeded database
-
-1. Prepare a seeded database (the devcontainer `seed` data mode already provides one):
-
-   ```bash
-   ./sippy seed-data --init-database \
-     --database-dsn="postgresql://postgres:password@localhost:5432/postgres"
-   ```
-
-2. Start the API with mock auth and write endpoints enabled. In the devcontainer, the MCP
-   `sippy_serve` tool enables write endpoints and inherits `DEV_MODE` from the container
-   environment. To run it manually:
-
-   ```bash
-   DEV_MODE=1 ./sippy serve \
-     --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
-     --mode=ocp --data-provider=postgres --views=config/seed-views.yaml \
-     --enable-write-endpoints --redis-url="redis://localhost:6379"
-   ```
-
-3. Force close only applies to resolved triages. The seeded triages are unresolved, so resolve one
-   first by setting `resolved` on the triage record and sending it back:
-
-   ```bash
-   curl -s localhost:8080/api/component_readiness/triages/3 \
-     | jq '.resolved = {"Time": (now | todate), "Valid": true}' \
-     | curl -s -X PUT -H 'Content-Type: application/json' --data @- \
-         localhost:8080/api/component_readiness/triages/3
-   ```
-
-4. Preview, then force close. No auth header is needed:
-
-   ```bash
-   curl -s localhost:8080/api/component_readiness/triages/3/force_close_preview
-   curl -s -X POST -H 'Content-Type: application/json' \
-     -d '{"reason":"verifying force close locally"}' \
-     localhost:8080/api/component_readiness/triages/3/force_close_regressions
-   ```
-
-5. Verify the persisted result:
-
-   ```bash
-   psql "postgresql://postgres:password@localhost:5432/postgres" -c \
-     "SELECT id, closed, force_closed, force_closed_by, force_closed_reason
-      FROM test_regressions WHERE force_closed_by_triage_id = 3;"
-   ```
-
-   Each closed regression should show `force_closed = t` and `force_closed_by = developer`, and
-   `audit_logs` should record the triage update as user `developer`. You can also use the Force
-   Close action on the triage page in the UI, which sends the same request.
-
-To reset the data afterwards, re-run `./sippy seed-data --init-database`.
-
 ## Run Sippy comment processing
 
 If you want to run Sippy PR Commenting you likely want to first load data so that you have the PR commenting table populated.
