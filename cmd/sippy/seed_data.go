@@ -80,6 +80,9 @@ details can disagree about the seeded counts.
 			if strings.Contains(f.DBFlags.DSN, "amazonaws.com") {
 				return fmt.Errorf("refusing to seed synthetic data into a production database")
 			}
+			if err := f.CRFlags.ValidateTimeRounding(); err != nil {
+				return err
+			}
 
 			dbc, err := f.DBFlags.GetDBClient()
 			if err != nil {
@@ -621,7 +624,7 @@ func seedSyntheticData(dbc *db.DB, clock seedClock) error {
 		return nil
 	}
 
-	if err := seedReleaseDefinitions(dbc); err != nil {
+	if err := seedReleaseDefinitions(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed release definitions")
 	}
 	log.Info("Seeded release definitions")
@@ -714,8 +717,8 @@ func seedSyntheticData(dbc *db.DB, clock seedClock) error {
 	return nil
 }
 
-func seedReleaseDefinitions(dbc *db.DB) error {
-	today := civil.DateOf(time.Now().UTC())
+func seedReleaseDefinitions(dbc *db.DB, clock seedClock) error {
+	today := civil.DateOf(clock.now.UTC())
 	allCaps := pq.StringArray{models.CapComponentReadiness, models.CapFeatureGates, models.CapMetrics, models.CapPayloadTags, models.CapSippyClassic}
 
 	type relMeta struct {

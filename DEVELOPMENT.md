@@ -46,6 +46,20 @@ Sippy obtains data from multiple sources:
 
 **Note**: Test results are only stored from [known suites](pkg/db/suites.go).
 
+### From Synthetic Seed Data
+
+`sippy seed-data --init-database` fills an empty database with deterministic
+Component Readiness data. Serve it with `sippy serve --data-provider postgres`.
+
+The seeded sample window ends at the most recent Component Readiness rounding
+boundary, so `seed-data` accepts the same
+`--component-readiness-time-rounding-factor` and
+`--component-readiness-time-rounding-offset` flags as `sippy serve`. Both
+commands use the same defaults (12h factor, 4h offset), so nothing is needed by
+default. If you serve with non-default rounding, pass the same values to
+`seed-data`. Otherwise the report and test details can disagree about the
+seeded counts. The factor must be greater than 0 and at most 24h.
+
 ### From a Prod Sippy Backup
 
 The simplest way to fetch data for Sippy, is to just get a copy of the production database. TRT stores gzip'd backups in S3 periodically, see the staff slack channel for links or reach out to a team member for more information. Restore it locally with a command like this if you are using the plain .sql file:

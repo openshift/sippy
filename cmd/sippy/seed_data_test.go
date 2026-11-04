@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -157,13 +158,14 @@ func TestSeededTestStatusMatchesSyntheticSpecs(t *testing.T) {
 	for _, ts := range syntheticTests {
 		for jobTpl, releaseCounts := range ts.jobCounts {
 			for release, counts := range releaseCounts {
-				failures := 0
+				got := map[int]int{}
 				for i := 0; i < counts.total; i++ {
-					if seededTestStatus(i, counts) == int(v1.TestStatusFailure) {
-						failures++
-					}
+					got[seededTestStatus(i, counts)]++
 				}
-				assert.Equal(t, counts.total-counts.success, failures, "%s %s %s", ts.testID, jobTpl, release)
+				label := fmt.Sprintf("%s %s %s", ts.testID, jobTpl, release)
+				assert.Equal(t, counts.success-counts.flake, got[int(v1.TestStatusSuccess)], "passes: %s", label)
+				assert.Equal(t, counts.flake, got[int(v1.TestStatusFlake)], "flakes: %s", label)
+				assert.Equal(t, counts.total-counts.success, got[int(v1.TestStatusFailure)], "failures: %s", label)
 			}
 		}
 	}
@@ -217,13 +219,13 @@ func TestSeededRunTimestamps(t *testing.T) {
 	}
 }
 
-// TestSeeded4_22SampleConsistentAcrossSurfaces models how the component report
+// TestSeedClockWindow4_22SampleConsistentAcrossSurfaces models how the component report
 // (whole UTC days through the sample end date) and test details (exact run
 // timestamps up to the rounded sample end) count the seeded 4.22 results, and
 // checks both see the same intended counts for the life of the seed: at seed
 // time, and later the same day as rounding boundaries pass. The server and the
 // seed share the rounding settings, so each config is applied to both.
-func TestSeeded4_22SampleConsistentAcrossSurfaces(t *testing.T) {
+func TestSeedClockWindow4_22SampleConsistentAcrossSurfaces(t *testing.T) {
 	const runCount int = 200
 	roundings := []struct {
 		name   string

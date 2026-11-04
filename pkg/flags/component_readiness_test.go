@@ -2,6 +2,7 @@ package flags
 
 import (
 	"testing"
+	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/stretchr/testify/assert"
@@ -111,6 +112,36 @@ func TestValidateSpotCheckSamples(t *testing.T) {
 			}
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errorMsg)
+		})
+	}
+}
+
+// A factor over 24h collapsed the 4.22 sample window to start == end at
+// 2026-11-04T00:30Z, so the report counted failures the details query could not see.
+func TestValidateTimeRounding(t *testing.T) {
+	tests := []struct {
+		name    string
+		factor  time.Duration
+		wantErr bool
+	}{
+		{name: "default 12h", factor: DefaultCRTimeRoundingFactor},
+		{name: "maximum 24h", factor: 24 * time.Hour},
+		{name: "small 1h", factor: time.Hour},
+		{name: "96h collapses the sample window", factor: 96 * time.Hour, wantErr: true},
+		{name: "just over 24h", factor: 24*time.Hour + time.Second, wantErr: true},
+		{name: "zero", factor: 0, wantErr: true},
+		{name: "negative", factor: -time.Hour, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewComponentReadinessFlags()
+			f.CRTimeRoundingFactor = tt.factor
+			err := f.ValidateTimeRounding()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

@@ -9,8 +9,9 @@ import (
 
 func TestComponentReadinessFlagsValidateDefaultDoesNotRequireGoogleCredentials(t *testing.T) {
 	componentReadinessFlags := &ComponentReadinessFlags{
-		DataProvider:     "default",
-		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
+		DataProvider:            "default",
+		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
+		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 	}
 
 	require.NoError(t, componentReadinessFlags.Validate())
@@ -18,8 +19,9 @@ func TestComponentReadinessFlagsValidateDefaultDoesNotRequireGoogleCredentials(t
 
 func TestServerFlagsValidateDefaultDoesNotRequireGoogleCredentials(t *testing.T) {
 	serverFlags := &ServerFlags{
-		DataProvider:     "default",
-		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
+		DataProvider:            "default",
+		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
+		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 	}
 
 	require.NoError(t, serverFlags.Validate())

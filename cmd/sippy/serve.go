@@ -73,6 +73,9 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ServerFlags) Validate() error {
+	if err := f.ComponentReadinessFlags.ValidateTimeRounding(); err != nil {
+		return err
+	}
 	if f.DataProvider == reqopts.DataSourceBigQuery {
 		return f.GoogleCloudFlags.Validate()
 	}

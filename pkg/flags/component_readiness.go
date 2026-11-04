@@ -30,7 +30,10 @@ type ComponentReadinessFlags struct {
 }
 
 func NewComponentReadinessFlags() *ComponentReadinessFlags {
-	return &ComponentReadinessFlags{}
+	return &ComponentReadinessFlags{
+		CRTimeRoundingFactor: DefaultCRTimeRoundingFactor,
+		CRTimeRoundingOffset: DefaultCRTimeRoundingOffset,
+	}
 }
 
 func (f *ComponentReadinessFlags) BindFlags(fs *pflag.FlagSet) {
@@ -46,6 +49,18 @@ func (f *ComponentReadinessFlags) BindTimeRoundingFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&f.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", DefaultCRTimeRoundingFactor, factorUsage)
 	offsetUsage := "Shift rounding boundaries by this duration. With a 12h factor: 0 aligns to 00:00/12:00 UTC, 4h aligns to 04:00/16:00 UTC, 5h aligns to 05:00/17:00 UTC (midnight/noon EST). The cronjob schedule must match these boundaries."
 	fs.DurationVar(&f.CRTimeRoundingOffset, "component-readiness-time-rounding-offset", DefaultCRTimeRoundingOffset, offsetUsage)
+}
+
+// ValidateTimeRounding rejects rounding factors outside (0, 24h]. A factor longer than a day
+// can collapse a release's sample window to zero length, after which the report and test
+// details disagree about the sample. Zero is rejected rather than treated as "disabled"
+// because some callers substitute the 12h default for zero while others skip rounding.
+func (f *ComponentReadinessFlags) ValidateTimeRounding() error {
+	if f.CRTimeRoundingFactor <= 0 || f.CRTimeRoundingFactor > maxCRTimeRoundingFactor {
+		return fmt.Errorf("--component-readiness-time-rounding-factor must be greater than 0 and at most %v, got %v",
+			maxCRTimeRoundingFactor, f.CRTimeRoundingFactor)
+	}
+	return nil
 }
 
 func (f *ComponentReadinessFlags) ParseViewsFile() (*api.SippyViews, error) {
