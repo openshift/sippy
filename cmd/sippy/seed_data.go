@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 type SeedDataFlags struct {
@@ -512,18 +513,31 @@ var syntheticTests = []syntheticTestSpec{
 
 // releaseTimeWindow returns the start/end times for a release's test data.
 func releaseTimeWindow(release string) (start, end time.Time) {
-	now := time.Now().UTC().Truncate(time.Hour)
+	return releaseTimeWindowAt(release, time.Now())
+}
+
+// releaseTimeWindowAt returns the start/end times for a release's test data relative to now.
+//
+// The 4.22 window mirrors the seed views' "now-3d" to "now" sample window as the server
+// resolves it with default rounding: start at midnight three days ago, end at the most
+// recent rounding boundary. The report aggregates whole days while test details filter
+// exact run timestamps, so any run after the boundary would only be counted by the report.
+func releaseTimeWindowAt(release string, now time.Time) (start, end time.Time) {
+	now = now.UTC()
+	hour := now.Truncate(time.Hour)
 	switch release {
 	case "4.22":
-		return now.Add(-3 * 24 * time.Hour), now
+		start = util.AdjustReleaseTime(now, true, "3", 0, 0)
+		end = util.TruncateAligned(now, flags.DefaultCRTimeRoundingFactor, flags.DefaultCRTimeRoundingOffset)
+		return start, end
 	case "4.21":
-		return now.Add(-60 * 24 * time.Hour), now.Add(-30 * 24 * time.Hour)
+		return hour.Add(-60 * 24 * time.Hour), hour.Add(-30 * 24 * time.Hour)
 	case "4.20":
-		return now.Add(-120 * 24 * time.Hour), now.Add(-90 * 24 * time.Hour)
+		return hour.Add(-120 * 24 * time.Hour), hour.Add(-90 * 24 * time.Hour)
 	case "4.19":
-		return now.Add(-180 * 24 * time.Hour), now.Add(-150 * 24 * time.Hour)
+		return hour.Add(-180 * 24 * time.Hour), hour.Add(-150 * 24 * time.Hour)
 	default:
-		return now.Add(-14 * 24 * time.Hour), now
+		return hour.Add(-14 * 24 * time.Hour), hour
 	}
 }
 
@@ -842,13 +856,11 @@ func createProwJobRun(dbc *db.DB, run *models.ProwJobRun) error {
 
 func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrKey jobReleaseKey, runCount int, testIDsByName map[string]uint) (int, int, error) {
 	start, end := releaseTimeWindow(jrKey.release)
-	window := end.Sub(start)
 	infraRuns := 2
-	totalRuns := runCount + infraRuns
-	interval := window / time.Duration(totalRuns)
+	timestamps := seededRunTimestamps(start, end, runCount+infraRuns)
+	totalRuns := len(timestamps)
 	runKeys := make([]models.ProwJobRunIDMap, totalRuns)
-	for i := range totalRuns {
-		timestamp := start.Add(time.Duration(i) * interval)
+	for i, timestamp := range timestamps {
 		run := models.ProwJobRun{
 			ProwJobID:      prowJob.ID,
 			ProwJobRelease: prowJob.Release,
@@ -885,14 +897,8 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 		}
 
 		for i := 0; i < counts.total && i < runCount; i++ {
-			var status int
-			switch {
-			case i < counts.success-counts.flake:
-				status = 1 // pass
-			case i < counts.success:
-				status = 13 // flake (counts as success too)
-			default:
-				status = 12 // failure
+			status := seededTestStatus(i, counts)
+			if status == int(v1.TestStatusFailure) {
 				runsWithFailure[runKeys[i].ID] = true
 			}
 
@@ -971,6 +977,49 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 	}
 
 	return totalRuns, totalResults, nil
+}
+
+// seededRunTimestamps spaces count job runs evenly across [start, end).
+func seededRunTimestamps(start, end time.Time, count int) []time.Time {
+	if count <= 0 {
+		return nil
+	}
+	interval := end.Sub(start) / time.Duration(count)
+	timestamps := make([]time.Time, count)
+	for i := range timestamps {
+		timestamps[i] = start.Add(time.Duration(i) * interval)
+	}
+	return timestamps
+}
+
+// seededTestStatus returns the status of the i-th of counts.total results for a test.
+//
+// Failures and flakes are spread evenly across the runs rather than grouped at the end,
+// so the intended pass rate holds for any contiguous slice of the window. Grouping them
+// at the end concentrated every failure in the final hours, where small differences in
+// window boundaries between APIs changed the outcome.
+func seededTestStatus(i int, counts testCount) int {
+	if counts.total <= 0 {
+		return int(v1.TestStatusSuccess)
+	}
+	failures := counts.total - counts.success
+	if spreadHit(i, failures, counts.total) {
+		return int(v1.TestStatusFailure)
+	}
+	// Index among the non-failing results, to spread flakes across the successes.
+	successIdx := i - (i+1)*failures/counts.total
+	if spreadHit(successIdx, counts.flake, counts.success) {
+		return int(v1.TestStatusFlake)
+	}
+	return int(v1.TestStatusSuccess)
+}
+
+// spreadHit reports whether position i is one of hits positions spread evenly over n.
+func spreadHit(i, hits, n int) bool {
+	if hits <= 0 || n <= 0 {
+		return false
+	}
+	return (i+1)*hits/n > i*hits/n
 }
 
 func syncRegressions(dbc *db.DB) error {

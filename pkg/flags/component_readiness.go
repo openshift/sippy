@@ -13,10 +13,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	defaultCRTimeRoundingFactor = 12 * time.Hour
+// DefaultCRTimeRoundingFactor and DefaultCRTimeRoundingOffset are exported so
+// synthetic seed data can align its sample window with the default serving config.
+const (
+	DefaultCRTimeRoundingFactor = 12 * time.Hour
+	DefaultCRTimeRoundingOffset = 4 * time.Hour // aligned one hour before EST midnight/noon (04:00/16:00 UTC)
 	maxCRTimeRoundingFactor     = 24 * time.Hour
-	defaultCRTimeRoundingOffset = 4 * time.Hour // aligned one hour before EST midnight/noon (04:00/16:00 UTC)
 )
 
 // ComponentReadinessFlags holds configuration information for serving ComponentReadiness.
@@ -34,9 +36,9 @@ func NewComponentReadinessFlags() *ComponentReadinessFlags {
 func (f *ComponentReadinessFlags) BindFlags(fs *pflag.FlagSet) {
 	factorUsage := fmt.Sprintf("Set the rounding factor for component readiness release time. The time will be rounded down to the nearest multiple of the factor. Maximum value is %v", maxCRTimeRoundingFactor)
 	fs.StringVar(&f.ComponentReadinessViewsFile, "views", "", "Optional yaml file for predefined Component Readiness views")
-	fs.DurationVar(&f.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", defaultCRTimeRoundingFactor, factorUsage)
+	fs.DurationVar(&f.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", DefaultCRTimeRoundingFactor, factorUsage)
 	offsetUsage := "Shift rounding boundaries by this duration. With a 12h factor: 0 aligns to 00:00/12:00 UTC, 4h aligns to 04:00/16:00 UTC, 5h aligns to 05:00/17:00 UTC (midnight/noon EST). The cronjob schedule must match these boundaries."
-	fs.DurationVar(&f.CRTimeRoundingOffset, "component-readiness-time-rounding-offset", defaultCRTimeRoundingOffset, offsetUsage)
+	fs.DurationVar(&f.CRTimeRoundingOffset, "component-readiness-time-rounding-offset", DefaultCRTimeRoundingOffset, offsetUsage)
 	fs.StringVar(&f.CORSAllowedOrigin, "cors-allowed-origin", "*", "Optional allowed origin for CORS")
 }
 
