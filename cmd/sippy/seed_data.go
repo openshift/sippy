@@ -607,13 +607,18 @@ func backdateSeededRegressions(dbc *db.DB, clock seedClock) error {
 }
 
 func seedSyntheticData(dbc *db.DB, clock seedClock) error {
-	// Check if data already exists
-	var count int64
+	// Skip the bulk seed if either jobs or regressions exist: backdateSeededRegressions rewrites every
+	// regression's opened time, so it must only ever see regressions created by this invocation.
+	var count, regressionCount int64
 	if err := dbc.DB.Model(&models.ProwJob{}).Count(&count).Error; err != nil {
 		return fmt.Errorf("failed to check for existing data: %w", err)
 	}
-	if count > 0 {
-		log.Infof("Database already contains %d ProwJobs, skipping bulk seed and refreshing rerunnable seed records. Drop and recreate the database to fully re-seed (e.g. docker compose down -v).", count)
+	if err := dbc.DB.Model(&models.TestRegression{}).Count(&regressionCount).Error; err != nil {
+		return fmt.Errorf("failed to check for existing regressions: %w", err)
+	}
+	if count > 0 || regressionCount > 0 {
+		log.WithField("prowJobs", count).WithField("regressions", regressionCount).
+			Info("Database already contains seed data, skipping bulk seed and refreshing rerunnable seed records. Drop and recreate the database to fully re-seed (e.g. docker compose down -v).")
 		if err := createLabelsAndSymptoms(dbc); err != nil {
 			return errors.WithMessage(err, "failed to create labels and symptoms")
 		}
