@@ -97,7 +97,7 @@ func NewBackfillCommand() *cobra.Command {
 				return fmt.Errorf("ensuring partitions: %w", err)
 			}
 
-			return sippyserver.BackfillData(dbc, f.Table, startDate, endDate, f.ExcludedReleases...)
+			return sippyserver.BackfillData(dbc, f.Table, startDate, endDate, releases)
 		},
 	}
 
