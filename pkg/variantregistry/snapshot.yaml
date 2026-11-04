@@ -15770,10 +15770,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -15866,6 +15868,8 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
@@ -15962,10 +15966,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -16058,10 +16064,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -16154,10 +16162,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
 :   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -16250,10 +16260,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -16346,10 +16358,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -16442,10 +16456,12 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
