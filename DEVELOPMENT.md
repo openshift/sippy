@@ -244,8 +244,10 @@ attribute those requests to a mock user instead.
 * **Enabling:** set `DEV_MODE=1`, the existing development toggle that the audit logs already use
   to attribute writes to the mock user. Local development and the agentic-staging deployment set
   it; there is no separate environment variable. In the devcontainer, add `DEV_MODE=1` to
-  `.devcontainer/.env` (or export it before starting the server). Note that `DEV_MODE=1` also
-  bypasses the component report cache.
+  `.devcontainer/.env` (or export it before starting the server). The MCP server reads
+  `.devcontainer/.env` only at startup and `sippy_serve` inherits its environment, so after
+  changing the file restart the MCP server and any running Sippy server. Note that `DEV_MODE=1`
+  also bypasses the component report cache.
 * **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
   the header is missing.
 * **Production:** production leaves `DEV_MODE` unset, so endpoints that check for a user still
