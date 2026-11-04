@@ -785,6 +785,10 @@ var componentCapabilityPatterns = []componentCapabilityEntry{
 	// ExternalOIDCAsWebhook is TechPreviewNoUpgrade-only; label TPNU jobs, not default FeatureSet.
 	{[]string{"cluster-authentication-operator", "release-5.1-", "external-oidc", "techpreview"}, "apiserver-auth", "ExternalOIDCAsWebhook", "candidate"},
 	{[]string{"hypershift", "release-5.1-", "external-oidc", "techpreview"}, "apiserver-auth", "ExternalOIDCAsWebhook", "candidate"},
+	// Upstream-parity jobs run TechPreviewNoUpgrade clusters configured through FEATURE_SET env
+	// in their openshift/release job config (no -techpreview suffix in the job name), and
+	// exercise the ExternalOIDCWithUpstreamParity gate behind the ExternalOIDCAsWebhook capability.
+	{[]string{"cluster-authentication-operator", "release-5.1-", "external-oidc", "upstream-parity"}, "apiserver-auth", "ExternalOIDCAsWebhook", "candidate"},
 }
 
 // setComponentAndCapability identifies the component and capability owner for a job.
