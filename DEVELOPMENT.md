@@ -248,7 +248,11 @@ so `sippy serve` can authenticate those requests as a mock user instead.
   the header is missing.
 * **Production:** production leaves `SIPPY_ENVIRONMENT` and `DEV_MODE` unset, so unauthenticated
   requests are still rejected (for example, force close returns `401 Unauthorized`). Any other
-  `SIPPY_ENVIRONMENT` value also leaves the mock disabled.
+  `SIPPY_ENVIRONMENT` value leaves the mock disabled only when `DEV_MODE` is not `1`; for example,
+  `SIPPY_ENVIRONMENT=production` with `DEV_MODE=1` still enables the mock user.
+* **Isolation:** with the mock active, any client that can reach the server can perform
+  user-attributed writes as `developer`. Only enable it on deployments that are not reachable from
+  untrusted networks and that do not use production data.
 
 On startup, the server logs the warning `mock authentication enabled` when the mock is active.
 
