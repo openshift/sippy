@@ -347,8 +347,12 @@ const spotCheckTierVariant = "JobTier"
 // match it. Spot-check results belong to the sample side of a report, so this starts from the sample-side
 // variants (which for cross-compare views differ from IncludeVariants). The sample's tier replaces the
 // request's. Any other variant the sample sets narrows the request's values instead, so that an explicit
-// environment restriction in the request is never widened by the sample's configuration.
+// environment restriction in the request is never widened by the sample's configuration. A sample that
+// selects no tier matches nothing, rather than falling back to the request's ordinary tiers.
 func spotCheckSampleVariants(reqOptions reqopts.RequestOptions, sampleVariants map[string][]string) (map[string][]string, bool) {
+	if len(sampleVariants[spotCheckTierVariant]) == 0 {
+		return nil, false
+	}
 	sideVariants := mergeCompareVariants(reqOptions, reqOptions.VariantOption.IncludeVariants)
 	merged := make(map[string][]string, len(sideVariants)+len(sampleVariants))
 	maps.Copy(merged, sideVariants)

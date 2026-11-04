@@ -516,28 +516,38 @@ func TestSpotCheckSampleVariantsNarrowing(t *testing.T) {
 		{
 			name:          "sample variant the request does not set is applied",
 			request:       map[string][]string{"Network": {"ovn"}},
-			sample:        map[string][]string{"Platform": {"aws"}},
-			want:          map[string][]string{"Network": {"ovn"}, "Platform": {"aws"}},
+			sample:        map[string][]string{"JobTier": {"spotcheck-30d"}, "Platform": {"aws"}},
+			want:          map[string][]string{"JobTier": {"spotcheck-30d"}, "Network": {"ovn"}, "Platform": {"aws"}},
 			wantSomeMatch: true,
 		},
 		{
 			name:          "overlapping values are intersected",
 			request:       map[string][]string{"Platform": {"aws", "gcp"}},
-			sample:        map[string][]string{"Platform": {"aws", "azure"}},
-			want:          map[string][]string{"Platform": {"aws"}},
+			sample:        map[string][]string{"JobTier": {"spotcheck-30d"}, "Platform": {"aws", "azure"}},
+			want:          map[string][]string{"JobTier": {"spotcheck-30d"}, "Platform": {"aws"}},
 			wantSomeMatch: true,
 		},
 		{
 			name:    "disjoint values match nothing",
 			request: map[string][]string{"Platform": {"gcp"}},
-			sample:  map[string][]string{"Platform": {"aws"}},
+			sample:  map[string][]string{"JobTier": {"spotcheck-30d"}, "Platform": {"aws"}},
 		},
 		{
 			name:          "an empty request value does not restrict",
 			request:       map[string][]string{"Platform": {}},
-			sample:        map[string][]string{"Platform": {"aws"}},
-			want:          map[string][]string{"Platform": {"aws"}},
+			sample:        map[string][]string{"JobTier": {"spotcheck-30d"}, "Platform": {"aws"}},
+			want:          map[string][]string{"JobTier": {"spotcheck-30d"}, "Platform": {"aws"}},
 			wantSomeMatch: true,
+		},
+		{
+			name:    "sample without a tier matches nothing instead of using the request's tier",
+			request: map[string][]string{"JobTier": {"standard"}, "Platform": {"aws"}},
+			sample:  map[string][]string{"Platform": {"aws"}},
+		},
+		{
+			name:    "sample with an empty tier matches nothing instead of dropping the tier filter",
+			request: map[string][]string{"Platform": {"aws"}},
+			sample:  map[string][]string{"JobTier": {}},
 		},
 	}
 	for _, tt := range tests {

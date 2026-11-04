@@ -3,6 +3,7 @@ package flags
 import (
 	"testing"
 
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,6 +57,60 @@ func TestViewsValidationLogic(t *testing.T) {
 			} else {
 				require.NoError(t, err, "expected validation to pass for %s", tt.viewsFile)
 			}
+		})
+	}
+}
+
+func TestValidateSpotCheckSamples(t *testing.T) {
+	sample := func(tiers ...string) crview.SpotCheckJobSample {
+		variants := map[string][]string{}
+		if tiers != nil {
+			variants["JobTier"] = tiers
+		}
+		return crview.SpotCheckJobSample{RelativeStart: "now-7d", RelativeEnd: "now", IncludeVariants: variants}
+	}
+	tests := []struct {
+		name     string
+		samples  map[string]crview.SpotCheckJobSample
+		errorMsg string
+	}{
+		{name: "no samples"},
+		{name: "sample selects its own tier", samples: map[string]crview.SpotCheckJobSample{"spotcheck-7d": sample("spotcheck-7d")}},
+		{
+			name:     "sample without a tier",
+			samples:  map[string]crview.SpotCheckJobSample{"spotcheck-7d": sample()},
+			errorMsg: "must select exactly JobTier spotcheck-7d",
+		},
+		{
+			name:     "sample with an empty tier",
+			samples:  map[string]crview.SpotCheckJobSample{"spotcheck-7d": sample([]string{}...)},
+			errorMsg: "must select exactly JobTier spotcheck-7d",
+		},
+		{
+			name:     "sample selecting a different tier",
+			samples:  map[string]crview.SpotCheckJobSample{"spotcheck-7d": sample("spotcheck-30d")},
+			errorMsg: "must select exactly JobTier spotcheck-7d",
+		},
+		{
+			name:     "sample selecting extra tiers",
+			samples:  map[string]crview.SpotCheckJobSample{"spotcheck-7d": sample("spotcheck-7d", "standard")},
+			errorMsg: "must select exactly JobTier spotcheck-7d",
+		},
+		{
+			name:     "sample name without the spot-check prefix",
+			samples:  map[string]crview.SpotCheckJobSample{"weekly": sample("weekly")},
+			errorMsg: `must be named with the "spotcheck-" prefix`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSpotCheckSamples(crview.View{Name: "test-view", SpotCheckJobSamples: tt.samples})
+			if tt.errorMsg == "" {
+				assert.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.errorMsg)
 		})
 	}
 }

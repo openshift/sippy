@@ -44,8 +44,12 @@ spot_check_job_samples:
 ```
 
 The sample window is independent of the view's ordinary sample window (7 days
-in the example view). `include_variants` selects which jobs belong to the
-sample. Its `JobTier` replaces the request's tiers, and any other variant it
+in the example view). The sample name must start with `spotcheck-` and its
+`include_variants` must set `JobTier` to exactly that name. Sippy refuses to
+load a view that breaks this rule, because the name is encoded in synthetic test
+IDs and stands in for the tier when a drill-down has no view, and a sample with
+no tier would pull ordinary jobs into spot-check results. `include_variants`
+selects which jobs belong to the sample. Its `JobTier` replaces the request's tiers, and any other variant it
 sets narrows the request's own filter for that variant instead of replacing it.
 For cross-compare views, spot-check results use the sample-side variant values.
 A view with no `spot_check_job_samples` has spot-check disabled, both in the API
