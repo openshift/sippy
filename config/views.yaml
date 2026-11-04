@@ -3,8 +3,8 @@ component_readiness:
 - name: 5.1-main
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-7d
@@ -92,8 +92,8 @@ component_readiness:
 - name: 5.1-rosa
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-7d
@@ -176,8 +176,8 @@ component_readiness:
 - name: 5.1-main-mass-failure
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-7d
@@ -267,8 +267,8 @@ component_readiness:
 - name: 5.1-hypershift-candidates
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-7d
@@ -567,8 +567,8 @@ component_readiness:
 - name: 5.1-LP-Chaos--lpMainline
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-30d
@@ -612,8 +612,8 @@ component_readiness:
 - name: 5.1-LP-Interop--lpMainline
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-30d
@@ -659,8 +659,8 @@ component_readiness:
 - name: 5.1-LP-OCP-Compat--lpMainline
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-30d
@@ -705,8 +705,8 @@ component_readiness:
 - name: 5.1-LP-OCP-Compat--lpGA
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-30d
@@ -805,8 +805,8 @@ component_readiness:
 - name: 5.1-rarely-run-jobs
   base_release:
     release: "5.0"
-    relative_start: now-90d
-    relative_end: now
+    relative_start: ga-90d
+    relative_end: ga
   sample_release:
     release: "5.1"
       # need to look much further back for rarely run jobs
@@ -871,8 +871,8 @@ component_readiness:
 - name: 5.1-s390x
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-7d
@@ -951,8 +951,8 @@ component_readiness:
 - name: 5.1-ppc64le
   base_release:
     release: "5.0"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "5.1"
     relative_start: now-7d
@@ -1240,14 +1240,14 @@ component_readiness:
     lifecycles:
     - blocking
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -1255,7 +1255,7 @@ component_readiness:
   prime_cache:
     enabled: true
   automate_jira:
-    enabled: true
+    enabled: false
 - name: 5.0-rosa
   base_release:
     release: "4.22"
@@ -1324,13 +1324,13 @@ component_readiness:
     lifecycles:
     - blocking
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
+    pass_rate_required_new_tests: 90
     include_multi_release_analysis: false
   metrics:
     enabled: false
@@ -1411,14 +1411,14 @@ component_readiness:
     lifecycles:
     - blocking
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
     key_test_names:
     - "install should succeed: overall"
     - "[sig-cluster-lifecycle] Cluster completes upgrade"
@@ -1488,14 +1488,14 @@ component_readiness:
     lifecycles:
     - blocking
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
 - name: 5.0-x86-vs-multi-arm
   base_release:
     release: "5.0"
@@ -2099,14 +2099,14 @@ component_readiness:
     lifecycles:
     - blocking
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -2179,14 +2179,14 @@ component_readiness:
     lifecycles:
     - blocking
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
