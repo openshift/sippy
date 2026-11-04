@@ -81,6 +81,51 @@ func TestSeedClockWindow4_22(t *testing.T) {
 	}
 }
 
+func TestSeededRegressionOpened(t *testing.T) {
+	tests := []struct {
+		name       string
+		now        time.Time
+		release    string
+		wantOpened time.Time
+	}{
+		{
+			name:       "4.22 opens at the start of the three day sample window",
+			now:        time.Date(2026, 11, 4, 7, 30, 0, 0, time.UTC),
+			release:    "4.22",
+			wantOpened: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:       "4.22 just after midnight still leaves whole days before today",
+			now:        time.Date(2026, 11, 4, 0, 5, 0, 0, time.UTC),
+			release:    "4.22",
+			wantOpened: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:       "4.21 opens at the start of its historical window",
+			now:        time.Date(2026, 11, 4, 7, 30, 0, 0, time.UTC),
+			release:    "4.21",
+			wantOpened: time.Date(2026, 9, 5, 7, 0, 0, 0, time.UTC),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clock := seedClock{
+				now:            tt.now,
+				roundingFactor: flags.DefaultCRTimeRoundingFactor,
+				roundingOffset: flags.DefaultCRTimeRoundingOffset,
+			}
+			opened := seededRegressionOpened(clock, tt.release)
+			assert.Equal(t, tt.wantOpened, opened)
+			assert.Equal(t, opened, seededRegressionOpened(clock, tt.release), "opened must be deterministic for a pinned clock")
+
+			// Force close requires opened < resolved, and a user picks a resolution date before today.
+			today := civil.DateOf(tt.now.UTC()).In(time.UTC)
+			resolved := today.Add(-24 * time.Hour)
+			assert.True(t, opened.Before(resolved), "opened %v should precede representative resolution %v", opened, resolved)
+		})
+	}
+}
+
 func TestSeededTestStatusCounts(t *testing.T) {
 	tests := []struct {
 		name   string

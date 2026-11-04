@@ -566,6 +566,43 @@ func releaseTimeWindowAt(release string, now time.Time, roundingFactor, rounding
 	}
 }
 
+// seededRegressionOpened returns the historical opened time for a seeded regression in release:
+// the start of the release's seeded failure window. Regression tracking stamps new regressions with
+// the wall clock, which leaves no selectable resolution date between "opened" and today when
+// exercising force close against a freshly seeded database.
+func seededRegressionOpened(clock seedClock, release string) time.Time {
+	start, _ := clock.window(release)
+	return start
+}
+
+// backdateSeededRegressions moves the opened time of every regression created by syncRegressions
+// back to the start of its release's seeded failure window. It only runs during the bulk seed, so
+// production regression tracking is unaffected.
+func backdateSeededRegressions(dbc *db.DB, clock seedClock) error {
+	var releases []string
+	if err := dbc.DB.Model(&models.TestRegression{}).Distinct().Pluck("release", &releases).Error; err != nil {
+		return fmt.Errorf("listing seeded regression releases: %w", err)
+	}
+	return dbc.DB.Transaction(func(tx *gorm.DB) error {
+		for _, release := range releases {
+			opened := seededRegressionOpened(clock, release)
+			res := tx.Model(&models.TestRegression{}).Where("release = ?", release).Update("opened", opened)
+			if res.Error != nil {
+				return fmt.Errorf("backdating regressions for release %s: %w", release, res.Error)
+			}
+			// Keep per-view opened times consistent with the regression they belong to.
+			if err := tx.Exec(`UPDATE regression_views SET opened_at = @opened
+				WHERE test_regression_id IN (SELECT id FROM test_regressions WHERE release = @release)`,
+				sql.Named("opened", opened), sql.Named("release", release)).Error; err != nil {
+				return fmt.Errorf("backdating regression views for release %s: %w", release, err)
+			}
+			log.WithField("release", release).WithField("opened", opened).
+				WithField("regressions", res.RowsAffected).Info("Backdated seeded regressions")
+		}
+		return nil
+	})
+}
+
 func seedSyntheticData(dbc *db.DB, clock seedClock) error {
 	// Check if data already exists
 	var count int64
@@ -652,6 +689,9 @@ func seedSyntheticData(dbc *db.DB, clock seedClock) error {
 	log.Info("Syncing regressions...")
 	if err := syncRegressions(dbc); err != nil {
 		return errors.WithMessage(err, "failed to sync regressions")
+	}
+	if err := backdateSeededRegressions(dbc, clock); err != nil {
+		return errors.WithMessage(err, "failed to backdate seeded regressions")
 	}
 
 	if err := seedRegressionJobRuns(dbc, clock); err != nil {
