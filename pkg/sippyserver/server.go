@@ -2570,7 +2570,7 @@ func (s *Server) rateLimit(endpointPath string, maxRequests int, period time.Dur
 func (s *Server) Serve() {
 	s.determineCapabilities()
 	if mockAuthEnabled(os.Getenv) {
-		log.WithField("environment", os.Getenv(EnvironmentEnvVar)).WithField("mock_user", MockUser).
+		log.WithField("mock_user", MockUser).
 			Warn("mock authentication enabled; requests without X-Forwarded-User are attributed to the mock user")
 	}
 

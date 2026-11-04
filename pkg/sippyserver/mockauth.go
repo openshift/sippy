@@ -3,43 +3,23 @@ package sippyserver
 import (
 	"net/http"
 	"os"
-	"strings"
-
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
-	// MockUser is the identity attributed to requests that arrive without an authenticated user in a
-	// non-production environment. It lets developers exercise user-attributed write flows (triage
-	// audit logs, regression force close) without the oauth proxy that sets X-Forwarded-User in production.
+	// MockUser is the identity attributed to requests that arrive without an authenticated user when
+	// DEV_MODE is enabled. It lets developers exercise user-attributed write flows (triage audit logs,
+	// regression force close) without the oauth proxy that sets X-Forwarded-User in production.
 	MockUser = "developer"
 
-	// EnvironmentEnvVar names the environment variable that identifies the deployment environment.
-	// Production leaves it unset, so mock authentication can never activate there by default.
-	EnvironmentEnvVar = "SIPPY_ENVIRONMENT"
-
-	// EnvironmentLocal identifies a local development instance (such as the devcontainer).
-	EnvironmentLocal = "local"
-
-	// EnvironmentAgenticStaging identifies the agentic-staging environment, which runs against a
-	// seeded database without the production auth model.
-	EnvironmentAgenticStaging = "agentic-staging"
-
-	// devModeEnvVar is the legacy local development toggle, still honored for mock authentication.
+	// devModeEnvVar is the existing development toggle; non-production deployments such as local
+	// development and agentic-staging set it to "1". Production leaves it unset.
 	devModeEnvVar = "DEV_MODE"
 )
-
-// mockAuthEnvironments lists the SIPPY_ENVIRONMENT values in which requests authenticate as MockUser.
-var mockAuthEnvironments = sets.New[string](EnvironmentLocal, EnvironmentAgenticStaging)
 
 // mockAuthEnabled reports whether requests without an authenticated user should be attributed to
 // MockUser. getenv is injected so the decision can be tested without mutating process state.
 func mockAuthEnabled(getenv func(string) string) bool {
-	if getenv(devModeEnvVar) == "1" {
-		return true
-	}
-	env := strings.ToLower(strings.TrimSpace(getenv(EnvironmentEnvVar)))
-	return mockAuthEnvironments.Has(env)
+	return getenv(devModeEnvVar) == "1"
 }
 
 // userForRequest returns the authenticated user from the X-Forwarded-User header, falling back to

@@ -239,17 +239,15 @@ requests without it. Local development and the `agentic-staging` environment hav
 so `sippy serve` can authenticate those requests as a mock user instead.
 
 * **Mock user:** `developer` (`sippyserver.MockUser`).
-* **Environment detection:** set `SIPPY_ENVIRONMENT=local` (local development) or
-  `SIPPY_ENVIRONMENT=agentic-staging` (the agentic-staging deployment). Values are case-insensitive.
-  In the devcontainer, add `SIPPY_ENVIRONMENT=local` to `.devcontainer/.env` (or export it before
-  starting the server). The legacy `DEV_MODE=1` toggle also enables the mock user (note that it
-  additionally bypasses the component report cache).
+* **Enabling:** set `DEV_MODE=1`, the existing development toggle that the audit logs already use
+  to attribute writes to the mock user. Local development and the agentic-staging deployment set
+  it; there is no separate environment variable. In the devcontainer, add `DEV_MODE=1` to
+  `.devcontainer/.env` (or export it before starting the server). Note that `DEV_MODE=1` also
+  bypasses the component report cache.
 * **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
   the header is missing.
-* **Production:** production leaves `SIPPY_ENVIRONMENT` and `DEV_MODE` unset, so unauthenticated
-  requests are still rejected (for example, force close returns `401 Unauthorized`). Any other
-  `SIPPY_ENVIRONMENT` value leaves the mock disabled only when `DEV_MODE` is not `1`; for example,
-  `SIPPY_ENVIRONMENT=production` with `DEV_MODE=1` still enables the mock user.
+* **Production:** production leaves `DEV_MODE` unset, so unauthenticated requests are still
+  rejected (for example, force close returns `401 Unauthorized`).
 * **Isolation:** with the mock active, any client that can reach the server can perform
   user-attributed writes as `developer`. Only enable it on deployments that are not reachable from
   untrusted networks and that do not use production data.
@@ -266,11 +264,11 @@ On startup, the server logs the warning `mock authentication enabled` when the m
    ```
 
 2. Start the API with mock auth and write endpoints enabled. In the devcontainer, the MCP
-   `sippy_serve` tool enables write endpoints and passes `SIPPY_ENVIRONMENT` through from the
-   container environment. To run it manually:
+   `sippy_serve` tool enables write endpoints and inherits `DEV_MODE` from the container
+   environment. To run it manually:
 
    ```bash
-   SIPPY_ENVIRONMENT=local ./sippy serve \
+   DEV_MODE=1 ./sippy serve \
      --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
      --mode=ocp --data-provider=postgres --views=config/seed-views.yaml \
      --enable-write-endpoints --redis-url="redis://localhost:6379"

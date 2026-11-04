@@ -26,14 +26,6 @@ releases:
       aggregated-gcp-ovn-upgrade-4.12-minor-release-openshift-release-analysis-aggregator: true
 ```
 
-## Deployment environment (mock authentication)
-
-`SIPPY_ENVIRONMENT` identifies a non-production deployment. When it is `local` or
-`agentic-staging`, `sippy serve` attributes requests that lack an `X-Forwarded-User` header to the
-mock user `developer`, so user-attributed write endpoints (such as regression force close) can be
-tested without the oauth proxy. Leave it unset in production. See
-[DEVELOPMENT.md](../DEVELOPMENT.md#mock-authentication-local-and-agentic-staging) for details.
-
 ## Prow
 
 The Prow section of the configuration contains a URL, pointing to the prowjob.js endpoint which contains a JSON file of

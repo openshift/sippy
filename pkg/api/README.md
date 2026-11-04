@@ -788,8 +788,8 @@ message "Cannot force-close regressions for an unresolved triage. Resolve the tr
 This is a write endpoint and requires the `write_endpoints` capability.
 
 The closing user is taken from the `X-Forwarded-User` header. A request without a user returns
-`401 Unauthorized`, except when `SIPPY_ENVIRONMENT` is `local` or `agentic-staging` (or
-`DEV_MODE=1`). In those environments the request is attributed to the mock user `developer`. See
+`401 Unauthorized`, except when `DEV_MODE=1` (local development and agentic-staging), in which case
+the request is attributed to the mock user `developer`. See
 [DEVELOPMENT.md](../../DEVELOPMENT.md#mock-authentication-local-and-agentic-staging).
 
 ### Request body
