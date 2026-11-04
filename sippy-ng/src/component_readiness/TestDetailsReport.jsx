@@ -330,7 +330,8 @@ export default function TestDetailsReport(props) {
   let isBaseOverride = false
   let baseReleaseTabLabel = baseRelease + ' Basis'
   let overrideReleaseTabLabel = ''
-  if (data && data.analyses && data.analyses.length > 1) {
+  // Spot-check reports have no basis, so they never offer basis override tabs.
+  if (!isSpotCheck && data.analyses.length > 1 && data.analyses[0].base_stats) {
     isBaseOverride = true
     overrideReleaseTabLabel = baseReleaseTabLabel
     baseReleaseTabLabel = data.analyses[0].base_stats.release + ' Basis'

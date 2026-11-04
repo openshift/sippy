@@ -448,9 +448,11 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	// to a circular dep. This is an unfortunate compromise in the middleware goal I didn't have time to unwind.
 	// For now, the middleware does the querying for test details, and passes the override status out
 	// by adding it to componentJobRunTestReportStatus.BaseOverrideStatus.
+	// Spot-check tests have no basis to override.
 	var baseOverrideReport *testdetails.Report
 	if testIDOption.BaseOverrideRelease != "" &&
-		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name {
+		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name &&
+		!crtest.IsSpotCheckTestID(testIDOption.TestID) {
 
 		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, testIDOption.BaseOverrideRelease)
 		if err != nil {

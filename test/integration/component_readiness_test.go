@@ -5813,3 +5813,56 @@ func TestSpotCheckDrilldownNonDefaultTierWithoutView(t *testing.T) {
 		})
 	}
 }
+
+// Spot-check tests have no basis, so a requested basis override must not add a second analysis without one.
+func TestSpotCheckDrilldownIgnoresBasisOverride(t *testing.T) {
+	dbc := crTestDB(t)
+	seed := seedSpotCheckData(t, dbc)
+	for _, release := range []struct {
+		name  string
+		minor int
+		ga    civil.Date
+	}{
+		{"4.15", 15, civil.Date{Year: 2024, Month: 2, Day: 27}},
+		{"4.16", 16, civil.Date{Year: 2024, Month: 6, Day: 27}},
+	} {
+		ga := release.ga
+		require.NoError(t, dbc.DB.Create(&models.ReleaseDefinition{
+			Release: release.name, Major: 4, Minor: release.minor, GADate: &ga, Product: "OCP",
+		}).Error)
+	}
+
+	now := time.Now().UTC()
+	opts := reqopts.RequestOptions{
+		BaseRelease: reqopts.Release{
+			Name:  "4.16",
+			Start: time.Date(2024, 5, 28, 0, 0, 0, 0, time.UTC),
+			End:   time.Date(2024, 6, 27, 0, 0, 0, 0, time.UTC),
+		},
+		SampleRelease: reqopts.Release{Name: seed.release, Start: now.Add(-30 * 24 * time.Hour), End: now.Add(24 * time.Hour)},
+		VariantOption: reqopts.Variants{
+			DBGroupBy:     sets.New[string]("Platform", "Network"),
+			ColumnGroupBy: sets.New[string]("Platform"),
+		},
+		AdvancedOption: reqopts.Advanced{MinimumFailure: 1, Confidence: 95, IncludeMultiReleaseAnalysis: true},
+		SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{{
+			Name:            "spotcheck-30d",
+			Release:         reqopts.Release{Name: seed.release, Start: now.Add(-30 * 24 * time.Hour), End: now.Add(24 * time.Hour)},
+			IncludeVariants: map[string][]string{"JobTier": {"spotcheck-30d"}},
+		}},
+		TestIDOptions: []reqopts.TestIdentification{{
+			TestID:              crtest.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning"),
+			RequestedVariants:   map[string]string{"Platform": "aws", "Network": "ovn"},
+			BaseOverrideRelease: "4.15",
+		}},
+	}
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	report, errs := generator.GenerateTestDetailsReport(context.Background())
+	require.Empty(t, errs)
+
+	require.Len(t, report.Analyses, 1, "a basis override must not add an analysis to a spot-check report")
+	assert.Nil(t, report.Analyses[0].BaseStats)
+	assert.Equal(t, crtest.ExtremeRegression, report.Analyses[0].ReportStatus)
+}
