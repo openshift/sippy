@@ -231,6 +231,80 @@ sippy load \
   --google-service-account-credential-file ~/google-service-account-credential-file.json
 ```
 
+### Mock authentication (local and agentic-staging)
+
+In production, the oauth proxy sets the `X-Forwarded-User` header, and user-attributed write
+endpoints (triage create/update/delete audit logs, regression force close, symptom edits) refuse
+requests without it. Local development and the `agentic-staging` environment have no oauth proxy,
+so `sippy serve` can authenticate those requests as a mock user instead.
+
+* **Mock user:** `developer` (`sippyserver.MockUser`).
+* **Environment detection:** set `SIPPY_ENVIRONMENT=local` (local development) or
+  `SIPPY_ENVIRONMENT=agentic-staging` (the agentic-staging deployment). Values are case-insensitive.
+  In the devcontainer, add `SIPPY_ENVIRONMENT=local` to `.devcontainer/.env` (or export it before
+  starting the server). The legacy `DEV_MODE=1` toggle also enables the mock user (note that it
+  additionally bypasses the component report cache).
+* **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
+  the header is missing.
+* **Production:** production leaves `SIPPY_ENVIRONMENT` and `DEV_MODE` unset, so unauthenticated
+  requests are still rejected (for example, force close returns `401 Unauthorized`). Any other
+  `SIPPY_ENVIRONMENT` value also leaves the mock disabled.
+
+On startup, the server logs the warning `mock authentication enabled` when the mock is active.
+
+#### Testing regression force close against a seeded database
+
+1. Prepare a seeded database (the devcontainer `seed` data mode already provides one):
+
+   ```bash
+   ./sippy seed-data --init-database \
+     --database-dsn="postgresql://postgres:password@localhost:5432/postgres"
+   ```
+
+2. Start the API with mock auth and write endpoints enabled. In the devcontainer, the MCP
+   `sippy_serve` tool enables write endpoints and passes `SIPPY_ENVIRONMENT` through from the
+   container environment. To run it manually:
+
+   ```bash
+   SIPPY_ENVIRONMENT=local ./sippy serve \
+     --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
+     --mode=ocp --data-provider=postgres --views=config/seed-views.yaml \
+     --enable-write-endpoints --redis-url="redis://localhost:6379"
+   ```
+
+3. Force close only applies to resolved triages. The seeded triages are unresolved, so resolve one
+   first by setting `resolved` on the triage record and sending it back:
+
+   ```bash
+   curl -s localhost:8080/api/component_readiness/triages/3 \
+     | jq '.resolved = {"Time": (now | todate), "Valid": true}' \
+     | curl -s -X PUT -H 'Content-Type: application/json' --data @- \
+         localhost:8080/api/component_readiness/triages/3
+   ```
+
+4. Preview, then force close. No auth header is needed:
+
+   ```bash
+   curl -s localhost:8080/api/component_readiness/triages/3/force_close_preview
+   curl -s -X POST -H 'Content-Type: application/json' \
+     -d '{"reason":"verifying force close locally"}' \
+     localhost:8080/api/component_readiness/triages/3/force_close_regressions
+   ```
+
+5. Verify the persisted result:
+
+   ```bash
+   psql "postgresql://postgres:password@localhost:5432/postgres" -c \
+     "SELECT id, closed, force_closed, force_closed_by, force_closed_reason
+      FROM test_regressions WHERE force_closed_by_triage_id = 3;"
+   ```
+
+   Each closed regression should show `force_closed = t` and `force_closed_by = developer`, and
+   `audit_logs` should record the triage update as user `developer`. You can also use the Force
+   Close action on the triage page in the UI, which sends the same request.
+
+To reset the data afterwards, re-run `./sippy seed-data --init-database`.
+
 ## Run Sippy comment processing
 
 If you want to run Sippy PR Commenting you likely want to first load data so that you have the PR commenting table populated.
