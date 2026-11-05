@@ -6,4 +6,5 @@ options:
 filters:
   ".*":
     approvers:
+      - dgoodwin # for the code to manage them
       - nstielau # to approve intentional regressions in the OCP product.
