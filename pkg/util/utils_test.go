@@ -178,6 +178,14 @@ func TestParseCRReleaseTimeAt(t *testing.T) {
 			expectedTime:   time.Date(2026, 3, 10, 16, 0, 0, 0, time.UTC),
 		},
 		{
+			name:           "RFC3339 with non-UTC offset on pinned UTC day is rounded",
+			now:            afterBoundary,
+			timeStr:        "2026-03-11T02:30:00+09:00",
+			roundingFactor: 12 * time.Hour,
+			roundingOffset: 4 * time.Hour,
+			expectedTime:   time.Date(2026, 3, 10, 16, 0, 0, 0, time.UTC),
+		},
+		{
 			name:           "RFC3339 on other day is not rounded",
 			now:            afterBoundary,
 			timeStr:        "2026-03-09T20:00:00Z",

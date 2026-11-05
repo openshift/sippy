@@ -175,8 +175,8 @@ func ParseCRReleaseTimeAt(now time.Time, allReleases []v1.Release, release, time
 		return relTime, err
 	}
 
-	// Apply the rounding factor:
-	if crTimeRoundingFactor > 0 && civil.DateOf(now) == civil.DateOf(relTime) {
+	// Apply the rounding factor; compare dates in UTC so equivalent instants with other offsets match "today":
+	if crTimeRoundingFactor > 0 && civil.DateOf(now) == civil.DateOf(relTime.UTC()) {
 		relTime = TruncateAligned(now, crTimeRoundingFactor, crTimeRoundingOffset)
 	}
 	return relTime, nil
