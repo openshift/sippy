@@ -149,7 +149,11 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 	switch {
 	case jrr.Failed && jrr.TestsStatus == testidentification.Failure:
 		syntheticTests[testidentification.OpenShiftTestsName].fail = 1
-	case jrr.TestsStatus == testidentification.Success:
+	case jrr.Aborted || jrr.Errored:
+		// Interrupted runs are not Failed but never established success, even if some tests passed before
+		// the interruption, so they produce no result. Spot-check analysis treats any pass as healthy.
+	case jrr.TestsStatus == testidentification.Success || (jrr.Succeeded && !jrr.Failed):
+		// A job that passed overall counts even when informing tests failed.
 		syntheticTests[testidentification.OpenShiftTestsName].pass = 1
 	}
 

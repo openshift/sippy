@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
@@ -70,7 +72,27 @@ func (f *ComponentReadinessFlags) validateViews(views *api.SippyViews) error {
 				}
 			}
 		}
+		if err := validateSpotCheckSamples(view); err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+// validateSpotCheckSamples requires each spot-check sample to select exactly the job tier it is named for.
+// The sample name is encoded into synthetic test IDs and stands in for the tier when a drilldown has no view,
+// and a sample without a tier would pull ordinary jobs into spot-check results.
+func validateSpotCheckSamples(view crview.View) error {
+	for name, sample := range view.SpotCheckJobSamples {
+		if !crtest.IsSpotCheckTestID(name) {
+			return fmt.Errorf("view %s spot-check sample %s must be named with the %q prefix",
+				view.Name, name, crtest.SpotCheckTestIDPrefix)
+		}
+		if tiers := sample.IncludeVariants["JobTier"]; len(tiers) != 1 || tiers[0] != name {
+			return fmt.Errorf("view %s spot-check sample %s must select exactly JobTier %s, got %v",
+				view.Name, name, name, tiers)
+		}
+	}
 	return nil
 }

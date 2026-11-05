@@ -61,12 +61,32 @@ type JobQuerier interface {
 	LookupJobVariants(ctx context.Context, reqOptions reqopts.RequestOptions, jobName string) (map[string]string, error)
 }
 
+// SpotCheckQuerier fetches test status for spot-check jobs using the
+// [sig-sippy] openshift-tests should work synthetic test.
+type SpotCheckQuerier interface {
+	// QuerySpotCheckTestStatus queries the synthetic openshift-tests test for
+	// spot-check jobs, returning results keyed by synthetic test IDs with
+	// component/capability derived from job variants.
+	QuerySpotCheckTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
+		sampleName string, includeVariants map[string][]string,
+		start, end time.Time) (map[string]crstatus.TestStatus, error)
+
+	// QuerySpotCheckTestDetails returns per-job-run test details for spot-check
+	// jobs, used for the test details drill-down page.
+	QuerySpotCheckTestDetails(ctx context.Context, reqOptions reqopts.RequestOptions,
+		syntheticTestID string,
+		includeVariants map[string][]string,
+		requestedVariants map[string]string,
+		start, end time.Time) (map[string][]crstatus.TestDetailsSummary, error)
+}
+
 // DataProvider combines all query capabilities needed by Component Readiness.
 type DataProvider interface {
 	TestStatusQuerier
 	TestDetailsQuerier
 	MetadataQuerier
 	JobQuerier
+	SpotCheckQuerier
 
 	// Cache returns the cache implementation for storing/retrieving computed results.
 	Cache() cache.Cache

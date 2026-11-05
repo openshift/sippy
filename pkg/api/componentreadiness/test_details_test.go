@@ -385,3 +385,24 @@ type jobRunTestStatusResponse struct {
 	statuses crstatus.TestJobRunStatuses
 	errs     []error
 }
+
+func TestSplitTestJobRunStatusesByTestKeyAlwaysCreatesSpotCheckEntry(t *testing.T) {
+	spotCheck := reqopts.TestIdentification{TestID: crtest.SpotCheckTestID("spotcheck-30d", "etcd", "scaling")}
+	ordinary := reqopts.TestIdentification{TestID: "missing", RequestedVariants: map[string]string{"Platform": "aws"}}
+	dbGroupBy := sets.New[string]("Platform")
+
+	statusesByKey := splitTestJobRunStatusesByTestKey(
+		crstatus.TestJobRunStatuses{}, []reqopts.TestIdentification{spotCheck, ordinary}, dbGroupBy, false)
+
+	assert.Contains(t, statusesByKey, testDetailsStatusKey(spotCheck, dbGroupBy).Encode(),
+		"spot-check results come from middleware, so batched requests need an empty entry to fill")
+	assert.NotContains(t, statusesByKey, testDetailsStatusKey(ordinary, dbGroupBy).Encode())
+}
+
+func TestValidateTestDetailsIdentificationSkipsGroupedVariantsForSpotCheck(t *testing.T) {
+	dbGroupBy := sets.New[string]("Platform")
+
+	assert.NoError(t, validateTestDetailsIdentification(
+		reqopts.TestIdentification{TestID: crtest.SpotCheckTestID("spotcheck-30d", "etcd", "scaling")}, dbGroupBy))
+	assert.Error(t, validateTestDetailsIdentification(reqopts.TestIdentification{TestID: "test-id"}, dbGroupBy))
+}

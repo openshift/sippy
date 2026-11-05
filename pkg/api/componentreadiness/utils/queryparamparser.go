@@ -83,6 +83,28 @@ func ParseComponentReportRequest(
 		}
 	}
 
+	// Resolve spot-check samples after all URL overrides (sampleRelease, date ranges)
+	// so they use the final release name and time context.
+	if view != nil {
+		for name, sample := range view.SpotCheckJobSamples {
+			spotCheckRelative := reqopts.RelativeRelease{
+				Release:       reqopts.Release{Name: opts.SampleRelease.Name},
+				RelativeStart: sample.RelativeStart,
+				RelativeEnd:   sample.RelativeEnd,
+			}
+			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check_"+name, spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
+			if resolveErr != nil {
+				err = resolveErr
+				return
+			}
+			opts.SpotCheckJobSamples = append(opts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
+				Name:            name,
+				Release:         resolved,
+				IncludeVariants: sample.IncludeVariants,
+			})
+		}
+	}
+
 	opts.TestIDOptions = parseTestIDOptions(req, releases, opts.BaseRelease, opts.AdvancedOption, opts.VariantOption)
 
 	opts.IncludeAllTests, err = ParseBoolArg(req, "includeAllTests", false)
@@ -94,6 +116,13 @@ func ParseComponentReportRequest(
 		opts.DataSource = dataSource
 	}
 
+	// A view without spot-check samples has spot-check disabled, and ordinary custom reports never ask for it.
+	// Only a drill-down on a spot-check test with no configured samples needs a default, taken from the
+	// sample release dates, so the test details can still be queried.
+	if len(opts.SpotCheckJobSamples) == 0 && !opts.SampleRelease.Start.IsZero() && !opts.SampleRelease.End.IsZero() {
+		opts.SpotCheckJobSamples = fallbackSpotCheckSamples(opts.TestIDOptions, opts.SampleRelease)
+	}
+
 	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset)
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
 	if err != nil {
@@ -101,6 +130,36 @@ func ParseComponentReportRequest(
 	}
 
 	return
+}
+
+// fallbackSpotCheckSamples builds one sample spanning the sample release dates for each sample name in the
+// requested spot-check test IDs. Without a view there is no sample config to say which tier a name selects,
+// so the name stands in for its tier, as configured views name each sample after its tier.
+func fallbackSpotCheckSamples(testIDOptions []reqopts.TestIdentification, sampleRelease reqopts.Release) []reqopts.SpotCheckJobSampleOpts {
+	var samples []reqopts.SpotCheckJobSampleOpts
+	seen := sets.New[string]()
+	for _, tid := range testIDOptions {
+		if !crtest.IsSpotCheckTestID(tid.TestID) {
+			continue
+		}
+		name, _, _ := crtest.ParseSpotCheckTestID(tid.TestID)
+		if name == "" || seen.Has(name) {
+			continue
+		}
+		seen.Insert(name)
+		samples = append(samples, reqopts.SpotCheckJobSampleOpts{
+			Name: name,
+			Release: reqopts.Release{
+				Name:  sampleRelease.Name,
+				Start: sampleRelease.Start,
+				End:   sampleRelease.End,
+			},
+			IncludeVariants: map[string][]string{
+				"JobTier": {name},
+			},
+		})
+	}
+	return samples
 }
 
 func applyViewDefaults(

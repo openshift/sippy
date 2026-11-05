@@ -2,6 +2,7 @@
 package componentreadiness
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,7 +13,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -1187,6 +1187,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			tc.generator.initializeMiddleware()
 			report, err := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus)
 			assert.NoError(t, err, "error generating component report")
 
@@ -1633,6 +1634,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		sampleStats := crstatus.SummarizeTestJobRuns(rawSampleStats)
 
 		t.Run(tc.name, func(t *testing.T) {
+			tc.generator.initializeMiddleware()
 			report := tc.generator.internalGenerateTestDetailsReport("", nil, nil, baseStats, sampleStats, tc.generator.ReqOptions.TestIDOptions[0])
 			assert.Equal(t, tc.expectedReport.RowIdentification, report.RowIdentification, "expected report row identification %+v, got %+v", tc.expectedReport.RowIdentification, report.RowIdentification)
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
@@ -1693,7 +1695,7 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 	}
 }
 
-func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
+func Test_componentReportGenerator_analyze(t *testing.T) {
 	tests := []struct {
 		name          string
 		sampleTotal   int
@@ -1835,6 +1837,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			c.ReqOptions.AdvancedOption.PassRateRequiredNewTests = tt.requiredPassRateForNewTests
 			c.ReqOptions.AdvancedOption.PassRateRequiredAllTests = tt.requiredPassRateForAllTests
 			c.ReqOptions.AdvancedOption.MinimumFailure = tt.minFail
+			c.initializeMiddleware()
 
 			testAnalysis := &testdetails.TestComparison{
 				SampleStats: testdetails.ReleaseStats{
@@ -1853,14 +1856,15 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 				},
 			}
 
-			c.assessComponentStatus(testAnalysis, logrus.NewEntry(logrus.New()))
-			assert.Equalf(t, tt.expectedStatus, testAnalysis.ReportStatus, "assessComponentStatus expected status not equal")
+			testKey := crtest.Identification{}
+			_, err := c.middlewares.Analyze(testKey, testAnalysis)
+			assert.NoError(t, err)
+			assert.Equalf(t, tt.expectedStatus, testAnalysis.ReportStatus, "Analyze expected status not equal")
 			if tt.expectedFischers != nil {
-				// Mac and Linux do not matchup on floating point precision, so lets approximate the comparison:
 				assert.Equalf(t,
 					fmt.Sprintf("%.4f", *tt.expectedFischers),
 					fmt.Sprintf("%.4f", *testAnalysis.FisherExact),
-					"assessComponentStatus expected fischers value not equal")
+					"Analyze expected fischers value not equal")
 			} else {
 				assert.Nil(t, testAnalysis.FisherExact)
 			}
@@ -1922,3 +1926,75 @@ func TestGetNewCellStatusOrderIndependent(t *testing.T) {
 
 // TestCopyIncludeVariantsAndRemoveOverrides moved to dataprovider/bigquery package
 // where the function now lives.
+
+func TestGetCacheKeySpotCheckSamples(t *testing.T) {
+	now := time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC)
+	sample := func(name string, days int, variants map[string][]string) reqopts.SpotCheckJobSampleOpts {
+		return reqopts.SpotCheckJobSampleOpts{
+			Name:            name,
+			Release:         reqopts.Release{Name: "5.0", Start: now.AddDate(0, 0, -days), End: now},
+			IncludeVariants: variants,
+		}
+	}
+	keyFor := func(samples ...reqopts.SpotCheckJobSampleOpts) string {
+		generator := &ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{SpotCheckJobSamples: samples}}
+		key, err := json.Marshal(generator.GetCacheKey())
+		assert.NoError(t, err)
+		return string(key)
+	}
+	tier30 := map[string][]string{"JobTier": {"spotcheck-30d"}}
+
+	baseline := keyFor(sample("spotcheck-30d", 30, tier30))
+
+	tests := []struct {
+		name      string
+		samples   []reqopts.SpotCheckJobSampleOpts
+		wantMatch bool
+	}{
+		{
+			name:    "different window",
+			samples: []reqopts.SpotCheckJobSampleOpts{sample("spotcheck-30d", 7, tier30)},
+		},
+		{
+			name:    "different tier filter",
+			samples: []reqopts.SpotCheckJobSampleOpts{sample("spotcheck-30d", 30, map[string][]string{"JobTier": {"spotcheck-7d"}})},
+		},
+		{
+			name:    "spot-check disabled",
+			samples: nil,
+		},
+		{
+			name:      "identical configuration",
+			samples:   []reqopts.SpotCheckJobSampleOpts{sample("spotcheck-30d", 30, tier30)},
+			wantMatch: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := keyFor(tc.samples...)
+			if tc.wantMatch {
+				assert.Equal(t, baseline, got)
+			} else {
+				assert.NotEqual(t, baseline, got)
+			}
+		})
+	}
+
+	t.Run("sample and variant order do not change the key", func(t *testing.T) {
+		a := keyFor(
+			sample("a", 30, map[string][]string{"JobTier": {"x", "y"}}),
+			sample("b", 7, map[string][]string{"JobTier": {"z"}}),
+		)
+		b := keyFor(
+			sample("b", 7, map[string][]string{"JobTier": {"z"}}),
+			sample("a", 30, map[string][]string{"JobTier": {"y", "x"}}),
+		)
+		assert.Equal(t, a, b)
+	})
+
+	t.Run("normalizing does not reorder the caller's variants", func(t *testing.T) {
+		variants := map[string][]string{"JobTier": {"y", "x"}}
+		keyFor(sample("a", 30, variants))
+		assert.Equal(t, []string{"y", "x"}, variants["JobTier"])
+	})
+}
