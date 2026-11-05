@@ -14,6 +14,9 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
+// defaultRounding is the serving default, which seed-data also uses unless overridden.
+var defaultRounding = flags.NewCRTimeRoundingFlags()
+
 func TestSeedClockWindow4_22(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -26,40 +29,40 @@ func TestSeedClockWindow4_22(t *testing.T) {
 		{
 			name:      "just after 04:00 boundary ends at 04:00",
 			now:       time.Date(2026, 11, 4, 7, 30, 0, 0, time.UTC),
-			factor:    flags.DefaultCRTimeRoundingFactor,
-			offset:    flags.DefaultCRTimeRoundingOffset,
+			factor:    defaultRounding.Factor,
+			offset:    defaultRounding.Offset,
 			wantStart: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
 			wantEnd:   time.Date(2026, 11, 4, 4, 0, 0, 0, time.UTC),
 		},
 		{
 			name:      "before first boundary of the day ends at previous day 16:00",
 			now:       time.Date(2026, 11, 4, 2, 0, 0, 0, time.UTC),
-			factor:    flags.DefaultCRTimeRoundingFactor,
-			offset:    flags.DefaultCRTimeRoundingOffset,
+			factor:    defaultRounding.Factor,
+			offset:    defaultRounding.Offset,
 			wantStart: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
 			wantEnd:   time.Date(2026, 11, 3, 16, 0, 0, 0, time.UTC),
 		},
 		{
 			name:      "exactly on 16:00 boundary",
 			now:       time.Date(2026, 11, 4, 16, 0, 0, 0, time.UTC),
-			factor:    flags.DefaultCRTimeRoundingFactor,
-			offset:    flags.DefaultCRTimeRoundingOffset,
+			factor:    defaultRounding.Factor,
+			offset:    defaultRounding.Offset,
 			wantStart: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
 			wantEnd:   time.Date(2026, 11, 4, 16, 0, 0, 0, time.UTC),
 		},
 		{
 			name:      "late evening ends at 16:00",
 			now:       time.Date(2026, 11, 4, 23, 59, 0, 0, time.UTC),
-			factor:    flags.DefaultCRTimeRoundingFactor,
-			offset:    flags.DefaultCRTimeRoundingOffset,
+			factor:    defaultRounding.Factor,
+			offset:    defaultRounding.Offset,
 			wantStart: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
 			wantEnd:   time.Date(2026, 11, 4, 16, 0, 0, 0, time.UTC),
 		},
 		{
 			name:      "non-UTC input is normalized",
 			now:       time.Date(2026, 11, 4, 3, 30, 0, 0, time.FixedZone("EST", -5*3600)),
-			factor:    flags.DefaultCRTimeRoundingFactor,
-			offset:    flags.DefaultCRTimeRoundingOffset,
+			factor:    defaultRounding.Factor,
+			offset:    defaultRounding.Offset,
 			wantStart: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
 			wantEnd:   time.Date(2026, 11, 4, 4, 0, 0, 0, time.UTC),
 		},
@@ -112,8 +115,8 @@ func TestSeededRegressionOpened(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			clock := seedClock{
 				now:            tt.now,
-				roundingFactor: flags.DefaultCRTimeRoundingFactor,
-				roundingOffset: flags.DefaultCRTimeRoundingOffset,
+				roundingFactor: defaultRounding.Factor,
+				roundingOffset: defaultRounding.Offset,
 			}
 			opened := seededRegressionOpened(clock, tt.release)
 			assert.Equal(t, tt.wantOpened, opened)
@@ -232,7 +235,7 @@ func TestSeedClockWindow4_22SampleConsistentAcrossSurfaces(t *testing.T) {
 		factor time.Duration
 		offset time.Duration
 	}{
-		{name: "default 12h/4h", factor: flags.DefaultCRTimeRoundingFactor, offset: flags.DefaultCRTimeRoundingOffset},
+		{name: "default 12h/4h", factor: defaultRounding.Factor, offset: defaultRounding.Offset},
 		{name: "daily 24h/0h", factor: 24 * time.Hour, offset: 0},
 	}
 	countCases := []struct {

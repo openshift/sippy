@@ -118,13 +118,13 @@ func TestValidateSpotCheckSamples(t *testing.T) {
 
 // A factor over 24h collapsed the 4.22 sample window to start == end at
 // 2026-11-04T00:30Z, so the report counted failures the details query could not see.
-func TestValidateTimeRounding(t *testing.T) {
+func TestCRTimeRoundingFlagsValidate(t *testing.T) {
 	tests := []struct {
 		name    string
 		factor  time.Duration
 		wantErr bool
 	}{
-		{name: "default 12h", factor: DefaultCRTimeRoundingFactor},
+		{name: "default 12h", factor: defaultCRTimeRoundingFactor},
 		{name: "maximum 24h", factor: 24 * time.Hour},
 		{name: "small 1h", factor: time.Hour},
 		{name: "96h collapses the sample window", factor: 96 * time.Hour, wantErr: true},
@@ -134,9 +134,9 @@ func TestValidateTimeRounding(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := NewComponentReadinessFlags()
-			f.CRTimeRoundingFactor = tt.factor
-			err := f.ValidateTimeRounding()
+			f := NewCRTimeRoundingFlags()
+			f.Factor = tt.factor
+			err := f.Validate()
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

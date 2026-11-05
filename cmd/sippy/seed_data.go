@@ -36,22 +36,22 @@ import (
 
 type SeedDataFlags struct {
 	DBFlags *flags.PostgresFlags
-	// CRFlags supplies only the time rounding settings, which must match the server's
-	// so the seeded sample window lines up with what the report and test details query.
-	CRFlags      *flags.ComponentReadinessFlags
+	// TimeRounding must match the server's settings so the seeded sample window
+	// lines up with what the report and test details query.
+	TimeRounding *flags.CRTimeRoundingFlags
 	InitDatabase bool
 }
 
 func NewSeedDataFlags() *SeedDataFlags {
 	return &SeedDataFlags{
-		DBFlags: flags.NewPostgresDatabaseFlags(),
-		CRFlags: flags.NewComponentReadinessFlags(),
+		DBFlags:      flags.NewPostgresDatabaseFlags(),
+		TimeRounding: flags.NewCRTimeRoundingFlags(),
 	}
 }
 
 func (f *SeedDataFlags) BindFlags(fs *pflag.FlagSet) {
 	f.DBFlags.BindFlags(fs)
-	f.CRFlags.BindTimeRoundingFlags(fs)
+	f.TimeRounding.BindFlags(fs)
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Initialize the DB schema before seeding data")
 }
 
@@ -80,7 +80,7 @@ details can disagree about the seeded counts.
 			if strings.Contains(f.DBFlags.DSN, "amazonaws.com") {
 				return fmt.Errorf("refusing to seed synthetic data into a production database")
 			}
-			if err := f.CRFlags.ValidateTimeRounding(); err != nil {
+			if err := f.TimeRounding.Validate(); err != nil {
 				return err
 			}
 
@@ -111,8 +111,8 @@ details can disagree about the seeded counts.
 			log.Info("Starting to seed test data...")
 			clock := seedClock{
 				now:            time.Now().UTC(),
-				roundingFactor: f.CRFlags.CRTimeRoundingFactor,
-				roundingOffset: f.CRFlags.CRTimeRoundingOffset,
+				roundingFactor: f.TimeRounding.Factor,
+				roundingOffset: f.TimeRounding.Offset,
 			}
 			return seedSyntheticData(dbc, clock)
 		},

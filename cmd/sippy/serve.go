@@ -73,7 +73,7 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ServerFlags) Validate() error {
-	if err := f.ComponentReadinessFlags.ValidateTimeRounding(); err != nil {
+	if err := f.ComponentReadinessFlags.TimeRounding.Validate(); err != nil {
 		return err
 	}
 	if f.DataProvider == reqopts.DataSourceBigQuery {
@@ -194,8 +194,8 @@ func NewServeCommand() *cobra.Command {
 				crDataProvider,
 				pinnedDateTime,
 				cacheClient,
-				f.ComponentReadinessFlags.CRTimeRoundingFactor,
-				f.ComponentReadinessFlags.CRTimeRoundingOffset,
+				f.ComponentReadinessFlags.TimeRounding.Factor,
+				f.ComponentReadinessFlags.TimeRounding.Offset,
 				views,
 				config,
 				f.APIFlags.EnableWriteEndpoints,
@@ -224,7 +224,7 @@ func NewServeCommand() *cobra.Command {
 					bigQueryClient,
 					crDataProvider,
 					util.GetReportEnd(pinnedDateTime),
-					cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
+					cache.NewStandardCROptions(f.ComponentReadinessFlags.TimeRounding.Factor, f.ComponentReadinessFlags.TimeRounding.Offset),
 					views.ComponentReadiness)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
@@ -244,7 +244,7 @@ func NewServeCommand() *cobra.Command {
 								bigQueryClient,
 								crDataProvider,
 								util.GetReportEnd(pinnedDateTime),
-								cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
+								cache.NewStandardCROptions(f.ComponentReadinessFlags.TimeRounding.Factor, f.ComponentReadinessFlags.TimeRounding.Offset),
 								views.ComponentReadiness)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")

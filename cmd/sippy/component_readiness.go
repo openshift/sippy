@@ -93,7 +93,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
-	if err := f.ComponentReadinessFlags.ValidateTimeRounding(); err != nil {
+	if err := f.ComponentReadinessFlags.TimeRounding.Validate(); err != nil {
 		return err
 	}
 	if f.DataProvider == reqopts.DataSourceBigQuery {
@@ -218,8 +218,8 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 		crDataProvider,
 		nil,
 		cacheClient,
-		f.ComponentReadinessFlags.CRTimeRoundingFactor,
-		f.ComponentReadinessFlags.CRTimeRoundingOffset,
+		f.ComponentReadinessFlags.TimeRounding.Factor,
+		f.ComponentReadinessFlags.TimeRounding.Offset,
 		views,
 		config,
 		f.APIFlags.EnableWriteEndpoints,
@@ -234,7 +234,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 			bigQueryClient,
 			crDataProvider,
 			time.Time{},
-			cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
+			cache.NewStandardCROptions(f.ComponentReadinessFlags.TimeRounding.Factor, f.ComponentReadinessFlags.TimeRounding.Offset),
 			views.ComponentReadiness)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
@@ -254,7 +254,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 						bigQueryClient,
 						crDataProvider,
 						time.Time{},
-						cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
+						cache.NewStandardCROptions(f.ComponentReadinessFlags.TimeRounding.Factor, f.ComponentReadinessFlags.TimeRounding.Offset),
 						views.ComponentReadiness)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")

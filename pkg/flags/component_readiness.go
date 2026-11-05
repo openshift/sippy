@@ -13,52 +13,61 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// DefaultCRTimeRoundingFactor and DefaultCRTimeRoundingOffset are exported so
-// synthetic seed data can align its sample window with the default serving config.
 const (
-	DefaultCRTimeRoundingFactor time.Duration = 12 * time.Hour
-	DefaultCRTimeRoundingOffset time.Duration = 4 * time.Hour // aligned one hour before EST midnight/noon (04:00/16:00 UTC)
+	defaultCRTimeRoundingFactor time.Duration = 12 * time.Hour
+	defaultCRTimeRoundingOffset time.Duration = 4 * time.Hour // aligned one hour before EST midnight/noon (04:00/16:00 UTC)
 	maxCRTimeRoundingFactor     time.Duration = 24 * time.Hour
 )
 
 // ComponentReadinessFlags holds configuration information for serving ComponentReadiness.
 type ComponentReadinessFlags struct {
 	ComponentReadinessViewsFile string
-	CRTimeRoundingFactor        time.Duration
-	CRTimeRoundingOffset        time.Duration
+	TimeRounding                *CRTimeRoundingFlags
 	CORSAllowedOrigin           string
 }
 
 func NewComponentReadinessFlags() *ComponentReadinessFlags {
 	return &ComponentReadinessFlags{
-		CRTimeRoundingFactor: DefaultCRTimeRoundingFactor,
-		CRTimeRoundingOffset: DefaultCRTimeRoundingOffset,
+		TimeRounding: NewCRTimeRoundingFlags(),
 	}
 }
 
 func (f *ComponentReadinessFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.ComponentReadinessViewsFile, "views", "", "Optional yaml file for predefined Component Readiness views")
-	f.BindTimeRoundingFlags(fs)
+	f.TimeRounding.BindFlags(fs)
 	fs.StringVar(&f.CORSAllowedOrigin, "cors-allowed-origin", "*", "Optional allowed origin for CORS")
 }
 
-// BindTimeRoundingFlags binds only the time rounding flags, so commands that must agree
-// with the server's sample window (such as seed-data) accept the same settings.
-func (f *ComponentReadinessFlags) BindTimeRoundingFlags(fs *pflag.FlagSet) {
-	factorUsage := fmt.Sprintf("Set the rounding factor for component readiness release time. The time will be rounded down to the nearest multiple of the factor. Maximum value is %v", maxCRTimeRoundingFactor)
-	fs.DurationVar(&f.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", DefaultCRTimeRoundingFactor, factorUsage)
-	offsetUsage := "Shift rounding boundaries by this duration. With a 12h factor: 0 aligns to 00:00/12:00 UTC, 4h aligns to 04:00/16:00 UTC, 5h aligns to 05:00/17:00 UTC (midnight/noon EST). The cronjob schedule must match these boundaries."
-	fs.DurationVar(&f.CRTimeRoundingOffset, "component-readiness-time-rounding-offset", DefaultCRTimeRoundingOffset, offsetUsage)
+// CRTimeRoundingFlags holds the settings that align Component Readiness sample windows to
+// rounding boundaries. It is separate from ComponentReadinessFlags so commands that must agree
+// with the server's sample window (such as seed-data) can bind it without the serving options.
+type CRTimeRoundingFlags struct {
+	Factor time.Duration
+	Offset time.Duration
 }
 
-// ValidateTimeRounding rejects rounding factors outside (0, 24h]. A factor longer than a day
+func NewCRTimeRoundingFlags() *CRTimeRoundingFlags {
+	return &CRTimeRoundingFlags{
+		Factor: defaultCRTimeRoundingFactor,
+		Offset: defaultCRTimeRoundingOffset,
+	}
+}
+
+func (f *CRTimeRoundingFlags) BindFlags(fs *pflag.FlagSet) {
+	factorUsage := fmt.Sprintf("Set the rounding factor for component readiness release time. The time will be rounded down to the nearest multiple of the factor. Maximum value is %v", maxCRTimeRoundingFactor)
+	fs.DurationVar(&f.Factor, "component-readiness-time-rounding-factor", defaultCRTimeRoundingFactor, factorUsage)
+	offsetUsage := "Shift rounding boundaries by this duration. With a 12h factor: 0 aligns to 00:00/12:00 UTC, 4h aligns to 04:00/16:00 UTC, 5h aligns to 05:00/17:00 UTC (midnight/noon EST). The cronjob schedule must match these boundaries."
+	fs.DurationVar(&f.Offset, "component-readiness-time-rounding-offset", defaultCRTimeRoundingOffset, offsetUsage)
+}
+
+// Validate rejects rounding factors outside (0, 24h]. A factor longer than a day
 // can collapse a release's sample window to zero length, after which the report and test
 // details disagree about the sample. Zero is rejected rather than treated as "disabled"
 // because some callers substitute the 12h default for zero while others skip rounding.
-func (f *ComponentReadinessFlags) ValidateTimeRounding() error {
-	if f.CRTimeRoundingFactor <= 0 || f.CRTimeRoundingFactor > maxCRTimeRoundingFactor {
+func (f *CRTimeRoundingFlags) Validate() error {
+	if f.Factor <= 0 || f.Factor > maxCRTimeRoundingFactor {
 		return fmt.Errorf("--component-readiness-time-rounding-factor must be greater than 0 and at most %v, got %v",
-			maxCRTimeRoundingFactor, f.CRTimeRoundingFactor)
+			maxCRTimeRoundingFactor, f.Factor)
 	}
 	return nil
 }

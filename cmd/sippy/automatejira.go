@@ -132,7 +132,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 		Short: "Automate jira with component readiness regressions",
 		Long:  "Check the component report for each view with automate jira enabled. Maintains jira cards for current regressions automatically.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.ComponentReadinessFlags.ValidateTimeRounding(); err != nil {
+			if err := f.ComponentReadinessFlags.TimeRounding.Validate(); err != nil {
 				return errors.WithMessage(err, "error validating options")
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), time.Hour*1)
@@ -162,7 +162,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
 			}
 
-			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor, CRTimeRoundingOffset: f.ComponentReadinessFlags.CRTimeRoundingOffset}
+			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.TimeRounding.Factor, CRTimeRoundingOffset: f.ComponentReadinessFlags.TimeRounding.Offset}
 
 			views, err := f.ComponentReadinessFlags.ParseViewsFile()
 			if err != nil {
