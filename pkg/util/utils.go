@@ -127,6 +127,13 @@ var releaseRelativeRE = regexp.MustCompile(`^(now|ga|end)(?:-([0-9]+)([d]))?$`)
 //
 // endTime must be specified if your timeStr uses the end directive. (end-90d) Otherwise it is not required or used.
 func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isStart bool, endTime *time.Time, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) (time.Time, error) {
+	return ParseCRReleaseTimeAt(time.Now(), allReleases, release, timeStr, isStart, endTime, crTimeRoundingFactor, crTimeRoundingOffset)
+}
+
+// ParseCRReleaseTimeAt is ParseCRReleaseTime resolved against the given reference time instead of
+// the wall clock, so callers that pin a clock (such as seed-data) resolve "now" and "today" consistently.
+func ParseCRReleaseTimeAt(now time.Time, allReleases []v1.Release, release, timeStr string, isStart bool, endTime *time.Time, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) (time.Time, error) {
+	now = now.UTC()
 
 	var relTime time.Time
 
@@ -142,7 +149,7 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 	if matches != nil {
 		switch matches[1] {
 		case "now":
-			relTime = time.Now()
+			relTime = now
 		case "ga":
 			var ok bool
 			relTime, ok = gaDateMap[release]
@@ -158,7 +165,7 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 			}
 			relTime = *endTime
 		}
-		return AdjustReleaseTime(relTime, isStart, matches[2], crTimeRoundingFactor, crTimeRoundingOffset), nil
+		return AdjustReleaseTimeAt(now, relTime, isStart, matches[2], crTimeRoundingFactor, crTimeRoundingOffset), nil
 	}
 
 	// Parse as a fully qualified timestamp:
@@ -169,7 +176,6 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 	}
 
 	// Apply the rounding factor:
-	now := time.Now().UTC()
 	if crTimeRoundingFactor > 0 && civil.DateOf(now) == civil.DateOf(relTime) {
 		relTime = TruncateAligned(now, crTimeRoundingFactor, crTimeRoundingOffset)
 	}
@@ -177,6 +183,13 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 }
 
 func AdjustReleaseTime(relTime time.Time, isStart bool, daysAdjustment string, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) time.Time {
+	return AdjustReleaseTimeAt(time.Now(), relTime, isStart, daysAdjustment, crTimeRoundingFactor, crTimeRoundingOffset)
+}
+
+// AdjustReleaseTimeAt is AdjustReleaseTime with an explicit reference time deciding what "today" is
+// when rounding an end time.
+func AdjustReleaseTimeAt(now, relTime time.Time, isStart bool, daysAdjustment string, crTimeRoundingFactor, crTimeRoundingOffset time.Duration) time.Time {
+	now = now.UTC()
 	relTime = relTime.UTC()
 	// adjust by number of days:
 	adjustDays, _ := strconv.ParseInt(daysAdjustment, 10, 64)
@@ -188,7 +201,6 @@ func AdjustReleaseTime(relTime time.Time, isStart bool, daysAdjustment string, c
 
 	} else {
 		// Apply the rounding factor if using today:
-		now := time.Now().UTC()
 		if crTimeRoundingFactor > 0 && civil.DateOf(now) == civil.DateOf(relTime) {
 			relTime = TruncateAligned(now, crTimeRoundingFactor, crTimeRoundingOffset)
 		} else {

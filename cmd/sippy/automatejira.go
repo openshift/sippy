@@ -132,6 +132,9 @@ func NewAutomateJiraCommand() *cobra.Command {
 		Short: "Automate jira with component readiness regressions",
 		Long:  "Check the component report for each view with automate jira enabled. Maintains jira cards for current regressions automatically.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := f.ComponentReadinessFlags.ValidateTimeRounding(); err != nil {
+				return errors.WithMessage(err, "error validating options")
+			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), time.Hour*1)
 			defer cancel()
 

@@ -320,14 +320,25 @@ func GetViewReleaseOptions(
 	viewRelease reqopts.RelativeRelease,
 	roundingFactor, roundingOffset time.Duration,
 ) (reqopts.Release, error) {
+	return GetViewReleaseOptionsAt(time.Now(), releases, releaseType, viewRelease, roundingFactor, roundingOffset)
+}
 
+// GetViewReleaseOptionsAt is GetViewReleaseOptions resolved against the given reference time, for
+// callers that must agree with data generated from a pinned clock.
+func GetViewReleaseOptionsAt(
+	now time.Time,
+	releases []v1.Release,
+	releaseType string,
+	viewRelease reqopts.RelativeRelease,
+	roundingFactor, roundingOffset time.Duration,
+) (reqopts.Release, error) {
 	var err error
 	opts := reqopts.Release{Name: viewRelease.Name}
-	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor, roundingOffset)
+	opts.Start, err = util.ParseCRReleaseTimeAt(now, releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor, roundingOffset)
 	if err != nil {
 		return opts, &api.ValidationError{Message: fmt.Sprintf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)}
 	}
-	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor, roundingOffset)
+	opts.End, err = util.ParseCRReleaseTimeAt(now, releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor, roundingOffset)
 	if err != nil {
 		return opts, &api.ValidationError{Message: fmt.Sprintf("%s end time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)}
 	}

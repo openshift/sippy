@@ -695,7 +695,7 @@ func seedSyntheticData(dbc *db.DB, clock seedClock) error {
 	}
 
 	log.Info("Syncing regressions...")
-	if err := syncRegressions(dbc); err != nil {
+	if err := syncRegressions(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to sync regressions")
 	}
 	if err := backdateSeededRegressions(dbc, clock); err != nil {
@@ -1095,7 +1095,7 @@ func spreadHit(i, hits, n int) bool {
 	return (i+1)*hits/n > i*hits/n
 }
 
-func syncRegressions(dbc *db.DB) error {
+func syncRegressions(dbc *db.DB, clock seedClock) error {
 	provider := pgprovider.NewPostgresProvider(dbc, nil)
 	ctx := context.Background()
 
@@ -1125,11 +1125,11 @@ func syncRegressions(dbc *db.DB) error {
 			continue
 		}
 
-		baseRelease, err := utils.GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
+		baseRelease, err := utils.GetViewReleaseOptionsAt(clock.now, releases, "basis", view.BaseRelease, 0, 0)
 		if err != nil {
 			return fmt.Errorf("error getting base release for view %s: %w", view.Name, err)
 		}
-		sampleRelease, err := utils.GetViewReleaseOptions(releases, "sample", view.SampleRelease, 0, 0)
+		sampleRelease, err := utils.GetViewReleaseOptionsAt(clock.now, releases, "sample", view.SampleRelease, 0, 0)
 		if err != nil {
 			return fmt.Errorf("error getting sample release for view %s: %w", view.Name, err)
 		}

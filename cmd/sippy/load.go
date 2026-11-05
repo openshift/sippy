@@ -184,6 +184,10 @@ func NewLoadCommand() *cobra.Command {
 			}
 			log.SetLevel(level)
 
+			if err := f.ComponentReadinessFlags.ValidateTimeRounding(); err != nil {
+				return errors.WithMessage(err, "error validating options")
+			}
+
 			loaders := make([]dataloader.DataLoader, 0)
 			allErrs := []error{}
 
