@@ -67,6 +67,12 @@ Feature: Component readiness main report
     And the latest report request includes "samplePRRepo=sippy"
     And the latest report request includes "samplePRNumber=4130"
 
+  Scenario: Selecting the default view drops pull request params without a view
+    Given a component readiness API
+    When I open the component readiness report at "component_readiness/main?samplePROrg=openshift&samplePRRepo=sippy&samplePRNumber=4130"
+    Then the page URL query "view" is "5.0-main"
+    And the page URL does not include "samplePR"
+
   Scenario: Payload tags are included in the generated query
     Given a component readiness API
     When I open the component readiness report

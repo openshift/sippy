@@ -55,6 +55,15 @@ When('I open the component readiness report directly', async ({ page }) => {
   await report.open()
 })
 
+When(
+  'I open the component readiness report at {string}',
+  async ({ page }, path) => {
+    const report = new ReportPage(page)
+    await report.open(path)
+    await report.expectComponent(COMPONENT)
+  }
+)
+
 When('I open the loading component readiness report', async ({ page }) => {
   await page.goto('component_readiness/main')
   await page.getByTestId('generate-report-top').waitFor()
@@ -242,6 +251,19 @@ Then('no report request includes {string}', async ({ api }, text) => {
 Then('the page URL includes {string}', async ({ page }, text) => {
   await expect(page).toHaveURL(new RegExp(escapeRegex(text)))
 })
+
+Then('the page URL does not include {string}', async ({ page }, text) => {
+  await expect(page).not.toHaveURL(new RegExp(escapeRegex(text)))
+})
+
+Then(
+  'the page URL query {string} is {string}',
+  async ({ page }, name, value) => {
+    await expect
+      .poll(() => new URL(page.url()).searchParams.getAll(name))
+      .toEqual([value])
+  }
+)
 
 Then('triage write controls are hidden', async ({ page }) => {
   await expect(page.getByTestId('triage-regressions')).toHaveCount(0)

@@ -11,10 +11,25 @@ export class TriagePage {
     await this.page.getByRole('heading', { name: 'Triage Details' }).waitFor()
   }
 
+  // Switching tabs right after another grid update can lose the switch: the
+  // URL write from that update can land after it. Wait until the tab is
+  // selected and in the URL, and click again only if the switch was lost.
   async openRegressedTab(name) {
     const tab = this.page.getByTestId(`regressed-tab-${name}`)
-    await tab.click()
-    await expect(tab).toHaveAttribute('aria-selected', 'true')
+    const index = (await tab.getAttribute('id')).split('-').pop()
+    await expect(async () => {
+      if ((await tab.getAttribute('aria-selected')) !== 'true') {
+        await tab.click({ timeout: 2_000 })
+      }
+      await expect(tab).toHaveAttribute('aria-selected', 'true', {
+        timeout: 1_000,
+      })
+      // The first tab is the default, so the URL may leave it out.
+      await expect(this.page).toHaveURL(
+        (url) => (url.searchParams.get('regressedModalTab') ?? '0') === index,
+        { timeout: 1_000 }
+      )
+    }).toPass({ timeout: 15_000 })
   }
 
   async selectRegression(id = REGRESSION_ID) {

@@ -176,6 +176,14 @@ Add or update a feature under `bdd/features/` for new or changed pages,
 components, and user flows. Step definitions live in `bdd/steps/`, page
 objects in `bdd/pages/`, and shared fixtures in `bdd/fixtures/`.
 
+The mocked API in `bdd/fixtures/api.js` answers every endpoint a scenario
+uses. A scenario fails if the page calls an API path the mock does not
+answer, or requests any host other than the local dev server. Mutations
+(triages, labels, symptoms, re-evaluation) only change the mock's
+in-memory state, so scenarios never write to real Jira, triage records,
+job runs, or artifacts. When a page starts calling a new endpoint, add it
+to the mock with fixture data from `bdd/fixtures/data.js`.
+
 Run the suite from the repo root:
 
 ```

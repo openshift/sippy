@@ -503,23 +503,10 @@ export const CompReadyVarsProvider = ({ children }) => {
         setAllJobVariants(variants.variants)
         setViews(views)
 
-        if (views.length > 0) {
-          // If no view was requested and we were not given fully qualified params,
-          // select the default view: (first in the list matching our default sample release)
-          if (shouldLoadDefaultView()) {
-            for (let v of views) {
-              var foundView = false
-              if (v.sample_release.release === defaultSampleRelease) {
-                foundView = true
-                syncView(v)
-                break
-              }
-            }
-            // Catch case where the views file has no entry for the current default sample release:
-            if (!foundView) {
-              syncView(views[0])
-            }
-          } else updateVarsFromView(params.view, views)
+        // When no view was requested, the default-view effect below selects one
+        // once views are in state.
+        if (views.length > 0 && !shouldLoadDefaultView()) {
+          updateVarsFromView(params.view, views)
         }
         setIsLoaded(true)
       })
@@ -536,6 +523,37 @@ export const CompReadyVarsProvider = ({ children }) => {
     // Attempt to decide if we should pre-select the default view, or if we were given params:
     return params.view === undefined && params.baseRelease === undefined
   }
+
+  // The first view for the default sample release, or the first view when the
+  // views file has no entry for that release.
+  const defaultView = (loadedViews) =>
+    loadedViews.find(
+      (v) => v.sample_release.release === defaultSampleRelease
+    ) || loadedViews[0]
+
+  // The single path that selects the default view, both when views first load
+  // and when an in-app link to a bare report URL (the help breadcrumb, the app
+  // sidebar) later drops the view. Without a view the report never requests
+  // data. Like syncView it clears the other report params (e.g. samplePR*) so
+  // the controls and the report both reflect the view; page-only params that
+  // are not declared above (openMatches on triage details) are left alone by
+  // setParams. The params effect then syncs the controls from the view.
+  // Replace rather than push so Back still works.
+  useEffect(() => {
+    if (views.length === 0 || !shouldLoadDefaultView()) return
+    let nonView = {}
+    for (const key in params) {
+      nonView[key] = undefined
+    }
+    setParams(
+      {
+        ...nonView,
+        view: defaultView(views).name,
+        crDataSource: dataSource || undefined,
+      },
+      'replaceIn'
+    )
+  }, [params.view, params.baseRelease, views])
 
   // Take a string that is an "environment" (environment is a list of strings that describe
   // items in one or more of the lists above) and split it up so that it can be used in
