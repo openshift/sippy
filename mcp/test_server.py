@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest import mock
@@ -23,6 +24,8 @@ from server import (
     mcp,
     run_e2e,
 )
+
+E2E_SCRIPT = REPO_ROOT / "scripts" / "e2e.sh"
 
 
 class TestRepoPath:
@@ -308,6 +311,112 @@ class TestRunE2e:
         tool = asyncio.run(mcp.get_tool("run_e2e"))
         include_bigquery_schema = tool.parameters["properties"]["include_bigquery"]
         assert include_bigquery_schema == {"default": False, "type": "boolean"}
+
+
+class TestE2eScriptSafety:
+    """Exercise the e2e shell helpers without contacting external services."""
+
+    @staticmethod
+    def _run_helper(body, env=None):
+        """Source the production script and run a helper body in an isolated Bash process."""
+        run_env = os.environ.copy()
+        if env:
+            run_env.update(env)
+        return subprocess.run(
+            ["bash", "-c", f'source "$1"\n{body}', "bash", str(E2E_SCRIPT)],
+            cwd=REPO_ROOT,
+            env=run_env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_existing_service_configuration_does_not_log_connection_secrets(self):
+        """Keep credential-bearing URLs in command arguments and out of script output."""
+        database_password = "synthetic-database-password"
+        redis_password = "synthetic-redis-password"
+        admin_dsn = (
+            f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/postgres"
+        )
+        e2e_dsn = (
+            f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/sippy_e2e"
+        )
+        redis_url = f"redis://:{redis_password}@sippy-redis:6379/1"
+        result = self._run_helper(
+            """
+psql_calls=0
+psql() {
+    psql_calls=$((psql_calls + 1))
+    [ "$1" = "$EXPECTED_ADMIN_DSN" ] || return 90
+}
+e2e_configure_existing_services
+[ "$psql_calls" -eq 2 ] || exit 91
+[ "$SIPPY_E2E_DSN" = "$EXPECTED_E2E_DSN" ] || exit 92
+[ "$REDIS_URL" = "$EXPECTED_REDIS_URL" ] || exit 93
+""",
+            {
+                "SIPPY_DATABASE_DSN": admin_dsn,
+                "SIPPY_E2E_REDIS_URL": redis_url,
+                "EXPECTED_ADMIN_DSN": admin_dsn,
+                "EXPECTED_E2E_DSN": e2e_dsn,
+                "EXPECTED_REDIS_URL": redis_url,
+            },
+        )
+
+        output = result.stdout + result.stderr
+        assert result.returncode == 0, output
+        assert database_password not in output
+        assert redis_password not in output
+        assert admin_dsn not in output
+        assert e2e_dsn not in output
+        assert redis_url not in output
+
+    @pytest.mark.parametrize(
+        "dsn",
+        [
+            "postgresql://user:local-password@localhost:5432/postgres",
+            "postgresql://user:service-password@sippy-postgres:5432/postgres",
+        ],
+    )
+    def test_safe_dsn_host_still_accepts_local_services(self, dsn):
+        """Preserve the localhost and sippy-postgres allowlist used by destructive helpers."""
+        result = self._run_helper('e2e_safe_dsn_host "$SAFE_DSN"', {"SAFE_DSN": dsn})
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == ""
+        assert result.stderr == ""
+
+    def test_safe_dsn_host_rejection_does_not_echo_credentials(self):
+        """Reject remote database hosts without copying their credential-bearing DSN to stderr."""
+        password = "synthetic-rejected-password"
+        rejected_dsn = f"postgresql://user:{password}@database.example.com:5432/postgres"
+        result = self._run_helper(
+            'e2e_safe_dsn_host "$REJECTED_DSN"',
+            {"REJECTED_DSN": rejected_dsn},
+        )
+
+        output = result.stdout + result.stderr
+        assert result.returncode == 1
+        assert "refusing to operate on non-local database host" in result.stderr
+        assert password not in output
+        assert rejected_dsn not in output
+
+    @pytest.mark.parametrize(
+        ("database_name", "expected_returncode"),
+        [("sippy_e2e", 0), ("production", 1)],
+    )
+    def test_safe_database_name_guard_is_preserved(
+        self, database_name, expected_returncode
+    ):
+        """Continue allowing only database names that contain the required _e2e marker."""
+        result = self._run_helper(
+            'e2e_safe_db_name "$DATABASE_NAME"',
+            {"DATABASE_NAME": database_name},
+        )
+
+        assert result.returncode == expected_returncode
+        if expected_returncode:
+            assert "name must contain '_e2e'" in result.stderr
 
 
 class TestDataMode:
