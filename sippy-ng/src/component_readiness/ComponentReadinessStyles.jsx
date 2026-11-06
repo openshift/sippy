@@ -55,6 +55,7 @@ export function buildCRStyles(theme) {
       position: 'sticky',
       left: 0,
       zIndex: 1,
+      wordBreak: 'break-word',
     },
     crCellResult: {
       backgroundColor: theme.palette.mode === 'dark' ? grey[100] : 'white',
