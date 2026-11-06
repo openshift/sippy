@@ -233,9 +233,19 @@ class TestRunE2e:
             ) as create_subprocess,
             mock.patch("server._resolve_bigquery_creds") as resolve_creds,
         ):
+            credential_contents = {
+                explicit.name: b"explicit credentials",
+                sippy_env.name: b"sippy environment credentials",
+                google_env.name: b"google environment credentials",
+            }
+            for path, contents in credential_contents.items():
+                Path(path).write_bytes(contents)
+
             result = asyncio.run(run_e2e(explicit.name, include_bigquery=False))
 
             assert os.environ["GCS_SA_JSON_PATH"] == "/inherited/credentials.json"
+            for path, contents in credential_contents.items():
+                assert Path(path).read_bytes() == contents
 
         assert "run_e2e succeeded" in result
         resolve_creds.assert_not_called()
