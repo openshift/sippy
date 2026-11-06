@@ -184,7 +184,7 @@ func NewLoadCommand() *cobra.Command {
 			}
 			log.SetLevel(level)
 
-			if err := f.ComponentReadinessFlags.TimeRounding.Validate(); err != nil {
+			if err := f.ComponentReadinessFlags.Validate(); err != nil {
 				return errors.WithMessage(err, "error validating options")
 			}
 

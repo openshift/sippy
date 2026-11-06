@@ -93,7 +93,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
-	if err := f.ComponentReadinessFlags.TimeRounding.Validate(); err != nil {
+	if err := f.ComponentReadinessFlags.Validate(); err != nil {
 		return err
 	}
 	if f.DataProvider == reqopts.DataSourceBigQuery {

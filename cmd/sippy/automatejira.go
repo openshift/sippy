@@ -77,6 +77,9 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 }
 
 func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
+	if err := f.ComponentReadinessFlags.Validate(); err != nil {
+		return err
+	}
 	if len(f.SippyURL) == 0 {
 		return fmt.Errorf("--sippy-url is required")
 	}
@@ -132,9 +135,6 @@ func NewAutomateJiraCommand() *cobra.Command {
 		Short: "Automate jira with component readiness regressions",
 		Long:  "Check the component report for each view with automate jira enabled. Maintains jira cards for current regressions automatically.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.ComponentReadinessFlags.TimeRounding.Validate(); err != nil {
-				return errors.WithMessage(err, "error validating options")
-			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), time.Hour*1)
 			defer cancel()
 

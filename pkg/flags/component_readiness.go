@@ -38,6 +38,12 @@ func (f *ComponentReadinessFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.CORSAllowedOrigin, "cors-allowed-origin", "*", "Optional allowed origin for CORS")
 }
 
+// Validate checks the Component Readiness options, so every command binding these flags has
+// one call that covers them.
+func (f *ComponentReadinessFlags) Validate() error {
+	return f.TimeRounding.Validate()
+}
+
 // CRTimeRoundingFlags holds the settings that align Component Readiness sample windows to
 // rounding boundaries. It is separate from ComponentReadinessFlags so commands that must agree
 // with the server's sample window (such as seed-data) can bind it without the serving options.
@@ -46,6 +52,7 @@ type CRTimeRoundingFlags struct {
 	Offset time.Duration
 }
 
+// NewCRTimeRoundingFlags returns rounding flags preset to the serving defaults.
 func NewCRTimeRoundingFlags() *CRTimeRoundingFlags {
 	return &CRTimeRoundingFlags{
 		Factor: defaultCRTimeRoundingFactor,
@@ -53,6 +60,8 @@ func NewCRTimeRoundingFlags() *CRTimeRoundingFlags {
 	}
 }
 
+// BindFlags binds the rounding flags under the names 'sippy serve' uses, so seed-data accepts
+// the same values and stays in sync with the server.
 func (f *CRTimeRoundingFlags) BindFlags(fs *pflag.FlagSet) {
 	factorUsage := fmt.Sprintf("Set the rounding factor for component readiness release time. The time will be rounded down to the nearest multiple of the factor. Maximum value is %v", maxCRTimeRoundingFactor)
 	fs.DurationVar(&f.Factor, "component-readiness-time-rounding-factor", defaultCRTimeRoundingFactor, factorUsage)

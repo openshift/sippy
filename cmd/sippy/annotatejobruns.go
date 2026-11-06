@@ -88,6 +88,9 @@ func (f *AnnotateJobRunsFlags) BindFlags(fs *pflag.FlagSet) {
 }
 
 func (f *AnnotateJobRunsFlags) Validate(allVariants crtest.JobVariants) error {
+	if err := f.ComponentReadinessFlags.Validate(); err != nil {
+		return err
+	}
 	for _, variantStr := range f.VariantStr {
 		vt := strings.Split(variantStr, ":")
 		if len(vt) != 2 {
@@ -137,9 +140,6 @@ func NewAnnotateJobRunsCommand() *cobra.Command {
 		Long: `Find all job runs that match the passed criteria and annotate them with desired label.
 Example run: sippy annotate-job-runs  --google-service-account-credential-file=file.json --database-dsn="$DSN_PROD" --label=test --start-time="2025-05-21T00:00:00Z" --duration=48h --release=4.19 --min-failures=2 --variant=Platform:vsphere --path-glob="build-log.txt" --text-regex='\[error\]|"error"|level=error' --job-run-id=1925488012808949760 --job-run-id=1925488012808949761 --flake-as-failure=true --comment "ken test"  --build-cluster="build01" --build-cluster="vsphere02" --user=ken`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.ComponentReadinessFlags.TimeRounding.Validate(); err != nil {
-				return errors.WithMessage(err, "error validating options")
-			}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 			defer cancel()
 			ctx = context.WithValue(ctx, bqcachedclient.RequestContextKey, bqlabel.RequestContext{User: f.User})
