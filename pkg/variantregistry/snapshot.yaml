@@ -57495,29 +57495,6 @@ periodic-ci-openshift-machine-config-operator-release-5.0-periodics-e2e-vsphere-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-machine-config-operator-release-5.0-periodics-update-amis:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    ContainerRuntime: crun
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    Network: ovn
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: eng
-    Procedure: machine-config-operator
-    Release: "5.0"
-    ReleaseMajor: "5"
-    ReleaseMinor: "0"
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-machine-config-operator-release-5.1-arm64-periodics-e2e-aws-mco-disruptive-1of2:
     Aggregation: none
     Architecture: arm64
@@ -262629,6 +262606,141 @@ periodic-ci-openshift-release-main-ci-5.1-upgrade-from-stable-4.22-from-stable-4
     Suite: unknown
     Topology: ha
     Upgrade: multi
+periodic-ci-openshift-release-main-ci-5.1-upgrade-from-stable-4.23-e2e-aws-ovn-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.23"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "23"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-release-main-ci-5.1-upgrade-from-stable-4.23-e2e-azure-ovn-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.23"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "23"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: azure
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-release-main-ci-5.1-upgrade-from-stable-4.23-e2e-gcp-ovn-rt-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.23"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "23"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: gcp
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: realtime
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-release-main-ci-5.1-upgrade-from-stable-4.23-e2e-gcp-ovn-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.23"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "23"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: gcp
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-release-main-ci-5.1-upgrade-from-stable-4.23-e2e-vsphere-ovn-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.23"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "23"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
 periodic-ci-openshift-release-main-ci-5.1-upgrade-from-stable-5.0-e2e-aws-ovn-upgrade:
     Aggregation: none
     Architecture: amd64
@@ -332956,6 +333068,87 @@ periodic-ci-openshift-release-main-nightly-5.1-upgrade-from-stable-4.21-e2e-aws-
     OS: rhcos9
     Owner: eng
     Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-release-main-nightly-5.1-upgrade-from-stable-4.23-e2e-aws-upgrade-ovn-single-node:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.23"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "23"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: single
+    Upgrade: major
+periodic-ci-openshift-release-main-nightly-5.1-upgrade-from-stable-4.23-e2e-metal-ipi-ovn-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.23"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "23"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: major
+periodic-ci-openshift-release-main-nightly-5.1-upgrade-from-stable-4.23-e2e-metal-ipi-upgrade-ovn-ipv6:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "4.23"
+    FromReleaseMajor: "4"
+    FromReleaseMinor: "23"
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos9
+    Owner: eng
+    Platform: metal
     Procedure: none
     Release: "5.1"
     ReleaseMajor: "5"
