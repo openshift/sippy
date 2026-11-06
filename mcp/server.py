@@ -745,7 +745,7 @@ async def restore_prodlike_db(
     no ``..``). Supports custom-format ``.dump`` files, directory backups containing
     ``toc.dat``, and ``.sql`` files.
 
-    Uses ``SIPPY_PRODLIKE_DATABASE_DSN`` (must end with ``/prodlike``; host must be
+    Uses ``SIPPY_PRODLIKE_DATABASE_DSN`` (must end with ``/prodlike``; single host,
     ``localhost`` or ``sippy-postgres``). Stop ``sippy serve`` (and anything else using
     ``prodlike``) first. Large restores: set ``timeout_seconds=0`` for no limit.
 

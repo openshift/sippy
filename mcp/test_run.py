@@ -124,12 +124,16 @@ def test_healthy_venv_without_hash_is_preserved(tmp_path: Path):
     venv_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     venv_python.chmod(0o755)
 
+    # Pin python3 to the test interpreter; its directory may only provide `python`.
+    python_dir = tmp_path / "python-bin"
+    python_dir.mkdir()
+    os.symlink(sys.executable, python_dir / "python3")
     result = subprocess.run(
         ["/bin/sh", str(script_dir / "run.sh")],
         cwd=repo,
         env={
             **os.environ,
-            "PATH": f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}",
+            "PATH": f"{python_dir}{os.pathsep}{os.environ.get('PATH', '')}",
         },
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

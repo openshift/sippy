@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restore the prod-like PostgreSQL database from a backup file or directory under the repo root.
 # Usage: scripts/restore_prodlike_db.sh <backup-path-relative-to-repo>
-# Env: SIPPY_PRODLIKE_DATABASE_DSN (must end with /prodlike; host localhost or sippy-postgres only).
+# Env: SIPPY_PRODLIKE_DATABASE_DSN (single host, localhost or sippy-postgres; must end with /prodlike).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -33,23 +33,20 @@ case "$(realpath "${backup}")/" in
 esac
 
 prodl="${SIPPY_PRODLIKE_DATABASE_DSN:-postgresql://postgres:password@sippy-postgres:5432/prodlike}"
-case "${prodl}" in
-*@localhost:* | *@localhost/* | *@sippy-postgres:* | *@sippy-postgres/*) ;;
-*)
-	echo "error: SIPPY_PRODLIKE_DATABASE_DSN host must be localhost or sippy-postgres" >&2
+# Match the whole DSN so multi-host lists (host1,host2) and userinfo tricks cannot pass.
+dsn_re='^postgres(ql)?://([^@/?]*@)?(localhost|sippy-postgres)(:[0-9]+)?/prodlike(\?.*)?$'
+if [[ ! "${prodl}" =~ ${dsn_re} ]]; then
+	echo "error: SIPPY_PRODLIKE_DATABASE_DSN must be a single-host DSN for localhost or sippy-postgres ending with /prodlike" >&2
 	exit 1
-	;;
-esac
-case "${prodl}" in
-*/prodlike|*/prodlike\?*)
-	clean="${prodl%%\?*}"
-	admin="${clean%/prodlike}/postgres"
-	;;
-*)
-	echo "error: SIPPY_PRODLIKE_DATABASE_DSN must end with /prodlike" >&2
+fi
+prodl_host="${BASH_REMATCH[3]}${BASH_REMATCH[4]}"
+# libpq query parameters can override the host or database named in the URI.
+if [[ "${prodl}" =~ [?\&](host|hostaddr|service|dbname)= ]]; then
+	echo "error: SIPPY_PRODLIKE_DATABASE_DSN must not set host, hostaddr, service, or dbname query parameters" >&2
 	exit 1
-	;;
-esac
+fi
+clean="${prodl%%\?*}"
+admin="${clean%/prodlike}/postgres"
 
 # Validate the backup before the destructive DROP DATABASE below.
 if [[ -f "${backup}" && "${backup}" == *.sql ]]; then
@@ -62,9 +59,8 @@ elif ! pg_restore --list "${backup}" >/dev/null; then
 	exit 1
 fi
 
-# Redact credentials from log output, including libpq query parameters such as password=.
-redacted_prodl=$(echo "${prodl}" | sed -E -e 's|://[^@]*@|://REDACTED@|' -e 's/([?&][^=&]+)=[^&]*/\1=REDACTED/g')
-echo "Using prod-like DSN: ${redacted_prodl}"
+# Log only allowlisted details; the DSN can carry credentials in several places.
+echo "Using prod-like database: prodlike on ${prodl_host}"
 echo "Restoring from: ${backup}"
 
 psql "${admin}" -v ON_ERROR_STOP=1 -c \

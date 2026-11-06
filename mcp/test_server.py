@@ -235,7 +235,7 @@ class TestRestoreProdlikeDb:
         assert "not a valid pg_restore archive" in result.stderr
         assert "psql" not in commands
 
-    def test_script_redacts_dsn_query_password(self, tmp_path: Path):
+    def test_script_logs_no_dsn_credentials(self, tmp_path: Path):
         backup = tmp_path / "repo" / "backups" / "backup.sql"
         backup.parent.mkdir(parents=True)
         backup.write_text("", encoding="utf-8")
@@ -252,7 +252,40 @@ class TestRestoreProdlikeDb:
         assert result.returncode == 0, result.stderr
         assert user_password not in result.stdout
         assert query_password not in result.stdout
-        assert "password=REDACTED" in result.stdout
+        assert "prodlike on localhost:5432" in result.stdout
+
+    @pytest.mark.parametrize(
+        "dsn",
+        [
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432,db.internal:5432/prodlike",
+                id="multi-host",
+            ),
+            pytest.param(
+                "postgresql://db.internal/postgres?x=@localhost:5432/prodlike",
+                id="userinfo-smuggled-host",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike?host=db.internal",
+                id="host-query-parameter",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost.internal:5432/prodlike",
+                id="host-suffix",
+            ),
+        ],
+    )
+    def test_script_rejects_non_local_dsn_before_drop(self, tmp_path: Path, dsn: str):
+        backup = tmp_path / "repo" / "backups" / "valid.dump"
+        backup.mkdir(parents=True)
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        result, commands = self._run_restore_script(
+            tmp_path, "backups/valid.dump", dsn=dsn
+        )
+        assert result.returncode != 0
+        assert "SIPPY_PRODLIKE_DATABASE_DSN" in result.stderr
+        assert "db.internal" not in result.stdout + result.stderr
+        assert commands == ""
 
 
 class TestTrim:
