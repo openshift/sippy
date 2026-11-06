@@ -49,7 +49,20 @@ Sippy obtains data from multiple sources:
 ### From Synthetic Seed Data
 
 `sippy seed-data --init-database` fills an empty database with deterministic
-Component Readiness data. Serve it with `sippy serve --data-provider postgres`.
+Component Readiness data. Serve it with the seed views so the seeded Component
+Readiness views exist:
+
+```
+sippy serve --data-provider postgres --views config/seed-views.yaml
+```
+
+`seed-data` only runs the bulk seed against a database with no ProwJobs. Rerunning
+it on a database that already has data skips the bulk seed and only refreshes
+the rerunnable records (labels, symptoms, feature gates). Drop and recreate the
+database to fully re-seed.
+
+The 4.22 job runs fill the sample window of the `4.22-main` seed view, resolved
+the same way the server resolves it.
 
 The seeded sample window ends at the most recent Component Readiness rounding
 boundary, so `seed-data` accepts the same
