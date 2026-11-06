@@ -12,9 +12,7 @@ import (
 )
 
 type fakeStore struct {
-	releases    []string
-	releasesErr error
-	replaceErr  error
+	replaceErr error
 
 	mu    sync.Mutex
 	calls []replaceCall
@@ -23,13 +21,6 @@ type fakeStore struct {
 type replaceCall struct {
 	start, end civil.Date
 	release    string
-}
-
-func (f *fakeStore) Releases() ([]string, error) {
-	if f.releases != nil {
-		return f.releases, f.releasesErr
-	}
-	return []string{"4.22", "5.0"}, f.releasesErr
 }
 
 func (f *fakeStore) ReplaceRangeForRelease(start, end civil.Date, release string) error {
@@ -52,7 +43,7 @@ func TestBackfill_UsesExplicitDateRange(t *testing.T) {
 	end := civil.Date{Year: 2026, Month: 7, Day: 3}
 	store := &fakeStore{}
 
-	err := backfillSummaries(store, start, end)
+	err := backfillSummaries(store, start, end, []string{"4.22", "5.0"})
 
 	require.NoError(t, err)
 	calls := store.getCalls()
@@ -80,8 +71,18 @@ func TestBackfill_PropagatesReplaceError(t *testing.T) {
 	end := civil.Date{Year: 2026, Month: 7, Day: 1}
 	store := &fakeStore{replaceErr: fmt.Errorf("disk full")}
 
-	err := backfillSummaries(store, start, end)
+	err := backfillSummaries(store, start, end, []string{"4.22"})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "disk full")
+}
+
+func TestBackfill_UsesIncludedReleases(t *testing.T) {
+	date := civil.Date{Year: 2026, Month: 7, Day: 1}
+	store := &fakeStore{}
+
+	err := backfillSummaries(store, date, date, []string{"4.22"})
+
+	require.NoError(t, err)
+	assert.Equal(t, []replaceCall{{start: date, end: date, release: "4.22"}}, store.getCalls())
 }

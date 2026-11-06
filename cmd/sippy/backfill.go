@@ -10,15 +10,17 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/sippyserver"
 )
 
 type BackfillFlags struct {
-	DBFlags   *flags.PostgresFlags
-	Table     string
-	StartDate string
-	EndDate   string
+	DBFlags          *flags.PostgresFlags
+	Table            string
+	StartDate        string
+	EndDate          string
+	ExcludedReleases []string
 }
 
 func NewBackfillFlags() *BackfillFlags {
@@ -32,6 +34,7 @@ func (f *BackfillFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.Table, "table", "", "Table to backfill (daily-totals, cumulative-summaries)")
 	fs.StringVar(&f.StartDate, "start-date", "", "Start date (YYYY-MM-DD)")
 	fs.StringVar(&f.EndDate, "end-date", "", "End date (YYYY-MM-DD)")
+	fs.StringArrayVar(&f.ExcludedReleases, "exclude-release", nil, "Release to skip; repeat for multiple releases (for example, Presubmits)")
 }
 
 func NewBackfillCommand() *cobra.Command {
@@ -75,9 +78,10 @@ func NewBackfillCommand() *cobra.Command {
 			}
 
 			log.WithFields(log.Fields{
-				"table": f.Table,
-				"start": startDate,
-				"end":   endDate,
+				"table":             f.Table,
+				"start":             startDate,
+				"end":               endDate,
+				"excluded_releases": f.ExcludedReleases,
 			}).Info("starting backfill")
 
 			var releases []string
@@ -86,13 +90,14 @@ func NewBackfillCommand() *cobra.Command {
 				Pluck("release", &releases).Error; err != nil {
 				return fmt.Errorf("querying releases: %w", err)
 			}
+			releases = db.ExcludeReleases(releases, f.ExcludedReleases)
 			startTime := time.Date(startDate.Year, startDate.Month, startDate.Day, 0, 0, 0, 0, time.UTC)
 			endTime := time.Date(endDate.Year, endDate.Month, endDate.Day, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
 			if _, err := dbc.EnsurePartitions(releases, startTime, endTime, false); err != nil {
 				return fmt.Errorf("ensuring partitions: %w", err)
 			}
 
-			return sippyserver.BackfillData(dbc, f.Table, startDate, endDate)
+			return sippyserver.BackfillData(dbc, f.Table, startDate, endDate, releases)
 		},
 	}
 

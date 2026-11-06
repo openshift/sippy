@@ -44,22 +44,16 @@ const insertSQL = `
 	GROUP BY pjrt.test_id, pjrt.prow_job_id, COALESCE(pjrt.suite_id, 0), pjrt.lifecycle, pjrt.prow_job_run_release, date(pjrt.prow_job_run_timestamp)`
 
 type summaryStore interface {
-	Releases() ([]string, error)
 	ReplaceRangeForRelease(start, end civil.Date, release string) error
 }
 
-// Backfill processes an explicit date range without automatic date detection.
-func Backfill(dbc *db.DB, startDate, endDate civil.Date) error {
-	return backfillSummaries(&pgStore{dbc: dbc}, startDate, endDate)
+// Backfill processes an explicit date range for the supplied releases.
+func Backfill(dbc *db.DB, startDate, endDate civil.Date, releases []string) error {
+	return backfillSummaries(&pgStore{dbc: dbc}, startDate, endDate, releases)
 }
 
-func backfillSummaries(store summaryStore, startDate, endDate civil.Date) error {
+func backfillSummaries(store summaryStore, startDate, endDate civil.Date, releases []string) error {
 	loadStart := time.Now()
-	releases, err := store.Releases()
-	if err != nil {
-		return fmt.Errorf("querying releases: %w", err)
-	}
-
 	days := endDate.DaysSince(startDate) + 1
 	log.WithFields(log.Fields{
 		"start":    startDate,
@@ -99,14 +93,6 @@ func replaceReleases(store summaryStore, releases []string, date civil.Date) err
 
 type pgStore struct {
 	dbc *db.DB
-}
-
-func (s *pgStore) Releases() ([]string, error) {
-	var releases []string
-	err := s.dbc.DB.Table("release_definitions").
-		Order("major DESC, minor DESC").
-		Pluck("release", &releases).Error
-	return releases, err
 }
 
 const replaceDeleteSQL = `DELETE FROM test_daily_totals WHERE release = ? AND date >= ? AND date <= ?`

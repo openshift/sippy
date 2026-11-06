@@ -12,27 +12,21 @@ import (
 )
 
 type summaryStore interface {
-	Releases() ([]string, error)
 	UpdateDateForRelease(date civil.Date, release string) error
 }
 
-// Backfill processes an explicit date range without automatic date detection.
-func Backfill(dbc *db.DB, startDate, endDate civil.Date) error {
+// Backfill processes an explicit date range for the supplied releases.
+func Backfill(dbc *db.DB, startDate, endDate civil.Date, releases []string) error {
 	store := &pgStore{dbc: dbc}
-	return backfillDateRange(store, startDate, endDate)
+	return backfillDateRange(store, startDate, endDate, releases)
 }
 
-func backfillDateRange(store summaryStore, startDate, endDate civil.Date) error {
+func backfillDateRange(store summaryStore, startDate, endDate civil.Date, releases []string) error {
 	if startDate.After(endDate) {
 		return nil
 	}
 	loadStart := time.Now()
 	days := endDate.DaysSince(startDate) + 1
-
-	releases, err := store.Releases()
-	if err != nil {
-		return fmt.Errorf("querying releases: %w", err)
-	}
 
 	log.WithFields(log.Fields{
 		"start":    startDate,
@@ -60,14 +54,6 @@ func backfillDateRange(store summaryStore, startDate, endDate civil.Date) error 
 
 type pgStore struct {
 	dbc *db.DB
-}
-
-func (s *pgStore) Releases() ([]string, error) {
-	var releases []string
-	err := s.dbc.DB.Table("release_definitions").
-		Order("major DESC, minor DESC").
-		Pluck("release", &releases).Error
-	return releases, err
 }
 
 // Delete+insert (not upsert) so that rows whose daily-total key changed
