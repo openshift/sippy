@@ -12,7 +12,9 @@
       "args": [
         "-c",
         "exec \"$(git rev-parse --show-toplevel)/mcp/run.sh\""
-      ]
+      ],
+      "startup_timeout_sec": 300,
+      "tool_timeout_sec": 14400
     },
     "atlassian": {
       "httpUrl": "https://mcp.atlassian.com/v1/mcp"

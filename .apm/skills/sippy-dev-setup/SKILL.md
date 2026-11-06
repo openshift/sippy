@@ -88,6 +88,14 @@ grep -Eq '^ANTHROPIC_VERTEX_PROJECT_ID=.+$' .devcontainer/.env
 
 If the check fails, tell them to edit `.devcontainer/.env` themselves and wait for confirmation. **Do not** ask for the value directly, read the value, print the value, or write to the file yourself. Do not require or block on this value for other users.
 
+The example file enables `CLAUDE_CODE_USE_VERTEX=1`, which makes Claude Code use Vertex AI instead of the Anthropic API. For users who do not use Vertex AI, check whether it is still enabled:
+
+```bash
+grep -Eq '^CLAUDE_CODE_USE_VERTEX=1$' .devcontainer/.env
+```
+
+If it is, tell them to remove that line (or comment it out) in `.devcontainer/.env` and wait for confirmation.
+
 ### 6. Start the container
 
 Determine the right command based on OS:

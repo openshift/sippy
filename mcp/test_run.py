@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 
-def test_concurrent_stale_venv_repair_serializes_without_flock(tmp_path: Path):
+def test_concurrent_setup_only_serializes_without_flock(tmp_path: Path):
     repo = tmp_path / "repo"
     script_dir = repo / "mcp"
     script_dir.mkdir(parents=True)
@@ -93,11 +93,10 @@ exit 1
         "STALE_MARKER": str(stale_marker),
         "MIN_PYTHON_MAJOR": "3",
         "MIN_PYTHON_MINOR": "12",
-        "SIPPY_DEV_SETUP_ONLY": "1",
     }
     processes = [
         subprocess.Popen(
-            ["/bin/sh", str(script_dir / "run.sh")],
+            ["/bin/sh", str(script_dir / "run.sh"), "--sippy-dev-setup-only"],
             cwd=repo,
             env=env,
             stdout=subprocess.PIPE,
@@ -164,7 +163,12 @@ def _launcher_stub_bin(tmp_path: Path) -> Path:
 
 
 def _write_python_stub(bin_dir: Path) -> None:
+    real_python = shutil.which("python3")
+    assert real_python is not None
     python_stub = """#!/bin/sh
+if [ "$1" = "-" ]; then
+    exec __REAL_PYTHON__ "$@"
+fi
 if [ "$1" = "-m" ] && [ "$2" = "venv" ]; then
     mkdir -p "$3/bin"
     cat > "$3/bin/python" <<'EOF'
@@ -190,7 +194,7 @@ if [ "$1" = "-c" ]; then
     fi
 fi
 exit 1
-"""
+""".replace("__REAL_PYTHON__", real_python)
     python_path = bin_dir / "python3"
     python_path.write_text(python_stub, encoding="utf-8")
     python_path.chmod(0o755)

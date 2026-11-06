@@ -83,7 +83,8 @@ _setup_venv() {
     fi
 }
 
-if [ "${1:-}" = "--sippy-dev-setup-only" ]; then
+# Private mode used only by the lock holder below.
+if [ "${1:-}" = "--sippy-dev-setup-locked" ]; then
     _setup_venv
     exit 0
 fi
@@ -96,7 +97,11 @@ import sys
 
 with open(sys.argv[1], "a+") as lock_file:
     fcntl.flock(lock_file, fcntl.LOCK_EX)
-    subprocess.run(["/bin/sh", sys.argv[2], "--sippy-dev-setup-only"], check=True)
+    subprocess.run(["/bin/sh", sys.argv[2], "--sippy-dev-setup-locked"], check=True)
 PY
+
+if [ "${1:-}" = "--sippy-dev-setup-only" ]; then
+    exit 0
+fi
 
 exec "$VENV_DIR/bin/python" "$SCRIPT_DIR/server.py" "$@"

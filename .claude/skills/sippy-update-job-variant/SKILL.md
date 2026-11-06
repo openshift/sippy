@@ -22,19 +22,20 @@ If any arguments are not provided, you will prompt the user interactively.
 Before starting the workflow, check if the user provided any arguments:
 
 1. Parse the command invocation to extract any provided arguments
-2. If all three arguments (job-pattern, category, value) are provided:
+2. Normalize the job pattern, whether provided as an argument or entered interactively: trim surrounding whitespace, reject a blank result (an empty pattern matches every job), and lowercase it (setters compare against the lowercased job name, so uppercase patterns never match)
+3. If all three arguments (job-pattern, category, value) are provided:
    - Validate the category exists in the snapshot file
    - Skip the corresponding prompting steps
    - Use the provided values directly
-3. If some arguments are missing, prompt only for the missing ones
-4. If no arguments are provided, follow the full interactive workflow below
+4. If some arguments are missing, prompt only for the missing ones
+5. If no arguments are provided, follow the full interactive workflow below
 
 You will guide the user through the following steps (skipping steps where arguments were provided):
 
 1. **Prompt for a Job Pattern**: Ask the user to enter a pattern that identifies the CI job(s) they want to update. This can be either a full job name or a substring. This will be used to add pattern matching logic to the Go code.
    - Example full job name: `periodic-ci-openshift-hypershift-release-4.16-periodics-e2e-aws-ovn`
    - Example substrings: `-hypershift-`, `-metal-ipi-`, `-fips-`
-   - **Important**: Both full job names and substrings are acceptable. Accept whatever the user provides without asking for clarification, then trim surrounding whitespace, reject a blank result, and normalize a nonblank result to lowercase before writing it.
+   - **Important**: Both full job names and substrings are acceptable. Accept whatever the user provides without asking for clarification, then normalize it as described in Argument Parsing.
    - Advise the user that more specific patterns avoid unintended matches (e.g., `-metal-ipi-ovn-ipv6-` instead of just `-metal-`)
 
 2. **Select Variant Category**: Extract variant categories programmatically and present as a numbered list:

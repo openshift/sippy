@@ -15,10 +15,11 @@ go run ./cmd/sippy migrate --database-dsn "$SIPPY_PRODLIKE_DATABASE_DSN"
 Or to migrate just the active database (based on `SIPPY_DATA_MODE`):
 
 ```bash
-active_dsn="${SIPPY_SEED_DATABASE_DSN:-postgresql://postgres:password@localhost:5432/postgres}"
-if [ "${SIPPY_DATA_MODE:-seed}" = "prod-like" ]; then
-    active_dsn="${SIPPY_PRODLIKE_DATABASE_DSN:-postgresql://postgres:password@localhost:5432/prodlike}"
-fi
+case "${SIPPY_DATA_MODE:-seed}" in
+seed) active_dsn="${SIPPY_SEED_DATABASE_DSN:-postgresql://postgres:password@localhost:5432/postgres}" ;;
+prod-like) active_dsn="${SIPPY_PRODLIKE_DATABASE_DSN:-postgresql://postgres:password@localhost:5432/prodlike}" ;;
+*) echo "unsupported SIPPY_DATA_MODE: ${SIPPY_DATA_MODE} (expected seed or prod-like)" >&2; exit 1 ;;
+esac
 go run ./cmd/sippy migrate --database-dsn "$active_dsn"
 ```
 

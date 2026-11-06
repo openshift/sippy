@@ -152,7 +152,13 @@ class TestRestoreProdlikeDb:
         assert "repository root" in result
         create_subprocess.assert_not_awaited()
 
-    def _run_restore_script(self, tmp_path: Path, backup_name: str):
+    def _run_restore_script(
+        self,
+        tmp_path: Path,
+        backup_name: str,
+        dsn: str = "postgresql://postgres:password@localhost:5432/prodlike",
+        pg_restore_list_exit: int = 0,
+    ) -> tuple[subprocess.CompletedProcess, str]:
         repo = tmp_path / "repo"
         script_dir = repo / "scripts"
         script_dir.mkdir(parents=True)
@@ -168,10 +174,12 @@ class TestRestoreProdlikeDb:
             assert source is not None
             os.symlink(source, bin_dir / command)
         command_log = tmp_path / "commands.log"
+        command_log.write_text("", encoding="utf-8")
         for command in ("psql", "pg_restore"):
             stub = bin_dir / command
             stub.write_text(
-                f'#!/bin/sh\necho "{command} $*" >> "$COMMAND_LOG"\n',
+                f'#!/bin/sh\necho "{command} $*" >> "$COMMAND_LOG"\n'
+                'if [ "$1" = "--list" ]; then exit "$PG_RESTORE_LIST_EXIT"; fi\n',
                 encoding="utf-8",
             )
             stub.chmod(0o755)
@@ -183,31 +191,68 @@ class TestRestoreProdlikeDb:
                 "PATH": str(bin_dir),
                 "HOME": str(tmp_path),
                 "COMMAND_LOG": str(command_log),
-                "SIPPY_PRODLIKE_DATABASE_DSN": (
-                    "postgresql://postgres:password@localhost:5432/prodlike"
-                ),
+                "PG_RESTORE_LIST_EXIT": str(pg_restore_list_exit),
+                "SIPPY_PRODLIKE_DATABASE_DSN": dsn,
             },
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
         )
-        assert result.returncode == 0, result.stderr
-        return command_log.read_text(encoding="utf-8")
+        return result, command_log.read_text(encoding="utf-8")
 
     def test_valid_directory_backup_reaches_pg_restore(self, tmp_path: Path):
         backup = tmp_path / "repo" / "backups" / "valid.dump"
         backup.mkdir(parents=True)
         (backup / "toc.dat").write_text("", encoding="utf-8")
-        commands = self._run_restore_script(tmp_path, "backups/valid.dump")
-        assert "pg_restore " in commands
+        result, commands = self._run_restore_script(tmp_path, "backups/valid.dump")
+        assert result.returncode == 0, result.stderr
+        assert "pg_restore --no-owner" in commands
 
     def test_sql_backup_reaches_psql(self, tmp_path: Path):
         backup = tmp_path / "repo" / "backups" / "backup.sql"
         backup.parent.mkdir(parents=True)
         backup.write_text("", encoding="utf-8")
-        commands = self._run_restore_script(tmp_path, "backups/backup.sql")
+        result, commands = self._run_restore_script(tmp_path, "backups/backup.sql")
+        assert result.returncode == 0, result.stderr
         assert "psql " in commands
         assert "backup.sql" in commands
+
+    def test_script_rejects_ordinary_directory_before_drop(self, tmp_path: Path):
+        (tmp_path / "repo" / "config").mkdir(parents=True)
+        result, commands = self._run_restore_script(tmp_path, "config")
+        assert result.returncode != 0
+        assert "toc.dat not found" in result.stderr
+        assert "psql" not in commands
+
+    def test_script_rejects_invalid_archive_before_drop(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "broken.dump"
+        backup.parent.mkdir(parents=True)
+        backup.write_text("not an archive", encoding="utf-8")
+        result, commands = self._run_restore_script(
+            tmp_path, "backups/broken.dump", pg_restore_list_exit=1
+        )
+        assert result.returncode != 0
+        assert "not a valid pg_restore archive" in result.stderr
+        assert "psql" not in commands
+
+    def test_script_redacts_dsn_query_password(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "backup.sql"
+        backup.parent.mkdir(parents=True)
+        backup.write_text("", encoding="utf-8")
+        user_password = secrets.token_urlsafe(24)
+        query_password = secrets.token_urlsafe(24)
+        result, _ = self._run_restore_script(
+            tmp_path,
+            "backups/backup.sql",
+            dsn=(
+                f"postgresql://postgres:{user_password}@localhost:5432/prodlike"
+                f"?sslmode=disable&password={query_password}"
+            ),
+        )
+        assert result.returncode == 0, result.stderr
+        assert user_password not in result.stdout
+        assert query_password not in result.stdout
+        assert "password=REDACTED" in result.stdout
 
 
 class TestTrim:

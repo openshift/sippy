@@ -52,6 +52,8 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 
 Optional parameters (timeouts, paths, DSNs, etc.) are documented on each function in **`server.py`**.
 
+`restore_prodlike_db` takes a repo-relative backup path. Supported formats are `.sql` files (restored with `psql`), custom-format `.dump` files, and directory backups containing `toc.dat` (both restored with `pg_restore`). The backup is validated before `prodlike` is dropped, so an ordinary directory or unreadable archive leaves the database untouched. The same rules apply when running `scripts/restore_prodlike_db.sh <backup-path>` directly.
+
 > **Cost caution:** `regression_cache` issues BigQuery queries that cost real money. Run it only when explicitly needed and never more than once per request.
 
 ### Credentials and environment
@@ -75,6 +77,9 @@ Agent-oriented shortcuts are defined in **`.apm/skills/`** and deployed by **`ma
 - `sippy-dev-app` (backend + frontend)
 - `sippy-dev-tests` (order: `make lint` → `make test` → `make e2e`)
 - `sippy-generate-release-views` (create next-release Component Readiness views from an existing release)
+- `sippy-update-ga-release-views` (switch a newly GA release's views from `now` to `ga` dates)
+
+Skills that take arguments accept them positionally and prompt for anything omitted. For example, `/sippy-generate-release-views 4.21 4.22` copies the 4.21 views to 4.22 (Codex users can invoke the skill by name with the same arguments). It previews changes with `python3 scripts/generate_release_views.py <source> <target>` and asks for confirmation before writing `config/views.yaml`.
 
 ## Changing the server
 

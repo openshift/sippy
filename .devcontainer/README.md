@@ -12,7 +12,7 @@ walks you through GCP authentication.
 
 ## What you'll need to provide
 
-- **GCP project ID** (`ANTHROPIC_VERTEX_PROJECT_ID`) for Claude Code via Vertex AI
+- **GCP project ID** (`ANTHROPIC_VERTEX_PROJECT_ID`), only if you use Claude Code via Vertex AI. Otherwise remove `CLAUDE_CODE_USE_VERTEX=1` from `.devcontainer/.env`.
 - **GCP auth**: run `gcloud auth application-default login` on the host before starting the container (credentials are mounted read-only)
 - **BigQuery job SA JSON** at **`/workspace/sippy-bigquery-job-importer-key.json`** (gitignored); **`SIPPY_BIGQUERY_CREDENTIALS_FILE`** defaults to that path in `devcontainer.json`. Override in `.devcontainer/.env` if your key lives elsewhere.
 

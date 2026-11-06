@@ -8,8 +8,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 if [ "${#}" -lt 1 ]; then
-	echo "usage: $0 <backup-file>" >&2
-	echo "  backup-path: file or directory relative to repo root (e.g. backups/foo.dump)" >&2
+	echo "usage: $0 <backup-path>" >&2
+	echo "  backup-path: .sql file, custom-format dump, or directory backup (with toc.dat) relative to repo root" >&2
 	exit 1
 fi
 
@@ -51,8 +51,19 @@ case "${prodl}" in
 	;;
 esac
 
-# Redact credentials from log output
-redacted_prodl=$(echo "${prodl}" | sed 's|://[^@]*@|://REDACTED@|')
+# Validate the backup before the destructive DROP DATABASE below.
+if [[ -f "${backup}" && "${backup}" == *.sql ]]; then
+	:
+elif [[ -d "${backup}" && ! -f "${backup}/toc.dat" ]]; then
+	echo "error: invalid directory backup, toc.dat not found: ${backup}" >&2
+	exit 1
+elif ! pg_restore --list "${backup}" >/dev/null; then
+	echo "error: backup is not a valid pg_restore archive: ${backup}" >&2
+	exit 1
+fi
+
+# Redact credentials from log output, including libpq query parameters such as password=.
+redacted_prodl=$(echo "${prodl}" | sed -E -e 's|://[^@]*@|://REDACTED@|' -e 's/([?&][^=&]+)=[^&]*/\1=REDACTED/g')
 echo "Using prod-like DSN: ${redacted_prodl}"
 echo "Restoring from: ${backup}"
 
