@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -9,15 +10,57 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/flags"
-	"github.com/openshift/sippy/pkg/util"
 )
 
 // defaultRounding is the serving default, which seed-data also uses unless overridden.
 var defaultRounding = flags.NewCRTimeRoundingFlags()
 
+// testSeedViews loads the real seed views file so tests follow the view the seed reads.
+func testSeedViews(t *testing.T) apitype.SippyViews {
+	t.Helper()
+	views, err := loadSeedViews(filepath.Join("..", "..", syntheticViewsFile))
+	require.NoError(t, err)
+	return views
+}
+
+// testSeedClock builds the seed clock the command would build at now with the given rounding.
+func testSeedClock(t *testing.T, views apitype.SippyViews, now time.Time, factor, offset time.Duration) seedClock {
+	t.Helper()
+	clock, err := newSeedClock(now, &flags.CRTimeRoundingFlags{Factor: factor, Offset: offset}, views)
+	require.NoError(t, err)
+	return clock
+}
+
+// tallySeededStatuses counts the statuses seededTestStatus assigns across all of counts.total results.
+func tallySeededStatuses(counts testCount) map[int]int {
+	got := map[int]int{}
+	for i := 0; i < counts.total; i++ {
+		got[seededTestStatus(i, counts)]++
+	}
+	return got
+}
+
+// assertStatusTally checks a status tally holds exactly the passes, flakes and failures counts declares.
+func assertStatusTally(t *testing.T, counts testCount, got map[int]int, surface string) {
+	t.Helper()
+	assert.Equal(t, counts.success-counts.flake, got[int(v1.TestStatusSuccess)], "%s passes", surface)
+	assert.Equal(t, counts.flake, got[int(v1.TestStatusFlake)], "%s flakes", surface)
+	assert.Equal(t, counts.total-counts.success, got[int(v1.TestStatusFailure)], "%s failures", surface)
+}
+
+// assertSeededStatusCounts checks seededTestStatus produces exactly the declared counts.
+func assertSeededStatusCounts(t *testing.T, counts testCount) {
+	t.Helper()
+	assertStatusTally(t, counts, tallySeededStatuses(counts), "seeded")
+}
+
 func TestSeedClockWindow4_22(t *testing.T) {
+	views := testSeedViews(t)
 	tests := []struct {
 		name      string
 		now       time.Time
@@ -77,7 +120,8 @@ func TestSeedClockWindow4_22(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clock := seedClock{now: tt.now, roundingFactor: tt.factor, roundingOffset: tt.offset}
+			clock := testSeedClock(t, views, tt.now, tt.factor, tt.offset)
+			assert.Equal(t, time.UTC, clock.now.Location(), "clock time must be normalized to UTC")
 			start, end := clock.window("4.22")
 			assert.Equal(t, tt.wantStart, start)
 			assert.Equal(t, tt.wantEnd, end)
@@ -85,7 +129,35 @@ func TestSeedClockWindow4_22(t *testing.T) {
 	}
 }
 
+func TestSeedClockWindowHistoricalReleases(t *testing.T) {
+	views := testSeedViews(t)
+	clock := testSeedClock(t, views, time.Date(2026, 11, 4, 7, 30, 0, 0, time.UTC), defaultRounding.Factor, defaultRounding.Offset)
+	tests := []struct {
+		release   string
+		wantStart time.Time
+		wantEnd   time.Time
+	}{
+		{release: "4.21", wantStart: time.Date(2026, 9, 5, 7, 0, 0, 0, time.UTC), wantEnd: time.Date(2026, 10, 5, 7, 0, 0, 0, time.UTC)},
+		{release: "4.20", wantStart: time.Date(2026, 7, 7, 7, 0, 0, 0, time.UTC), wantEnd: time.Date(2026, 8, 6, 7, 0, 0, 0, time.UTC)},
+		{release: "4.19", wantStart: time.Date(2026, 5, 8, 7, 0, 0, 0, time.UTC), wantEnd: time.Date(2026, 6, 7, 7, 0, 0, 0, time.UTC)},
+		{release: "4.18", wantStart: time.Date(2026, 10, 21, 7, 0, 0, 0, time.UTC), wantEnd: time.Date(2026, 11, 4, 7, 0, 0, 0, time.UTC)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.release, func(t *testing.T) {
+			start, end := clock.window(tt.release)
+			assert.Equal(t, tt.wantStart, start)
+			assert.Equal(t, tt.wantEnd, end)
+		})
+	}
+}
+
+func TestNewSeedClockRequiresSampleView(t *testing.T) {
+	_, err := newSeedClock(time.Now(), defaultRounding, apitype.SippyViews{})
+	assert.ErrorContains(t, err, seedSampleView)
+}
+
 func TestSeededRegressionOpened(t *testing.T) {
+	views := testSeedViews(t)
 	tests := []struct {
 		name       string
 		now        time.Time
@@ -113,14 +185,9 @@ func TestSeededRegressionOpened(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clock := seedClock{
-				now:            tt.now,
-				roundingFactor: defaultRounding.Factor,
-				roundingOffset: defaultRounding.Offset,
-			}
+			clock := testSeedClock(t, views, tt.now, defaultRounding.Factor, defaultRounding.Offset)
 			opened := seededRegressionOpened(clock, tt.release)
 			assert.Equal(t, tt.wantOpened, opened)
-			assert.Equal(t, opened, seededRegressionOpened(clock, tt.release), "opened must be deterministic for a pinned clock")
 
 			// Force close requires opened < resolved, and a user picks a resolution date before today.
 			today := civil.DateOf(tt.now.UTC()).In(time.UTC)
@@ -141,19 +208,17 @@ func TestSeededTestStatusCounts(t *testing.T) {
 		{name: "all failing", counts: testCount{10, 0, 0}},
 		{name: "with flakes", counts: testCount{100, 90, 7}},
 		{name: "single run failing", counts: testCount{1, 0, 0}},
-		{name: "zero runs", counts: testCount{0, 0, 0}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := map[int]int{}
-			for i := 0; i < tt.counts.total; i++ {
-				got[seededTestStatus(i, tt.counts)]++
-			}
-			assert.Equal(t, tt.counts.success-tt.counts.flake, got[int(v1.TestStatusSuccess)], "passes")
-			assert.Equal(t, tt.counts.flake, got[int(v1.TestStatusFlake)], "flakes")
-			assert.Equal(t, tt.counts.total-tt.counts.success, got[int(v1.TestStatusFailure)], "failures")
+			assertSeededStatusCounts(t, tt.counts)
 		})
 	}
+}
+
+// With no results to distribute, the guard must report success rather than divide by zero.
+func TestSeededTestStatusZeroRuns(t *testing.T) {
+	assert.Equal(t, int(v1.TestStatusSuccess), seededTestStatus(0, testCount{0, 0, 0}))
 }
 
 // Every synthetic spec must still produce exactly its declared counts.
@@ -161,31 +226,37 @@ func TestSeededTestStatusMatchesSyntheticSpecs(t *testing.T) {
 	for _, ts := range syntheticTests {
 		for jobTpl, releaseCounts := range ts.jobCounts {
 			for release, counts := range releaseCounts {
-				got := map[int]int{}
-				for i := 0; i < counts.total; i++ {
-					got[seededTestStatus(i, counts)]++
-				}
-				label := fmt.Sprintf("%s %s %s", ts.testID, jobTpl, release)
-				assert.Equal(t, counts.success-counts.flake, got[int(v1.TestStatusSuccess)], "passes: %s", label)
-				assert.Equal(t, counts.flake, got[int(v1.TestStatusFlake)], "flakes: %s", label)
-				assert.Equal(t, counts.total-counts.success, got[int(v1.TestStatusFailure)], "failures: %s", label)
+				t.Run(fmt.Sprintf("%s %s %s", ts.testID, jobTpl, release), func(t *testing.T) {
+					assertSeededStatusCounts(t, counts)
+				})
 			}
 		}
 	}
 }
 
-// Failures must be spread across the window, not concentrated in the latest runs.
-func TestSeededTestStatusSpreadsFailures(t *testing.T) {
-	counts := testCount{200, 170, 0}
+// Failures and flakes must be spread across the window, not concentrated in the latest runs.
+func TestSeededTestStatusSpreads(t *testing.T) {
 	const slice int = 40
-	for from := 0; from+slice <= counts.total; from += slice {
-		failures := 0
-		for i := from; i < from+slice; i++ {
-			if seededTestStatus(i, counts) == int(v1.TestStatusFailure) {
-				failures++
+	tests := []struct {
+		name         string
+		counts       testCount
+		wantFailures int
+		wantFlakes   int
+	}{
+		{name: "failures only", counts: testCount{200, 170, 0}, wantFailures: 6, wantFlakes: 0},
+		{name: "failures and flakes", counts: testCount{200, 170, 10}, wantFailures: 6, wantFlakes: 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for from := 0; from+slice <= tt.counts.total; from += slice {
+				got := map[int]int{}
+				for i := from; i < from+slice; i++ {
+					got[seededTestStatus(i, tt.counts)]++
+				}
+				assert.Equal(t, tt.wantFailures, got[int(v1.TestStatusFailure)], "failures in runs [%d,%d)", from, from+slice)
+				assert.Equal(t, tt.wantFlakes, got[int(v1.TestStatusFlake)], "flakes in runs [%d,%d)", from, from+slice)
 			}
-		}
-		assert.Equal(t, 6, failures, "runs [%d,%d)", from, from+slice)
+		})
 	}
 }
 
@@ -196,7 +267,7 @@ func TestSeededRunTimestamps(t *testing.T) {
 		name  string
 		count int
 	}{
-		{name: "runs plus infra runs", count: 202},
+		{name: "runs plus infra runs", count: 200 + seededInfraRuns},
 		{name: "single run", count: 1},
 		{name: "zero runs", count: 0},
 		{name: "negative count", count: -1},
@@ -226,10 +297,16 @@ func TestSeededRunTimestamps(t *testing.T) {
 // (whole UTC days through the sample end date) and test details (exact run
 // timestamps up to the rounded sample end) count the seeded 4.22 results, and
 // checks both see the same intended counts for the life of the seed: at seed
-// time, and later the same day as rounding boundaries pass. The server and the
-// seed share the rounding settings, so each config is applied to both.
+// time, and later the same day as rounding boundaries pass. The server's sample
+// window comes from the seed view through the server's own parser, so a change to
+// the view or the parser that the seed does not follow fails here. The server and
+// the seed share the rounding settings, so each config is applied to both.
 func TestSeedClockWindow4_22SampleConsistentAcrossSurfaces(t *testing.T) {
 	const runCount int = 200
+	views := testSeedViews(t)
+	sampleRelease, err := seedViewSampleRelease(views, seedSampleView)
+	require.NoError(t, err)
+
 	roundings := []struct {
 		name   string
 		factor time.Duration
@@ -259,9 +336,9 @@ func TestSeedClockWindow4_22SampleConsistentAcrossSurfaces(t *testing.T) {
 		for _, cc := range countCases {
 			counts := cc.counts
 			for _, seedAt := range seedTimes {
-				clock := seedClock{now: seedAt, roundingFactor: rounding.factor, roundingOffset: rounding.offset}
-				start, end := clock.window("4.22")
-				timestamps := seededRunTimestamps(start, end, runCount+2)
+				clock := testSeedClock(t, views, seedAt, rounding.factor, rounding.offset)
+				start, end := clock.window(sampleRelease.Name)
+				timestamps := seededRunTimestamps(start, end, runCount+seededInfraRuns)
 
 				for _, later := range laterOffsets {
 					queryAt := seedAt.Add(later)
@@ -270,32 +347,32 @@ func TestSeedClockWindow4_22SampleConsistentAcrossSurfaces(t *testing.T) {
 					}
 					name := rounding.name + "/" + cc.name + "/" + seedAt.Format(time.RFC3339) + "+" + later.String()
 					t.Run(name, func(t *testing.T) {
-						sampleStart := util.AdjustReleaseTime(queryAt, true, "3", 0, 0)
-						sampleEnd := util.TruncateAligned(queryAt, rounding.factor, rounding.offset)
-						startDate, endDate := civil.DateOf(sampleStart), civil.DateOf(sampleEnd)
-
-						report, details := map[int]int{}, map[int]int{}
-						for i := 0; i < counts.total; i++ {
-							status := seededTestStatus(i, counts)
-							d := civil.DateOf(timestamps[i])
-							if !d.Before(startDate) && !d.After(endDate) {
-								report[status]++
-							}
-							if !timestamps[i].Before(sampleStart) && !timestamps[i].After(sampleEnd) {
-								details[status]++
-							}
-						}
-						for _, surface := range []struct {
-							name   string
-							counts map[int]int
-						}{{"report", report}, {"details", details}} {
-							assert.Equal(t, counts.success-counts.flake, surface.counts[int(v1.TestStatusSuccess)], "%s successes", surface.name)
-							assert.Equal(t, counts.total-counts.success, surface.counts[int(v1.TestStatusFailure)], "%s failures", surface.name)
-							assert.Equal(t, counts.flake, surface.counts[int(v1.TestStatusFlake)], "%s flakes", surface.name)
-						}
+						server, err := utils.GetViewReleaseOptionsAt(queryAt, nil, "sample", sampleRelease, rounding.factor, rounding.offset)
+						require.NoError(t, err)
+						assertSurfacesAgree(t, server, counts, timestamps)
 					})
 				}
 			}
 		}
 	}
+}
+
+// assertSurfacesAgree tallies seeded results the way the report (whole days) and test details
+// (exact timestamps) select them from the server's sample window, and checks both match counts.
+func assertSurfacesAgree(t *testing.T, server reqopts.Release, counts testCount, timestamps []time.Time) {
+	t.Helper()
+	startDate, endDate := civil.DateOf(server.Start), civil.DateOf(server.End)
+	report, details := map[int]int{}, map[int]int{}
+	for i := 0; i < counts.total; i++ {
+		status := seededTestStatus(i, counts)
+		d := civil.DateOf(timestamps[i])
+		if !d.Before(startDate) && !d.After(endDate) {
+			report[status]++
+		}
+		if !timestamps[i].Before(server.Start) && !timestamps[i].After(server.End) {
+			details[status]++
+		}
+	}
+	assertStatusTally(t, counts, report, "report")
+	assertStatusTally(t, counts, details, "details")
 }
