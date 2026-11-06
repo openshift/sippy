@@ -10,10 +10,16 @@ export const SafeJSONParam = {
     return safeEncodeURIComponent(JSON.stringify(j))
   },
   decode: (j) => {
+    // Links are URL-decoded by the query parser. State written by this codec
+    // has an additional encoding layer, so accept both without decoding values twice.
     try {
-      return JSON.parse(decodeURIComponent(j))
+      return JSON.parse(j)
     } catch (_e) {
-      // return undefined
+      try {
+        return JSON.parse(decodeURIComponent(j))
+      } catch (_e) {
+        return undefined
+      }
     }
   },
 }

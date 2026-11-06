@@ -5,6 +5,7 @@ import {
   pathForJobRunsWithTestFailureHistory,
   pathForJobRunsWithTestHistory,
   safeEncodeURIComponent,
+  SafeJSONParam,
 } from './helpers'
 
 const lightTheme = {
@@ -222,4 +223,26 @@ describe('pathForJobRunsWithTestFailureHistory', () => {
     expect(filters.items.find((f) => f.field === 'variants')).toBeDefined()
     expect(filters.items.find((f) => f.field === 'timestamp')).toBeUndefined()
   })
+})
+
+describe('SafeJSONParam', () => {
+  const model = {
+    items: [
+      { field: 'name', operator: 'equals', value: 'path? a&b=#50% + %2F café' },
+    ],
+  }
+
+  test.each([
+    ['URL-decoded link filters', JSON.stringify(model)],
+    ['codec-encoded filters', SafeJSONParam.encode(model)],
+  ])('preserves percent signs in %s', (_name, value) => {
+    expect(SafeJSONParam.decode(value)).toEqual(model)
+  })
+
+  test.each([undefined, '', '%not-encoded', '{broken'])(
+    'rejects invalid filters: %s',
+    (value) => {
+      expect(SafeJSONParam.decode(value)).toBeUndefined()
+    }
+  )
 })
