@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import os
+import secrets
 import subprocess
 import tempfile
 from pathlib import Path
@@ -242,9 +243,9 @@ class TestRunE2e:
             mock.patch("server._resolve_bigquery_creds") as resolve_creds,
         ):
             credential_contents = {
-                explicit.name: b"explicit credentials",
-                sippy_env.name: b"sippy environment credentials",
-                google_env.name: b"google environment credentials",
+                explicit.name: secrets.token_bytes(24),
+                sippy_env.name: secrets.token_bytes(24),
+                google_env.name: secrets.token_bytes(24),
             }
             for path, contents in credential_contents.items():
                 Path(path).write_bytes(contents)
@@ -341,8 +342,8 @@ class TestE2eScriptSafety:
 
     def test_existing_service_configuration_does_not_log_connection_secrets(self):
         """Keep credential-bearing URLs in command arguments and out of script output."""
-        database_password = "synthetic-database-password"
-        redis_password = "synthetic-redis-password"
+        database_password = secrets.token_urlsafe(24)
+        redis_password = secrets.token_urlsafe(24)
         admin_dsn = (
             f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/postgres"
         )
@@ -355,7 +356,7 @@ class TestE2eScriptSafety:
 psql_calls=0
 psql() {
     psql_calls=$((psql_calls + 1))
-    [ "$1" = "$EXPECTED_ADMIN_DSN" ] || return 90
+    [ "$1" = "$EXPECTED_ADMIN_DSN" ] || exit 90
 }
 e2e_configure_existing_services
 [ "$psql_calls" -eq 2 ] || exit 91
@@ -379,24 +380,54 @@ e2e_configure_existing_services
         assert e2e_dsn not in output
         assert redis_url not in output
 
+    def test_existing_service_configuration_fails_on_unexpected_dsn(self):
+        """Propagate a psql argument mismatch as exit 90 instead of masking it later."""
+        actual_password = secrets.token_urlsafe(24)
+        expected_password = secrets.token_urlsafe(24)
+        actual_dsn = (
+            f"postgresql://e2e-user:{actual_password}@sippy-postgres:5432/postgres"
+        )
+        expected_dsn = (
+            f"postgresql://e2e-user:{expected_password}@sippy-postgres:5432/postgres"
+        )
+        result = self._run_helper(
+            """
+psql() {
+    [ "$1" = "$EXPECTED_ADMIN_DSN" ] || exit 90
+}
+e2e_configure_existing_services
+""",
+            {
+                "SIPPY_DATABASE_DSN": actual_dsn,
+                "EXPECTED_ADMIN_DSN": expected_dsn,
+            },
+        )
+
+        output = result.stdout + result.stderr
+        assert result.returncode == 90
+        assert actual_password not in output
+        assert expected_password not in output
+        assert actual_dsn not in output
+        assert expected_dsn not in output
+
     @pytest.mark.parametrize(
-        "dsn",
-        [
-            "postgresql://user:local-password@localhost:5432/postgres",
-            "postgresql://user:service-password@sippy-postgres:5432/postgres",
-        ],
+        "host",
+        ["localhost", "sippy-postgres"],
     )
-    def test_safe_dsn_host_still_accepts_local_services(self, dsn):
+    def test_safe_dsn_host_still_accepts_local_services(self, host):
         """Preserve the localhost and sippy-postgres allowlist used by destructive helpers."""
+        password = secrets.token_urlsafe(24)
+        dsn = f"postgresql://user:{password}@{host}:5432/postgres"
         result = self._run_helper('e2e_safe_dsn_host "$SAFE_DSN"', {"SAFE_DSN": dsn})
 
         assert result.returncode == 0, result.stderr
         assert result.stdout == ""
         assert result.stderr == ""
+        assert password not in result.stdout + result.stderr
 
     def test_safe_dsn_host_rejection_does_not_echo_credentials(self):
         """Reject remote database hosts without copying their credential-bearing DSN to stderr."""
-        password = "synthetic-rejected-password"
+        password = secrets.token_urlsafe(24)
         rejected_dsn = f"postgresql://user:{password}@database.example.com:5432/postgres"
         result = self._run_helper(
             'e2e_safe_dsn_host "$REJECTED_DSN"',
@@ -408,6 +439,79 @@ e2e_configure_existing_services
         assert "refusing to operate on non-local database host" in result.stderr
         assert password not in output
         assert rejected_dsn not in output
+
+    def test_devcontainer_entry_uses_safe_arguments_without_logging_secrets(
+        self, tmp_path
+    ):
+        """Exercise the real devcontainer entry path with service and build commands stubbed."""
+        database_password = secrets.token_urlsafe(24)
+        redis_password = secrets.token_urlsafe(24)
+        admin_dsn = (
+            f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/postgres"
+        )
+        e2e_dsn = (
+            f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/sippy_e2e"
+        )
+        redis_url = f"redis://:{redis_password}@sippy-redis:6379/1"
+        call_log = tmp_path / "psql-calls.log"
+        bash_env = tmp_path / "bash-env"
+        bash_env.write_text(
+            """
+function [ {
+    if [[ "$1" == "-f" && "$2" == "/run/.containerenv" ]]; then
+        return 0
+    fi
+    builtin [ "$@"
+}
+psql() {
+    [ "$1" = "$EXPECTED_ADMIN_DSN" ] || exit 90
+    printf '%s\\n' "$2 $3" >> "$PSQL_CALL_LOG"
+}
+go() {
+    [ "$1" = "build" ] || exit 94
+    return 95
+}
+"""
+        )
+        env = os.environ.copy()
+        env.update(
+            {
+                "BASH_ENV": str(bash_env),
+                "GCS_SA_JSON_PATH": "",
+                "SIPPY_DATABASE_DSN": admin_dsn,
+                "SIPPY_E2E_REDIS_URL": redis_url,
+                "EXPECTED_ADMIN_DSN": admin_dsn,
+                "PSQL_CALL_LOG": str(call_log),
+            }
+        )
+
+        result = subprocess.run(
+            ["bash", str(E2E_SCRIPT)],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        output = result.stdout + result.stderr
+        assert result.returncode == 1, output
+        assert "Detected devcontainer" in result.stdout
+        assert "Building sippy with coverage instrumentation" in result.stdout
+        assert "Build failed" in result.stdout
+        assert call_log.read_text().splitlines() == [
+            "-c DROP DATABASE IF EXISTS sippy_e2e",
+            "-c CREATE DATABASE sippy_e2e",
+            "-c DROP DATABASE IF EXISTS sippy_e2e",
+        ]
+        for secret in (
+            database_password,
+            redis_password,
+            admin_dsn,
+            e2e_dsn,
+            redis_url,
+        ):
+            assert secret not in output
 
     @pytest.mark.parametrize(
         ("database_name", "expected_returncode"),
