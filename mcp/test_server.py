@@ -181,13 +181,17 @@ class TestResolveBigqueryCreds:
 
 
 class TestRunE2e:
+    """Verify the run_e2e BigQuery opt-in behavior and published tool schema."""
+
     @staticmethod
     def _successful_subprocess():
+        """Return a successful async subprocess double for the make-based consumer path."""
         process = mock.Mock()
         process.wait = mock.AsyncMock(return_value=0)
         return process
 
     def test_defaults_to_no_bigquery_without_credentials(self, tmp_path):
+        """Run without credentials by default and suppress BigQuery in the child environment."""
         process = self._successful_subprocess()
         env = {
             key: value
@@ -215,6 +219,7 @@ class TestRunE2e:
         assert create_subprocess.await_args.kwargs["env"]["GCS_SA_JSON_PATH"] == ""
 
     def test_disabled_ignores_all_credentials_and_preserves_parent_env(self, tmp_path):
+        """Ignore every credential source when disabled without mutating files or parent state."""
         process = self._successful_subprocess()
         with (
             tempfile.NamedTemporaryFile(suffix=".json") as explicit,
@@ -255,6 +260,7 @@ class TestRunE2e:
         assert create_subprocess.await_args.kwargs["env"]["GCS_SA_JSON_PATH"] == ""
 
     def test_bigquery_opt_in_resolves_explicit_credentials(self, tmp_path):
+        """Resolve an explicit credential file only when BigQuery coverage is requested."""
         process = self._successful_subprocess()
         with (
             tempfile.NamedTemporaryFile(suffix=".json") as explicit,
@@ -281,6 +287,7 @@ class TestRunE2e:
     def test_bigquery_opt_in_requires_valid_credentials(
         self, credentials_file, expected_error
     ):
+        """Return existing resolver errors and skip make when opt-in credentials are invalid."""
         env = {
             key: value
             for key, value in os.environ.items()
@@ -298,6 +305,7 @@ class TestRunE2e:
         run_make_phase.assert_not_awaited()
 
     def test_include_bigquery_is_appended_and_defaults_false_in_schema(self):
+        """Expose the appended include_bigquery parameter as a false-defaulting boolean."""
         parameters = inspect.signature(run_e2e).parameters
 
         assert list(parameters) == [
