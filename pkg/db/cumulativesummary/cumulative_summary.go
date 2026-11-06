@@ -18,11 +18,16 @@ type summaryStore interface {
 
 // Backfill processes an explicit date range without automatic date detection.
 func Backfill(dbc *db.DB, startDate, endDate civil.Date) error {
-	store := &pgStore{dbc: dbc}
-	return backfillDateRange(store, startDate, endDate)
+	return BackfillForRelease(dbc, startDate, endDate, "")
 }
 
-func backfillDateRange(store summaryStore, startDate, endDate civil.Date) error {
+// BackfillForRelease processes an explicit date range, optionally limited to one release.
+func BackfillForRelease(dbc *db.DB, startDate, endDate civil.Date, release string) error {
+	store := &pgStore{dbc: dbc}
+	return backfillDateRange(store, startDate, endDate, release)
+}
+
+func backfillDateRange(store summaryStore, startDate, endDate civil.Date, release string) error {
 	if startDate.After(endDate) {
 		return nil
 	}
@@ -32,6 +37,19 @@ func backfillDateRange(store summaryStore, startDate, endDate civil.Date) error 
 	releases, err := store.Releases()
 	if err != nil {
 		return fmt.Errorf("querying releases: %w", err)
+	}
+	if release != "" {
+		found := false
+		for _, configuredRelease := range releases {
+			if configuredRelease == release {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("release %q not found", release)
+		}
+		releases = []string{release}
 	}
 
 	log.WithFields(log.Fields{

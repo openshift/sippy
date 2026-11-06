@@ -17,6 +17,7 @@ import (
 type BackfillFlags struct {
 	DBFlags   *flags.PostgresFlags
 	Table     string
+	Release   string
 	StartDate string
 	EndDate   string
 }
@@ -30,8 +31,9 @@ func NewBackfillFlags() *BackfillFlags {
 func (f *BackfillFlags) BindFlags(fs *pflag.FlagSet) {
 	f.DBFlags.BindFlags(fs)
 	fs.StringVar(&f.Table, "table", "", "Table to backfill (daily-totals, cumulative-summaries)")
+	fs.StringVar(&f.Release, "release", "", "Only backfill this release (default: all releases)")
 	fs.StringVar(&f.StartDate, "start-date", "", "Start date (YYYY-MM-DD)")
-	fs.StringVar(&f.EndDate, "end-date", "", "End date (YYYY-MM-DD)")
+	fs.StringVar(&f.EndDate, "end-date", "", "End date (YYYY-MM-DD; defaults to today, or tomorrow for cumulative summaries)")
 }
 
 func NewBackfillCommand() *cobra.Command {
@@ -63,6 +65,8 @@ func NewBackfillCommand() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("invalid --end-date %q: %w", f.EndDate, err)
 				}
+			} else if f.Table == "cumulative-summaries" {
+				endDate = endDate.AddDays(1)
 			}
 
 			if startDate.After(endDate) {
@@ -75,9 +79,10 @@ func NewBackfillCommand() *cobra.Command {
 			}
 
 			log.WithFields(log.Fields{
-				"table": f.Table,
-				"start": startDate,
-				"end":   endDate,
+				"table":   f.Table,
+				"release": f.Release,
+				"start":   startDate,
+				"end":     endDate,
 			}).Info("starting backfill")
 
 			var releases []string
@@ -86,13 +91,26 @@ func NewBackfillCommand() *cobra.Command {
 				Pluck("release", &releases).Error; err != nil {
 				return fmt.Errorf("querying releases: %w", err)
 			}
+			if f.Release != "" {
+				found := false
+				for _, release := range releases {
+					if release == f.Release {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("release %q not found in release_definitions", f.Release)
+				}
+				releases = []string{f.Release}
+			}
 			startTime := time.Date(startDate.Year, startDate.Month, startDate.Day, 0, 0, 0, 0, time.UTC)
 			endTime := time.Date(endDate.Year, endDate.Month, endDate.Day, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
 			if _, err := dbc.EnsurePartitions(releases, startTime, endTime, false); err != nil {
 				return fmt.Errorf("ensuring partitions: %w", err)
 			}
 
-			return sippyserver.BackfillData(dbc, f.Table, startDate, endDate)
+			return sippyserver.BackfillDataForRelease(dbc, f.Table, startDate, endDate, f.Release)
 		},
 	}
 
