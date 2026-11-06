@@ -33,7 +33,7 @@ fi
 echo "==> Setting up MCP server venv..."
 # --seed installs pip. make test and mcp/run.sh call mcp/.venv/bin/pip.
 uv venv --clear --seed mcp/.venv
-uv pip install --python mcp/.venv/bin/python3 -r mcp/requirements.txt -q
+mcp/.venv/bin/pip install --require-hashes -r mcp/requirements.lock -q
 mcp/.venv/bin/pip --version
 mcp/.venv/bin/pytest --version
 

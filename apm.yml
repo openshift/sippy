@@ -6,6 +6,7 @@ targets:
   - cursor
   - gemini
   - opencode
+  - codex
 
 dependencies:
   # External dependencies can be pulled from GitHub, e.g.:
@@ -19,12 +20,16 @@ dependencies:
       command: sh
       args:
         - "-c"
-        - "npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"
+        - "npx @playwright/mcp@0.0.84 --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"
     - name: sippy-dev
       registry: false
       transport: stdio
-      command: mcp/run.sh
-      args: []
+      command: sh
+      args:
+        - "-c"
+        - "exec \"$(git rev-parse --show-toplevel)/mcp/run.sh\""
+      startup_timeout_sec: 300
+      tool_timeout_sec: 14400
     - name: atlassian
       registry: false
       transport: http

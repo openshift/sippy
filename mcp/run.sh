@@ -6,6 +6,23 @@ MIN_PYTHON_MINOR=12
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/.venv"
+REQUIREMENTS_LOCK_FILE="$SCRIPT_DIR/requirements.lock"
+HASH_FILE="$VENV_DIR/.requirements.hash"
+LOCK_FILE="$SCRIPT_DIR/.venv-setup.lock"
+
+_hash_requirements() {
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$REQUIREMENTS_LOCK_FILE" | cut -d' ' -f1
+    elif command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$REQUIREMENTS_LOCK_FILE" | cut -d' ' -f1
+    fi
+}
+
+REQ_HASH=$(_hash_requirements)
+if [ -z "$REQ_HASH" ]; then
+    echo "unable to hash requirements file: $REQUIREMENTS_LOCK_FILE" >&2
+    exit 1
+fi
 
 if ! command -v python3 >/dev/null 2>&1; then
     echo "python3 not found on PATH" >&2
@@ -19,11 +36,73 @@ if [ "$py_ok" != "1" ]; then
     exit 1
 fi
 
-if [ ! -x "$VENV_DIR/bin/python" ]; then
-    rm -rf "$VENV_DIR"
-    python3 -m venv "$VENV_DIR"
-    "$VENV_DIR/bin/pip" install --upgrade pip -q
-    "$VENV_DIR/bin/pip" install -r "$SCRIPT_DIR/requirements.txt" -q
+_venv_ok() {
+    [ -x "$VENV_DIR/bin/python" ] && "$VENV_DIR/bin/python" -c "import dotenv, fastmcp" >/dev/null 2>&1
+}
+
+# Adopt a working venv created before hash tracking existed instead of rebuilding it.
+_record_hash_for_untracked_venv() {
+    if [ -d "$VENV_DIR" ] && [ ! -f "$HASH_FILE" ] && _venv_ok; then
+        echo "$REQ_HASH" > "$HASH_FILE"
+    fi
+}
+
+_needs_install() {
+    if [ ! -d "$VENV_DIR" ]; then
+        return 0
+    fi
+    if [ "$(cat "$HASH_FILE" 2>/dev/null)" != "$REQ_HASH" ]; then
+        return 0
+    fi
+    if ! _venv_ok; then
+        return 0
+    fi
+    return 1
+}
+
+_remove_venv() {
+    if [ -L "$VENV_DIR" ]; then
+        rm -f "$VENV_DIR"
+        return 0
+    fi
+    if [ ! -e "$VENV_DIR" ]; then
+        return 0
+    fi
+    chmod -R u+w "$VENV_DIR" 2>/dev/null || true
+    stale="$SCRIPT_DIR/.venv.stale.$$"
+    mv "$VENV_DIR" "$stale"
+    rm -rf "$stale" 2>/dev/null || true
+}
+
+_setup_venv() {
+    _record_hash_for_untracked_venv
+    if _needs_install; then
+        _remove_venv
+        python3 -m venv "$VENV_DIR"
+        "$VENV_DIR/bin/pip" install --require-hashes -r "$REQUIREMENTS_LOCK_FILE" -q
+        echo "$REQ_HASH" > "$HASH_FILE"
+    fi
+}
+
+# Private mode used only by the lock holder below.
+if [ "${1:-}" = "--sippy-dev-setup-locked" ]; then
+    _setup_venv
+    exit 0
+fi
+
+# fcntl works on Unix systems, including macOS where flock is not installed.
+python3 - "$LOCK_FILE" "$0" <<'PY'
+import fcntl
+import subprocess
+import sys
+
+with open(sys.argv[1], "a+") as lock_file:
+    fcntl.flock(lock_file, fcntl.LOCK_EX)
+    subprocess.run(["/bin/sh", sys.argv[2], "--sippy-dev-setup-locked"], check=True)
+PY
+
+if [ "${1:-}" = "--sippy-dev-setup-only" ]; then
+    exit 0
 fi
 
 exec "$VENV_DIR/bin/python" "$SCRIPT_DIR/server.py" "$@"

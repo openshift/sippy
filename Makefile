@@ -42,13 +42,8 @@ else
 	gotestsum --junitfile $(ARTIFACT_DIR)/junit.xml ./pkg/...
 endif
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; npm test -- --coverage
-	@which python3 > /dev/null 2>&1 || { echo "ERROR: python3 not found in PATH"; exit 1; }
-	cd mcp && \
-		if [ ! -x .venv/bin/python ]; then \
-			python3 -m venv .venv && .venv/bin/pip install --upgrade pip -q; \
-		fi && \
-		.venv/bin/pip install -r requirements.txt -q && \
-		.venv/bin/pytest test_server.py -v $(if $(ARTIFACT_DIR),--junitxml=$(ARTIFACT_DIR)/mcp-junit.xml)
+	cd mcp && ./run.sh --sippy-dev-setup-only && \
+		.venv/bin/pytest test_server.py test_run.py -v $(if $(ARTIFACT_DIR),--junitxml=$(ARTIFACT_DIR)/mcp-junit.xml)
 
 .PHONY: test-bdd
 # Playwright's worker sets FORCE_COLOR, so drop NO_COLOR or Node warns.
@@ -81,15 +76,17 @@ clean:
 
 _uvx_env = $(if $(filter true,$(CI)),UV_CACHE_DIR=/tmp/uv-cache UV_TOOL_DIR=/tmp/uv-tools)
 apm:
-	$(_uvx_env) uvx --from apm-cli@0.13.0 apm install
-	$(_uvx_env) uvx --from apm-cli@0.13.0 apm compile
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm install
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm compile
 
 verify-migrations:
 	./hack/verify-migrations.sh
 
-APM_GENERATED_FILES := .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md pkg/db/query/AGENTS.md pkg/db/query/CLAUDE.md
+APM_GENERATED_FILES := .agents .claude .codex .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md apm.lock.yaml config/AGENTS.md config/CLAUDE.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md mcp/AGENTS.md mcp/CLAUDE.md pkg/db/query/AGENTS.md pkg/db/query/CLAUDE.md
 
-verify-apm: apm
+verify-apm:
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm install --frozen
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm compile
 	@if [ -n "$$(git status --porcelain -- $(APM_GENERATED_FILES))" ]; then \
 		echo "ERROR: Generated APM files are out of date. Run 'make apm' and commit the results."; \
 		git status --short -- $(APM_GENERATED_FILES); \

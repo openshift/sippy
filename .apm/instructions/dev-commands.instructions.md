@@ -16,7 +16,7 @@ go run ./cmd/sippy migrate --database-dsn "$SIPPY_PRODLIKE_DATABASE_DSN"
 
 If no env vars are set, the dev default is: `postgresql://postgres:password@localhost:5432/postgres`
 
-Restore **prod-like** from a backup: **`scripts/restore_prodlike_db.sh`** or MCP **`restore_prodlike_db`**. Instructions and slash-command text are defined in **`.apm/prompts/sippy-dev-restore-prodlike.prompt.md`**; run **`make apm`** after changing that file so **`apm install`** redeploys generated command files. Stop **`sippy serve`** first.
+Restore **prod-like** from a backup: **`scripts/restore_prodlike_db.sh`** or MCP **`restore_prodlike_db`**. Instructions are defined in **`.apm/skills/sippy-dev-restore-prodlike/SKILL.md`**; run **`make apm`** after changing that skill so **`apm install`** redeploys generated command files. Stop **`sippy serve`** first.
 
 ### Linting
 

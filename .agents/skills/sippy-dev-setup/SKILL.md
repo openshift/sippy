@@ -1,0 +1,129 @@
+---
+name: sippy-dev-setup
+description: "Set up the Sippy devcontainer (Podman, env, GCP auth)"
+---
+
+# Sippy dev: devcontainer setup
+
+Interactive setup for the Sippy devcontainer. Automates what can be detected, prompts for what can't.
+
+## Workflow
+
+### 1. Detect OS
+
+```bash
+uname -s
+```
+
+- **Darwin** = macOS
+- **Linux** = Linux
+
+### 2. Check prerequisites
+
+Verify each tool is installed. Report any that are missing and stop.
+
+```bash
+command -v podman
+command -v devcontainer
+```
+
+If `devcontainer` is missing, tell the user: `npm install -g @devcontainers/cli`
+
+### 3. macOS: Podman machine
+
+If macOS, check if podman machine is running:
+
+```bash
+podman machine info
+```
+
+If not initialized or not running, run:
+
+```bash
+podman machine init   # only if no machine exists
+podman machine start
+```
+
+### 4. Linux: Podman socket
+
+If Linux, check if the socket is active:
+
+```bash
+systemctl --user is-active podman.socket
+```
+
+If not active, run:
+
+```bash
+systemctl --user enable --now podman.socket
+```
+
+Also check for `podman-docker`:
+
+```bash
+command -v docker
+```
+
+If missing, suggest installing `podman-docker` (dnf or apt depending on `/etc/os-release`).
+
+### 5. Environment file
+
+Check if `.devcontainer/.env` exists:
+
+```bash
+test -f .devcontainer/.env
+```
+
+If missing, copy from the example:
+
+```bash
+cp .devcontainer/.env.example .devcontainer/.env
+```
+
+Only check `ANTHROPIC_VERTEX_PROJECT_ID` when the user confirms they use Claude Code through Vertex AI. For those users, check whether the key is present and non-empty without reading or printing its value:
+
+```bash
+grep -Eq '^ANTHROPIC_VERTEX_PROJECT_ID=.+$' .devcontainer/.env
+```
+
+If the check fails, tell them to edit `.devcontainer/.env` themselves and wait for confirmation. **Do not** ask for the value directly, read the value, print the value, or write to the file yourself. Do not require or block on this value for other users.
+
+The example file enables `CLAUDE_CODE_USE_VERTEX=1`, which makes Claude Code use Vertex AI instead of the Anthropic API. For users who do not use Vertex AI, check whether it is still enabled:
+
+```bash
+grep -Eq '^CLAUDE_CODE_USE_VERTEX=1$' .devcontainer/.env
+```
+
+If it is, tell them to remove that line (or comment it out) in `.devcontainer/.env` and wait for confirmation.
+
+### 6. Start the container
+
+Determine the right command based on OS:
+
+- **macOS**: `devcontainer up --workspace-folder . --docker-path podman`
+- **Linux** (with `podman-docker`): `devcontainer up --workspace-folder .`
+- **Linux** (without `podman-docker`): `devcontainer up --workspace-folder . --docker-path podman`
+
+Run it. This triggers `init-services.sh` (PostgreSQL + Redis) and `post-create.sh` (Go tools, npm, MCP venv).
+
+### 7. GCP authentication
+
+GCP credentials are mounted from the host's `~/.config/gcloud` directory. If the user hasn't authenticated on the host yet, tell them to run on the host (not inside the container):
+
+```bash
+gcloud auth application-default login
+```
+
+The credentials will be available inside the container automatically after restart.
+
+### 8. Summary
+
+Print a summary of what was set up:
+
+- Container status
+- PostgreSQL: `localhost:5432` (databases: `postgres` for seed data, `prodlike` for prod-like data)
+- Data mode: `SIPPY_DATA_MODE` (default: `seed`; set to `prod-like` for BigQuery-backed operation)
+- Redis: `localhost:6379`
+- API server: `localhost:8080` (start with `/sippy-dev-serve`)
+- React dev server: `localhost:3000` (start with `/sippy-dev-frontend`)
+- GCP auth status

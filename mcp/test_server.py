@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import os
 import secrets
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -9,6 +10,7 @@ from unittest import mock
 
 import pytest
 
+import server
 from server import (
     REPO_ROOT,
     _data_mode,
@@ -19,6 +21,7 @@ from server import (
     _repo_path,
     _resolve_bigquery_creds,
     _validate_dsn,
+    _validate_prodlike_backup,
     _validate_redis_url,
     _trim,
     _wait_for_url,
@@ -27,6 +30,21 @@ from server import (
 )
 
 E2E_SCRIPT = REPO_ROOT / "scripts" / "e2e.sh"
+
+
+class FakeProcess:
+    """Stand-in for an asyncio subprocess that exits successfully at once."""
+
+    returncode = 0
+
+    async def wait(self) -> int:
+        return 0
+
+    async def terminate(self) -> None:
+        return None
+
+    async def kill(self) -> None:
+        return None
 
 
 class TestRepoPath:
@@ -74,6 +92,263 @@ class TestRepoPath:
     def test_normalizes_inner_dotdot(self):
         result = _repo_path("config/../config/views.yaml")
         assert result == (REPO_ROOT / "config" / "views.yaml").resolve()
+
+
+class TestValidateProdlikeBackup:
+    def test_ordinary_directory_rejected(self):
+        error = _validate_prodlike_backup(REPO_ROOT / "mcp")
+        assert error is not None
+        assert "toc.dat not found" in error
+
+    def test_directory_backup_with_toc_accepted(self, tmp_path: Path):
+        backup = tmp_path / "backup.dump"
+        backup.mkdir()
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        assert _validate_prodlike_backup(backup) is None
+
+    def test_sql_file_accepted(self, tmp_path: Path):
+        backup = tmp_path / "backup.sql"
+        backup.write_text("", encoding="utf-8")
+        assert _validate_prodlike_backup(backup) is None
+
+    def test_dump_file_accepted(self, tmp_path: Path):
+        backup = tmp_path / "backup.dump"
+        backup.write_text("", encoding="utf-8")
+        assert _validate_prodlike_backup(backup) is None
+
+    def test_missing_path_rejected(self, tmp_path: Path):
+        error = _validate_prodlike_backup(tmp_path / "missing")
+        assert error is not None
+        assert "not found" in error
+
+
+def _restore_with_stub_subprocess(backup_path: Path | str):
+    """Call restore_prodlike_db without spawning the restore script.
+
+    Returns the tool result and the subprocess mock, so tests can assert the
+    script was never launched.
+    """
+    create_subprocess = mock.AsyncMock(return_value=FakeProcess())
+    with mock.patch("server.asyncio.create_subprocess_exec", create_subprocess):
+        result = asyncio.run(server.restore_prodlike_db(str(backup_path)))
+    return result, create_subprocess
+
+
+class TestRestoreProdlikeDb:
+    def test_ordinary_directory_rejected_before_restore_script(self):
+        result, create_subprocess = _restore_with_stub_subprocess(
+            REPO_ROOT / "mcp"
+        )
+        assert "toc.dat not found" in result
+        create_subprocess.assert_not_awaited()
+
+    def test_missing_path_rejected_before_restore_script(self):
+        result, create_subprocess = _restore_with_stub_subprocess(
+            REPO_ROOT / "missing-backup"
+        )
+        assert "not found" in result
+        create_subprocess.assert_not_awaited()
+
+    def test_empty_path_rejected_before_restore_script(self):
+        result, create_subprocess = _restore_with_stub_subprocess("")
+        assert result == "backup path is empty"
+        create_subprocess.assert_not_awaited()
+
+    def test_repository_root_rejected_before_restore_script(self):
+        result, create_subprocess = _restore_with_stub_subprocess(".")
+        assert "repository root" in result
+        create_subprocess.assert_not_awaited()
+
+    def _run_restore_script(
+        self,
+        tmp_path: Path,
+        backup_name: str,
+        dsn: str = "postgresql://postgres:password@localhost:5432/prodlike",
+        pg_restore_list_exit: int = 0,
+    ) -> tuple[subprocess.CompletedProcess, str]:
+        """Run a copy of restore_prodlike_db.sh with logging psql/pg_restore stubs.
+
+        ``pg_restore_list_exit`` sets the stub's exit code for ``pg_restore --list``
+        (archive validation). Returns the process result and the logged commands.
+        """
+        repo = tmp_path / "repo"
+        script_dir = repo / "scripts"
+        script_dir.mkdir(parents=True)
+        shutil.copy2(
+            REPO_ROOT / "scripts" / "restore_prodlike_db.sh",
+            script_dir / "restore_prodlike_db.sh",
+        )
+
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        for command in ("bash", "dirname", "realpath", "sed"):
+            source = shutil.which(command)
+            assert source is not None
+            os.symlink(source, bin_dir / command)
+        command_log = tmp_path / "commands.log"
+        command_log.write_text("", encoding="utf-8")
+        for command in ("psql", "pg_restore"):
+            stub = bin_dir / command
+            stub.write_text(
+                f'#!/bin/sh\necho "{command} $*" >> "$COMMAND_LOG"\n'
+                'if [ "$1" = "--list" ]; then exit "$PG_RESTORE_LIST_EXIT"; fi\n',
+                encoding="utf-8",
+            )
+            stub.chmod(0o755)
+
+        result = subprocess.run(
+            ["bash", str(script_dir / "restore_prodlike_db.sh"), backup_name],
+            cwd=repo,
+            env={
+                "PATH": str(bin_dir),
+                "HOME": str(tmp_path),
+                "COMMAND_LOG": str(command_log),
+                "PG_RESTORE_LIST_EXIT": str(pg_restore_list_exit),
+                "SIPPY_PRODLIKE_DATABASE_DSN": dsn,
+            },
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return result, command_log.read_text(encoding="utf-8")
+
+    def test_valid_directory_backup_reaches_pg_restore(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "valid.dump"
+        backup.mkdir(parents=True)
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        result, commands = self._run_restore_script(tmp_path, "backups/valid.dump")
+        assert result.returncode == 0, result.stderr
+        assert "pg_restore --no-owner" in commands
+
+    def test_sql_backup_reaches_psql(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "backup.sql"
+        backup.parent.mkdir(parents=True)
+        backup.write_text("", encoding="utf-8")
+        result, commands = self._run_restore_script(tmp_path, "backups/backup.sql")
+        assert result.returncode == 0, result.stderr
+        assert "psql " in commands
+        assert "backup.sql" in commands
+
+    def test_script_rejects_ordinary_directory_before_drop(self, tmp_path: Path):
+        (tmp_path / "repo" / "config").mkdir(parents=True)
+        result, commands = self._run_restore_script(tmp_path, "config")
+        assert result.returncode != 0
+        assert "toc.dat not found" in result.stderr
+        assert "psql" not in commands
+
+    def test_script_rejects_invalid_archive_before_drop(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "broken.dump"
+        backup.parent.mkdir(parents=True)
+        backup.write_text("not an archive", encoding="utf-8")
+        result, commands = self._run_restore_script(
+            tmp_path, "backups/broken.dump", pg_restore_list_exit=1
+        )
+        assert result.returncode != 0
+        assert "not a valid pg_restore archive" in result.stderr
+        assert "psql" not in commands
+
+    def test_script_logs_no_dsn_credentials(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "backup.sql"
+        backup.parent.mkdir(parents=True)
+        backup.write_text("", encoding="utf-8")
+        user_password = secrets.token_urlsafe(24)
+        query_password = secrets.token_urlsafe(24)
+        result, _ = self._run_restore_script(
+            tmp_path,
+            "backups/backup.sql",
+            dsn=(
+                f"postgresql://postgres:{user_password}@localhost:5432/prodlike"
+                f"?sslmode=disable&password={query_password}"
+            ),
+        )
+        assert result.returncode == 0, result.stderr
+        assert user_password not in result.stdout
+        assert query_password not in result.stdout
+        assert "prodlike on localhost:5432" in result.stdout
+
+    def test_admin_dsn_keeps_query_only_password_and_port(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "valid.dump"
+        backup.mkdir(parents=True)
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        password = secrets.token_urlsafe(24)
+        query = f"user=postgres&password={password}&port=5433"
+        result, commands = self._run_restore_script(
+            tmp_path,
+            "backups/valid.dump",
+            dsn=f"postgresql://localhost/prodlike?{query}",
+        )
+        assert result.returncode == 0, result.stderr
+        assert f"psql postgresql://localhost/postgres?{query} " in commands
+        assert (
+            f"pg_restore --no-owner --exit-on-error -d postgresql://localhost/prodlike?{query} "
+            in commands
+        )
+        assert password not in result.stdout
+
+    def test_script_accepts_encoded_credential_values(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "valid.dump"
+        backup.mkdir(parents=True)
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        result, commands = self._run_restore_script(
+            tmp_path,
+            "backups/valid.dump",
+            dsn=(
+                "postgresql://postgres:p%40ss@localhost:5432/prodlike"
+                "?sslmode=disable&password=p%26ss"
+            ),
+        )
+        assert result.returncode == 0, result.stderr
+        assert "pg_restore --no-owner" in commands
+
+    @pytest.mark.parametrize(
+        "dsn",
+        [
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432,db.internal:5432/prodlike",
+                id="multi-host",
+            ),
+            pytest.param(
+                "postgresql://db.internal/postgres?x=@localhost:5432/prodlike",
+                id="userinfo-smuggled-host",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike?host=db.internal",
+                id="host-query-parameter",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost.internal:5432/prodlike",
+                id="host-suffix",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike?ho%73t=db.internal",
+                id="encoded-host-parameter",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike?%68ostaddr=db.internal",
+                id="encoded-hostaddr-parameter",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike?serv%69ce=db.internal",
+                id="encoded-service-parameter",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike"
+                "?sslmode=disable&db%6Eame=db.internal",
+                id="encoded-dbname-parameter",
+            ),
+        ],
+    )
+    def test_script_rejects_non_local_dsn_before_drop(self, tmp_path: Path, dsn: str):
+        backup = tmp_path / "repo" / "backups" / "valid.dump"
+        backup.mkdir(parents=True)
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        result, commands = self._run_restore_script(
+            tmp_path, "backups/valid.dump", dsn=dsn
+        )
+        assert result.returncode != 0
+        assert "SIPPY_PRODLIKE_DATABASE_DSN" in result.stderr
+        assert "db.internal" not in result.stdout + result.stderr
+        assert commands == ""
 
 
 class TestTrim:

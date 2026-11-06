@@ -79,6 +79,27 @@ def _validate_redis_url(url: str) -> str | None:
     return None
 
 
+def _validate_prodlike_backup(backup_p: Path) -> str | None:
+    """Return an error if ``backup_p`` is not a restorable backup, else None.
+
+    Runs before the restore script drops ``prodlike``, so ordinary directories
+    (including the repo root) and unknown file types are rejected up front.
+    """
+    if backup_p == REPO_ROOT.resolve():
+        return "backup path must not be the repository root"
+    if backup_p.is_dir():
+        if not (backup_p / "toc.dat").is_file():
+            return f"invalid directory backup, toc.dat not found: {backup_p}"
+        return None
+    if backup_p.is_file():
+        if backup_p.suffix == ".sql":
+            return None
+        if backup_p.suffix == ".dump":
+            return None
+        return f"unsupported backup file type: {backup_p}"
+    return f"backup path not found: {backup_p}"
+
+
 def _data_mode() -> str:
     """Return the active data mode: 'seed' or 'prod-like'.
 
@@ -726,9 +747,10 @@ async def restore_prodlike_db(
     """Drop and recreate the ``prodlike`` database from a backup under the repo.
 
     ``backup_file`` is resolved with the same path rules as other MCP tools (repo-relative,
-    no ``..``). Supports custom-format ``.dump`` (``pg_restore``) or ``.sql`` (``psql -f``).
+    no ``..``). Supports custom-format ``.dump`` files, directory backups containing
+    ``toc.dat``, and ``.sql`` files.
 
-    Uses ``SIPPY_PRODLIKE_DATABASE_DSN`` (must end with ``/prodlike``; host must be
+    Uses ``SIPPY_PRODLIKE_DATABASE_DSN`` (must end with ``/prodlike``; single host,
     ``localhost`` or ``sippy-postgres``). Stop ``sippy serve`` (and anything else using
     ``prodlike``) first. Large restores: set ``timeout_seconds=0`` for no limit.
 
@@ -736,12 +758,15 @@ async def restore_prodlike_db(
     ``go run ./cmd/sippy migrate`` against ``SIPPY_PRODLIKE_DATABASE_DSN`` if the schema
     may trail the dump.
     """
+    if not backup_file.strip():
+        return "backup path is empty"
     try:
         backup_p = _repo_path(backup_file)
     except ValueError as e:
         return str(e)
-    if not backup_p.is_file():
-        return f"backup file not found: {backup_p}"
+    error = _validate_prodlike_backup(backup_p)
+    if error:
+        return error
 
     script = REPO_ROOT / "scripts" / "restore_prodlike_db.sh"
     if not script.is_file():

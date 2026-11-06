@@ -4,12 +4,17 @@
       "command": "sh",
       "args": [
         "-c",
-        "npx @playwright/mcp@latest --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"
+        "npx @playwright/mcp@0.0.84 --viewport-size 1440,900 ${CHROME_PATH:+--executable-path \"$CHROME_PATH\"}"
       ]
     },
     "sippy-dev": {
-      "command": "mcp/run.sh",
-      "args": []
+      "command": "sh",
+      "args": [
+        "-c",
+        "exec \"$(git rev-parse --show-toplevel)/mcp/run.sh\""
+      ],
+      "startup_timeout_sec": 300,
+      "tool_timeout_sec": 14400
     },
     "atlassian": {
       "httpUrl": "https://mcp.atlassian.com/v1/mcp"

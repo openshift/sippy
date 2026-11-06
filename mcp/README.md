@@ -1,20 +1,26 @@
 # Sippy dev MCP server
 
-Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor** and **Claude Code**.
+Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor**, **Claude Code**, and **Codex**.
 
-Simple commands (migrate, lint, test) are documented in project instructions via [APM](../apm.yml) and can be run directly — see `.apm/instructions/dev-commands.instructions.md`.
+Simple commands (migrate, lint, test) are documented in project instructions via [APM](../apm.yml) and can be run directly; see `.apm/instructions/dev-commands.instructions.md`.
 
 ## Setup
 
 **`mcp/run.sh`** is the entry point. It auto-creates the virtualenv (`mcp/.venv`) and installs dependencies on first run. No manual setup is required. The devcontainer's `post-create.sh` pre-warms the venv with `uv venv --seed` so `mcp/.venv/bin/pip` exists. `make test` and `mcp/run.sh` call that pip. `uv venv` without `--seed` does not install it.
 
 - **Python 3.12** required. The devcontainer image installs it; on macOS use `brew install python@3.12`.
+- Dependencies are installed from the hashed lockfile at `mcp/requirements.lock`.
+- Regenerate the lockfile after changing `mcp/requirements.txt`:
+
+  ```bash
+  uv pip compile mcp/requirements.txt --generate-hashes --python-version 3.12 --output-file mcp/requirements.lock
+  ```
+
 - **Manual venv setup** (if you prefer not to use `run.sh`):
 
   ```bash
   python3.12 -m venv mcp/.venv
-  mcp/.venv/bin/pip install --upgrade pip
-  mcp/.venv/bin/pip install -r mcp/requirements.txt
+  mcp/.venv/bin/pip install --require-hashes -r mcp/requirements.lock
   ```
 
 ## Editor configuration
@@ -23,8 +29,9 @@ Simple commands (migrate, lint, test) are documented in project instructions via
 | ----------- | ----------------------- |
 | Cursor      | `.cursor/mcp.json`      |
 | Claude Code | `.mcp.json` (repo root) |
+| Codex       | `.codex/config.toml`    |
 
-Both point to `mcp/run.sh`. This works on the host and inside the devcontainer without path changes.
+All point to `mcp/run.sh`. This works on the host and inside the devcontainer without path changes.
 
 ## Server id in Cursor
 
@@ -40,10 +47,12 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 | `restore_prodlike_db`| `scripts/restore_prodlike_db.sh` (drop/recreate `prodlike` from backup)    | `sippy-dev-logs/restore_prodlike_db.log`|
 | `sippy_serve`        | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)     | `sippy-dev-logs/sippy_serve.log`        |
 | `sippy_ng_start`     | Background `npm start` in `sippy-ng/` (typically port **3000**)             | `sippy-dev-logs/sippy_ng_start.log`     |
-| `sippy_stop`         | Stops background `sippy_serve` and `sippy_ng_start` processes               | —                                       |
+| `sippy_stop`         | Stops background `sippy_serve` and `sippy_ng_start` processes               | none                                    |
 | `run_e2e`            | `make e2e` (BigQuery coverage is opt-in)                                    | `sippy-dev-logs/run_e2e.log`            |
 
 Optional parameters (timeouts, paths, DSNs, etc.) are documented on each function in **`server.py`**.
+
+`restore_prodlike_db` takes a repo-relative backup path. Supported formats are `.sql` files (restored with `psql`), custom-format `.dump` files, and directory backups containing `toc.dat` (both restored with `pg_restore`). The backup is validated before `prodlike` is dropped, so an ordinary directory or unreadable archive leaves the database untouched. The same rules apply when running `scripts/restore_prodlike_db.sh <backup-path>` directly.
 
 > **Cost caution:** `regression_cache` issues BigQuery queries that cost real money. Run it only when explicitly needed and never more than once per request.
 
@@ -60,13 +69,17 @@ Optional parameters (timeouts, paths, DSNs, etc.) are documented on each functio
 
 `sippy_serve` and `sippy_ng_start` spawn detached processes. A second start is refused if a matching process is already running (see `server.py` for detection logic).
 
-## Cursor skills
+## Agent skills
 
-Agent-oriented shortcuts live under **`.cursor/skills/`**, for example:
+Agent-oriented shortcuts are defined in **`.apm/skills/`** and deployed by **`make apm`** to editor command and skill directories, including **`.claude/commands/`**, **`.claude/skills/`**, **`.agents/skills/`**, and **`.codex/`**, for example:
 
 - `sippy-dev-migrate`, `sippy-dev-regression-cache`, `sippy-dev-serve`, `sippy-dev-frontend`
 - `sippy-dev-app` (backend + frontend)
-- `sippy-dev-tests` (order: `CI=true make lint` → `make test` → `make e2e`)
+- `sippy-dev-tests` (order: `make lint` → `make test` → `make e2e`)
+- `sippy-generate-release-views` (create next-release Component Readiness views from an existing release)
+- `sippy-update-ga-release-views` (switch a newly GA release's views from `now` to `ga` dates)
+
+Skills that take arguments accept them positionally and prompt for anything omitted. For example, `/sippy-generate-release-views 4.21 4.22` copies the 4.21 views to 4.22 (Codex users can invoke the skill by name with the same arguments). It previews changes with `python3 scripts/generate_release_views.py <source> <target>` and asks for confirmation before writing `config/views.yaml`.
 
 ## Changing the server
 

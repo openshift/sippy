@@ -1,6 +1,6 @@
 ---
 description: Testing guidelines and constraints for Sippy
-globs: "**/*_test.go"
+globs: **/*_test.go
 ---
 
 * Use `go vet` and `go test ./pkg/...` to validate changes before resorting to a full e2e run.
