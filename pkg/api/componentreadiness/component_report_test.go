@@ -1998,3 +1998,75 @@ func TestGetCacheKeySpotCheckSamples(t *testing.T) {
 		assert.Equal(t, []string{"y", "x"}, variants["JobTier"])
 	})
 }
+
+// TestValidateSampleStatus guards the mass closure path: a release window whose sample query
+// returned nothing must be reported as an error, not analyzed into an empty report where every
+// regression looks resolved. Spot-check, pull request and payload requests are the exceptions,
+// since each legitimately leaves the release window sample empty.
+func TestValidateSampleStatus(t *testing.T) {
+	windowRelease := reqopts.Release{
+		Name:  "4.16",
+		Start: time.Date(2026, 10, 25, 0, 0, 0, 0, time.UTC),
+		End:   time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
+	}
+	prRelease := windowRelease
+	prRelease.PullRequestOptions = &reqopts.PullRequest{Org: "openshift", Repo: "sippy", PRNumber: "4127"}
+	payloadRelease := windowRelease
+	payloadRelease.PayloadOptions = &reqopts.Payload{Tags: []string{"4.16.0-0.nightly-2026-11-01-000000"}}
+	spotCheckSamples := []reqopts.SpotCheckJobSampleOpts{{
+		Name:            "spotcheck-30d",
+		Release:         windowRelease,
+		IncludeVariants: map[string][]string{"JobTier": {"spotcheck-30d"}},
+	}}
+
+	tests := []struct {
+		name        string
+		sampleCount int
+		release     reqopts.Release
+		spotCheck   []reqopts.SpotCheckJobSampleOpts
+		wantErr     bool
+	}{
+		{
+			name:        "release window with no sample rows is an error",
+			sampleCount: 0,
+			release:     windowRelease,
+			wantErr:     true,
+		},
+		{
+			name:        "release window with sample rows is fine",
+			sampleCount: 1,
+			release:     windowRelease,
+		},
+		{
+			name:        "spot-check request may have an empty release window sample",
+			sampleCount: 0,
+			release:     windowRelease,
+			spotCheck:   spotCheckSamples,
+		},
+		{
+			name:        "pull request sample may be empty",
+			sampleCount: 0,
+			release:     prRelease,
+		},
+		{
+			name:        "payload sample may be empty",
+			sampleCount: 0,
+			release:     payloadRelease,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateSampleStatus(tc.sampleCount, reqopts.RequestOptions{
+				SampleRelease:       tc.release,
+				SpotCheckJobSamples: tc.spotCheck,
+			})
+			if !tc.wantErr {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, errEmptySampleStatus)
+			assert.Contains(t, err.Error(), "4.16")
+		})
+	}
+}

@@ -44,6 +44,33 @@ const (
 	TestDetailsReportCacheKeyPrefix = "TestDetailsReportV2~"
 )
 
+// errEmptySampleStatus reports that the sample side of a report came back with no test status
+// rows at all. A healthy release window yields thousands of rows, so an empty sample means the
+// data was unavailable (while the cumulative summary tables are rebuilt, for example) rather
+// than that every test passed. Reporting it as an error keeps regression tracking from reading
+// an empty report as "every regression resolved".
+var errEmptySampleStatus = errors.New("sample test status query returned no rows")
+
+// validateSampleStatus rejects a report whose release window sample query returned nothing.
+// sampleCount is the number of sample test status rows read for reqOpts.SampleRelease, counted
+// before any spot-check rows are merged in.
+//
+// Three kinds of request legitimately have an empty release window sample and are exempt:
+// spot-check requests draw their rows from other windows and job tiers, so those rows may be
+// the only ones the report has; pull request and payload samples have no rows until their jobs
+// run.
+func validateSampleStatus(sampleCount int, reqOpts reqopts.RequestOptions) error {
+	sampleRelease := reqOpts.SampleRelease
+	if sampleCount > 0 ||
+		len(reqOpts.SpotCheckJobSamples) > 0 ||
+		sampleRelease.PullRequestOptions != nil ||
+		sampleRelease.PayloadOptions != nil {
+		return nil
+	}
+	return fmt.Errorf("%w: release %s between %s and %s",
+		errEmptySampleStatus, sampleRelease.Name, sampleRelease.Start, sampleRelease.End)
+}
+
 type GeneratorType string
 
 var (
@@ -428,6 +455,14 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 
 	var errs []error
 	for err := range errCh {
+		errs = append(errs, err)
+	}
+
+	// Validate before spot-check rows are merged in, so the count reflects what the release
+	// window itself returned. Requests that configure spot-check samples are exempt inside
+	// validateSampleStatus, since for those the spot-check rows may be the only ones there are.
+	if err := validateSampleStatus(len(sampleStatus), c.ReqOptions); err != nil {
+		log.WithError(err).Error("refusing to build a report with no sample results")
 		errs = append(errs, err)
 	}
 
