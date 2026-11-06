@@ -80,6 +80,11 @@ def _validate_redis_url(url: str) -> str | None:
 
 
 def _validate_prodlike_backup(backup_p: Path) -> str | None:
+    """Return an error if ``backup_p`` is not a restorable backup, else None.
+
+    Runs before the restore script drops ``prodlike``, so ordinary directories
+    (including the repo root) and unknown file types are rejected up front.
+    """
     if backup_p == REPO_ROOT.resolve():
         return "backup path must not be the repository root"
     if backup_p.is_dir():

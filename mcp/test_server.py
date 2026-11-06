@@ -33,6 +33,8 @@ E2E_SCRIPT = REPO_ROOT / "scripts" / "e2e.sh"
 
 
 class FakeProcess:
+    """Stand-in for an asyncio subprocess that exits successfully at once."""
+
     returncode = 0
 
     async def wait(self) -> int:
@@ -121,6 +123,11 @@ class TestValidateProdlikeBackup:
 
 
 def _restore_with_stub_subprocess(backup_path: Path | str):
+    """Call restore_prodlike_db without spawning the restore script.
+
+    Returns the tool result and the subprocess mock, so tests can assert the
+    script was never launched.
+    """
     create_subprocess = mock.AsyncMock(return_value=FakeProcess())
     with mock.patch("server.asyncio.create_subprocess_exec", create_subprocess):
         result = asyncio.run(server.restore_prodlike_db(str(backup_path)))
@@ -159,6 +166,11 @@ class TestRestoreProdlikeDb:
         dsn: str = "postgresql://postgres:password@localhost:5432/prodlike",
         pg_restore_list_exit: int = 0,
     ) -> tuple[subprocess.CompletedProcess, str]:
+        """Run a copy of restore_prodlike_db.sh with logging psql/pg_restore stubs.
+
+        ``pg_restore_list_exit`` sets the stub's exit code for ``pg_restore --list``
+        (archive validation). Returns the process result and the logged commands.
+        """
         repo = tmp_path / "repo"
         script_dir = repo / "scripts"
         script_dir.mkdir(parents=True)
@@ -253,6 +265,25 @@ class TestRestoreProdlikeDb:
         assert user_password not in result.stdout
         assert query_password not in result.stdout
         assert "prodlike on localhost:5432" in result.stdout
+
+    def test_admin_dsn_keeps_query_only_password_and_port(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "valid.dump"
+        backup.mkdir(parents=True)
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        password = secrets.token_urlsafe(24)
+        query = f"user=postgres&password={password}&port=5433"
+        result, commands = self._run_restore_script(
+            tmp_path,
+            "backups/valid.dump",
+            dsn=f"postgresql://localhost/prodlike?{query}",
+        )
+        assert result.returncode == 0, result.stderr
+        assert f"psql postgresql://localhost/postgres?{query} " in commands
+        assert (
+            f"pg_restore --no-owner --exit-on-error -d postgresql://localhost/prodlike?{query} "
+            in commands
+        )
+        assert password not in result.stdout
 
     def test_script_accepts_encoded_credential_values(self, tmp_path: Path):
         backup = tmp_path / "repo" / "backups" / "valid.dump"

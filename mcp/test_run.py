@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -147,6 +149,7 @@ def test_healthy_venv_without_hash_is_preserved(tmp_path: Path):
 
 
 def _launcher_stub_bin(tmp_path: Path) -> Path:
+    """Create a PATH directory exposing only the tools run.sh needs."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     for command in (
@@ -167,6 +170,11 @@ def _launcher_stub_bin(tmp_path: Path) -> Path:
 
 
 def _write_python_stub(bin_dir: Path) -> None:
+    """Install a python3 stub that fakes venv creation and logs pip calls.
+
+    ``python3 -`` is passed through to the real interpreter so run.sh's
+    fcntl lock helper still works.
+    """
     real_python = shutil.which("python3")
     assert real_python is not None
     python_stub = """#!/bin/sh
@@ -205,6 +213,7 @@ exit 1
 
 
 def _run_setup_only(script_dir: Path, env: dict[str, str]):
+    """Run the launcher in setup-only mode and capture its output."""
     return subprocess.run(
         ["/bin/sh", str(script_dir / "run.sh"), "--sippy-dev-setup-only"],
         cwd=script_dir.parent,
@@ -315,3 +324,44 @@ def test_requirements_hashing_failure_fails_with_clear_error(tmp_path: Path):
     )
     assert result.returncode != 0
     assert f"unable to hash requirements file: {requirements}" in result.stderr
+
+
+def test_setup_only_waits_for_held_setup_lock(tmp_path: Path):
+    repo = tmp_path / "repo"
+    script_dir = repo / "mcp"
+    script_dir.mkdir(parents=True)
+    shutil.copy2(Path(__file__).with_name("run.sh"), script_dir / "run.sh")
+    (script_dir / "requirements.lock").write_text("locked\n", encoding="utf-8")
+
+    bin_dir = _launcher_stub_bin(tmp_path)
+    _write_python_stub(bin_dir)
+    pip_log = tmp_path / "pip.log"
+    env = {
+        "PATH": str(bin_dir),
+        "HOME": str(tmp_path),
+        "PIP_LOG": str(pip_log),
+        "MIN_PYTHON_MAJOR": "3",
+        "MIN_PYTHON_MINOR": "12",
+    }
+
+    with open(script_dir / ".venv-setup.lock", "a+") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        process = subprocess.Popen(
+            ["/bin/sh", str(script_dir / "run.sh"), "--sippy-dev-setup-only"],
+            cwd=repo,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            time.sleep(1)
+            assert process.poll() is None, process.communicate()
+            assert not (script_dir / ".venv").exists()
+            assert not pip_log.exists()
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+    _, stderr = process.communicate(timeout=30)
+    assert process.returncode == 0, stderr
+    assert pip_log.is_file()

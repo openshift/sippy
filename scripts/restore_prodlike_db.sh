@@ -61,8 +61,9 @@ for param in ${query_params[@]+"${query_params[@]}"}; do
 		;;
 	esac
 done
+# Keep the query on the admin DSN so query-only credentials and port reach both connections.
 clean="${prodl%%\?*}"
-admin="${clean%/prodlike}/postgres"
+admin="${clean%/prodlike}/postgres${query:+?${query}}"
 
 # Validate the backup before the destructive DROP DATABASE below.
 if [[ -f "${backup}" && "${backup}" == *.sql ]]; then
