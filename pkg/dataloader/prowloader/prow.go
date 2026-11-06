@@ -70,6 +70,9 @@ type ProwLoader struct {
 	loadSince            *time.Time
 	labelsCache          map[string]pq.StringArray
 	currentDate          civil.Date
+	historicalStart      *time.Time
+	historicalEnd        *time.Time
+	quietHistoricalLogs  bool
 }
 
 func New(
@@ -161,6 +164,12 @@ func (pl *ProwLoader) Name() string {
 
 func (pl *ProwLoader) Errors() []error {
 	return pl.errors
+}
+
+// SetQuietHistoricalLogs suppresses per-suite messages that are useful during
+// live loading but too noisy when processing thousands of historical runs.
+func (pl *ProwLoader) SetQuietHistoricalLogs(quiet bool) {
+	pl.quietHistoricalLogs = quiet
 }
 
 // partitionStartDate computes the start of the date range for which partitions must
@@ -828,20 +837,26 @@ func (pl *ProwLoader) accumulateAndWrite(ctx context.Context, results <-chan *pg
 }
 
 func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, error) {
-	// this err validation has moved up
-	// and will exit before we save / update the ProwJob
-	// now, any concerns?
+	path, err := GCSPathFromProwJobURL(prowJobURL)
+	if err != nil {
+		return "", err
+	}
+	pjLog.Debugf("gcs bucket path: %+v", path)
+	return path, nil
+}
+
+// GCSPathFromProwJobURL extracts the object prefix used by the loader from a
+// Prow job URL without requiring a logger or database state.
+func GCSPathFromProwJobURL(prowJobURL string) (string, error) {
 	pjURL, err := url.Parse(prowJobURL)
 	if err != nil {
 		return "", err
 	}
 
 	path := util.GCSObjectPathFromURL(prowJobURL)
-	pjLog.Debugf("gcs bucket path: %+v", path)
 	if path == "" {
 		return "", fmt.Errorf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
 	}
-
 	return path, nil
 }
 
@@ -1019,7 +1034,9 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 	testCases := make(map[testCaseKey]*types.TestCaseEntry)
 	for _, suite := range suites.Suites {
 		if !db.IsSuiteImportable(suite.Name) {
-			log.Infof("skipping suite %q as it's not listed for import", suite.Name)
+			if !pl.quietHistoricalLogs {
+				log.Infof("skipping suite %q as it's not listed for import", suite.Name)
+			}
 			continue
 		}
 		extractTestCases(suite, testCases)
@@ -1032,7 +1049,9 @@ func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJ
 		return nil, 0, 0, "", fmt.Errorf("synthetic suite %q is missing from the importable list", syntheticSuite.Name)
 	}
 	extractTestCases(syntheticSuite, testCases)
-	log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
+	if !pl.quietHistoricalLogs {
+		log.Infof("synthetic suite had %d tests", syntheticSuite.NumTests)
+	}
 
 	failures := 0
 	flakes := 0
@@ -1103,6 +1122,23 @@ func extractTestCases(suite *junit.TestSuite, testCases map[testCaseKey]*types.T
 	for _, c := range suite.Children {
 		extractTestCases(c, testCases)
 	}
+}
+
+// CanonicalizeJUnitSuites applies the loader's existing XML test rules for
+// consumers that need to inspect, but not persist, canonical test data.
+func CanonicalizeJUnitSuites(suites *junit.TestSuites) []types.TestCaseEntry {
+	testCases := make(map[testCaseKey]*types.TestCaseEntry)
+	for _, suite := range suites.Suites {
+		if !db.IsSuiteImportable(suite.Name) {
+			continue
+		}
+		extractTestCases(suite, testCases)
+	}
+	results := make([]types.TestCaseEntry, 0, len(testCases))
+	for _, testCase := range testCases {
+		results = append(results, *testCase)
+	}
+	return results
 }
 
 // normalizeLifecycle returns the lifecycle value from JUnit XML, defaulting
