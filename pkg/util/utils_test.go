@@ -133,6 +133,77 @@ func TestParseCRReleaseTime(t *testing.T) {
 	}
 }
 
+// TestParseCRReleaseTimeAt pins the reference time so relative windows and "today" rounding
+// resolve against it rather than the wall clock.
+func TestParseCRReleaseTimeAt(t *testing.T) {
+	beforeMidnight := time.Date(2026, 3, 10, 23, 59, 0, 0, time.UTC)
+	afterBoundary := time.Date(2026, 3, 10, 17, 30, 0, 0, time.UTC)
+
+	tests := []struct {
+		name           string
+		now            time.Time
+		timeStr        string
+		isStart        bool
+		roundingFactor time.Duration
+		roundingOffset time.Duration
+		expectedTime   time.Time
+	}{
+		{
+			name:         "now-3d start uses pinned day",
+			now:          beforeMidnight,
+			timeStr:      "now-3d",
+			isStart:      true,
+			expectedTime: time.Date(2026, 3, 7, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:         "now end without rounding rounds up pinned day",
+			now:          beforeMidnight,
+			timeStr:      "now",
+			expectedTime: time.Date(2026, 3, 10, 23, 59, 59, 0, time.UTC),
+		},
+		{
+			name:           "now end with rounding aligns to pinned boundary",
+			now:            afterBoundary,
+			timeStr:        "now",
+			roundingFactor: 12 * time.Hour,
+			roundingOffset: 4 * time.Hour,
+			expectedTime:   time.Date(2026, 3, 10, 16, 0, 0, 0, time.UTC),
+		},
+		{
+			name:           "RFC3339 on pinned day is rounded",
+			now:            afterBoundary,
+			timeStr:        "2026-03-10T20:00:00Z",
+			roundingFactor: 12 * time.Hour,
+			roundingOffset: 4 * time.Hour,
+			expectedTime:   time.Date(2026, 3, 10, 16, 0, 0, 0, time.UTC),
+		},
+		{
+			name:           "RFC3339 with non-UTC offset on pinned UTC day is rounded",
+			now:            afterBoundary,
+			timeStr:        "2026-03-11T02:30:00+09:00",
+			roundingFactor: 12 * time.Hour,
+			roundingOffset: 4 * time.Hour,
+			expectedTime:   time.Date(2026, 3, 10, 16, 0, 0, 0, time.UTC),
+		},
+		{
+			name:           "RFC3339 on other day is not rounded",
+			now:            afterBoundary,
+			timeStr:        "2026-03-09T20:00:00Z",
+			roundingFactor: 12 * time.Hour,
+			roundingOffset: 4 * time.Hour,
+			expectedTime:   time.Date(2026, 3, 9, 20, 0, 0, 0, time.UTC),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseCRReleaseTimeAt(tt.now, nil, "4.22", tt.timeStr, tt.isStart, nil, tt.roundingFactor, tt.roundingOffset)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedTime, got)
+		})
+	}
+}
+
 func TestTruncateAligned(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -184,6 +184,10 @@ func NewLoadCommand() *cobra.Command {
 			}
 			log.SetLevel(level)
 
+			if err := f.ComponentReadinessFlags.Validate(); err != nil {
+				return errors.WithMessage(err, "error validating options")
+			}
+
 			loaders := make([]dataloader.DataLoader, 0)
 			allErrs := []error{}
 
@@ -336,8 +340,8 @@ func NewLoadCommand() *cobra.Command {
 
 					rcl, err := regressioncacheloader.New(
 						dbc, crDataProvider, config, views.ComponentReadiness, releaseConfigs,
-						f.ComponentReadinessFlags.CRTimeRoundingFactor,
-						f.ComponentReadinessFlags.CRTimeRoundingOffset,
+						f.ComponentReadinessFlags.TimeRounding.Factor,
+						f.ComponentReadinessFlags.TimeRounding.Offset,
 						regressionStore,
 					)
 					if err != nil {

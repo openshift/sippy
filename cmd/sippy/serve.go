@@ -73,6 +73,9 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ServerFlags) Validate() error {
+	if err := f.ComponentReadinessFlags.Validate(); err != nil {
+		return err
+	}
 	if f.DataProvider == reqopts.DataSourceBigQuery {
 		return f.GoogleCloudFlags.Validate()
 	}
@@ -176,6 +179,7 @@ func NewServeCommand() *cobra.Command {
 				log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 			}
 
+			rounding := f.ComponentReadinessFlags.TimeRounding
 			server := sippyserver.NewServer(
 				f.ModeFlags.GetServerMode(),
 				f.APIFlags.ListenAddr,
@@ -191,8 +195,8 @@ func NewServeCommand() *cobra.Command {
 				crDataProvider,
 				pinnedDateTime,
 				cacheClient,
-				f.ComponentReadinessFlags.CRTimeRoundingFactor,
-				f.ComponentReadinessFlags.CRTimeRoundingOffset,
+				rounding.Factor,
+				rounding.Offset,
 				views,
 				config,
 				f.APIFlags.EnableWriteEndpoints,
@@ -221,7 +225,7 @@ func NewServeCommand() *cobra.Command {
 					bigQueryClient,
 					crDataProvider,
 					util.GetReportEnd(pinnedDateTime),
-					cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
+					cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
 					views.ComponentReadiness)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
@@ -241,7 +245,7 @@ func NewServeCommand() *cobra.Command {
 								bigQueryClient,
 								crDataProvider,
 								util.GetReportEnd(pinnedDateTime),
-								cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
+								cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
 								views.ComponentReadiness)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")

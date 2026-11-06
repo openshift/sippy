@@ -46,6 +46,35 @@ Sippy obtains data from multiple sources:
 
 **Note**: Test results are only stored from [known suites](pkg/db/suites.go).
 
+### From Synthetic Seed Data
+
+`sippy seed-data --init-database` fills an empty database with deterministic
+Component Readiness data. Serve it with the seed views so the seeded Component
+Readiness views exist:
+
+```
+sippy serve --data-provider postgres --views config/seed-views.yaml
+```
+
+`seed-data` only runs the bulk seed against a database with no ProwJobs. Rerunning
+it on a database that already has data skips the bulk seed and only refreshes
+the rerunnable records (labels, symptoms, feature gates). Drop and recreate the
+database to fully re-seed.
+
+The 4.22 job runs fill the sample window of the `4.22-main` seed view, resolved
+the same way the server resolves it. Regressions the seed opens are stamped with
+the start of their release's seeded failure window rather than the current time,
+so force close has resolution dates to choose between "opened" and today.
+
+The seeded sample window ends at the most recent Component Readiness rounding
+boundary, so `seed-data` accepts the same
+`--component-readiness-time-rounding-factor` and
+`--component-readiness-time-rounding-offset` flags as `sippy serve`. Both
+commands use the same defaults (12h factor, 4h offset), so nothing is needed by
+default. If you serve with non-default rounding, pass the same values to
+`seed-data`. Otherwise the report and test details can disagree about the
+seeded counts. The factor must be greater than 0 and at most 24h.
+
 ### From a Prod Sippy Backup
 
 The simplest way to fetch data for Sippy, is to just get a copy of the production database. TRT stores gzip'd backups in S3 periodically, see the staff slack channel for links or reach out to a team member for more information. Restore it locally with a command like this if you are using the plain .sql file:

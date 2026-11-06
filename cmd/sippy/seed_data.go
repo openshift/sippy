@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	stderrors "errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -16,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -25,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -34,18 +33,23 @@ import (
 )
 
 type SeedDataFlags struct {
-	DBFlags      *flags.PostgresFlags
+	DBFlags *flags.PostgresFlags
+	// TimeRounding must match the server's settings so the seeded sample window
+	// lines up with what the report and test details query.
+	TimeRounding flags.CRTimeRoundingFlags
 	InitDatabase bool
 }
 
 func NewSeedDataFlags() *SeedDataFlags {
 	return &SeedDataFlags{
-		DBFlags: flags.NewPostgresDatabaseFlags(),
+		DBFlags:      flags.NewPostgresDatabaseFlags(),
+		TimeRounding: flags.NewCRTimeRoundingFlags(),
 	}
 }
 
 func (f *SeedDataFlags) BindFlags(fs *pflag.FlagSet) {
 	f.DBFlags.BindFlags(fs)
+	f.TimeRounding.BindFlags(fs)
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Initialize the DB schema before seeding data")
 }
 
@@ -60,13 +64,33 @@ func NewSeedDataCommand() *cobra.Command {
 Creates deterministic Component Readiness data covering all CR statuses
 (NotSignificant, SignificantRegression, ExtremeRegression, MissingSample,
 MissingBasis, BasisOnly, SignificantImprovement, BelowMinFailure) and
-fallback scenarios. Use with 'sippy serve --data-provider postgres'.
+fallback scenarios. Use with
+'sippy serve --data-provider postgres --views config/seed-views.yaml'.
+Run from the repository root: the seed reads config/seed-views.yaml.
 
 Drop and recreate the database to re-seed (e.g. docker compose down -v).
+
+Pass the same --component-readiness-time-rounding-factor and
+--component-readiness-time-rounding-offset values that 'sippy serve' uses
+(both default to the serving defaults). The seeded sample window ends at the
+most recent rounding boundary; with mismatched rounding the report and test
+details can disagree about the seeded counts.
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.Contains(f.DBFlags.DSN, "amazonaws.com") {
 				return fmt.Errorf("refusing to seed synthetic data into a production database")
+			}
+			if err := f.TimeRounding.Validate(); err != nil {
+				return errors.WithMessage(err, "error validating options")
+			}
+
+			views, err := loadSeedViews(syntheticViewsFile)
+			if err != nil {
+				return err
+			}
+			clock, err := newSeedClock(time.Now(), f.TimeRounding, views)
+			if err != nil {
+				return err
 			}
 
 			dbc, err := f.DBFlags.GetDBClient()
@@ -84,8 +108,8 @@ Drop and recreate the database to re-seed (e.g. docker compose down -v).
 
 				// Create partitions for synthetic releases
 				log.Info("Creating partitions for synthetic test data...")
-				startDate := time.Now().UTC().AddDate(0, 0, -190) // Cover all seed data date ranges
-				endDate := time.Now().UTC().AddDate(0, 0, 2)      // Small buffer into future
+				startDate := clock.now.AddDate(0, 0, -190) // Cover all seed data date ranges
+				endDate := clock.now.AddDate(0, 0, 2)      // Small buffer into future
 				count, err := dbc.EnsurePartitions(syntheticReleases, startDate, endDate, false)
 				if err != nil {
 					return errors.WithMessage(err, "could not create partitions")
@@ -94,7 +118,7 @@ Drop and recreate the database to re-seed (e.g. docker compose down -v).
 			}
 
 			log.Info("Starting to seed test data...")
-			return seedSyntheticData(dbc)
+			return seedSyntheticData(dbc, clock, views)
 		},
 	}
 
@@ -510,31 +534,109 @@ var syntheticTests = []syntheticTestSpec{
 	},
 }
 
-// releaseTimeWindow returns the start/end times for a release's test data.
-func releaseTimeWindow(release string) (start, end time.Time) {
-	now := time.Now().UTC().Truncate(time.Hour)
+// seedSampleView names the seed view whose sample window the current release's job runs fill.
+const seedSampleView string = "4.22-main"
+
+// seedClock pins the reference time and the server's sample-window rounding for one
+// seed run. Resolving every job and release against the same clock keeps the fixture
+// deterministic even if a bulk seed crosses a UTC midnight or rounding boundary.
+type seedClock struct {
+	now            time.Time // always UTC
+	roundingFactor time.Duration
+	roundingOffset time.Duration
+	// sample is seedSampleView's sample release resolved at now, exactly as the server resolves it.
+	sample reqopts.Release
+}
+
+// newSeedClock pins now (normalized to UTC) and resolves seedSampleView's sample window against it
+// through the same parser the server uses, so the seed follows the view if its window changes.
+func newSeedClock(now time.Time, rounding flags.CRTimeRoundingFlags, views apitype.SippyViews) (seedClock, error) {
+	c := seedClock{now: now.UTC(), roundingFactor: rounding.Factor, roundingOffset: rounding.Offset}
+	sampleRelease, err := seedViewSampleRelease(views, seedSampleView)
+	if err != nil {
+		return seedClock{}, err
+	}
+	// The sample window is relative to now, so no release metadata (GA dates) is needed.
+	c.sample, err = c.resolveViewRelease(nil, "sample", sampleRelease)
+	if err != nil {
+		return seedClock{}, fmt.Errorf("resolving sample window of seed view %s: %w", seedSampleView, err)
+	}
+	return c, nil
+}
+
+// resolveViewRelease resolves a view's relative release window at the pinned time with the
+// server's rounding.
+func (c seedClock) resolveViewRelease(releases []sippyv1.Release, releaseType string, viewRelease reqopts.RelativeRelease) (reqopts.Release, error) {
+	return utils.GetViewReleaseOptionsAt(c.now, releases, releaseType, viewRelease, c.roundingFactor, c.roundingOffset)
+}
+
+// window returns the start/end times for a release's test data.
+//
+// The sample release's runs fill the seed view's sample window as the server resolves it, which
+// ends at the most recent rounding boundary. The report aggregates whole days while test details
+// filter exact run timestamps, so any run after the boundary would only be counted by the report.
+func (c seedClock) window(release string) (start, end time.Time) {
+	if release == c.sample.Name {
+		return c.sample.Start, c.sample.End
+	}
+	return historicalReleaseWindow(release, c.now)
+}
+
+// historicalReleaseWindow returns the start/end times for the test data of a release other than
+// the seed view's sample release, relative to now truncated to the hour.
+func historicalReleaseWindow(release string, now time.Time) (start, end time.Time) {
+	hour := now.Truncate(time.Hour)
 	switch release {
-	case "4.22":
-		return now.Add(-3 * 24 * time.Hour), now
 	case "4.21":
-		return now.Add(-60 * 24 * time.Hour), now.Add(-30 * 24 * time.Hour)
+		return hour.Add(-60 * 24 * time.Hour), hour.Add(-30 * 24 * time.Hour)
 	case "4.20":
-		return now.Add(-120 * 24 * time.Hour), now.Add(-90 * 24 * time.Hour)
+		return hour.Add(-120 * 24 * time.Hour), hour.Add(-90 * 24 * time.Hour)
 	case "4.19":
-		return now.Add(-180 * 24 * time.Hour), now.Add(-150 * 24 * time.Hour)
+		return hour.Add(-180 * 24 * time.Hour), hour.Add(-150 * 24 * time.Hour)
 	default:
-		return now.Add(-14 * 24 * time.Hour), now
+		return hour.Add(-14 * 24 * time.Hour), hour
 	}
 }
 
-func seedSyntheticData(dbc *db.DB) error {
+// loadSeedViews reads the Component Readiness views that the seed tracks regressions for and that
+// 'sippy serve --views' must be given to show the seeded data. It goes through the same parsing and
+// validation as 'sippy serve --views', so the seed never accepts views the server would reject.
+func loadSeedViews(path string) (apitype.SippyViews, error) {
+	views, err := (&flags.ComponentReadinessFlags{ComponentReadinessViewsFile: path}).ParseViewsFile()
+	if err != nil {
+		return apitype.SippyViews{}, fmt.Errorf("loading seed views: %w", err)
+	}
+	return *views, nil
+}
+
+// seedViewSampleRelease returns the relative sample release of the named seed view.
+func seedViewSampleRelease(views apitype.SippyViews, name string) (reqopts.RelativeRelease, error) {
+	for _, view := range views.ComponentReadiness {
+		if view.Name == name {
+			return view.SampleRelease, nil
+		}
+	}
+	return reqopts.RelativeRelease{}, fmt.Errorf("seed view %s not found", name)
+}
+
+// seededRegressionOpened returns the historical opened time for a seeded regression in release:
+// the start of the release's seeded failure window. syncRegressions opens regressions at this time
+// because the wall clock would leave no selectable resolution date between "opened" and today when
+// exercising force close against a freshly seeded database.
+func seededRegressionOpened(clock seedClock, release string) time.Time {
+	start, _ := clock.window(release)
+	return start
+}
+
+func seedSyntheticData(dbc *db.DB, clock seedClock, views apitype.SippyViews) error {
 	// Check if data already exists
 	var count int64
 	if err := dbc.DB.Model(&models.ProwJob{}).Count(&count).Error; err != nil {
 		return fmt.Errorf("failed to check for existing data: %w", err)
 	}
 	if count > 0 {
-		log.Infof("Database already contains %d ProwJobs, skipping bulk seed and refreshing rerunnable seed records. Drop and recreate the database to fully re-seed (e.g. docker compose down -v).", count)
+		log.WithField("prowJobs", count).
+			Info("Database already contains seed data, skipping bulk seed and refreshing rerunnable seed records. Drop and recreate the database to fully re-seed (e.g. docker compose down -v).")
 		if err := createLabelsAndSymptoms(dbc); err != nil {
 			return errors.WithMessage(err, "failed to create labels and symptoms")
 		}
@@ -545,7 +647,7 @@ func seedSyntheticData(dbc *db.DB) error {
 		return nil
 	}
 
-	if err := seedReleaseDefinitions(dbc); err != nil {
+	if err := seedReleaseDefinitions(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed release definitions")
 	}
 	log.Info("Seeded release definitions")
@@ -563,12 +665,12 @@ func seedSyntheticData(dbc *db.DB) error {
 		return err
 	}
 
-	totalRuns, totalResults, err := seedJobRunsAndResults(dbc)
+	totalRuns, totalResults, err := seedJobRunsAndResults(dbc, clock)
 	if err != nil {
 		return err
 	}
 
-	if err := seedPresubmitData(dbc); err != nil {
+	if err := seedPresubmitData(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed presubmit data")
 	}
 	log.Info("Seeded presubmit/PR test data")
@@ -582,7 +684,7 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 
 	log.Info("Refreshing materialized views...")
-	seedToday := civil.DateOf(time.Now().UTC())
+	seedToday := civil.DateOf(clock.now)
 	seedStart := seedToday.AddDays(-190)
 	seedEnd := seedToday
 	for _, table := range []string{"daily-totals", "cumulative-summaries"} {
@@ -596,12 +698,12 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 	log.Info("Seeded GA raw test data")
 
-	if err := seedReleasePayloads(dbc); err != nil {
+	if err := seedReleasePayloads(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed release payloads")
 	}
 	log.Info("Seeded release payloads")
 
-	if err := seedTestOutputsForPeriodicJobs(dbc); err != nil {
+	if err := seedTestOutputsForPeriodicJobs(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed periodic test outputs")
 	}
 	log.Info("Seeded test outputs for periodic jobs")
@@ -611,21 +713,21 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 
 	log.Info("Syncing regressions...")
-	if err := syncRegressions(dbc); err != nil {
+	if err := syncRegressions(dbc, clock, views); err != nil {
 		return errors.WithMessage(err, "failed to sync regressions")
 	}
 
-	if err := seedRegressionJobRuns(dbc); err != nil {
+	if err := seedRegressionJobRuns(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed regression job runs")
 	}
 	log.Info("Seeded regression job runs")
 
-	if err := seedBugsAndTriages(dbc); err != nil {
+	if err := seedBugsAndTriages(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed bugs and triages")
 	}
 	log.Info("Seeded bugs and triages")
 
-	if err := seedJobRunLabels(dbc); err != nil {
+	if err := seedJobRunLabels(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed job run labels")
 	}
 	log.Info("Seeded job run labels")
@@ -635,8 +737,8 @@ func seedSyntheticData(dbc *db.DB) error {
 	return nil
 }
 
-func seedReleaseDefinitions(dbc *db.DB) error {
-	today := civil.DateOf(time.Now().UTC())
+func seedReleaseDefinitions(dbc *db.DB, clock seedClock) error {
+	today := civil.DateOf(clock.now)
 	allCaps := pq.StringArray{models.CapComponentReadiness, models.CapFeatureGates, models.CapMetrics, models.CapPayloadTags, models.CapSippyClassic}
 
 	type relMeta struct {
@@ -769,7 +871,7 @@ type jobReleaseKey struct {
 	release     string
 }
 
-func seedJobRunsAndResults(dbc *db.DB) (int, int, error) {
+func seedJobRunsAndResults(dbc *db.DB, clock seedClock) (int, int, error) {
 	var suite models.Suite
 	if err := dbc.DB.Where("name = ?", "synthetic").First(&suite).Error; err != nil {
 		return 0, 0, fmt.Errorf("failed to find suite: %w", err)
@@ -809,7 +911,7 @@ func seedJobRunsAndResults(dbc *db.DB) (int, int, error) {
 			return 0, 0, fmt.Errorf("failed to find ProwJob %s: %w", jobName, err)
 		}
 
-		runs, results, err := seedRunsForJob(dbc, &suite, prowJob, jrKey, runCount, testIDsByName)
+		runs, results, err := seedRunsForJob(dbc, clock, &suite, prowJob, jrKey, runCount, testIDsByName)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -840,15 +942,12 @@ func createProwJobRun(dbc *db.DB, run *models.ProwJobRun) error {
 	})
 }
 
-func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrKey jobReleaseKey, runCount int, testIDsByName map[string]uint) (int, int, error) {
-	start, end := releaseTimeWindow(jrKey.release)
-	window := end.Sub(start)
-	infraRuns := 2
-	totalRuns := runCount + infraRuns
-	interval := window / time.Duration(totalRuns)
+func seedRunsForJob(dbc *db.DB, clock seedClock, suite *models.Suite, prowJob models.ProwJob, jrKey jobReleaseKey, runCount int, testIDsByName map[string]uint) (int, int, error) {
+	start, end := clock.window(jrKey.release)
+	timestamps := seededRunTimestamps(start, end, runCount+seededInfraRuns)
+	totalRuns := len(timestamps)
 	runKeys := make([]models.ProwJobRunIDMap, totalRuns)
-	for i := range totalRuns {
-		timestamp := start.Add(time.Duration(i) * interval)
+	for i, timestamp := range timestamps {
 		run := models.ProwJobRun{
 			ProwJobID:      prowJob.ID,
 			ProwJobRelease: prowJob.Release,
@@ -885,14 +984,8 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 		}
 
 		for i := 0; i < counts.total && i < runCount; i++ {
-			var status int
-			switch {
-			case i < counts.success-counts.flake:
-				status = 1 // pass
-			case i < counts.success:
-				status = 13 // flake (counts as success too)
-			default:
-				status = 12 // failure
+			status := seededTestStatus(i, counts)
+			if status == int(v1.TestStatusFailure) {
 				runsWithFailure[runKeys[i].ID] = true
 			}
 
@@ -973,22 +1066,59 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 	return totalRuns, totalResults, nil
 }
 
-func syncRegressions(dbc *db.DB) error {
+// seededRunTimestamps spaces count job runs evenly across [start, end).
+func seededRunTimestamps(start, end time.Time, count int) []time.Time {
+	if count <= 0 {
+		return nil
+	}
+	interval := end.Sub(start) / time.Duration(count)
+	timestamps := make([]time.Time, count)
+	for i := range timestamps {
+		timestamps[i] = start.Add(time.Duration(i) * interval)
+	}
+	return timestamps
+}
+
+// seededTestStatus returns the status of the i-th of counts.total results for a test.
+//
+// Failures and flakes are spread evenly across the runs rather than grouped at the end,
+// so the intended pass rate holds for any contiguous slice of the window. Grouping them
+// at the end concentrated every failure in the final hours, where small differences in
+// window boundaries between APIs changed the outcome.
+func seededTestStatus(i int, counts testCount) int {
+	if counts.total <= 0 {
+		return int(v1.TestStatusSuccess)
+	}
+	failures := counts.total - counts.success
+	if spreadHit(i, failures, counts.total) {
+		return int(v1.TestStatusFailure)
+	}
+	// Index among the non-failing results, to spread flakes across the successes.
+	successIdx := i - (i+1)*failures/counts.total
+	if spreadHit(successIdx, counts.flake, counts.success) {
+		return int(v1.TestStatusFlake)
+	}
+	return int(v1.TestStatusSuccess)
+}
+
+// spreadHit reports whether position i is one of hits positions spread evenly over n.
+func spreadHit(i, hits, n int) bool {
+	if hits <= 0 || n <= 0 {
+		return false
+	}
+	return (i+1)*hits/n > i*hits/n
+}
+
+// syncRegressions runs regression tracking over every seed view with tracking enabled, resolved at
+// the pinned clock. Regressions it opens are stamped with seededRegressionOpened for the view's
+// sample release; regressions that already exist keep their opened time.
+func syncRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) error {
 	provider := pgprovider.NewPostgresProvider(dbc, nil)
 	ctx := context.Background()
 
 	releases, err := provider.QueryReleases(ctx)
 	if err != nil {
 		return fmt.Errorf("querying releases: %w", err)
-	}
-
-	viewsData, err := os.ReadFile(syntheticViewsFile)
-	if err != nil {
-		return fmt.Errorf("reading views file: %w", err)
-	}
-	var views apitype.SippyViews
-	if err := yaml.Unmarshal(viewsData, &views); err != nil {
-		return fmt.Errorf("parsing views file: %w", err)
 	}
 
 	backend := componentreadiness.NewPostgresRegressionStore(dbc, nil)
@@ -1002,12 +1132,15 @@ func syncRegressions(dbc *db.DB) error {
 			rLog.WithField("view", view.Name).Info("skipping view with regression tracking disabled")
 			continue
 		}
+		opened := seededRegressionOpened(clock, view.SampleRelease.Name)
+		viewBackend := componentreadiness.NewPostgresRegressionStore(dbc, nil,
+			componentreadiness.WithOpenedAt(func() time.Time { return opened }))
 
-		baseRelease, err := utils.GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
+		baseRelease, err := clock.resolveViewRelease(releases, "basis", view.BaseRelease)
 		if err != nil {
 			return fmt.Errorf("error getting base release for view %s: %w", view.Name, err)
 		}
-		sampleRelease, err := utils.GetViewReleaseOptions(releases, "sample", view.SampleRelease, 0, 0)
+		sampleRelease, err := clock.resolveViewRelease(releases, "sample", view.SampleRelease)
 		if err != nil {
 			return fmt.Errorf("error getting sample release for view %s: %w", view.Name, err)
 		}
@@ -1030,12 +1163,12 @@ func syncRegressions(dbc *db.DB) error {
 			return fmt.Errorf("error generating component report for view %s", view.Name)
 		}
 
-		activeRegs, err := componentreadiness.SyncRegressionsForReport(backend, view, rLog, &report)
+		activeRegs, err := componentreadiness.SyncRegressionsForReport(viewBackend, view, rLog, &report)
 		if err != nil {
 			return fmt.Errorf("error syncing regressions for view %s: %w", view.Name, err)
 		}
 		for _, reg := range activeRegs {
-			if err := backend.UpsertRegressionView(reg.ID, view.Name); err != nil {
+			if err := viewBackend.UpsertRegressionView(reg.ID, view.Name); err != nil {
 				return fmt.Errorf("error upserting view %s for regression %d: %w", view.Name, reg.ID, err)
 			}
 		}
@@ -1052,7 +1185,7 @@ func syncRegressions(dbc *db.DB) error {
 	}
 
 	// Close regressions no longer active in any enabled view for each release.
-	closeTime := time.Now()
+	closeTime := clock.now
 	for release, activeIDs := range releaseActiveIDs {
 		allRegs, err := backend.ListCurrentRegressionsForRelease(release)
 		if err != nil {
@@ -1075,8 +1208,8 @@ func syncRegressions(dbc *db.DB) error {
 	return nil
 }
 
-func seedPresubmitData(dbc *db.DB) error {
-	now := time.Now().UTC().Truncate(time.Hour)
+func seedPresubmitData(dbc *db.DB, clock seedClock) error {
+	now := clock.now.Truncate(time.Hour)
 
 	var suite models.Suite
 	if err := dbc.DB.Where("name = ?", "synthetic").First(&suite).Error; err != nil {
@@ -1303,7 +1436,11 @@ func seedPresubmitData(dbc *db.DB) error {
 	return nil
 }
 
+// syntheticViewsFile is the seed views file, relative to the repository root.
 const syntheticViewsFile = "config/seed-views.yaml"
+
+// seededInfraRuns is the number of extra runs per job that fail on infrastructure rather than tests.
+const seededInfraRuns int = 2
 
 // variantMapToArray converts a variant map to a pq.StringArray.
 func variantMapToArray(m map[string]string) pq.StringArray {
@@ -1469,7 +1606,7 @@ func seedFeatureGates(dbc *db.DB) error {
 	return nil
 }
 
-func seedReleasePayloads(dbc *db.DB) error {
+func seedReleasePayloads(dbc *db.DB, clock seedClock) error {
 	type payloadDef struct {
 		release    string
 		stream     string
@@ -1487,7 +1624,7 @@ func seedReleasePayloads(dbc *db.DB) error {
 		{release: "4.21", stream: "ci", arch: "amd64", phase: "Accepted", daysBefore: 35},
 	}
 
-	now := time.Now().UTC().Truncate(time.Hour)
+	now := clock.now.Truncate(time.Hour)
 	var tagCount int
 
 	// Process oldest-first so we build a correct previous-accepted chain per stream.
@@ -1614,7 +1751,7 @@ func seedReleasePayloads(dbc *db.DB) error {
 	return nil
 }
 
-func seedRegressionJobRuns(dbc *db.DB) error {
+func seedRegressionJobRuns(dbc *db.DB, clock seedClock) error {
 	var regressions []models.TestRegression
 	if err := dbc.DB.Where("closed IS NULL").Find(&regressions).Error; err != nil {
 		return fmt.Errorf("failed to find open regressions: %w", err)
@@ -1635,7 +1772,7 @@ func seedRegressionJobRuns(dbc *db.DB) error {
 			Labels       pq.StringArray `gorm:"column:labels;type:text[]"`
 		}
 		var failedRuns []failedRunInfo
-		start, end := releaseTimeWindow(reg.Release)
+		start, end := clock.window(reg.Release)
 		if err := dbc.DB.Raw(`
 			SELECT DISTINCT pjr.id AS prow_job_run_id, pj.name AS prow_job_name,
 			       pjr.timestamp, pjr.labels
@@ -1674,7 +1811,7 @@ func seedRegressionJobRuns(dbc *db.DB) error {
 	return nil
 }
 
-func seedBugsAndTriages(dbc *db.DB) error {
+func seedBugsAndTriages(dbc *db.DB, clock seedClock) error {
 	var installTest, networkTest, etcdTest, memoryTest models.Test
 	if err := dbc.DB.Where("name = ?", "install should succeed: overall").First(&installTest).Error; err != nil {
 		return fmt.Errorf("failed to find install test: %w", err)
@@ -1694,7 +1831,7 @@ func seedBugsAndTriages(dbc *db.DB) error {
 		return fmt.Errorf("failed to find aws job: %w", err)
 	}
 
-	now := time.Now().UTC()
+	now := clock.now
 	bugs := []models.Bug{
 		{
 			Key:             "OCPBUGS-40001",
@@ -1832,10 +1969,10 @@ func seedBugsAndTriages(dbc *db.DB) error {
 }
 
 // seedJobRunLabels gives synthetic failed runs labels for exercising label displays.
-func seedJobRunLabels(dbc *db.DB) error {
+func seedJobRunLabels(dbc *db.DB, clock seedClock) error {
 	// Apply labels to some failed job runs (for label display on job runs)
 	var jobRuns []models.ProwJobRun
-	start, end := releaseTimeWindow("4.22")
+	start, end := clock.window("4.22")
 	if err := dbc.DB.
 		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id").
 		Where("prow_job_runs.prow_job_release = ? AND prow_job_runs.timestamp >= ? AND prow_job_runs.timestamp < ? AND prow_job_runs.failed = true", "4.22", start, end).
@@ -1868,7 +2005,7 @@ func seedJobRunLabels(dbc *db.DB) error {
 	return nil
 }
 
-func seedTestOutputsForPeriodicJobs(dbc *db.DB) error {
+func seedTestOutputsForPeriodicJobs(dbc *db.DB, clock seedClock) error {
 	type outputSpec struct {
 		testName string
 		release  string
@@ -1901,7 +2038,7 @@ func seedTestOutputsForPeriodicJobs(dbc *db.DB) error {
 	created := 0
 	for _, spec := range specs {
 		var testResults []models.ProwJobRunTest
-		start, end := releaseTimeWindow(spec.release)
+		start, end := clock.window(spec.release)
 		if err := dbc.DB.
 			Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_run_tests.prow_job_id").
 			Where("prow_job_run_tests.status = ? AND prow_job_run_tests.test_id = (SELECT id FROM tests WHERE name = ?) AND prow_job_run_tests.prow_job_run_release = ? AND prow_job_run_tests.prow_job_run_timestamp >= ? AND prow_job_run_tests.prow_job_run_timestamp < ? AND prow_jobs.kind = ?",

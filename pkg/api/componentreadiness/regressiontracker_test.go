@@ -187,3 +187,35 @@ func TestFailedJobRunsFromTestDetails_StartTimePreserved(t *testing.T) {
 	require.Len(t, runs, 1)
 	assert.Equal(t, startTime, runs[0].StartTime)
 }
+
+// Seed data relies on WithOpenedAt to stamp regressions at a historical time on creation, while
+// production tracking keeps the wall clock.
+func TestNewPostgresRegressionStoreOpenedAt(t *testing.T) {
+	historical := time.Date(2026, 10, 21, 4, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name   string
+		opts   []RegressionStoreOption
+		assert func(t *testing.T, opened time.Time)
+	}{
+		{
+			name: "defaults to the wall clock",
+			assert: func(t *testing.T, opened time.Time) {
+				assert.WithinDuration(t, time.Now(), opened, time.Minute)
+			},
+		},
+		{
+			name: "WithOpenedAt overrides the clock",
+			opts: []RegressionStoreOption{WithOpenedAt(func() time.Time { return historical })},
+			assert: func(t *testing.T, opened time.Time) {
+				assert.Equal(t, historical, opened)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store, ok := NewPostgresRegressionStore(nil, nil, tt.opts...).(*PostgresRegressionStore)
+			require.True(t, ok)
+			tt.assert(t, store.openedAt())
+		})
+	}
+}

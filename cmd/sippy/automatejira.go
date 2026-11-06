@@ -77,6 +77,9 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 }
 
 func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
+	if err := f.ComponentReadinessFlags.Validate(); err != nil {
+		return err
+	}
 	if len(f.SippyURL) == 0 {
 		return fmt.Errorf("--sippy-url is required")
 	}
@@ -159,7 +162,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
 			}
 
-			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor, CRTimeRoundingOffset: f.ComponentReadinessFlags.CRTimeRoundingOffset}
+			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.TimeRounding.Factor, CRTimeRoundingOffset: f.ComponentReadinessFlags.TimeRounding.Offset}
 
 			views, err := f.ComponentReadinessFlags.ParseViewsFile()
 			if err != nil {

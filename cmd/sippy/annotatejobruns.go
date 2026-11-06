@@ -88,6 +88,9 @@ func (f *AnnotateJobRunsFlags) BindFlags(fs *pflag.FlagSet) {
 }
 
 func (f *AnnotateJobRunsFlags) Validate(allVariants crtest.JobVariants) error {
+	if err := f.ComponentReadinessFlags.Validate(); err != nil {
+		return err
+	}
 	for _, variantStr := range f.VariantStr {
 		vt := strings.Split(variantStr, ":")
 		if len(vt) != 2 {
@@ -174,7 +177,7 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 				bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 			}
 
-			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor, CRTimeRoundingOffset: f.ComponentReadinessFlags.CRTimeRoundingOffset}
+			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.TimeRounding.Factor, CRTimeRoundingOffset: f.ComponentReadinessFlags.TimeRounding.Offset}
 
 			dbc, err := f.PostgresFlags.GetDBClient()
 			if err != nil {

@@ -2,8 +2,10 @@ package flags
 
 import (
 	"testing"
+	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -111,6 +113,66 @@ func TestValidateSpotCheckSamples(t *testing.T) {
 			}
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errorMsg)
+		})
+	}
+}
+
+// A factor over 24h collapsed the 4.22 sample window to start == end at
+// 2026-11-04T00:30Z, so the report counted failures the details query could not see.
+func TestCRTimeRoundingFlagsValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		factor  time.Duration
+		wantErr bool
+	}{
+		{name: "default 12h", factor: defaultCRTimeRoundingFactor},
+		{name: "maximum 24h", factor: 24 * time.Hour},
+		{name: "small 1h", factor: time.Hour},
+		{name: "96h collapses the sample window", factor: 96 * time.Hour, wantErr: true},
+		{name: "just over 24h", factor: 24*time.Hour + time.Second, wantErr: true},
+		{name: "zero", factor: 0, wantErr: true},
+		{name: "negative", factor: -time.Hour, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewCRTimeRoundingFlags()
+			f.Factor = tt.factor
+			err := f.Validate()
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// The zero value of ComponentReadinessFlags must stay usable: binding applies the rounding
+// defaults under the names 'sippy serve' and seed-data share, and parsed values override them.
+func TestComponentReadinessFlagsZeroValueBindFlags(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		wantFactor time.Duration
+		wantOffset time.Duration
+	}{
+		{name: "defaults", wantFactor: defaultCRTimeRoundingFactor, wantOffset: defaultCRTimeRoundingOffset},
+		{
+			name:       "overrides",
+			args:       []string{"--component-readiness-time-rounding-factor=6h", "--component-readiness-time-rounding-offset=5h"},
+			wantFactor: 6 * time.Hour,
+			wantOffset: 5 * time.Hour,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var f ComponentReadinessFlags
+			fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+			require.NotPanics(t, func() { f.BindFlags(fs) })
+			require.NoError(t, fs.Parse(tt.args))
+			assert.Equal(t, tt.wantFactor, f.TimeRounding.Factor)
+			assert.Equal(t, tt.wantOffset, f.TimeRounding.Offset)
+			assert.NoError(t, f.Validate())
 		})
 	}
 }

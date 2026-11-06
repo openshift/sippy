@@ -93,6 +93,9 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
+	if err := f.ComponentReadinessFlags.Validate(); err != nil {
+		return err
+	}
 	if f.DataProvider == reqopts.DataSourceBigQuery {
 		return f.GoogleCloudFlags.Validate()
 	}
@@ -200,6 +203,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 		return err
 	}
 
+	rounding := f.ComponentReadinessFlags.TimeRounding
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
 		f.APIFlags.ListenAddr,
@@ -215,8 +219,8 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 		crDataProvider,
 		nil,
 		cacheClient,
-		f.ComponentReadinessFlags.CRTimeRoundingFactor,
-		f.ComponentReadinessFlags.CRTimeRoundingOffset,
+		rounding.Factor,
+		rounding.Offset,
 		views,
 		config,
 		f.APIFlags.EnableWriteEndpoints,
@@ -231,7 +235,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 			bigQueryClient,
 			crDataProvider,
 			time.Time{},
-			cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
+			cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
 			views.ComponentReadiness)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
@@ -251,7 +255,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 						bigQueryClient,
 						crDataProvider,
 						time.Time{},
-						cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor, f.ComponentReadinessFlags.CRTimeRoundingOffset),
+						cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
 						views.ComponentReadiness)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
