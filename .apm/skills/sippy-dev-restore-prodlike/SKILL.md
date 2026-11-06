@@ -9,7 +9,7 @@ Restore the **`prodlike`** database from a backup file or directory that lives *
 
 ## Preconditions
 
-- **`SIPPY_PRODLIKE_DATABASE_DSN`** must end with **`/prodlike`** and use a single host, **`localhost`** or **`sippy-postgres`** (script refuses other hosts, multi-host DSNs, and `host`/`hostaddr`/`service`/`dbname` query parameters).
+- **`SIPPY_PRODLIKE_DATABASE_DSN`** must end with **`/prodlike`** and use a single host, **`localhost`** or **`sippy-postgres`** (script refuses other hosts, multi-host DSNs, `host`/`hostaddr`/`service`/`dbname` query parameters, and percent-encoded query parameter names).
 - Stop **`sippy serve`** (and anything else connected to `prodlike`) so `DROP DATABASE` can run.
 - **`pg_restore`** must match the dump format (devcontainer: PostgreSQL client on `PATH`).
 

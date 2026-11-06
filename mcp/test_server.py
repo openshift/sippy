@@ -254,6 +254,21 @@ class TestRestoreProdlikeDb:
         assert query_password not in result.stdout
         assert "prodlike on localhost:5432" in result.stdout
 
+    def test_script_accepts_encoded_credential_values(self, tmp_path: Path):
+        backup = tmp_path / "repo" / "backups" / "valid.dump"
+        backup.mkdir(parents=True)
+        (backup / "toc.dat").write_text("", encoding="utf-8")
+        result, commands = self._run_restore_script(
+            tmp_path,
+            "backups/valid.dump",
+            dsn=(
+                "postgresql://postgres:p%40ss@localhost:5432/prodlike"
+                "?sslmode=disable&password=p%26ss"
+            ),
+        )
+        assert result.returncode == 0, result.stderr
+        assert "pg_restore --no-owner" in commands
+
     @pytest.mark.parametrize(
         "dsn",
         [
@@ -272,6 +287,23 @@ class TestRestoreProdlikeDb:
             pytest.param(
                 "postgresql://postgres:password@localhost.internal:5432/prodlike",
                 id="host-suffix",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike?ho%73t=db.internal",
+                id="encoded-host-parameter",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike?%68ostaddr=db.internal",
+                id="encoded-hostaddr-parameter",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike?serv%69ce=db.internal",
+                id="encoded-service-parameter",
+            ),
+            pytest.param(
+                "postgresql://postgres:password@localhost:5432/prodlike"
+                "?sslmode=disable&db%6Eame=db.internal",
+                id="encoded-dbname-parameter",
             ),
         ],
     )

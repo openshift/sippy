@@ -40,11 +40,27 @@ if [[ ! "${prodl}" =~ ${dsn_re} ]]; then
 	exit 1
 fi
 prodl_host="${BASH_REMATCH[3]}${BASH_REMATCH[4]}"
-# libpq query parameters can override the host or database named in the URI.
-if [[ "${prodl}" =~ [?\&](host|hostaddr|service|dbname)= ]]; then
-	echo "error: SIPPY_PRODLIKE_DATABASE_DSN must not set host, hostaddr, service, or dbname query parameters" >&2
-	exit 1
+# libpq query parameters can override the host or database named in the URI, and libpq
+# percent-decodes parameter names (ho%73t is host), so encoded names are rejected outright.
+# Values stay untouched so encoded credentials keep working.
+query=""
+if [[ "${prodl}" == *\?* ]]; then
+	query="${prodl#*\?}"
 fi
+IFS='&' read -r -a query_params <<<"${query}"
+for param in ${query_params[@]+"${query_params[@]}"}; do
+	name="${param%%=*}"
+	case "${name}" in
+	*%*)
+		echo "error: SIPPY_PRODLIKE_DATABASE_DSN query parameter names must not be percent-encoded" >&2
+		exit 1
+		;;
+	host | hostaddr | service | dbname)
+		echo "error: SIPPY_PRODLIKE_DATABASE_DSN must not set host, hostaddr, service, or dbname query parameters" >&2
+		exit 1
+		;;
+	esac
+done
 clean="${prodl%%\?*}"
 admin="${clean%/prodlike}/postgres"
 
