@@ -397,6 +397,10 @@ export function pathForJobsWithFilter(release, filter) {
   )}`
 }
 
+export function pathForPullRequestsWithFilter(release, filter) {
+  return pathForAPIWithFilter(`/pull_requests/${release}`, filter)
+}
+
 export function pathForJobVariant(release, variant) {
   return `/jobs/${release}?${single(
     filterFor('variants', 'has entry', variant)

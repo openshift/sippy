@@ -107,6 +107,24 @@ Then(
         .at(-1).url
     ).searchParams
     expect(query.get('prow_job_run_id')).toBe('99999')
+    expect(query.get('job_name')).toBe(data.JOB)
+  }
+)
+
+Then(
+  'the failed {string} request retains its job without selected-run evidence',
+  async ({ api, page }, kind) => {
+    const requests = api.requests.filter(
+      (request) => request.pathname === `/api/jobs/runs/${kind}`
+    )
+    expect(requests.length).toBeGreaterThan(0)
+    for (const request of requests) {
+      const query = new URL(request.url).searchParams
+      expect(query.get('prow_job_run_id')).toBe('99999')
+      expect(query.get('job_name')).toBe(data.JOB)
+    }
+    await expect(page.getByText('selected-pod', { exact: true })).toHaveCount(0)
+    await expect(page.locator(`a[href="${data.GCS}"]`)).toHaveCount(0)
   }
 )
 
@@ -119,6 +137,11 @@ When('I select an interval file without evidence', async ({ page }) => {
 Then(
   'the previous intervals are cleared and the selected file is requested',
   async ({ api, page }) => {
+    await expect(
+      page.getByText(/Loaded 0 intervals from .*filtered down to 0\./)
+    ).toBeVisible()
+    // Check again after the pending 800ms filter callback can restore old data.
+    await page.waitForTimeout(1000)
     await expect(
       page.getByText(/Loaded 0 intervals from .*filtered down to 0\./)
     ).toBeVisible()

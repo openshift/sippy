@@ -1,12 +1,12 @@
 import * as data from '../fixtures/workflowData.js'
 import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
+import { filter } from '../fixtures/workflowFilters.js'
 import { test } from '../fixtures/test.js'
 import { WorkflowPage } from '../pages/workflowPage.js'
 
 const { When, Then } = createBdd(test)
 
-const filter = (field, operator, value) => ({ field, operator, value })
 const jobFilter = filter('name', 'equals', data.JOB)
 
 When('I open the synthetic release overview', async ({ page }) => {

@@ -35,7 +35,11 @@ export class WorkflowPage {
     return this.page.getByRole('row').filter({ hasText: text })
   }
 
-  async expectFilter(api, path, expected, params = {}) {
+  async expectExactFilter(api, path, expected, params = {}) {
+    await this.expectFilter(api, path, expected, params, true)
+  }
+
+  async expectFilter(api, path, expected, params = {}, exact = false) {
     await expect
       .poll(() => {
         const requests = api.requests.filter(
@@ -44,8 +48,10 @@ export class WorkflowPage {
         const last = requests.at(-1)
         if (!last) return null
         const query = new URL(last.url).searchParams
+        const items = JSON.parse(query.get('filter') || '{"items":[]}').items
         return {
-          items: JSON.parse(query.get('filter') || '{"items":[]}').items,
+          items,
+          itemCount: items.length,
           ...Object.fromEntries(
             Object.keys(params).map((key) => [key, query.get(key)])
           ),
@@ -55,6 +61,7 @@ export class WorkflowPage {
         items: expect.arrayContaining(
           expected.map((item) => expect.objectContaining(item))
         ),
+        ...(exact ? { itemCount: expected.length } : {}),
         ...params,
       })
   }

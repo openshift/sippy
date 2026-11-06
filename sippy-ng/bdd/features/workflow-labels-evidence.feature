@@ -41,7 +41,8 @@ Feature: Label editing and run evidence are scoped safely
 
   Scenario: Selecting a missing interval file clears the previous evidence
     When I open and filter the selected run intervals
-    And I select an interval file without evidence
+    Then interval requests and visible evidence retain the requested run
+    When I select an interval file without evidence
     Then the previous intervals are cleared and the selected file is requested
 
   Scenario Outline: Missing run evidence never displays another run
@@ -61,6 +62,7 @@ Feature: Label editing and run evidence are scoped safely
     Given the "/api/jobs/runs/<kind>" workflow response is "error"
     When I open missing run "<kind>"
     Then I see a workflow error containing "jobRunID=99999"
+    And the failed "<kind>" request retains its job without selected-run evidence
     Examples:
       | kind      |
       | intervals |

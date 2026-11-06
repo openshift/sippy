@@ -1,12 +1,12 @@
 import * as data from '../fixtures/workflowData.js'
 import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
+import { filter } from '../fixtures/workflowFilters.js'
 import { test } from '../fixtures/test.js'
 import { WorkflowPage } from '../pages/workflowPage.js'
 
 const { When, Then } = createBdd(test)
 
-const filter = (field, operator, value) => ({ field, operator, value })
 const jobFilter = filter('name', 'equals', data.JOB)
 const variantFilter = filter('variants', 'has entry', 'Platform:aws')
 
@@ -27,7 +27,7 @@ When(
 Then(
   'the jobs request and visible rows reflect my choices',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(api, '/api/jobs', [], {
+    await new WorkflowPage(page).expectExactFilter(api, '/api/jobs', [], {
       release: data.RELEASE,
       sortField: 'name',
       sort: 'desc',
@@ -46,7 +46,7 @@ When(
   async ({ api, page }) => {
     await page.getByRole('button', { name: 'Go to previous page' }).click()
     await new WorkflowPage(page).search(data.JOB)
-    await new WorkflowPage(page).expectFilter(api, '/api/jobs', [
+    await new WorkflowPage(page).expectExactFilter(api, '/api/jobs', [
       filter('name', 'contains', data.JOB),
     ])
     await expect(
@@ -61,7 +61,7 @@ Then(
     await expect(
       page.getByRole('heading', { name: 'Job Analysis', exact: true })
     ).toBeVisible()
-    await new WorkflowPage(page).expectFilter(
+    await new WorkflowPage(page).expectExactFilter(
       api,
       '/api/jobs/analysis',
       [jobFilter],
@@ -78,7 +78,7 @@ When('I open matching job runs', async ({ page }) => {
 Then(
   'the selected run links to its own Prow evidence',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(
+    await new WorkflowPage(page).expectExactFilter(
       api,
       '/api/jobs/runs',
       [jobFilter],
@@ -99,7 +99,7 @@ When('I open the Permafailing jobs tab', async ({ page }) => {
 Then(
   'both reporting periods require zero passing results',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(
+    await new WorkflowPage(page).expectExactFilter(
       api,
       '/api/jobs',
       [
@@ -123,7 +123,7 @@ When(
     await page.goto(`jobs/${data.RELEASE}`)
     await page.getByRole('tab', { name: 'All job runs' }).click()
     await page.getByRole('button', { name: 'Go to next page' }).click()
-    await new WorkflowPage(page).expectFilter(api, '/api/jobs/runs', [], {
+    await new WorkflowPage(page).expectExactFilter(api, '/api/jobs/runs', [], {
       page: '1',
       perPage: '25',
     })
@@ -135,7 +135,7 @@ When(
 Then(
   'run requests contain the requested pagination and sort',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(api, '/api/jobs/runs', [], {
+    await new WorkflowPage(page).expectExactFilter(api, '/api/jobs/runs', [], {
       release: data.RELEASE,
       sortField: 'timestamp',
       sort: 'asc',
@@ -148,7 +148,7 @@ Then(
 When('I search and filter job runs to failures', async ({ api, page }) => {
   await page.getByRole('button', { name: 'Go to previous page' }).click()
   await new WorkflowPage(page).search(data.JOB)
-  await new WorkflowPage(page).expectFilter(api, '/api/jobs/runs', [
+  await new WorkflowPage(page).expectExactFilter(api, '/api/jobs/runs', [
     filter('job', 'contains', data.JOB),
   ])
   await new WorkflowPage(page).numericFilter('Failures', '>', '0', true)
@@ -156,7 +156,7 @@ When('I search and filter job runs to failures', async ({ api, page }) => {
 Then(
   'only the failed selected run and its Prow link remain',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(api, '/api/jobs/runs', [
+    await new WorkflowPage(page).expectExactFilter(api, '/api/jobs/runs', [
       filter('job', 'contains', data.JOB),
       filter('test_failures', '>', '0'),
     ])
@@ -184,7 +184,7 @@ When(
       tab === 'All tests' ? /tests\/5\.0\?/ : /tests\/5\.0\/details\?/
     )
     await new WorkflowPage(page).search(data.TEST)
-    await new WorkflowPage(page).expectFilter(
+    await new WorkflowPage(page).expectExactFilter(
       api,
       '/api/tests',
       [variantFilter, filter('name', 'contains', data.TEST)],
@@ -202,7 +202,7 @@ Then(
     await expect(
       page.getByRole('heading', { name: data.TEST, exact: true })
     ).toBeVisible()
-    await new WorkflowPage(page).expectFilter(
+    await new WorkflowPage(page).expectExactFilter(
       api,
       '/api/tests',
       [filter('name', 'equals', data.TEST), variantFilter],
@@ -226,9 +226,10 @@ Then(
       ).searchParams
       expect(query.get('test'), path).toBe(data.TEST)
       expect(query.get('release'), path).toBe(data.RELEASE)
-      expect(JSON.parse(query.get('filter')).items, path).toEqual(
-        expect.arrayContaining([expect.objectContaining(variantFilter)])
-      )
+      expect(JSON.parse(query.get('filter')).items, path).toEqual([
+        expect.objectContaining(filter('name', 'equals', data.TEST)),
+        expect.objectContaining(variantFilter),
+      ])
     }
   }
 )
@@ -238,25 +239,15 @@ When('I open failed runs for the selected test', async ({ page }) => {
 Then(
   'run evidence retains test, variant, period and failure filters',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(
+    await new WorkflowPage(page).expectExactFilter(
       api,
       '/api/jobs/runs',
-      [variantFilter, filter('failed_test_names', 'has entry', data.TEST)],
+      [
+        variantFilter,
+        filter('failed_test_names', 'has entry', data.TEST),
+        filter('timestamp', '>', '2026-10-24T12:00:00.000Z'),
+      ],
       { release: data.RELEASE, sortField: 'timestamp', sort: 'desc' }
-    )
-    const query = new URL(
-      api.requests
-        .filter((request) => request.pathname === '/api/jobs/runs')
-        .at(-1).url
-    ).searchParams
-    expect(JSON.parse(query.get('filter')).items).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          field: 'timestamp',
-          operator: '>',
-          value: '2026-10-24T12:00:00.000Z',
-        }),
-      ])
     )
     await expect(page.getByText('1–1 of 1')).toBeVisible()
     await expect(page.locator(`a[href="${data.PROW}"]`)).toBeVisible()

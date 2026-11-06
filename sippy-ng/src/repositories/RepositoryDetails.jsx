@@ -1,8 +1,8 @@
 import { Box, Card, Container, Grid, Typography } from '@mui/material'
 import {
   filterFor,
-  pathForAPIWithFilter,
   pathForJobsWithFilter,
+  pathForPullRequestsWithFilter,
   withSort,
 } from '../helpers'
 import { Link } from 'react-router'
@@ -73,7 +73,7 @@ export default function RepositoryDetails(props) {
                 <Typography variant="h6">
                   <Link
                     to={withSort(
-                      pathForAPIWithFilter(`/pull_requests/${props.release}`, {
+                      pathForPullRequestsWithFilter(props.release, {
                         items: [
                           filterFor('org', 'equals', props.org),
                           filterFor('repo', 'equals', props.repo),

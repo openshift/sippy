@@ -242,7 +242,7 @@ export function workflowResponse(api, method, url, bodyText) {
     case '/api/jobs/runs/intervals': {
       const run = url.searchParams.get('prow_job_run_id')
       // A different run has no data; never reuse the selected run's evidence.
-      if (empty) return ok({ items: [], intervalFilesAvailable: [] })
+      if (empty) return ok({})
       if (run !== data.RUN) return ok(null)
       if (url.searchParams.get('file') === 'missing-intervals.json') {
         return ok({

@@ -428,7 +428,7 @@ export default function IntervalsChart({
       }
     }, 800)
     return () => clearTimeout(timer)
-  }, [filterText, start, end])
+  }, [filterText, start, end, eventIntervals])
 
   function updateFiltering() {
     console.log('updating filtering')
