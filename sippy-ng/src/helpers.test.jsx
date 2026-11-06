@@ -4,8 +4,38 @@ import {
   pathForExactTestAnalysisWithVariants,
   pathForJobRunsWithTestFailureHistory,
   pathForJobRunsWithTestHistory,
+  pathForPullRequestsWithFilter,
   safeEncodeURIComponent,
+  SafeJSONParam,
 } from './helpers'
+
+describe('pathForPullRequestsWithFilter', () => {
+  test.each([undefined, { items: [] }])(
+    'returns the pull requests route without filters for %j',
+    (filter) => {
+      expect(pathForPullRequestsWithFilter('5.0', filter)).toBe(
+        '/pull_requests/5.0'
+      )
+    }
+  )
+
+  test('preserves repository filters containing URL-sensitive characters', () => {
+    const filter = {
+      items: [
+        { field: 'org', operator: 'equals', value: 'org & partners' },
+        { field: 'repo', operator: 'equals', value: 'repo%2F#name' },
+        { field: 'merged_at', operator: 'is not empty' },
+      ],
+    }
+    const url = new URL(
+      pathForPullRequestsWithFilter('5.0', filter),
+      'https://sippy.example.invalid'
+    )
+    expect(url.pathname).toBe('/pull_requests/5.0')
+    expect(JSON.parse(url.searchParams.get('filters'))).toEqual(filter)
+    expect(url.hash).toBe('')
+  })
+})
 
 const lightTheme = {
   palette: {
@@ -222,4 +252,26 @@ describe('pathForJobRunsWithTestFailureHistory', () => {
     expect(filters.items.find((f) => f.field === 'variants')).toBeDefined()
     expect(filters.items.find((f) => f.field === 'timestamp')).toBeUndefined()
   })
+})
+
+describe('SafeJSONParam', () => {
+  const model = {
+    items: [
+      { field: 'name', operator: 'equals', value: 'path? a&b=#50% + %2F café' },
+    ],
+  }
+
+  test.each([
+    ['URL-decoded link filters', JSON.stringify(model)],
+    ['codec-encoded filters', SafeJSONParam.encode(model)],
+  ])('preserves percent signs in %s', (_name, value) => {
+    expect(SafeJSONParam.decode(value)).toEqual(model)
+  })
+
+  test.each([undefined, '', '%not-encoded', '{broken'])(
+    'rejects invalid filters: %s',
+    (value) => {
+      expect(SafeJSONParam.decode(value)).toBeUndefined()
+    }
+  )
 })
