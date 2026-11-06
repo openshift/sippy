@@ -792,21 +792,28 @@ async def restore_prodlike_db(
 async def run_e2e(
     bigquery_credentials_file: str | None = None,
     timeout_seconds: int = 7200,
+    include_bigquery: bool = False,
 ) -> str:
-    """Run ``make e2e`` (sets ``GCS_SA_JSON_PATH`` from the same SA JSON as other MCP tools).
+    """Run ``make e2e``, excluding BigQuery coverage by default.
 
-    Log: ``sippy-dev-logs/run_e2e.log``. E2e is slow and uses BigQuery; use ``timeout_seconds=0``
-    for no limit.
+    Set ``include_bigquery=True`` to enable BigQuery coverage. This resolves
+    ``bigquery_credentials_file`` with the same environment fallbacks as other MCP tools and sets
+    ``GCS_SA_JSON_PATH`` for the test process. Otherwise, credentials are not resolved and any
+    inherited ``GCS_SA_JSON_PATH`` is suppressed. Log: ``sippy-dev-logs/run_e2e.log``. E2e is slow;
+    use ``timeout_seconds=0`` for no limit.
     """
-    creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
-    if err:
-        return err
+    env_extra = {"GCS_SA_JSON_PATH": ""}
+    if include_bigquery:
+        creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
+        if err:
+            return err
+        env_extra["GCS_SA_JSON_PATH"] = str(creds_path)
     return await _run_make_phase(
         "run_e2e",
         "e2e",
         "run_e2e.log",
         timeout_seconds,
-        {"GCS_SA_JSON_PATH": str(creds_path)},
+        env_extra,
     )
 
 

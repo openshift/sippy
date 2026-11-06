@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import os
 import tempfile
 from pathlib import Path
@@ -19,6 +20,8 @@ from server import (
     _validate_redis_url,
     _trim,
     _wait_for_url,
+    mcp,
+    run_e2e,
 )
 
 
@@ -172,6 +175,129 @@ class TestResolveBigqueryCreds:
                     path, err = _resolve_bigquery_creds(None)
                     assert err is None
                     assert path == Path(first.name).resolve()
+
+
+class TestRunE2e:
+    @staticmethod
+    def _successful_subprocess():
+        process = mock.Mock()
+        process.wait = mock.AsyncMock(return_value=0)
+        return process
+
+    def test_defaults_to_no_bigquery_without_credentials(self, tmp_path):
+        process = self._successful_subprocess()
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key
+            not in (
+                "GCS_SA_JSON_PATH",
+                "SIPPY_BIGQUERY_CREDENTIALS_FILE",
+                "GOOGLE_APPLICATION_CREDENTIALS",
+            )
+        }
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch("server.DEV_LOG_DIR", tmp_path),
+            mock.patch(
+                "server.asyncio.create_subprocess_exec",
+                new=mock.AsyncMock(return_value=process),
+            ) as create_subprocess,
+            mock.patch("server._resolve_bigquery_creds") as resolve_creds,
+        ):
+            result = asyncio.run(run_e2e())
+
+        assert "run_e2e succeeded" in result
+        resolve_creds.assert_not_called()
+        assert create_subprocess.await_args.kwargs["env"]["GCS_SA_JSON_PATH"] == ""
+
+    def test_disabled_ignores_all_credentials_and_preserves_parent_env(self, tmp_path):
+        process = self._successful_subprocess()
+        with (
+            tempfile.NamedTemporaryFile(suffix=".json") as explicit,
+            tempfile.NamedTemporaryFile(suffix=".json") as sippy_env,
+            tempfile.NamedTemporaryFile(suffix=".json") as google_env,
+            mock.patch.dict(
+                os.environ,
+                {
+                    "GCS_SA_JSON_PATH": "/inherited/credentials.json",
+                    "SIPPY_BIGQUERY_CREDENTIALS_FILE": sippy_env.name,
+                    "GOOGLE_APPLICATION_CREDENTIALS": google_env.name,
+                },
+                clear=False,
+            ),
+            mock.patch("server.DEV_LOG_DIR", tmp_path),
+            mock.patch(
+                "server.asyncio.create_subprocess_exec",
+                new=mock.AsyncMock(return_value=process),
+            ) as create_subprocess,
+            mock.patch("server._resolve_bigquery_creds") as resolve_creds,
+        ):
+            result = asyncio.run(run_e2e(explicit.name, include_bigquery=False))
+
+            assert os.environ["GCS_SA_JSON_PATH"] == "/inherited/credentials.json"
+
+        assert "run_e2e succeeded" in result
+        resolve_creds.assert_not_called()
+        assert create_subprocess.await_args.kwargs["env"]["GCS_SA_JSON_PATH"] == ""
+
+    def test_bigquery_opt_in_resolves_explicit_credentials(self, tmp_path):
+        process = self._successful_subprocess()
+        with (
+            tempfile.NamedTemporaryFile(suffix=".json") as explicit,
+            mock.patch("server.DEV_LOG_DIR", tmp_path),
+            mock.patch(
+                "server.asyncio.create_subprocess_exec",
+                new=mock.AsyncMock(return_value=process),
+            ) as create_subprocess,
+        ):
+            result = asyncio.run(run_e2e(explicit.name, include_bigquery=True))
+
+        assert "run_e2e succeeded" in result
+        assert create_subprocess.await_args.kwargs["env"]["GCS_SA_JSON_PATH"] == str(
+            Path(explicit.name).resolve()
+        )
+
+    @pytest.mark.parametrize(
+        ("credentials_file", "expected_error"),
+        [
+            (None, "Set bigquery_credentials_file"),
+            ("/nonexistent/creds.json", "BigQuery credentials file not found"),
+        ],
+    )
+    def test_bigquery_opt_in_requires_valid_credentials(
+        self, credentials_file, expected_error
+    ):
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in ("SIPPY_BIGQUERY_CREDENTIALS_FILE", "GOOGLE_APPLICATION_CREDENTIALS")
+        }
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch("server._run_make_phase", new=mock.AsyncMock()) as run_make_phase,
+        ):
+            result = asyncio.run(
+                run_e2e(credentials_file, include_bigquery=True)
+            )
+
+        assert expected_error in result
+        run_make_phase.assert_not_awaited()
+
+    def test_include_bigquery_is_appended_and_defaults_false_in_schema(self):
+        parameters = inspect.signature(run_e2e).parameters
+
+        assert list(parameters) == [
+            "bigquery_credentials_file",
+            "timeout_seconds",
+            "include_bigquery",
+        ]
+        assert parameters["include_bigquery"].annotation is bool
+        assert parameters["include_bigquery"].default is False
+
+        tool = asyncio.run(mcp.get_tool("run_e2e"))
+        include_bigquery_schema = tool.parameters["properties"]["include_bigquery"]
+        assert include_bigquery_schema == {"default": False, "type": "boolean"}
 
 
 class TestDataMode:
