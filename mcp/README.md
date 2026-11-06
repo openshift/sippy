@@ -41,7 +41,7 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 | `sippy_serve`        | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)     | `sippy-dev-logs/sippy_serve.log`        |
 | `sippy_ng_start`     | Background `npm start` in `sippy-ng/` (typically port **3000**)             | `sippy-dev-logs/sippy_ng_start.log`     |
 | `sippy_stop`         | Stops background `sippy_serve` and `sippy_ng_start` processes               | —                                       |
-| `run_e2e`            | `make e2e`                                                                  | `sippy-dev-logs/run_e2e.log`            |
+| `run_e2e`            | `make e2e` (BigQuery coverage is opt-in)                                    | `sippy-dev-logs/run_e2e.log`            |
 
 Optional parameters (timeouts, paths, DSNs, etc.) are documented on each function in **`server.py`**.
 
@@ -50,6 +50,7 @@ Optional parameters (timeouts, paths, DSNs, etc.) are documented on each functio
 ### Credentials and environment
 
 - **Service account JSON** (BigQuery / GCS): pass `bigquery_credentials_file` where supported, or set **`SIPPY_BIGQUERY_CREDENTIALS_FILE`** or **`GOOGLE_APPLICATION_CREDENTIALS`** to an existing file path. Typical local file: `sippy-bigquery-job-importer-key.json` at repo root.
+- **E2e BigQuery coverage**: `run_e2e` skips BigQuery coverage by default, even when credentials are configured in the environment. Pass `include_bigquery=true` to opt in and resolve credentials using the precedence above.
 - **Data mode**: `SIPPY_DATA_MODE` selects between `seed` (default) and `prod-like`. In `seed` mode, `sippy_serve` uses the postgres data provider with seed data. In `prod-like` mode, it uses bigquery with `config/views.yaml` and the `prodlike` database. On startup, the MCP server loads **`.devcontainer/.env`** if present (`python-dotenv`, `override=False`), so values match the devcontainer when the MCP parent process does not inherit `--env-file` variables.
 - **Postgres DSNs**: `SIPPY_SEED_DATABASE_DSN` (seed DB), `SIPPY_PRODLIKE_DATABASE_DSN` (prod-like DB), or the legacy `SIPPY_DATABASE_DSN`. Per-tool arguments override all env vars.
 - **Redis**: `REDIS_URL` or per-tool arguments; see `server.py` for defaults.

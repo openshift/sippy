@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -20,7 +21,8 @@ func NewRedisCache(url string) (*Cache, error) {
 	var err error
 
 	if opts, err = r.ParseURL(url); err != nil {
-		return nil, err
+		// Parse errors may include the complete URL, including credentials.
+		return nil, errors.New("invalid Redis URL configuration")
 	}
 
 	// Using redis on a separate host on local network, some of our blobs are so large they take slightly more than the

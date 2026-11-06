@@ -1,5 +1,8 @@
 import asyncio
+import inspect
 import os
+import secrets
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest import mock
@@ -19,7 +22,11 @@ from server import (
     _validate_redis_url,
     _trim,
     _wait_for_url,
+    mcp,
+    run_e2e,
 )
+
+E2E_SCRIPT = REPO_ROOT / "scripts" / "e2e.sh"
 
 
 class TestRepoPath:
@@ -172,6 +179,356 @@ class TestResolveBigqueryCreds:
                     path, err = _resolve_bigquery_creds(None)
                     assert err is None
                     assert path == Path(first.name).resolve()
+
+
+class TestRunE2e:
+    """Verify the run_e2e BigQuery opt-in behavior and published tool schema."""
+
+    @staticmethod
+    def _successful_subprocess():
+        """Return a successful async subprocess double for the make-based consumer path."""
+        process = mock.Mock()
+        process.wait = mock.AsyncMock(return_value=0)
+        return process
+
+    def test_defaults_to_no_bigquery_without_credentials(self, tmp_path):
+        """Run without credentials by default and suppress BigQuery in the child environment."""
+        process = self._successful_subprocess()
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key
+            not in (
+                "GCS_SA_JSON_PATH",
+                "SIPPY_BIGQUERY_CREDENTIALS_FILE",
+                "GOOGLE_APPLICATION_CREDENTIALS",
+            )
+        }
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch("server.DEV_LOG_DIR", tmp_path),
+            mock.patch(
+                "server.asyncio.create_subprocess_exec",
+                new=mock.AsyncMock(return_value=process),
+            ) as create_subprocess,
+            mock.patch("server._resolve_bigquery_creds") as resolve_creds,
+        ):
+            result = asyncio.run(run_e2e())
+
+        assert "run_e2e succeeded" in result
+        resolve_creds.assert_not_called()
+        assert create_subprocess.await_args.kwargs["env"]["GCS_SA_JSON_PATH"] == ""
+
+    def test_disabled_ignores_all_credentials_and_preserves_parent_env(self, tmp_path):
+        """Ignore every credential source when disabled without mutating files or parent state."""
+        process = self._successful_subprocess()
+        with (
+            tempfile.NamedTemporaryFile(suffix=".json") as explicit,
+            tempfile.NamedTemporaryFile(suffix=".json") as sippy_env,
+            tempfile.NamedTemporaryFile(suffix=".json") as google_env,
+            mock.patch.dict(
+                os.environ,
+                {
+                    "GCS_SA_JSON_PATH": "/inherited/credentials.json",
+                    "SIPPY_BIGQUERY_CREDENTIALS_FILE": sippy_env.name,
+                    "GOOGLE_APPLICATION_CREDENTIALS": google_env.name,
+                },
+                clear=False,
+            ),
+            mock.patch("server.DEV_LOG_DIR", tmp_path),
+            mock.patch(
+                "server.asyncio.create_subprocess_exec",
+                new=mock.AsyncMock(return_value=process),
+            ) as create_subprocess,
+            mock.patch("server._resolve_bigquery_creds") as resolve_creds,
+        ):
+            credential_contents = {
+                explicit.name: secrets.token_bytes(24),
+                sippy_env.name: secrets.token_bytes(24),
+                google_env.name: secrets.token_bytes(24),
+            }
+            for path, contents in credential_contents.items():
+                Path(path).write_bytes(contents)
+
+            result = asyncio.run(run_e2e(explicit.name, include_bigquery=False))
+
+            assert os.environ["GCS_SA_JSON_PATH"] == "/inherited/credentials.json"
+            for path, contents in credential_contents.items():
+                assert Path(path).read_bytes() == contents
+
+        assert "run_e2e succeeded" in result
+        resolve_creds.assert_not_called()
+        assert create_subprocess.await_args.kwargs["env"]["GCS_SA_JSON_PATH"] == ""
+
+    def test_bigquery_opt_in_resolves_explicit_credentials(self, tmp_path):
+        """Resolve an explicit credential file only when BigQuery coverage is requested."""
+        process = self._successful_subprocess()
+        with (
+            tempfile.NamedTemporaryFile(suffix=".json") as explicit,
+            mock.patch("server.DEV_LOG_DIR", tmp_path),
+            mock.patch(
+                "server.asyncio.create_subprocess_exec",
+                new=mock.AsyncMock(return_value=process),
+            ) as create_subprocess,
+        ):
+            result = asyncio.run(run_e2e(explicit.name, include_bigquery=True))
+
+        assert "run_e2e succeeded" in result
+        assert create_subprocess.await_args.kwargs["env"]["GCS_SA_JSON_PATH"] == str(
+            Path(explicit.name).resolve()
+        )
+
+    @pytest.mark.parametrize(
+        ("credentials_file", "expected_error"),
+        [
+            (None, "Set bigquery_credentials_file"),
+            ("/nonexistent/creds.json", "BigQuery credentials file not found"),
+        ],
+    )
+    def test_bigquery_opt_in_requires_valid_credentials(
+        self, credentials_file, expected_error
+    ):
+        """Return existing resolver errors and skip make when opt-in credentials are invalid."""
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in ("SIPPY_BIGQUERY_CREDENTIALS_FILE", "GOOGLE_APPLICATION_CREDENTIALS")
+        }
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch("server._run_make_phase", new=mock.AsyncMock()) as run_make_phase,
+        ):
+            result = asyncio.run(
+                run_e2e(credentials_file, include_bigquery=True)
+            )
+
+        assert expected_error in result
+        run_make_phase.assert_not_awaited()
+
+    def test_include_bigquery_is_appended_and_defaults_false_in_schema(self):
+        """Expose the appended include_bigquery parameter as a false-defaulting boolean."""
+        parameters = inspect.signature(run_e2e).parameters
+
+        assert list(parameters) == [
+            "bigquery_credentials_file",
+            "timeout_seconds",
+            "include_bigquery",
+        ]
+        assert parameters["include_bigquery"].annotation is bool
+        assert parameters["include_bigquery"].default is False
+
+        tool = asyncio.run(mcp.get_tool("run_e2e"))
+        include_bigquery_schema = tool.parameters["properties"]["include_bigquery"]
+        assert include_bigquery_schema == {"default": False, "type": "boolean"}
+
+
+class TestE2eScriptSafety:
+    """Exercise the e2e shell helpers without contacting external services."""
+
+    @staticmethod
+    def _run_helper(body, env=None):
+        """Source the production script and run a helper body in an isolated Bash process."""
+        run_env = os.environ.copy()
+        if env:
+            run_env.update(env)
+        return subprocess.run(
+            ["bash", "-c", f'source "$1"\n{body}', "bash", str(E2E_SCRIPT)],
+            cwd=REPO_ROOT,
+            env=run_env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_existing_service_configuration_does_not_log_connection_secrets(self):
+        """Keep credential-bearing URLs in command arguments and out of script output."""
+        database_password = secrets.token_urlsafe(24)
+        redis_password = secrets.token_urlsafe(24)
+        admin_dsn = (
+            f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/postgres"
+        )
+        e2e_dsn = (
+            f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/sippy_e2e"
+        )
+        redis_url = f"redis://:{redis_password}@sippy-redis:6379/1"
+        result = self._run_helper(
+            """
+psql_calls=0
+psql() {
+    psql_calls=$((psql_calls + 1))
+    [ "$1" = "$EXPECTED_ADMIN_DSN" ] || exit 90
+}
+e2e_configure_existing_services
+[ "$psql_calls" -eq 2 ] || exit 91
+[ "$SIPPY_E2E_DSN" = "$EXPECTED_E2E_DSN" ] || exit 92
+[ "$REDIS_URL" = "$EXPECTED_REDIS_URL" ] || exit 93
+""",
+            {
+                "SIPPY_DATABASE_DSN": admin_dsn,
+                "SIPPY_E2E_REDIS_URL": redis_url,
+                "EXPECTED_ADMIN_DSN": admin_dsn,
+                "EXPECTED_E2E_DSN": e2e_dsn,
+                "EXPECTED_REDIS_URL": redis_url,
+            },
+        )
+
+        output = result.stdout + result.stderr
+        assert result.returncode == 0, output
+        assert database_password not in output
+        assert redis_password not in output
+        assert admin_dsn not in output
+        assert e2e_dsn not in output
+        assert redis_url not in output
+
+    def test_existing_service_configuration_fails_on_unexpected_dsn(self):
+        """Propagate a psql argument mismatch as exit 90 instead of masking it later."""
+        actual_password = secrets.token_urlsafe(24)
+        expected_password = secrets.token_urlsafe(24)
+        actual_dsn = (
+            f"postgresql://e2e-user:{actual_password}@sippy-postgres:5432/postgres"
+        )
+        expected_dsn = (
+            f"postgresql://e2e-user:{expected_password}@sippy-postgres:5432/postgres"
+        )
+        result = self._run_helper(
+            """
+psql() {
+    [ "$1" = "$EXPECTED_ADMIN_DSN" ] || exit 90
+}
+e2e_configure_existing_services
+""",
+            {
+                "SIPPY_DATABASE_DSN": actual_dsn,
+                "EXPECTED_ADMIN_DSN": expected_dsn,
+            },
+        )
+
+        output = result.stdout + result.stderr
+        assert result.returncode == 90
+        assert actual_password not in output
+        assert expected_password not in output
+        assert actual_dsn not in output
+        assert expected_dsn not in output
+
+    @pytest.mark.parametrize(
+        "host",
+        ["localhost", "sippy-postgres"],
+    )
+    def test_safe_dsn_host_still_accepts_local_services(self, host):
+        """Preserve the localhost and sippy-postgres allowlist used by destructive helpers."""
+        password = secrets.token_urlsafe(24)
+        dsn = f"postgresql://user:{password}@{host}:5432/postgres"
+        result = self._run_helper('e2e_safe_dsn_host "$SAFE_DSN"', {"SAFE_DSN": dsn})
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == ""
+        assert result.stderr == ""
+        assert password not in result.stdout + result.stderr
+
+    def test_safe_dsn_host_rejection_does_not_echo_credentials(self):
+        """Reject remote database hosts without copying their credential-bearing DSN to stderr."""
+        password = secrets.token_urlsafe(24)
+        rejected_dsn = f"postgresql://user:{password}@database.example.com:5432/postgres"
+        result = self._run_helper(
+            'e2e_safe_dsn_host "$REJECTED_DSN"',
+            {"REJECTED_DSN": rejected_dsn},
+        )
+
+        output = result.stdout + result.stderr
+        assert result.returncode == 1
+        assert "refusing to operate on non-local database host" in result.stderr
+        assert password not in output
+        assert rejected_dsn not in output
+
+    def test_devcontainer_entry_uses_safe_arguments_without_logging_secrets(
+        self, tmp_path
+    ):
+        """Exercise the real devcontainer entry path with service and build commands stubbed."""
+        database_password = secrets.token_urlsafe(24)
+        redis_password = secrets.token_urlsafe(24)
+        admin_dsn = (
+            f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/postgres"
+        )
+        e2e_dsn = (
+            f"postgresql://e2e-user:{database_password}@sippy-postgres:5432/sippy_e2e"
+        )
+        redis_url = f"redis://:{redis_password}@sippy-redis:6379/1"
+        call_log = tmp_path / "psql-calls.log"
+        bash_env = tmp_path / "bash-env"
+        bash_env.write_text(
+            """
+function [ {
+    if [[ "$1" == "-f" && "$2" == "/run/.containerenv" ]]; then
+        return 0
+    fi
+    builtin [ "$@"
+}
+psql() {
+    [ "$1" = "$EXPECTED_ADMIN_DSN" ] || exit 90
+    printf '%s\\n' "$2 $3" >> "$PSQL_CALL_LOG"
+}
+go() {
+    [ "$1" = "build" ] || exit 94
+    return 95
+}
+"""
+        )
+        env = os.environ.copy()
+        env.update(
+            {
+                "BASH_ENV": str(bash_env),
+                "GCS_SA_JSON_PATH": "",
+                "SIPPY_DATABASE_DSN": admin_dsn,
+                "SIPPY_E2E_REDIS_URL": redis_url,
+                "EXPECTED_ADMIN_DSN": admin_dsn,
+                "PSQL_CALL_LOG": str(call_log),
+            }
+        )
+
+        result = subprocess.run(
+            ["bash", str(E2E_SCRIPT)],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        output = result.stdout + result.stderr
+        assert result.returncode == 1, output
+        assert "Detected devcontainer" in result.stdout
+        assert "Building sippy with coverage instrumentation" in result.stdout
+        assert "Build failed" in result.stdout
+        assert call_log.read_text().splitlines() == [
+            "-c DROP DATABASE IF EXISTS sippy_e2e",
+            "-c CREATE DATABASE sippy_e2e",
+            "-c DROP DATABASE IF EXISTS sippy_e2e",
+        ]
+        for secret in (
+            database_password,
+            redis_password,
+            admin_dsn,
+            e2e_dsn,
+            redis_url,
+        ):
+            assert secret not in output
+
+    @pytest.mark.parametrize(
+        ("database_name", "expected_returncode"),
+        [("sippy_e2e", 0), ("production", 1)],
+    )
+    def test_safe_database_name_guard_is_preserved(
+        self, database_name, expected_returncode
+    ):
+        """Continue allowing only database names that contain the required _e2e marker."""
+        result = self._run_helper(
+            'e2e_safe_db_name "$DATABASE_NAME"',
+            {"DATABASE_NAME": database_name},
+        )
+
+        assert result.returncode == expected_returncode
+        if expected_returncode:
+            assert "name must contain '_e2e'" in result.stderr
 
 
 class TestDataMode:

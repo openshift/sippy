@@ -12,11 +12,6 @@ REDIS_CONTAINER="sippy-e2e-test-redis"
 REDIS_PORT="23479"
 
 E2E_DB_NAME="sippy_e2e"
-
-if [ -z "$GCS_SA_JSON_PATH" ]; then
-    echo "WARNING: GCS_SA_JSON_PATH not set, data sync and BigQuery tests will be skipped" 1>&2
-fi
-
 E2E_EXIT_CODE=0
 
 # ---------------------------------------------------------------------------
@@ -34,7 +29,7 @@ e2e_safe_dsn_host() {
     dsn="$1"
     case "$dsn" in
         *@localhost:*|*@localhost/*|*@sippy-postgres:*|*@sippy-postgres/*) ;;
-        *) echo "FATAL: refusing to operate on non-local database: $dsn" >&2; exit 1 ;;
+        *) echo "FATAL: refusing to operate on non-local database host" >&2; exit 1 ;;
     esac
 }
 
@@ -58,12 +53,7 @@ e2e_drop_database() {
     psql "$admin_dsn" -c "DROP DATABASE IF EXISTS $db_name" 2>/dev/null || true
 }
 
-# ---------------------------------------------------------------------------
-# Devcontainer vs host setup
-# ---------------------------------------------------------------------------
-if [ -f /run/.containerenv ]; then
-    # Inside devcontainer — use existing PostgreSQL and Redis, separate database
-    echo "Detected devcontainer — using existing PostgreSQL and Redis services"
+e2e_configure_existing_services() {
     ADMIN_DSN="${SIPPY_DATABASE_DSN:-postgresql://postgres:password@sippy-postgres:5432/postgres}"
     E2E_DSN=$(echo "$ADMIN_DSN" | sed "s|/[^/]*$|/${E2E_DB_NAME}|")
 
@@ -74,8 +64,23 @@ if [ -f /run/.containerenv ]; then
     # Override with SIPPY_E2E_REDIS_URL if Redis is not sippy-redis:6379.
     export REDIS_URL="${SIPPY_E2E_REDIS_URL:-redis://sippy-redis:6379/1}"
     export SIPPY_E2E_REPO_ROOT="$(pwd)"
-    echo "E2E DSN: $SIPPY_E2E_DSN"
-    echo "Redis:   $REDIS_URL"
+}
+
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    return 0
+fi
+
+if [ -z "$GCS_SA_JSON_PATH" ]; then
+    echo "WARNING: GCS_SA_JSON_PATH not set, data sync and BigQuery tests will be skipped" 1>&2
+fi
+
+# ---------------------------------------------------------------------------
+# Devcontainer vs host setup
+# ---------------------------------------------------------------------------
+if [ -f /run/.containerenv ]; then
+    # Inside devcontainer — use existing PostgreSQL and Redis, separate database
+    echo "Detected devcontainer — using existing PostgreSQL and Redis services"
+    e2e_configure_existing_services
 
     clean_up () {
         ARG=$?
