@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -142,6 +143,36 @@ func TestCRTimeRoundingFlagsValidate(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+// The zero value of ComponentReadinessFlags must stay usable: binding applies the rounding
+// defaults under the names 'sippy serve' and seed-data share, and parsed values override them.
+func TestComponentReadinessFlagsZeroValueBindFlags(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       []string
+		wantFactor time.Duration
+		wantOffset time.Duration
+	}{
+		{name: "defaults", wantFactor: defaultCRTimeRoundingFactor, wantOffset: defaultCRTimeRoundingOffset},
+		{
+			name:       "overrides",
+			args:       []string{"--component-readiness-time-rounding-factor=6h", "--component-readiness-time-rounding-offset=5h"},
+			wantFactor: 6 * time.Hour,
+			wantOffset: 5 * time.Hour,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var f ComponentReadinessFlags
+			fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+			require.NotPanics(t, func() { f.BindFlags(fs) })
+			require.NoError(t, fs.Parse(tt.args))
+			assert.Equal(t, tt.wantFactor, f.TimeRounding.Factor)
+			assert.Equal(t, tt.wantOffset, f.TimeRounding.Offset)
+			assert.NoError(t, f.Validate())
 		})
 	}
 }

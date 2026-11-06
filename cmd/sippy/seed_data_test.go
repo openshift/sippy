@@ -31,7 +31,7 @@ func testSeedViews(t *testing.T) apitype.SippyViews {
 // testSeedClock builds the seed clock the command would build at now with the given rounding.
 func testSeedClock(t *testing.T, views apitype.SippyViews, now time.Time, factor, offset time.Duration) seedClock {
 	t.Helper()
-	clock, err := newSeedClock(now, &flags.CRTimeRoundingFlags{Factor: factor, Offset: offset}, views)
+	clock, err := newSeedClock(now, flags.CRTimeRoundingFlags{Factor: factor, Offset: offset}, views)
 	require.NoError(t, err)
 	return clock
 }
@@ -45,7 +45,7 @@ func tallySeededStatuses(counts testCount) map[int]int {
 	return got
 }
 
-// assertStatusTally checks a status tally holds exactly the passes, flakes and failures counts declares.
+// assertStatusTally checks a status tally holds exactly the passes, flakes and failures counts declared.
 func assertStatusTally(t *testing.T, counts testCount, got map[int]int, surface string) {
 	t.Helper()
 	assert.Equal(t, counts.success-counts.flake, got[int(v1.TestStatusSuccess)], "%s passes", surface)

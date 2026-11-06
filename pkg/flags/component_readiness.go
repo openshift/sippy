@@ -22,8 +22,10 @@ const (
 // ComponentReadinessFlags holds configuration information for serving ComponentReadiness.
 type ComponentReadinessFlags struct {
 	ComponentReadinessViewsFile string
-	TimeRounding                *CRTimeRoundingFlags
-	CORSAllowedOrigin           string
+	// TimeRounding is a value rather than a pointer so the zero value of ComponentReadinessFlags
+	// stays usable: BindFlags applies the rounding defaults.
+	TimeRounding      CRTimeRoundingFlags
+	CORSAllowedOrigin string
 }
 
 func NewComponentReadinessFlags() *ComponentReadinessFlags {
@@ -53,8 +55,8 @@ type CRTimeRoundingFlags struct {
 }
 
 // NewCRTimeRoundingFlags returns rounding flags preset to the serving defaults.
-func NewCRTimeRoundingFlags() *CRTimeRoundingFlags {
-	return &CRTimeRoundingFlags{
+func NewCRTimeRoundingFlags() CRTimeRoundingFlags {
+	return CRTimeRoundingFlags{
 		Factor: defaultCRTimeRoundingFactor,
 		Offset: defaultCRTimeRoundingOffset,
 	}

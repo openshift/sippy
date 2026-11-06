@@ -62,7 +62,9 @@ the rerunnable records (labels, symptoms, feature gates). Drop and recreate the
 database to fully re-seed.
 
 The 4.22 job runs fill the sample window of the `4.22-main` seed view, resolved
-the same way the server resolves it.
+the same way the server resolves it. Regressions the seed opens are stamped with
+the start of their release's seeded failure window rather than the current time,
+so force close has resolution dates to choose between "opened" and today.
 
 The seeded sample window ends at the most recent Component Readiness rounding
 boundary, so `seed-data` accepts the same

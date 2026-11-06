@@ -179,6 +179,7 @@ func NewServeCommand() *cobra.Command {
 				log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 			}
 
+			rounding := f.ComponentReadinessFlags.TimeRounding
 			server := sippyserver.NewServer(
 				f.ModeFlags.GetServerMode(),
 				f.APIFlags.ListenAddr,
@@ -194,8 +195,8 @@ func NewServeCommand() *cobra.Command {
 				crDataProvider,
 				pinnedDateTime,
 				cacheClient,
-				f.ComponentReadinessFlags.TimeRounding.Factor,
-				f.ComponentReadinessFlags.TimeRounding.Offset,
+				rounding.Factor,
+				rounding.Offset,
 				views,
 				config,
 				f.APIFlags.EnableWriteEndpoints,
@@ -224,7 +225,7 @@ func NewServeCommand() *cobra.Command {
 					bigQueryClient,
 					crDataProvider,
 					util.GetReportEnd(pinnedDateTime),
-					cache.NewStandardCROptions(f.ComponentReadinessFlags.TimeRounding.Factor, f.ComponentReadinessFlags.TimeRounding.Offset),
+					cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
 					views.ComponentReadiness)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
@@ -244,7 +245,7 @@ func NewServeCommand() *cobra.Command {
 								bigQueryClient,
 								crDataProvider,
 								util.GetReportEnd(pinnedDateTime),
-								cache.NewStandardCROptions(f.ComponentReadinessFlags.TimeRounding.Factor, f.ComponentReadinessFlags.TimeRounding.Offset),
+								cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
 								views.ComponentReadiness)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")

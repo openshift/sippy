@@ -57,10 +57,31 @@ type RegressionStore interface {
 type PostgresRegressionStore struct {
 	dbc        *db.DB
 	jiraClient *jira.Client
+	// openedAt stamps newly opened regressions and newly observed regression views.
+	openedAt openedAtFunc
 }
 
-func NewPostgresRegressionStore(dbc *db.DB, jiraClient *jira.Client) RegressionStore {
-	return &PostgresRegressionStore{dbc: dbc, jiraClient: jiraClient}
+// openedAtFunc returns the opened time for a regression or regression view being opened now.
+type openedAtFunc func() time.Time
+
+// RegressionStoreOption customizes a PostgresRegressionStore built by NewPostgresRegressionStore.
+type RegressionStoreOption func(*PostgresRegressionStore)
+
+// WithOpenedAt replaces the wall clock used to stamp newly opened regressions and regression
+// views. Production tracking keeps the default; seed data uses it to open regressions at a
+// historical time so their opened field is never rewritten after creation.
+func WithOpenedAt(openedAt func() time.Time) RegressionStoreOption {
+	return func(prs *PostgresRegressionStore) {
+		prs.openedAt = openedAt
+	}
+}
+
+func NewPostgresRegressionStore(dbc *db.DB, jiraClient *jira.Client, opts ...RegressionStoreOption) RegressionStore {
+	prs := &PostgresRegressionStore{dbc: dbc, jiraClient: jiraClient, openedAt: time.Now}
+	for _, opt := range opts {
+		opt(prs)
+	}
+	return prs
 }
 
 func (prs *PostgresRegressionStore) ListCurrentRegressionsForRelease(release string) ([]*models.TestRegression, error) {
@@ -83,7 +104,7 @@ func (prs *PostgresRegressionStore) OpenRegression(view crview.View, newRegresse
 		Release:     view.SampleRelease.Name,
 		TestID:      newRegressedTest.TestID,
 		TestName:    newRegressedTest.TestName,
-		Opened:      time.Now(),
+		Opened:      prs.openedAt(),
 		Variants:    variants,
 		MaxFailures: newRegressedTest.SampleStats.FailureCount,
 	}
@@ -137,12 +158,12 @@ func (prs *PostgresRegressionStore) MergeJobRuns(regressionID uint, jobRuns []mo
 func (prs *PostgresRegressionStore) UpsertRegressionView(regressionID uint, viewName string) error {
 	res := prs.dbc.DB.Exec(
 		`INSERT INTO regression_views (test_regression_id, view_name, active, opened_at)
-		 VALUES (?, ?, true, NOW())
+		 VALUES (@id, @view, true, @opened)
 		 ON CONFLICT (test_regression_id, view_name) DO UPDATE
 		 SET active = true,
-		     opened_at = CASE WHEN regression_views.active = false THEN NOW() ELSE regression_views.opened_at END,
+		     opened_at = CASE WHEN regression_views.active = false THEN @opened ELSE regression_views.opened_at END,
 		     closed_at = NULL`,
-		regressionID, viewName)
+		sql.Named("id", regressionID), sql.Named("view", viewName), sql.Named("opened", prs.openedAt()))
 	return res.Error
 }
 

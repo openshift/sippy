@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	stderrors "errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -16,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -38,7 +36,7 @@ type SeedDataFlags struct {
 	DBFlags *flags.PostgresFlags
 	// TimeRounding must match the server's settings so the seeded sample window
 	// lines up with what the report and test details query.
-	TimeRounding *flags.CRTimeRoundingFlags
+	TimeRounding flags.CRTimeRoundingFlags
 	InitDatabase bool
 }
 
@@ -537,7 +535,7 @@ var syntheticTests = []syntheticTestSpec{
 }
 
 // seedSampleView names the seed view whose sample window the current release's job runs fill.
-const seedSampleView = "4.22-main"
+const seedSampleView string = "4.22-main"
 
 // seedClock pins the reference time and the server's sample-window rounding for one
 // seed run. Resolving every job and release against the same clock keeps the fixture
@@ -552,7 +550,7 @@ type seedClock struct {
 
 // newSeedClock pins now (normalized to UTC) and resolves seedSampleView's sample window against it
 // through the same parser the server uses, so the seed follows the view if its window changes.
-func newSeedClock(now time.Time, rounding *flags.CRTimeRoundingFlags, views apitype.SippyViews) (seedClock, error) {
+func newSeedClock(now time.Time, rounding flags.CRTimeRoundingFlags, views apitype.SippyViews) (seedClock, error) {
 	c := seedClock{now: now.UTC(), roundingFactor: rounding.Factor, roundingOffset: rounding.Offset}
 	sampleRelease, err := seedViewSampleRelease(views, seedSampleView)
 	if err != nil {
@@ -601,17 +599,14 @@ func historicalReleaseWindow(release string, now time.Time) (start, end time.Tim
 }
 
 // loadSeedViews reads the Component Readiness views that the seed tracks regressions for and that
-// 'sippy serve --views' must be given to show the seeded data.
+// 'sippy serve --views' must be given to show the seeded data. It goes through the same parsing and
+// validation as 'sippy serve --views', so the seed never accepts views the server would reject.
 func loadSeedViews(path string) (apitype.SippyViews, error) {
-	var views apitype.SippyViews
-	data, err := os.ReadFile(path)
+	views, err := (&flags.ComponentReadinessFlags{ComponentReadinessViewsFile: path}).ParseViewsFile()
 	if err != nil {
-		return views, fmt.Errorf("reading seed views file %s: %w", path, err)
+		return apitype.SippyViews{}, fmt.Errorf("loading seed views: %w", err)
 	}
-	if err := yaml.Unmarshal(data, &views); err != nil {
-		return views, fmt.Errorf("parsing seed views file %s: %w", path, err)
-	}
-	return views, nil
+	return *views, nil
 }
 
 // seedViewSampleRelease returns the relative sample release of the named seed view.
@@ -625,45 +620,12 @@ func seedViewSampleRelease(views apitype.SippyViews, name string) (reqopts.Relat
 }
 
 // seededRegressionOpened returns the historical opened time for a seeded regression in release:
-// the start of the release's seeded failure window. Regression tracking stamps new regressions with
-// the wall clock, which leaves no selectable resolution date between "opened" and today when
+// the start of the release's seeded failure window. syncRegressions opens regressions at this time
+// because the wall clock would leave no selectable resolution date between "opened" and today when
 // exercising force close against a freshly seeded database.
 func seededRegressionOpened(clock seedClock, release string) time.Time {
 	start, _ := clock.window(release)
 	return start
-}
-
-// backdateSeededRegressions moves the opened time of the given regressions, which syncRegressions
-// created in this run, back to the start of their release's seeded failure window. Regressions that
-// existed before the run keep their opened time, and production regression tracking is unaffected.
-func backdateSeededRegressions(dbc *db.DB, clock seedClock, createdIDs sets.Set[uint]) error {
-	if createdIDs.Len() == 0 {
-		return nil
-	}
-	var regressions []models.TestRegression
-	if err := dbc.DB.Select("id", "release").Where("id IN ?", sets.List(createdIDs)).Find(&regressions).Error; err != nil {
-		return fmt.Errorf("loading seeded regressions: %w", err)
-	}
-	idsByRelease := map[string][]uint{}
-	for _, reg := range regressions {
-		idsByRelease[reg.Release] = append(idsByRelease[reg.Release], reg.ID)
-	}
-	return dbc.DB.Transaction(func(tx *gorm.DB) error {
-		for release, ids := range idsByRelease {
-			opened := seededRegressionOpened(clock, release)
-			if err := tx.Model(&models.TestRegression{}).Where("id IN ?", ids).Update("opened", opened).Error; err != nil {
-				return fmt.Errorf("backdating regressions for release %s: %w", release, err)
-			}
-			// Keep per-view opened times consistent with the regression they belong to.
-			if err := tx.Exec(`UPDATE regression_views SET opened_at = @opened WHERE test_regression_id IN @ids`,
-				sql.Named("opened", opened), sql.Named("ids", ids)).Error; err != nil {
-				return fmt.Errorf("backdating regression views for release %s: %w", release, err)
-			}
-			log.WithField("release", release).WithField("opened", opened).
-				WithField("regressions", len(ids)).Info("Backdated seeded regressions")
-		}
-		return nil
-	})
 }
 
 func seedSyntheticData(dbc *db.DB, clock seedClock, views apitype.SippyViews) error {
@@ -751,12 +713,8 @@ func seedSyntheticData(dbc *db.DB, clock seedClock, views apitype.SippyViews) er
 	}
 
 	log.Info("Syncing regressions...")
-	createdRegressions, err := syncRegressions(dbc, clock, views)
-	if err != nil {
+	if err := syncRegressions(dbc, clock, views); err != nil {
 		return errors.WithMessage(err, "failed to sync regressions")
-	}
-	if err := backdateSeededRegressions(dbc, clock, createdRegressions); err != nil {
-		return errors.WithMessage(err, "failed to backdate seeded regressions")
 	}
 
 	if err := seedRegressionJobRuns(dbc, clock); err != nil {
@@ -1152,21 +1110,16 @@ func spreadHit(i, hits, n int) bool {
 }
 
 // syncRegressions runs regression tracking over every seed view with tracking enabled, resolved at
-// the pinned clock, and returns the IDs of the regressions it created.
-func syncRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) (sets.Set[uint], error) {
+// the pinned clock. Regressions it opens are stamped with seededRegressionOpened for the view's
+// sample release; regressions that already exist keep their opened time.
+func syncRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) error {
 	provider := pgprovider.NewPostgresProvider(dbc, nil)
 	ctx := context.Background()
 
 	releases, err := provider.QueryReleases(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("querying releases: %w", err)
+		return fmt.Errorf("querying releases: %w", err)
 	}
-
-	var existingIDs []uint
-	if err := dbc.DB.Model(&models.TestRegression{}).Pluck("id", &existingIDs).Error; err != nil {
-		return nil, fmt.Errorf("listing existing regressions: %w", err)
-	}
-	syncedIDs := sets.New[uint]()
 
 	backend := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 	rLog := log.WithField("source", "seed-regression-sync")
@@ -1179,14 +1132,17 @@ func syncRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) (set
 			rLog.WithField("view", view.Name).Info("skipping view with regression tracking disabled")
 			continue
 		}
+		opened := seededRegressionOpened(clock, view.SampleRelease.Name)
+		viewBackend := componentreadiness.NewPostgresRegressionStore(dbc, nil,
+			componentreadiness.WithOpenedAt(func() time.Time { return opened }))
 
 		baseRelease, err := clock.resolveViewRelease(releases, "basis", view.BaseRelease)
 		if err != nil {
-			return nil, fmt.Errorf("error getting base release for view %s: %w", view.Name, err)
+			return fmt.Errorf("error getting base release for view %s: %w", view.Name, err)
 		}
 		sampleRelease, err := clock.resolveViewRelease(releases, "sample", view.SampleRelease)
 		if err != nil {
-			return nil, fmt.Errorf("error getting sample release for view %s: %w", view.Name, err)
+			return fmt.Errorf("error getting sample release for view %s: %w", view.Name, err)
 		}
 
 		reportOpts := reqopts.RequestOptions{
@@ -1204,16 +1160,16 @@ func syncRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) (set
 			for _, e := range reportErrs {
 				rLog.WithError(e).Warn("report generation error")
 			}
-			return nil, fmt.Errorf("error generating component report for view %s", view.Name)
+			return fmt.Errorf("error generating component report for view %s", view.Name)
 		}
 
-		activeRegs, err := componentreadiness.SyncRegressionsForReport(backend, view, rLog, &report)
+		activeRegs, err := componentreadiness.SyncRegressionsForReport(viewBackend, view, rLog, &report)
 		if err != nil {
-			return nil, fmt.Errorf("error syncing regressions for view %s: %w", view.Name, err)
+			return fmt.Errorf("error syncing regressions for view %s: %w", view.Name, err)
 		}
 		for _, reg := range activeRegs {
-			if err := backend.UpsertRegressionView(reg.ID, view.Name); err != nil {
-				return nil, fmt.Errorf("error upserting view %s for regression %d: %w", view.Name, reg.ID, err)
+			if err := viewBackend.UpsertRegressionView(reg.ID, view.Name); err != nil {
+				return fmt.Errorf("error upserting view %s for regression %d: %w", view.Name, reg.ID, err)
 			}
 		}
 
@@ -1223,7 +1179,6 @@ func syncRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) (set
 		}
 		for _, r := range activeRegs {
 			releaseActiveIDs[release].Insert(r.ID)
-			syncedIDs.Insert(r.ID)
 		}
 
 		rLog.Infof("synced regressions for view %s: %d active", view.Name, len(activeRegs))
@@ -1234,23 +1189,23 @@ func syncRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) (set
 	for release, activeIDs := range releaseActiveIDs {
 		allRegs, err := backend.ListCurrentRegressionsForRelease(release)
 		if err != nil {
-			return nil, fmt.Errorf("error listing regressions for release %s: %w", release, err)
+			return fmt.Errorf("error listing regressions for release %s: %w", release, err)
 		}
 		for _, reg := range allRegs {
 			if !activeIDs.Has(reg.ID) && !reg.Closed.Valid {
 				reg.Closed = sql.NullTime{Valid: true, Time: closeTime}
 				if err := backend.UpdateRegression(reg); err != nil {
-					return nil, fmt.Errorf("error closing regression %d: %w", reg.ID, err)
+					return fmt.Errorf("error closing regression %d: %w", reg.ID, err)
 				}
 			}
 		}
 	}
 
 	if err := backend.ResolveTriages(); err != nil {
-		return nil, fmt.Errorf("error resolving triages: %w", err)
+		return fmt.Errorf("error resolving triages: %w", err)
 	}
 
-	return syncedIDs.Difference(sets.New(existingIDs...)), nil
+	return nil
 }
 
 func seedPresubmitData(dbc *db.DB, clock seedClock) error {
@@ -1485,7 +1440,7 @@ func seedPresubmitData(dbc *db.DB, clock seedClock) error {
 const syntheticViewsFile = "config/seed-views.yaml"
 
 // seededInfraRuns is the number of extra runs per job that fail on infrastructure rather than tests.
-const seededInfraRuns = 2
+const seededInfraRuns int = 2
 
 // variantMapToArray converts a variant map to a pq.StringArray.
 func variantMapToArray(m map[string]string) pq.StringArray {
