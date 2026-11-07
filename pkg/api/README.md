@@ -787,6 +787,11 @@ The triage must be resolved. If it is not, the endpoint returns `400 Bad Request
 message "Cannot force-close regressions for an unresolved triage. Resolve the triage first."
 This is a write endpoint and requires the `write_endpoints` capability.
 
+The closing user is taken from the `X-Forwarded-User` header. A request without a user returns
+`401 Unauthorized`, except when `DEV_MODE=1` (local development and agentic-staging), in which case
+the request is attributed to the mock user `developer`. See
+[DEVELOPMENT.md](../../DEVELOPMENT.md#mock-authentication-local-and-agentic-staging).
+
 ### Request body
 
 | Field  | Type   | Description                                              | Required |
