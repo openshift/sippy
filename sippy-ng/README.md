@@ -196,6 +196,10 @@ so assertions compare the request contract with the visible evidence. Capability
 flags (`local_db` and `write_endpoints`) are explicit per scenario. Label PUT
 and DELETE requests update only scenario-local fixture state. Prow, GitHub,
 GCS, and Slack destinations are checked without contacting those services.
+Shared workflow API and link assertions live in
+`bdd/fixtures/workflowExpectations.js`; `bdd/pages/workflowPage.js` contains
+browser interactions and row locators. The interval scenarios hold and release
+responses to verify that an older file cannot replace the current empty result.
 
 Run only this coverage while developing:
 

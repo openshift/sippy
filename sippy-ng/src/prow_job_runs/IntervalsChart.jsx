@@ -301,7 +301,8 @@ export default function IntervalsChart({
     return ''
   })
 
-  const fetchData = () => {
+  const fetchData = (signal) => {
+    setFetchError('')
     let queryString = ''
     console.log(
       'fetching new data: jobRun=' +
@@ -324,7 +325,8 @@ export default function IntervalsChart({
         (props.repoInfo ? '&repo_info=' + props.repoInfo : '') +
         (props.pullNumber ? '&pull_number=' + props.pullNumber : '') +
         (intervalFile ? '&file=' + intervalFile : '') +
-        queryString
+        queryString,
+      { signal }
     )
       .then((response) => {
         if (response.status !== 200) {
@@ -333,6 +335,8 @@ export default function IntervalsChart({
         return response.json()
       })
       .then((json) => {
+        // A previous file's response must not replace the current selection.
+        if (signal.aborted) return
         if (json != null) {
           setJobRunUrl(json.jobRunURL || '')
           // Process and filter our intervals
@@ -386,6 +390,7 @@ export default function IntervalsChart({
         setLoaded(true)
       })
       .catch((error) => {
+        if (signal.aborted) return
         setFetchError(
           'Could not retrieve intervals for ' +
             'jobRunID=' +
@@ -402,8 +407,16 @@ export default function IntervalsChart({
   }
 
   useEffect(() => {
-    fetchData()
-  }, [intervalFile])
+    const controller = new AbortController()
+    fetchData(controller.signal)
+    return () => controller.abort()
+  }, [
+    intervalFile,
+    props.jobRunID,
+    props.jobName,
+    props.pullNumber,
+    props.repoInfo,
+  ])
 
   useEffect(() => {
     const isReady =

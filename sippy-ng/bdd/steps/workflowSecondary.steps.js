@@ -1,6 +1,10 @@
 import * as data from '../fixtures/workflowData.js'
 import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
+import {
+  expectFilter,
+  expectLinkFilters,
+} from '../fixtures/workflowExpectations.js'
 import { filter } from '../fixtures/workflowFilters.js'
 import { test } from '../fixtures/test.js'
 import { WorkflowPage } from '../pages/workflowPage.js'
@@ -30,7 +34,7 @@ Then(
         name: `Periodic Job Runs On ${data.CLUSTER}`,
       })
     ).toBeVisible()
-    await new WorkflowPage(page).expectFilter(
+    await expectFilter(
       api,
       '/api/jobs/runs',
       [
@@ -68,7 +72,7 @@ When(
   async ({ api, page }) => {
     await page.goto(`repositories/${data.RELEASE}`)
     await new WorkflowPage(page).search(data.REPO)
-    await new WorkflowPage(page).expectFilter(
+    await expectFilter(
       api,
       '/api/repositories',
       [filter('repo', 'contains', data.REPO)],
@@ -89,22 +93,20 @@ Then(
         exact: true,
       })
     ).toBeVisible()
-    await new WorkflowPage(page).expectFilter(api, '/api/jobs', repoFilters, {
+    await expectFilter(api, '/api/jobs', repoFilters, {
       release: data.RELEASE,
     })
-    await new WorkflowPage(page).expectFilter(
-      api,
-      '/api/pull_requests',
-      repoFilters,
-      { release: data.RELEASE }
-    )
+    await expectFilter(api, '/api/pull_requests', repoFilters, {
+      release: data.RELEASE,
+    })
     await expect(
       page.getByText('Synthetic selected change', { exact: true })
     ).toBeVisible()
     await expect(
       page.getByText('Other repository change', { exact: true })
     ).toHaveCount(0)
-    await new WorkflowPage(page).expectLinkFilters(
+    await expectLinkFilters(
+      page,
       page.getByRole('link', { name: 'Presubmit jobs', exact: true }),
       `/jobs/${data.RELEASE}`,
       repoFilters
@@ -117,7 +119,7 @@ When('I follow repository jobs', async ({ page }) => {
 Then(
   'the jobs page shows only the selected repository evidence',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(api, '/api/jobs', repoFilters, {
+    await expectFilter(api, '/api/jobs', repoFilters, {
       release: data.RELEASE,
     })
     await expect(page.getByText('1–25 of 26')).toBeVisible()
@@ -136,7 +138,7 @@ When(
     await new WorkflowPage(page).numericFilter(
       'PR number',
       'equals',
-      '98765',
+      String(data.PR_NUMBER),
       true
     )
   }
@@ -144,21 +146,21 @@ When(
 Then(
   'the selected pull request links to its own GitHub and Prow history',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(
+    await expectFilter(
       api,
       '/api/pull_requests',
-      [...repoFilters, filter('number', 'equals', '98765')],
+      [...repoFilters, filter('number', 'equals', String(data.PR_NUMBER))],
       { release: data.RELEASE }
     )
     const row = new WorkflowPage(page).row('Synthetic selected change')
     await expect(
       row.locator(
-        `a[href="https://github.example.invalid/${data.ORG}/${data.REPO}/pull/98765"]`
+        `a[href="https://github.example.invalid/${data.ORG}/${data.REPO}/pull/${data.PR_NUMBER}"]`
       )
     ).toHaveAttribute('target', '_blank')
     await expect(row.locator('a[href*="pr-history"]')).toHaveAttribute(
       'href',
-      `https://prow.ci.openshift.org/pr-history/?org=${data.ORG}&repo=${data.REPO}&pr=98765`
+      `https://prow.ci.openshift.org/pr-history/?org=${data.ORG}&repo=${data.REPO}&pr=${data.PR_NUMBER}`
     )
     await expect(
       page.getByText('Other repository change', { exact: true })
@@ -195,7 +197,7 @@ Then('local database navigation is hidden', async ({ page }) => {
 Then(
   'the selected cluster run evidence is {string}',
   async ({ api, page }, mode) => {
-    await new WorkflowPage(page).expectFilter(
+    await expectFilter(
       api,
       '/api/jobs/runs',
       [filter('cluster', 'equals', data.CLUSTER)],
@@ -217,17 +219,16 @@ When('I follow repository pull requests', async ({ page }) => {
     name: 'Recently merged PR',
     exact: true,
   })
-  await new WorkflowPage(page).expectLinkFilters(
-    link,
-    `/pull_requests/${data.RELEASE}`,
-    [...repoFilters, { field: 'merged_at', operator: 'is not empty' }]
-  )
+  await expectLinkFilters(page, link, `/pull_requests/${data.RELEASE}`, [
+    ...repoFilters,
+    { field: 'merged_at', operator: 'is not empty' },
+  ])
   await link.click()
 })
 Then(
   'merged pull request evidence retains the repository and release',
   async ({ api, page }) => {
-    await new WorkflowPage(page).expectFilter(
+    await expectFilter(
       api,
       '/api/pull_requests',
       [...repoFilters, { field: 'merged_at', operator: 'is not empty' }],

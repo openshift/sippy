@@ -7,6 +7,9 @@ export const ORG = 'synthetic-org'
 export const REPO = 'synthetic-repo'
 export const GATE = 'SyntheticGate'
 export const RUN = '99001'
+export const PR_NUMBER = 98765
+export const INTERVAL_FILE = 'synthetic-intervals.json'
+export const EMPTY_INTERVAL_FILE = 'missing-intervals.json'
 export const PROW = `https://prow.example.invalid/view/gs/synthetic/${RUN}`
 export const GCS = `https://storage.example.invalid/synthetic/${RUN}`
 export const NOW = '2026-10-26T12:00:00Z'
@@ -182,7 +185,7 @@ export function intervals() {
     source: 'Pod',
     level: 'Info',
     display: true,
-    filename: 'synthetic-intervals.json',
+    filename: INTERVAL_FILE,
     locator: { keys: { ns: 'synthetic-ns', pod: name } },
     message: { annotations: {}, humanMessage: `Evidence for ${name}` },
   }))

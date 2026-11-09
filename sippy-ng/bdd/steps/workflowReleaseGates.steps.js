@@ -1,6 +1,10 @@
 import * as data from '../fixtures/workflowData.js'
 import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
+import {
+  expectFilter,
+  expectLinkFilters,
+} from '../fixtures/workflowExpectations.js'
 import { filter } from '../fixtures/workflowFilters.js'
 import { test } from '../fixtures/test.js'
 import { WorkflowPage } from '../pages/workflowPage.js'
@@ -47,13 +51,11 @@ Then(
     ).toBeVisible()
     await expect(page.getByText('85% (20 runs)').first()).toBeVisible()
     const link = page.getByRole('link', { name: 'Infrastructure', exact: true })
-    await new WorkflowPage(page).expectLinkFilters(
-      link,
-      `/tests/${data.RELEASE}/details`,
-      [filter('name', 'equals', 'install should succeed: infrastructure')]
-    )
+    await expectLinkFilters(page, link, `/tests/${data.RELEASE}/details`, [
+      filter('name', 'equals', 'install should succeed: infrastructure'),
+    ])
     await link.click()
-    await new WorkflowPage(page).expectFilter(
+    await expectFilter(
       api,
       '/api/tests',
       [filter('name', 'equals', 'install should succeed: infrastructure')],
@@ -93,7 +95,7 @@ Then(
     await expect(
       page.getByRole('heading', { name: data.TEST, exact: true })
     ).toBeVisible()
-    await new WorkflowPage(page).expectFilter(
+    await expectFilter(
       api,
       '/api/tests',
       [filter('name', 'equals', data.TEST)],
@@ -106,7 +108,7 @@ When(
   async ({ api, page }) => {
     await page.goto(`feature_gates/${data.RELEASE}`)
     await new WorkflowPage(page).search(data.GATE)
-    await new WorkflowPage(page).expectFilter(
+    await expectFilter(
       api,
       '/api/feature_gates',
       [filter('feature_gate', 'contains', data.GATE)],
@@ -140,7 +142,8 @@ Then(
       (request) => request.pathname === `/api/feature_gates/${data.GATE}`
     )
     expect(new URL(request.url).searchParams.get('release')).toBe(data.RELEASE)
-    await new WorkflowPage(page).expectLinkFilters(
+    await expectLinkFilters(
+      page,
       page.getByRole('link', { name: 'Analyze All', exact: true }).first(),
       `/jobs/${data.RELEASE}/analysis`,
       [jobFilter]

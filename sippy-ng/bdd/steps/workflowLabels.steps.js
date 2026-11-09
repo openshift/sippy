@@ -88,7 +88,7 @@ Then(
   'the failed save leaves the original definition and editable draft',
   async ({ api, page }) => {
     await expect(page.getByRole('alert')).toHaveText(
-      'Failed to update label: Synthetic mutation rejected'
+      'Failed to update label: Synthetic mutation rejected: PUT /api/jobs/labels/synthetic-b'
     )
     expect(api.putRequests()).toHaveLength(1)
     expect(api.putRequests()[0]).toMatchObject({
@@ -171,7 +171,7 @@ Then(
   'deletion failure is visible and the selected label remains',
   async ({ api, page }) => {
     await expect(page.getByRole('alert')).toHaveText(
-      'Failed to delete label: Synthetic mutation rejected'
+      'Failed to delete label: Synthetic mutation rejected: DELETE /api/jobs/labels/synthetic-b'
     )
     expect(api.deleteRequests()).toHaveLength(1)
     expect(api.deleteRequests()[0].pathname).toBe(

@@ -7,7 +7,29 @@ import {
   pathForPullRequestsWithFilter,
   safeEncodeURIComponent,
   SafeJSONParam,
+  SafeStringParam,
 } from './helpers'
+
+describe('SafeStringParam', () => {
+  test.each([
+    'Networking / routes? a&b=#50% + %2F café',
+    'literal%2Fescape',
+    'plain name',
+    '',
+  ])('preserves %j through query parsing and serialization', (value) => {
+    const linkedQuery = new URLSearchParams({ value })
+    expect(SafeStringParam.decode(linkedQuery.get('value'))).toBe(value)
+    const writtenQuery = new URLSearchParams({
+      value: SafeStringParam.encode(value),
+    })
+    expect(SafeStringParam.decode(writtenQuery.get('value'))).toBe(value)
+  })
+
+  test.each([undefined, null])('preserves absent value %j', (value) => {
+    expect(SafeStringParam.encode(value)).toBe(value)
+    expect(SafeStringParam.decode(value)).toBe(value)
+  })
+})
 
 describe('pathForPullRequestsWithFilter', () => {
   test.each([undefined, { items: [] }])(

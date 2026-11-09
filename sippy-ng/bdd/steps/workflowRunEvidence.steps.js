@@ -131,9 +131,43 @@ Then(
 When('I select an interval file without evidence', async ({ page }) => {
   await page.locator('#interval-file').click()
   await page
-    .getByRole('option', { name: 'missing-intervals.json', exact: true })
+    .getByRole('option', { name: data.EMPTY_INTERVAL_FILE, exact: true })
     .click()
 })
+
+When(
+  'I request a delayed interval file from the empty view',
+  async ({ api, page, scenario }) => {
+    await page.goto(
+      `job_runs/${data.RUN}/${data.JOB}/intervals?intervalFile=${data.EMPTY_INTERVAL_FILE}`
+    )
+    await expect(page.getByRole('alert')).toHaveText(
+      'No intervals found for this job run.'
+    )
+    api.intervalResponseHold = new Promise((resolve) => {
+      scenario.releaseIntervalResponse = resolve
+    })
+    await page.locator('#interval-file').click()
+    await page
+      .getByRole('option', { name: data.INTERVAL_FILE, exact: true })
+      .click()
+    await expect
+      .poll(() =>
+        api.requestsForPath('/api/jobs/runs/intervals').some((request) => {
+          return (
+            new URL(request.url).searchParams.get('file') === data.INTERVAL_FILE
+          )
+        })
+      )
+      .toBe(true)
+  }
+)
+
+When('the delayed interval response arrives', async ({ api, scenario }) => {
+  scenario.releaseIntervalResponse()
+  api.intervalResponseHold = null
+})
+
 Then(
   'the previous intervals are cleared and the selected file is requested',
   async ({ api, page }) => {
@@ -155,7 +189,7 @@ Then(
       .filter((request) => request.pathname === '/api/jobs/runs/intervals')
       .at(-1)
     const query = new URL(request.url).searchParams
-    expect(query.get('file')).toBe('missing-intervals.json')
+    expect(query.get('file')).toBe(data.EMPTY_INTERVAL_FILE)
     expect(query.get('prow_job_run_id')).toBe(data.RUN)
     await expect(page.getByRole('button', { name: /^Pod \(/ })).toHaveCount(0)
   }

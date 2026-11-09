@@ -42,6 +42,7 @@ export function createApi() {
     localDb: true,
     workflow: false,
     workflowModes: {},
+    intervalResponseHold: null,
     reportMode: 'ok',
     testDetailsMode: 'ok',
     failNextMutation: false,
@@ -108,6 +109,10 @@ export function createApi() {
 
     requestsTo(pattern) {
       return this.requests.filter((request) => pattern.test(request.pathname))
+    },
+
+    requestsForPath(path) {
+      return this.requests.filter((request) => request.pathname === path)
     },
 
     deleteRequests() {

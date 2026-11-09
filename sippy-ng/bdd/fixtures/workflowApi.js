@@ -37,7 +37,7 @@ function matches(row, item) {
   return item.not ? !result : result
 }
 
-function selected(rows, url) {
+function applyQueryToRows(rows, url) {
   const model = JSON.parse(url.searchParams.get('filter') || '{"items":[]}')
   const items = model.items || []
   let result = rows.filter(
@@ -73,7 +73,7 @@ export function workflowResponse(api, method, url, bodyText) {
     if (api.readOnly) return { status: 403, body: { message: 'read only' } }
     if (api.failNextMutation) {
       api.failNextMutation = false
-      return fail('Synthetic mutation rejected')
+      return fail(`Synthetic mutation rejected: ${method} ${path}`)
     }
     if (method === 'DELETE') {
       api.labels = api.labels.filter((item) => item.id !== label.id)
@@ -91,11 +91,11 @@ export function workflowResponse(api, method, url, bodyText) {
   const empty = mode === 'empty'
   switch (path) {
     case '/api/jobs':
-      return ok(selected(empty ? [] : data.jobs(), url))
+      return ok(applyQueryToRows(empty ? [] : data.jobs(), url))
     case '/api/tests':
-      return ok(selected(empty ? [] : data.tests(), url))
+      return ok(applyQueryToRows(empty ? [] : data.tests(), url))
     case '/api/jobs/runs': {
-      const rows = selected(empty ? [] : data.runs(), url)
+      const rows = applyQueryToRows(empty ? [] : data.runs(), url)
       const size = Number(url.searchParams.get('perPage') || 25)
       const page = Number(url.searchParams.get('page') || 0)
       return ok({
@@ -158,7 +158,7 @@ export function workflowResponse(api, method, url, bodyText) {
       )
     case '/api/feature_gates':
       return ok(
-        selected(
+        applyQueryToRows(
           [
             {
               id: 1,
@@ -189,7 +189,7 @@ export function workflowResponse(api, method, url, bodyText) {
       return ok(data.gateDetail())
     case '/api/repositories':
       return ok(
-        selected(
+        applyQueryToRows(
           [
             {
               id: 1,
@@ -213,17 +213,17 @@ export function workflowResponse(api, method, url, bodyText) {
       )
     case '/api/pull_requests':
       return ok(
-        selected(
+        applyQueryToRows(
           [
             {
               id: 1,
               org: data.ORG,
               repo: data.REPO,
-              number: 98765,
+              number: data.PR_NUMBER,
               title: 'Synthetic selected change',
               author: 'synthetic-author',
               merged_at: '2026-10-25T12:00:00Z',
-              link: `https://github.example.invalid/${data.ORG}/${data.REPO}/pull/98765`,
+              link: `https://github.example.invalid/${data.ORG}/${data.REPO}/pull/${data.PR_NUMBER}`,
             },
             {
               id: 2,
@@ -244,24 +244,25 @@ export function workflowResponse(api, method, url, bodyText) {
       // A different run has no data; never reuse the selected run's evidence.
       if (empty) return ok({})
       if (run !== data.RUN) return ok(null)
-      if (url.searchParams.get('file') === 'missing-intervals.json') {
+      const intervalFilesAvailable = [
+        data.INTERVAL_FILE,
+        data.EMPTY_INTERVAL_FILE,
+      ]
+      if (url.searchParams.get('file') === data.EMPTY_INTERVAL_FILE) {
         return ok({
           jobRunURL: data.GCS,
           items: [],
-          intervalFilesAvailable: [
-            'synthetic-intervals.json',
-            'missing-intervals.json',
-          ],
+          intervalFilesAvailable,
         })
       }
-      return ok({
-        jobRunURL: data.GCS,
-        items: path.endsWith('events') ? data.events() : data.intervals(),
-        intervalFilesAvailable: [
-          'synthetic-intervals.json',
-          'missing-intervals.json',
-        ],
-      })
+      return {
+        ...ok({
+          jobRunURL: data.GCS,
+          items: path.endsWith('events') ? data.events() : data.intervals(),
+          intervalFilesAvailable,
+        }),
+        hold: path.endsWith('intervals') ? api.intervalResponseHold : null,
+      }
     }
     default:
       return null

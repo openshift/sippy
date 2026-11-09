@@ -31,6 +31,7 @@ import {
   pathForJobRunsWithTestFlake,
   pathForJobRunsWithTestHistory,
   safeEncodeURIComponent,
+  SafeStringParam,
   searchCI,
   useFilterModelParam,
   withSort,
@@ -111,7 +112,7 @@ export function TestAnalysis({ test: testProp = '', ...props }) {
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
   const [testNotFound, setTestNotFound] = React.useState(false)
-  const [testName = testProp] = useQueryParam('test', StringParam)
+  const [testName = testProp] = useQueryParam('test', SafeStringParam)
   const [period = 'default'] = useQueryParam('period', StringParam)
   const [filterModel, setFilterModel] = useFilterModelParam('filters', {
     items: [

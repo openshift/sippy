@@ -10,8 +10,8 @@ Feature: Label editing and run evidence are scoped safely
     Then only the selected label is updated and success is visible
 
   Scenario: A rejected label save keeps the draft and shows failure
-    When I select the second label in the editor
     Given the next workflow mutation will fail
+    When I select the second label in the editor
     When I save valid changes to the selected label
     Then the failed save leaves the original definition and editable draft
 
@@ -28,8 +28,8 @@ Feature: Label editing and run evidence are scoped safely
     Then only that label is deleted and success is visible
 
   Scenario: A rejected delete is distinct from success
-    When I select the second label in the editor
     Given the next workflow mutation will fail
+    When I select the second label in the editor
     When I confirm deleting the selected label
     Then deletion failure is visible and the selected label remains
 
@@ -43,6 +43,13 @@ Feature: Label editing and run evidence are scoped safely
     When I open and filter the selected run intervals
     Then interval requests and visible evidence retain the requested run
     When I select an interval file without evidence
+    Then the previous intervals are cleared and the selected file is requested
+
+  Scenario: A delayed interval response cannot replace the current empty file
+    When I request a delayed interval file from the empty view
+    And I select an interval file without evidence
+    Then the previous intervals are cleared and the selected file is requested
+    When the delayed interval response arrives
     Then the previous intervals are cleared and the selected file is requested
 
   Scenario Outline: Missing run evidence never displays another run
