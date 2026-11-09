@@ -189,17 +189,20 @@ For `@workflows` scenarios, extend `bdd/fixtures/workflowApi.js` and
 
 The `@workflows` scenarios cover Jobs, Tests, release health, Install, Upgrades,
 feature gates, the label editor, run intervals/events, build clusters,
-repositories, pull requests, and the chat transition. They use synthetic near
+repositories, and pull requests. They use synthetic near
 matches and a fixed browser clock. The isolated `workflowData.js` and
 `workflowApi.js` fixtures apply the requested filters, sorting, and pagination,
-so assertions compare the request contract with the visible evidence. Capability
-flags (`local_db` and `write_endpoints`) are explicit per scenario. Label PUT
+so assertions compare the request contract with the visible evidence. The fixtures
+enable `local_db` and control `write_endpoints` per scenario. Label PUT
 and DELETE requests update only scenario-local fixture state. Prow, GitHub,
-GCS, and Slack destinations are checked without contacting those services.
+and GCS destinations are checked without contacting those services.
 Shared workflow API and link assertions live in
 `bdd/fixtures/workflowExpectations.js`; `bdd/pages/workflowPage.js` contains
 browser interactions and row locators. The interval scenarios hold and release
 responses to verify that an older file cannot replace the current empty result.
+The Tests scenarios exercise `StringParam` through navigation and page reloads,
+checking that URL-sensitive test names (including literal percent escapes) reach
+the rendered heading and every analysis request unchanged.
 
 Run only this coverage while developing:
 

@@ -24,6 +24,8 @@ Feature: Jobs and tests retain selected diagnostic evidence
   Scenario Outline: Exact URL-sensitive test selection preserves variant and period
     When I select the URL-sensitive test from "<tab>"
     Then every analysis request identifies the exact test and variants
+    When I reload the selected test analysis
+    Then every analysis request identifies the exact test and variants
     When I open failed runs for the selected test
     Then run evidence retains test, variant, period and failure filters
     Examples:

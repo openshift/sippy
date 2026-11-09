@@ -1,5 +1,5 @@
 import { normalizeFilterModel } from './datagrid/filterUtils'
-import { StringParam, useQueryParam } from 'use-query-params'
+import { useQueryParam } from 'use-query-params'
 import { useRef } from 'react'
 
 // Compute relative times -- Intl.RelativeTimeFormat is new-ish,
@@ -23,9 +23,6 @@ export const SafeJSONParam = {
     }
   },
 }
-
-// The query parser handles URI encoding. A second pass corrupts literal percent escapes.
-export const SafeStringParam = StringParam
 
 // Wraps useQueryParam with SafeJSONParam, stabilizing the object reference
 // so it only changes when the serialized value actually changes.

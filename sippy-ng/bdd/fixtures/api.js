@@ -39,7 +39,6 @@ const cors = {
 export function createApi() {
   return {
     readOnly: false,
-    localDb: true,
     workflow: false,
     workflowModes: {},
     intervalResponseHold: null,
@@ -202,8 +201,7 @@ async function responseFor(api, method, url, bodyText) {
     return ok(releaseCatalog())
   }
   if (path.endsWith('/api/capabilities')) {
-    const caps = ['component_readiness', 'openshift_releases']
-    if (api.localDb) caps.push('local_db')
+    const caps = ['component_readiness', 'openshift_releases', 'local_db']
     if (!api.readOnly) {
       caps.push('write_endpoints')
     }

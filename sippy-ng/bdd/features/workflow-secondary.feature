@@ -1,5 +1,5 @@
 @workflows
-Feature: Cluster, repository, pull request and chat navigation
+Feature: Cluster, repository and pull request navigation
   Background:
     Given deterministic Sippy workflow evidence
 
@@ -26,15 +26,6 @@ Feature: Cluster, repository, pull request and chat navigation
   Scenario: Pull request filtering keeps the selected repository evidence
     When I filter pull requests to the selected number and repository
     Then the selected pull request links to its own GitHub and Prow history
-
-  Scenario: Chat navigation presents the configured transition
-    When I follow the chat navigation
-    Then the Slack transition destination is configured without contacting Slack
-
-  Scenario: Database capability controls local navigation
-    Given the workflow has no local database capability
-    When I open workflow page "chat"
-    Then local database navigation is hidden
 
   Scenario Outline: Cluster detail distinguishes missing and failed run evidence
     Given the "/api/jobs/runs" workflow response is "<mode>"

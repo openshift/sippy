@@ -194,6 +194,7 @@ When(
 Then(
   'every analysis request identifies the exact test and variants',
   async ({ api, page }) => {
+    expect(new URL(page.url()).searchParams.get('test')).toBe(data.TEST)
     await expect(
       page.getByRole('heading', { name: data.TEST, exact: true })
     ).toBeVisible()
@@ -223,6 +224,9 @@ Then(
     }
   }
 )
+When('I reload the selected test analysis', async ({ page }) => {
+  await page.reload()
+})
 When('I open failed runs for the selected test', async ({ page }) => {
   await page.getByRole('link', { name: 'Failed Runs (3)', exact: true }).click()
 })

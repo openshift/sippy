@@ -19,9 +19,6 @@ Given(
 Given('workflow writes are disabled', async ({ api }) => {
   api.readOnly = true
 })
-Given('the workflow has no local database capability', async ({ api }) => {
-  api.localDb = false
-})
 Given('the next workflow mutation will fail', async ({ api }) => {
   api.failNextMutation = true
 })

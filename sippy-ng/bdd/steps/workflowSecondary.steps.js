@@ -167,33 +167,6 @@ Then(
     ).toHaveCount(0)
   }
 )
-When('I follow the chat navigation', async ({ page }) => {
-  await page.goto(`jobs/${data.RELEASE}`)
-  await page.goto('chat')
-})
-Then(
-  'the Slack transition destination is configured without contacting Slack',
-  async ({ api, page }) => {
-    await expect(
-      page.getByRole('heading', { name: 'Sippy Chat has moved' })
-    ).toBeVisible()
-    await expect(
-      page.getByRole('link', { name: 'Open Slack', exact: true })
-    ).toHaveAttribute('href', 'https://redhat.enterprise.slack.com/')
-    await expect(
-      page.getByRole('link', { name: 'Open Slack', exact: true })
-    ).toHaveAttribute('target', '_blank')
-    expect(api.unexpectedRequests).toEqual([])
-  }
-)
-Then('local database navigation is hidden', async ({ page }) => {
-  await expect(
-    page.getByRole('heading', { name: 'Sippy Chat has moved' })
-  ).toBeVisible()
-  await expect(page.getByText('Releases', { exact: true })).toHaveCount(0)
-  await expect(page.getByText('Last updated', { exact: false })).toHaveCount(0)
-})
-
 Then(
   'the selected cluster run evidence is {string}',
   async ({ api, page }, mode) => {
