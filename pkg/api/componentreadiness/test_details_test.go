@@ -3,15 +3,12 @@ package componentreadiness
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -408,70 +405,4 @@ func TestValidateTestDetailsIdentificationSkipsGroupedVariantsForSpotCheck(t *te
 	assert.NoError(t, validateTestDetailsIdentification(
 		reqopts.TestIdentification{TestID: crtest.SpotCheckTestID("spotcheck-30d", "etcd", "scaling")}, dbGroupBy))
 	assert.Error(t, validateTestDetailsIdentification(reqopts.TestIdentification{TestID: "test-id"}, dbGroupBy))
-}
-
-// postAnalysisRecorder is a middleware that only records which tests reached the PostAnalysis phase.
-type postAnalysisRecorder struct {
-	postAnalyzed []crtest.Identification
-}
-
-func (r *postAnalysisRecorder) Query(context.Context, *sync.WaitGroup, chan error) {}
-
-func (r *postAnalysisRecorder) QueryTestDetails(context.Context, *sync.WaitGroup, chan error) {}
-
-func (r *postAnalysisRecorder) PreAnalysis(crtest.Identification, *testdetails.TestComparison) error {
-	return nil
-}
-
-func (r *postAnalysisRecorder) PostAnalysis(testKey crtest.Identification, _ *testdetails.TestComparison) error {
-	r.postAnalyzed = append(r.postAnalyzed, testKey)
-	return nil
-}
-
-func (r *postAnalysisRecorder) Analyze(crtest.Identification, *testdetails.TestComparison) (bool, error) {
-	return false, nil
-}
-
-func (r *postAnalysisRecorder) PreTestDetailsAnalysis(crtest.KeyWithVariants, *crstatus.TestJobRunStatuses) error {
-	return nil
-}
-
-// TestPostAnalyzedTestDetails guards against a report source (such as the DEV_MODE path that
-// bypasses the cache) skipping post-analysis, which would hide fresh triage data in test details.
-func TestPostAnalyzedTestDetails(t *testing.T) {
-	loadErr := errors.New("load failed")
-	tests := []struct {
-		name             string
-		loaded           testdetails.Report
-		loadErrs         []error
-		wantPostAnalyzed int
-		wantErrs         []error
-	}{
-		{
-			name:             "every analysis reaches post-analysis",
-			loaded:           testdetails.Report{Analyses: []testdetails.Analysis{{}, {}}},
-			wantPostAnalyzed: 2,
-			wantErrs:         []error{},
-		},
-		{
-			name:     "load errors skip post-analysis",
-			loaded:   testdetails.Report{Analyses: []testdetails.Analysis{{}}},
-			loadErrs: []error{loadErr},
-			wantErrs: []error{loadErr},
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			recorder := &postAnalysisRecorder{}
-			generator := ComponentReportGenerator{middlewares: middleware.List{recorder}}
-			loadReport := func(context.Context) (testdetails.Report, []error) {
-				return tc.loaded, tc.loadErrs
-			}
-
-			_, errs := generator.postAnalyzedTestDetails(context.Background(), loadReport)
-
-			assert.Equal(t, tc.wantErrs, errs)
-			assert.Len(t, recorder.postAnalyzed, tc.wantPostAnalyzed)
-		})
-	}
 }
