@@ -248,7 +248,8 @@ attribute those requests to a mock user instead.
   `.devcontainer/.env` (or export it before starting the server). The MCP server reads
   `.devcontainer/.env` only at startup and `sippy_serve` inherits its environment, so after
   changing the file restart the MCP server and any running Sippy server. Note that `DEV_MODE=1`
-  also bypasses the component report cache.
+  also bypasses the component report and test details caches. Triage and other post-analysis
+  still apply to both reports.
 * **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
   the header is missing.
 * **Production:** production leaves `DEV_MODE` unset, so endpoints that check for a user still

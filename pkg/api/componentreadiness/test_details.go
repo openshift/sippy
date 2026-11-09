@@ -46,22 +46,36 @@ func defaultMultiTestStatusQueryBackoff() wait.Backoff {
 
 func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
 	generator := NewComponentReportGenerator(provider, reqOptions, dbc, releases, baseURL)
+	loadReport := generator.cachedTestDetailsReport
 	if os.Getenv("DEV_MODE") == "1" {
-		return generator.GenerateTestDetailsReport(ctx)
+		loadReport = generator.GenerateTestDetailsReport
 	}
+	return generator.postAnalyzedTestDetails(ctx, loadReport)
+}
 
-	report, errs := api.GetDataFromCacheOrGenerate[testdetails.Report](
+// cachedTestDetailsReport returns the test details report from cache, generating it on a miss.
+func (c *ComponentReportGenerator) cachedTestDetailsReport(ctx context.Context) (testdetails.Report, []error) {
+	return api.GetDataFromCacheOrGenerate[testdetails.Report](
 		ctx,
-		generator.getCache(),
-		generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(), TestDetailsReportCacheKeyPrefix, nil),
-		generator.GenerateTestDetailsReport,
+		c.getCache(),
+		c.ReqOptions.CacheOption,
+		api.NewCacheSpec(c.GetCacheKey(), TestDetailsReportCacheKeyPrefix, nil),
+		c.GenerateTestDetailsReport,
 		testdetails.Report{})
+}
+
+// postAnalyzedTestDetails loads a report with loadReport (cached, or freshly generated in DEV_MODE)
+// and always applies post-analysis so fresh database state such as triage is reflected either way.
+func (c *ComponentReportGenerator) postAnalyzedTestDetails(
+	ctx context.Context,
+	loadReport func(context.Context) (testdetails.Report, []error),
+) (testdetails.Report, []error) {
+	report, errs := loadReport(ctx)
 	if len(errs) > 0 {
 		return report, errs
 	}
 
-	err := generator.PostAnalysisTestDetails(&report)
+	err := c.PostAnalysisTestDetails(&report)
 	if err != nil {
 		return report, []error{err}
 	}
