@@ -12,7 +12,8 @@ const (
 	MockUser string = "developer"
 
 	// devModeEnvVar is the existing development toggle; non-production deployments such as local
-	// development and agentic-staging set it to "1". Production leaves it unset.
+	// development and agentic-staging (via hack/agentic_setup.sh) set it to "1". Production leaves
+	// it unset.
 	devModeEnvVar string = "DEV_MODE"
 )
 

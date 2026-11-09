@@ -242,8 +242,9 @@ attribute those requests to a mock user instead.
 
 * **Mock user:** `developer` (`sippyserver.MockUser`).
 * **Enabling:** set `DEV_MODE=1`, the existing development toggle that the audit logs already use
-  to attribute writes to the mock user. Local development and the agentic-staging deployment set
-  it; there is no separate environment variable. In the devcontainer, add `DEV_MODE=1` to
+  to attribute writes to the mock user. There is no separate environment variable.
+  `hack/agentic_setup.sh` exports `DEV_MODE=1` (unless already set), and the agentic-staging
+  deployment sources that script before starting `sippy serve`. In the devcontainer, add `DEV_MODE=1` to
   `.devcontainer/.env` (or export it before starting the server). The MCP server reads
   `.devcontainer/.env` only at startup and `sippy_serve` inherits its environment, so after
   changing the file restart the MCP server and any running Sippy server. Note that `DEV_MODE=1`
