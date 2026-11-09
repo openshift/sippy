@@ -20,7 +20,7 @@ export default function TestPassRateCharts({
       fetch(
         `${import.meta.env.VITE_API_URL}/api/tests/analysis/${
           grouping
-        }?release=${props.release}&test=${props.test}&filter=${filter}`
+        }?release=${props.release}&test=${safeEncodeURIComponent(props.test)}&filter=${filter}`
       ),
     ])
       .then(([apiResponse]) => {

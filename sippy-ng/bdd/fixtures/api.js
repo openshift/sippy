@@ -28,6 +28,8 @@ import {
   views,
 } from './data.js'
 
+import { workflowResponse } from './workflowApi.js'
+
 const cors = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
@@ -37,6 +39,9 @@ const cors = {
 export function createApi() {
   return {
     readOnly: false,
+    workflow: false,
+    workflowModes: {},
+    intervalResponseHold: null,
     reportMode: 'ok',
     testDetailsMode: 'ok',
     failNextMutation: false,
@@ -103,6 +108,10 @@ export function createApi() {
 
     requestsTo(pattern) {
       return this.requests.filter((request) => pattern.test(request.pathname))
+    },
+
+    requestsForPath(path) {
+      return this.requests.filter((request) => request.pathname === path)
     },
 
     deleteRequests() {
@@ -183,11 +192,16 @@ export async function installApi(page, api) {
 async function responseFor(api, method, url, bodyText) {
   const path = url.pathname
 
+  if (api.workflow) {
+    const response = workflowResponse(api, method, url, bodyText)
+    if (response) return response
+  }
+
   if (path.endsWith('/api/releases')) {
     return ok(releaseCatalog())
   }
   if (path.endsWith('/api/capabilities')) {
-    const caps = ['local_db', 'component_readiness', 'openshift_releases']
+    const caps = ['component_readiness', 'openshift_releases', 'local_db']
     if (!api.readOnly) {
       caps.push('write_endpoints')
     }

@@ -1,5 +1,10 @@
 import { Box, Card, Container, Grid, Typography } from '@mui/material'
-import { filterFor, pathForJobsWithFilter, withSort } from '../helpers'
+import {
+  filterFor,
+  pathForJobsWithFilter,
+  pathForPullRequestsWithFilter,
+  withSort,
+} from '../helpers'
 import { Link } from 'react-router'
 import JobTable from '../jobs/JobTable'
 import PropTypes from 'prop-types'
@@ -68,13 +73,14 @@ export default function RepositoryDetails(props) {
                 <Typography variant="h6">
                   <Link
                     to={withSort(
-                      pathForJobsWithFilter(props.release, {
+                      pathForPullRequestsWithFilter(props.release, {
                         items: [
                           filterFor('org', 'equals', props.org),
                           filterFor('repo', 'equals', props.repo),
+                          filterFor('merged_at', 'is not empty'),
                         ],
                       }),
-                      'average_retests_to_merge',
+                      'merged_at',
                       'desc'
                     )}
                   >

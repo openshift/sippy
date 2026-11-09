@@ -15,7 +15,7 @@ import {
   gotFetchError,
 } from './CompReadyUtils'
 import { ReleasesContext } from '../App'
-import { safeEncodeURIComponent, SafeStringParam } from '../helpers'
+import { safeEncodeURIComponent } from '../helpers'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { createContext, useContext, useEffect, useState } from 'react'
@@ -111,7 +111,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     ignoreDisruption: CustomBooleanParam,
     includeMultiReleaseAnalysis: CustomBooleanParam,
     flakeAsFailure: CustomBooleanParam,
-    component: SafeStringParam,
+    component: StringParam,
     environment: StringParam,
     capability: StringParam,
     testCapabilities: ArrayParam, // Multiple capabilities selected for filtering

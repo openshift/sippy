@@ -181,8 +181,35 @@ uses. A scenario fails if the page calls an API path the mock does not
 answer, or requests any host other than the local dev server. Mutations
 (triages, labels, symptoms, re-evaluation) only change the mock's
 in-memory state, so scenarios never write to real Jira, triage records,
-job runs, or artifacts. When a page starts calling a new endpoint, add it
-to the mock with fixture data from `bdd/fixtures/data.js`.
+job runs, or artifacts. For Component Readiness scenarios, add new endpoint
+responses to `bdd/fixtures/api.js` with data from `bdd/fixtures/data.js`.
+For `@workflows` scenarios, extend `bdd/fixtures/workflowApi.js` and
+`bdd/fixtures/workflowData.js`. The shared router in `api.js` delegates to
+`workflowApi.js` when workflow fixtures are enabled.
+
+The `@workflows` scenarios cover Jobs, Tests, release health, Install, Upgrades,
+feature gates, the label editor, run intervals/events, build clusters,
+repositories, and pull requests. They use synthetic near
+matches and a fixed browser clock. The isolated `workflowData.js` and
+`workflowApi.js` fixtures apply the requested filters, sorting, and pagination,
+so assertions compare the request contract with the visible evidence. The fixtures
+enable `local_db` and control `write_endpoints` per scenario. Label PUT
+and DELETE requests update only scenario-local fixture state. Prow, GitHub,
+and GCS destinations are checked without contacting those services.
+Shared workflow API and link assertions live in
+`bdd/fixtures/workflowExpectations.js`; `bdd/pages/workflowPage.js` contains
+browser interactions and row locators. The interval scenarios hold and release
+responses to verify that an older file cannot replace the current empty result.
+The Tests scenarios exercise `StringParam` through navigation and page reloads,
+checking that URL-sensitive test names (including literal percent escapes) reach
+the rendered heading and every analysis request unchanged.
+
+Run only this coverage while developing:
+
+```bash
+cd sippy-ng
+npm run test:bdd -- --grep @workflows
+```
 
 Run the suite from the repo root:
 

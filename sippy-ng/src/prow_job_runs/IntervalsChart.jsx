@@ -301,7 +301,8 @@ export default function IntervalsChart({
     return ''
   })
 
-  const fetchData = () => {
+  const fetchData = (signal) => {
+    setFetchError('')
     let queryString = ''
     console.log(
       'fetching new data: jobRun=' +
@@ -324,7 +325,8 @@ export default function IntervalsChart({
         (props.repoInfo ? '&repo_info=' + props.repoInfo : '') +
         (props.pullNumber ? '&pull_number=' + props.pullNumber : '') +
         (intervalFile ? '&file=' + intervalFile : '') +
-        queryString
+        queryString,
+      { signal }
     )
       .then((response) => {
         if (response.status !== 200) {
@@ -333,20 +335,26 @@ export default function IntervalsChart({
         return response.json()
       })
       .then((json) => {
+        // A previous file's response must not replace the current selection.
+        if (signal.aborted) return
         if (json != null) {
-          setJobRunUrl(json.jobRunURL)
+          setJobRunUrl(json.jobRunURL || '')
           // Process and filter our intervals
-          let tmpIntervals = json.items
+          let tmpIntervals = json.items || []
           mutateIntervals(tmpIntervals)
           setEventIntervals(tmpIntervals)
+          if (tmpIntervals.length === 0) {
+            setFilteredIntervals([])
+            setSourceCounts({})
+          }
 
           // if the query params did not already define a start/end filter, use the first/last interval to set it up
-          if (!start && !end) {
+          if (!start && !end && tmpIntervals.length > 0) {
             setStart(tmpIntervals[0].from)
             setEnd(tmpIntervals[tmpIntervals.length - 1].to)
           }
 
-          let intervalFilesAvailable = json.intervalFilesAvailable
+          let intervalFilesAvailable = json.intervalFilesAvailable || []
           intervalFilesAvailable.sort()
           setAllIntervalFiles(intervalFilesAvailable)
           let allSources = []
@@ -362,7 +370,7 @@ export default function IntervalsChart({
           // files are available. The server makes a best guess and returns the intervals for that file, as well as
           // a list of all available file names. In the UI if we don't yet have one, populate the select with the value
           // we received.
-          if (intervalFile == '') {
+          if (intervalFile === '' && tmpIntervals.length > 0) {
             console.log(
               'setting interval file to first intervals filename: ' +
                 json.items[0].filename
@@ -372,11 +380,17 @@ export default function IntervalsChart({
             setIntervalFile(json.items[0].filename)
           }
         } else {
+          setJobRunUrl('')
           setEventIntervals([])
+          setFilteredIntervals([])
+          setAllIntervalFiles([])
+          setAllSources([])
+          setSourceCounts({})
         }
         setLoaded(true)
       })
       .catch((error) => {
+        if (signal.aborted) return
         setFetchError(
           'Could not retrieve intervals for ' +
             'jobRunID=' +
@@ -393,8 +407,16 @@ export default function IntervalsChart({
   }
 
   useEffect(() => {
-    fetchData()
-  }, [intervalFile])
+    const controller = new AbortController()
+    fetchData(controller.signal)
+    return () => controller.abort()
+  }, [
+    intervalFile,
+    props.jobRunID,
+    props.jobName,
+    props.pullNumber,
+    props.repoInfo,
+  ])
 
   useEffect(() => {
     const isReady =
@@ -419,7 +441,7 @@ export default function IntervalsChart({
       }
     }, 800)
     return () => clearTimeout(timer)
-  }, [filterText, start, end])
+  }, [filterText, start, end, eventIntervals])
 
   function updateFiltering() {
     console.log('updating filtering')
@@ -612,9 +634,16 @@ export default function IntervalsChart({
       </Box>
       <p>
         Loaded {eventIntervals.length} intervals from{' '}
-        <LaunderedLink address={jobRunUrl}>GCS job run</LaunderedLink>, filtered
-        down to {filteredIntervals.length}.
+        {jobRunUrl ? (
+          <LaunderedLink address={jobRunUrl}>GCS job run</LaunderedLink>
+        ) : (
+          'GCS job run'
+        )}
+        , filtered down to {filteredIntervals.length}.
       </p>
+      {eventIntervals.length === 0 && (
+        <Alert severity="info">No intervals found for this job run.</Alert>
+      )}
       <Box sx={filterRowSx}>
         Categories:
         <Box
@@ -677,7 +706,11 @@ export default function IntervalsChart({
           onChange={handleEndTimeFilterChange}
           value={end}
         />
-        <Button key="resetTimeFilters" onClick={() => resetTimeFilters()}>
+        <Button
+          key="resetTimeFilters"
+          onClick={() => resetTimeFilters()}
+          disabled={eventIntervals.length === 0}
+        >
           Reset
         </Button>
       </Box>
