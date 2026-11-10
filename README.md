@@ -26,3 +26,20 @@ See [the front end documentation](sippy-ng/README.md)
 
 See [database tuning](docs/database-tuning.md) for required PostgreSQL
 parameter group settings.
+
+### Backfilling summary tables
+
+Use `sippy backfill` to rebuild daily totals or cumulative summaries for an
+inclusive date range. By default, the command processes every release. Repeat
+`--exclude-release` to skip releases during both partition setup and the
+summary backfill:
+
+```sh
+sippy backfill --table=daily-totals --start-date=2026-01-01 --end-date=2026-06-30 --exclude-release=Presubmits
+sippy backfill --table=cumulative-summaries --start-date=2026-01-01 --end-date=2026-06-30 --exclude-release=Presubmits
+```
+
+To backfill Presubmits for only the most recent 90 calendar days, run a
+separate backfill without the exclusion for that 90-day range. Set its start
+date to 89 days before its end date, since both dates are included. The flag
+skips work for excluded releases; it does not delete existing summary rows.

@@ -586,7 +586,7 @@ func seedSyntheticData(dbc *db.DB) error {
 	seedStart := seedToday.AddDays(-190)
 	seedEnd := seedToday
 	for _, table := range []string{"daily-totals", "cumulative-summaries"} {
-		if err := sippyserver.BackfillData(dbc, table, seedStart, seedEnd); err != nil {
+		if err := sippyserver.BackfillData(dbc, table, seedStart, seedEnd, syntheticReleases); err != nil {
 			return fmt.Errorf("failed to backfill %s: %w", table, err)
 		}
 	}
