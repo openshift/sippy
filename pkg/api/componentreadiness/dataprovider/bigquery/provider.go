@@ -163,10 +163,12 @@ func (p *BigQueryProvider) QueryJobVariants(ctx context.Context, reqOptions reqo
 		p.queryJobVariantsFromBQ, crtest.JobVariants{})
 }
 
-// jobVariantsCacheOptions carries caller cache policy into the BQ lookup so
-// parity checks do not populate or refresh caches unexpectedly.
+// jobVariantsCacheOptions preserves explicit refresh and write policy while
+// allowing cache reads for the variants lookup, which has no query end date.
 func jobVariantsCacheOptions(reqOptions reqopts.RequestOptions) apiCache.RequestOptions {
-	return reqOptions.CacheOption
+	options := reqOptions.CacheOption
+	options.RefreshRecent = false
+	return options
 }
 
 func (p *BigQueryProvider) queryJobVariantsFromBQ(ctx context.Context) (crtest.JobVariants, []error) {
