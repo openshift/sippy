@@ -93,7 +93,7 @@ func TestDailyTotalsBackfill_AggregatesCountsFromRawResults(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, flakeTest.ID, "4.18", ts, statusFlake)
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var pass models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", passTest.ID).First(&pass).Error)
@@ -131,7 +131,7 @@ func TestDailyTotalsBackfill_UnrecognizedStatusCountsTowardRunsOnly(t *testing.T
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, "4.18", ts, statusRunning)
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var dt models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).First(&dt).Error)
@@ -158,7 +158,7 @@ func TestDailyTotalsBackfill_ScopedBySuite(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, "4.18", ts, statusFailure, intutil.WithSuiteID(suiteB.ID))
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var totals []models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).Find(&totals).Error)
@@ -188,7 +188,7 @@ func TestDailyTotalsBackfill_ScopedByLifecycle(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, "4.18", ts, statusFailure, intutil.WithLifecycle("informing"))
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var totals []models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).Find(&totals).Error)
@@ -219,7 +219,7 @@ func TestDailyTotalsBackfill_ScopedByRelease(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run17.ID, job17.ID, test.ID, "4.17", ts, statusFailure)
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18", "4.17"}))
 
 	var totals []models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).Find(&totals).Error)
@@ -250,7 +250,7 @@ func TestDailyTotalsBackfill_MultiDayRangeProducesOneRowPerDay(t *testing.T) {
 
 	start := civil.Date{Year: 2026, Month: 7, Day: 20}
 	end := civil.Date{Year: 2026, Month: 7, Day: 21}
-	require.NoError(t, dailysummary.Backfill(dbc, start, end))
+	require.NoError(t, dailysummary.Backfill(dbc, start, end, []string{"4.18"}))
 
 	var totals []models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).Order("date").Find(&totals).Error)
@@ -275,7 +275,7 @@ func TestDailyTotalsBackfill_TracksFirstAndLastFailureTimestamps(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run2.ID, job.ID, test.ID, "4.18", late, statusFailure)
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var dt models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).First(&dt).Error)
@@ -299,7 +299,7 @@ func TestDailyTotalsBackfill_TracksFirstAndLastSuccessTimestamps(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run2.ID, job.ID, test.ID, "4.18", late, statusSuccess)
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var dt models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).First(&dt).Error)
@@ -319,7 +319,7 @@ func TestDailyTotalsBackfill_RerunAfterRawDataRemovedDropsStaleRow(t *testing.T)
 	pjrt := intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, "4.18", ts, statusFailure)
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var before models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).First(&before).Error)
@@ -331,7 +331,7 @@ func TestDailyTotalsBackfill_RerunAfterRawDataRemovedDropsStaleRow(t *testing.T)
 	// delete is what removes the now-unsupported row.
 	require.NoError(t, dbc.DB.Unscoped().Delete(&pjrt).Error)
 
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var count int64
 	require.NoError(t, dbc.DB.Model(&models.TestDailyTotal{}).Where("test_id = ?", test.ID).Count(&count).Error)
@@ -348,7 +348,7 @@ func TestDailyTotalsBackfill_RerunAfterLifecycleReclassificationMovesRowToNewKey
 	pjrt := intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, "4.18", ts, statusFailure, intutil.WithLifecycle("blocking"))
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var blockingBefore models.TestDailyTotal
 	require.NoError(t, dbc.DB.Where("test_id = ? AND lifecycle = ?", test.ID, "blocking").First(&blockingBefore).Error)
@@ -359,7 +359,7 @@ func TestDailyTotalsBackfill_RerunAfterLifecycleReclassificationMovesRowToNewKey
 	// place to reflect it.
 	require.NoError(t, dbc.DB.Model(&pjrt).Update("lifecycle", "informing").Error)
 
-	require.NoError(t, dailysummary.Backfill(dbc, day, day))
+	require.NoError(t, dailysummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var blockingCount int64
 	require.NoError(t, dbc.DB.Model(&models.TestDailyTotal{}).Where("test_id = ? AND lifecycle = ?", test.ID, "blocking").Count(&blockingCount).Error)
@@ -381,7 +381,7 @@ func TestCumulativeSummariesBackfill_FirstDayEqualsThatDaysTotals(t *testing.T) 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
 	createDailyTotal(t, dbc, day, "4.18", test.ID, job.ID, 3, 1, 0, 4)
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, day, day))
+	require.NoError(t, cumulativesummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var cs models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("date = ? AND test_id = ?", day, test.ID).First(&cs).Error)
@@ -402,7 +402,7 @@ func TestCumulativeSummariesBackfill_AccumulatesOnTopOfPreviousDay(t *testing.T)
 	createCumulativeSummary(t, dbc, yesterday, "4.18", test.ID, job.ID, 0, 10, 8, 0, withFailures(2))
 	createDailyTotal(t, dbc, today, "4.18", test.ID, job.ID, 3, 1, 0, 4)
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, today, today))
+	require.NoError(t, cumulativesummary.Backfill(dbc, today, today, []string{"4.18"}))
 
 	var cs models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("date = ? AND test_id = ?", today, test.ID).First(&cs).Error)
@@ -425,7 +425,7 @@ func TestCumulativeSummariesBackfill_CarriesForwardWhenNoNewDataToday(t *testing
 		withFailures(1), withLastFailure(lastFailure))
 	// No daily total for `today` - the test simply didn't run today.
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, today, today))
+	require.NoError(t, cumulativesummary.Backfill(dbc, today, today, []string{"4.18"}))
 
 	var cs models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("date = ? AND test_id = ?", today, test.ID).First(&cs).Error)
@@ -451,7 +451,7 @@ func TestCumulativeSummariesBackfill_NewTestAppearsAlongsideExistingAccumulation
 	createDailyTotal(t, dbc, today, "4.18", existing.ID, job.ID, 1, 0, 0, 1)
 	createDailyTotal(t, dbc, today, "4.18", newTest.ID, job.ID, 0, 1, 0, 1)
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, today, today))
+	require.NoError(t, cumulativesummary.Backfill(dbc, today, today, []string{"4.18"}))
 
 	var summaries []models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("date = ?", today).Find(&summaries).Error)
@@ -478,7 +478,7 @@ func TestCumulativeSummariesBackfill_ScopedByRelease(t *testing.T) {
 	createDailyTotal(t, dbc, day, "4.18", test.ID, job18.ID, 2, 0, 0, 2)
 	createDailyTotal(t, dbc, day, "4.17", test.ID, job17.ID, 0, 5, 0, 5)
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, day, day))
+	require.NoError(t, cumulativesummary.Backfill(dbc, day, day, []string{"4.18", "4.17"}))
 
 	var summaries []models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).Find(&summaries).Error)
@@ -506,7 +506,7 @@ func TestCumulativeSummariesBackfill_MultiDayRangeAccumulatesInSequence(t *testi
 	createDailyTotal(t, dbc, day2, "4.18", test.ID, job.ID, 0, 1, 0, 1)
 	createDailyTotal(t, dbc, day3, "4.18", test.ID, job.ID, 0, 0, 1, 1)
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, day1, day3))
+	require.NoError(t, cumulativesummary.Backfill(dbc, day1, day3, []string{"4.18"}))
 
 	var summaries []models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).Order("date").Find(&summaries).Error)
@@ -531,7 +531,7 @@ func TestCumulativeSummariesBackfill_TracksLatestFailureTimestamp(t *testing.T) 
 	createCumulativeSummary(t, dbc, yesterday, "4.18", test.ID, job.ID, 0, 0, 0, 0, withLastFailure(earlierFailure))
 	createDailyTotal(t, dbc, today, "4.18", test.ID, job.ID, 0, 1, 0, 1, withDailyLastFailure(laterFailure))
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, today, today))
+	require.NoError(t, cumulativesummary.Backfill(dbc, today, today, []string{"4.18"}))
 
 	var cs models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("date = ? AND test_id = ?", today, test.ID).First(&cs).Error)
@@ -553,7 +553,7 @@ func TestCumulativeSummariesBackfill_TracksLatestSuccessTimestamp(t *testing.T) 
 	createCumulativeSummary(t, dbc, yesterday, "4.18", test.ID, job.ID, 0, 0, 0, 0, withLastSuccess(earlierSuccess))
 	createDailyTotal(t, dbc, today, "4.18", test.ID, job.ID, 1, 0, 0, 1, withDailyLastSuccess(laterSuccess))
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, today, today))
+	require.NoError(t, cumulativesummary.Backfill(dbc, today, today, []string{"4.18"}))
 
 	var cs models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("date = ? AND test_id = ?", today, test.ID).First(&cs).Error)
@@ -580,7 +580,7 @@ func TestCumulativeSummariesBackfill_SuiteChangeStartsAnIndependentChain(t *test
 	createDailyTotal(t, dbc, day1, "4.18", test.ID, job.ID, 1, 0, 0, 1, withDailySuiteID(suiteA.ID))
 	createDailyTotal(t, dbc, day2, "4.18", test.ID, job.ID, 0, 1, 0, 1, withDailySuiteID(suiteB.ID))
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, day1, day2))
+	require.NoError(t, cumulativesummary.Backfill(dbc, day1, day2, []string{"4.18"}))
 
 	var summaries []models.TestCumulativeSummary
 	require.NoError(t, dbc.DB.Where("test_id = ?", test.ID).Order("date, suite_id").Find(&summaries).Error)
@@ -614,7 +614,7 @@ func TestCumulativeSummariesBackfill_LifecycleReclassificationDropsOrphanedRow(t
 
 	day := civil.Date{Year: 2026, Month: 7, Day: 20}
 	createDailyTotal(t, dbc, day, "4.18", testA.ID, job.ID, 1, 0, 0, 1, withDailyLifecycle("blocking"))
-	require.NoError(t, cumulativesummary.Backfill(dbc, day, day))
+	require.NoError(t, cumulativesummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var countBefore int64
 	require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).Where("test_id = ?", testA.ID).Count(&countBefore).Error)
@@ -629,7 +629,7 @@ func TestCumulativeSummariesBackfill_LifecycleReclassificationDropsOrphanedRow(t
 	require.NoError(t, dbc.DB.Where("test_id = ? AND release = ? AND date = ?", testA.ID, "4.18", day).Delete(&models.TestDailyTotal{}).Error)
 	createDailyTotal(t, dbc, day, "4.18", testB.ID, job.ID, 1, 0, 0, 1, withDailyLifecycle("blocking"))
 
-	require.NoError(t, cumulativesummary.Backfill(dbc, day, day))
+	require.NoError(t, cumulativesummary.Backfill(dbc, day, day, []string{"4.18"}))
 
 	var countA int64
 	require.NoError(t, dbc.DB.Model(&models.TestCumulativeSummary{}).Where("test_id = ?", testA.ID).Count(&countA).Error)
