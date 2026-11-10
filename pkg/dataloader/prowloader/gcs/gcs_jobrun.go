@@ -186,3 +186,18 @@ func (j *GCSJobRun) FindAllMatches(ctx context.Context, glob string) ([]string, 
 
 	return matches, nil
 }
+
+// HasObjects reports whether the job-run prefix contains any objects. A job
+// can have authoritative metadata without producing JUnit artifacts, so this
+// check must remain separate from FindAllMatches.
+func (j *GCSJobRun) HasObjects(ctx context.Context) (bool, error) {
+	it := j.bkt.Objects(ctx, &storage.Query{Prefix: j.gcsProwJobPath})
+	_, err := it.Next()
+	if errors.Is(err, iterator.Done) {
+		return false, nil
+	}
+	if err != nil {
+		return false, errors.Wrap(err, "error reading job-run prefix")
+	}
+	return true, nil
+}
