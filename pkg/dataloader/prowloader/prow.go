@@ -971,6 +971,10 @@ func gatherLabelsBatch(ctx context.Context, bqClient *bqcachedclient.Client, bui
 	if dataset == "" {
 		dataset = bqClient.Dataset
 	}
+	if err := bqcachedclient.ValidateDatasetIdentifier(dataset); err != nil {
+		return nil, fmt.Errorf("building job labels query: %w", err)
+	}
+	// Table identifiers cannot be bound as query values, so validate before interpolation.
 	table := fmt.Sprintf("`%s.%s`", dataset, LabelsTableName)
 	q := bqClient.Query(ctx, bqlabel.ProwLoaderJobLabels, `
 		SELECT prowjob_build_id, ARRAY_AGG(DISTINCT label ORDER BY label ASC) AS labels

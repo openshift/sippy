@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -166,6 +167,9 @@ func (f *prowBackfillFlags) loader(ctx context.Context) (*prowloader.ProwLoader,
 	if f.ConfigFlags.Path == "" {
 		return nil, nil, fmt.Errorf("--config is required for historical Prow backfill")
 	}
+	if err := validateHistoricalDatasets(f.BigQueryFlags.BigQueryDataset, os.Getenv(prowloader.LabelsDatasetEnv)); err != nil {
+		return nil, nil, err
+	}
 	dbc, err := f.PostgresFlags.GetDBClient()
 	if err != nil {
 		return nil, nil, fmt.Errorf("initializing PostgreSQL: %w", err)
@@ -206,6 +210,20 @@ func (f *prowBackfillFlags) loader(ctx context.Context) (*prowloader.ProwLoader,
 			}
 		}
 	}, nil
+}
+
+// validateHistoricalDatasets rejects unsafe dataset identifiers before the
+// variant manager or label prefetch can interpolate them into BigQuery SQL.
+func validateHistoricalDatasets(dataset, labelsDataset string) error {
+	if err := bqcachedclient.ValidateDatasetIdentifier(dataset); err != nil {
+		return fmt.Errorf("invalid --bigquery-dataset: %w", err)
+	}
+	if labelsDataset != "" {
+		if err := bqcachedclient.ValidateDatasetIdentifier(labelsDataset); err != nil {
+			return fmt.Errorf("invalid %s: %w", prowloader.LabelsDatasetEnv, err)
+		}
+	}
+	return nil
 }
 
 // validateTestSource rejects unsupported source modes before opening clients.

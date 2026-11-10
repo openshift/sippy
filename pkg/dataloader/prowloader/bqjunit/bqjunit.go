@@ -3,7 +3,6 @@ package bqjunit
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -19,8 +18,6 @@ const (
 	junitTable   = "junit"
 	junitPRTable = "junit_pr"
 )
-
-var identifierPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+){0,2}$`)
 
 // Client reads the bounded BigQuery JUnit data needed by the historical loader.
 type Client struct {
@@ -64,7 +61,7 @@ func New(client *bqclient.Client) (*Client, error) {
 	if client == nil {
 		return nil, fmt.Errorf("BigQuery client is required")
 	}
-	if err := validateIdentifier(client.Dataset, "dataset"); err != nil {
+	if err := bqclient.ValidateDatasetIdentifier(client.Dataset); err != nil {
 		return nil, err
 	}
 	return &Client{client: client, dataset: client.Dataset}, nil
@@ -201,7 +198,7 @@ var requiredColumns = []string{"prowjob_build_id", "test_name", "testsuite", "su
 // schemaQuery parameterizes the table name and limits inspection to the
 // configured dataset's schema metadata.
 func schemaQuery(dataset, table string) (string, []bigquery.QueryParameter, error) {
-	if err := validateIdentifier(dataset, "dataset"); err != nil {
+	if err := bqclient.ValidateDatasetIdentifier(dataset); err != nil {
 		return "", nil, err
 	}
 	return fmt.Sprintf("SELECT column_name FROM `%s.INFORMATION_SCHEMA.COLUMNS` WHERE table_name = @table_name ORDER BY ordinal_position", dataset), []bigquery.QueryParameter{{Name: "table_name", Value: table}}, nil
@@ -213,7 +210,7 @@ func junitQuery(dataset, table string, buildIDs []string, mode QueryMode) (strin
 	if !mode.ModifiedSince.UTC().Before(mode.ModifiedUntil.UTC()) {
 		return "", nil, fmt.Errorf("JUnit modified-time window must have since before until")
 	}
-	if err := validateIdentifier(dataset, "dataset"); err != nil {
+	if err := bqclient.ValidateDatasetIdentifier(dataset); err != nil {
 		return "", nil, err
 	}
 	if table != junitTable && table != junitPRTable {
@@ -252,15 +249,6 @@ func bytesFromJob(job *bigquery.Job) int64 {
 		return stats.TotalBytesProcessed
 	}
 	return 0
-}
-
-// validateIdentifier guards the SQL identifier positions that BigQuery does
-// not permit as query parameters.
-func validateIdentifier(value, kind string) error {
-	if !identifierPattern.MatchString(value) {
-		return fmt.Errorf("invalid BigQuery %s %q", kind, value)
-	}
-	return nil
 }
 
 // Tables returns the supported JUnit table names for callers building batches.

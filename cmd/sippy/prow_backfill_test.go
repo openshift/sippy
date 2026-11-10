@@ -20,6 +20,13 @@ func TestValidateTestSource(t *testing.T) {
 	require.EqualError(t, validateTestSource("unknown"), `invalid --test-source "unknown"`)
 }
 
+func TestValidateHistoricalDatasets(t *testing.T) {
+	require.NoError(t, validateHistoricalDatasets("ci_analysis_us", ""))
+	require.NoError(t, validateHistoricalDatasets("ci_analysis_us", "openshift-gce-devel.ci_data"))
+	require.ErrorContains(t, validateHistoricalDatasets("ci_analysis_us`", ""), "--bigquery-dataset")
+	require.ErrorContains(t, validateHistoricalDatasets("ci_analysis_us", "ci_data;SELECT 1"), "JOB_LABELS_DATASET")
+}
+
 func TestShouldInitializeGCS(t *testing.T) {
 	require.True(t, shouldInitializeGCS("gcs", "", ""))
 	require.True(t, shouldInitializeGCS("auto", "/credentials.json", ""))
