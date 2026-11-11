@@ -85334,26 +85334,6 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-fips-osd-gcp-fips-e2e-stagi
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-periodics-fips-rosa-classic-sts-fips-e2e-staging-candidate-5-0:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
-    Release: rosa-stage
-    Scheduler: default
-    SecurityMode: fips
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-fips-rosa-classic-sts-fips-e2e-staging-stable-4-19:
     Aggregation: none
     Architecture: amd64
@@ -85415,6 +85395,26 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-fips-rosa-classic-sts-fips-
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-fips-rosa-classic-sts-fips-e2e-staging-stable-4-22:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: fips
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-periodics-fips-rosa-classic-sts-fips-e2e-staging-stable-5-0:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -85574,26 +85574,6 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-privat
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-staging-candidate-5-0:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: ipi
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
-    Release: rosa-stage
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: ha
-    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-staging-stable-4-19:
     Aggregation: none
     Architecture: amd64
@@ -85674,6 +85654,26 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-stagin
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-classic-sts-e2e-staging-stable-5-0:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-autoscaling-e2e-staging:
     Aggregation: none
     Architecture: amd64
@@ -85695,26 +85695,6 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-autoscaling-e2e-st
     Topology: external
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-aws-vpc-cni-staging:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
-    Release: rosa-stage
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-integration-candidate-5-0:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -85794,6 +85774,26 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-integration-st
     Suite: unknown
     Topology: external
     Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-integration-stable-5-0:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-private-staging:
     Aggregation: none
     Architecture: amd64
@@ -85815,26 +85815,6 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-private-stagin
     Topology: external
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-privatelink-connectivity-mc-health-staging:
-    Aggregation: none
-    Architecture: amd64
-    CGroupMode: v2
-    FeatureSet: default
-    Installer: hypershift
-    JobTier: candidate
-    LayeredProduct: none
-    NetworkAccess: default
-    NetworkStack: ipv4
-    OS: rhcos10
-    Owner: service-delivery
-    Platform: rosa
-    Procedure: none
-    Release: rosa-stage
-    Scheduler: default
-    SecurityMode: default
-    Suite: unknown
-    Topology: external
-    Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-staging-candidate-5-0:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -85915,6 +85895,26 @@ periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-staging-stable
     Topology: external
     Upgrade: none
 periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-staging-stable-4-22:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Release: rosa-stage
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-staging-stable-5-0:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
