@@ -97,6 +97,7 @@ describe('ageColor', () => {
 describe('jiraProjectForRelease', () => {
   test.each([
     ['quay-3.18', { key: 'PROJQUAY', pid: '10217' }],
+    ['logging-6.6', { key: 'LOG', pid: '10248' }],
     ['4.22', { key: 'OCPBUGS', pid: '10325' }],
     ['rosa-4.22', { key: 'OCPBUGS', pid: '10325' }],
     [undefined, { key: 'OCPBUGS', pid: '10325' }],
