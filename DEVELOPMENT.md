@@ -231,6 +231,36 @@ sippy load \
   --google-service-account-credential-file ~/google-service-account-credential-file.json
 ```
 
+### Mock authentication (local and agentic-staging)
+
+In production, the oauth proxy sets the `X-Forwarded-User` header, and user-attributed write
+endpoints (triage create/update/delete audit logs, regression force close, symptom edits) record
+that user. The server itself only rejects requests without the header on a few endpoints (regression
+force close and Jira bug filing); the other write paths rely on the oauth proxy to set it. Local
+development and the `agentic-staging` environment have no oauth proxy, so `sippy serve` can
+attribute those requests to a mock user instead.
+
+* **Mock user:** `developer` (`sippyserver.MockUser`).
+* **Enabling:** set `DEV_MODE=1`, the existing development toggle that the audit logs already use
+  to attribute writes to the mock user. There is no separate environment variable.
+  `hack/agentic_setup.sh` exports `DEV_MODE=1` (unless already set), and the agentic-staging
+  deployment sources that script before starting `sippy serve`. In the devcontainer, add `DEV_MODE=1` to
+  `.devcontainer/.env` (or export it before starting the server). The MCP server reads
+  `.devcontainer/.env` only at startup and `sippy_serve` inherits its environment, so after
+  changing the file restart the MCP server and any running Sippy server. Note that `DEV_MODE=1`
+  also bypasses the component report and test details caches. Triage and other post-analysis
+  still apply to both reports. `scripts/e2e.sh` starts its server with `DEV_MODE=0` regardless,
+  because the triage e2e tests inject regressions into the report cache.
+* **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
+  the header is missing.
+* **Production:** production leaves `DEV_MODE` unset, so endpoints that check for a user still
+  reject requests without one (for example, force close returns `401 Unauthorized`).
+* **Isolation:** with the mock active, any client that can reach the server can perform
+  user-attributed writes as `developer`. Only enable it on deployments that are not reachable from
+  untrusted networks and that do not use production data.
+
+On startup, the server logs the warning `mock authentication enabled` when the mock is active.
+
 ## Run Sippy comment processing
 
 If you want to run Sippy PR Commenting you likely want to first load data so that you have the PR commenting table populated.

@@ -46,21 +46,25 @@ func defaultMultiTestStatusQueryBackoff() wait.Backoff {
 
 func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
 	generator := NewComponentReportGenerator(provider, reqOptions, dbc, releases, baseURL)
-	if os.Getenv("DEV_MODE") == "1" {
-		return generator.GenerateTestDetailsReport(ctx)
-	}
 
-	report, errs := api.GetDataFromCacheOrGenerate[testdetails.Report](
-		ctx,
-		generator.getCache(),
-		generator.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator.GetCacheKey(), TestDetailsReportCacheKeyPrefix, nil),
-		generator.GenerateTestDetailsReport,
-		testdetails.Report{})
+	var report testdetails.Report
+	var errs []error
+	if os.Getenv("DEV_MODE") == "1" {
+		report, errs = generator.GenerateTestDetailsReport(ctx)
+	} else {
+		report, errs = api.GetDataFromCacheOrGenerate[testdetails.Report](
+			ctx,
+			generator.getCache(),
+			generator.ReqOptions.CacheOption,
+			api.NewCacheSpec(generator.GetCacheKey(), TestDetailsReportCacheKeyPrefix, nil),
+			generator.GenerateTestDetailsReport,
+			testdetails.Report{})
+	}
 	if len(errs) > 0 {
 		return report, errs
 	}
 
+	// Post-analysis runs on both paths so fresh database state such as triage is reflected.
 	err := generator.PostAnalysisTestDetails(&report)
 	if err != nil {
 		return report, []error{err}

@@ -2297,14 +2297,6 @@ func (s *Server) jsonGetRegressionByID(w http.ResponseWriter, req *http.Request)
 	api.RespondWithJSON(http.StatusOK, w, regression)
 }
 
-func getUserForRequest(req *http.Request) string {
-	user := req.Header.Get("X-Forwarded-User")
-	if user == "" && os.Getenv("DEV_MODE") == "1" {
-		user = "developer"
-	}
-	return user
-}
-
 // jsonRegressionPotentialMatchingTriages finds the triage entries that currently have regressions that match
 // the regression in question. These matches are based on test name and last failure time similarity.
 func (s *Server) jsonRegressionPotentialMatchingTriages(w http.ResponseWriter, req *http.Request) {
@@ -2577,6 +2569,10 @@ func (s *Server) rateLimit(endpointPath string, maxRequests int, period time.Dur
 
 func (s *Server) Serve() {
 	s.determineCapabilities()
+	if mockAuthEnabled(os.Getenv) {
+		log.WithField("mock_user", MockUser).
+			Warn("mock authentication enabled; requests without X-Forwarded-User are attributed to the mock user")
+	}
 
 	router := mux.NewRouter()
 	router.StrictSlash(true)
