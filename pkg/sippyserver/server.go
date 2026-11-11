@@ -2586,11 +2586,8 @@ func (s *Server) Serve() {
 	// /sippy-ng request is captured and redirected to /sippy-ng/ instead of 404-ing.
 	router.PathPrefix("/sippy-ng").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/sippy-ng" {
-			target := "/sippy-ng/"
-			if r.URL.RawQuery != "" {
-				target += "?" + r.URL.RawQuery
-			}
-			http.Redirect(w, r, target, http.StatusMovedPermanently)
+			target := sippyNGRedirectTarget(r.URL.RawQuery)
+			http.Redirect(w, r, target, http.StatusMovedPermanently) //nolint:gosec // G710: target has a fixed relative path; only its query is request-derived.
 			return
 		}
 		fs := s.sippyNG
@@ -3253,6 +3250,11 @@ func (s *Server) Serve() {
 	if err := s.httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.WithError(err).Error("Server exited")
 	}
+}
+
+// sippyNGRedirectTarget preserves the request query on the fixed same-origin frontend path.
+func sippyNGRedirectTarget(rawQuery string) string {
+	return (&url.URL{Path: "/sippy-ng/", RawQuery: rawQuery}).String()
 }
 
 type statusCapturingResponseWriter struct {

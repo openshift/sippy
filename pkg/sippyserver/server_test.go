@@ -2,6 +2,7 @@ package sippyserver
 
 import (
 	"encoding/json"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -9,6 +10,37 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db/models"
 )
+
+func TestSippyNGRedirectTargetRemainsSameOrigin(t *testing.T) {
+	tests := []struct {
+		name     string
+		rawQuery string
+	}{
+		{name: "no query"},
+		{name: "ordinary query", rawQuery: "release=4.21&arch=amd64"},
+		{name: "absolute URL in value", rawQuery: "next=https://attacker.example/path"},
+		{name: "network path in value", rawQuery: "next=//attacker.example/path"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			target := sippyNGRedirectTarget(tc.rawQuery)
+			parsed, err := url.Parse(target)
+			if err != nil {
+				t.Fatalf("parse redirect target: %v", err)
+			}
+			if parsed.IsAbs() || parsed.Host != "" {
+				t.Fatalf("redirect target must be same-origin: %q", target)
+			}
+			if parsed.Path != "/sippy-ng/" {
+				t.Fatalf("redirect path = %q, want /sippy-ng/", parsed.Path)
+			}
+			if parsed.RawQuery != tc.rawQuery {
+				t.Fatalf("redirect query = %q, want %q", parsed.RawQuery, tc.rawQuery)
+			}
+		})
+	}
+}
 
 func TestValidateCRDataSource(t *testing.T) {
 	for _, dataSource := range []string{"", reqopts.DataSourceBigQuery, reqopts.DataSourcePostgres} {

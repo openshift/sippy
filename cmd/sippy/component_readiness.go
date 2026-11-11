@@ -242,30 +242,16 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 		}
 
 		// Refresh our metrics every 5 minutes:
-		ticker := time.NewTicker(5 * time.Minute)
-		quit := make(chan struct{})
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					log.Info("tick")
-					err := metrics.RefreshMetricsDB(
-						context.Background(),
-						dbc,
-						bigQueryClient,
-						crDataProvider,
-						time.Time{},
-						cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
-						views.ComponentReadiness)
-					if err != nil {
-						log.WithError(err).Error("error refreshing metrics")
-					}
-				case <-quit:
-					ticker.Stop()
-					return
-				}
-			}
-		}()
+		go refreshMetricsPeriodically(ctx, 5*time.Minute, func(refreshCtx context.Context) error {
+			return metrics.RefreshMetricsDB(
+				refreshCtx,
+				dbc,
+				bigQueryClient,
+				crDataProvider,
+				time.Time{},
+				cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
+				views.ComponentReadiness)
+		})
 
 		// Serve our metrics endpoint for prometheus to scrape
 		go func() {
@@ -280,4 +266,21 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 
 	server.Serve()
 	return nil
+}
+
+// refreshMetricsPeriodically refreshes metrics until the command context is canceled.
+func refreshMetricsPeriodically(ctx context.Context, interval time.Duration, refresh func(context.Context) error) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			log.Info("tick")
+			if err := refresh(ctx); err != nil {
+				log.WithError(err).Error("error refreshing metrics")
+			}
+		}
+	}
 }
