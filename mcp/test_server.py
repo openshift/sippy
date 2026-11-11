@@ -971,6 +971,63 @@ class TestWaitForUrl:
 
 
 class TestMcpTestEnvironment:
+    @pytest.mark.parametrize("platform", ["linux", "darwin", "win32"])
+    @pytest.mark.parametrize("browser_path", [None, "0", "explicit"])
+    def test_usable_browser_locations_are_preserved(self, tmp_path, monkeypatch, platform, browser_path):
+        import testenv
+
+        monkeypatch.setattr(testenv.sys, "platform", platform)
+        parent = {"HOME": str(tmp_path), "LOCALAPPDATA": str(tmp_path / "AppData/Local")}
+        if browser_path is not None:
+            parent["PLAYWRIGHT_BROWSERS_PATH"] = (
+                str(tmp_path / "browsers") if browser_path == "explicit" else browser_path
+            )
+        env = testenv.prepare_environment(parent, tmp_path / "logs")
+        assert env.get("PLAYWRIGHT_BROWSERS_PATH") == parent.get("PLAYWRIGHT_BROWSERS_PATH")
+        if platform == "linux" and browser_path is None:
+            assert Path(env.get("XDG_CACHE_HOME", tmp_path / ".cache")) == tmp_path / ".cache"
+
+    def test_inherited_xdg_browser_cache_is_preserved(self, tmp_path):
+        from testenv import prepare_environment
+
+        parent = {"XDG_CACHE_HOME": str(tmp_path / "shared-cache")}
+        env = prepare_environment(parent, tmp_path / "logs")
+        assert env["XDG_CACHE_HOME"] == parent["XDG_CACHE_HOME"]
+        assert "PLAYWRIGHT_BROWSERS_PATH" not in env
+
+    def test_browser_cache_survives_xdg_parent_fallback(self, tmp_path, monkeypatch):
+        import testenv
+
+        xdg_cache = tmp_path / "shared-cache"
+        browser_cache = xdg_cache / "ms-playwright"
+        browser_cache.mkdir(parents=True)
+        writable_directory = testenv.writable_directory
+
+        def probe(path):
+            if path == xdg_cache:
+                raise PermissionError("cache parent is not writable")
+            return writable_directory(path)
+
+        monkeypatch.setattr(testenv, "writable_directory", probe)
+        env = testenv.prepare_environment({"XDG_CACHE_HOME": str(xdg_cache)}, tmp_path / "logs")
+        assert env["XDG_CACHE_HOME"] != str(xdg_cache)
+        assert env["PLAYWRIGHT_BROWSERS_PATH"] == str(browser_cache)
+
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_unusable_browser_location_gets_writable_fallback(self, tmp_path, explicit):
+        from testenv import prepare_environment
+
+        blocked = tmp_path / "blocked"
+        blocked.write_text("not a directory")
+        parent = {"HOME": str(tmp_path), "XDG_CACHE_HOME": str(tmp_path / "cache")}
+        if explicit:
+            parent["PLAYWRIGHT_BROWSERS_PATH"] = str(blocked)
+        else:
+            (tmp_path / "cache").mkdir()
+            (tmp_path / "cache/ms-playwright").write_text("not a directory")
+        env = prepare_environment(parent, tmp_path / "logs")
+        assert env["PLAYWRIGHT_BROWSERS_PATH"] == str(tmp_path / "logs/test-cache/playwright_browsers_path")
+
     def test_writable_fallback_preserves_auth_and_artifacts(self, tmp_path):
         from testenv import prepare_environment
 
@@ -1125,6 +1182,7 @@ class TestE2eFailurePaths:
             ("serve", 0, "API exited before readiness (exit 0)", "Priming component"),
             ("health", 1, "Timeout waiting for sippy API", "Priming component"),
             ("tests", 35, "Cache priming complete", "API exited before readiness"),
+            ("tee", 36, "Cache priming complete", "API exited before readiness"),
             ("success", 0, "Cache priming complete", "API exited before readiness"),
         ],
     )
@@ -1148,6 +1206,7 @@ go() {
 }
 curl() {
     if [[ "$*" == *"/api/capabilities"* ]]; then
+        if [[ "$FAIL_STAGE" == health ]]; then SECONDS=$((SECONDS + 600)); fi
         if [[ "$FAIL_STAGE" == serve || "$FAIL_STAGE" == health ]]; then return 22; fi
         return 0
     fi
@@ -1159,8 +1218,16 @@ curl() {
 }
 sleep() { if [[ "$FAIL_STAGE" != health ]]; then /bin/sleep 0.02; fi; }
 gotestsum() {
+    echo "test failure postgresql://test:secret@localhost/postgres?password=secret&sslmode=disable" >&2
     echo "DONE test stub"
     if [[ "$FAIL_STAGE" == tests ]]; then return "$FAIL_STATUS"; fi
+}
+tee() {
+    if [[ "$FAIL_STAGE" == tee && "$1" == *e2e-gotestsum.log ]]; then
+        cat >/dev/null
+        return "$FAIL_STATUS"
+    fi
+    command tee "$@"
 }
 ''')
         sippy = tmp_path / "sippy"
@@ -1181,6 +1248,8 @@ exec /bin/sleep 60
 ''')
         sippy.chmod(0o755)
         output_dir = tmp_path / "artifacts"
+        output_dir.mkdir()
+        (output_dir / "e2e-gotestsum.log").write_text("DONE previous run\n")
         result = subprocess.run(
             ["bash", str(E2E_SCRIPT)], cwd=tmp_path,
             env={**os.environ, "BASH_ENV": str(bash_env), "FAIL_STAGE": stage,
@@ -1193,19 +1262,74 @@ exec /bin/sleep 60
         assert result.returncode == (status or (1 if stage == "serve" else 0)), output
         assert expected in output
         assert forbidden not in output
+        assert "DONE previous run" not in output
+        if stage in ("tests", "success"):
+            assert "DONE test stub" in output
         assert "secret" not in output
         for log in output_dir.glob("*.log"):
             assert "secret" not in log.read_text()
         if stage == "serve":
             assert "API startup failed" in output
 
-    def test_dsn_connection_options_survive_database_replacement(self):
+    @pytest.mark.parametrize("path", ["", "/", "/postgres"])
+    @pytest.mark.parametrize("query", ["", "?sslmode=disable&connect_timeout=5"])
+    def test_dsn_connection_options_survive_database_replacement(self, path, query):
         result = TestE2eScriptSafety._run_helper('''
 psql() { return 0; }
 e2e_configure_existing_services
-[ "$SIPPY_E2E_DSN" = 'postgresql://user:private@localhost:5432/sippy_e2e?sslmode=disable&connect_timeout=5' ]
-''', {"SIPPY_DATABASE_DSN": "postgresql://user:private@localhost:5432/postgres?sslmode=disable&connect_timeout=5"})
+[ "$SIPPY_E2E_DSN" = "$EXPECTED_DSN" ]
+''', {"SIPPY_DATABASE_DSN": f"postgresql://user:private@localhost:5432{path}{query}",
+      "EXPECTED_DSN": f"postgresql://user:private@localhost:5432/sippy_e2e{query}"})
         assert result.returncode == 0, result.stderr
+
+    @pytest.mark.parametrize("scheme", ["postgres", "postgresql", "redis", "rediss"])
+    def test_log_redaction_covers_userinfo_and_query_credentials(self, scheme):
+        source = f'{scheme}://user:private@localhost/db?password=query-secret&sslmode=disable&sslpassword=key-secret&password=second-secret'
+        result = TestE2eScriptSafety._run_helper(
+            'printf "%s\\n" "$TEST_LOG" | e2e_redact_logs', {"TEST_LOG": source}
+        )
+        assert result.returncode == 0
+        assert result.stdout.strip() == (
+            f'{scheme}://[redacted]@localhost/db?password=[redacted]&sslmode=disable&sslpassword=[redacted]&password=[redacted]'
+        )
+
+    def test_readiness_deadline_includes_request_time(self):
+        result = TestE2eScriptSafety._run_helper('''
+SECONDS=0
+CHILD_PID=$$
+SIPPY_API_PORT=18080
+calls=0
+curl() {
+    calls=$((calls + 1))
+    [ "$calls" -le 150 ] || exit 99
+    SECONDS=$((SECONDS + 2))
+    return 28
+}
+sleep() { SECONDS=$((SECONDS + $1)); }
+e2e_log_tail() { :; }
+wait_for_sippy
+status=$?
+[ "$status" -eq 1 ] && [ "$SECONDS" -eq 600 ] && [ "$calls" -eq 150 ]
+''')
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "after 600s" in result.stderr
+
+    def test_readiness_sleep_is_limited_to_remaining_time(self):
+        result = TestE2eScriptSafety._run_helper('''
+SECONDS=0
+CHILD_PID=$$
+SIPPY_API_PORT=18080
+curl() { SECONDS=599; return 28; }
+sleep() {
+    [ "$1" -eq 1 ] || exit 99
+    SECONDS=$((SECONDS + $1))
+}
+e2e_log_tail() { :; }
+wait_for_sippy
+status=$?
+[ "$status" -eq 1 ] && [ "$SECONDS" -eq 600 ]
+''')
+        assert result.returncode == 0, result.stdout + result.stderr
 
 
 class TestRedisProbe:

@@ -25,18 +25,43 @@ def prepare_environment(parent: dict[str, str], log_dir: Path) -> dict[str, str]
     if "npm_config_cache" not in env and "NPM_CONFIG_CACHE" in env:
         env["npm_config_cache"] = env["NPM_CONFIG_CACHE"]
     cache_root = log_dir / "test-cache"
+    home = Path(env.get("HOME") or Path.home())
     for key in (
         "GOCACHE", "GOMODCACHE", "GOTMPDIR", "TMPDIR", "XDG_CACHE_HOME",
-        "npm_config_cache", "PLAYWRIGHT_BROWSERS_PATH",
+        "npm_config_cache",
     ):
+        candidate = env.get(key)
+        if key == "XDG_CACHE_HOME" and not candidate:
+            candidate = str(home / ".cache")
         try:
-            path = writable_directory(Path(env[key])) if env.get(key) else None
+            path = writable_directory(Path(candidate)) if candidate else None
         except OSError:
             path = None
         if path is None:
             path = writable_directory(cache_root / key.lower())
+        elif key == "XDG_CACHE_HOME" and not env.get(key):
+            continue
         env[key] = str(path)
     env["NPM_CONFIG_CACHE"] = env["npm_config_cache"]
+
+    # Browser installs may already live in Playwright's platform default cache.
+    # Its special value "0" selects the package-local hermetic installation.
+    browser_path = env.get("PLAYWRIGHT_BROWSERS_PATH")
+    if browser_path != "0":
+        if sys.platform == "darwin":
+            browser_cache = home / "Library/Caches/ms-playwright"
+        elif sys.platform == "win32":
+            browser_cache = Path(env.get("LOCALAPPDATA") or home / "AppData/Local") / "ms-playwright"
+        else:
+            browser_cache = Path(parent.get("XDG_CACHE_HOME") or home / ".cache") / "ms-playwright"
+        try:
+            path = writable_directory(Path(browser_path) if browser_path else browser_cache)
+        except OSError:
+            path = writable_directory(cache_root / "playwright_browsers_path")
+            env["PLAYWRIGHT_BROWSERS_PATH"] = str(path)
+        else:
+            if browser_path or (sys.platform == "linux" and env.get("XDG_CACHE_HOME") != parent.get("XDG_CACHE_HOME")):
+                env["PLAYWRIGHT_BROWSERS_PATH"] = str(path)
 
     # CI must mount its collection directory writable. Falling back silently would
     # lose test results even if the tests themselves succeeded.

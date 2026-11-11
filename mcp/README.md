@@ -91,8 +91,10 @@ devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
 The runner cannot grant missing socket permissions or start services hidden by the
 client's sandbox; configure the MCP process with those permissions in both phases.
 
-Usable inherited cache directories are retained. Unwritable or unset Go, npm,
-Playwright, XDG and temporary directories fall back to `sippy-dev-logs/test-cache/`.
+Usable inherited cache directories are retained, including Playwright's default
+browser cache and its `PLAYWRIGHT_BROWSERS_PATH=0` hermetic-install setting.
+Unwritable caches and unset Go, npm and temporary directories fall back to
+`sippy-dev-logs/test-cache/`.
 `ARTIFACT_DIR` is preserved and must be writable by the MCP server; the runner fails
 early rather than losing CI artifacts. Without it, artifacts go to
 `sippy-dev-logs/artifacts/`. The runner sets `SIPPY_TEST_OUTPUT_DIR` to
@@ -103,6 +105,10 @@ and `e2e-gotestsum.log`. Tool summaries and prerequisite diagnostics are in
 Database setup/seeding errors stop execution immediately. An API process that exits
 before readiness reports its exit status and recent log output. Cleanup preserves
 the original failure status, and logs remain available for diagnosis and collection.
+API readiness has a 600-second elapsed-time deadline, including HTTP requests.
+Test output is redacted before it reaches the console or artifact log, including
+URI userinfo and `password`/`sslpassword` query parameters. An artifact-write failure
+fails the run, and cleanup only reports test results from the current invocation.
 
 ### Background processes
 

@@ -57,7 +57,11 @@ e2e_configure_existing_services() {
     # Preserve connection options (including sslmode) when changing databases.
     local admin_base="${ADMIN_DSN%%\?*}"
     local admin_query="${ADMIN_DSN#"$admin_base"}"
-    E2E_DSN="${admin_base%/*}/${E2E_DB_NAME}${admin_query}"
+    local admin_authority="${admin_base#*://}"
+    if [[ "$admin_authority" == */* ]]; then
+        admin_base="${admin_base%/*}"
+    fi
+    E2E_DSN="${admin_base}/${E2E_DB_NAME}${admin_query}"
 
     e2e_create_database "$E2E_DB_NAME" "$ADMIN_DSN" || return $?
 
@@ -69,7 +73,9 @@ e2e_configure_existing_services() {
 }
 
 e2e_redact_logs() {
-    sed -u -E 's#(postgres(ql)?|rediss?)://[^/@[:space:]]+@#\1://[redacted]@#g'
+    sed -u -E \
+        -e 's#(postgres(ql)?|rediss?)://[^/@[:space:]]+@#\1://[redacted]@#g' \
+        -e 's#([?&](password|sslpassword)=)[^&[:space:]]*#\1[redacted]#g'
 }
 
 e2e_log_tail() {
@@ -79,8 +85,8 @@ e2e_log_tail() {
 
 wait_for_sippy() {
     echo "Waiting for sippy API to start on port $SIPPY_API_PORT..."
-    local elapsed=0 status
-    while [ "$elapsed" -lt 600 ]; do
+    local started=$SECONDS deadline=$((SECONDS + 600)) status remaining
+    while [ "$SECONDS" -lt "$deadline" ]; do
         if ! kill -0 "$CHILD_PID" 2>/dev/null; then
             wait "$CHILD_PID"
             status=$?
@@ -90,12 +96,16 @@ wait_for_sippy() {
             return "$status"
         fi
         # Capabilities needs no release filters, unlike /api/health.
-        if curl -fsS --max-time 2 "http://localhost:$SIPPY_API_PORT/api/capabilities" > /dev/null 2>&1; then
-            echo "Sippy API is ready after ${elapsed}s"
+        remaining=$((deadline - SECONDS))
+        [ "$remaining" -gt 0 ] || break
+        if curl -fsS --max-time "$((remaining < 2 ? remaining : 2))" "http://localhost:$SIPPY_API_PORT/api/capabilities" > /dev/null 2>&1; then
+            echo "Sippy API is ready after $((SECONDS - started))s"
             return 0
         fi
-        sleep 2
-        elapsed=$((elapsed + 2))
+        remaining=$((deadline - SECONDS))
+        if [ "$remaining" -gt 0 ]; then
+            sleep "$((remaining < 2 ? remaining : 2))"
+        fi
     done
     echo "Timeout waiting for sippy API to start after 600s" >&2
     e2e_log_tail
@@ -146,6 +156,7 @@ fi
 set -o pipefail
 OUTPUT_DIR="${SIPPY_TEST_OUTPUT_DIR:-$(pwd)}"
 mkdir -p "$OUTPUT_DIR" || exit 1
+rm -f "$OUTPUT_DIR/e2e-gotestsum.log" || exit $?
 trap clean_up EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
@@ -236,5 +247,5 @@ done
 echo "Cache priming complete"
 
 # Run e2e tests
-gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile="$OUTPUT_DIR/e2e-test-coverage.out" -coverpkg=./pkg/...,./cmd/... 2>&1 | tee "$OUTPUT_DIR/e2e-gotestsum.log"
-exit "${PIPESTATUS[0]}"
+gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile="$OUTPUT_DIR/e2e-test-coverage.out" -coverpkg=./pkg/...,./cmd/... 2>&1 | e2e_redact_logs | tee "$OUTPUT_DIR/e2e-gotestsum.log"
+exit "$?"
