@@ -33,12 +33,12 @@ def postgres_environment(parent: dict[str, str]) -> dict[str, str]:
             raise ValueError("Invalid PostgreSQL URI option")
         parameters[unquote(key)] = unquote(value)
     names = {
-        "dbname": "PGDATABASE", "user": "PGUSER", "password": "PGPASSWORD",
+        "dbname": "PGDATABASE", "user": "PGUSER",
         "application_name": "PGAPPNAME", "client_encoding": "PGCLIENTENCODING",
         "connect_timeout": "PGCONNECT_TIMEOUT",
     }
     for key in (
-        "host", "hostaddr", "port", "passfile", "service", "options", "sslmode",
+        "host", "hostaddr", "port", "password", "passfile", "service", "options", "sslmode",
         "requiressl", "sslcompression", "sslcert", "sslkey", "sslrootcert", "sslcrl",
         "sslcrldir", "sslsni", "sslcertmode", "sslnegotiation", "requirepeer",
         "ssl_min_protocol_version", "ssl_max_protocol_version", "gssencmode",
