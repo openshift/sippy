@@ -249,7 +249,8 @@ attribute those requests to a mock user instead.
   `.devcontainer/.env` only at startup and `sippy_serve` inherits its environment, so after
   changing the file restart the MCP server and any running Sippy server. Note that `DEV_MODE=1`
   also bypasses the component report and test details caches. Triage and other post-analysis
-  still apply to both reports.
+  still apply to both reports. `scripts/e2e.sh` starts its server with `DEV_MODE=0` regardless,
+  because the triage e2e tests inject regressions into the report cache.
 * **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
   the header is missing.
 * **Production:** production leaves `DEV_MODE` unset, so endpoints that check for a user still

@@ -203,7 +203,10 @@ if [ -n "$GCS_SA_JSON_PATH" ]; then
     set -- "$@" --google-service-account-credential-file "$GCS_SA_JSON_PATH"
 fi
 
-GOCOVERDIR="$COVDIR" ./sippy serve "$@" > e2e.log 2>&1 &
+# Force DEV_MODE off: callers such as hack/agentic_setup.sh may export DEV_MODE=1, which bypasses the
+# component report cache that triage e2e fixtures inject synthetic regressions into. e2e requests
+# already send X-Forwarded-User, so the mock user is not needed.
+DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" > e2e.log 2>&1 &
 CHILD_PID=$!
 
 wait_for_sippy() {

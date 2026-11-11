@@ -4054,6 +4054,49 @@ func TestTestDetailsReport_AggregateBaseStats(t *testing.T) {
 	assert.Equal(t, test.Name, report.TestName)
 }
 
+// TestGetTestDetails_DevModePostAnalysis guards against GetTestDetails skipping post-analysis when
+// DEV_MODE bypasses the cache, which left triaged regressions looking untriaged in test details.
+func TestGetTestDetails_DevModePostAnalysis(t *testing.T) {
+	t.Setenv("DEV_MODE", "1")
+	dbc := crTestDB(t)
+	release := "4.16"
+
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-td-devmode-aws", release, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] dev mode post-analysis test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-td-devmode")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:td-devmode", "Storage", []string{"PVC"})
+
+	createCumulativeSummary(t, dbc, civil.Date{Year: 2024, Month: 5, Day: 14}, release, test.ID, job.ID, suite.ID, 0, 0, 0)
+	createCumulativeSummary(t, dbc, civil.Date{Year: 2024, Month: 6, Day: 1}, release, test.ID, job.ID, suite.ID, 100, 100, 0)
+	for i := range 10 {
+		timestamp := time.Date(2024, 6, 2+i, 12, 0, 0, 0, time.UTC)
+		run := createProwJobRunForCR(t, dbc, job.ID, release, timestamp)
+		createProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, &suite.ID, 12, release, timestamp)
+	}
+
+	reg := intutil.CreateTestRegression(t, dbc, test.Name, release, func(r *models.TestRegression) {
+		r.TestID = tow.UniqueID
+		r.Variants = pq.StringArray{"Platform:aws", "Network:ovn"}
+	})
+	intutil.CreateTriage(t, dbc, "https://issues.example.com/DEVMODE-1", intutil.WithRegressions(reg))
+
+	variants := map[string]string{"Platform": "aws", "Network": "ovn"}
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	report, errs := componentreadiness.GetTestDetails(context.Background(), provider, dbc,
+		testDetailsReqOptions(tow.UniqueID, variants), nil, "http://localhost")
+	require.Empty(t, errs)
+
+	require.Len(t, report.Analyses, 1)
+	analysis := report.Analyses[0]
+	assert.Equal(t, crtest.ExtremeTriagedRegression, analysis.ReportStatus,
+		"post-analysis should downgrade the triaged extreme regression")
+	require.NotNil(t, analysis.Regression)
+	assert.Equal(t, reg.ID, analysis.Regression.ID)
+	assert.Len(t, analysis.Regression.Triages, 1)
+	assert.NotEmpty(t, analysis.Links["test_details"], "post-analysis should inject the test details link")
+}
+
 func TestQuerySampleJobRunTestStatus_PRFilterGroupsByReleaseJobName(t *testing.T) {
 	dbc := crTestDB(t)
 	release := "4.16"
