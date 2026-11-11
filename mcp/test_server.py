@@ -1,12 +1,16 @@
 import asyncio
+import fcntl
 import inspect
 import os
 import secrets
 import shutil
 import socket
+import signal
 import threading
 import subprocess
+import sys
 import tempfile
+import time
 from pathlib import Path
 from unittest import mock
 
@@ -971,6 +975,39 @@ class TestWaitForUrl:
 
 
 class TestMcpTestEnvironment:
+    @pytest.mark.parametrize(
+        "dsn,expected",
+        [
+            (
+                "postgresql://user%40name:p%2Bss%3Dword@[::1]:5433/test%20db?sslmode=require&application_name=preflight",
+                {"PGHOST": "::1", "PGPORT": "5433", "PGUSER": "user@name", "PGPASSWORD": "p+ss=word",
+                 "PGDATABASE": "test db", "PGSSLMODE": "require", "PGAPPNAME": "preflight"},
+            ),
+            (
+                "postgres://user:old@first:5432,second:5433/original?host=%2Ftmp&dbname=selected&password=new+secret&options=-c%20search_path%3Dpublic",
+                {"PGHOST": "/tmp", "PGPORT": "5432,5433", "PGUSER": "user", "PGPASSWORD": "new+secret",
+                 "PGDATABASE": "selected", "PGOPTIONS": "-c search_path=public"},
+            ),
+            ("postgresql://localhost", {"PGHOST": "localhost", "PGDATABASE": "inherited", "PGUSER": "inherited"}),
+        ],
+    )
+    def test_postgres_parameters_use_libpq_environment(self, dsn, expected):
+        from testenv import postgres_environment
+
+        parent = {"SIPPY_DATABASE_DSN": dsn, "PGDATABASE": "inherited", "PGUSER": "inherited"}
+        env = postgres_environment(parent)
+        assert {key: env[key] for key in expected} == expected
+        assert env["PGCONNECT_TIMEOUT"] == "10"
+        assert "PGHOST" not in parent
+
+    @pytest.mark.parametrize("option", ["sslpassword=private", "invalid=private", "private"])
+    def test_unsupported_postgres_options_fail_without_values(self, option):
+        from testenv import postgres_environment
+
+        with pytest.raises(ValueError) as error:
+            postgres_environment({"SIPPY_DATABASE_DSN": f"postgresql://localhost/postgres?{option}"})
+        assert "private" not in str(error.value)
+
     @pytest.mark.parametrize("platform", ["linux", "darwin", "win32"])
     @pytest.mark.parametrize("browser_path", [None, "0", "explicit"])
     def test_usable_browser_locations_are_preserved(self, tmp_path, monkeypatch, platform, browser_path):
@@ -1106,18 +1143,34 @@ class TestMcpTestEnvironment:
                 assert "private" not in str(error.value)
             else:
                 testenv.check_prerequisites()
-        assert env["SIPPY_DATABASE_DSN"] in calls[0][0]
+        assert env["SIPPY_DATABASE_DSN"] not in calls[0][0]
+        assert all("private" not in arg for arg in calls[0][0])
+        assert calls[0][1]["env"]["PGPASSWORD"] == "private"
+        assert calls[0][1]["env"]["PGUSER"] == "user"
+        assert calls[0][1]["env"]["PGHOST"] == "localhost"
+        assert calls[0][1]["env"]["PGDATABASE"] == "postgres"
         assert "-w" in calls[0][0]
         if failure in ("redis", None):
             ping.assert_called_once_with(env["SIPPY_E2E_REDIS_URL"])
         assert "private" not in capsys.readouterr().out
 
-    @pytest.mark.skipif(not Path("/run/.containerenv").exists(), reason="exercises container-only service preflight")
     def test_make_runs_in_the_validated_child_environment(self, tmp_path, monkeypatch):
+        # sitecustomize also runs in the real child, independent of the host marker.
+        (tmp_path / "sitecustomize.py").write_text('''
+from pathlib import Path
+original_exists = Path.exists
+Path.exists = lambda path: str(path) == "/run/.containerenv" or original_exists(path)
+''')
+        monkeypatch.setenv("PYTHONPATH", str(tmp_path))
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir()
         for name, body in {
-            "psql": '[ "$1" = "$SIPPY_DATABASE_DSN" ] || exit 90\nprintf "t\\n"',
+            "psql": '''
+[ "$1" = "-X" ] || exit 90
+[ "$PGUSER" = test ] && [ "$PGPASSWORD" = private ] || exit 95
+[ "$PGHOST" = localhost ] && [ "$PGDATABASE" = postgres ] || exit 96
+printf "t\\n"
+''',
             "make": '''
 [ "$1" = e2e ] || exit 91
 [ "$SIPPY_DATABASE_DSN" = "$SIPPY_SEED_DATABASE_DSN" ] || exit 92
@@ -1387,6 +1440,57 @@ class TestRedisProbe:
 
 
 class TestMakeTools:
+    @pytest.mark.parametrize("leader_ignores_term", [False, True])
+    def test_timeout_releases_resources_held_by_grandchildren(self, tmp_path, monkeypatch, leader_ignores_term):
+        lock_path = tmp_path / "grandchild.lock"
+        ready_path = tmp_path / "grandchild.pid"
+        child = f'''
+import fcntl
+import os
+import signal
+import time
+from pathlib import Path
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+lock = open({str(lock_path)!r}, "w")
+fcntl.flock(lock, fcntl.LOCK_EX)
+Path({str(ready_path)!r}).write_text(str(os.getpid()))
+while True:
+    time.sleep(1)
+'''
+        make = tmp_path / "make"
+        make.write_text(f'''#!{sys.executable}
+import signal
+import subprocess
+import sys
+if {leader_ignores_term!r}:
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+subprocess.Popen([sys.executable, "-c", {child!r}]).wait()
+''')
+        make.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
+        monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path / "artifacts"))
+        monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
+        try:
+            result = asyncio.run(server.run_lint(timeout_seconds=2))
+            assert "timed out" in result
+            assert ready_path.exists(), "grandchild must acquire its resource before the timeout"
+            with lock_path.open("w") as lock:
+                deadline = time.monotonic() + 2
+                while True:
+                    try:
+                        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        break
+                    except BlockingIOError:
+                        if time.monotonic() >= deadline:
+                            pytest.fail("grandchild survived the runner timeout and retained its lock")
+                        time.sleep(0.01)
+        finally:
+            if ready_path.exists():
+                try:
+                    os.kill(int(ready_path.read_text()), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+
     @pytest.mark.parametrize("name,target", [("run_tests", "test"), ("run_lint", "lint")])
     def test_tools_use_shared_runner_and_publish_timeout(self, name, target):
         with mock.patch("server._run_make_phase", new=mock.AsyncMock(return_value="completed")) as phase:

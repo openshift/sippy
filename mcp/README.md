@@ -86,6 +86,10 @@ The unit-test subprocess checks that it can open local listeners; lint does not
 require sockets or database services. The e2e subprocess also checks its API
 and metrics ports (18080 and 12112). In a devcontainer, it also checks PostgreSQL
 authentication and database-creation permission and an authenticated Redis PING.
+The PostgreSQL prerequisite decodes the connection URI into libpq `PG*`
+environment variables so passwords are absent from `psql` arguments. URI query
+options override authority and path fields. Options without a libpq environment
+equivalent fail before `psql` runs.
 It then executes `make e2e` with the same environment and permissions. Outside a
 devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
 The runner cannot grant missing socket permissions or start services hidden by the
@@ -109,6 +113,9 @@ API readiness has a 600-second elapsed-time deadline, including HTTP requests.
 Test output is redacted before it reaches the console or artifact log, including
 URI userinfo and `password`/`sslpassword` query parameters. An artifact-write failure
 fails the run, and cleanup only reports test results from the current invocation.
+Each make runner starts a separate process session. On timeout, the runner sends
+SIGTERM to the process group, waits up to five seconds for make to exit, and sends
+SIGKILL to any remaining group members so descendants cannot retain test resources.
 
 ### Background processes
 

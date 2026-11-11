@@ -720,16 +720,25 @@ async def _run_make_phase(
             stdout=logf,
             stderr=asyncio.subprocess.STDOUT,
             stdin=asyncio.subprocess.DEVNULL,
+            start_new_session=True,
         )
         try:
             returncode = await asyncio.wait_for(proc.wait(), timeout=tout)
         except asyncio.TimeoutError:
-            proc.terminate()
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
             try:
                 await asyncio.wait_for(proc.wait(), timeout=5)
             except asyncio.TimeoutError:
-                proc.kill()
-                await proc.wait()
+                pass
+            # Descendants can outlive make, including those that ignore SIGTERM.
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            await proc.wait()
             tail = _tail_file(log_path, 80)
             return (
                 f"{tool_label} timed out after {timeout_seconds}s. log: {log_path}\n"

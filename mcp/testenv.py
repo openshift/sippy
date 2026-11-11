@@ -10,6 +10,51 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
+def postgres_environment(parent: dict[str, str]) -> dict[str, str]:
+    """Move prerequisite connection parameters into libpq's environment variables."""
+    env = parent.copy()
+    parsed = urlsplit(env["SIPPY_DATABASE_DSN"])
+    if parsed.scheme not in ("postgres", "postgresql"):
+        raise ValueError("Invalid PostgreSQL URI")
+    authority = parsed.netloc.rsplit("@", 1)[-1]
+    hosts = [urlsplit("//" + host) for host in authority.split(",")]
+    parameters = {
+        "host": ",".join(unquote(host.hostname or "") for host in hosts),
+        "port": ",".join(str(host.port or "") for host in hosts),
+        "dbname": unquote(parsed.path.removeprefix("/")),
+    }
+    if parsed.username is not None:
+        parameters["user"] = unquote(parsed.username)
+    if parsed.password is not None:
+        parameters["password"] = unquote(parsed.password)
+    for item in filter(None, parsed.query.split("&")):
+        key, separator, value = item.partition("=")
+        if not separator:
+            raise ValueError("Invalid PostgreSQL URI option")
+        parameters[unquote(key)] = unquote(value)
+    names = {
+        "dbname": "PGDATABASE", "user": "PGUSER", "password": "PGPASSWORD",
+        "application_name": "PGAPPNAME", "client_encoding": "PGCLIENTENCODING",
+        "connect_timeout": "PGCONNECT_TIMEOUT",
+    }
+    for key in (
+        "host", "hostaddr", "port", "passfile", "service", "options", "sslmode",
+        "requiressl", "sslcompression", "sslcert", "sslkey", "sslrootcert", "sslcrl",
+        "sslcrldir", "sslsni", "sslcertmode", "sslnegotiation", "requirepeer",
+        "ssl_min_protocol_version", "ssl_max_protocol_version", "gssencmode",
+        "krbsrvname", "gsslib", "gssdelegation", "require_auth", "channel_binding",
+        "target_session_attrs", "load_balance_hosts", "min_protocol_version", "max_protocol_version",
+    ):
+        names[key] = "PG" + key.replace("_", "").upper()
+    for key, value in parameters.items():
+        if key not in names:
+            raise ValueError("PostgreSQL prerequisite option has no libpq environment equivalent")
+        if value:
+            env[names[key]] = value
+    env["PGCONNECT_TIMEOUT"] = "10"
+    return env
+
+
 def writable_directory(path: Path) -> Path:
     """Probe real write access rather than relying on ownership or access bits."""
     path = path.resolve()
@@ -136,15 +181,14 @@ def check_prerequisites(target: str = "e2e") -> None:
     # only in the container, where tests will use these exact inherited settings.
     if not Path("/run/.containerenv").exists():
         return
-    env = os.environ.copy()
-    env["PGCONNECT_TIMEOUT"] = "10"
     command = [
-        "psql", env["SIPPY_DATABASE_DSN"], "-X", "-w", "-tAc",
+        "psql", "-X", "-w", "-tAc",
         "SELECT rolcreatedb OR rolsuper FROM pg_roles WHERE rolname = current_user",
     ]
     try:
+        env = postgres_environment(os.environ.copy())
         result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=15)
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         raise RuntimeError("PostgreSQL prerequisite could not run; check service setup and psql availability") from exc
     if result.returncode or result.stdout.strip() != "t":
         # Client diagnostics can contain credential-bearing URLs. Do not log them.
