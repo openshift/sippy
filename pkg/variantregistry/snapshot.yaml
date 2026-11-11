@@ -20345,9 +20345,9 @@ periodic-ci-openshift-cluster-storage-operator-release-4.18-periodics-e2e-aws-gr
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: default
+    FeatureSet: "techpreview"
     Installer: ipi
-    JobTier: standard
+    JobTier: candidate
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -236000,7 +236000,7 @@ periodic-ci-openshift-ovn-kubernetes-release-5.1-periodics-e2e-metal-ipi-core-ne
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: default
+    FeatureSet: "techpreview"
     Installer: ipi
     JobTier: informing
     LayeredProduct: none
@@ -296510,7 +296510,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-arbiter-p
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: default
+    FeatureSet: "techpreview"
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -297023,7 +297023,7 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-metal-ovn-two-node-fencing-p
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: default
+    FeatureSet: "techpreview"
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -303587,7 +303587,7 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-arbiter-p
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: default
+    FeatureSet: "techpreview"
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none
@@ -304076,7 +304076,7 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-metal-ovn-two-node-fencing-p
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: default
+    FeatureSet: "techpreview"
     Installer: ipi
     JobTier: candidate
     LayeredProduct: none

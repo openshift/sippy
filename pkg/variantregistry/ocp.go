@@ -632,15 +632,21 @@ func setFeatureSet(_ logrus.FieldLogger, variants map[string]string, jobName str
 
 	featurePatterns := []struct {
 		substring string
+		postfix   string
 		feature   string
 	}{
-		{"-techpreview", "techpreview"},
-		{"-tp-", "techpreview"},
+		{"-techpreview", "", "techpreview"},
+		{"-tp-", "", "techpreview"},
+		{"", "-tp", "techpreview"},
 	}
 
 	variants[VariantFeatureSet] = VariantDefaultValue
 	for _, entry := range featurePatterns {
-		if strings.Contains(jobNameLower, entry.substring) {
+		if entry.substring != "" && strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantFeatureSet] = entry.feature
+			return
+		}
+		if entry.postfix != "" && strings.HasSuffix(jobNameLower, entry.postfix) {
 			variants[VariantFeatureSet] = entry.feature
 			return
 		}
