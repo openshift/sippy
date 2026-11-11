@@ -14,6 +14,14 @@ Sippy Chat has moved to Chai Bot in Slack. Existing `/chat` links display a tran
 See [DEVELOPMENT.md](DEVELOPMENT.md) for information about standing up a
 local environment.
 
+Agentic solve and review use the `sippy-dev` MCP `run_tests`, `run_lint`, and
+`run_e2e` tools for unit tests, lint, and e2e. See
+[MCP test execution](mcp/README.md#test-execution) for service, authentication,
+and permission requirements. The runner sets
+`SIPPY_TEST_OUTPUT_DIR` to `ARTIFACT_DIR/e2e` for e2e logs and coverage, preserving
+CI artifact collection. Direct `scripts/e2e.sh` runs may set this variable to a
+writable directory; its default is the current directory.
+
 ## API
 
 See [the API documentation](pkg/api/README.md)

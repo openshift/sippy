@@ -2,7 +2,7 @@
 
 Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor**, **Claude Code**, and **Codex**.
 
-Simple commands (migrate, lint, test) are documented in project instructions via [APM](../apm.yml) and can be run directly; see `.apm/instructions/dev-commands.instructions.md`.
+Simple local commands are documented in project instructions via [APM](../apm.yml); see `.apm/instructions/dev-commands.instructions.md`.
 
 ## Setup
 
@@ -48,6 +48,8 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 | `sippy_serve`        | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)     | `sippy-dev-logs/sippy_serve.log`        |
 | `sippy_ng_start`     | Background `npm start` in `sippy-ng/` (typically port **3000**)             | `sippy-dev-logs/sippy_ng_start.log`     |
 | `sippy_stop`         | Stops background `sippy_serve` and `sippy_ng_start` processes               | none                                    |
+| `run_tests`          | `make test` (BDD, Go, Vitest, MCP)                                         | `sippy-dev-logs/run_tests.log`          |
+| `run_lint`           | `make lint` (Go, ESLint, dependency audit)                                 | `sippy-dev-logs/run_lint.log`           |
 | `run_e2e`            | `make e2e` (BigQuery coverage is opt-in)                                    | `sippy-dev-logs/run_e2e.log`            |
 
 Optional parameters (timeouts, paths, DSNs, etc.) are documented on each function in **`server.py`**.
@@ -64,6 +66,43 @@ Optional parameters (timeouts, paths, DSNs, etc.) are documented on each functio
 - **Postgres DSNs**: `SIPPY_SEED_DATABASE_DSN` (seed DB), `SIPPY_PRODLIKE_DATABASE_DSN` (prod-like DB), or the legacy `SIPPY_DATABASE_DSN`. Per-tool arguments override all env vars.
 - **Redis**: `REDIS_URL` or per-tool arguments; see `server.py` for defaults.
 - **`regression_cache`** always targets the prod-like database regardless of `SIPPY_DATA_MODE`.
+
+### Test execution
+
+Use the **`sippy-dev` MCP `run_tests`, `run_lint`, and `run_e2e` tools** in both
+agentic solve and review phases. They execute `make test`, `make lint`, and
+`make e2e`, respectively, through the same environment preparation.
+Register `mcp/run.sh` in each client's MCP configuration and start it after service
+setup, with the setup environment inherited. A successful ordinary e2e presubmit
+alone does not verify this MCP execution path.
+
+The runner preserves `SIPPY_SEED_DATABASE_DSN` (preferred) or `SIPPY_DATABASE_DSN`,
+including passwords and connection options. PostgreSQL uses password authentication;
+do not substitute a passwordless DSN. `SIPPY_E2E_REDIS_URL` overrides Redis for e2e;
+otherwise the runner uses logical database 1 on `REDIS_URL`, preserving authentication.
+No credential values should appear in instructions, tool responses, or logs.
+
+The unit-test subprocess checks that it can open local listeners; lint does not
+require sockets or database services. The e2e subprocess also checks its API
+and metrics ports (18080 and 12112). In a devcontainer, it also checks PostgreSQL
+authentication and database-creation permission and an authenticated Redis PING.
+It then executes `make e2e` with the same environment and permissions. Outside a
+devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
+The runner cannot grant missing socket permissions or start services hidden by the
+client's sandbox; configure the MCP process with those permissions in both phases.
+
+Usable inherited cache directories are retained. Unwritable or unset Go, npm,
+Playwright, XDG and temporary directories fall back to `sippy-dev-logs/test-cache/`.
+`ARTIFACT_DIR` is preserved and must be writable by the MCP server; the runner fails
+early rather than losing CI artifacts. Without it, artifacts go to
+`sippy-dev-logs/artifacts/`. The runner sets `SIPPY_TEST_OUTPUT_DIR` to
+`ARTIFACT_DIR/e2e/` for e2e logs and coverage, including `e2e-seed.log`, `e2e.log`,
+and `e2e-gotestsum.log`. Tool summaries and prerequisite diagnostics are in
+`sippy-dev-logs/run_tests.log`, `run_lint.log`, and `run_e2e.log`.
+
+Database setup/seeding errors stop execution immediately. An API process that exits
+before readiness reports its exit status and recent log output. Cleanup preserves
+the original failure status, and logs remain available for diagnosis and collection.
 
 ### Background processes
 

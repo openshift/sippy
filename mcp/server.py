@@ -12,6 +12,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
+from testenv import prepare_environment
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 _DEVCONTAINER_ENV = REPO_ROOT / ".devcontainer" / ".env"
 if _DEVCONTAINER_ENV.is_file():
@@ -697,16 +699,22 @@ async def _run_make_phase(
     env_extra: dict[str, str] | None = None,
 ) -> str:
     """Run ``make <target>``; log to ``sippy-dev-logs/<log_filename>``."""
-    _ensure_dev_log_dir()
     log_path = DEV_LOG_DIR / log_filename
-    run_env = os.environ.copy()
+    try:
+        _ensure_dev_log_dir()
+        run_env = prepare_environment(os.environ.copy(), DEV_LOG_DIR)
+    except (OSError, ValueError):
+        return (
+            f"{tool_label} prerequisite failed: test caches, output directory and ARTIFACT_DIR "
+            "must be writable by the MCP server. Check workspace and CI artifact mounts."
+        )
     if env_extra:
         run_env.update(env_extra)
     tout = None if timeout_seconds <= 0 else timeout_seconds
     logf = open(log_path, "w", encoding="utf-8")
     try:
         proc = await asyncio.create_subprocess_exec(
-            "make", make_target,
+            sys.executable, str(REPO_ROOT / "mcp" / "testenv.py"), make_target,
             cwd=REPO_ROOT,
             env=run_env,
             stdout=logf,
@@ -814,6 +822,26 @@ async def restore_prodlike_db(
 
 
 @mcp.tool()
+async def run_tests(timeout_seconds: int = 7200) -> str:
+    """Run ``make test`` (BDD, Go, Vitest and MCP tests) with writable caches/artifacts.
+
+    Checks local listener permissions in the test subprocess. Logs go to
+    ``sippy-dev-logs/run_tests.log``. Use ``timeout_seconds=0`` for no limit.
+    """
+    return await _run_make_phase("run_tests", "test", "run_tests.log", timeout_seconds)
+
+
+@mcp.tool()
+async def run_lint(timeout_seconds: int = 7200) -> str:
+    """Run ``make lint`` with writable caches and artifact output.
+
+    Includes Go lint, ESLint and the dependency audit. Logs go to
+    ``sippy-dev-logs/run_lint.log``. Use ``timeout_seconds=0`` for no limit.
+    """
+    return await _run_make_phase("run_lint", "lint", "run_lint.log", timeout_seconds)
+
+
+@mcp.tool()
 async def run_e2e(
     bigquery_credentials_file: str | None = None,
     timeout_seconds: int = 7200,
@@ -825,7 +853,8 @@ async def run_e2e(
     ``bigquery_credentials_file`` with the same environment fallbacks as other MCP tools and sets
     ``GCS_SA_JSON_PATH`` for the test process. Otherwise, credentials are not resolved and any
     inherited ``GCS_SA_JSON_PATH`` is suppressed. Log: ``sippy-dev-logs/run_e2e.log``. E2e is slow;
-    use ``timeout_seconds=0`` for no limit.
+    use ``timeout_seconds=0`` for no limit. Prepares writable caches and artifact output,
+    then checks listener permissions and authenticated services in the test subprocess.
     """
     env_extra = {"GCS_SA_JSON_PATH": ""}
     if include_bigquery:

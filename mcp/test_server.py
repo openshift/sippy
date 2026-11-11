@@ -3,6 +3,8 @@ import inspect
 import os
 import secrets
 import shutil
+import socket
+import threading
 import subprocess
 import tempfile
 from pathlib import Path
@@ -459,6 +461,10 @@ class TestResolveBigqueryCreds:
 class TestRunE2e:
     """Verify the run_e2e BigQuery opt-in behavior and published tool schema."""
 
+    @pytest.fixture(autouse=True)
+    def isolated_artifacts(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path / "artifacts"))
+
     @staticmethod
     def _successful_subprocess():
         """Return a successful async subprocess double for the make-based consumer path."""
@@ -740,7 +746,7 @@ function [ {
 }
 psql() {
     [ "$1" = "$EXPECTED_ADMIN_DSN" ] || exit 90
-    printf '%s\\n' "$2 $3" >> "$PSQL_CALL_LOG"
+    printf '%s\\n' "${*: -2}" >> "$PSQL_CALL_LOG"
 }
 go() {
     [ "$1" = "build" ] || exit 94
@@ -962,3 +968,320 @@ class TestWaitForUrl:
             )
             assert result is not None
             assert "exited" in result
+
+
+class TestMcpTestEnvironment:
+    def test_writable_fallback_preserves_auth_and_artifacts(self, tmp_path):
+        from testenv import prepare_environment
+
+        artifacts = tmp_path / "collected"
+        parent = {
+            "GOCACHE": "/proc/sippy-read-only-cache",
+            "TMPDIR": "/proc/sippy-read-only-tmp",
+            "NPM_CONFIG_CACHE": "/proc/sippy-read-only-npm",
+            "ARTIFACT_DIR": str(artifacts),
+            "SIPPY_SEED_DATABASE_DSN": "postgresql://user:secret@localhost/postgres?sslmode=disable",
+            "REDIS_URL": "redis://user:secret@localhost:6379/0",
+        }
+        env = prepare_environment(parent, tmp_path / "logs")
+        assert env["GOCACHE"] == str(tmp_path / "logs/test-cache/gocache")
+        assert env["TMPDIR"] == str(tmp_path / "logs/test-cache/tmpdir")
+        assert env["NPM_CONFIG_CACHE"] == env["npm_config_cache"]
+        assert env["npm_config_cache"] == str(tmp_path / "logs/test-cache/npm_config_cache")
+        assert env["ARTIFACT_DIR"] == str(artifacts)
+        assert env["SIPPY_TEST_OUTPUT_DIR"] == str(artifacts / "e2e")
+        assert env["SIPPY_DATABASE_DSN"] == parent["SIPPY_SEED_DATABASE_DSN"]
+        assert env["SIPPY_E2E_REDIS_URL"] == "redis://user:secret@localhost:6379/1"
+        assert parent["GOCACHE"] == "/proc/sippy-read-only-cache"
+
+    def test_writable_cache_and_explicit_redis_are_kept(self, tmp_path):
+        from testenv import prepare_environment
+
+        parent = {"GOCACHE": str(tmp_path / "cache"), "SIPPY_E2E_REDIS_URL": "redis://localhost/5"}
+        env = prepare_environment(parent, tmp_path / "logs")
+        assert env["GOCACHE"] == parent["GOCACHE"]
+        assert env["SIPPY_E2E_REDIS_URL"] == parent["SIPPY_E2E_REDIS_URL"]
+
+    def test_unwritable_artifacts_fail_before_make(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("ARTIFACT_DIR", "/proc/sippy-read-only-artifacts")
+        monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path)
+        create = mock.AsyncMock()
+        monkeypatch.setattr(server.asyncio, "create_subprocess_exec", create)
+        result = asyncio.run(run_e2e())
+        assert "prerequisite failed" in result
+        assert "ARTIFACT_DIR" in result
+        create.assert_not_awaited()
+
+    def test_listener_denial_has_actionable_diagnostic(self):
+        import testenv
+
+        with mock.patch("testenv.socket.socket", side_effect=PermissionError(1, "Operation not permitted")):
+            with pytest.raises(RuntimeError, match="MCP server needs local socket permissions"):
+                testenv.check_prerequisites()
+
+    @pytest.mark.parametrize("failure", ["postgres", "redis", "timeout", None])
+    def test_service_checks_use_inherited_auth_without_logging_secrets(self, failure, capsys):
+        import testenv
+
+        env = {
+            "SIPPY_DATABASE_DSN": "postgresql://user:private@localhost/postgres",
+            "SIPPY_E2E_REDIS_URL": "redis://:private@localhost/1",
+        }
+        calls = []
+
+        def run(command, **kwargs):
+            calls.append((command, kwargs))
+            if failure == "timeout":
+                raise subprocess.TimeoutExpired(command, 15)
+            failed = failure == "postgres"
+            return subprocess.CompletedProcess(command, int(failed), "private" if failed else "t\n", "private")
+
+        with (
+            mock.patch.dict(os.environ, env),
+            mock.patch("testenv.socket.socket"),
+            mock.patch("testenv.Path.exists", return_value=True),
+            mock.patch("testenv.subprocess.run", side_effect=run),
+            mock.patch("testenv.redis_ping", side_effect=RuntimeError("private") if failure == "redis" else None) as ping,
+        ):
+            if failure:
+                with pytest.raises(RuntimeError) as error:
+                    testenv.check_prerequisites()
+                assert "private" not in str(error.value)
+            else:
+                testenv.check_prerequisites()
+        assert env["SIPPY_DATABASE_DSN"] in calls[0][0]
+        assert "-w" in calls[0][0]
+        if failure in ("redis", None):
+            ping.assert_called_once_with(env["SIPPY_E2E_REDIS_URL"])
+        assert "private" not in capsys.readouterr().out
+
+    @pytest.mark.skipif(not Path("/run/.containerenv").exists(), reason="exercises container-only service preflight")
+    def test_make_runs_in_the_validated_child_environment(self, tmp_path, monkeypatch):
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        for name, body in {
+            "psql": '[ "$1" = "$SIPPY_DATABASE_DSN" ] || exit 90\nprintf "t\\n"',
+            "make": '''
+[ "$1" = e2e ] || exit 91
+[ "$SIPPY_DATABASE_DSN" = "$SIPPY_SEED_DATABASE_DSN" ] || exit 92
+[ "$SIPPY_E2E_REDIS_URL" = "$EXPECTED_REDIS_URL" ] || exit 93
+for directory in "$GOCACHE" "$GOMODCACHE" "$GOTMPDIR" "$TMPDIR" "$ARTIFACT_DIR" "$SIPPY_TEST_OUTPUT_DIR"; do
+    touch "$directory/child-writable" || exit 94
+done
+echo "validated child ran make e2e"
+''',
+        }.items():
+            stub = bin_dir / name
+            stub.write_text("#!/bin/sh\n" + body)
+            stub.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+        monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path / "artifacts"))
+        for key in ("GOCACHE", "GOMODCACHE", "GOTMPDIR", "TMPDIR", "XDG_CACHE_HOME",
+                    "npm_config_cache", "PLAYWRIGHT_BROWSERS_PATH"):
+            monkeypatch.setenv(key, str(tmp_path / "cache" / key))
+        monkeypatch.setenv("SIPPY_SEED_DATABASE_DSN", "postgresql://test:private@localhost/postgres")
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            listener.settimeout(5)
+            port = listener.getsockname()[1]
+            url = f"redis://localhost:{port}/7"
+            monkeypatch.setenv("SIPPY_E2E_REDIS_URL", url)
+            monkeypatch.setenv("EXPECTED_REDIS_URL", url)
+            monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
+            commands = []
+
+            def respond():
+                with listener.accept()[0] as connection, connection.makefile("rb") as reader:
+                    for _ in range(2):
+                        count = int(reader.readline()[1:])
+                        command = []
+                        for _ in range(count):
+                            size = int(reader.readline()[1:])
+                            command.append(reader.read(size + 2)[:-2])
+                        commands.append(command)
+                        connection.sendall(b"+PONG\r\n" if command == [b"PING"] else b"+OK\r\n")
+
+            thread = threading.Thread(target=respond, daemon=True)
+            thread.start()
+            result = asyncio.run(run_e2e())
+            thread.join(timeout=5)
+            assert not thread.is_alive()
+        assert commands == [[b"SELECT", b"7"], [b"PING"]]
+        assert "run_e2e succeeded" in result, result
+        assert "validated child ran make e2e" in result
+        assert "private" not in result
+        assert (tmp_path / "artifacts/e2e/child-writable").exists()
+
+
+class TestE2eFailurePaths:
+    @pytest.mark.parametrize(
+        "stage,status,expected,forbidden",
+        [
+            ("drop", 31, "Database setup failed", "Building sippy"),
+            ("create", 32, "Database setup failed", "Building sippy"),
+            ("seed", 33, "Database seeding failed (exit 33)", "Waiting for sippy API"),
+            ("serve", 34, "API exited before readiness (exit 34)", "Priming component"),
+            ("serve", 0, "API exited before readiness (exit 0)", "Priming component"),
+            ("health", 1, "Timeout waiting for sippy API", "Priming component"),
+            ("tests", 35, "Cache priming complete", "API exited before readiness"),
+            ("success", 0, "Cache priming complete", "API exited before readiness"),
+        ],
+    )
+    def test_failure_status_survives_cleanup(self, tmp_path, stage, status, expected, forbidden):
+        """Execute the entry point with failing commands, including failing cleanup."""
+        bash_env = tmp_path / "bash-env"
+        bash_env.write_text('''
+function [ {
+    if [[ "$1" == "-f" && "$2" == "/run/.containerenv" ]]; then return 0; fi
+    builtin [ "$@"
+}
+psql() {
+    if [[ "$*" == *"CREATE DATABASE"* && "$FAIL_STAGE" == create ]]; then return "$FAIL_STATUS"; fi
+    if [[ "$*" == *"DROP DATABASE IF"* && "$FAIL_STAGE" == drop ]]; then return "$FAIL_STATUS"; fi
+    # Fail cleanup to ensure it cannot mask the original status.
+    if [[ "$*" == *"DROP DATABASE sippy_e2e"* ]]; then return 87; fi
+}
+go() {
+    if [[ "$1" == tool ]]; then return 88; fi
+    return 0
+}
+curl() {
+    if [[ "$*" == *"/api/capabilities"* ]]; then
+        if [[ "$FAIL_STAGE" == serve || "$FAIL_STAGE" == health ]]; then return 22; fi
+        return 0
+    fi
+    if [[ "$*" == *"/api/component_readiness/views"* ]]; then
+        echo '{"views":[]}'
+        return 0
+    fi
+    return 96
+}
+sleep() { if [[ "$FAIL_STAGE" != health ]]; then /bin/sleep 0.02; fi; }
+gotestsum() {
+    echo "DONE test stub"
+    if [[ "$FAIL_STAGE" == tests ]]; then return "$FAIL_STATUS"; fi
+}
+''')
+        sippy = tmp_path / "sippy"
+        sippy.write_text('''#!/bin/bash
+if [[ "$1" == seed-data ]]; then
+    touch "$GOCOVERDIR/covcounters.test"
+    if [[ "$FAIL_STAGE" == seed ]]; then
+        echo "seed refused postgresql://test:secret@localhost/postgres" >&2
+        exit "$FAIL_STATUS"
+    fi
+    exit 0
+fi
+if [[ "$FAIL_STAGE" == serve ]]; then
+    echo "API startup failed redis://:secret@localhost/1" >&2
+    exit "$FAIL_STATUS"
+fi
+exec /bin/sleep 60
+''')
+        sippy.chmod(0o755)
+        output_dir = tmp_path / "artifacts"
+        result = subprocess.run(
+            ["bash", str(E2E_SCRIPT)], cwd=tmp_path,
+            env={**os.environ, "BASH_ENV": str(bash_env), "FAIL_STAGE": stage,
+                 "FAIL_STATUS": str(status), "GCS_SA_JSON_PATH": "",
+                 "SIPPY_TEST_OUTPUT_DIR": str(output_dir),
+                 "SIPPY_DATABASE_DSN": "postgresql://test:secret@localhost:5432/postgres?sslmode=disable"},
+            capture_output=True, text=True, timeout=10,
+        )
+        output = result.stdout + result.stderr
+        assert result.returncode == (status or (1 if stage == "serve" else 0)), output
+        assert expected in output
+        assert forbidden not in output
+        assert "secret" not in output
+        for log in output_dir.glob("*.log"):
+            assert "secret" not in log.read_text()
+        if stage == "serve":
+            assert "API startup failed" in output
+
+    def test_dsn_connection_options_survive_database_replacement(self):
+        result = TestE2eScriptSafety._run_helper('''
+psql() { return 0; }
+e2e_configure_existing_services
+[ "$SIPPY_E2E_DSN" = 'postgresql://user:private@localhost:5432/sippy_e2e?sslmode=disable&connect_timeout=5' ]
+''', {"SIPPY_DATABASE_DSN": "postgresql://user:private@localhost:5432/postgres?sslmode=disable&connect_timeout=5"})
+        assert result.returncode == 0, result.stderr
+
+
+class TestRedisProbe:
+    @pytest.mark.parametrize(
+        "url,responses,expected",
+        [
+            ("redis://localhost", b"+PONG\r\n", [[b"PING"]]),
+            ("redis://:a%40b@localhost/1", b"+OK\r\n+OK\r\n+PONG\r\n",
+             [[b"AUTH", b"a@b"], [b"SELECT", b"1"], [b"PING"]]),
+            ("rediss://alice:private@localhost/2", b"+OK\r\n+OK\r\n+PONG\r\n",
+             [[b"AUTH", b"alice", b"private"], [b"SELECT", b"2"], [b"PING"]]),
+        ],
+    )
+    def test_auth_database_and_tls(self, url, responses, expected):
+        import testenv
+
+        client, peer = socket.socketpair()
+        with peer, mock.patch("testenv.socket.create_connection", return_value=client):
+            with mock.patch("testenv.ssl.create_default_context") as tls:
+                tls.return_value.wrap_socket.return_value = client
+                peer.sendall(responses)
+                testenv.redis_ping(url)
+                payload = peer.recv(4096)
+                expected_payload = b"".join(
+                    f"*{len(command)}\r\n".encode() + b"".join(
+                        f"${len(part)}\r\n".encode() + part + b"\r\n" for part in command
+                    ) for command in expected
+                )
+                assert payload == expected_payload
+                if url.startswith("rediss:"):
+                    tls.return_value.wrap_socket.assert_called_once_with(client, server_hostname="localhost")
+                else:
+                    tls.assert_not_called()
+        assert client.fileno() == -1
+
+    @pytest.mark.parametrize("response", [b"-WRONGPASS private\r\n", b"-ERR private\r\n", b""])
+    def test_failure_does_not_expose_reply(self, response):
+        import testenv
+
+        client, peer = socket.socketpair()
+        with peer, mock.patch("testenv.socket.create_connection", return_value=client):
+            peer.sendall(response)
+            peer.shutdown(socket.SHUT_WR)
+            with pytest.raises(RuntimeError, match="Redis rejected") as error:
+                testenv.redis_ping("redis://localhost")
+            assert "private" not in str(error.value)
+        assert client.fileno() == -1
+
+    @pytest.mark.parametrize("url", ["https://localhost/1", "redis:///1", "redis://localhost/invalid"])
+    def test_invalid_url(self, url):
+        import testenv
+
+        with pytest.raises(ValueError):
+            testenv.redis_ping(url)
+
+
+class TestMakeTools:
+    @pytest.mark.parametrize("name,target", [("run_tests", "test"), ("run_lint", "lint")])
+    def test_tools_use_shared_runner_and_publish_timeout(self, name, target):
+        with mock.patch("server._run_make_phase", new=mock.AsyncMock(return_value="completed")) as phase:
+            result = asyncio.run(getattr(server, name)(timeout_seconds=123))
+        assert result == "completed"
+        phase.assert_awaited_once_with(name, target, f"{name}.log", 123)
+        tool = asyncio.run(mcp.get_tool(name))
+        assert tool.parameters["properties"]["timeout_seconds"] == {"default": 7200, "type": "integer"}
+
+    @pytest.mark.parametrize("target,listeners", [("test", 1), ("lint", 0)])
+    def test_unit_and_lint_do_not_require_database_services(self, target, listeners):
+        import testenv
+
+        with (
+            mock.patch("testenv.socket.socket") as listener,
+            mock.patch("testenv.subprocess.run") as command,
+            mock.patch("testenv.redis_ping") as ping,
+        ):
+            testenv.check_prerequisites(target)
+        assert listener.call_count == listeners
+        command.assert_not_called()
+        ping.assert_not_called()

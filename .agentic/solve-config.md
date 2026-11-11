@@ -32,19 +32,21 @@ for components, pages, or other UI behavior.
 
 - New or modified API endpoints must have tests that verify request handling,
   response structure, and error cases. These belong in the **e2e testing suite**
-  (run via `run_e2e` MCP tool or `make e2e`).
+  (run via the `sippy-dev` MCP `run_e2e` tool).
 
 ## Build, Test, and Verify
 
-1. Run `make test` to verify your changes work.
-2. Run `make lint` to check for linting issues.
+1. Use the `sippy-dev` MCP `run_tests` tool to run `make test`.
+2. Use its `run_lint` tool to run `make lint`.
 
 ## Test Locally
 
 Use the sippy-dev MCP tools:
+
 - `sippy_serve` starts the API server (builds automatically)
 - `sippy_ng_start` starts the React frontend dev server
-- `run_e2e` runs the end-to-end test suite
+- `run_tests` runs `make test`; `run_lint` runs `make lint` with writable caches/output
+- `run_e2e` is the canonical end-to-end test runner in both solve and review
 
 E2e tests MUST pass before pushing.
 
@@ -53,9 +55,17 @@ For frontend changes, use Playwright MCP tools. Take screenshots and upload via
 
 ## Environment
 
-- PostgreSQL is available at localhost:5432 (user: postgres, trust auth).
-- Redis is available at localhost:6379.
-- Seed: `./sippy seed-data --init-database`
+- PostgreSQL at localhost:5432 uses password authentication. Use the setup-supplied
+  `SIPPY_SEED_DATABASE_DSN` (or `SIPPY_DATABASE_DSN`), never a passwordless connection.
+- Redis settings come from `REDIS_URL`; `SIPPY_E2E_REDIS_URL` selects the isolated
+  e2e logical database. Keep authentication settings in the inherited environment.
+- The MCP server must inherit setup's service settings, a writable workspace and
+  `ARTIFACT_DIR`, and permission to open local sockets. The runner checks these
+  prerequisites in its test subprocess before building or seeding.
+- If a test/lint tool is unavailable, correct MCP registration/startup in that phase.
+  If a prerequisite fails, correct the MCP service environment or permissions.
+  Do not replace the canonical runner with repeated shell commands or log credentials.
+- See [MCP test execution](../mcp/README.md#test-execution) for logs and artifacts.
 
 ## Additional Instructions
 
