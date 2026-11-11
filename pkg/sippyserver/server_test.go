@@ -8,12 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gorilla/mux"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-func TestSippyNGRedirectTargetRemainsSameOrigin(t *testing.T) {
+func TestSippyNGRedirectRemainsSameOrigin(t *testing.T) {
 	tests := []struct {
 		name     string
 		rawQuery string
@@ -27,10 +28,20 @@ func TestSippyNGRedirectTargetRemainsSameOrigin(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, "http://sippy.test/sippy-ng", nil)
-			request.URL.RawQuery = tc.rawQuery
+			requestURL := "http://sippy.test/sippy-ng"
+			if tc.rawQuery != "" {
+				requestURL += "?" + tc.rawQuery
+			}
+			request := httptest.NewRequest(http.MethodGet, requestURL, nil)
 			response := httptest.NewRecorder()
-			http.Redirect(response, request, sippyNGRedirectTarget(request.URL.RawQuery), http.StatusMovedPermanently)
+			router := mux.NewRouter()
+			router.StrictSlash(true)
+			(&Server{}).registerSippyNGRoutes(router)
+			router.ServeHTTP(response, request)
+
+			if response.Code != http.StatusMovedPermanently {
+				t.Fatalf("redirect status = %d, want %d", response.Code, http.StatusMovedPermanently)
+			}
 
 			location := response.Header().Get("Location")
 			if strings.ContainsAny(location, "\r\n") {
@@ -40,14 +51,18 @@ func TestSippyNGRedirectTargetRemainsSameOrigin(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse redirect target: %v", err)
 			}
-			if parsed.IsAbs() || parsed.Host != "" {
+			if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
 				t.Fatalf("redirect target must be same-origin: %q", location)
 			}
 			if parsed.Path != "/sippy-ng/" {
 				t.Fatalf("redirect path = %q, want /sippy-ng/", parsed.Path)
 			}
-			if parsed.RawQuery != tc.rawQuery {
-				t.Fatalf("redirect query = %q, want %q", parsed.RawQuery, tc.rawQuery)
+			wantQuery := request.URL.Query().Encode()
+			if parsed.RawQuery != wantQuery {
+				t.Fatalf("redirect query = %q, want canonical query %q", parsed.RawQuery, wantQuery)
+			}
+			if parsed.Query().Encode() != request.URL.Query().Encode() {
+				t.Fatalf("redirect query values = %q, want %q", parsed.Query().Encode(), request.URL.Query().Encode())
 			}
 		})
 	}

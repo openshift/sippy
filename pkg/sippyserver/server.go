@@ -2581,32 +2581,7 @@ func (s *Server) Serve() {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 
-	// Handle serving React version of frontend with support for browser router, i.e. anything not found
-	// goes to index.html.  Uses "/sippy-ng" (no trailing slash) so that a bare
-	// /sippy-ng request is captured and redirected to /sippy-ng/ instead of 404-ing.
-	router.PathPrefix("/sippy-ng").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/sippy-ng" {
-			target := sippyNGRedirectTarget(r.URL.RawQuery)
-			http.Redirect(w, r, target, http.StatusMovedPermanently) //nolint:gosec // G710: target has a fixed relative path; only its query is request-derived.
-			return
-		}
-		fs := s.sippyNG
-		if r.URL.Path != "/sippy-ng/" {
-			fullPath := strings.TrimPrefix(r.URL.Path, "/sippy-ng/")
-			if _, err := fs.Open(fullPath); err != nil {
-				if !os.IsNotExist(err) {
-					w.WriteHeader(http.StatusNotFound)
-					w.Header().Set("Content-Type", "text/plain")
-					if _, err := fmt.Fprintf(w, "404 Not Found: %s", fullPath); err != nil { //nolint:gosec // G705: Content-Type is text/plain (set on line above), browsers will not execute script in plain text
-						log.WithError(err).Warningf("could not write response")
-					}
-					return
-				}
-				r.URL.Path = "/sippy-ng/"
-			}
-		}
-		http.StripPrefix("/sippy-ng/", http.FileServer(http.FS(fs))).ServeHTTP(w, r)
-	})
+	s.registerSippyNGRoutes(router)
 
 	router.PathPrefix("/static/").Handler(http.FileServer(http.FS(s.static)))
 
@@ -3252,9 +3227,40 @@ func (s *Server) Serve() {
 	}
 }
 
-// sippyNGRedirectTarget preserves the request query on the fixed same-origin frontend path.
-func sippyNGRedirectTarget(rawQuery string) string {
-	return (&url.URL{Path: "/sippy-ng/", RawQuery: rawQuery}).String()
+// registerSippyNGRoutes registers the frontend handler used by the production server.
+func (s *Server) registerSippyNGRoutes(router *mux.Router) {
+	router.PathPrefix("/sippy-ng").HandlerFunc(s.serveSippyNG)
+}
+
+// serveSippyNG serves the frontend and redirects its bare path to the trailing-slash form.
+func (s *Server) serveSippyNG(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/sippy-ng" {
+		w.Header().Set("Location", sippyNGRedirectTarget(r.URL.Query()))
+		w.WriteHeader(http.StatusMovedPermanently)
+		return
+	}
+
+	frontendFS := s.sippyNG
+	if r.URL.Path != "/sippy-ng/" {
+		fullPath := strings.TrimPrefix(r.URL.Path, "/sippy-ng/")
+		if _, err := frontendFS.Open(fullPath); err != nil {
+			if !os.IsNotExist(err) {
+				w.WriteHeader(http.StatusNotFound)
+				w.Header().Set("Content-Type", "text/plain")
+				if _, err := fmt.Fprintf(w, "404 Not Found: %s", fullPath); err != nil { //nolint:gosec // G705: Content-Type is text/plain (set on line above), browsers will not execute script in plain text
+					log.WithError(err).Warningf("could not write response")
+				}
+				return
+			}
+			r.URL.Path = "/sippy-ng/"
+		}
+	}
+	http.StripPrefix("/sippy-ng/", http.FileServer(http.FS(frontendFS))).ServeHTTP(w, r)
+}
+
+// sippyNGRedirectTarget preserves query values on the fixed same-origin frontend path.
+func sippyNGRedirectTarget(values url.Values) string {
+	return (&url.URL{Path: "/sippy-ng/", RawQuery: values.Encode()}).String()
 }
 
 type statusCapturingResponseWriter struct {

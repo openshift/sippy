@@ -177,7 +177,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 
 	// BigQuery-only metrics
 	if bqc != nil {
-		if err := refreshDisruptionMetrics(bqc, releases); err != nil {
+		if err := refreshDisruptionMetrics(ctx, bqc, releases, api.GetDisruptionVsPrevGAReportFromBigQuery); err != nil {
 			log.WithError(err).Error("error refreshing disruption metrics")
 		}
 	}
@@ -342,10 +342,13 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []v1.Releas
 	}
 }
 
+// disruptionReportLoader is the single query seam used to load disruption data.
+type disruptionReportLoader func(context.Context, *bqclient.Client) (apitype.DisruptionReport, []error)
+
 // refreshDisruptionMetrics queries our BigQuery views for current release vs two weeks ago, and previous release GA.
 // Metrics are published for the delta for each NURP which can then be alerted on if certain thresholds are exceeded.
 // The previous GA view should have its release and GA date updated on each release GA.
-func refreshDisruptionMetrics(client *bqclient.Client, releases []v1.Release) error {
+func refreshDisruptionMetrics(ctx context.Context, client *bqclient.Client, releases []v1.Release, loadReport disruptionReportLoader) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating disruption metrics as we don't have a bigquery client")
 		return nil
@@ -356,7 +359,7 @@ func refreshDisruptionMetrics(client *bqclient.Client, releases []v1.Release) er
 		return nil
 	}
 
-	disruptionReport, err := api.GetDisruptionVsPrevGAReportFromBigQuery(context.Background(), client)
+	disruptionReport, err := loadReport(ctx, client)
 	if err != nil {
 		return fmt.Errorf("errors returned: %v", err)
 	}

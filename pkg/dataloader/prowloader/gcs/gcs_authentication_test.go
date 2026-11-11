@@ -46,11 +46,15 @@ func TestSaveTokenUsesOwnerOnlyCache(t *testing.T) {
 			if err != nil {
 				t.Fatalf("open token cache: %v", err)
 			}
-			defer f.Close()
 
 			decoded := &oauth2.Token{}
-			if err := json.NewDecoder(f).Decode(decoded); err != nil {
-				t.Fatalf("decode token cache: %v", err)
+			decodeErr := json.NewDecoder(f).Decode(decoded)
+			closeErr := f.Close()
+			if decodeErr != nil {
+				t.Fatalf("decode token cache: %v", decodeErr)
+			}
+			if closeErr != nil {
+				t.Fatalf("close token cache: %v", closeErr)
 			}
 			if decoded.AccessToken != token.AccessToken || decoded.RefreshToken != token.RefreshToken {
 				t.Fatal("token cache did not preserve OAuth token fields")

@@ -228,21 +228,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 	)
 
 	if f.APIFlags.MetricsAddr != "" {
-		// Do an immediate metrics update
-		err = metrics.RefreshMetricsDB(
-			context.Background(),
-			dbc,
-			bigQueryClient,
-			crDataProvider,
-			time.Time{},
-			cache.NewStandardCROptions(rounding.Factor, rounding.Offset),
-			views.ComponentReadiness)
-		if err != nil {
-			log.WithError(err).Error("error refreshing metrics")
-		}
-
-		// Refresh our metrics every 5 minutes:
-		go refreshMetricsPeriodically(ctx, 5*time.Minute, func(refreshCtx context.Context) error {
+		startMetricsRefresh(ctx, 5*time.Minute, func(refreshCtx context.Context) error {
 			return metrics.RefreshMetricsDB(
 				refreshCtx,
 				dbc,
@@ -266,6 +252,20 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 
 	server.Serve()
 	return nil
+}
+
+// startMetricsRefresh performs the initial refresh and starts periodic refreshes tied to the command context.
+func startMetricsRefresh(ctx context.Context, interval time.Duration, refresh func(context.Context) error) <-chan struct{} {
+	if err := refresh(ctx); err != nil {
+		log.WithError(err).Error("error refreshing metrics")
+	}
+
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		refreshMetricsPeriodically(ctx, interval, refresh)
+	}()
+	return stopped
 }
 
 // refreshMetricsPeriodically refreshes metrics until the command context is canceled.

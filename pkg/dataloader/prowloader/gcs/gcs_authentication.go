@@ -94,7 +94,11 @@ func saveToken(path string, token *oauth2.Token) {
 		log.Errorf("Unable to cache oauth token: %v", err)
 		return
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Errorf("Unable to close oauth token cache: %v", err)
+		}
+	}()
 	if err := f.Chmod(0o600); err != nil {
 		log.Errorf("Unable to secure oauth token cache: %v", err)
 		return
