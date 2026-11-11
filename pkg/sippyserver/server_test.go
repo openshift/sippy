@@ -2,6 +2,8 @@ package sippyserver
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -20,17 +22,26 @@ func TestSippyNGRedirectTargetRemainsSameOrigin(t *testing.T) {
 		{name: "ordinary query", rawQuery: "release=4.21&arch=amd64"},
 		{name: "absolute URL in value", rawQuery: "next=https://attacker.example/path"},
 		{name: "network path in value", rawQuery: "next=//attacker.example/path"},
+		{name: "encoded header injection in value", rawQuery: "next=%0d%0aLocation:%20https://attacker.example"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			target := sippyNGRedirectTarget(tc.rawQuery)
-			parsed, err := url.Parse(target)
+			request := httptest.NewRequest(http.MethodGet, "http://sippy.test/sippy-ng", nil)
+			request.URL.RawQuery = tc.rawQuery
+			response := httptest.NewRecorder()
+			http.Redirect(response, request, sippyNGRedirectTarget(request.URL.RawQuery), http.StatusMovedPermanently)
+
+			location := response.Header().Get("Location")
+			if strings.ContainsAny(location, "\r\n") {
+				t.Fatalf("redirect Location contains a header delimiter: %q", location)
+			}
+			parsed, err := url.Parse(location)
 			if err != nil {
 				t.Fatalf("parse redirect target: %v", err)
 			}
 			if parsed.IsAbs() || parsed.Host != "" {
-				t.Fatalf("redirect target must be same-origin: %q", target)
+				t.Fatalf("redirect target must be same-origin: %q", location)
 			}
 			if parsed.Path != "/sippy-ng/" {
 				t.Fatalf("redirect path = %q, want /sippy-ng/", parsed.Path)

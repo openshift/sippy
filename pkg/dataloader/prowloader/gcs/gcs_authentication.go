@@ -95,6 +95,10 @@ func saveToken(path string, token *oauth2.Token) {
 		return
 	}
 	defer f.Close()
+	if err := f.Chmod(0o600); err != nil {
+		log.Errorf("Unable to secure oauth token cache: %v", err)
+		return
+	}
 	if err := json.NewEncoder(f).Encode(token); err != nil { //nolint:gosec // G117: OAuth token is intentionally serialized to a local 0600 cache file.
 		log.Error(err.Error())
 	}
