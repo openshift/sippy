@@ -187,7 +187,10 @@ def check_prerequisites(target: str = "e2e") -> None:
     ]
     try:
         env = postgres_environment(os.environ.copy())
-        result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=15)
+        host_count = max(len(env.get(key, "").split(",")) for key in ("PGHOST", "PGHOSTADDR"))
+        # libpq applies connect_timeout separately to each failover host.
+        timeout = int(env["PGCONNECT_TIMEOUT"]) * host_count + 5
+        result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=timeout)
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         raise RuntimeError("PostgreSQL prerequisite could not run; check service setup and psql availability") from exc
     if result.returncode or result.stdout.strip() != "t":

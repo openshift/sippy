@@ -1113,6 +1113,49 @@ class TestMcpTestEnvironment:
             with pytest.raises(RuntimeError, match="MCP server needs local socket permissions"):
                 testenv.check_prerequisites()
 
+    @pytest.mark.parametrize(
+        "dsn,inherited,expected_timeout",
+        [
+            pytest.param("postgresql://localhost/postgres", {}, 15, id="single-host"),
+            pytest.param("postgresql://first,second/postgres", {}, 25, id="authority-failover"),
+            pytest.param("postgresql://[::1]:5432,[::2]:5432/postgres", {}, 25, id="ipv6-failover"),
+            pytest.param(
+                "postgresql://localhost/postgres?host=first%2Csecond%2Cthird", {}, 35,
+                id="query-host-override",
+            ),
+            pytest.param(
+                "postgresql://first,second/postgres?host=only", {}, 15,
+                id="query-reduces-host-count",
+            ),
+            pytest.param(
+                "postgresql:///postgres", {"PGHOST": "first,second"}, 25,
+                id="inherited-hosts",
+            ),
+            pytest.param(
+                "postgresql:///postgres?hostaddr=127.0.0.1%2C127.0.0.2", {}, 25,
+                id="query-host-addresses",
+            ),
+            pytest.param(
+                "postgresql:///postgres", {"PGHOSTADDR": "127.0.0.1,127.0.0.2"}, 25,
+                id="inherited-host-addresses",
+            ),
+        ],
+    )
+    def test_postgres_deadline_allows_configured_host_failover(self, dsn, inherited, expected_timeout):
+        import testenv
+
+        env = {"SIPPY_DATABASE_DSN": dsn, "SIPPY_E2E_REDIS_URL": "redis://localhost/1", **inherited}
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch("testenv.socket.socket"),
+            mock.patch("testenv.Path.exists", return_value=True),
+            mock.patch("testenv.subprocess.run", return_value=subprocess.CompletedProcess([], 0, "t\n")) as run,
+            mock.patch("testenv.redis_ping"),
+        ):
+            testenv.check_prerequisites()
+        assert run.call_args.kwargs["timeout"] == expected_timeout
+        assert run.call_args.kwargs["env"]["PGCONNECT_TIMEOUT"] == "10"
+
     @pytest.mark.parametrize("failure", ["postgres", "redis", "timeout", None])
     def test_service_checks_use_inherited_auth_without_logging_secrets(self, failure, capsys):
         import testenv

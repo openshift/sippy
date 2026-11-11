@@ -89,7 +89,9 @@ authentication and database-creation permission and an authenticated Redis PING.
 The PostgreSQL prerequisite decodes the connection URI into libpq `PG*`
 environment variables so passwords are absent from `psql` arguments. URI query
 options override authority and path fields. Options without a libpq environment
-equivalent fail before `psql` runs.
+equivalent fail before `psql` runs. Each configured host gets a 10-second connection
+timeout; the overall prerequisite deadline allows that timeout for every host,
+plus five seconds for the permission query, so failover can complete.
 It then executes `make e2e` with the same environment and permissions. Outside a
 devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
 The runner cannot grant missing socket permissions or start services hidden by the
