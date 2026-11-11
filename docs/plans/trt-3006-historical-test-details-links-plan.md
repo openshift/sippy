@@ -115,9 +115,13 @@ authoritative closure context on the test-details page.
 ### Key design decisions
 
 1. **Reuse `GetViewReleaseOptionsAt` with `lastFailure` as reference time.** This avoids
-   duplicating date-resolution logic. GA-based and absolute dates naturally retain their
-   configured meanings because `ParseCRReleaseTimeAt` only uses the `now` parameter for
-   `now-`prefixed expressions.
+   duplicating date-resolution logic. Pass a **zero rounding factor** when resolving
+   historical dates so that `ParseCRReleaseTimeAt` does not apply same-day rounding to
+   GA-based end dates or absolute RFC 3339 timestamps. With zero rounding, GA-based and
+   absolute dates retain their configured meanings. (With a positive rounding factor,
+   `ParseCRReleaseTimeAt` replaces GA-based end dates and absolute timestamps whose UTC
+   date matches the reference time's UTC date with `TruncateAligned(now, ...)`; this
+   rounding is appropriate for live queries but not for historical reconstruction.)
 
 2. **Historical links are generated from metadata, not from running a report.** The link
    contains concrete serialized dates, test identity, and view configuration. No historical
@@ -151,18 +155,23 @@ authoritative closure context on the test-details page.
    - Inactive: call new `generateHistoricalTestDetailsURLFromRegression`.
 
 2. Create `generateHistoricalTestDetailsURLFromRegression`:
-   - Validate that `regression.LastFailure` is valid. If not, log a warning and skip (no link).
-   - Compute the historical sample window:
-     - `sampleStart`: 00:00 UTC, 7 calendar days before the `last_failure` date
-       (truncate `last_failure` to date, subtract 7 days).
-     - `sampleEnd`: 00:00 UTC the day after the `last_failure` date (exclusive end,
+   - Determine the historical anchor for the view. Use the view association's `ClosedAt`
+     timestamp (scoped to this view), not the regression-level `LastFailure`. The
+     regression-level `LastFailure` may be updated by a later failure in another open view,
+     which would cause the closed view's historical link to query a period after that view
+     closed. If `ClosedAt` is null (should not happen for an inactive association), fall
+     back to `regression.LastFailure`. If neither is valid, log a warning and skip (no link).
+   - Compute the historical sample window (using the view-scoped anchor):
+     - `sampleStart`: 00:00 UTC, 7 calendar days before the anchor date
+       (truncate anchor to date, subtract 7 days).
+     - `sampleEnd`: 00:00 UTC the day after the anchor date (exclusive end,
        matching `>= start AND < end` semantics).
-     - For regression 49971 (`last_failure` 2026-09-29T01:33:26Z):
+     - For regression 49971 with view `ClosedAt` 2026-09-29T01:33:26Z:
        sampleStart = 2026-09-22T00:00:00Z, sampleEnd = 2026-09-30T00:00:00Z.
-   - Resolve the basis using `GetViewReleaseOptionsAt` with the `last_failure` timestamp
-     as the `now` parameter. GA-based expressions (`ga-30d`, `ga`) resolve against the GA
-     date and are unaffected. Rolling expressions (`now-60d`, `now-30d`) resolve relative
-     to `last_failure`.
+   - Resolve the basis using `GetViewReleaseOptionsAt` with the view-scoped anchor
+     as the `now` parameter and a **zero rounding factor** (see key decision 1).
+     GA-based expressions (`ga-30d`, `ga`) resolve against the GA date and are unaffected.
+     Rolling expressions (`now-60d`, `now-30d`) resolve relative to the anchor.
    - Construct sample `reqopts.Release` with explicit `Start`/`End` times (no relative
      expressions in the URL).
    - Call `utils.GenerateTestDetailsURL` with the concrete dates, the regression's full
@@ -220,14 +229,18 @@ changing the signature. Prefer this approach.
    - This means the `RegressedTests` map may contain entries from historical links even when
      no current report data exists for that view.
 
-   The simplest approach: after building `RegressedTests` from live reports, iterate each
-   triage regression and copy its HATEOAS links into the response. The frontend already reads
-   links from the regression objects, so as long as the regressions in the triage response
-   carry their links, the frontend can render them.
+   The simplest approach: do **not** inject synthetic rows into the `RegressedTests` map for
+   inactive views. Historical links live only on the regression objects (in their `Links` map),
+   not as regressed-test entries. The frontend reads historical links from
+   `regression.links["test_details:<viewName>"]` and renders the historical icon directly,
+   without treating the link as a regressed-test row. This avoids the problem of link-only
+   entries missing the report-summary fields (`test_name`, `release`, `variants`, `opened`,
+   `last_failure`) that the frontend renders for real regressed-test rows.
 
    Confirm that `GetTriage` (which already preloads regressions and their views) now calls
    `InjectRegressionHATEOASLinks` (from step 1/3.1 above), so the regression objects in the
-   triage response already contain both active and historical links.
+   triage response already contain both active and historical links. The frontend derives
+   historical columns from `regression.views` metadata, not from `RegressedTests` keys.
 
 **Dependencies:** Step 1.
 
@@ -332,9 +345,15 @@ changing the signature. Prefer this approach.
 3. Validate the fetched regression matches the requested test (same `test_id`, `release`,
    and relevant variants) before displaying it as context.
 
-4. Display a prominent notice when the regression is closed:
-   - "Closed regression, historical report" banner (use MUI `Alert` with `severity="info"`).
-   - Show: regression ID, closure date, last failure date, sample/basis windows.
+4. Display a prominent notice when the selected view association is inactive, using the
+   view's `active` flag rather than the regression's global `closed` status. A regression
+   may be open in view A but inactive in view B; the notice should appear for view B
+   regardless of global closure state.
+   - "Historical report for [view name]" banner (use MUI `Alert` with `severity="info"`).
+   - If the regression is globally closed, add "Closed regression" to the banner text.
+   - If the regression is open in another view, use "Inactive in this view" instead.
+   - Show: regression ID, view closure date (`ClosedAt`), last failure date, sample/basis
+     windows.
    - Preserve the report's historical statistical assessment even when it shows red (the
      assessment reflects the historical period, not current state).
 
@@ -367,10 +386,15 @@ changing the signature. Prefer this approach.
    `test_details` link (missing `last_failure` or removed view), render a disabled/grayed icon
    with a tooltip explaining that historical data is unavailable.
 
-4. **Frontend test-details page:** When the regression fetch returns a record but the
-   statistical report returns no data or an error, show the persisted closure metadata
-   (regression ID, dates, triages) with a notice that the historical data is no longer
-   available.
+4. **Frontend test-details page:** Distinguish report request errors from genuinely
+   unavailable history:
+   - **Request errors** (timeout, authorization, server errors): show the actual error
+     message with a retry action. Continue to show persisted closure metadata (regression
+     ID, dates, triages) from the regression fetch when available.
+   - **Confirmed empty or expired results** (the report request succeeds but returns no
+     data): show a notice that the historical data is no longer available, alongside
+     the persisted closure metadata.
+   Reserve the "historical data unavailable" notice for the second case only.
 
 5. Do not silently substitute today's window or display a passing result. A missing historical
    link is better than a misleading current-window link.
