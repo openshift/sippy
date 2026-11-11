@@ -50,6 +50,7 @@ func main() {
 		NewSnapshotCommand(),
 		NewRefreshCommand(),
 		NewBackfillCommand(),
+		NewPruneCumulativeSummariesCommand(),
 		NewBackfillInfraFailuresCommand(),
 		NewComponentReadinessCommand(),
 		NewAutomateJiraCommand(),
