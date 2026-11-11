@@ -16,23 +16,47 @@ import (
 
 func TestSippyNGRedirectRemainsSameOrigin(t *testing.T) {
 	tests := []struct {
-		name     string
-		rawQuery string
+		name      string
+		rawQuery  string
+		wantQuery string
 	}{
 		{name: "no query"},
-		{name: "ordinary query", rawQuery: "release=4.21&arch=amd64"},
-		{name: "absolute URL in value", rawQuery: "next=https://attacker.example/path"},
-		{name: "network path in value", rawQuery: "next=//attacker.example/path"},
-		{name: "encoded header injection in value", rawQuery: "next=%0d%0aLocation:%20https://attacker.example"},
+		{
+			name:      "ordinary query",
+			rawQuery:  "release=4.21&arch=amd64",
+			wantQuery: "arch=amd64&release=4.21",
+		},
+		{
+			name:      "duplicate values",
+			rawQuery:  "filter=first&filter=second&arch=amd64",
+			wantQuery: "arch=amd64&filter=first&filter=second",
+		},
+		{
+			name:      "malformed pairs are omitted",
+			rawQuery:  "valid=kept&broken=%zz&semi=not;valid&also=kept",
+			wantQuery: "also=kept&valid=kept",
+		},
+		{
+			name:      "absolute URL in value",
+			rawQuery:  "next=https://attacker.example/path",
+			wantQuery: "next=https%3A%2F%2Fattacker.example%2Fpath",
+		},
+		{
+			name:      "network path in value",
+			rawQuery:  "next=//attacker.example/path",
+			wantQuery: "next=%2F%2Fattacker.example%2Fpath",
+		},
+		{
+			name:      "encoded header injection in value",
+			rawQuery:  "next=%0d%0aLocation:%20https://attacker.example",
+			wantQuery: "next=%0D%0ALocation%3A+https%3A%2F%2Fattacker.example",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			requestURL := "http://sippy.test/sippy-ng"
-			if tc.rawQuery != "" {
-				requestURL += "?" + tc.rawQuery
-			}
-			request := httptest.NewRequest(http.MethodGet, requestURL, nil)
+			request := httptest.NewRequest(http.MethodGet, "http://sippy.test/sippy-ng", nil)
+			request.URL.RawQuery = tc.rawQuery
 			response := httptest.NewRecorder()
 			router := mux.NewRouter()
 			router.StrictSlash(true)
@@ -41,6 +65,12 @@ func TestSippyNGRedirectRemainsSameOrigin(t *testing.T) {
 
 			if response.Code != http.StatusMovedPermanently {
 				t.Fatalf("redirect status = %d, want %d", response.Code, http.StatusMovedPermanently)
+			}
+			if got := response.Header().Get("Content-Type"); got != "" {
+				t.Fatalf("redirect Content-Type = %q, want empty", got)
+			}
+			if response.Body.Len() != 0 {
+				t.Fatalf("redirect body = %q, want empty", response.Body.String())
 			}
 
 			location := response.Header().Get("Location")
@@ -57,12 +87,11 @@ func TestSippyNGRedirectRemainsSameOrigin(t *testing.T) {
 			if parsed.Path != "/sippy-ng/" {
 				t.Fatalf("redirect path = %q, want /sippy-ng/", parsed.Path)
 			}
-			wantQuery := request.URL.Query().Encode()
-			if parsed.RawQuery != wantQuery {
-				t.Fatalf("redirect query = %q, want canonical query %q", parsed.RawQuery, wantQuery)
+			if parsed.RawQuery != tc.wantQuery {
+				t.Fatalf("redirect query = %q, want canonical query %q", parsed.RawQuery, tc.wantQuery)
 			}
-			if parsed.Query().Encode() != request.URL.Query().Encode() {
-				t.Fatalf("redirect query values = %q, want %q", parsed.Query().Encode(), request.URL.Query().Encode())
+			if parsed.Query().Encode() != tc.wantQuery {
+				t.Fatalf("redirect query values = %q, want %q", parsed.Query().Encode(), tc.wantQuery)
 			}
 		})
 	}

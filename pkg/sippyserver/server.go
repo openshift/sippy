@@ -3235,6 +3235,8 @@ func (s *Server) registerSippyNGRoutes(router *mux.Router) {
 // serveSippyNG serves the frontend and redirects its bare path to the trailing-slash form.
 func (s *Server) serveSippyNG(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/sippy-ng" {
+		// Parsing and re-encoding preserves valid values while dropping malformed pairs and escaping header delimiters.
+		// Write the redirect explicitly so the response has no generated HTML body or Content-Type header.
 		w.Header().Set("Location", sippyNGRedirectTarget(r.URL.Query()))
 		w.WriteHeader(http.StatusMovedPermanently)
 		return
