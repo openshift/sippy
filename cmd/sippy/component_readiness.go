@@ -230,7 +230,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 	if f.APIFlags.MetricsAddr != "" {
 		// Do an immediate metrics update
 		err = metrics.RefreshMetricsDB(
-			context.Background(),
+			ctx,
 			dbc,
 			bigQueryClient,
 			crDataProvider,
@@ -243,14 +243,13 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 
 		// Refresh our metrics every 5 minutes:
 		ticker := time.NewTicker(5 * time.Minute)
-		quit := make(chan struct{})
 		go func() {
 			for {
 				select {
 				case <-ticker.C:
 					log.Info("tick")
 					err := metrics.RefreshMetricsDB(
-						context.Background(),
+						ctx,
 						dbc,
 						bigQueryClient,
 						crDataProvider,
@@ -260,7 +259,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}
-				case <-quit:
+				case <-ctx.Done():
 					ticker.Stop()
 					return
 				}
