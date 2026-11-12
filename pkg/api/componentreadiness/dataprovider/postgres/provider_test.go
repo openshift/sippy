@@ -151,9 +151,9 @@ func TestBuildTestDetailsRunScope(t *testing.T) {
 		wantArgs         []any
 	}{
 		{
-			name:             "ordinary sample uses release and time",
-			wantReleaseScope: true,
-			wantArgs:         []any{start, end, start, end, "4.20", "4.20", "4.20"},
+			name:             "ordinary details use stored release and time",
+			wantReleaseScope: false,
+			wantArgs:         []any{start, end, start, end, "4.20", "4.20"},
 		},
 		{
 			name:      "selected sample uses run membership and time",
@@ -176,6 +176,9 @@ func TestBuildTestDetailsRunScope(t *testing.T) {
 			}
 			if got := strings.Contains(clause, "pj.release = ?"); got != tt.wantReleaseScope {
 				t.Errorf("release scope present = %t, want %t: %s", got, tt.wantReleaseScope, clause)
+			}
+			if tt.runFilter == "" && (!strings.Contains(clause, "pjr.prow_job_release = ?") || !strings.Contains(clause, "pjrt.prow_job_run_release = ?")) {
+				t.Errorf("run scope missing stored release filters: %s", clause)
 			}
 			if tt.runFilter != "" && !strings.Contains(clause, tt.runFilter) {
 				t.Errorf("run scope missing sample selector: %s", clause)

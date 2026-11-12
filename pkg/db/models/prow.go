@@ -221,8 +221,8 @@ type TestCumulativeSummary struct {
 	PrefixMaxLastSuccess *time.Time `gorm:"column:prefix_max_last_success"`
 }
 
-// ProwGARawTestDatum stores raw BigQuery test results for GA release windows.
-// Fetched once per GA date and persisted for query-time aggregation.
+// ProwGARawTestDatum stores test counts for GA release windows.
+// Snapshots persist for query-time aggregation after raw Prow partitions expire.
 // Each (release, window_days) pair holds results aggregated over a different lookback
 // period (e.g. 1, 30, or 90 days before GA).
 type ProwGARawTestDatum struct {

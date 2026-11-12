@@ -269,6 +269,156 @@ func TestMultiTestStatusQueryBackoff(t *testing.T) {
 	}, defaultMultiTestStatusQueryBackoff())
 }
 
+func TestSummarizeRecordedTestStatsKeepsStoredJobsSeparateInNormalizedBucket(t *testing.T) {
+	baseRunTime := time.Date(2024, 3, 1, 12, 0, 0, 0, time.UTC)
+	sampleRunTime := baseRunTime.Add(time.Hour)
+	const (
+		normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+		f24Job        = "periodic-ci-openshift-release-master-nightly-f24-aws"
+		f48Job        = "periodic-ci-openshift-release-master-nightly-f48-aws"
+	)
+
+	generator := ComponentReportGenerator{
+		ReqOptions: reqopts.RequestOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}},
+	}
+	baseTotal, sampleTotal, analysis, result, lastFailure := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {
+				{
+					ProwJob:       f24Job,
+					Stats:         crtest.NewTestStats(4, 1, 0, false),
+					JiraComponent: "Storage",
+					TestName:      "openshift-tests:normalized-job-identity",
+					Lifecycle:     "legacy",
+					JobRuns: []crstatus.JobRunDetail{{
+						ProwJobRunID: "f24-base",
+						StartTime:    baseRunTime,
+						Count:        crtest.Count{TotalCount: 1, SuccessCount: 1},
+					}},
+				},
+				{
+					ProwJob:   f48Job,
+					Lifecycle: "informing",
+					JobRuns: []crstatus.JobRunDetail{{
+						ProwJobRunID: "f48-base",
+						StartTime:    baseRunTime,
+						Count:        crtest.Count{TotalCount: 1, SuccessCount: 1},
+					}},
+				},
+			},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{
+				ProwJob: f24Job,
+				Stats:   crtest.NewTestStats(3, 1, 0, false),
+				JobRuns: []crstatus.JobRunDetail{{
+					ProwJobRunID: "f24-sample",
+					StartTime:    sampleRunTime,
+					Count:        crtest.Count{TotalCount: 1},
+				}},
+			}},
+		},
+		crtest.Identification{},
+	)
+
+	assert.Equal(t, crtest.NewTestStats(4, 1, 0, false), baseTotal)
+	assert.Equal(t, crtest.NewTestStats(3, 1, 0, false), sampleTotal)
+	assert.Equal(t, sampleRunTime, lastFailure)
+	assert.Equal(t, "Storage", result.JiraComponent)
+	assert.Equal(t, "openshift-tests:normalized-job-identity", result.TestName)
+	assert.Equal(t, "informing", result.Lifecycle)
+	require.Len(t, analysis.JobStats, 2)
+
+	byBaseJob := make(map[string]int, len(analysis.JobStats))
+	for i, jobStats := range analysis.JobStats {
+		byBaseJob[jobStats.BaseJobName] = i
+	}
+
+	f24Index, ok := byBaseJob[f24Job]
+	require.True(t, ok)
+	f24Stats := analysis.JobStats[f24Index]
+	assert.Equal(t, f24Job, f24Stats.SampleJobName)
+	assert.Equal(t, crtest.NewTestStats(4, 1, 0, false), f24Stats.BaseStats)
+	assert.Equal(t, crtest.NewTestStats(3, 1, 0, false), f24Stats.SampleStats)
+	require.Len(t, f24Stats.BaseJobRunStats, 1)
+	assert.Equal(t, "f24-base", f24Stats.BaseJobRunStats[0].JobRunID)
+	require.Len(t, f24Stats.SampleJobRunStats, 1)
+	assert.Equal(t, "f24-sample", f24Stats.SampleJobRunStats[0].JobRunID)
+
+	f48Index, ok := byBaseJob[f48Job]
+	require.True(t, ok)
+	f48Stats := analysis.JobStats[f48Index]
+	assert.Empty(t, f48Stats.SampleJobName)
+	assert.Equal(t, crtest.Stats{}, f48Stats.SampleStats)
+	require.Len(t, f48Stats.BaseJobRunStats, 1)
+	assert.Equal(t, "f48-base", f48Stats.BaseJobRunStats[0].JobRunID)
+}
+
+func TestSummarizeRecordedTestStatsPairsRenamedStoredJobsOnlyWhenUnambiguous(t *testing.T) {
+	const normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}}
+	_, _, analysis, _, _ := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {
+				{ProwJob: "f24", Stats: crtest.NewTestStats(1, 0, 0, false)},
+				{ProwJob: "f48", Stats: crtest.NewTestStats(1, 0, 0, false)},
+			},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {
+				{ProwJob: "f24", Stats: crtest.NewTestStats(1, 0, 0, false)},
+				{ProwJob: "f72", Stats: crtest.NewTestStats(1, 0, 0, false)},
+			},
+		},
+		crtest.Identification{},
+	)
+
+	require.Len(t, analysis.JobStats, 3)
+	byJobNames := make(map[string]struct{}, len(analysis.JobStats))
+	for _, jobStats := range analysis.JobStats {
+		byJobNames[jobStats.SampleJobName+":"+jobStats.BaseJobName] = struct{}{}
+	}
+	assert.Contains(t, byJobNames, "f24:f24")
+	assert.Contains(t, byJobNames, ":f48")
+	assert.Contains(t, byJobNames, "f72:")
+}
+
+func TestSummarizeRecordedTestStatsPairsSingleExactStoredJob(t *testing.T) {
+	const normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}}
+	_, _, analysis, _, _ := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "same-job-name", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "same-job-name", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		crtest.Identification{},
+	)
+
+	require.Len(t, analysis.JobStats, 1)
+	assert.Equal(t, "same-job-name", analysis.JobStats[0].BaseJobName)
+	assert.Equal(t, "same-job-name", analysis.JobStats[0].SampleJobName)
+}
+
+func TestSummarizeRecordedTestStatsPairsSingleRenamedStoredJobs(t *testing.T) {
+	const normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}}
+	_, _, analysis, _, _ := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "previous-job-name", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "renamed-job-name", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		crtest.Identification{},
+	)
+
+	require.Len(t, analysis.JobStats, 1)
+	assert.Equal(t, "previous-job-name", analysis.JobStats[0].BaseJobName)
+	assert.Equal(t, "renamed-job-name", analysis.JobStats[0].SampleJobName)
+}
+
 func TestGetCompleteMultiTestJobRunStatuses(t *testing.T) {
 	present := crtest.KeyWithVariants{TestID: "present", Variants: map[string]string{"Platform": "aws"}}
 	missing := crtest.KeyWithVariants{TestID: "missing", Variants: map[string]string{"Platform": "gcp"}}

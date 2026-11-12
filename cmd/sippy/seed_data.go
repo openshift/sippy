@@ -25,6 +25,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/dataloader/gateststatus"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
@@ -2072,8 +2073,8 @@ func seedTestOutputsForPeriodicJobs(dbc *db.DB, clock seedClock) error {
 	return nil
 }
 
-// seedGARawTestData populates prow_ga_raw_test_data for GA releases using
-// the same synthetic test/job definitions.
+// seedGARawTestData supplies synthetic GA counts where attached raw partitions
+// do not cover the full window, then builds available snapshots.
 func seedGARawTestData(dbc *db.DB) error {
 	var gaReleases []models.ReleaseDefinition
 	if err := dbc.DB.Where("ga_date IS NOT NULL AND ga_date < CURRENT_DATE").Find(&gaReleases).Error; err != nil {
@@ -2083,6 +2084,30 @@ func seedGARawTestData(dbc *db.DB) error {
 	if len(gaReleases) == 0 {
 		log.Info("No GA releases found, skipping GA raw test data seeding")
 		return nil
+	}
+	var fixtureReleases []models.ReleaseDefinition
+	for _, rel := range gaReleases {
+		if rel.GADate == nil {
+			return fmt.Errorf("release %s has nil GA date", rel.Release)
+		}
+		start := utils.GAWindowStart(*rel.GADate, 90).In(time.UTC)
+		end := utils.GAWindowEnd(*rel.GADate).In(time.UTC)
+		windowErr := db.CheckGARawWindow(dbc.DB, rel.Release, start, end)
+		hasEligibleRows := true
+		if windowErr == nil {
+			var err error
+			hasEligibleRows, err = hasEligibleGARawRows(dbc, rel.Release, start, end)
+			if err != nil {
+				return err
+			}
+		}
+		fixture, err := requiresGAFixture(windowErr, hasEligibleRows)
+		if err != nil {
+			return fmt.Errorf("checking GA raw window for %s: %w", rel.Release, err)
+		}
+		if fixture {
+			fixtureReleases = append(fixtureReleases, rel)
+		}
 	}
 
 	testIDCache := make(map[string]uint)
@@ -2100,7 +2125,7 @@ func seedGARawTestData(dbc *db.DB) error {
 	}
 
 	var rows []models.ProwGARawTestDatum
-	for _, rel := range gaReleases {
+	for _, rel := range fixtureReleases {
 		for _, windowDays := range utils.GAWindows {
 			for _, spec := range syntheticTests {
 				testID, ok := testIDCache[spec.testName]
@@ -2163,7 +2188,7 @@ func seedGARawTestData(dbc *db.DB) error {
 		releasesWithRows.Insert(row.Release)
 	}
 
-	for _, rel := range gaReleases {
+	for _, rel := range fixtureReleases {
 		if !releasesWithRows.Has(rel.Release) {
 			log.WithField("release", rel.Release).Warn("No GA seed data generated, skipping ga_data_loaded_date")
 			continue
@@ -2172,15 +2197,51 @@ func seedGARawTestData(dbc *db.DB) error {
 			return fmt.Errorf("release %s has nil GA date", rel.Release)
 		}
 		gaDate := *rel.GADate
-		if err := dbc.DB.Model(&models.ReleaseDefinition{}).
-			Where("release = ?", rel.Release).
-			Update("ga_data_loaded_date", gaDate).Error; err != nil {
-			return fmt.Errorf("updating ga_data_loaded_date for %s: %w", rel.Release, err)
+		if err := dbc.DB.Exec("UPDATE release_definitions SET ga_data_loaded_date = ? WHERE release = ?", gaDate, rel.Release).Error; err != nil {
+			return fmt.Errorf("recording GA seed data for %s: %w", rel.Release, err)
 		}
+	}
+	loader := gateststatus.New(context.Background(), dbc, false, nil)
+	loader.Load()
+	if errs := loader.Errors(); len(errs) > 0 {
+		return fmt.Errorf("refreshing available GA seed snapshots: %w", stderrors.Join(errs...))
 	}
 
 	log.WithField("rows", len(rows)).
-		WithField("releases", len(gaReleases)).
+		WithField("fixture_releases", len(fixtureReleases)).
 		Info("Seeded GA raw test data")
 	return nil
+}
+
+// requiresGAFixture identifies seed releases without a complete, eligible raw
+// GA window. Attached but empty partitions still need deterministic fixtures.
+func requiresGAFixture(windowErr error, hasEligibleRows bool) (bool, error) {
+	if windowErr != nil {
+		if stderrors.Is(windowErr, db.ErrGARawWindowIncomplete) {
+			return true, nil
+		}
+		return false, windowErr
+	}
+	return !hasEligibleRows, nil
+}
+
+// hasEligibleGARawRows mirrors the snapshot loader's eligibility filter so
+// seed-data creates fixtures when attached partitions contain only excluded rows.
+func hasEligibleGARawRows(dbc *db.DB, release string, start, end time.Time) (bool, error) {
+	var hasRows bool
+	err := dbc.DB.Raw(`SELECT EXISTS (
+        SELECT 1
+        FROM prow_job_run_tests t
+        JOIN prow_job_runs r ON r.id = t.prow_job_run_id
+            AND r.prow_job_release = t.prow_job_run_release
+            AND r.timestamp = t.prow_job_run_timestamp
+        WHERE t.prow_job_run_release = ?
+            AND t.prow_job_run_timestamp >= ? AND t.prow_job_run_timestamp < ?
+            AND t.deleted_at IS NULL AND r.deleted_at IS NULL
+            AND (r.labels IS NULL OR NOT r.labels @> ARRAY['InfraFailure'])
+    )`, release, start, end).Scan(&hasRows).Error
+	if err != nil {
+		return false, fmt.Errorf("checking eligible GA raw rows for %s: %w", release, err)
+	}
+	return hasRows, nil
 }

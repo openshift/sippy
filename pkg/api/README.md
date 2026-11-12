@@ -706,8 +706,24 @@ logic use canonical filter definitions from
 
 Endpoint: `GET /api/component_readiness/test_details`
 
-Returns per-job-run test results. Runs may include applied `job_labels` when
-supplied by the selected data provider.
+Component Readiness date-time parameters accept RFC3339 offsets and are
+interpreted in UTC. PostgreSQL aggregate windows use UTC calendar dates.
+
+Returns per-job-run test results where available. PostgreSQL GA base windows
+with a snapshot show available raw runs and snapshot counts without individual
+run links for keys without raw runs. Jobs and test keys absent from the
+snapshot can still show retained raw runs with zero snapshot counts. Before a
+snapshot exists for the release and window, PostgreSQL uses its ordinary
+raw-run and prefix-sum paths. A preserved GA aggregate can differ from raw
+details until refreshed. Runs may include applied `job_labels` when supplied
+by the selected data provider.
+
+PostgreSQL ordinary release queries select runs by their recorded run release
+and time window, even if the job is now attributed to a different release.
+This historical-run-release guarantee does not apply to the synthetic
+spot-check selector, which still filters on the current `pj.release` value.
+PostgreSQL pull request and payload sample selectors use their matching run
+criteria.
 
 ### Parameters
 
