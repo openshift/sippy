@@ -31155,7 +31155,7 @@ periodic-ci-openshift-eng-ocp-perfscale-main-rosa-5.1-nightly-x86-build-farm-114
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-eng-ocp-perfscale-main-rosa_hcp-5.0-nightly-x86-control-plane-24nodes-onperfsector:
+periodic-ci-openshift-eng-ocp-perfscale-main-rosa_hcp-5.0-nightly-x86-control-plane-6nodes-onperfsector:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -306988,7 +306988,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-driver-toolkit:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: blocking
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -307012,7 +307012,7 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-aws-driver-toolkit-10:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: blocking
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -313575,7 +313575,7 @@ periodic-ci-openshift-release-main-nightly-5.0-fips-payload-scan:
     ContainerRuntime: crun
     FeatureSet: default
     Installer: ipi
-    JobTier: informing
+    JobTier: blocking
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -317683,7 +317683,31 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-ovn-kube-apiserver-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-ovn-serial-ipv4:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-ovn-serial-ipv4-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-ovn-serial-ipv4-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -317887,7 +317911,31 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-ovn-upgrade-runc:
     Suite: unknown
     Topology: ha
     Upgrade: micro
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-serial-ovn-dualstack:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-serial-ovn-dualstack-1of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-serial-ovn-dualstack-2of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -318007,7 +318055,7 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-serial-ovn-ipv4-tec
     Suite: serial
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-serial-ovn-ipv6:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-serial-ovn-ipv6-1of2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -318015,6 +318063,30 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-serial-ovn-ipv6:
     FeatureSet: default
     Installer: ipi
     JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-metal-ipi-serial-ovn-ipv6-2of2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
