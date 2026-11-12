@@ -126,6 +126,10 @@ clean_up() {
     if [ -n "${API_LOG_PID:-}" ]; then
         wait "$API_LOG_PID"
     fi
+    if [ -n "${API_LOG_DIR:-}" ]; then
+        rm -f "$API_LOG_DIR/api.fifo"
+        rmdir "$API_LOG_DIR"
+    fi
     if [ -d "${COVDIR:-}" ] && find "$COVDIR" -name 'covcounters.*' -print -quit | grep -q .; then
         echo "Generating coverage report..."
         go tool covdata percent -i="$COVDIR"
@@ -236,12 +240,13 @@ fi
 # Force DEV_MODE off: callers such as hack/agentic_setup.sh may export DEV_MODE=1, which bypasses the
 # component report cache that triage e2e fixtures inject synthetic regressions into. e2e requests
 # already send X-Forwarded-User, so the mock user is not needed.
-# A fixed descriptor also works with macOS's system Bash 3.2.
-exec 3> >(e2e_redact_logs > "$OUTPUT_DIR/e2e.log")
+# A regular background child is waitable on macOS's system Bash 3.2.
+API_LOG_DIR=$(mktemp -d "$OUTPUT_DIR/api-log.XXXXXX") || exit $?
+mkfifo "$API_LOG_DIR/api.fifo" || exit $?
+e2e_redact_logs < "$API_LOG_DIR/api.fifo" > "$OUTPUT_DIR/e2e.log" &
 API_LOG_PID=$!
-DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" >&3 2>&1 3>&- &
+DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" > "$API_LOG_DIR/api.fifo" 2>&1 &
 CHILD_PID=$!
-exec 3>&-
 
 wait_for_sippy || exit $?
 

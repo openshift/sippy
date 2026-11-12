@@ -76,7 +76,12 @@ Register `mcp/run.sh` in each client's MCP configuration and start it after serv
 setup, with the setup environment inherited. A successful ordinary e2e presubmit
 alone does not verify this MCP execution path.
 
-The runner preserves `SIPPY_SEED_DATABASE_DSN` (preferred) or `SIPPY_DATABASE_DSN`,
+Environment preparation is target-specific. Lint prepares writable caches without
+validating artifact or service settings. Unit tests additionally prepare artifacts
+and browser caches while preserving inherited database settings. Only e2e selects
+the seed database, derives the Redis database, and sets `SIPPY_TEST_OUTPUT_DIR`.
+
+The e2e runner preserves `SIPPY_SEED_DATABASE_DSN` (preferred) or `SIPPY_DATABASE_DSN`,
 including passwords and connection options. PostgreSQL uses password authentication;
 do not substitute a passwordless DSN. `SIPPY_E2E_REDIS_URL` overrides Redis for e2e;
 otherwise the runner uses logical database 1 on `REDIS_URL`, preserving authentication.
@@ -90,6 +95,8 @@ The unit-test subprocess checks that it can open local listeners; lint does not
 require sockets or database services. The e2e subprocess also checks its API
 and metrics ports (18080 and 12112). In a devcontainer, it also checks PostgreSQL
 authentication and database-creation permission and an authenticated Redis PING.
+Host runs additionally check the fixed PostgreSQL and Redis container ports
+(23433 and 23479) before provisioning containers. Unknown make targets are rejected.
 The PostgreSQL prerequisite uses the same local URI validation and target-override
 removal as the e2e launcher, including clearing inherited `PGHOSTADDR` and
 `PGSERVICE`. It then decodes the connection URI into libpq `PG*` environment
@@ -100,6 +107,11 @@ environment equivalent fail before `psql` runs. The local connection gets a
 It then executes `make e2e` with the same environment and permissions. Outside a
 devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
 The e2e launcher uses Python 3 for URI validation and streaming log redaction.
+Setup diagnostics distinguish URI validation, executable startup, connection,
+timeout, TLS, and rejected Redis operations without exposing credentials or raw
+client diagnostics. Explicit empty URI passwords override inherited passwords.
+The URI helper accepts only `redact`, `validate`, and `database` commands and
+reports credential-free validation reasons.
 Before database setup, it strips `host`, `hostaddr`, `dbname`, and `service`
 query overrides, including encoded keys, and clears inherited `PGHOSTADDR` and
 `PGSERVICE`. Destructive helpers reject remaining target overrides or non-local
@@ -107,13 +119,14 @@ URI authorities. Other connection options are preserved.
 The runner cannot grant missing socket permissions or start services hidden by the
 client's sandbox; configure the MCP process with those permissions in both phases.
 
-Usable inherited cache directories are retained, including Playwright's default
-browser cache and its `PLAYWRIGHT_BROWSERS_PATH=0` hermetic-install setting.
+Usable inherited cache directories are retained. For unit tests and e2e this
+includes Playwright's default browser cache and its `PLAYWRIGHT_BROWSERS_PATH=0`
+hermetic-install setting.
 Unwritable caches and unset Go, npm and temporary directories fall back to
 `sippy-dev-logs/test-cache/`.
-`ARTIFACT_DIR` is preserved and must be writable by the MCP server; the runner fails
-early rather than losing CI artifacts. Without it, artifacts go to
-`sippy-dev-logs/artifacts/`. The runner sets `SIPPY_TEST_OUTPUT_DIR` to
+For unit tests and e2e, `ARTIFACT_DIR` is preserved and must be writable by the MCP
+server; the runner fails early rather than losing CI artifacts. Without it,
+artifacts go to `sippy-dev-logs/artifacts/`. The e2e runner sets `SIPPY_TEST_OUTPUT_DIR` to
 `ARTIFACT_DIR/e2e/` for e2e logs and coverage, including `e2e-seed.log`, `e2e.log`,
 and `e2e-gotestsum.log`. Tool summaries and prerequisite diagnostics are in
 `sippy-dev-logs/run_tests.log`, `run_lint.log`, and `run_e2e.log`.
@@ -127,6 +140,8 @@ URI userinfo and `password`/`sslpassword` query parameters, including encoded ke
 Write failures in the seed and test-output pipelines fail the run. Coverage
 generation during cleanup is best effort and does not replace the test exit status.
 Cleanup only reports test results from the current invocation.
+API logs use a private named FIFO and a regular background redactor process,
+allowing Bash 3.2 to wait for complete logs before early-exit diagnostics or cleanup.
 Make tool calls are serialized within the MCP server because they share logs,
 artifacts, listeners, and services. Each make runner starts a separate process
 session. On timeout or task cancellation, the runner sends SIGTERM to the process

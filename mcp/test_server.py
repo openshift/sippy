@@ -4,12 +4,12 @@ import inspect
 import os
 import secrets
 import shutil
-import socket
 import signal
-import threading
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from unittest import mock
@@ -17,6 +17,8 @@ from unittest import mock
 import pytest
 
 import server
+import serviceurl
+import testenv
 from server import (
     REPO_ROOT,
     _data_mode,
@@ -975,21 +977,82 @@ class TestWaitForUrl:
 
 
 class TestMcpTestEnvironment:
+    @pytest.mark.parametrize("target", ["lint", "test"])
+    def test_non_e2e_environment_preserves_service_settings(self, tmp_path, target):
+        parent = {
+            "HOME": str(tmp_path),
+            "SIPPY_DATABASE_DSN": "postgresql://legacy/db",
+            "SIPPY_SEED_DATABASE_DSN": "postgresql://seed/db",
+            "REDIS_URL": "redis://[malformed",
+        }
+        if target == "lint":
+            parent["ARTIFACT_DIR"] = "/proc/sippy-read-only-artifacts"
+            parent["PLAYWRIGHT_BROWSERS_PATH"] = "/proc/sippy-read-only-browsers"
+        env = testenv.prepare_environment(parent, tmp_path / "logs", target)
+        for key, value in parent.items():
+            assert env[key] == value
+        assert "SIPPY_E2E_REDIS_URL" not in env
+        assert "SIPPY_TEST_OUTPUT_DIR" not in env
+        if target == "test":
+            assert Path(env["ARTIFACT_DIR"]).is_dir()
+
+    @pytest.mark.parametrize("target", ["", "tests", "E2E", "unknown"])
+    def test_unknown_targets_fail_before_side_effects(self, tmp_path, target):
+        with mock.patch("testenv.socket.socket") as listener:
+            with pytest.raises(ValueError, match="expected lint, test or e2e"):
+                testenv.check_prerequisites(target)
+            listener.assert_not_called()
+        with pytest.raises(ValueError, match="expected lint, test or e2e"):
+            testenv.prepare_environment({}, tmp_path / "unused", target)
+        assert not (tmp_path / "unused").exists()
+
+    @pytest.mark.parametrize("port", [23433, 23479])
+    def test_host_service_port_conflict_fails_before_container_setup(self, port):
+        with socket.socket() as occupied:
+            occupied.bind(("127.0.0.1", port))
+            occupied.listen()
+            with mock.patch("testenv.Path.exists", return_value=False):
+                with pytest.raises(RuntimeError, match=f"port {port}"):
+                    testenv.check_prerequisites("e2e")
+
+    @pytest.mark.parametrize("suffix", ["user:@localhost/db", "localhost/db?password="])
+    def test_empty_uri_password_replaces_inherited_password(self, suffix):
+        env = testenv.postgres_environment({
+            "SIPPY_DATABASE_DSN": f"postgresql://{suffix}",
+            "PGPASSWORD": "inherited",
+        })
+        assert env["PGPASSWORD"] == ""
+
+    def test_validation_error_identifies_redis_setting_before_make(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
+        monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path / "artifacts"))
+        monkeypatch.delenv("SIPPY_E2E_REDIS_URL", raising=False)
+        monkeypatch.setenv("REDIS_URL", "redis://private@[malformed")
+        create = mock.AsyncMock()
+        monkeypatch.setattr(server.asyncio, "create_subprocess_exec", create)
+        result = asyncio.run(run_e2e())
+        assert "REDIS_URL has a malformed URI authority" in result
+        assert "ARTIFACT_DIR" not in result
+        assert "private" not in result
+        create.assert_not_awaited()
+
+    def test_filesystem_error_is_distinct_from_setting_validation(self, monkeypatch):
+        monkeypatch.setattr(server, "prepare_environment", mock.Mock(side_effect=PermissionError("private")))
+        result = asyncio.run(server.run_lint())
+        assert "cannot prepare test filesystem paths" in result
+        assert "private" not in result
+
     @pytest.mark.parametrize("parent", [
         {}, {"SIPPY_DATABASE_DSN": "postgresql://legacy/db"},
         {"SIPPY_SEED_DATABASE_DSN": "postgresql://seed/db", "SIPPY_DATABASE_DSN": "postgresql://legacy/db"},
         {"SIPPY_SEED_DATABASE_DSN": "", "SIPPY_DATABASE_DSN": "postgresql://legacy/db"},
     ])
     def test_seed_selection_matches_server(self, parent, tmp_path):
-        from testenv import prepare_environment
-
         with mock.patch.dict(os.environ, parent, clear=True):
-            assert prepare_environment(parent, tmp_path)["SIPPY_DATABASE_DSN"] == _dsn_for_mode("seed")
+            assert testenv.prepare_environment(parent, tmp_path)["SIPPY_DATABASE_DSN"] == _dsn_for_mode("seed")
 
     def test_derived_redis_database_discards_query_options(self, tmp_path):
-        from testenv import prepare_environment
-
-        env = prepare_environment({"REDIS_URL": "redis://:test@localhost:6379/0?db=0"}, tmp_path)
+        env = testenv.prepare_environment({"REDIS_URL": "redis://:test@localhost:6379/0?db=0"}, tmp_path)
         assert env["SIPPY_E2E_REDIS_URL"] == "redis://:test@localhost:6379/1"
 
     @pytest.mark.parametrize(
@@ -1009,27 +1072,21 @@ class TestMcpTestEnvironment:
         ],
     )
     def test_postgres_parameters_use_libpq_environment(self, dsn, expected):
-        from testenv import postgres_environment
-
         parent = {"SIPPY_DATABASE_DSN": dsn, "PGDATABASE": "inherited", "PGUSER": "inherited"}
-        env = postgres_environment(parent)
+        env = testenv.postgres_environment(parent)
         assert {key: env[key] for key in expected} == expected
         assert env["PGCONNECT_TIMEOUT"] == "10"
         assert "PGHOST" not in parent
 
     @pytest.mark.parametrize("option", ["sslpassword=private", "invalid=private", "private"])
     def test_unsupported_postgres_options_fail_without_values(self, option):
-        from testenv import postgres_environment
-
         with pytest.raises(ValueError) as error:
-            postgres_environment({"SIPPY_DATABASE_DSN": f"postgresql://localhost/postgres?{option}"})
+            testenv.postgres_environment({"SIPPY_DATABASE_DSN": f"postgresql://localhost/postgres?{option}"})
         assert "private" not in str(error.value)
 
     @pytest.mark.parametrize("platform", ["linux", "darwin", "win32"])
     @pytest.mark.parametrize("browser_path", [None, "0", "explicit"])
     def test_usable_browser_locations_are_preserved(self, tmp_path, monkeypatch, platform, browser_path):
-        import testenv
-
         monkeypatch.setattr(testenv.sys, "platform", platform)
         parent = {"HOME": str(tmp_path), "LOCALAPPDATA": str(tmp_path / "AppData/Local")}
         if browser_path is not None:
@@ -1042,16 +1099,12 @@ class TestMcpTestEnvironment:
             assert Path(env.get("XDG_CACHE_HOME", tmp_path / ".cache")) == tmp_path / ".cache"
 
     def test_inherited_xdg_browser_cache_is_preserved(self, tmp_path):
-        from testenv import prepare_environment
-
         parent = {"XDG_CACHE_HOME": str(tmp_path / "shared-cache")}
-        env = prepare_environment(parent, tmp_path / "logs")
+        env = testenv.prepare_environment(parent, tmp_path / "logs")
         assert env["XDG_CACHE_HOME"] == parent["XDG_CACHE_HOME"]
         assert "PLAYWRIGHT_BROWSERS_PATH" not in env
 
     def test_browser_cache_survives_xdg_parent_fallback(self, tmp_path, monkeypatch):
-        import testenv
-
         monkeypatch.setattr(testenv.sys, "platform", "linux")
         xdg_cache = tmp_path / "shared-cache"
         browser_cache = xdg_cache / "ms-playwright"
@@ -1070,9 +1123,6 @@ class TestMcpTestEnvironment:
 
     @pytest.mark.parametrize("explicit", [False, True])
     def test_unusable_browser_location_gets_writable_fallback(self, tmp_path, monkeypatch, explicit):
-        import testenv
-        from testenv import prepare_environment
-
         monkeypatch.setattr(testenv.sys, "platform", "linux")
 
         blocked = tmp_path / "blocked"
@@ -1083,12 +1133,10 @@ class TestMcpTestEnvironment:
         else:
             (tmp_path / "cache").mkdir()
             (tmp_path / "cache/ms-playwright").write_text("not a directory")
-        env = prepare_environment(parent, tmp_path / "logs")
+        env = testenv.prepare_environment(parent, tmp_path / "logs")
         assert env["PLAYWRIGHT_BROWSERS_PATH"] == str(tmp_path / "logs/test-cache/playwright_browsers_path")
 
     def test_writable_fallback_preserves_auth_and_artifacts(self, tmp_path):
-        from testenv import prepare_environment
-
         artifacts = tmp_path / "collected"
         parent = {
             "GOCACHE": "/proc/sippy-read-only-cache",
@@ -1098,7 +1146,7 @@ class TestMcpTestEnvironment:
             "SIPPY_SEED_DATABASE_DSN": "postgresql://user:secret@localhost/postgres?sslmode=disable",
             "REDIS_URL": "redis://user:secret@localhost:6379/0",
         }
-        env = prepare_environment(parent, tmp_path / "logs")
+        env = testenv.prepare_environment(parent, tmp_path / "logs")
         assert env["GOCACHE"] == str(tmp_path / "logs/test-cache/gocache")
         assert env["TMPDIR"] == str(tmp_path / "logs/test-cache/tmpdir")
         assert env["NPM_CONFIG_CACHE"] == env["npm_config_cache"]
@@ -1110,10 +1158,8 @@ class TestMcpTestEnvironment:
         assert parent["GOCACHE"] == "/proc/sippy-read-only-cache"
 
     def test_writable_cache_and_explicit_redis_are_kept(self, tmp_path):
-        from testenv import prepare_environment
-
         parent = {"GOCACHE": str(tmp_path / "cache"), "SIPPY_E2E_REDIS_URL": "redis://localhost/5"}
-        env = prepare_environment(parent, tmp_path / "logs")
+        env = testenv.prepare_environment(parent, tmp_path / "logs")
         assert env["GOCACHE"] == parent["GOCACHE"]
         assert env["SIPPY_E2E_REDIS_URL"] == parent["SIPPY_E2E_REDIS_URL"]
 
@@ -1128,8 +1174,6 @@ class TestMcpTestEnvironment:
         create.assert_not_awaited()
 
     def test_listener_denial_has_actionable_diagnostic(self):
-        import testenv
-
         with mock.patch("testenv.socket.socket", side_effect=PermissionError(1, "Operation not permitted")):
             with pytest.raises(RuntimeError, match="MCP server needs local socket permissions"):
                 testenv.check_prerequisites()
@@ -1163,8 +1207,6 @@ class TestMcpTestEnvironment:
         ],
     )
     def test_postgres_prerequisite_matches_e2e_connection_target(self, dsn, expected_host, expected_database):
-        import testenv
-
         env = {
             "SIPPY_DATABASE_DSN": dsn + ("&" if "?" in dsn else "?") + "user=review&password=private&sslmode=require&application_name=preflight",
             "SIPPY_E2E_REDIS_URL": "redis://localhost/1",
@@ -1197,24 +1239,33 @@ class TestMcpTestEnvironment:
         "postgresql://remote/postgres?host=localhost",
         "postgresql://localhost,remote/postgres",
         "postgresql:///postgres?host=localhost",
+        "postgresql://localhost:notaport/postgres",
+        "postgresql://localhost:99999/postgres",
     ])
     def test_postgres_prerequisite_rejects_unsafe_authorities_before_psql(self, dsn):
-        import testenv
-
         with (
             mock.patch.dict(os.environ, {"SIPPY_DATABASE_DSN": dsn}, clear=True),
             mock.patch("testenv.socket.socket"),
             mock.patch("testenv.Path.exists", return_value=True),
             mock.patch("testenv.subprocess.run") as run,
         ):
-            with pytest.raises(RuntimeError, match="PostgreSQL prerequisite could not run"):
+            with pytest.raises(RuntimeError, match="PostgreSQL SIPPY_DATABASE_DSN validation failed"):
                 testenv.check_prerequisites()
         run.assert_not_called()
 
-    @pytest.mark.parametrize("failure", ["postgres", "redis", "timeout", None])
-    def test_service_checks_use_inherited_auth_without_logging_secrets(self, failure, capsys):
-        import testenv
-
+    @pytest.mark.parametrize("failure,expected", [
+        ("postgres", "PostgreSQL connection/authentication failed"),
+        ("permission", "PostgreSQL CREATEDB permission denied"),
+        ("query", "PostgreSQL permission query failed"),
+        ("missing", "PostgreSQL psql executable not found"),
+        ("startup", "PostgreSQL psql startup failed"),
+        ("redis", "Redis rejected prerequisite PING"),
+        ("redis-url", "Redis URL validation failed"),
+        ("redis-connection", "Redis connection failed"),
+        ("timeout", "PostgreSQL permission query timed out"),
+        (None, None),
+    ])
+    def test_service_checks_use_inherited_auth_without_logging_secrets(self, failure, expected, capsys):
         env = {
             "SIPPY_DATABASE_DSN": "postgresql://user:private@localhost/postgres",
             "SIPPY_E2E_REDIS_URL": "redis://:private@localhost/1",
@@ -1225,19 +1276,29 @@ class TestMcpTestEnvironment:
             calls.append((command, kwargs))
             if failure == "timeout":
                 raise subprocess.TimeoutExpired(command, 15)
-            failed = failure == "postgres"
-            return subprocess.CompletedProcess(command, int(failed), "private" if failed else "t\n", "private")
+            if failure == "missing":
+                raise FileNotFoundError("private")
+            if failure == "startup":
+                raise PermissionError("private")
+            code = 2 if failure == "postgres" else 1 if failure == "query" else 0
+            output = "f\n" if failure == "permission" else "t\n"
+            return subprocess.CompletedProcess(command, code, output, "private")
 
         with (
             mock.patch.dict(os.environ, env),
             mock.patch("testenv.socket.socket"),
             mock.patch("testenv.Path.exists", return_value=True),
             mock.patch("testenv.subprocess.run", side_effect=run),
-            mock.patch("testenv.redis_ping", side_effect=RuntimeError("private") if failure == "redis" else None) as ping,
+            mock.patch("testenv.redis_ping", side_effect={
+                "redis": testenv.RedisCommandError("Redis rejected prerequisite PING"),
+                "redis-url": ValueError("SIPPY_E2E_REDIS_URL has a malformed authority, port or database"),
+                "redis-connection": testenv.RedisPrerequisiteError("Redis connection failed"),
+            }.get(failure)) as ping,
         ):
             if failure:
-                with pytest.raises(RuntimeError) as error:
+                with pytest.raises(RuntimeError, match=expected) as error:
                     testenv.check_prerequisites()
+                assert type(error.value) is RuntimeError
                 assert "private" not in str(error.value)
             else:
                 testenv.check_prerequisites()
@@ -1248,7 +1309,7 @@ class TestMcpTestEnvironment:
         assert calls[0][1]["env"]["PGHOST"] == "localhost"
         assert calls[0][1]["env"]["PGDATABASE"] == "postgres"
         assert "-w" in calls[0][0]
-        if failure in ("redis", None):
+        if failure in ("redis", "redis-url", "redis-connection", None):
             ping.assert_called_once_with(env["SIPPY_E2E_REDIS_URL"])
         assert "private" not in capsys.readouterr().out
 
@@ -1330,6 +1391,34 @@ echo "validated child ran make e2e"
 
 
 class TestE2eFailurePaths:
+    @pytest.mark.parametrize("arguments", [[], ["unknown"], ["validate", "extra"]])
+    def test_uri_cli_rejects_invalid_commands(self, arguments):
+        result = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "mcp/serviceurl.py"), *arguments],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "usage:" in result.stderr
+        assert "Traceback" not in result.stderr
+
+    @pytest.mark.parametrize("uri,reason", [
+        ("postgresql://user:private@remote/db", "Non-local PostgreSQL URI"),
+        ("postgresql://user:private@localhost:notaport/db", "Malformed PostgreSQL URI port"),
+        ("postgresql://user:private@[invalid/db", "Malformed PostgreSQL URI authority"),
+        ("https://user:private@localhost/db", "Unsupported PostgreSQL URI scheme"),
+        ("postgresql://localhost/db?password=private&host=other", "overrides the e2e connection target"),
+    ])
+    def test_uri_cli_reports_safe_validation_reason(self, uri, reason):
+        with pytest.raises(ValueError, match=reason):
+            serviceurl.local_database_uri(uri)
+        result = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "mcp/serviceurl.py"), "validate"],
+            env={**os.environ, "SIPPY_DATABASE_DSN": uri}, capture_output=True, text=True,
+        )
+        assert result.returncode == 1
+        assert reason in result.stderr
+        assert "private" not in result.stdout + result.stderr
+
     @pytest.mark.parametrize("key", ["host", "hostaddr", "dbname", "ho%73t", "db%6eame", "service"])
     def test_database_overrides_cannot_redirect_destructive_calls(self, key):
         result = TestE2eScriptSafety._run_helper('''
@@ -1377,6 +1466,10 @@ e2e_create_database sippy_e2e "$SIPPY_DATABASE_DSN"
 function [ {
     if [[ "$1" == "-f" && "$2" == "/run/.containerenv" ]]; then return 0; fi
     builtin [ "$@"
+}
+python3() {
+    if [[ "$3" == redact ]]; then /bin/sleep 0.1; fi
+    command python3 "$@"
 }
 psql() {
     if [[ "$*" == *"CREATE DATABASE"* && "$FAIL_STAGE" == create ]]; then return "$FAIL_STATUS"; fi
@@ -1452,6 +1545,7 @@ exec /bin/sleep 60
         assert "secret" not in output
         for log in output_dir.glob("*.log"):
             assert "secret" not in log.read_text()
+        assert not list(output_dir.glob("api-log.*"))
         if stage == "serve":
             assert "API startup failed" in output
 
@@ -1517,10 +1611,42 @@ status=$?
 
 
 class TestRedisProbe:
+    @pytest.mark.parametrize("error,expected", [
+        (ConnectionRefusedError("private"), "Redis connection failed"),
+        (TimeoutError("private"), "Redis connection timed out"),
+    ])
+    def test_connection_diagnostics_do_not_expose_socket_errors(self, error, expected):
+        with mock.patch("testenv.socket.create_connection", side_effect=error):
+            with pytest.raises(testenv.RedisPrerequisiteError, match=expected) as caught:
+                testenv.redis_ping("redis://:private@localhost/1")
+        assert "private" not in str(caught.value)
+
+    @pytest.mark.parametrize("command", ["AUTH", "SELECT", "PING"])
+    @pytest.mark.parametrize("error,suffix", [(TimeoutError("private"), "timed out"), (OSError("private"), "transport failed")])
+    def test_transport_diagnostics_name_the_failed_operation(self, command, error, suffix):
+        connection = mock.MagicMock()
+        connection.sendall.side_effect = [None] * ["AUTH", "SELECT", "PING"].index(command) + [error]
+        connection.makefile.return_value.__enter__.return_value.readline.return_value = b"+OK\r\n"
+        with mock.patch("testenv.socket.create_connection", return_value=connection):
+            with pytest.raises(testenv.RedisPrerequisiteError, match=f"{command} {suffix}") as caught:
+                testenv.redis_ping("redis://:private@localhost/1")
+        assert "private" not in str(caught.value)
+        connection.close.assert_called_once()
+
+    def test_tls_diagnostics_preserve_cleanup_and_hide_socket_error(self):
+        connection = mock.Mock()
+        with (
+            mock.patch("testenv.socket.create_connection", return_value=connection),
+            mock.patch("testenv.ssl.create_default_context") as context,
+        ):
+            context.return_value.wrap_socket.side_effect = OSError("private")
+            with pytest.raises(testenv.RedisPrerequisiteError, match="TLS handshake failed") as caught:
+                testenv.redis_ping("rediss://:private@localhost/1")
+        assert "private" not in str(caught.value)
+        connection.close.assert_called_once()
+
     @pytest.mark.parametrize("url", ["redis://localhost/1?db=0", "redis://localhost/1?%64b=0"])
     def test_explicit_query_options_fail_before_connecting(self, url):
-        import testenv
-
         with mock.patch("testenv.socket.create_connection") as connect:
             with pytest.raises(ValueError, match="query options"):
                 testenv.redis_ping(url)
@@ -1528,8 +1654,6 @@ class TestRedisProbe:
 
     @pytest.mark.parametrize("failed_command", ["AUTH", "SELECT", "PING"])
     def test_rejected_operation_is_named_without_redis_reply(self, failed_command):
-        import testenv
-
         credential = secrets.token_urlsafe(32)
         commands = ["AUTH", "SELECT", "PING"]
         replies = b"+OK\r\n" * commands.index(failed_command) + f"-ERR {credential}\r\n".encode()
@@ -1551,8 +1675,6 @@ class TestRedisProbe:
         ],
     )
     def test_auth_database_and_tls(self, url, responses, expected):
-        import testenv
-
         client, peer = socket.socketpair()
         with peer, mock.patch("testenv.socket.create_connection", return_value=client):
             with mock.patch("testenv.ssl.create_default_context") as tls:
@@ -1574,8 +1696,6 @@ class TestRedisProbe:
 
     @pytest.mark.parametrize("response", [b"-WRONGPASS private\r\n", b"-ERR private\r\n", b""])
     def test_failure_does_not_expose_reply(self, response):
-        import testenv
-
         client, peer = socket.socketpair()
         with peer, mock.patch("testenv.socket.create_connection", return_value=client):
             peer.sendall(response)
@@ -1587,13 +1707,30 @@ class TestRedisProbe:
 
     @pytest.mark.parametrize("url", ["https://localhost/1", "redis:///1", "redis://localhost/invalid"])
     def test_invalid_url(self, url):
-        import testenv
-
         with pytest.raises(ValueError):
             testenv.redis_ping(url)
 
 
 class TestMakeTools:
+    @pytest.mark.parametrize("target,tool", [("lint", "run_lint"), ("test", "run_tests")])
+    def test_runner_only_prepares_settings_needed_by_its_target(self, tmp_path, monkeypatch, target, tool):
+        monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
+        monkeypatch.setenv("REDIS_URL", "redis://[malformed")
+        monkeypatch.delenv("SIPPY_E2E_REDIS_URL", raising=False)
+        monkeypatch.setenv("SIPPY_DATABASE_DSN", "postgresql://legacy/db")
+        monkeypatch.setenv("SIPPY_SEED_DATABASE_DSN", "postgresql://seed/db")
+        monkeypatch.setenv("ARTIFACT_DIR", (
+            "/proc/sippy-read-only-artifacts" if target == "lint" else str(tmp_path / "artifacts")
+        ))
+        create = mock.AsyncMock(return_value=FakeProcess())
+        monkeypatch.setattr(server.asyncio, "create_subprocess_exec", create)
+        result = asyncio.run(getattr(server, tool)())
+        assert "succeeded" in result
+        env = create.call_args.kwargs["env"]
+        assert env["SIPPY_DATABASE_DSN"] == "postgresql://legacy/db"
+        assert "SIPPY_E2E_REDIS_URL" not in env
+        assert create.call_args.args[2] == target
+
     def test_concurrent_make_calls_are_serialized(self, monkeypatch):
         async def run():
             monkeypatch.setattr(server, "_MAKE_PHASE_LOCK", asyncio.Lock())
@@ -1720,8 +1857,6 @@ subprocess.Popen([sys.executable, "-c", {child!r}]).wait()
 
     @pytest.mark.parametrize("target,listeners", [("test", 1), ("lint", 0)])
     def test_unit_and_lint_do_not_require_database_services(self, target, listeners):
-        import testenv
-
         with (
             mock.patch("testenv.socket.socket") as listener,
             mock.patch("testenv.subprocess.run") as command,

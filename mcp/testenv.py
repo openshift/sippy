@@ -22,7 +22,11 @@ def seed_database_dsn(parent: dict[str, str]) -> str:
     return parent.get("SIPPY_SEED_DATABASE_DSN") or default_database_dsn(parent)
 
 
-class RedisCommandError(RuntimeError):
+class RedisPrerequisiteError(RuntimeError):
+    """Carry a credential-free Redis operation diagnostic to the test child."""
+
+
+class RedisCommandError(RedisPrerequisiteError):
     """Identify a rejected prerequisite operation without retaining Redis's reply."""
 
 
@@ -65,7 +69,7 @@ def postgres_environment(parent: dict[str, str]) -> dict[str, str]:
     for key, value in parameters.items():
         if key not in names:
             raise ValueError("PostgreSQL prerequisite option has no libpq environment equivalent")
-        if value:
+        if value or key == "password":
             env[names[key]] = value
     env["PGCONNECT_TIMEOUT"] = "10"
     return env
@@ -80,8 +84,9 @@ def writable_directory(path: Path) -> Path:
     return path
 
 
-def prepare_environment(parent: dict[str, str], log_dir: Path) -> dict[str, str]:
+def prepare_environment(parent: dict[str, str], log_dir: Path, target: str = "e2e") -> dict[str, str]:
     """Keep usable caches and service credentials, with private writable defaults."""
+    validate_target(target)
     env = parent.copy()
     if "npm_config_cache" not in env and "NPM_CONFIG_CACHE" in env:
         env["npm_config_cache"] = env["NPM_CONFIG_CACHE"]
@@ -104,6 +109,9 @@ def prepare_environment(parent: dict[str, str], log_dir: Path) -> dict[str, str]
             continue
         env[key] = str(path)
     env["NPM_CONFIG_CACHE"] = env["npm_config_cache"]
+
+    if target == "lint":
+        return env
 
     # Browser installs may already live in Playwright's platform default cache.
     # Its special value "0" selects the package-local hermetic installation.
@@ -131,51 +139,87 @@ def prepare_environment(parent: dict[str, str], log_dir: Path) -> dict[str, str]
     except OSError as exc:
         raise ValueError("ARTIFACT_DIR must be writable by the MCP server; check the CI artifact mount") from exc
     env["ARTIFACT_DIR"] = str(artifacts)
+    if target == "test":
+        return env
     env["SIPPY_TEST_OUTPUT_DIR"] = str(writable_directory(artifacts / "e2e"))
     env["SIPPY_DATABASE_DSN"] = seed_database_dsn(env)
-    env["SIPPY_E2E_REDIS_URL"] = env.get("SIPPY_E2E_REDIS_URL") or urlsplit(
-        env.get("REDIS_URL", "redis://localhost:6379")
-    )._replace(path="/1", query="").geturl()
+    if not env.get("SIPPY_E2E_REDIS_URL"):
+        try:
+            env["SIPPY_E2E_REDIS_URL"] = urlsplit(
+                env.get("REDIS_URL", "redis://localhost:6379")
+            )._replace(path="/1", query="").geturl()
+        except ValueError:
+            raise ValueError("REDIS_URL has a malformed URI authority") from None
     return env
 
 
 def redis_ping(url: str) -> None:
     """Check Redis auth, database selection and PING without a redis-cli dependency."""
-    parsed = urlsplit(url)
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port or 6379
+        database = str(int(parsed.path.strip("/"))) if parsed.path.strip("/") else None
+    except ValueError:
+        raise ValueError("SIPPY_E2E_REDIS_URL has a malformed authority, port or database") from None
     if parsed.scheme not in ("redis", "rediss") or not parsed.hostname:
-        raise ValueError("Invalid Redis URL")
+        raise ValueError("SIPPY_E2E_REDIS_URL requires a redis/rediss scheme and hostname")
     if parsed.query:
         raise ValueError("Redis URL query options are not supported by Sippy")
     commands = []
     if parsed.password is not None:
         # Sippy's redis.v5 client ignores usernames and uses password-only AUTH.
         commands.append(["AUTH", unquote(parsed.password)])
-    if parsed.path.strip("/"):
-        commands.append(["SELECT", str(int(parsed.path.strip("/")))])
+    if database is not None:
+        commands.append(["SELECT", database])
     commands.append(["PING"])
-    connection = socket.create_connection((parsed.hostname, parsed.port or 6379), timeout=10)
+    try:
+        connection = socket.create_connection((parsed.hostname, port), timeout=10)
+    except TimeoutError:
+        raise RedisPrerequisiteError("Redis connection timed out; check service reachability") from None
+    except OSError:
+        raise RedisPrerequisiteError("Redis connection failed; check service address and availability") from None
     try:
         if parsed.scheme == "rediss":
-            connection = ssl.create_default_context().wrap_socket(connection, server_hostname=parsed.hostname)
+            try:
+                connection = ssl.create_default_context().wrap_socket(connection, server_hostname=parsed.hostname)
+            except OSError:
+                raise RedisPrerequisiteError("Redis TLS handshake failed; check TLS configuration") from None
         with connection.makefile("rb") as reader:
             for command in commands:
                 parts = [part.encode() for part in command]
                 payload = f"*{len(parts)}\r\n".encode() + b"".join(
                     f"${len(part)}\r\n".encode() + part + b"\r\n" for part in parts
                 )
-                connection.sendall(payload)
+                try:
+                    connection.sendall(payload)
+                    reply = reader.readline(4096)
+                except TimeoutError:
+                    raise RedisPrerequisiteError(f"Redis prerequisite {command[0]} timed out") from None
+                except OSError:
+                    raise RedisPrerequisiteError(f"Redis prerequisite {command[0]} transport failed") from None
                 expected = b"+PONG\r\n" if command[0] == "PING" else b"+OK\r\n"
-                if reader.readline(4096) != expected:
+                if reply != expected:
                     raise RedisCommandError(f"Redis rejected prerequisite {command[0]}")
     finally:
         connection.close()
 
 
+def validate_target(target: str) -> None:
+    """Reject unknown make targets before preparing settings or opening listeners."""
+    if target not in ("lint", "test", "e2e"):
+        raise ValueError("Unsupported test target; expected lint, test or e2e")
+
+
 def check_prerequisites(target: str = "e2e") -> None:
     """Validate permissions and authenticated services in the test child context."""
+    validate_target(target)
     if target == "lint":
         return
-    for port in ((0, 18080, 12112) if target == "e2e" else (0,)):
+    in_container = Path("/run/.containerenv").exists()
+    ports = (0, 18080, 12112) if target == "e2e" else (0,)
+    if target == "e2e" and not in_container:
+        ports += (23433, 23479)
+    for port in ports:
         try:
             with socket.socket() as listener:
                 listener.bind(("127.0.0.1", port))
@@ -192,7 +236,7 @@ def check_prerequisites(target: str = "e2e") -> None:
 
     # Host runs provision their own containers in e2e.sh. Check existing services
     # only in the container, where tests will use these exact inherited settings.
-    if not Path("/run/.containerenv").exists():
+    if not in_container:
         return
     command = [
         "psql", "-X", "-w", "-tAc",
@@ -207,25 +251,38 @@ def check_prerequisites(target: str = "e2e") -> None:
         host_count = max(len(env.get(key, "").split(",")) for key in ("PGHOST", "PGHOSTADDR"))
         # libpq applies connect_timeout separately to each failover host.
         timeout = int(env["PGCONNECT_TIMEOUT"]) * host_count + 5
+    except ValueError as exc:
+        raise RuntimeError(f"PostgreSQL SIPPY_DATABASE_DSN validation failed: {exc}") from None
+    try:
         result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=timeout)
-    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
-        raise RuntimeError("PostgreSQL prerequisite could not run; check service setup and psql availability") from exc
-    if result.returncode or result.stdout.strip() != "t":
-        # Client diagnostics can contain credential-bearing URLs. Do not log them.
-        raise RuntimeError("PostgreSQL authentication or CREATEDB permission failed; check the MCP server's inherited service settings")
+    except FileNotFoundError:
+        raise RuntimeError("PostgreSQL psql executable not found; install psql or fix PATH") from None
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("PostgreSQL permission query timed out; check connectivity and server responsiveness") from None
+    except OSError:
+        raise RuntimeError("PostgreSQL psql startup failed; check executable permissions") from None
+    # Client diagnostics can contain credential-bearing URLs. Do not log them.
+    if result.returncode == 2:
+        raise RuntimeError("PostgreSQL connection/authentication failed; check service availability and inherited credentials")
+    if result.returncode:
+        raise RuntimeError("PostgreSQL permission query failed; check server configuration and role access")
+    if result.stdout.strip() != "t":
+        raise RuntimeError("PostgreSQL CREATEDB permission denied; use a role allowed to create the e2e database")
     try:
         redis_ping(env["SIPPY_E2E_REDIS_URL"])
-    except RedisCommandError as exc:
+    except RedisPrerequisiteError as exc:
         raise RuntimeError(f"{exc}; check the MCP server's inherited service settings") from exc
-    except (OSError, ValueError, RuntimeError) as exc:
-        raise RuntimeError("Redis authentication/PING failed; check the MCP server's inherited service settings") from exc
+    except ValueError as exc:
+        raise RuntimeError(f"Redis URL validation failed: {exc}") from None
+    except (OSError, RuntimeError):
+        raise RuntimeError("Redis prerequisite failed unexpectedly; check service setup") from None
     print("MCP test prerequisites: listeners, PostgreSQL and Redis OK", flush=True)
 
 
 if __name__ == "__main__":
     try:
         check_prerequisites(sys.argv[1])
-    except RuntimeError as error:
+    except (RuntimeError, ValueError) as error:
         print(f"MCP test prerequisite failed: {error}", file=sys.stderr)
         sys.exit(1)
     os.execvpe("make", ["make", *sys.argv[1:]], os.environ)

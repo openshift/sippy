@@ -13,8 +13,9 @@ Extra context for agentic review responses, layered on `/openshift-developer:add
 ## Environment
 
 - PostgreSQL uses password authentication. The MCP server must inherit setup's
-  `SIPPY_SEED_DATABASE_DSN` (or `SIPPY_DATABASE_DSN`), `REDIS_URL`, and
-  `SIPPY_E2E_REDIS_URL`. Never log credentials or retry with a passwordless DSN.
+  `SIPPY_SEED_DATABASE_DSN` (or `SIPPY_DATABASE_DSN`), `REDIS_URL`, and authenticated
+  service settings. `SIPPY_E2E_REDIS_URL` is an optional override. Never log
+  credentials or retry with a passwordless DSN.
 - Use the `sippy-dev` MCP `run_e2e` tool in both solve and review. Its subprocess
   checks local listener permissions, authenticated services, and writable output paths.
 - If the tool is unavailable, fix MCP registration/startup for that phase. If its

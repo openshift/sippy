@@ -729,11 +729,13 @@ async def _run_make_phase_locked(
     log_path = DEV_LOG_DIR / log_filename
     try:
         _ensure_dev_log_dir()
-        run_env = prepare_environment(os.environ.copy(), DEV_LOG_DIR)
-    except (OSError, ValueError):
+        run_env = prepare_environment(os.environ.copy(), DEV_LOG_DIR, make_target)
+    except ValueError as exc:
+        return f"{tool_label} prerequisite failed: {exc}"
+    except OSError:
         return (
-            f"{tool_label} prerequisite failed: test caches, output directory and ARTIFACT_DIR "
-            "must be writable by the MCP server. Check workspace and CI artifact mounts."
+            f"{tool_label} prerequisite failed: cannot prepare test filesystem paths. "
+            "Check workspace and cache permissions."
         )
     if env_extra:
         run_env.update(env_extra)
@@ -866,7 +868,7 @@ async def run_tests(timeout_seconds: int = 7200) -> str:
 
 @mcp.tool()
 async def run_lint(timeout_seconds: int = 7200) -> str:
-    """Run ``make lint`` with writable caches and artifact output.
+    """Run ``make lint`` with writable caches.
 
     Includes Go lint, ESLint and the dependency audit. Logs go to
     ``sippy-dev-logs/run_lint.log``. Use ``timeout_seconds=0`` for no limit.
