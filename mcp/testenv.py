@@ -10,6 +10,20 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
+def default_database_dsn(parent: dict[str, str]) -> str:
+    """Resolve the legacy database setting shared by MCP tools and test children."""
+    return parent.get("SIPPY_DATABASE_DSN", "postgresql://postgres:password@localhost:5432/postgres")
+
+
+def seed_database_dsn(parent: dict[str, str]) -> str:
+    """Select the seed database with the same precedence in tools and test children."""
+    return parent.get("SIPPY_SEED_DATABASE_DSN") or default_database_dsn(parent)
+
+
+class RedisCommandError(RuntimeError):
+    """Identify a rejected prerequisite operation without retaining Redis's reply."""
+
+
 def postgres_environment(parent: dict[str, str]) -> dict[str, str]:
     """Move prerequisite connection parameters into libpq's environment variables."""
     env = parent.copy()
@@ -116,12 +130,10 @@ def prepare_environment(parent: dict[str, str], log_dir: Path) -> dict[str, str]
         raise ValueError("ARTIFACT_DIR must be writable by the MCP server; check the CI artifact mount") from exc
     env["ARTIFACT_DIR"] = str(artifacts)
     env["SIPPY_TEST_OUTPUT_DIR"] = str(writable_directory(artifacts / "e2e"))
-    env["SIPPY_DATABASE_DSN"] = env.get("SIPPY_SEED_DATABASE_DSN") or env.get(
-        "SIPPY_DATABASE_DSN", "postgresql://postgres:password@localhost:5432/postgres"
-    )
+    env["SIPPY_DATABASE_DSN"] = seed_database_dsn(env)
     env["SIPPY_E2E_REDIS_URL"] = env.get("SIPPY_E2E_REDIS_URL") or urlsplit(
         env.get("REDIS_URL", "redis://localhost:6379")
-    )._replace(path="/1").geturl()
+    )._replace(path="/1", query="").geturl()
     return env
 
 
@@ -130,13 +142,12 @@ def redis_ping(url: str) -> None:
     parsed = urlsplit(url)
     if parsed.scheme not in ("redis", "rediss") or not parsed.hostname:
         raise ValueError("Invalid Redis URL")
+    if parsed.query:
+        raise ValueError("Redis URL query options are not supported by Sippy")
     commands = []
     if parsed.password is not None:
-        auth = ["AUTH"]
-        if parsed.username:
-            auth.append(unquote(parsed.username))
-        auth.append(unquote(parsed.password))
-        commands.append(auth)
+        # Sippy's redis.v5 client ignores usernames and uses password-only AUTH.
+        commands.append(["AUTH", unquote(parsed.password)])
     if parsed.path.strip("/"):
         commands.append(["SELECT", str(int(parsed.path.strip("/")))])
     commands.append(["PING"])
@@ -153,7 +164,7 @@ def redis_ping(url: str) -> None:
                 connection.sendall(payload)
                 expected = b"+PONG\r\n" if command[0] == "PING" else b"+OK\r\n"
                 if reader.readline(4096) != expected:
-                    raise RuntimeError("Redis rejected a prerequisite command")
+                    raise RedisCommandError(f"Redis rejected prerequisite {command[0]}")
     finally:
         connection.close()
 
@@ -198,6 +209,8 @@ def check_prerequisites(target: str = "e2e") -> None:
         raise RuntimeError("PostgreSQL authentication or CREATEDB permission failed; check the MCP server's inherited service settings")
     try:
         redis_ping(env["SIPPY_E2E_REDIS_URL"])
+    except RedisCommandError as exc:
+        raise RuntimeError(f"{exc}; check the MCP server's inherited service settings") from exc
     except (OSError, ValueError, RuntimeError) as exc:
         raise RuntimeError("Redis authentication/PING failed; check the MCP server's inherited service settings") from exc
     print("MCP test prerequisites: listeners, PostgreSQL and Redis OK", flush=True)

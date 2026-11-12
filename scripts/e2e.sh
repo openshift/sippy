@@ -12,6 +12,7 @@ REDIS_CONTAINER="sippy-e2e-test-redis"
 REDIS_PORT="23479"
 
 E2E_DB_NAME="sippy_e2e"
+SERVICE_URL_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../mcp" && pwd)/serviceurl.py"
 
 # ---------------------------------------------------------------------------
 # Safety helpers for database create/drop
@@ -25,11 +26,7 @@ e2e_safe_db_name() {
 }
 
 e2e_safe_dsn_host() {
-    dsn="$1"
-    case "$dsn" in
-        *@localhost:*|*@localhost/*|*@sippy-postgres:*|*@sippy-postgres/*) ;;
-        *) echo "FATAL: refusing to operate on non-local database host" >&2; exit 1 ;;
-    esac
+    SIPPY_DATABASE_DSN="$1" python3 "$SERVICE_URL_SCRIPT" validate || exit $?
 }
 
 e2e_create_database() {
@@ -54,6 +51,9 @@ e2e_drop_database() {
 
 e2e_configure_existing_services() {
     ADMIN_DSN="${SIPPY_DATABASE_DSN:-postgresql://postgres:password@sippy-postgres:5432/postgres}"
+    ADMIN_DSN=$(SIPPY_DATABASE_DSN="$ADMIN_DSN" python3 "$SERVICE_URL_SCRIPT" database) || return $?
+    # URI authority/path must win over inherited libpq target overrides as well.
+    unset PGHOSTADDR PGSERVICE
     # Preserve connection options (including sslmode) when changing databases.
     local admin_base="${ADMIN_DSN%%\?*}"
     local admin_query="${ADMIN_DSN#"$admin_base"}"
@@ -73,9 +73,7 @@ e2e_configure_existing_services() {
 }
 
 e2e_redact_logs() {
-    sed -u -E \
-        -e 's#(postgres(ql)?|rediss?)://[^/@[:space:]]+@#\1://[redacted]@#g' \
-        -e 's#([?&](password|sslpassword)=)[^&[:space:]]*#\1[redacted]#g'
+    python3 -u "$SERVICE_URL_SCRIPT" redact
 }
 
 e2e_log_tail() {
@@ -91,6 +89,9 @@ wait_for_sippy() {
             wait "$CHILD_PID"
             status=$?
             echo "Sippy API exited before readiness (exit $status)" >&2
+            if [ -n "${API_LOG_PID:-}" ]; then
+                wait "$API_LOG_PID"
+            fi
             e2e_log_tail
             [ "$status" -ne 0 ] || status=1
             return "$status"
@@ -121,6 +122,9 @@ clean_up() {
         echo "Stopping sippy API child process: $CHILD_PID"
         kill "$CHILD_PID" 2>/dev/null
         wait "$CHILD_PID" 2>/dev/null
+    fi
+    if [ -n "${API_LOG_PID:-}" ]; then
+        wait "$API_LOG_PID"
     fi
     if [ -d "${COVDIR:-}" ] && find "$COVDIR" -name 'covcounters.*' -print -quit | grep -q .; then
         echo "Generating coverage report..."
@@ -232,8 +236,11 @@ fi
 # Force DEV_MODE off: callers such as hack/agentic_setup.sh may export DEV_MODE=1, which bypasses the
 # component report cache that triage e2e fixtures inject synthetic regressions into. e2e requests
 # already send X-Forwarded-User, so the mock user is not needed.
-DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" > >(e2e_redact_logs > "$OUTPUT_DIR/e2e.log") 2>&1 &
+exec {api_log_fd}> >(e2e_redact_logs > "$OUTPUT_DIR/e2e.log")
+API_LOG_PID=$!
+DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" >&"$api_log_fd" 2>&1 &
 CHILD_PID=$!
+exec {api_log_fd}>&-
 
 wait_for_sippy || exit $?
 

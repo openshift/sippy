@@ -80,6 +80,10 @@ The runner preserves `SIPPY_SEED_DATABASE_DSN` (preferred) or `SIPPY_DATABASE_DS
 including passwords and connection options. PostgreSQL uses password authentication;
 do not substitute a passwordless DSN. `SIPPY_E2E_REDIS_URL` overrides Redis for e2e;
 otherwise the runner uses logical database 1 on `REDIS_URL`, preserving authentication.
+Derived Redis URLs discard query options; explicit e2e Redis URLs with query
+options fail the prerequisite check because Sippy's Redis client rejects them.
+The probe matches that client's password-only AUTH, ignoring URI usernames.
+Rejected Redis commands identify AUTH, SELECT, or PING without exposing replies.
 No credential values should appear in instructions, tool responses, or logs.
 
 The unit-test subprocess checks that it can open local listeners; lint does not
@@ -94,6 +98,11 @@ timeout; the overall prerequisite deadline allows that timeout for every host,
 plus five seconds for the permission query, so failover can complete.
 It then executes `make e2e` with the same environment and permissions. Outside a
 devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
+The e2e launcher uses Python 3 for URI validation and streaming log redaction.
+Before database setup, it strips `host`, `hostaddr`, `dbname`, and `service`
+query overrides, including encoded keys, and clears inherited `PGHOSTADDR` and
+`PGSERVICE`. Destructive helpers reject remaining target overrides or non-local
+URI authorities. Other connection options are preserved.
 The runner cannot grant missing socket permissions or start services hidden by the
 client's sandbox; configure the MCP process with those permissions in both phases.
 
@@ -113,11 +122,16 @@ before readiness reports its exit status and recent log output. Cleanup preserve
 the original failure status, and logs remain available for diagnosis and collection.
 API readiness has a 600-second elapsed-time deadline, including HTTP requests.
 Test output is redacted before it reaches the console or artifact log, including
-URI userinfo and `password`/`sslpassword` query parameters. An artifact-write failure
-fails the run, and cleanup only reports test results from the current invocation.
-Each make runner starts a separate process session. On timeout, the runner sends
-SIGTERM to the process group, waits up to five seconds for make to exit, and sends
-SIGKILL to any remaining group members so descendants cannot retain test resources.
+URI userinfo and `password`/`sslpassword` query parameters, including encoded keys.
+Write failures in the seed and test-output pipelines fail the run. Coverage
+generation during cleanup is best effort and does not replace the test exit status.
+Cleanup only reports test results from the current invocation.
+Make tool calls are serialized within the MCP server because they share logs,
+artifacts, listeners, and services. Each make runner starts a separate process
+session. On timeout or task cancellation, the runner sends SIGTERM to the process
+group, allows up to 60 seconds for e2e cleanup (five seconds for other targets),
+then sends SIGKILL to remaining group members and reaps make. Cancellation is
+re-raised after cleanup completes.
 
 ### Background processes
 

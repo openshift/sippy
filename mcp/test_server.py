@@ -721,7 +721,7 @@ e2e_configure_existing_services
 
         output = result.stdout + result.stderr
         assert result.returncode == 1
-        assert "refusing to operate on non-local database host" in result.stderr
+        assert "refusing unsafe e2e database connection settings" in result.stderr
         assert password not in output
         assert rejected_dsn not in output
 
@@ -975,6 +975,23 @@ class TestWaitForUrl:
 
 
 class TestMcpTestEnvironment:
+    @pytest.mark.parametrize("parent", [
+        {}, {"SIPPY_DATABASE_DSN": "postgresql://legacy/db"},
+        {"SIPPY_SEED_DATABASE_DSN": "postgresql://seed/db", "SIPPY_DATABASE_DSN": "postgresql://legacy/db"},
+        {"SIPPY_SEED_DATABASE_DSN": "", "SIPPY_DATABASE_DSN": "postgresql://legacy/db"},
+    ])
+    def test_seed_selection_matches_server(self, parent, tmp_path):
+        from testenv import prepare_environment
+
+        with mock.patch.dict(os.environ, parent, clear=True):
+            assert prepare_environment(parent, tmp_path)["SIPPY_DATABASE_DSN"] == _dsn_for_mode("seed")
+
+    def test_derived_redis_database_discards_query_options(self, tmp_path):
+        from testenv import prepare_environment
+
+        env = prepare_environment({"REDIS_URL": "redis://:test@localhost:6379/0?db=0"}, tmp_path)
+        assert env["SIPPY_E2E_REDIS_URL"] == "redis://:test@localhost:6379/1"
+
     @pytest.mark.parametrize(
         "dsn,expected",
         [
@@ -1035,6 +1052,7 @@ class TestMcpTestEnvironment:
     def test_browser_cache_survives_xdg_parent_fallback(self, tmp_path, monkeypatch):
         import testenv
 
+        monkeypatch.setattr(testenv.sys, "platform", "linux")
         xdg_cache = tmp_path / "shared-cache"
         browser_cache = xdg_cache / "ms-playwright"
         browser_cache.mkdir(parents=True)
@@ -1051,8 +1069,11 @@ class TestMcpTestEnvironment:
         assert env["PLAYWRIGHT_BROWSERS_PATH"] == str(browser_cache)
 
     @pytest.mark.parametrize("explicit", [False, True])
-    def test_unusable_browser_location_gets_writable_fallback(self, tmp_path, explicit):
+    def test_unusable_browser_location_gets_writable_fallback(self, tmp_path, monkeypatch, explicit):
+        import testenv
         from testenv import prepare_environment
+
+        monkeypatch.setattr(testenv.sys, "platform", "linux")
 
         blocked = tmp_path / "blocked"
         blocked.write_text("not a directory")
@@ -1198,6 +1219,7 @@ class TestMcpTestEnvironment:
         assert "private" not in capsys.readouterr().out
 
     def test_make_runs_in_the_validated_child_environment(self, tmp_path, monkeypatch):
+        credential = secrets.token_urlsafe(32)
         # sitecustomize also runs in the real child, independent of the host marker.
         (tmp_path / "sitecustomize.py").write_text('''
 from pathlib import Path
@@ -1225,14 +1247,14 @@ echo "validated child ran make e2e"
 ''',
         }.items():
             stub = bin_dir / name
-            stub.write_text("#!/bin/sh\n" + body)
+            stub.write_text("#!/bin/sh\n" + body.replace("private", credential))
             stub.chmod(0o755)
         monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
         monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path / "artifacts"))
         for key in ("GOCACHE", "GOMODCACHE", "GOTMPDIR", "TMPDIR", "XDG_CACHE_HOME",
                     "npm_config_cache", "PLAYWRIGHT_BROWSERS_PATH"):
             monkeypatch.setenv(key, str(tmp_path / "cache" / key))
-        monkeypatch.setenv("SIPPY_SEED_DATABASE_DSN", "postgresql://test:private@localhost/postgres")
+        monkeypatch.setenv("SIPPY_SEED_DATABASE_DSN", f"postgresql://test:{credential}@localhost/postgres")
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
             listener.listen()
@@ -1241,7 +1263,7 @@ echo "validated child ran make e2e"
             url = f"redis://localhost:{port}/7"
             monkeypatch.setenv("SIPPY_E2E_REDIS_URL", url)
             monkeypatch.setenv("EXPECTED_REDIS_URL", url)
-            monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
+            monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "private/var/logs")
             commands = []
 
             def respond():
@@ -1263,11 +1285,37 @@ echo "validated child ran make e2e"
         assert commands == [[b"SELECT", b"7"], [b"PING"]]
         assert "run_e2e succeeded" in result, result
         assert "validated child ran make e2e" in result
-        assert "private" not in result
+        assert credential not in (tmp_path / "private/var/logs/run_e2e.log").read_text()
         assert (tmp_path / "artifacts/e2e/child-writable").exists()
 
 
 class TestE2eFailurePaths:
+    @pytest.mark.parametrize("key", ["host", "hostaddr", "dbname", "ho%73t", "db%6eame", "service"])
+    def test_database_overrides_cannot_redirect_destructive_calls(self, key):
+        result = TestE2eScriptSafety._run_helper('''
+psql() { [ "$1" = "postgresql://user:test@localhost:5432/postgres?sslmode=disable" ] || exit 90; }
+e2e_configure_existing_services || exit $?
+[ "$SIPPY_E2E_DSN" = "postgresql://user:test@localhost:5432/sippy_e2e?sslmode=disable" ] || exit 91
+[ -z "${PGHOSTADDR:-}${PGSERVICE:-}" ]
+''', {"SIPPY_DATABASE_DSN": f"postgresql://user:test@localhost:5432/postgres?{key}=remote&sslmode=disable",
+      "PGHOSTADDR": "127.0.0.2", "PGSERVICE": "remote"})
+        assert result.returncode == 0, result.stderr
+        result = TestE2eScriptSafety._run_helper('''
+psql() { exit 90; }
+e2e_create_database sippy_e2e "$SIPPY_DATABASE_DSN"
+''', {"SIPPY_DATABASE_DSN": f"postgresql://user:test@localhost:5432/postgres?{key}=remote"})
+        assert result.returncode == 1, result.stderr
+
+    @pytest.mark.parametrize("key", ["pass%77ord", "%70assword", "%73slpassword", "sslpass%77ord"])
+    def test_encoded_credential_keys_are_redacted(self, key):
+        credential = secrets.token_urlsafe(32)
+        result = TestE2eScriptSafety._run_helper(
+            'printf "%s\\n" "$TEST_LOG" | e2e_redact_logs',
+            {"TEST_LOG": f"postgresql://localhost/db?{key}={credential}&sslmode=disable"},
+        )
+        assert result.returncode == 0
+        assert result.stdout.strip() == f"postgresql://localhost/db?{key}=[redacted]&sslmode=disable"
+
     @pytest.mark.parametrize(
         "stage,status,expected,forbidden",
         [
@@ -1429,6 +1477,29 @@ status=$?
 
 
 class TestRedisProbe:
+    @pytest.mark.parametrize("url", ["redis://localhost/1?db=0", "redis://localhost/1?%64b=0"])
+    def test_explicit_query_options_fail_before_connecting(self, url):
+        import testenv
+
+        with mock.patch("testenv.socket.create_connection") as connect:
+            with pytest.raises(ValueError, match="query options"):
+                testenv.redis_ping(url)
+            connect.assert_not_called()
+
+    @pytest.mark.parametrize("failed_command", ["AUTH", "SELECT", "PING"])
+    def test_rejected_operation_is_named_without_redis_reply(self, failed_command):
+        import testenv
+
+        credential = secrets.token_urlsafe(32)
+        commands = ["AUTH", "SELECT", "PING"]
+        replies = b"+OK\r\n" * commands.index(failed_command) + f"-ERR {credential}\r\n".encode()
+        client, peer = socket.socketpair()
+        with peer, mock.patch("testenv.socket.create_connection", return_value=client):
+            peer.sendall(replies)
+            with pytest.raises(testenv.RedisCommandError, match=failed_command) as error:
+                testenv.redis_ping(f"redis://:{credential}@localhost/1")
+            assert credential not in str(error.value)
+
     @pytest.mark.parametrize(
         "url,responses,expected",
         [
@@ -1436,7 +1507,7 @@ class TestRedisProbe:
             ("redis://:a%40b@localhost/1", b"+OK\r\n+OK\r\n+PONG\r\n",
              [[b"AUTH", b"a@b"], [b"SELECT", b"1"], [b"PING"]]),
             ("rediss://alice:private@localhost/2", b"+OK\r\n+OK\r\n+PONG\r\n",
-             [[b"AUTH", b"alice", b"private"], [b"SELECT", b"2"], [b"PING"]]),
+             [[b"AUTH", b"private"], [b"SELECT", b"2"], [b"PING"]]),
         ],
     )
     def test_auth_database_and_tls(self, url, responses, expected):
@@ -1483,8 +1554,61 @@ class TestRedisProbe:
 
 
 class TestMakeTools:
+    def test_concurrent_make_calls_are_serialized(self, monkeypatch):
+        async def run():
+            monkeypatch.setattr(server, "_MAKE_PHASE_LOCK", asyncio.Lock())
+            started = asyncio.Event()
+            finish = asyncio.Event()
+            calls = []
+
+            async def phase(label, *args):
+                calls.append(label)
+                started.set()
+                await finish.wait()
+                return label
+
+            monkeypatch.setattr(server, "_run_make_phase_locked", phase)
+            first = asyncio.create_task(server.run_lint())
+            await started.wait()
+            second = asyncio.create_task(server.run_tests())
+            await asyncio.sleep(0)
+            assert calls == ["run_lint"]
+            finish.set()
+            assert await first == "run_lint"
+            assert await second == "run_tests"
+            assert calls == ["run_lint", "run_tests"]
+
+        asyncio.run(run())
+
+    @pytest.mark.parametrize("target,grace", [("e2e", 60), ("lint", 5), ("test", 5)])
+    def test_cancellation_uses_target_cleanup_grace(self, tmp_path, monkeypatch, target, grace):
+        async def run():
+            started = asyncio.Event()
+
+            async def wait():
+                started.set()
+                await asyncio.Event().wait()
+
+            proc = mock.Mock()
+            proc.wait = wait
+            create = mock.AsyncMock(return_value=proc)
+            cleanup = mock.AsyncMock()
+            monkeypatch.setattr(server.asyncio, "create_subprocess_exec", create)
+            monkeypatch.setattr(server, "_stop_make_process", cleanup)
+            monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
+            monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path / "artifacts"))
+            task = asyncio.create_task(server._run_make_phase(target, target, "phase.log", 0))
+            await started.wait()
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            cleanup.assert_awaited_once_with(proc, grace)
+
+        asyncio.run(run())
+
     @pytest.mark.parametrize("leader_ignores_term", [False, True])
-    def test_timeout_releases_resources_held_by_grandchildren(self, tmp_path, monkeypatch, leader_ignores_term):
+    @pytest.mark.parametrize("stop", ["timeout", "cancel"])
+    def test_stopping_releases_resources_held_by_grandchildren(self, tmp_path, monkeypatch, leader_ignores_term, stop):
         lock_path = tmp_path / "grandchild.lock"
         ready_path = tmp_path / "grandchild.pid"
         child = f'''
@@ -1514,8 +1638,19 @@ subprocess.Popen([sys.executable, "-c", {child!r}]).wait()
         monkeypatch.setenv("ARTIFACT_DIR", str(tmp_path / "artifacts"))
         monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
         try:
-            result = asyncio.run(server.run_lint(timeout_seconds=2))
-            assert "timed out" in result
+            async def run():
+                task = asyncio.create_task(server.run_lint(timeout_seconds=2 if stop == "timeout" else 30))
+                if stop == "cancel":
+                    deadline = time.monotonic() + 5
+                    while not ready_path.exists() and time.monotonic() < deadline:
+                        await asyncio.sleep(0.01)
+                    task.cancel()
+                    with pytest.raises(asyncio.CancelledError):
+                        await task
+                else:
+                    assert "timed out" in await task
+
+            asyncio.run(run())
             assert ready_path.exists(), "grandchild must acquire its resource before the timeout"
             with lock_path.open("w") as lock:
                 deadline = time.monotonic() + 2

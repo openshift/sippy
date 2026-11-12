@@ -12,7 +12,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
-from testenv import prepare_environment
+from testenv import default_database_dsn, prepare_environment, seed_database_dsn
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 _DEVCONTAINER_ENV = REPO_ROOT / ".devcontainer" / ".env"
@@ -24,6 +24,7 @@ mcp = FastMCP("sippy-dev")
 DEV_LOG_DIR = REPO_ROOT / "sippy-dev-logs"
 
 _MAX_TOOL_CHARS = 28000
+_MAKE_PHASE_LOCK = asyncio.Lock()
 
 
 def _ensure_dev_log_dir() -> None:
@@ -55,10 +56,7 @@ def _trim(s: str, max_len: int = _MAX_TOOL_CHARS) -> str:
 
 
 def _default_database_dsn() -> str:
-    return os.environ.get(
-        "SIPPY_DATABASE_DSN",
-        "postgresql://postgres:password@localhost:5432/postgres",
-    )
+    return default_database_dsn(os.environ)
 
 
 def _default_redis_url() -> str:
@@ -122,13 +120,7 @@ def _dsn_for_mode(mode: str) -> str:
             "SIPPY_PRODLIKE_DATABASE_DSN",
             "postgresql://postgres:password@localhost:5432/prodlike",
         )
-    return os.environ.get(
-        "SIPPY_SEED_DATABASE_DSN",
-        os.environ.get(
-            "SIPPY_DATABASE_DSN",
-            "postgresql://postgres:password@localhost:5432/postgres",
-        ),
-    )
+    return seed_database_dsn(os.environ)
 
 
 def _resolve_bigquery_creds(explicit: str | None) -> tuple[Path | None, str | None]:
@@ -698,6 +690,41 @@ async def _run_make_phase(
     timeout_seconds: int,
     env_extra: dict[str, str] | None = None,
 ) -> str:
+    """Serialize make targets that share logs, artifacts, listeners and services."""
+    async with _MAKE_PHASE_LOCK:
+        return await _run_make_phase_locked(
+            tool_label, make_target, log_filename, timeout_seconds, env_extra,
+        )
+
+
+async def _stop_make_process(proc: asyncio.subprocess.Process, grace_seconds: int) -> None:
+    """Give the whole session time to clean up, then kill and reap remaining members."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        await proc.wait()
+        return
+    deadline = asyncio.get_running_loop().time() + grace_seconds
+    while asyncio.get_running_loop().time() < deadline:
+        try:
+            os.killpg(proc.pid, 0)
+        except ProcessLookupError:
+            break
+        await asyncio.sleep(0.05)
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    await proc.wait()
+
+
+async def _run_make_phase_locked(
+    tool_label: str,
+    make_target: str,
+    log_filename: str,
+    timeout_seconds: int,
+    env_extra: dict[str, str] | None = None,
+) -> str:
     """Run ``make <target>``; log to ``sippy-dev-logs/<log_filename>``."""
     log_path = DEV_LOG_DIR / log_filename
     try:
@@ -724,21 +751,18 @@ async def _run_make_phase(
         )
         try:
             returncode = await asyncio.wait_for(proc.wait(), timeout=tout)
-        except asyncio.TimeoutError:
-            try:
-                os.killpg(proc.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-            try:
-                await asyncio.wait_for(proc.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                pass
-            # Descendants can outlive make, including those that ignore SIGTERM.
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            await proc.wait()
+        except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
+            cleanup = asyncio.create_task(_stop_make_process(proc, 60 if make_target == "e2e" else 5))
+            # Repeated cancellation must not release the lock while children live.
+            cancelled = isinstance(exc, asyncio.CancelledError)
+            while not cleanup.done():
+                try:
+                    await asyncio.shield(cleanup)
+                except asyncio.CancelledError:
+                    cancelled = True
+            await cleanup
+            if cancelled:
+                raise asyncio.CancelledError
             tail = _tail_file(log_path, 80)
             return (
                 f"{tool_label} timed out after {timeout_seconds}s. log: {log_path}\n"

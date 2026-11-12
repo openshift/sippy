@@ -7,6 +7,8 @@ applyTo: "**"
 
 Sources under **`.apm/`** (instructions, prompts, `apm.yml`, etc.) drive generated agent context. After editing those files, run **`make apm`** to regenerate **AGENTS.md**, **CLAUDE.md**, **GEMINI.md**, and the integrated copies under **`.agents/`**, **`.claude/`**, **`.codex/`**, **`.cursor/`**, **`.gemini/`**, and **`.opencode/`**. CI enforces freshness with **`make verify-apm`**.
 
+Both targets compile with **`--force-instructions`** so tracked root guidance, including **CLAUDE.md**, stays current even when per-client rules are also deployed.
+
 **Slash / agent commands:** content under **`.apm/skills/*/SKILL.md`** is the single source of truth. Each matching **`.apm/prompts/*.prompt.md`** file is a thin wrapper that preserves slash-command integration while pointing to its skill. **`apm install`** (part of **`make apm`**) deploys the skills and wrappers to editor targets (e.g. **`.claude/commands/`**, **`.claude/skills/`**, **`.agents/skills/`**). Do not add those generated paths by hand or installs will skip them as unmanaged duplicates.
 
 **Codex repository skills:** APM deploys the native skill bundle under **`.apm/skills/`** to **`.agents/skills/`** for Codex. Do not edit the deployed skills directly.
