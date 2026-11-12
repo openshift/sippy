@@ -236,11 +236,12 @@ fi
 # Force DEV_MODE off: callers such as hack/agentic_setup.sh may export DEV_MODE=1, which bypasses the
 # component report cache that triage e2e fixtures inject synthetic regressions into. e2e requests
 # already send X-Forwarded-User, so the mock user is not needed.
-exec {api_log_fd}> >(e2e_redact_logs > "$OUTPUT_DIR/e2e.log")
+# A fixed descriptor also works with macOS's system Bash 3.2.
+exec 3> >(e2e_redact_logs > "$OUTPUT_DIR/e2e.log")
 API_LOG_PID=$!
-DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" >&"$api_log_fd" 2>&1 &
+DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" >&3 2>&1 3>&- &
 CHILD_PID=$!
-exec {api_log_fd}>&-
+exec 3>&-
 
 wait_for_sippy || exit $?
 
