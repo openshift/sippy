@@ -20,13 +20,17 @@ Restore **prod-like** from a backup: **`scripts/restore_prodlike_db.sh`** or MCP
 
 ### Linting
 
-Run lint: `make lint`
+Run lint with the `sippy-dev` MCP `run_lint` tool (`make lint`).
 
 ### Testing
 
-Run unit tests: `make test`
+Run unit tests with the `sippy-dev` MCP `run_tests` tool (`make test`).
 
 This runs the Component Readiness Playwright BDD suite, then Go tests via gotestsum, sippy-ng Vitest tests, and mcp pytest.
+
+Run end-to-end tests with the `sippy-dev` MCP `run_e2e` tool (`make e2e`). BigQuery coverage is opt-in via `include_bigquery=true`.
+
+Use these MCP tools in both agentic solve and review phases. They prepare writable caches and artifact output and check prerequisites in the test subprocess. Preserve inherited service credentials and connection settings. Read the tool result and its log under `sippy-dev-logs/` before reporting the full target's status. If the tools are unavailable, follow `mcp/README.md` to configure `mcp/run.sh` with the setup environment and required permissions.
 
 Run only the Component Readiness browser tests: `make test-bdd`
 

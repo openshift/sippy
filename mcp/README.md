@@ -129,7 +129,7 @@ Agent-oriented shortcuts are defined in **`.apm/skills/`** and deployed by **`ma
 
 - `sippy-dev-migrate`, `sippy-dev-regression-cache`, `sippy-dev-serve`, `sippy-dev-frontend`
 - `sippy-dev-app` (backend + frontend)
-- `sippy-dev-tests` (order: `make lint` → `make test` → `make e2e`)
+- `sippy-dev-tests` (MCP tool order: `run_lint` → `run_tests` → `run_e2e`, executing the corresponding full make targets)
 - `sippy-generate-release-views` (create next-release Component Readiness views from an existing release)
 - `sippy-update-ga-release-views` (switch a newly GA release's views from `now` to `ga` dates)
 

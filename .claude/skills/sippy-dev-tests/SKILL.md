@@ -7,22 +7,14 @@ description: "Run lint, unit tests, and e2e in order (full local CI suite)"
 
 Run these three steps in order. Stop if any step fails.
 
-1. **Lint**: run directly:
+Use the `sippy-dev` MCP tools in both agentic solve and review phases. They run the full make targets with writable caches, artifact output, and prerequisite checks in the test subprocess.
 
-   ```bash
-   make lint
-   ```
+1. **Lint**: call `run_lint` (`make lint`). Read the result and `sippy-dev-logs/run_lint.log`.
 
-2. **Unit tests**: run directly:
+2. **Unit tests**: call `run_tests` (`make test`). This includes the Component Readiness Playwright BDD suite, Go tests, Vitest, and MCP pytest. Read the result and `sippy-dev-logs/run_tests.log`.
 
-   ```bash
-   make test
-   ```
+3. **E2e**: call `run_e2e` (`make e2e`). BigQuery coverage is skipped by default; pass `include_bigquery=true` only when that coverage is needed and credentials are configured. Read the result and `sippy-dev-logs/run_e2e.log`. E2e logs and coverage are retained under `ARTIFACT_DIR/e2e/` (default: `sippy-dev-logs/artifacts/e2e/`).
 
-3. **E2e**: run directly:
+E2e works on the host (starts dedicated PostgreSQL/Redis containers via Podman) and inside the devcontainer (creates a temporary `sippy_e2e` database on the existing PostgreSQL). Preserve inherited service credentials and connection options; do not replace authenticated settings with passwordless defaults.
 
-   ```bash
-   make e2e
-   ```
-
-   Works both on the host (starts its own PostgreSQL/Redis containers via Podman) and inside the devcontainer (creates a temporary `sippy_e2e` database on the existing PostgreSQL).
+If tools are unavailable or prerequisites fail, follow `mcp/README.md` to configure `mcp/run.sh` with the setup environment and required permissions. After correcting the setup, rerun the failed step before continuing. Report failed or unrun targets explicitly; passing individual components does not mean the full target passed.
