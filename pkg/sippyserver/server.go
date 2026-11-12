@@ -1157,7 +1157,7 @@ func (s *Server) jsonJobVariants(w http.ResponseWriter, req *http.Request) {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	reqOptions := reqopts.RequestOptions{DataSource: dataSource}
+	reqOptions := reqopts.RequestOptions{ViewDataSourceOptions: reqopts.ViewDataSourceOptions{DataSource: dataSource}}
 	outputs, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying job variants:", len(errs))
@@ -1246,7 +1246,7 @@ func (s *Server) parseCRRequest(req *http.Request) (reqopts.RequestOptions, []si
 	if err := validateCRDataSource(dataSource); err != nil {
 		return reqopts.RequestOptions{}, nil, nil, err
 	}
-	variantReqOptions := reqopts.RequestOptions{DataSource: dataSource}
+	variantReqOptions := reqopts.RequestOptions{ViewDataSourceOptions: reqopts.ViewDataSourceOptions{DataSource: dataSource}}
 	allJobVariants, errs := componentreadiness.GetJobVariants(req.Context(), s.crDataProvider, variantReqOptions)
 	if len(errs) > 0 {
 		return reqopts.RequestOptions{}, nil, nil, fmt.Errorf("failed to get job variants: %v", errs)

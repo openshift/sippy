@@ -56,11 +56,10 @@ var (
 	defaultDBGroupByVariants        = sets.New(strings.Split(DefaultDBGroupBy, ",")...)
 	defaultComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			VariantOption: reqopts.Variants{
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
-			},
-			AdvancedOption: defaultAdvancedOption,
+			}, AdvancedOption: defaultAdvancedOption},
 		},
 	}
 	flakeFailAdvancedOption = reqopts.Advanced{
@@ -71,72 +70,67 @@ var (
 	}
 	flakeFailComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			VariantOption: reqopts.Variants{
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
-			},
-			AdvancedOption: flakeFailAdvancedOption,
+			}, AdvancedOption: flakeFailAdvancedOption},
 		},
 	}
 	installerColumnGroupByVariants           = sets.New("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			VariantOption: reqopts.Variants{
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 				ColumnGroupBy: installerColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
-			},
-			AdvancedOption: defaultAdvancedOption,
+			}, AdvancedOption: defaultAdvancedOption},
 		},
 	}
 	componentPageGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.TestIdentification{
+			TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{
 				{
 					Component: "component 2",
 				},
-			},
-			VariantOption: reqopts.Variants{
+			}},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
-			},
-			AdvancedOption: defaultAdvancedOption,
+			}, AdvancedOption: defaultAdvancedOption},
 		},
 	}
 	capabilityPageGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.TestIdentification{
+			TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{
 				{
 					Component:  "component 2",
 					Capability: "cap22",
 				},
-			},
-			VariantOption: reqopts.Variants{
+			}},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
-			},
-			AdvancedOption: defaultAdvancedOption,
+			}, AdvancedOption: defaultAdvancedOption},
 		},
 	}
 	testPageGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.TestIdentification{
+			TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{
 				{
 					Component:  "component 2",
 					Capability: "cap22",
 					TestID:     "2",
 				},
-			},
-			IncludeAllTests: true,
-			VariantOption: reqopts.Variants{
+			}},
+			ReportContentOptions: reqopts.ReportContentOptions{IncludeAllTests: true},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
-			},
-			AdvancedOption: defaultAdvancedOption,
+			}, AdvancedOption: defaultAdvancedOption},
 		},
 	}
 	testDetailsGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.TestIdentification{
+			TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{
 				{
 					Component:  "component 1",
 					Capability: "cap11",
@@ -147,12 +141,11 @@ var (
 						"Network":      "ovn",
 					},
 				},
-			},
-			VariantOption: reqopts.Variants{
+			}},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
-			},
-			AdvancedOption: defaultAdvancedOption,
+			}, AdvancedOption: defaultAdvancedOption},
 		},
 	}
 )
@@ -819,14 +812,13 @@ func TestGenerateComponentReport(t *testing.T) {
 			name: "top page test confidence 90 result in regression",
 			generator: ComponentReportGenerator{
 				ReqOptions: reqopts.RequestOptions{
-					VariantOption: reqopts.Variants{
+					AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 						ColumnGroupBy: defaultColumnGroupByVariants,
-					},
-					AdvancedOption: reqopts.Advanced{
+					}, AdvancedOption: reqopts.Advanced{
 						Confidence:     90,
 						PityFactor:     5,
 						MinimumFailure: 3,
-					},
+					}},
 				},
 			},
 			baseStatus: map[string]crstatus.TestStatus{
@@ -916,14 +908,13 @@ func TestGenerateComponentReport(t *testing.T) {
 			name: "top page test confidence 90 pity 10 result in no regression",
 			generator: ComponentReportGenerator{
 				ReqOptions: reqopts.RequestOptions{
-					VariantOption: reqopts.Variants{
+					AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 						ColumnGroupBy: defaultColumnGroupByVariants,
-					},
-					AdvancedOption: reqopts.Advanced{
+					}, AdvancedOption: reqopts.Advanced{
 						Confidence:     90,
 						PityFactor:     10,
 						MinimumFailure: 3,
-					},
+					}},
 				},
 			},
 			baseStatus: map[string]crstatus.TestStatus{
@@ -1575,28 +1566,32 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		for _, testStats := range tc.baseRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
 				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob:      testStats.job,
-					ProwJobRunID: fmt.Sprintf("base-%s-s-%d", testStats.job, i),
-					Count: crtest.Count{
-						TotalCount:   1,
-						SuccessCount: 1,
+					JobRunIdentification: crstatus.JobRunIdentification{
+						ProwJob:      testStats.job,
+						ProwJobRunID: fmt.Sprintf("base-%s-s-%d", testStats.job, i),
+					},
+					TestJobRunCounts: crstatus.TestJobRunCounts{
+						Count: crtest.Count{TotalCount: 1, SuccessCount: 1},
 					},
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
 				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob:      testStats.job,
-					ProwJobRunID: fmt.Sprintf("base-%s-f-%d", testStats.job, i),
-					Count:        crtest.Count{TotalCount: 1},
+					JobRunIdentification: crstatus.JobRunIdentification{
+						ProwJob:      testStats.job,
+						ProwJobRunID: fmt.Sprintf("base-%s-f-%d", testStats.job, i),
+					},
+					TestJobRunCounts: crstatus.TestJobRunCounts{Count: crtest.Count{TotalCount: 1}},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
 				rawBaseStats[testStats.job] = append(rawBaseStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob:      testStats.job,
-					ProwJobRunID: fmt.Sprintf("base-%s-fl-%d", testStats.job, i),
-					Count: crtest.Count{
-						TotalCount: 1,
-						FlakeCount: 1,
+					JobRunIdentification: crstatus.JobRunIdentification{
+						ProwJob:      testStats.job,
+						ProwJobRunID: fmt.Sprintf("base-%s-fl-%d", testStats.job, i),
+					},
+					TestJobRunCounts: crstatus.TestJobRunCounts{
+						Count: crtest.Count{TotalCount: 1, FlakeCount: 1},
 					},
 				})
 			}
@@ -1604,28 +1599,32 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		for _, testStats := range tc.sampleRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
 				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob:      testStats.job,
-					ProwJobRunID: fmt.Sprintf("sample-%s-s-%d", testStats.job, i),
-					Count: crtest.Count{
-						TotalCount:   1,
-						SuccessCount: 1,
+					JobRunIdentification: crstatus.JobRunIdentification{
+						ProwJob:      testStats.job,
+						ProwJobRunID: fmt.Sprintf("sample-%s-s-%d", testStats.job, i),
+					},
+					TestJobRunCounts: crstatus.TestJobRunCounts{
+						Count: crtest.Count{TotalCount: 1, SuccessCount: 1},
 					},
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
 				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob:      testStats.job,
-					ProwJobRunID: fmt.Sprintf("sample-%s-f-%d", testStats.job, i),
-					Count:        crtest.Count{TotalCount: 1},
+					JobRunIdentification: crstatus.JobRunIdentification{
+						ProwJob:      testStats.job,
+						ProwJobRunID: fmt.Sprintf("sample-%s-f-%d", testStats.job, i),
+					},
+					TestJobRunCounts: crstatus.TestJobRunCounts{Count: crtest.Count{TotalCount: 1}},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
 				rawSampleStats[testStats.job] = append(rawSampleStats[testStats.job], crstatus.TestJobRunRows{
-					ProwJob:      testStats.job,
-					ProwJobRunID: fmt.Sprintf("sample-%s-fl-%d", testStats.job, i),
-					Count: crtest.Count{
-						TotalCount: 1,
-						FlakeCount: 1,
+					JobRunIdentification: crstatus.JobRunIdentification{
+						ProwJob:      testStats.job,
+						ProwJobRunID: fmt.Sprintf("sample-%s-fl-%d", testStats.job, i),
+					},
+					TestJobRunCounts: crstatus.TestJobRunCounts{
+						Count: crtest.Count{TotalCount: 1, FlakeCount: 1},
 					},
 				})
 			}
@@ -1927,6 +1926,52 @@ func TestGetNewCellStatusOrderIndependent(t *testing.T) {
 // TestCopyIncludeVariantsAndRemoveOverrides moved to dataprovider/bigquery package
 // where the function now lives.
 
+func TestGetCacheKeyWireCompatibility(t *testing.T) {
+	start := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{Name: "4.20", Start: start}, SampleRelease: reqopts.Release{Name: "4.21", Start: start.AddDate(0, 0, -7), End: start}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
+			ColumnGroupBy:   sets.New("Platform"),
+			DBGroupBy:       sets.New("Architecture"),
+			IncludeVariants: map[string][]string{"Platform": {"aws"}},
+		}, AdvancedOption: reqopts.Advanced{Confidence: 95}},
+		TestOptions:           reqopts.TestOptions{TestFilters: reqopts.TestFilters{Capabilities: []string{"Networking"}}, TestIDOptions: []reqopts.TestIdentification{{TestID: "test-id"}}},
+		ReportContentOptions:  reqopts.ReportContentOptions{IncludeAllTests: true},
+		ViewDataSourceOptions: reqopts.ViewDataSourceOptions{DataSource: reqopts.DataSourcePostgres},
+		JobRunOptions: reqopts.JobRunOptions{SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{{
+			Name:            "30d",
+			Release:         reqopts.Release{Name: "4.21", Start: start.AddDate(0, 0, -30), End: start},
+			IncludeVariants: map[string][]string{"JobTier": {"spotcheck-30d"}},
+		}}},
+	}}
+
+	key, err := json.Marshal(generator.GetCacheKey())
+	assert.NoError(t, err)
+	assert.JSONEq(t, `{
+		"ReportModified": null,
+		"BaseRelease": {"release": "4.20", "start": "2026-01-02T03:04:05Z", "end": "0001-01-01T00:00:00Z"},
+		"SampleRelease": {"release": "4.21", "start": "2025-12-26T03:04:05Z", "end": "2026-01-02T03:04:05Z"},
+		"VariantOption": {
+			"column_group_by": {"Platform": {}}, "db_group_by": {"Architecture": {}},
+			"include_variants": {"Platform": ["aws"]}
+		},
+		"AdvancedOption": {
+			"minimum_failure": 0, "confidence": 95, "pity_factor": 0,
+			"pass_rate_required_new_tests": 0, "pass_rate_required_all_tests": 0,
+			"ignore_missing": false, "ignore_disruption": false, "flake_as_failure": false,
+			"include_multi_release_analysis": false
+		},
+		"TestFilters": {"capabilities": ["Networking"]},
+		"TestIDOptions": [{"test_id": "test-id"}],
+		"include_all_tests": true,
+		"DataSource": "postgres",
+		"spot_check_job_samples": [{
+			"name": "30d", "release": "4.21", "start": "2025-12-03T03:04:05Z", "end": "2026-01-02T03:04:05Z",
+			"include_variants": {"JobTier": ["spotcheck-30d"]}
+		}]
+	}`, string(key))
+}
+
 func TestGetCacheKeySpotCheckSamples(t *testing.T) {
 	now := time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC)
 	sample := func(name string, days int, variants map[string][]string) reqopts.SpotCheckJobSampleOpts {
@@ -1937,7 +1982,7 @@ func TestGetCacheKeySpotCheckSamples(t *testing.T) {
 		}
 	}
 	keyFor := func(samples ...reqopts.SpotCheckJobSampleOpts) string {
-		generator := &ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{SpotCheckJobSamples: samples}}
+		generator := &ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{JobRunOptions: reqopts.JobRunOptions{SpotCheckJobSamples: samples}}}
 		key, err := json.Marshal(generator.GetCacheKey())
 		assert.NoError(t, err)
 		return string(key)

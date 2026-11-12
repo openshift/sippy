@@ -2,10 +2,14 @@ package bigquery
 
 import (
 	"fmt"
+	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -13,6 +17,74 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
+
+func TestDeserializeRowToJobRunTestReportStatus(t *testing.T) {
+	schema := bigquery.Schema{
+		{Name: "total_count"},
+		{Name: "success_count"},
+		{Name: "flake_count"},
+		{Name: "prowjob_name"},
+		{Name: "prowjob_run_id"},
+		{Name: "prowjob_url"},
+		{Name: "prowjob_start"},
+		{Name: "test_id"},
+		{Name: "test_name"},
+		{Name: "jira_component"},
+		{Name: "jira_component_id"},
+		{Name: "job_labels"},
+		{Name: "job_run_test_failure_count"},
+		{Name: "lifecycle"},
+		{Name: "variant_platform"},
+		{Name: "variant_architecture"},
+	}
+	row := []bigquery.Value{
+		int64(1),
+		int64(1),
+		int64(0),
+		"periodic-job",
+		"run-123",
+		"https://prow.example.test/view/gs/run-123",
+		civil.DateTime{Date: civil.Date{Year: 2026, Month: time.November, Day: 25}, Time: civil.Time{Hour: 15, Minute: 4, Second: 5}},
+		"test-id",
+		"test name",
+		"Cluster Version Operator",
+		big.NewRat(9, 2),
+		"periodic,aws",
+		int64(4),
+		"blocking",
+		"aws",
+		nil,
+	}
+
+	actual, err := deserializeRowToJobRunTestReportStatus(row, schema)
+	require.NoError(t, err)
+	assert.Equal(t, crstatus.TestJobRunRows{
+		TestIdentification: crstatus.TestIdentification{
+			TestKey: crtest.KeyWithVariants{
+				TestID:   "test-id",
+				Variants: map[string]string{"platform": "aws"},
+			},
+			TestKeyStr: "test-id\x00platform:aws",
+			TestName:   "test name",
+		},
+		JobRunIdentification: crstatus.JobRunIdentification{
+			ProwJob:      "periodic-job",
+			ProwJobRunID: "run-123",
+			ProwJobURL:   "https://prow.example.test/view/gs/run-123",
+			StartTime:    time.Date(2026, time.November, 25, 15, 4, 5, 0, time.UTC),
+		},
+		TestJobRunCounts: crstatus.TestJobRunCounts{
+			Count: crtest.Count{TotalCount: 1, SuccessCount: 1},
+		},
+		TestJobRunMetadata: crstatus.TestJobRunMetadata{
+			JiraComponent:   "Cluster Version Operator",
+			JiraComponentID: big.NewRat(9, 2),
+			JobLabels:       []string{"periodic", "aws"},
+			TestFailures:    4,
+			Lifecycle:       "blocking",
+		},
+	}, actual)
+}
 
 func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 	mockClient := &bqcachedclient.Client{
@@ -27,13 +99,15 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 	}
 
 	baseReqOptions := reqopts.RequestOptions{
-		VariantOption: reqopts.Variants{
-			ColumnGroupBy:   sets.New("Platform"),
-			DBGroupBy:       sets.New("Network"),
-			IncludeVariants: map[string][]string{},
-		},
-		AdvancedOption: reqopts.Advanced{
-			IgnoreDisruption: true,
+		AnalysisOptions: reqopts.AnalysisOptions{
+			VariantOption: reqopts.Variants{
+				ColumnGroupBy:   sets.New("Platform"),
+				DBGroupBy:       sets.New("Network"),
+				IncludeVariants: map[string][]string{},
+			},
+			AdvancedOption: reqopts.Advanced{
+				IgnoreDisruption: true,
+			},
 		},
 	}
 
@@ -174,9 +248,13 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 func TestBuildTestDetailsQuery_LifecycleFiltering(t *testing.T) {
 	client := &bqcachedclient.Client{Dataset: "test_dataset"}
 	reqOptions := reqopts.RequestOptions{
-		TestFilters: reqopts.TestFilters{Lifecycles: []string{"blocking"}},
-		SampleRelease: reqopts.Release{
-			Name: "4.20",
+		ReleaseOptions: reqopts.ReleaseOptions{
+			SampleRelease: reqopts.Release{
+				Name: "4.20",
+			},
+		},
+		TestOptions: reqopts.TestOptions{
+			TestFilters: reqopts.TestFilters{Lifecycles: []string{"blocking"}},
 		},
 	}
 	testIDOptions := []reqopts.TestIdentification{{TestID: "test-id"}}
@@ -307,13 +385,15 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 	}
 
 	reqOptions := reqopts.RequestOptions{
-		VariantOption: reqopts.Variants{
-			ColumnGroupBy:   sets.New("Platform"),
-			DBGroupBy:       sets.New[string](),
-			IncludeVariants: map[string][]string{},
-		},
-		AdvancedOption: reqopts.Advanced{
-			KeyTestNames: []string{"install should succeed: overall"},
+		AnalysisOptions: reqopts.AnalysisOptions{
+			VariantOption: reqopts.Variants{
+				ColumnGroupBy:   sets.New("Platform"),
+				DBGroupBy:       sets.New[string](),
+				IncludeVariants: map[string][]string{},
+			},
+			AdvancedOption: reqopts.Advanced{
+				KeyTestNames: []string{"install should succeed: overall"},
+			},
 		},
 	}
 
@@ -384,12 +464,14 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 	}
 
 	baseReqOptions := reqopts.RequestOptions{
-		VariantOption: reqopts.Variants{
-			ColumnGroupBy:   sets.New("Platform"),
-			DBGroupBy:       sets.New[string](),
-			IncludeVariants: map[string][]string{},
+		AnalysisOptions: reqopts.AnalysisOptions{
+			VariantOption: reqopts.Variants{
+				ColumnGroupBy:   sets.New("Platform"),
+				DBGroupBy:       sets.New[string](),
+				IncludeVariants: map[string][]string{},
+			},
+			AdvancedOption: reqopts.Advanced{},
 		},
-		AdvancedOption: reqopts.Advanced{},
 	}
 
 	// Query without key tests

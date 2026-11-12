@@ -49,8 +49,10 @@ type TestJobRunStatuses struct {
 // TestDetailsSummary is a per-test, per-job summary with pre-computed counts
 // and optional individual run details.
 type TestDetailsSummary struct {
-	TestKey         crtest.KeyWithVariants
-	TestKeyStr      string
+	TestKey    crtest.KeyWithVariants
+	TestKeyStr string
+	// ProwJob is the stored Prow job name for regular detail summaries. Spot-check
+	// producers use the normalized job name, matching their map key.
 	ProwJob         string
 	Stats           crtest.Stats
 	JobRuns         []JobRunDetail `json:",omitempty"`
@@ -70,22 +72,45 @@ type JobRunDetail struct {
 	TestFailures int
 }
 
-// TestJobRunRows are the per job run rows from a test details report
-// indicating if the test passed or failed.
-type TestJobRunRows struct {
-	TestKey      crtest.KeyWithVariants `json:"test_key"`
-	TestKeyStr   string                 `json:"-"` // transient field so we dont have to keep recalculating
-	TestName     string                 `bigquery:"test_name"`
-	ProwJob      string                 `bigquery:"prowjob_name"`
-	ProwJobRunID string                 `bigquery:"prowjob_run_id"`
-	ProwJobURL   string                 `bigquery:"prowjob_url"`
-	StartTime    time.Time              `bigquery:"prowjob_start"`
+// TestIdentification identifies the test represented by a detail row.
+type TestIdentification struct {
+	TestKey    crtest.KeyWithVariants `json:"test_key"`
+	TestKeyStr string                 `json:"-"` // transient field so we dont have to keep recalculating
+	TestName   string                 `bigquery:"test_name"`
+}
+
+// JobRunIdentification identifies the Prow run represented by a detail row.
+type JobRunIdentification struct {
+	ProwJob      string    `bigquery:"prowjob_name"`
+	ProwJobRunID string    `bigquery:"prowjob_run_id"`
+	ProwJobURL   string    `bigquery:"prowjob_url"`
+	StartTime    time.Time `bigquery:"prowjob_start"`
+}
+
+// TestJobRunCounts contains display counts and the optional exclusive summary counts.
+type TestJobRunCounts struct {
 	crtest.Count
+	// StatsCount keeps mutually exclusive pass, failure, and flake counts for
+	// detail summaries when the per-run display Count projects flakes as passes.
+	StatsCount *crtest.Count `json:"-" bigquery:"-"`
+}
+
+// TestJobRunMetadata holds the annotations attached to a test result detail row.
+type TestJobRunMetadata struct {
 	JiraComponent   string   `bigquery:"jira_component"`
 	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
 	JobLabels       []string `bigquery:"-" json:"job_labels,omitempty"`
 	TestFailures    int      `bigquery:"-" json:"test_failures"`
 	Lifecycle       string   `bigquery:"lifecycle"`
+}
+
+// TestJobRunRows are the per job run rows from a test details report
+// indicating if the test passed or failed.
+type TestJobRunRows struct {
+	TestIdentification
+	JobRunIdentification
+	TestJobRunCounts
+	TestJobRunMetadata
 }
 
 // JobVariant defines a variant and the possible values.

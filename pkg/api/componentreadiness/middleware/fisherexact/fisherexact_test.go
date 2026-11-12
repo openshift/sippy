@@ -181,7 +181,7 @@ func TestFisherExactAnalyze(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := NewFisherExactMiddleware(reqopts.RequestOptions{
-				AdvancedOption: tt.opts,
+				AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: tt.opts},
 			})
 
 			handled, err := mw.Analyze(crtest.Identification{}, tt.inputStats)

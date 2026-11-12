@@ -31,7 +31,7 @@ func TestPreTestDetailsAnalysisUsesDBGroupByStatusKey(t *testing.T) {
 	}
 	middleware := &ReleaseFallback{
 		reqOptions: reqopts.RequestOptions{
-			VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform", "Network")},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform", "Network")}},
 		},
 		baseOverrideStatus: map[string]map[string][]crstatus.TestDetailsSummary{
 			groupedKey.Encode(): baseOverrideStatus,
@@ -45,10 +45,10 @@ func TestPreTestDetailsAnalysisUsesDBGroupByStatusKey(t *testing.T) {
 
 func Test_PreAnalysis(t *testing.T) {
 	reqOpts419 := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name: "4.19",
-		},
-		AdvancedOption: reqopts.Advanced{IncludeMultiReleaseAnalysis: true},
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{IncludeMultiReleaseAnalysis: true}},
 	}
 	test1ID := "test1ID"
 	test1Variants := map[string]string{

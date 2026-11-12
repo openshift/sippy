@@ -84,10 +84,10 @@ func TestNewTestPassRateAnalyze(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := NewNewTestPassRateMiddleware(reqopts.RequestOptions{
-				AdvancedOption: reqopts.Advanced{
+				AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{
 					PassRateRequiredNewTests: tt.passRateNewTests,
 					PassRateRequiredAllTests: tt.passRateAllTests,
-				},
+				}},
 			})
 
 			testStats := &testdetails.TestComparison{

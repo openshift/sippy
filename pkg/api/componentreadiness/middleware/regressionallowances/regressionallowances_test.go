@@ -50,12 +50,14 @@ func Test_PreAnalysis(t *testing.T) {
 		return nil
 	}
 	reqOpts419 := reqopts.RequestOptions{
-		SampleRelease: reqopts.Release{Name: "4.19"},
-		BaseRelease:   reqopts.Release{Name: "4.18"},
-		AdvancedOption: reqopts.Advanced{
+		ReleaseOptions: reqopts.ReleaseOptions{
+			SampleRelease: reqopts.Release{Name: "4.19"},
+			BaseRelease:   reqopts.Release{Name: "4.18"},
+		},
+		AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{
 			IncludeMultiReleaseAnalysis: true,
 			PassRateRequiredNewTests:    95,
-		},
+		}},
 	}
 	reqOpts419Fallback := reqOpts419
 	reqOpts419Fallback.TestIDOptions = []reqopts.TestIdentification{{BaseOverrideRelease: "4.17"}}

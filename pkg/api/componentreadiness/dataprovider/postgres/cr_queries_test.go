@@ -19,54 +19,54 @@ func TestShouldUseAllTestBranches(t *testing.T) {
 		{
 			name: "normalized empty test identification",
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{}},
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{}}},
 			},
 		},
 		{
 			name: "include all tests",
 			reqOptions: reqopts.RequestOptions{
-				IncludeAllTests: true,
+				ReportContentOptions: reqopts.ReportContentOptions{IncludeAllTests: true},
 			},
 			want: true,
 		},
 		{
 			name: "component drill-down",
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd"}},
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd"}}},
 			},
 			want: true,
 		},
 		{
 			name: "capability drill-down",
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{Capability: "Quorum"}},
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{Capability: "Quorum"}}},
 			},
 			want: true,
 		},
 		{
 			name: "component and capability drill-down",
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd", Capability: "Quorum"}},
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd", Capability: "Quorum"}}},
 			},
 			want: true,
 		},
 		{
 			name: "exact test request",
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{TestID: "test-id"}},
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: "test-id"}}},
 			},
 		},
 		{
 			name: "scoped exact test request",
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd", Capability: "Quorum", TestID: "test-id"}},
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd", Capability: "Quorum", TestID: "test-id"}}},
 			},
 		},
 		{
 			name: "include all exact test request",
 			reqOptions: reqopts.RequestOptions{
-				IncludeAllTests: true,
-				TestIDOptions:   []reqopts.TestIdentification{{Component: "Etcd", Capability: "Quorum", TestID: "test-id"}},
+				ReportContentOptions: reqopts.ReportContentOptions{IncludeAllTests: true},
+				TestOptions:          reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{Component: "Etcd", Capability: "Quorum", TestID: "test-id"}}},
 			},
 			want: true,
 		},

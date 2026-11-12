@@ -2,321 +2,165 @@ package gateststatus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/stdlib"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-// GATestStatusLoader populates prow_ga_raw_test_data for releases that have reached GA.
-//
-// For each GA release, it queries BigQuery once for all configured windows
-// and persists the raw results in prow_ga_raw_test_data. This runs only when
-// the raw data is missing or the GA date changed, or when forced.
-// Aggregation happens at query time in the Component Readiness provider.
+// GATestStatusLoader snapshots eligible PostgreSQL Prow test results at GA.
 type GATestStatusLoader struct {
 	ctx      context.Context
 	dbc      *db.DB
-	bqClient *bqcachedclient.Client
 	force    bool
 	releases []string
 	errs     []error
 }
 
-func New(ctx context.Context, dbc *db.DB, bqClient *bqcachedclient.Client, force bool, releases []string) *GATestStatusLoader {
-	return &GATestStatusLoader{
-		ctx:      ctx,
-		dbc:      dbc,
-		bqClient: bqClient,
-		force:    force,
-		releases: releases,
-	}
+// New constructs the GA snapshot loader. Force permits an explicit rebuild of
+// restored historical partitions as well as refreshing current snapshots.
+func New(ctx context.Context, dbc *db.DB, force bool, releases []string) *GATestStatusLoader {
+	return &GATestStatusLoader{ctx: ctx, dbc: dbc, force: force, releases: releases}
 }
 
 func (l *GATestStatusLoader) Name() string    { return "ga-test-status" }
 func (l *GATestStatusLoader) Errors() []error { return l.errs }
 
+// gaSnapshotCutoff returns the latest GA date eligible at the given time.
+func gaSnapshotCutoff(now time.Time) civil.Date {
+	return civil.DateOf(now.UTC()).AddDays(-3)
+}
+
 func (l *GATestStatusLoader) Load() {
-	start := time.Now()
-
-	allReleases, err := l.gaReleases()
-	if err != nil {
-		l.errs = append(l.errs, err)
+	var releases []models.ReleaseDefinition
+	now := time.Now().UTC()
+	cutoff := now.AddDate(0, 0, -db.DefaultPartitionRetentionDays).Truncate(24 * time.Hour)
+	q := l.dbc.DB.WithContext(l.ctx).Where("ga_date <= ?", gaSnapshotCutoff(now))
+	if len(l.releases) != 0 {
+		q = q.Where("release IN ?", l.releases)
+	}
+	if err := q.Find(&releases).Error; err != nil {
+		l.errs = append(l.errs, fmt.Errorf("querying GA releases: %w", err))
 		return
 	}
-	if len(allReleases) == 0 {
-		log.Info("ga-test-status: no GA releases found, skipping")
-		return
-	}
-
-	loaded := 0
-	for _, rel := range allReleases {
-		if rel.GADate == nil {
-			l.errs = append(l.errs, fmt.Errorf("release %s has no GA date", rel.Release))
+	for _, release := range releases {
+		if release.GADate == nil {
 			continue
 		}
-		gaDate := *rel.GADate
-		if !l.force && rel.LoadedGADate != nil && *rel.LoadedGADate == gaDate {
-			log.WithField("release", rel.Release).Debug("ga-test-status: already loaded, skipping")
+		if !l.force && release.LoadedGADate != nil && *release.LoadedGADate == *release.GADate {
 			continue
 		}
-		if err := l.loadRelease(rel.Release, gaDate); err != nil {
-			l.errs = append(l.errs, fmt.Errorf("release %s: %w", rel.Release, err))
-		} else {
-			loaded++
+		start := utils.GAWindowStart(*release.GADate, 90).In(time.UTC)
+		// Cleanup can remove the partition on the cutoff day.
+		expired := !start.After(cutoff)
+		if expired && !l.force {
+			log.WithFields(log.Fields{"release": release.Release, "window_start": start, "retention_cutoff": cutoff}).Info("skipping GA snapshot; raw window is outside retention")
+			continue
+		}
+		if err := l.loadRelease(release.Release, *release.GADate, start); err != nil {
+			if errors.Is(err, db.ErrGARawWindowIncomplete) {
+				if expired {
+					log.WithFields(log.Fields{"release": release.Release, "window_start": start, "retention_cutoff": cutoff}).Info("skipping GA snapshot; expired raw window is incomplete")
+					continue
+				}
+				if release.LoadedGADate != nil && *release.LoadedGADate == *release.GADate {
+					log.WithField("release", release.Release).Info("preserving GA snapshot; raw window is incomplete")
+					continue
+				}
+			}
+			l.errs = append(l.errs, fmt.Errorf("release %s: %w", release.Release, err))
 		}
 	}
-
-	log.WithField("elapsed", time.Since(start)).
-		WithField("loaded", loaded).
-		Info("ga-test-status: load complete")
 }
 
-func (l *GATestStatusLoader) loadRelease(release string, gaDate civil.Date) error {
-	rLog := log.WithField("release", release)
-	gaEnd := utils.GAWindowEnd(gaDate)
-
-	var windows []releaseWindow
-	for _, windowDays := range utils.GAWindows {
-		windows = append(windows, releaseWindow{
-			Release:    release,
-			WindowDays: int64(windowDays),
-			StartDate:  utils.GAWindowStart(gaDate, windowDays),
-			EndDate:    gaEnd,
-		})
+func (l *GATestStatusLoader) loadRelease(release string, gaDate civil.Date, start time.Time) error {
+	end := utils.GAWindowEnd(gaDate).In(time.UTC)
+	if err := l.dbc.DB.WithContext(l.ctx).Transaction(func(tx *gorm.DB) error {
+		if err := validateGARawData(tx, release, gaDate, start, end); err != nil {
+			return err
+		}
+		if err := reaggregateGASnapshot(tx, release, gaDate, end); err != nil {
+			return err
+		}
+		return recordGASnapshotLoaded(tx, release, gaDate)
+	}); err != nil {
+		return err
 	}
-
-	bqStart := time.Now()
-	rLog.Info("ga-test-status: fetching all windows from BigQuery")
-	rows, err := l.fetchFromBigQuery(windows)
-	if err != nil {
-		return fmt.Errorf("fetching from BigQuery: %w", err)
-	}
-	rLog.WithField("bq_rows", len(rows)).
-		WithField("bq_elapsed", time.Since(bqStart)).
-		Info("ga-test-status: fetched from BigQuery")
-
-	pgStart := time.Now()
-	if err := l.persist(release, gaDate, rows); err != nil {
-		return fmt.Errorf("persisting: %w", err)
-	}
-	rLog.WithField("pg_elapsed", time.Since(pgStart)).
-		Info("ga-test-status: persisted to Postgres")
-
+	log.WithField("release", release).Info("GA snapshot refreshed from PostgreSQL")
 	return nil
 }
 
-func (l *GATestStatusLoader) persist(release string, gaDate civil.Date, rows []stagingRow) error {
-	sqlDB, err := l.dbc.DB.DB()
-	if err != nil {
-		return fmt.Errorf("getting sql.DB: %w", err)
+// validateGARawData prevents a partial raw window from replacing an existing snapshot.
+func validateGARawData(tx *gorm.DB, release string, gaDate civil.Date, start, end time.Time) error {
+	var rd models.ReleaseDefinition
+	if err := tx.Where("release = ?", release).First(&rd).Error; err != nil {
+		return fmt.Errorf("reading GA release: %w", err)
 	}
-	conn, err := stdlib.AcquireConn(sqlDB)
-	if err != nil {
-		return fmt.Errorf("acquiring pgx conn: %w", err)
+	if rd.GADate == nil || *rd.GADate != gaDate {
+		return fmt.Errorf("GA date changed during refresh")
 	}
-	defer func() {
-		if releaseErr := stdlib.ReleaseConn(sqlDB, conn); releaseErr != nil {
-			log.WithError(releaseErr).Error("failed to release pgx conn")
-		}
-	}()
-
-	if len(rows) > 0 {
-		copyStart := time.Now()
-		cleanup, err := db.CopyToTempTable(l.ctx, conn, "tmp_ga_raw", rows, tempCols)
-		if err != nil {
-			return fmt.Errorf("copying to temp table: %w", err)
-		}
-		defer cleanup()
-		log.WithField("rows", len(rows)).
-			WithField("elapsed", time.Since(copyStart)).
-			Info("ga-test-status: copied to temp table")
+	if err := db.CheckGARawWindow(tx, release, start, end); err != nil {
+		return err
 	}
-
-	tx, err := conn.Begin(l.ctx)
-	if err != nil {
-		return fmt.Errorf("beginning transaction: %w", err)
+	var hasRows bool
+	if err := tx.Raw(`SELECT EXISTS (SELECT 1 FROM prow_job_run_tests
+        WHERE prow_job_run_release = ? AND prow_job_run_timestamp >= ? AND prow_job_run_timestamp < ? AND deleted_at IS NULL)`, release, start, end).Scan(&hasRows).Error; err != nil {
+		return fmt.Errorf("checking raw rows: %w", err)
 	}
-	defer func() {
-		if rollbackErr := tx.Rollback(l.ctx); rollbackErr != nil && rollbackErr != pgx.ErrTxClosed {
-			log.WithError(rollbackErr).Error("failed to rollback transaction")
-		}
-	}()
-
-	if _, err := tx.Exec(l.ctx,
-		"DELETE FROM prow_ga_raw_test_data WHERE release = $1", release); err != nil {
-		return fmt.Errorf("deleting existing raw rows: %w", err)
+	if !hasRows {
+		return fmt.Errorf("no raw test rows in the full GA window; snapshot preserved")
 	}
-
-	if len(rows) > 0 {
-		insertStart := time.Now()
-		result, err := tx.Exec(l.ctx, `
-			INSERT INTO prow_ga_raw_test_data
-				(release, window_days, test_id, prow_job_id, suite_id, passes, failures, flakes, runs)
-			SELECT
-				$1, tmp.window_days, t.id, pj.id, COALESCE(s.id, 0),
-				tmp.passes, tmp.failures, tmp.flakes, tmp.runs
-			FROM tmp_ga_raw tmp
-			INNER JOIN tests t ON t.name = tmp.test_name AND t.deleted_at IS NULL
-			INNER JOIN prow_jobs pj ON pj.name = tmp.job_name AND pj.deleted_at IS NULL
-			LEFT JOIN suites s ON s.name = tmp.suite_name AND s.deleted_at IS NULL
-		`, release)
-		if err != nil {
-			return fmt.Errorf("INSERT...SELECT from temp table: %w", err)
-		}
-		log.WithField("rows", result.RowsAffected()).
-			WithField("elapsed", time.Since(insertStart)).
-			Info("ga-test-status: inserted from temp table")
-	}
-
-	if _, err := tx.Exec(l.ctx,
-		"UPDATE release_definitions SET ga_data_loaded_date = $1 WHERE release = $2",
-		gaDate, release); err != nil {
-		return fmt.Errorf("recording load status: %w", err)
-	}
-
-	commitStart := time.Now()
-	if err := tx.Commit(l.ctx); err != nil {
-		return fmt.Errorf("committing transaction: %w", err)
-	}
-	log.WithField("elapsed", time.Since(commitStart)).Info("ga-test-status: committed")
-
 	return nil
 }
 
-var tempCols = []db.TempColumn[stagingRow]{
-	{Name: "window_days", Type: "integer", Value: func(r *stagingRow) any { return int(r.WindowDays) }},
-	{Name: "test_name", Type: "text", Value: func(r *stagingRow) any { return r.TestName }},
-	{Name: "job_name", Type: "text", Value: func(r *stagingRow) any { return r.JobName }},
-	{Name: "suite_name", Type: "text", Value: func(r *stagingRow) any { return r.Suite }},
-	{Name: "passes", Type: "bigint", Value: func(r *stagingRow) any { return r.Passes }},
-	{Name: "failures", Type: "bigint", Value: func(r *stagingRow) any { return r.Failures }},
-	{Name: "flakes", Type: "bigint", Value: func(r *stagingRow) any { return r.Flakes }},
-	{Name: "runs", Type: "bigint", Value: func(r *stagingRow) any { return r.Runs }},
+// reaggregateGASnapshot replaces all configured windows after validation succeeds.
+func reaggregateGASnapshot(tx *gorm.DB, release string, gaDate civil.Date, end time.Time) error {
+	if err := tx.Exec("DELETE FROM prow_ga_raw_test_data WHERE release = ?", release).Error; err != nil {
+		return fmt.Errorf("removing old GA snapshot: %w", err)
+	}
+	var inserted int64
+	for _, days := range utils.GAWindows {
+		windowStart := utils.GAWindowStart(gaDate, days).In(time.UTC)
+		result := tx.Exec(`INSERT INTO prow_ga_raw_test_data
+            (release, window_days, test_id, prow_job_id, suite_id, runs, passes, failures, flakes)
+            SELECT ?, ?, t.test_id, r.prow_job_id, COALESCE(t.suite_id, 0), COUNT(*),
+                COUNT(*) FILTER (WHERE t.status = 1),
+                COUNT(*) FILTER (WHERE t.status IS DISTINCT FROM 1 AND t.status IS DISTINCT FROM 13),
+                COUNT(*) FILTER (WHERE t.status = 13)
+            FROM prow_job_run_tests t JOIN prow_job_runs r
+              ON r.id = t.prow_job_run_id AND r.prow_job_release = t.prow_job_run_release
+             AND r.timestamp = t.prow_job_run_timestamp
+            WHERE t.prow_job_run_release = ? AND t.prow_job_run_timestamp >= ? AND t.prow_job_run_timestamp < ?
+              AND t.deleted_at IS NULL AND r.deleted_at IS NULL
+              AND (r.labels IS NULL OR NOT r.labels @> ARRAY['InfraFailure'])
+            GROUP BY t.test_id, r.prow_job_id, COALESCE(t.suite_id, 0)`, release, days, release, windowStart, end)
+		if result.Error != nil {
+			return fmt.Errorf("aggregating %d-day GA snapshot: %w", days, result.Error)
+		}
+		inserted += result.RowsAffected
+	}
+	if inserted == 0 {
+		return fmt.Errorf("no eligible raw test rows in the GA window; snapshot preserved")
+	}
+	return nil
 }
 
-func (l *GATestStatusLoader) gaReleases() ([]models.ReleaseDefinition, error) {
-	var defs []models.ReleaseDefinition
-	query := l.dbc.DB.WithContext(l.ctx).Where("ga_date < CURRENT_DATE")
-	if len(l.releases) > 0 {
-		query = query.Where("release IN ?", l.releases)
+// recordGASnapshotLoaded marks the release loaded only after its snapshot is complete.
+func recordGASnapshotLoaded(tx *gorm.DB, release string, gaDate civil.Date) error {
+	result := tx.Model(&models.ReleaseDefinition{}).Where("release = ? AND ga_date = ?", release, gaDate).
+		Update("ga_data_loaded_date", gaDate)
+	if result.Error != nil {
+		return fmt.Errorf("recording GA snapshot: %w", result.Error)
 	}
-	if err := query.Find(&defs).Error; err != nil {
-		return nil, fmt.Errorf("querying release_definitions: %w", err)
+	if result.RowsAffected != 1 {
+		return fmt.Errorf("release or GA date changed during refresh")
 	}
-	return defs, nil
-}
-
-func (l *GATestStatusLoader) fetchFromBigQuery(windows []releaseWindow) ([]stagingRow, error) {
-	earliestStart := windows[0].StartDate
-	latestEnd := windows[0].EndDate
-	for _, w := range windows[1:] {
-		if w.StartDate.Before(earliestStart) {
-			earliestStart = w.StartDate
-		}
-		if w.EndDate.After(latestEnd) {
-			latestEnd = w.EndDate
-		}
-	}
-
-	query := l.bqClient.Query(l.ctx, bqlabel.GATestStatusLoader, fmt.Sprintf(`
-		WITH params AS (
-			SELECT * FROM UNNEST(@windows)
-		),
-		deduped AS (
-			SELECT
-				p.release,
-				p.window_days,
-				junit.test_name,
-				jobs.prowjob_job_name AS job_name,
-				COALESCE(junit.testsuite, '') AS suite_name,
-				CASE WHEN junit.flake_count > 0 THEN 0 ELSE junit.success_val END AS adjusted_success,
-				CASE WHEN junit.flake_count > 0 THEN 1 ELSE 0 END AS is_flake,
-				ROW_NUMBER() OVER(
-					PARTITION BY p.release, p.window_days, junit.file_path, junit.test_name, junit.testsuite
-					ORDER BY CASE WHEN junit.flake_count > 0 THEN 0 WHEN junit.success_val > 0 THEN 1 ELSE 2 END
-				) AS row_num
-			FROM params p
-			JOIN %[1]s.junit ON junit.release = p.release
-				AND junit.modified_time >= DATETIME(@earliest_start)
-				AND junit.modified_time < DATETIME(@latest_end)
-				AND junit.modified_time >= DATETIME(p.start_date)
-				AND junit.modified_time < DATETIME(p.end_date)
-				AND junit.skipped = FALSE
-			JOIN %[1]s.jobs jobs ON junit.prowjob_build_id = jobs.prowjob_build_id
-				AND jobs.prowjob_start >= DATETIME(p.start_date)
-				AND jobs.prowjob_start < DATETIME(p.end_date)
-			JOIN %[1]s.job_variants jv ON jobs.prowjob_job_name = jv.job_name
-				AND jv.variant_name = 'Release' AND jv.variant_value = p.release
-		)
-		SELECT
-			release,
-			window_days,
-			test_name,
-			job_name,
-			suite_name,
-			SUM(adjusted_success) AS passes,
-			SUM(CASE WHEN adjusted_success = 0 AND is_flake = 0 THEN 1 ELSE 0 END) AS failures,
-			SUM(is_flake) AS flakes,
-			COUNT(*) AS runs
-		FROM deduped
-		WHERE row_num = 1
-		GROUP BY release, window_days, test_name, job_name, suite_name
-	`, l.bqClient.Dataset))
-	query.Parameters = []bigquery.QueryParameter{
-		{Name: "windows", Value: windows},
-		{Name: "earliest_start", Value: earliestStart},
-		{Name: "latest_end", Value: latestEnd},
-	}
-
-	iter, err := query.Read(l.ctx)
-	if err != nil {
-		return nil, fmt.Errorf("executing query: %w", err)
-	}
-
-	var result []stagingRow
-	for {
-		var row stagingRow
-		err := iter.Next(&row)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("reading row: %w", err)
-		}
-		result = append(result, row)
-	}
-	return result, nil
-}
-
-// releaseWindow defines a single (release, window) combination for the batched BQ query.
-// Passed as an ARRAY<STRUCT<...>> parameter.
-type releaseWindow struct {
-	Release    string     `bigquery:"release"`
-	WindowDays int64      `bigquery:"window_days"`
-	StartDate  civil.Date `bigquery:"start_date"`
-	EndDate    civil.Date `bigquery:"end_date"`
-}
-
-type stagingRow struct {
-	Release    string `bigquery:"release"`
-	WindowDays int64  `bigquery:"window_days"`
-	TestName   string `bigquery:"test_name"`
-	JobName    string `bigquery:"job_name"`
-	Suite      string `bigquery:"suite_name"`
-	Passes     int64  `bigquery:"passes"`
-	Failures   int64  `bigquery:"failures"`
-	Flakes     int64  `bigquery:"flakes"`
-	Runs       int64  `bigquery:"runs"`
+	return nil
 }

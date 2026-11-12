@@ -212,7 +212,7 @@ func (l *RegressionCacheLoader) processView(
 		vLog.WithField("duration", time.Since(start)).Info("processed view")
 	}()
 
-	generator, err := l.buildGenerator(view, cacheOpts, []reqopts.TestIdentification{{}})
+	generator, err := l.buildGenerator(view, cacheOpts, []reqopts.TestIdentification{{}}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +263,8 @@ func (l *RegressionCacheLoader) processView(
 	testIDOptions := l.buildTestIDOptions(regressedTests, view)
 
 	// Step 5: Generate test details from batched status results.
-	tdGenerator, err := l.buildGenerator(view, cacheOpts, testIDOptions)
+	// Cached reports retain base job runs for the API; tracking needs only sample runs and GA counts.
+	tdGenerator, err := l.buildGenerator(view, cacheOpts, testIDOptions, !cacheResults)
 	if err != nil {
 		return nil, err
 	}
@@ -479,6 +480,7 @@ func (l *RegressionCacheLoader) buildGenerator(
 	view crview.View,
 	cacheOpts cache.RequestOptions,
 	testIDOpts []reqopts.TestIdentification,
+	skipGABaseJobRuns bool,
 ) (*componentreadiness.ComponentReportGenerator, error) {
 
 	baseRelease, err := utils.GetViewReleaseOptions(
@@ -494,13 +496,11 @@ func (l *RegressionCacheLoader) buildGenerator(
 	}
 
 	reqOpts := reqopts.RequestOptions{
-		BaseRelease:    baseRelease,
-		SampleRelease:  sampleRelease,
-		VariantOption:  view.VariantOptions,
-		AdvancedOption: view.AdvancedOptions,
-		CacheOption:    cacheOpts,
-		TestIDOptions:  testIDOpts,
-		TestFilters:    view.TestFilters,
+		ReleaseOptions:  reqopts.ReleaseOptions{BaseRelease: baseRelease, SampleRelease: sampleRelease},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: view.VariantOptions, AdvancedOption: view.AdvancedOptions},
+		CacheOptions:    reqopts.CacheOptions{CacheOption: cacheOpts},
+		TestOptions:     reqopts.TestOptions{TestFilters: view.TestFilters, TestIDOptions: testIDOpts},
+		JobRunOptions:   reqopts.JobRunOptions{SkipGABaseJobRuns: skipGABaseJobRuns},
 	}
 
 	for name, sample := range view.SpotCheckJobSamples {

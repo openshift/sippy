@@ -256,13 +256,10 @@ func (l *ComponentReadinessCacheLoader) buildGenerator(
 
 	// Get component readiness report
 	reqOpts := reqopts.RequestOptions{
-		BaseRelease:    baseRelease,
-		SampleRelease:  sampleRelease,
-		VariantOption:  variantOption,
-		AdvancedOption: advancedOption,
-		CacheOption:    cacheOpts,
-		TestIDOptions:  testIDOpts,
-		TestFilters:    view.TestFilters,
+		ReleaseOptions:  reqopts.ReleaseOptions{BaseRelease: baseRelease, SampleRelease: sampleRelease},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: variantOption, AdvancedOption: advancedOption},
+		CacheOptions:    reqopts.CacheOptions{CacheOption: cacheOpts},
+		TestOptions:     reqopts.TestOptions{TestFilters: view.TestFilters, TestIDOptions: testIDOpts},
 	}
 
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,

@@ -130,14 +130,10 @@ func (j JiraAutomator) getRequestOptionForView(view crview.View) (reqopts.Reques
 
 	// Get component readiness report
 	reportOpts := reqopts.RequestOptions{
-		BaseRelease:   baseRelease,
-		SampleRelease: sampleRelease,
-		TestIDOptions: []reqopts.TestIdentification{
-			view.TestIDOption,
-		},
-		VariantOption:  variantOption,
-		AdvancedOption: advancedOption,
-		CacheOption:    j.cacheOptions,
+		ReleaseOptions:  reqopts.ReleaseOptions{BaseRelease: baseRelease, SampleRelease: sampleRelease},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: variantOption, AdvancedOption: advancedOption},
+		CacheOptions:    reqopts.CacheOptions{CacheOption: j.cacheOptions},
+		TestOptions:     reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{view.TestIDOption}},
 	}
 	return reportOpts, nil
 }

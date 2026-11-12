@@ -184,7 +184,7 @@ func TestMergeRequestedVariants(t *testing.T) {
 			name:            "multiple TestIDOptions returns input unchanged",
 			includeVariants: map[string][]string{"Platform": {"aws"}},
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{}, {}},
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{}, {}}},
 			},
 			want: map[string][]string{"Platform": {"aws"}},
 		},
@@ -192,7 +192,7 @@ func TestMergeRequestedVariants(t *testing.T) {
 			name:            "empty RequestedVariants returns input unchanged",
 			includeVariants: map[string][]string{"Platform": {"aws", "gcp"}},
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{}},
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{}}},
 			},
 			want: map[string][]string{"Platform": {"aws", "gcp"}},
 		},
@@ -200,9 +200,9 @@ func TestMergeRequestedVariants(t *testing.T) {
 			name:            "overrides existing key with single value",
 			includeVariants: map[string][]string{"Platform": {"aws", "gcp"}, "Network": {"ovn", "sdn"}},
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{
 					RequestedVariants: map[string]string{"Platform": "aws"},
-				}},
+				}}},
 			},
 			want: map[string][]string{"Platform": {"aws"}, "Network": {"ovn", "sdn"}},
 		},
@@ -210,9 +210,9 @@ func TestMergeRequestedVariants(t *testing.T) {
 			name:            "adds new key",
 			includeVariants: map[string][]string{"Platform": {"aws"}},
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{
 					RequestedVariants: map[string]string{"Topology": "ha"},
-				}},
+				}}},
 			},
 			want: map[string][]string{"Platform": {"aws"}, "Topology": {"ha"}},
 		},
@@ -220,9 +220,9 @@ func TestMergeRequestedVariants(t *testing.T) {
 			name:            "does not modify original map",
 			includeVariants: map[string][]string{"Platform": {"aws", "gcp"}},
 			reqOptions: reqopts.RequestOptions{
-				TestIDOptions: []reqopts.TestIdentification{{
+				TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{
 					RequestedVariants: map[string]string{"Platform": "aws"},
-				}},
+				}}},
 			},
 			want: map[string][]string{"Platform": {"aws"}},
 		},

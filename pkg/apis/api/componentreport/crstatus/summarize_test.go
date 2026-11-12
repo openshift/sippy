@@ -52,10 +52,10 @@ func TestSummarizeTestJobRuns_LifecyclePromotion(t *testing.T) {
 			var rows []TestJobRunRows
 			for _, lc := range tc.lifecycles {
 				rows = append(rows, TestJobRunRows{
-					TestKeyStr: "test-key",
-					ProwJob:    "job-name",
-					Count:      crtest.Count{TotalCount: 1, SuccessCount: 1},
-					Lifecycle:  lc,
+					TestIdentification:   TestIdentification{TestKeyStr: "test-key"},
+					JobRunIdentification: JobRunIdentification{ProwJob: "job-name"},
+					TestJobRunCounts:     TestJobRunCounts{Count: crtest.Count{TotalCount: 1, SuccessCount: 1}},
+					TestJobRunMetadata:   TestJobRunMetadata{Lifecycle: lc},
 				})
 			}
 
@@ -67,4 +67,59 @@ func TestSummarizeTestJobRuns_LifecyclePromotion(t *testing.T) {
 			assert.Equal(t, tc.expectedLifecycle, result["job-name"][0].Lifecycle)
 		})
 	}
+}
+
+func TestSummarizeTestJobRuns_UsesExclusiveStatsForProjectedFlakes(t *testing.T) {
+	statsCount := crtest.Count{TotalCount: 1, FlakeCount: 1}
+	result := SummarizeTestJobRuns(map[string][]TestJobRunRows{
+		"job-name": {
+			{
+				TestIdentification: TestIdentification{TestKeyStr: "test-key"},
+				JobRunIdentification: JobRunIdentification{
+					ProwJob:      "job-name",
+					ProwJobRunID: "run-1",
+				},
+				TestJobRunCounts: TestJobRunCounts{
+					Count:      crtest.Count{TotalCount: 1, SuccessCount: 1, FlakeCount: 1},
+					StatsCount: &statsCount,
+				},
+			},
+		},
+	})
+
+	require.Len(t, result["job-name"], 1)
+	summary := result["job-name"][0]
+	assert.Equal(t, crtest.NewTestStats(0, 0, 1, false), summary.Stats)
+	require.Len(t, summary.JobRuns, 1)
+	assert.Equal(t, crtest.Count{TotalCount: 1, SuccessCount: 1, FlakeCount: 1}, summary.JobRuns[0].Count)
+}
+
+func TestSummarizeTestJobRuns_KeepsStoredJobIdentityWithinNormalizedBucket(t *testing.T) {
+	result := SummarizeTestJobRuns(map[string][]TestJobRunRows{
+		"periodic-ga-frequency-aws": {
+			{
+				TestIdentification: TestIdentification{TestKeyStr: "test-key"},
+				JobRunIdentification: JobRunIdentification{
+					ProwJob:      "periodic-ga-frequency-f24-aws",
+					ProwJobRunID: "f24-run",
+				},
+				TestJobRunCounts: TestJobRunCounts{Count: crtest.Count{TotalCount: 1, SuccessCount: 1}},
+			},
+			{
+				TestIdentification: TestIdentification{TestKeyStr: "test-key"},
+				JobRunIdentification: JobRunIdentification{
+					ProwJob:      "periodic-ga-frequency-f48-aws",
+					ProwJobRunID: "f48-run",
+				},
+				TestJobRunCounts: TestJobRunCounts{Count: crtest.Count{TotalCount: 1, SuccessCount: 1}},
+			},
+		},
+	})
+
+	summaries := result["periodic-ga-frequency-aws"]
+	require.Len(t, summaries, 2)
+	assert.Equal(t, "periodic-ga-frequency-f24-aws", summaries[0].ProwJob)
+	assert.Equal(t, "f24-run", summaries[0].JobRuns[0].ProwJobRunID)
+	assert.Equal(t, "periodic-ga-frequency-f48-aws", summaries[1].ProwJob)
+	assert.Equal(t, "f48-run", summaries[1].JobRuns[0].ProwJobRunID)
 }

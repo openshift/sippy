@@ -17,17 +17,55 @@ const (
 
 // RequestOptions is a struct packaging all the options for a CR request.
 type RequestOptions struct {
-	BaseRelease    Release
-	SampleRelease  Release
+	ReleaseOptions        `yaml:",inline"`
+	AnalysisOptions       `yaml:",inline"`
+	CacheOptions          `yaml:",inline"`
+	TestOptions           `yaml:",inline"`
+	JobRunOptions         `yaml:",inline"`
+	ReportContentOptions  `yaml:",inline"`
+	ViewDataSourceOptions `yaml:",inline"`
+}
+
+// ReleaseOptions identifies the releases and time windows compared by a report.
+type ReleaseOptions struct {
+	BaseRelease   Release
+	SampleRelease Release
+}
+
+// AnalysisOptions configures report grouping and regression analysis.
+type AnalysisOptions struct {
 	VariantOption  Variants
 	AdvancedOption Advanced
-	CacheOption    cache.RequestOptions
+}
+
+// CacheOptions controls report caching behavior.
+type CacheOptions struct {
+	CacheOption cache.RequestOptions
+}
+
+// TestOptions limits the tests returned and analyzed by a report.
+type TestOptions struct {
 	TestFilters
 	TestIDOptions []TestIdentification
+}
+
+// JobRunOptions configures job-run detail retrieval for a report.
+type JobRunOptions struct {
+	// SkipGABaseJobRuns omits PostgreSQL GA base run details for internal
+	// consumers that need only snapshot statistics. Sample runs remain available.
+	SkipGABaseJobRuns bool `json:"-" yaml:"-"`
 	// SpotCheckJobSamples defines resolved sample windows for spot-check job analysis.
 	// Each entry specifies a tier name, time window, and variant filters to select jobs.
 	SpotCheckJobSamples []SpotCheckJobSampleOpts `json:"spot_check_job_samples,omitempty" yaml:"spot_check_job_samples,omitempty"`
-	IncludeAllTests     bool                     `json:"include_all_tests,omitempty"`
+}
+
+// ReportContentOptions selects the portions of a report returned to a caller.
+type ReportContentOptions struct {
+	IncludeAllTests bool `json:"include_all_tests,omitempty"`
+}
+
+// ViewDataSourceOptions records the named view and optional backend for a report.
+type ViewDataSourceOptions struct {
 	// ViewName is the name of the view used for this request, if any.
 	// When generating test details URLs, if a view is present, we include just the view parameter
 	// plus test-specific overrides, rather than expanding all view parameters into the URL.
