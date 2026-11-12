@@ -95,7 +95,12 @@ func saveToken(path string, token *oauth2.Token) {
 		return
 	}
 	defer f.Close()
-	if err := json.NewEncoder(f).Encode(token); err != nil { //nolint:gosec // G117: caching the token is the purpose of this function; the file is created 0600
+	// OpenFile's mode only applies on create, so tighten an existing file too.
+	if err := f.Chmod(0o600); err != nil {
+		log.Errorf("Unable to secure oauth token cache: %v", err)
+		return
+	}
+	if err := json.NewEncoder(f).Encode(token); err != nil { //nolint:gosec // G117: caching the token is the purpose of this function; the file is 0600
 		log.Error(err.Error())
 	}
 }
