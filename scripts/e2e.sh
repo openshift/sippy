@@ -124,6 +124,9 @@ clean_up() {
         wait "$CHILD_PID" 2>/dev/null
     fi
     if [ -n "${API_LOG_PID:-}" ]; then
+        if [ -z "${CHILD_PID:-}" ]; then
+            kill "$API_LOG_PID" 2>/dev/null
+        fi
         wait "$API_LOG_PID"
     fi
     if [ -n "${API_LOG_DIR:-}" ]; then
@@ -243,10 +246,19 @@ fi
 # A regular background child is waitable on macOS's system Bash 3.2.
 API_LOG_DIR=$(mktemp -d "$OUTPUT_DIR/api-log.XXXXXX") || exit $?
 mkfifo "$API_LOG_DIR/api.fifo" || exit $?
+# Defer signal exits until each launched child's PID is recorded for cleanup.
+API_START_STATUS=0
+trap 'API_START_STATUS=130' INT
+trap 'API_START_STATUS=143' TERM
 e2e_redact_logs < "$API_LOG_DIR/api.fifo" > "$OUTPUT_DIR/e2e.log" &
 API_LOG_PID=$!
-DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" > "$API_LOG_DIR/api.fifo" 2>&1 &
-CHILD_PID=$!
+if [ "$API_START_STATUS" -eq 0 ]; then
+    DEV_MODE=0 GOCOVERDIR="$COVDIR" ./sippy serve "$@" > "$API_LOG_DIR/api.fifo" 2>&1 &
+    CHILD_PID=$!
+fi
+trap 'exit 130' INT
+trap 'exit 143' TERM
+[ "$API_START_STATUS" -eq 0 ] || exit "$API_START_STATUS"
 
 wait_for_sippy || exit $?
 

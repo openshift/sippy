@@ -1453,6 +1453,9 @@ e2e_create_database sippy_e2e "$SIPPY_DATABASE_DSN"
             ("seed", 33, "Database seeding failed (exit 33)", "Waiting for sippy API"),
             ("serve", 34, "API exited before readiness (exit 34)", "Priming component"),
             ("serve", 0, "API exited before readiness (exit 0)", "Priming component"),
+            ("signal-reader-pid", 143, "Injected startup signal", "Priming component"),
+            ("signal-reader", 143, "Injected startup signal", "Priming component"),
+            ("signal-writer-pid", 143, "Injected startup signal", "Priming component"),
             ("health", 1, "Timeout waiting for sippy API", "Priming component"),
             ("tests", 35, "Cache priming complete", "API exited before readiness"),
             ("tee", 36, "Cache priming complete", "API exited before readiness"),
@@ -1506,6 +1509,23 @@ tee() {
     fi
     command tee "$@"
 }
+inject_startup_signal() {
+    if [[ "$FAIL_STAGE" == signal-reader-pid && "$BASH_COMMAND" == 'API_LOG_PID=$!' ]] ||
+       [[ "$FAIL_STAGE" == signal-reader && -n "${API_LOG_PID:-}" && -z "${CHILD_PID:-}" ]] ||
+       [[ "$FAIL_STAGE" == signal-writer-pid && "$BASH_COMMAND" == 'CHILD_PID=$!' ]]; then
+        trap - DEBUG
+        echo "$!" > "$SIPPY_TEST_OUTPUT_DIR/signalled-child.pid"
+        if [[ "$FAIL_STAGE" == signal-writer-pid ]]; then
+            for ((attempt=0; attempt<500; attempt++)); do
+                [[ -f "$SIPPY_TEST_OUTPUT_DIR/writer-started" ]] && break
+                /bin/sleep 0.01
+            done
+        fi
+        echo "Injected startup signal" >&2
+        kill -TERM "$$"
+    fi
+}
+trap 'inject_startup_signal' DEBUG
 ''')
         sippy = tmp_path / "sippy"
         sippy.write_text('''#!/bin/bash
@@ -1521,22 +1541,38 @@ if [[ "$FAIL_STAGE" == serve ]]; then
     echo "API startup failed redis://:secret@localhost/1" >&2
     exit "$FAIL_STATUS"
 fi
+if [[ "$FAIL_STAGE" == signal-writer-pid ]]; then
+    echo "API writer final line redis://:secret@localhost/1" >&2
+    touch "$SIPPY_TEST_OUTPUT_DIR/writer-started"
+fi
 exec /bin/sleep 60
 ''')
         sippy.chmod(0o755)
         output_dir = tmp_path / "artifacts"
         output_dir.mkdir()
         (output_dir / "e2e-gotestsum.log").write_text("DONE previous run\n")
-        result = subprocess.run(
+        proc = subprocess.Popen(
             ["bash", str(E2E_SCRIPT)], cwd=tmp_path,
             env={**os.environ, "BASH_ENV": str(bash_env), "FAIL_STAGE": stage,
                  "FAIL_STATUS": str(status), "GCS_SA_JSON_PATH": "",
                  "SIPPY_TEST_OUTPUT_DIR": str(output_dir),
                  "SIPPY_DATABASE_DSN": "postgresql://test:secret@localhost:5432/postgres?sslmode=disable"},
-            capture_output=True, text=True, timeout=10,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
         )
-        output = result.stdout + result.stderr
-        assert result.returncode == (status or (1 if stage == "serve" else 0)), output
+        try:
+            stdout, stderr = proc.communicate(timeout=10)
+            if stage.startswith("signal-"):
+                child_pid = int((output_dir / "signalled-child.pid").read_text())
+                with pytest.raises(ProcessLookupError):
+                    os.kill(child_pid, 0)
+        finally:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.communicate()
+        output = stdout + stderr
+        assert proc.returncode == (status or (1 if stage == "serve" else 0)), output
         assert expected in output
         assert forbidden not in output
         assert "DONE previous run" not in output
@@ -1548,6 +1584,9 @@ exec /bin/sleep 60
         assert not list(output_dir.glob("api-log.*"))
         if stage == "serve":
             assert "API startup failed" in output
+        if stage == "signal-writer-pid":
+            assert (output_dir / "writer-started").exists()
+            assert "API writer final line redis://[redacted]@localhost/1" in (output_dir / "e2e.log").read_text()
 
     @pytest.mark.parametrize("path", ["", "/", "/postgres"])
     @pytest.mark.parametrize("query", ["", "?sslmode=disable&connect_timeout=5"])

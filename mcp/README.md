@@ -142,6 +142,9 @@ generation during cleanup is best effort and does not replace the test exit stat
 Cleanup only reports test results from the current invocation.
 API logs use a private named FIFO and a regular background redactor process,
 allowing Bash 3.2 to wait for complete logs before early-exit diagnostics or cleanup.
+Startup defers signal exits until child PIDs are recorded. If interrupted before
+the API starts, cleanup stops the blocked reader and removes its FIFO; once the
+API has started, cleanup drains its logs after stopping it.
 Make tool calls are serialized within the MCP server because they share logs,
 artifacts, listeners, and services. Each make runner starts a separate process
 session. On timeout or task cancellation, the runner sends SIGTERM to the process
