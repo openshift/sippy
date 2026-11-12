@@ -1135,37 +1135,42 @@ class TestMcpTestEnvironment:
                 testenv.check_prerequisites()
 
     @pytest.mark.parametrize(
-        "dsn,inherited,expected_timeout",
+        "dsn,expected_host,expected_database",
         [
-            pytest.param("postgresql://localhost/postgres", {}, 15, id="single-host"),
-            pytest.param("postgresql://first,second/postgres", {}, 25, id="authority-failover"),
-            pytest.param("postgresql://[::1]:5432,[::2]:5432/postgres", {}, 25, id="ipv6-failover"),
+            pytest.param("postgresql://localhost/postgres", "localhost", "postgres", id="single-host"),
+            pytest.param("postgresql://sippy-postgres/admin", "sippy-postgres", "admin", id="container-host"),
+            pytest.param("postgresql://localhost", "localhost", "inherited", id="pathless"),
             pytest.param(
-                "postgresql://localhost/postgres?host=first%2Csecond%2Cthird", {}, 35,
+                "postgresql://localhost/postgres?host=first%2Csecond%2Cthird", "localhost", "postgres",
                 id="query-host-override",
             ),
             pytest.param(
-                "postgresql://first,second/postgres?host=only", {}, 15,
-                id="query-reduces-host-count",
+                "postgresql://localhost/postgres?hostaddr=127.0.0.2", "localhost", "postgres",
+                id="query-host-address",
             ),
             pytest.param(
-                "postgresql:///postgres", {"PGHOST": "first,second"}, 25,
-                id="inherited-hosts",
+                "postgresql://localhost/postgres?dbname=other", "localhost", "postgres",
+                id="query-database",
             ),
             pytest.param(
-                "postgresql:///postgres?hostaddr=127.0.0.1%2C127.0.0.2", {}, 25,
-                id="query-host-addresses",
+                "postgresql://localhost/postgres?service=other", "localhost", "postgres",
+                id="query-service",
             ),
             pytest.param(
-                "postgresql:///postgres", {"PGHOSTADDR": "127.0.0.1,127.0.0.2"}, 25,
-                id="inherited-host-addresses",
+                "postgresql://localhost/postgres?ho%73t=other&host%61ddr=127.0.0.2&db%6eame=other&%73ervice=other",
+                "localhost", "postgres", id="encoded-target-overrides",
             ),
         ],
     )
-    def test_postgres_deadline_allows_configured_host_failover(self, dsn, inherited, expected_timeout):
+    def test_postgres_prerequisite_matches_e2e_connection_target(self, dsn, expected_host, expected_database):
         import testenv
 
-        env = {"SIPPY_DATABASE_DSN": dsn, "SIPPY_E2E_REDIS_URL": "redis://localhost/1", **inherited}
+        env = {
+            "SIPPY_DATABASE_DSN": dsn + ("&" if "?" in dsn else "?") + "user=review&password=private&sslmode=require&application_name=preflight",
+            "SIPPY_E2E_REDIS_URL": "redis://localhost/1",
+            "PGHOST": "other", "PGHOSTADDR": "127.0.0.2,127.0.0.3", "PGSERVICE": "other",
+            "PGDATABASE": "inherited",
+        }
         with (
             mock.patch.dict(os.environ, env, clear=True),
             mock.patch("testenv.socket.socket"),
@@ -1174,8 +1179,37 @@ class TestMcpTestEnvironment:
             mock.patch("testenv.redis_ping"),
         ):
             testenv.check_prerequisites()
-        assert run.call_args.kwargs["timeout"] == expected_timeout
-        assert run.call_args.kwargs["env"]["PGCONNECT_TIMEOUT"] == "10"
+        child = run.call_args.kwargs["env"]
+        assert child["PGHOST"] == expected_host
+        assert child["PGDATABASE"] == expected_database
+        assert "PGHOSTADDR" not in child
+        assert "PGSERVICE" not in child
+        assert child["PGUSER"] == "review"
+        assert child["PGPASSWORD"] == "private"
+        assert child["PGSSLMODE"] == "require"
+        assert child["PGAPPNAME"] == "preflight"
+        assert child["PGCONNECT_TIMEOUT"] == "10"
+        assert run.call_args.kwargs["timeout"] == 15
+        assert all("private" not in argument for argument in run.call_args.args[0])
+        assert env["PGHOSTADDR"] == "127.0.0.2,127.0.0.3"
+
+    @pytest.mark.parametrize("dsn", [
+        "postgresql://remote/postgres?host=localhost",
+        "postgresql://localhost,remote/postgres",
+        "postgresql:///postgres?host=localhost",
+    ])
+    def test_postgres_prerequisite_rejects_unsafe_authorities_before_psql(self, dsn):
+        import testenv
+
+        with (
+            mock.patch.dict(os.environ, {"SIPPY_DATABASE_DSN": dsn}, clear=True),
+            mock.patch("testenv.socket.socket"),
+            mock.patch("testenv.Path.exists", return_value=True),
+            mock.patch("testenv.subprocess.run") as run,
+        ):
+            with pytest.raises(RuntimeError, match="PostgreSQL prerequisite could not run"):
+                testenv.check_prerequisites()
+        run.assert_not_called()
 
     @pytest.mark.parametrize("failure", ["postgres", "redis", "timeout", None])
     def test_service_checks_use_inherited_auth_without_logging_secrets(self, failure, capsys):
@@ -1234,6 +1268,7 @@ Path.exists = lambda path: str(path) == "/run/.containerenv" or original_exists(
 [ "$1" = "-X" ] || exit 90
 [ "$PGUSER" = test ] && [ "$PGPASSWORD" = private ] || exit 95
 [ "$PGHOST" = localhost ] && [ "$PGDATABASE" = postgres ] || exit 96
+[ -z "${PGHOSTADDR:-}${PGSERVICE:-}" ] || exit 97
 printf "t\\n"
 ''',
             "make": '''
@@ -1254,7 +1289,12 @@ echo "validated child ran make e2e"
         for key in ("GOCACHE", "GOMODCACHE", "GOTMPDIR", "TMPDIR", "XDG_CACHE_HOME",
                     "npm_config_cache", "PLAYWRIGHT_BROWSERS_PATH"):
             monkeypatch.setenv(key, str(tmp_path / "cache" / key))
-        monkeypatch.setenv("SIPPY_SEED_DATABASE_DSN", f"postgresql://test:{credential}@localhost/postgres")
+        monkeypatch.setenv("SIPPY_SEED_DATABASE_DSN", (
+            f"postgresql://test:{credential}@localhost/postgres"
+            "?ho%73t=other&hostaddr=127.0.0.2&dbname=other&service=other"
+        ))
+        monkeypatch.setenv("PGHOSTADDR", "127.0.0.2")
+        monkeypatch.setenv("PGSERVICE", "other")
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
             listener.listen()

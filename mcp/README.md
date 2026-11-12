@@ -90,12 +90,13 @@ The unit-test subprocess checks that it can open local listeners; lint does not
 require sockets or database services. The e2e subprocess also checks its API
 and metrics ports (18080 and 12112). In a devcontainer, it also checks PostgreSQL
 authentication and database-creation permission and an authenticated Redis PING.
-The PostgreSQL prerequisite decodes the connection URI into libpq `PG*`
-environment variables so passwords are absent from `psql` arguments. URI query
-options override authority and path fields. Options without a libpq environment
-equivalent fail before `psql` runs. Each configured host gets a 10-second connection
-timeout; the overall prerequisite deadline allows that timeout for every host,
-plus five seconds for the permission query, so failover can complete.
+The PostgreSQL prerequisite uses the same local URI validation and target-override
+removal as the e2e launcher, including clearing inherited `PGHOSTADDR` and
+`PGSERVICE`. It then decodes the connection URI into libpq `PG*` environment
+variables so passwords are absent from `psql` arguments. Other query options,
+including credentials and SSL settings, are preserved. Options without a libpq
+environment equivalent fail before `psql` runs. The local connection gets a
+10-second timeout plus five seconds for the permission query.
 It then executes `make e2e` with the same environment and permissions. Outside a
 devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
 The e2e launcher uses Python 3 for URI validation and streaming log redaction.

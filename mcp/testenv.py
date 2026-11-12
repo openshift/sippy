@@ -9,6 +9,8 @@ import tempfile
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+from serviceurl import local_database_uri
+
 
 def default_database_dsn(parent: dict[str, str]) -> str:
     """Resolve the legacy database setting shared by MCP tools and test children."""
@@ -197,7 +199,11 @@ def check_prerequisites(target: str = "e2e") -> None:
         "SELECT rolcreatedb OR rolsuper FROM pg_roles WHERE rolname = current_user",
     ]
     try:
-        env = postgres_environment(os.environ.copy())
+        env = os.environ.copy()
+        env["SIPPY_DATABASE_DSN"] = local_database_uri(env["SIPPY_DATABASE_DSN"], strip_overrides=True)
+        env.pop("PGHOSTADDR", None)
+        env.pop("PGSERVICE", None)
+        env = postgres_environment(env)
         host_count = max(len(env.get(key, "").split(",")) for key in ("PGHOST", "PGHOSTADDR"))
         # libpq applies connect_timeout separately to each failover host.
         timeout = int(env["PGCONNECT_TIMEOUT"]) * host_count + 5
