@@ -2904,7 +2904,7 @@ func (s *Server) Serve() {
 			Capabilities:      []string{ComponentReadinessCapability},
 			CacheTime:         1 * time.Hour,
 			HandlerFunc:       s.jsonBackendDisruptionByRun,
-			RateLimitRequests: 25,
+			RateLimitRequests: 50,
 			RateLimitPeriod:   1 * time.Hour,
 		},
 		{
