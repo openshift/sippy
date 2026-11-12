@@ -540,11 +540,10 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 			if err != nil {
 				return componentRegressedTests, err
 			}
-			columnID := string(columnKeyBytes)
 			useVariantBasedComponent := false
-			if variantToThreshold, ok := columnToVariantsToThreshold[columnID]; ok {
+			if variantToThreshold, ok := columnToVariantsToThreshold[string(columnKeyBytes)]; ok {
 				for variant, threshold := range variantToThreshold {
-					if threshold < columnToRegressionCount[columnID] {
+					if threshold < columnToRegressionCount[string(columnKeyBytes)] {
 						if component, ok := j.variantToJiraComponents[variant]; ok {
 							componentRegressedTests[component] = append(componentRegressedTests[component], col.RegressedTests...)
 							useVariantBasedComponent = true

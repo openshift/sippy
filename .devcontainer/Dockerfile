@@ -2,7 +2,7 @@ FROM registry.fedoraproject.org/fedora:44
 
 # Fedora 44 provides Go 1.26; go.mod declares the minimum required Go version.
 
-ARG GOLANGCI_LINT_VERSION=2.10.1
+ARG GOLANGCI_LINT_VERSION=2.15.0
 
 RUN dnf install -y \
     git \

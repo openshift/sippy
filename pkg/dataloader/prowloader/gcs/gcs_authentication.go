@@ -95,7 +95,7 @@ func saveToken(path string, token *oauth2.Token) {
 		return
 	}
 	defer f.Close()
-	if err := json.NewEncoder(f).Encode(token); err != nil {
+	if err := json.NewEncoder(f).Encode(token); err != nil { //nolint:gosec // G117: caching the token is the purpose of this function; the file is created 0600
 		log.Error(err.Error())
 	}
 }

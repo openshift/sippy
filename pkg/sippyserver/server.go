@@ -2586,7 +2586,7 @@ func (s *Server) Serve() {
 			if r.URL.RawQuery != "" {
 				target += "?" + r.URL.RawQuery
 			}
-			http.Redirect(w, r, target, http.StatusMovedPermanently)
+			http.Redirect(w, r, target, http.StatusMovedPermanently) //nolint:gosec // G710: path is fixed to /sippy-ng/, only the query string is user-supplied
 			return
 		}
 		fs := s.sippyNG
