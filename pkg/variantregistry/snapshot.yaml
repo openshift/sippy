@@ -6900,7 +6900,7 @@ periodic-ci-openshift-assisted-service-master-edge-e2e-ai-operator-ztp-sno-day2-
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-assisted-service-master-edge-e2e-metal-assisted-dual-primary-v6-compact-5-0-periodic:
+periodic-ci-openshift-assisted-service-master-edge-e2e-metal-assisted-dual-primary-v6-compact-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -8927,7 +8927,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-4-19-periodi
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-4-control-planes-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-4-control-planes-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -8946,7 +8946,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-4-control-pl
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -8965,7 +8965,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-5-0-periodic
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-bond-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-bond-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -8984,7 +8984,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-bond-5-0-per
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9003,7 +9003,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-5-0-per
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-arm-workers-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-arm-workers-5-1-periodic:
     Aggregation: none
     Architecture: arm64
     CGroupMode: v2
@@ -9022,7 +9022,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-arm-wor
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-sno-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-sno-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9041,7 +9041,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-day2-sno-5-0
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-dual-primary-v6-compact-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-dual-primary-v6-compact-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9060,7 +9060,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-dual-primary
     Suite: unknown
     Topology: compact
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-external-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-external-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9079,7 +9079,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-external-5-0
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ha-kube-api-ipv4-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ha-kube-api-ipv4-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9098,7 +9098,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ha-kube-api-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ha-kube-api-ipv6-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ha-kube-api-ipv6-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9117,7 +9117,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ha-kube-api-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipv4v6-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipv4v6-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9136,7 +9136,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipv4v6-5-0-p
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipv6-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipv6-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9155,7 +9155,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipv6-5-0-per
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipxe-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipxe-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9174,7 +9174,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-ipxe-5-0-per
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-kube-api-late-binding-sno-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-kube-api-late-binding-sno-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9193,7 +9193,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-kube-api-lat
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-kube-api-tna-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-kube-api-tna-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9212,7 +9212,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-kube-api-tna
     Suite: unknown
     Topology: two-node-arbiter
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-lvm-4-22-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-lvm-5-0-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9250,7 +9250,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-mce-5-0-peri
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-none-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-none-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9269,7 +9269,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-none-5-0-per
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-onprem-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-onprem-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9307,7 +9307,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-openshift-ai
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-sno-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-sno-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9326,7 +9326,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-sno-5-0-peri
     Suite: unknown
     Topology: single
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-static-ip-suite-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-static-ip-suite-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9345,7 +9345,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-static-ip-su
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-tna-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-tna-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9364,7 +9364,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-tna-5-0-peri
     Suite: unknown
     Topology: two-node-arbiter
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-umlb-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-umlb-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9383,7 +9383,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-umlb-5-0-per
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-upgrade-agent-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-upgrade-agent-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9402,7 +9402,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-upgrade-agen
     Suite: unknown
     Topology: ha
     Upgrade: micro
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-virtualization-4-22-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-virtualization-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9421,7 +9421,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-virtualizati
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-vlan-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-vlan-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9440,7 +9440,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-vlan-5-0-per
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-oci-assisted-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-oci-assisted-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9459,7 +9459,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-oci-assisted-5-0-periodic:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-oci-assisted-bm-iscsi-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-oci-assisted-bm-iscsi-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9478,7 +9478,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-oci-assisted-bm-iscsi-5-0-p
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-vsphere-assisted-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-vsphere-assisted-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -9497,7 +9497,7 @@ periodic-ci-openshift-assisted-test-infra-master-e2e-vsphere-assisted-5-0-period
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-assisted-test-infra-master-e2e-vsphere-assisted-umlb-5-0-periodic:
+periodic-ci-openshift-assisted-test-infra-master-e2e-vsphere-assisted-umlb-5-1-periodic:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -19481,6 +19481,33 @@ periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-
     Suite: unknown
     Topology: single
     Upgrade: none
+periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-aws-encryption-kms-upgrade:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    FromRelease: "5.1"
+    FromReleaseMajor: "5"
+    FromReleaseMinor: "1"
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: micro
 periodic-ci-openshift-cluster-kube-apiserver-operator-release-5.1-periodics-e2e-aws-event-ttl:
     Aggregation: none
     Architecture: amd64
@@ -83517,7 +83544,64 @@ periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-platform:
     Suite: unknown
     Topology: external
     Upgrade: none
-periodic-ci-openshift-online-rosa-e2e-main-cloud-resource-cleanup-profile01:
+periodic-ci-openshift-online-rosa-e2e-main-cloud-resource-cleanup-profile01-us-east-1:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-cloud-resource-cleanup-profile01-us-east-2:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-cloud-resource-cleanup-profile01-us-west-1:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: service-delivery
+    Platform: rosa
+    Procedure: none
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-online-rosa-e2e-main-cloud-resource-cleanup-profile01-us-west-2:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -280684,6 +280768,30 @@ periodic-ci-openshift-release-main-nightly-4.19-e2e-vsphere-ovn-kube-apiserver-r
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.19-e2e-vsphere-ovn-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.19"
+    ReleaseMajor: "4"
+    ReleaseMinor: "19"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.19-e2e-vsphere-ovn-multi-network-techpreview:
     Aggregation: none
     Architecture: amd64
@@ -280853,6 +280961,30 @@ periodic-ci-openshift-release-main-nightly-4.19-e2e-vsphere-ovn-techpreview-seri
     Topology: ha
     Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.19-e2e-vsphere-ovn-upi:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.19"
+    ReleaseMajor: "4"
+    ReleaseMinor: "19"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.19-e2e-vsphere-ovn-upi-legacy-infra:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -285517,6 +285649,30 @@ periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-ovn-kube-apiserver-r
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-ovn-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.20"
+    ReleaseMajor: "4"
+    ReleaseMinor: "20"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-ovn-multi-network:
     Aggregation: none
     Architecture: multi
@@ -285693,6 +285849,30 @@ periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-ovn-upi-hybrid-env:
     FeatureSet: default
     Installer: upi
     JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.20"
+    ReleaseMajor: "4"
+    ReleaseMinor: "20"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.20-e2e-vsphere-ovn-upi-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -290963,6 +291143,30 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-ovn-kube-apiserver-r
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-ovn-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.21"
+    ReleaseMajor: "4"
+    ReleaseMinor: "21"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-ovn-multi-network:
     Aggregation: none
     Architecture: multi
@@ -291139,6 +291343,30 @@ periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-ovn-upi-hybrid-env:
     FeatureSet: default
     Installer: upi
     JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.21"
+    ReleaseMajor: "4"
+    ReleaseMinor: "21"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.21-e2e-vsphere-ovn-upi-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -298120,6 +298348,30 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-kube-apiserver-r
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-multi-network:
     Aggregation: none
     Architecture: multi
@@ -298368,6 +298620,30 @@ periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-upi-hybrid-env:
     FeatureSet: default
     Installer: upi
     JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.22"
+    ReleaseMajor: "4"
+    ReleaseMinor: "22"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.22-e2e-vsphere-ovn-upi-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -304987,6 +305263,30 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-kube-apiserver-r
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-multi-network:
     Aggregation: none
     Architecture: multi
@@ -305235,6 +305535,30 @@ periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-upi-hybrid-env:
     FeatureSet: default
     Installer: upi
     JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos9
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "4.23"
+    ReleaseMajor: "4"
+    ReleaseMinor: "23"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-4.23-e2e-vsphere-ovn-upi-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -312572,6 +312896,30 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-kube-apiserver-ro
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-multi-network:
     Aggregation: none
     Architecture: multi
@@ -312916,6 +313264,30 @@ periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-upi-hybrid-env:
     FeatureSet: default
     Installer: upi
     JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "5.0"
+    ReleaseMajor: "5"
+    ReleaseMinor: "0"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.0-e2e-vsphere-ovn-upi-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
@@ -316036,12 +316408,12 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-azure-ovn-kube-apiserver-roll
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-nightly-5.1-e2e-azure-ovn-multidisk-techpreview:
+periodic-ci-openshift-release-main-nightly-5.1-e2e-azure-ovn-multidisk:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
-    FeatureSet: techpreview
+    FeatureSet: default
     Installer: ipi
     JobTier: standard
     LayeredProduct: none
@@ -320478,6 +320850,30 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-kube-apiserver-ro
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: ipi
+    JobTier: standard
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-multi-network:
     Aggregation: none
     Architecture: multi
@@ -320822,6 +321218,30 @@ periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-upi-hybrid-env:
     FeatureSet: default
     Installer: upi
     JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-nightly-5.1-e2e-vsphere-ovn-upi-legacy-infra:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: upi
+    JobTier: standard
     LayeredProduct: none
     Network: ovn
     NetworkAccess: default
