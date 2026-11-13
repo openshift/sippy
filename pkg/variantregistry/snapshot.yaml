@@ -15453,6 +15453,32 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.0-periodics-e2e-
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-aws-external-oidc-aswebhook-techpreview:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-aws-external-oidc-configure:
     Aggregation: none
     Architecture: amd64
@@ -15601,6 +15627,32 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Suite: unknown
     Topology: ha
     Upgrade: none
+periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-aws-sno-external-oidc-aswebhook-techpreview:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: single
+    Upgrade: none
 periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-aws-sno-external-oidc-configure:
     Aggregation: none
     Architecture: amd64
@@ -15697,6 +15749,32 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Suite: unknown
     Topology: single
     Upgrade: none
+periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-azure-external-oidc-aswebhook-techpreview:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: azure
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-azure-external-oidc-configure:
     Aggregation: none
     Architecture: amd64
@@ -15784,6 +15862,32 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     OS: rhcos10
     Owner: eng
     Platform: azure
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-gcp-external-oidc-aswebhook-techpreview:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: gcp
     Procedure: none
     Release: "5.1"
     ReleaseMajor: "5"
@@ -15889,6 +15993,32 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Suite: unknown
     Topology: ha
     Upgrade: none
+? periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-dualstack-external-oidc-aswebhook-techpreview
+:   Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-dualstack-external-oidc-configure:
     Aggregation: none
     Architecture: amd64
@@ -15961,8 +16091,8 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-dualstack-external-oidc-upstream-parity:
-    Aggregation: none
+? periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-dualstack-external-oidc-upstream-parity
+:   Aggregation: none
     Architecture: amd64
     CGroupMode: v2
     ContainerRuntime: crun
@@ -15973,6 +16103,32 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Network: ovn
     NetworkAccess: default
     NetworkStack: dual
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+? periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-ipv4-external-oidc-aswebhook-techpreview
+:   Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
     OS: rhcos10
     Owner: eng
     Platform: metal
@@ -16081,6 +16237,32 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     Suite: unknown
     Topology: ha
     Upgrade: none
+? periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-ipv6-external-oidc-aswebhook-techpreview
+:   Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv6
+    OS: rhcos10
+    Owner: eng
+    Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
 periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-ipv6-external-oidc-configure:
     Aggregation: none
     Architecture: amd64
@@ -16168,6 +16350,32 @@ periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-
     OS: rhcos10
     Owner: eng
     Platform: metal
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-vsphere-external-oidc-aswebhook-techpreview:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    Capability: ExternalOIDCAsWebhook
+    Component: apiserver-auth
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: vsphere
     Procedure: none
     Release: "5.1"
     ReleaseMajor: "5"
@@ -42915,6 +43123,29 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-mce-e2e-aws-ovn-conforman
     Suite: parallel
     Topology: external
     Upgrade: none
+periodic-ci-openshift-hypershift-release-5.1-periodics-mce-e2e-ibmz-multi-mgmt-ovn-conformance-hcpmulti-z-zx:
+    Aggregation: none
+    Architecture: multi
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: parallel
+    Topology: external
+    Upgrade: none
 periodic-ci-openshift-hypershift-release-5.1-periodics-mce-e2e-ibmz-ovn-conformance:
     Aggregation: none
     Architecture: amd64
@@ -42947,6 +43178,29 @@ periodic-ci-openshift-hypershift-release-5.1-periodics-mce-e2e-ibmz-s390x-mgmt-o
     Installer: hypershift
     JobTier: candidate
     LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Procedure: none
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: parallel
+    Topology: external
+    Upgrade: none
+periodic-ci-openshift-hypershift-release-5.1-periodics-mce-e2e-ibmz-s390x-mgmt-ovn-conformance-virt-extinfra-z-z:
+    Aggregation: none
+    Architecture: s390x
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: default
+    Installer: hypershift
+    JobTier: candidate
+    LayeredProduct: virt
     Network: ovn
     NetworkAccess: default
     NetworkStack: ipv4
@@ -348170,6 +348424,30 @@ periodic-ci-quay-quay-redhat-3.18-aws-ocp50-e2e-install-aws-s3-nightly:
     Network: sdn
     NetworkAccess: default
     NetworkStack: ipv4
+    OS: unknown
+    Owner: eng
+    Platform: aws
+    Procedure: none
+    Release: quay-3.18
+    ReleaseMajor: "3"
+    ReleaseMinor: "18"
+    Scheduler: default
+    SecurityMode: default
+    Suite: unknown
+    Topology: ha
+    Upgrade: none
+periodic-ci-quay-quay-redhat-3.18-aws-ocp50-e2e-install-aws-s3-nightly-dualstack:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: runc
+    FeatureSet: default
+    Installer: ipi
+    JobTier: candidate
+    LayeredProduct: none
+    Network: sdn
+    NetworkAccess: default
+    NetworkStack: dual
     OS: unknown
     Owner: eng
     Platform: aws
