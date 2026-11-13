@@ -54,7 +54,7 @@ e2e_configure_existing_services() {
     ADMIN_DSN=$(SIPPY_DATABASE_DSN="$ADMIN_DSN" python3 "$SERVICE_URL_SCRIPT" database) || return $?
     # URI authority/path must win over inherited libpq target overrides as well.
     unset PGHOSTADDR PGSERVICE
-    E2E_DSN=$(SIPPY_DATABASE_DSN="$ADMIN_DSN" python3 "$SERVICE_URL_SCRIPT" e2e-database) || return $?
+    E2E_DSN=$(SIPPY_DATABASE_DSN="$ADMIN_DSN" python3 "$SERVICE_URL_SCRIPT" e2e-database "$E2E_DB_NAME") || return $?
 
     e2e_create_database "$E2E_DB_NAME" "$ADMIN_DSN" || return $?
 

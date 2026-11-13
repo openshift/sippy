@@ -136,6 +136,8 @@ timeout, TLS, and rejected Redis operations without exposing credentials or raw
 client diagnostics. Explicit empty URI passwords override inherited passwords.
 The stdlib-only URI helper accepts `redact`, `validate`, `database`, and
 `e2e-database` commands and reports credential-free validation reasons.
+The `e2e-database` command requires a database name argument, supplied from
+the launcher's `E2E_DB_NAME` so its DSN matches the database it creates and drops.
 Before database setup, it strips `host`, `hostaddr`, `dbname`, and `service`
 query overrides, including encoded keys, and clears inherited `PGHOSTADDR` and
 `PGSERVICE`. Destructive helpers reject remaining target overrides or non-local

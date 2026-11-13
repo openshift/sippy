@@ -1393,7 +1393,7 @@ echo "validated child ran make e2e"
 
 
 class TestE2eFailurePaths:
-    @pytest.mark.parametrize("arguments", [[], ["unknown"], ["validate", "extra"]])
+    @pytest.mark.parametrize("arguments", [[], ["unknown"], ["validate", "extra"], ["e2e-database"]])
     def test_uri_cli_rejects_invalid_commands(self, arguments):
         result = subprocess.run(
             [sys.executable, str(REPO_ROOT / "mcp/serviceurl.py"), *arguments],
@@ -2065,6 +2065,21 @@ class TestCheckServicesRedis:
 
 
 class TestReviewRegressions:
+    def test_database_selection_matches_configured_name(self):
+        result = TestE2eScriptSafety._run_helper('''
+E2E_DB_NAME=renamed_e2e
+psql() {
+    [ "$1" = "postgresql://localhost/postgres?sslmode=disable" ] || return 90
+    case "$6" in
+        "DROP DATABASE IF EXISTS renamed_e2e"|"CREATE DATABASE renamed_e2e") ;;
+        *) return 91 ;;
+    esac
+}
+e2e_configure_existing_services || exit $?
+[ "$SIPPY_E2E_DSN" = "postgresql://localhost/renamed_e2e?sslmode=disable" ]
+''', {"SIPPY_DATABASE_DSN": "postgresql://localhost/postgres?sslmode=disable"})
+        assert result.returncode == 0, result.stderr
+
     @pytest.mark.parametrize("scheme", ["postgres", "postgresql", "redis", "rediss"])
     def test_redactor_uses_last_userinfo_separator_and_preserves_invalid_bytes(self, scheme):
         source = (f"ok\n{scheme}://user:p@ss@localhost/db?password=private\n".encode()

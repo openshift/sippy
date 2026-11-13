@@ -63,8 +63,12 @@ def e2e_database_uri(uri: str, database: str) -> str:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("redact", "validate", "database", "e2e-database"))
-    command = parser.parse_args().command
+    commands = parser.add_subparsers(dest="command", required=True)
+    for name in ("redact", "validate", "database"):
+        commands.add_parser(name)
+    commands.add_parser("e2e-database").add_argument("database")
+    args = parser.parse_args()
+    command = args.command
     if command == "redact":
         for line in sys.stdin.buffer:
             redacted = redact_credentials(line.decode("utf-8", errors="surrogateescape"))
@@ -74,7 +78,7 @@ if __name__ == "__main__":
         try:
             uri = local_database_uri(os.environ["SIPPY_DATABASE_DSN"], command != "validate")
             if command == "e2e-database":
-                uri = e2e_database_uri(uri, "sippy_e2e")
+                uri = e2e_database_uri(uri, args.database)
         except KeyError:
             print("FATAL: SIPPY_DATABASE_DSN is required", file=sys.stderr)
             sys.exit(1)
