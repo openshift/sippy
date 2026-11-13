@@ -54,14 +54,7 @@ e2e_configure_existing_services() {
     ADMIN_DSN=$(SIPPY_DATABASE_DSN="$ADMIN_DSN" python3 "$SERVICE_URL_SCRIPT" database) || return $?
     # URI authority/path must win over inherited libpq target overrides as well.
     unset PGHOSTADDR PGSERVICE
-    # Preserve connection options (including sslmode) when changing databases.
-    local admin_base="${ADMIN_DSN%%\?*}"
-    local admin_query="${ADMIN_DSN#"$admin_base"}"
-    local admin_authority="${admin_base#*://}"
-    if [[ "$admin_authority" == */* ]]; then
-        admin_base="${admin_base%/*}"
-    fi
-    E2E_DSN="${admin_base}/${E2E_DB_NAME}${admin_query}"
+    E2E_DSN=$(SIPPY_DATABASE_DSN="$ADMIN_DSN" python3 "$SERVICE_URL_SCRIPT" e2e-database) || return $?
 
     e2e_create_database "$E2E_DB_NAME" "$ADMIN_DSN" || return $?
 
@@ -95,7 +88,8 @@ e2e_prime_component_readiness_cache() {
 
 wait_for_sippy() {
     echo "Waiting for sippy API to start on port $SIPPY_API_PORT..."
-    local started=$SECONDS deadline=$((SECONDS + 600)) status remaining
+    local timeout=600 started=$SECONDS status remaining step deadline
+    deadline=$((started + timeout))
     while [ "$SECONDS" -lt "$deadline" ]; do
         if ! kill -0 "$CHILD_PID" 2>/dev/null; then
             wait "$CHILD_PID"
@@ -111,16 +105,18 @@ wait_for_sippy() {
         # Capabilities needs no release filters, unlike /api/health.
         remaining=$((deadline - SECONDS))
         [ "$remaining" -gt 0 ] || break
-        if curl -fsS --max-time "$((remaining < 2 ? remaining : 2))" "http://localhost:$SIPPY_API_PORT/api/capabilities" > /dev/null 2>&1; then
+        step=$((remaining < 2 ? remaining : 2))
+        if curl -fsS --max-time "$step" "http://localhost:$SIPPY_API_PORT/api/capabilities" > /dev/null 2>&1; then
             echo "Sippy API is ready after $((SECONDS - started))s"
             return 0
         fi
         remaining=$((deadline - SECONDS))
         if [ "$remaining" -gt 0 ]; then
-            sleep "$((remaining < 2 ? remaining : 2))"
+            [ "$step" -le "$remaining" ] || step=$remaining
+            sleep "$step"
         fi
     done
-    echo "Timeout waiting for sippy API to start after 600s" >&2
+    echo "Timeout waiting for sippy API to start after ${timeout}s" >&2
     e2e_log_tail
     return 1
 }

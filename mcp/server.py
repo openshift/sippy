@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -25,8 +26,22 @@ mcp = FastMCP("sippy-dev")
 DEV_LOG_DIR = REPO_ROOT / "sippy-dev-logs"
 
 _MAX_TOOL_CHARS = 28000
-_MAKE_PHASE_LOCK = asyncio.Lock()
-_MAKE_RUNS: dict[str, asyncio.Task[str]] = {}
+_MAKE_RUN_HISTORY = 20
+_MAKE_POLL_SECONDS = 30
+_MAKE_CLEANUP_SECONDS = 5
+_E2E_CLEANUP_SECONDS = 60
+
+
+@dataclass
+class _MakeRun:
+    """Keep a run's requested coverage attached to its server-owned task."""
+
+    task: asyncio.Task[str]
+    target: str
+    env_extra: dict[str, str]
+
+
+_MAKE_RUNS: dict[str, _MakeRun] = {}
 
 
 def _ensure_dev_log_dir() -> None:
@@ -692,38 +707,38 @@ async def _run_make_phase(
     timeout_seconds: int,
     env_extra: dict[str, str] | None = None,
 ) -> str:
-    """Serialize make targets that share logs, artifacts, listeners and services."""
-    async with _MAKE_PHASE_LOCK:
-        try:
-            return await _run_make_phase_locked(
-                tool_label, make_target, log_filename, timeout_seconds, env_extra,
-            )
-        except OSError:
-            return f"{tool_label} failed to start; check server filesystem permissions and executables."
+    """Report launch failures without losing the ability to start a later run."""
+    try:
+        return await _execute_make_phase(
+            tool_label, make_target, log_filename, timeout_seconds, env_extra,
+        )
+    except OSError as exc:
+        path = f" ({exc.filename})" if exc.filename else ""
+        return f"{tool_label} failed to start{path}; check server filesystem permissions and executables."
 
 
 async def _stop_make_process(proc: asyncio.subprocess.Process, grace_seconds: int) -> None:
     """Give the whole session time to clean up, then kill and reap remaining members."""
     try:
         os.killpg(proc.pid, signal.SIGTERM)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
         await proc.wait()
         return
     deadline = asyncio.get_running_loop().time() + grace_seconds
     while asyncio.get_running_loop().time() < deadline:
         try:
             os.killpg(proc.pid, 0)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):
             break
         await asyncio.sleep(0.05)
     try:
         os.killpg(proc.pid, signal.SIGKILL)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
         pass
     await proc.wait()
 
 
-async def _run_make_phase_locked(
+async def _execute_make_phase(
     tool_label: str,
     make_target: str,
     log_filename: str,
@@ -737,9 +752,10 @@ async def _run_make_phase_locked(
         run_env = prepare_environment(os.environ.copy(), DEV_LOG_DIR, make_target)
     except ValueError as exc:
         return f"{tool_label} prerequisite failed: {exc}"
-    except OSError:
+    except OSError as exc:
+        path = f" ({exc.filename})" if exc.filename else ""
         return (
-            f"{tool_label} prerequisite failed: cannot prepare test filesystem paths. "
+            f"{tool_label} prerequisite failed: cannot prepare test filesystem paths{path}. "
             "Check workspace and cache permissions."
         )
     if env_extra:
@@ -759,8 +775,9 @@ async def _run_make_phase_locked(
         try:
             returncode = await asyncio.wait_for(proc.wait(), timeout=tout)
         except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
-            cleanup = asyncio.create_task(_stop_make_process(proc, 60 if make_target == "e2e" else 5))
-            # Repeated cancellation must not release the lock while children live.
+            grace = _E2E_CLEANUP_SECONDS if make_target == "e2e" else _MAKE_CLEANUP_SECONDS
+            cleanup = asyncio.create_task(_stop_make_process(proc, grace))
+            # Repeated cancellation must not finish the run while children live.
             cancelled = isinstance(exc, asyncio.CancelledError)
             while not cleanup.done():
                 try:
@@ -863,11 +880,11 @@ async def restore_prodlike_db(
 
 async def _make_run_result(run_id: str, wait_seconds: int) -> str:
     """Wait briefly without letting a request cancellation stop the owned make task."""
-    task = _MAKE_RUNS[run_id]
+    task = _MAKE_RUNS[run_id].task
     if task.done():
         return f"Make run {run_id} cancelled; cleanup complete." if task.cancelled() else task.result()
     try:
-        return await asyncio.wait_for(asyncio.shield(task), timeout=max(0, min(wait_seconds, 30)))
+        return await asyncio.wait_for(asyncio.shield(task), timeout=max(0, min(wait_seconds, _MAKE_POLL_SECONDS)))
     except asyncio.CancelledError:
         if task.cancelled():
             return f"Make run {run_id} cancelled; cleanup complete."
@@ -890,20 +907,27 @@ async def _start_make_run(
 ) -> str:
     """Retain make tasks across short MCP requests, with bounded result history."""
     # Recover an existing run rather than queueing duplicate work after a lost response.
-    for run_id, task in _MAKE_RUNS.items():
-        if not task.done():
+    for run_id, run in _MAKE_RUNS.items():
+        if not run.task.done():
+            if run.target != make_target or run.env_extra != (env_extra or {}):
+                return (
+                    f"{tool_label} was not started: make {run.target} run {run_id} is active "
+                    "with a different target or coverage settings. Wait for that run to finish, "
+                    f"then call {tool_label} again. Its result does not validate this request."
+                )
             return f"A make run is already active. {await _make_run_result(run_id, wait_seconds)}"
-    for run_id in list(_MAKE_RUNS)[:-19]:
+    for run_id in list(_MAKE_RUNS)[:-(_MAKE_RUN_HISTORY - 1)]:
         del _MAKE_RUNS[run_id]
     run_id = uuid.uuid4().hex
-    _MAKE_RUNS[run_id] = asyncio.create_task(
-        _run_make_phase(tool_label, make_target, log_filename, timeout_seconds, env_extra),
+    _MAKE_RUNS[run_id] = _MakeRun(
+        asyncio.create_task(_run_make_phase(tool_label, make_target, log_filename, timeout_seconds, env_extra)),
+        make_target, dict(env_extra or {}),
     )
     return await _make_run_result(run_id, wait_seconds)
 
 
 @mcp.tool()
-async def get_make_result(run_id: str | None = None, wait_seconds: int = 30) -> str:
+async def get_make_result(run_id: str | None = None, wait_seconds: int = _MAKE_POLL_SECONDS) -> str:
     """Get the final result or running status of a make run, waiting at most 30s.
 
     Omit ``run_id`` to recover the latest run after a lost/cancelled request.
@@ -919,16 +943,17 @@ async def get_make_result(run_id: str | None = None, wait_seconds: int = 30) -> 
 @mcp.tool()
 async def cancel_make_run(run_id: str) -> str:
     """Request make process-group cleanup; poll get_make_result for completion."""
-    task = _MAKE_RUNS.get(run_id)
-    if task is None:
+    run = _MAKE_RUNS.get(run_id)
+    if run is None:
         return "No matching make run in this server."
+    task = run.task
     if not task.done() and not task.cancelling():
         task.cancel()
     return f"Cancellation requested for make run {run_id}. Check get_make_result for completion."
 
 
 @mcp.tool()
-async def run_tests(timeout_seconds: int = 7200, wait_seconds: int = 30) -> str:
+async def run_tests(timeout_seconds: int = 7200, wait_seconds: int = _MAKE_POLL_SECONDS) -> str:
     """Run ``make test`` (BDD, Go, Vitest and MCP tests) with writable caches/artifacts.
 
     Checks local listener permissions in the test subprocess. Logs go to
@@ -940,7 +965,7 @@ async def run_tests(timeout_seconds: int = 7200, wait_seconds: int = 30) -> str:
 
 
 @mcp.tool()
-async def run_lint(timeout_seconds: int = 7200, wait_seconds: int = 30) -> str:
+async def run_lint(timeout_seconds: int = 7200, wait_seconds: int = _MAKE_POLL_SECONDS) -> str:
     """Run ``make lint`` with writable caches.
 
     Includes Go lint, ESLint and the dependency audit. Logs go to
@@ -955,7 +980,7 @@ async def run_e2e(
     bigquery_credentials_file: str | None = None,
     timeout_seconds: int = 7200,
     include_bigquery: bool = False,
-    wait_seconds: int = 30,
+    wait_seconds: int = _MAKE_POLL_SECONDS,
 ) -> str:
     """Run ``make e2e``, excluding BigQuery coverage by default.
 
@@ -1013,10 +1038,10 @@ async def check_services() -> str:
 
     # Check redis
     try:
-        await asyncio.to_thread(redis_ping, redis)
+        await asyncio.to_thread(redis_ping, redis, setting_name="REDIS_URL")
         results.append("redis: OK")
     except (RedisPrerequisiteError, ValueError) as exc:
-        results.append(f"redis: FAILED ({str(exc).replace('SIPPY_E2E_REDIS_URL', 'REDIS_URL')})")
+        results.append(f"redis: FAILED ({exc})")
 
     # Check sippy binary
     sippy_bin = REPO_ROOT / "sippy"
@@ -1048,5 +1073,36 @@ async def check_services() -> str:
     return f"Environment: {status}\n" + "\n".join(f"  {r}" for r in results)
 
 
+async def _serve_mcp() -> None:
+    """Drain owned make sessions on normal transport exit, SIGTERM or SIGHUP."""
+    loop = asyncio.get_running_loop()
+    serving = asyncio.current_task()
+
+    def stop() -> None:
+        # Stdio transport shutdown can wait for EOF, so stop detached sessions
+        # immediately rather than waiting for the transport's cancellation.
+        for run in _MAKE_RUNS.values():
+            if not run.task.done() and not run.task.cancelling():
+                run.task.cancel()
+        if not serving.cancelling():
+            serving.cancel()
+
+    signals = (signal.SIGTERM, signal.SIGHUP)
+    for sig in signals:
+        loop.add_signal_handler(sig, stop)
+    try:
+        await mcp.run_async()
+    except asyncio.CancelledError:
+        pass
+    finally:
+        tasks = [run.task for run in _MAKE_RUNS.values() if not run.task.done()]
+        for task in tasks:
+            if not task.cancelling():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        for sig in signals:
+            loop.remove_signal_handler(sig)
+
+
 if __name__ == "__main__":
-    mcp.run()
+    asyncio.run(_serve_mcp())

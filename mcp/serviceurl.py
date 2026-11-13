@@ -1,4 +1,7 @@
-"""Keep e2e database selection and credential redaction consistent with URI decoding."""
+"""Keep e2e database selection and credential redaction consistent with URI decoding.
+
+This module must remain stdlib-only: scripts/e2e.sh uses it outside the MCP venv.
+"""
 
 import argparse
 import os
@@ -42,7 +45,7 @@ def local_database_uri(uri: str, strip_overrides: bool = False) -> str:
 
 def redact_credentials(line: str) -> str:
     """Redact URI userinfo and decoded credential query keys without changing other text."""
-    line = re.sub(r"(postgres(?:ql)?|rediss?)://[^/@\s]+@", r"\1://[redacted]@", line)
+    line = re.sub(r"(postgres(?:ql)?|rediss?)://[^/\s]*@", r"\1://[redacted]@", line)
 
     def redact_option(match: re.Match) -> str:
         if unquote(match[2]) in ("password", "sslpassword"):
@@ -52,22 +55,31 @@ def redact_credentials(line: str) -> str:
     return re.sub(r"([?&])([^=&\s]+)=([^&\s]*)", redact_option, line)
 
 
+def e2e_database_uri(uri: str, database: str) -> str:
+    """Select the isolated database while preserving validated URI options."""
+    parsed = urlsplit(local_database_uri(uri, strip_overrides=True))
+    return parsed._replace(path="/" + database).geturl()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("redact", "validate", "database"))
+    parser.add_argument("command", choices=("redact", "validate", "database", "e2e-database"))
     command = parser.parse_args().command
     if command == "redact":
-        for line in sys.stdin:
-            sys.stdout.write(redact_credentials(line))
-            sys.stdout.flush()
+        for line in sys.stdin.buffer:
+            redacted = redact_credentials(line.decode("utf-8", errors="surrogateescape"))
+            sys.stdout.buffer.write(redacted.encode("utf-8", errors="surrogateescape"))
+            sys.stdout.buffer.flush()
     else:
         try:
-            uri = local_database_uri(os.environ["SIPPY_DATABASE_DSN"], command == "database")
+            uri = local_database_uri(os.environ["SIPPY_DATABASE_DSN"], command != "validate")
+            if command == "e2e-database":
+                uri = e2e_database_uri(uri, "sippy_e2e")
         except KeyError:
             print("FATAL: SIPPY_DATABASE_DSN is required", file=sys.stderr)
             sys.exit(1)
         except ValueError as exc:
             print(f"FATAL: refusing unsafe e2e database connection settings: {exc}", file=sys.stderr)
             sys.exit(1)
-        if command == "database":
+        if command in ("database", "e2e-database"):
             print(uri)

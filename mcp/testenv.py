@@ -33,14 +33,12 @@ class RedisCommandError(RedisPrerequisiteError):
 def postgres_environment(parent: dict[str, str]) -> dict[str, str]:
     """Move prerequisite connection parameters into libpq's environment variables."""
     env = parent.copy()
-    parsed = urlsplit(env["SIPPY_DATABASE_DSN"])
-    if parsed.scheme not in ("postgres", "postgresql"):
-        raise ValueError("Invalid PostgreSQL URI")
-    authority = parsed.netloc.rsplit("@", 1)[-1]
-    hosts = [urlsplit("//" + host) for host in authority.split(",")]
+    parsed = urlsplit(local_database_uri(env["SIPPY_DATABASE_DSN"], strip_overrides=True))
+    env.pop("PGHOSTADDR", None)
+    env.pop("PGSERVICE", None)
     parameters = {
-        "host": ",".join(unquote(host.hostname or "") for host in hosts),
-        "port": ",".join(str(host.port or "") for host in hosts),
+        "host": parsed.hostname,
+        "port": str(parsed.port or ""),
         "dbname": unquote(parsed.path.removeprefix("/")),
     }
     if parsed.username is not None:
@@ -58,7 +56,7 @@ def postgres_environment(parent: dict[str, str]) -> dict[str, str]:
         "connect_timeout": "PGCONNECT_TIMEOUT",
     }
     for key in (
-        "host", "hostaddr", "port", "password", "passfile", "service", "options", "sslmode",
+        "host", "port", "password", "passfile", "options", "sslmode",
         "requiressl", "sslcompression", "sslcert", "sslkey", "sslrootcert", "sslcrl",
         "sslcrldir", "sslsni", "sslcertmode", "sslnegotiation", "requirepeer",
         "ssl_min_protocol_version", "ssl_max_protocol_version", "gssencmode",
@@ -71,7 +69,12 @@ def postgres_environment(parent: dict[str, str]) -> dict[str, str]:
             raise ValueError("PostgreSQL prerequisite option has no libpq environment equivalent")
         if value or key == "password":
             env[names[key]] = value
-    env["PGCONNECT_TIMEOUT"] = "10"
+    env.setdefault("PGCONNECT_TIMEOUT", "10")
+    try:
+        if int(env["PGCONNECT_TIMEOUT"]) <= 0:
+            raise ValueError
+    except ValueError:
+        raise ValueError("PostgreSQL connect_timeout must be a positive integer") from None
     return env
 
 
@@ -84,6 +87,25 @@ def writable_directory(path: Path) -> Path:
     return path
 
 
+def default_cache_directories(parent: dict[str, str]) -> dict[str, str]:
+    """Find the tool defaults before resorting to workspace-local cold caches."""
+    temporary = tempfile.gettempdir()
+    home = Path(parent.get("HOME") or Path.home())
+    defaults = {"TMPDIR": temporary, "GOTMPDIR": parent.get("TMPDIR") or temporary, "npm_config_cache": str(home / ".npm")}
+    if not parent.get("GOCACHE") or not parent.get("GOMODCACHE"):
+        try:
+            result = subprocess.run(
+                ["go", "env", "GOCACHE", "GOMODCACHE"], env=parent,
+                capture_output=True, text=True, timeout=10,
+            )
+            paths = result.stdout.splitlines()
+            if result.returncode == 0 and len(paths) == 2:
+                defaults.update(zip(("GOCACHE", "GOMODCACHE"), paths))
+        except (OSError, subprocess.TimeoutExpired):
+            pass  # The writable workspace fallback also supports missing Go installs.
+    return defaults
+
+
 def prepare_environment(parent: dict[str, str], log_dir: Path, target: str = "e2e") -> dict[str, str]:
     """Keep usable caches and service credentials, with private writable defaults."""
     validate_target(target)
@@ -92,11 +114,12 @@ def prepare_environment(parent: dict[str, str], log_dir: Path, target: str = "e2
         env["npm_config_cache"] = env["NPM_CONFIG_CACHE"]
     cache_root = log_dir / "test-cache"
     home = Path(env.get("HOME") or Path.home())
+    defaults = default_cache_directories(env)
     for key in (
         "GOCACHE", "GOMODCACHE", "GOTMPDIR", "TMPDIR", "XDG_CACHE_HOME",
         "npm_config_cache",
     ):
-        candidate = env.get(key)
+        candidate = env.get(key) or defaults.get(key)
         if key == "XDG_CACHE_HOME" and not candidate:
             candidate = str(home / ".cache")
         try:
@@ -153,16 +176,16 @@ def prepare_environment(parent: dict[str, str], log_dir: Path, target: str = "e2
     return env
 
 
-def redis_ping(url: str) -> None:
+def redis_ping(url: str, setting_name: str = "SIPPY_E2E_REDIS_URL") -> None:
     """Check Redis auth, database selection and PING without a redis-cli dependency."""
     try:
         parsed = urlsplit(url)
         port = parsed.port or 6379
         database = str(int(parsed.path.strip("/"))) if parsed.path.strip("/") else None
     except ValueError:
-        raise ValueError("SIPPY_E2E_REDIS_URL has a malformed authority, port or database") from None
+        raise ValueError(f"{setting_name} has a malformed authority, port or database") from None
     if parsed.scheme not in ("redis", "rediss") or not parsed.hostname:
-        raise ValueError("SIPPY_E2E_REDIS_URL requires a redis/rediss scheme and hostname")
+        raise ValueError(f"{setting_name} requires a redis/rediss scheme and hostname")
     if parsed.query:
         raise ValueError("Redis URL query options are not supported by Sippy")
     commands = []
@@ -248,8 +271,6 @@ def check_prerequisites(target: str = "e2e") -> None:
         return
     in_container = Path("/run/.containerenv").exists()
     ports = (0, 18080, 12112) if target == "e2e" else (0,)
-    if target == "e2e" and not in_container:
-        ports += (23433, 23479)
     for port in ports:
         try:
             with socket.socket() as listener:
@@ -275,13 +296,8 @@ def check_prerequisites(target: str = "e2e") -> None:
     ]
     try:
         env = os.environ.copy()
-        env["SIPPY_DATABASE_DSN"] = local_database_uri(env["SIPPY_DATABASE_DSN"], strip_overrides=True)
-        env.pop("PGHOSTADDR", None)
-        env.pop("PGSERVICE", None)
         env = postgres_environment(env)
-        host_count = max(len(env.get(key, "").split(",")) for key in ("PGHOST", "PGHOSTADDR"))
-        # libpq applies connect_timeout separately to each failover host.
-        timeout = int(env["PGCONNECT_TIMEOUT"]) * host_count + 5
+        timeout = int(env["PGCONNECT_TIMEOUT"]) + 5
     except ValueError as exc:
         raise RuntimeError(f"PostgreSQL SIPPY_DATABASE_DSN validation failed: {exc}") from None
     try:

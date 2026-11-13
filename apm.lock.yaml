@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-11-13T01:26:42.457368+00:00'
+generated_at: '2026-11-13T16:57:00.826577+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -164,7 +164,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:c5a73c538ef4e48cf65c033279d150ae6de7616e92cf6fe0d12a992faa3cb3cf
+  content_hash: sha256:1ea2e2bd69213c7e4e8d8b63cd1e3a755f172e6d295d97b77a7eb85d88541a15
 - kind: project-relative
   target: claude
   value: .claude/rules/mcp.md
@@ -749,7 +749,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:d86b550eb0e608ac739334ffd8e59d1f60241e3b3e48fe9570e87dd8938ffd44
+  content_hash: sha256:f07c2dfa4aa1e40b56c326355dea03512ba807613b02a32f39517dbe9a4d807c
 - kind: project-relative
   target: cursor
   value: .cursor/rules/mcp.mdc
@@ -1318,7 +1318,7 @@ local_deployed_file_hashes:
   .claude/rules/dev-commands.md: sha256:d477adfde5e7c096d507af0c3fcce8009adfb456281819a582b0c96c1cafc22e
   .claude/rules/docs.md: sha256:0025ced9676e2ddc19c1b32e2ff5724fbbfee9e20d1f0976ed5a59ccdbf8285b
   .claude/rules/frontend.md: sha256:28db16aa2c794b6e075e7fb5eaec5f27063da1624c4fad1121b0fd3faa06ba66
-  .claude/rules/general.md: sha256:c5a73c538ef4e48cf65c033279d150ae6de7616e92cf6fe0d12a992faa3cb3cf
+  .claude/rules/general.md: sha256:1ea2e2bd69213c7e4e8d8b63cd1e3a755f172e6d295d97b77a7eb85d88541a15
   .claude/rules/mcp.md: sha256:ddfe965e7cf8cddbba1374c6ae582a20ac0af17c958bf10e1a4edff6ff2ad0b8
   .claude/rules/query.md: sha256:794e82b9f9684609c1aae538fcd2b7062c06d85c99a79d81345650124d16750b
   .claude/rules/testing.md: sha256:a52d77be7c068752692480ae9caaa9e0baa8940e69f1dec571bd601b0b6f2b4d
@@ -1350,7 +1350,7 @@ local_deployed_file_hashes:
   .cursor/rules/dev-commands.mdc: sha256:eb5b5a72a68cf0a6e56c0abdebdc294afc92da030facaca4759ef9c5ab1af60d
   .cursor/rules/docs.mdc: sha256:5cfb465cf2b81b824db529b792747fc9e7b66c57ff7d6701b070da016ee85a57
   .cursor/rules/frontend.mdc: sha256:6d92ebb3168603d8783912b6269b5021a5055d3ab60e7a7cbfd828adeef403d0
-  .cursor/rules/general.mdc: sha256:d86b550eb0e608ac739334ffd8e59d1f60241e3b3e48fe9570e87dd8938ffd44
+  .cursor/rules/general.mdc: sha256:f07c2dfa4aa1e40b56c326355dea03512ba807613b02a32f39517dbe9a4d807c
   .cursor/rules/mcp.mdc: sha256:d3df4022abb1fb83eedf950f82ddcf003bae72642f8b8199364d7655d6003ddd
   .cursor/rules/query.mdc: sha256:0140b0629330fa02022fd7a87c0f767f9baa30ed0864a3926b6b1b4a8017edec
   .cursor/rules/testing.mdc: sha256:c756787512fc3bc34ac332f5ab81bfcad61807e0eeb97637ddd152a31c865a21

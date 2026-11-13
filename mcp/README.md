@@ -84,8 +84,9 @@ until it returns the final result, then read that run's log before reporting suc
 Omit the ID to recover the latest run after a lost response. A cancelled or timed-out
 client request leaves the server-owned run active. Keep the MCP server process alive
 between polls. `timeout_seconds` limits the run itself, independently of request
-deadlines. Calling another make tool while a run is active returns that run's status
-without starting more work; invoke the next tool after completion. The server retains
+deadlines. Retrying the same target and coverage settings returns its status.
+A different target or coverage request explicitly reports that it was not started;
+call that tool again after the blocking run finishes. The server retains
 the latest 20 results in memory. Restarting it loses those results, but preserves logs.
 Use `cancel_make_run(run_id=...)` to stop a run explicitly and poll for cleanup completion.
 
@@ -108,15 +109,17 @@ The unit-test subprocess checks that it can open local listeners; lint does not
 require sockets or database services. The e2e subprocess also checks its API
 and metrics ports (18080 and 12112). In a devcontainer, it also checks PostgreSQL
 authentication and database-creation permission and an authenticated Redis PING.
-Host runs additionally check the fixed PostgreSQL and Redis container ports
-(23433 and 23479) before provisioning containers. Unknown make targets are rejected.
+Host runs let the launcher remove old dedicated service containers before binding
+their ports (23433 and 23479). Unknown make targets are rejected.
 The PostgreSQL prerequisite uses the same local URI validation and target-override
 removal as the e2e launcher, including clearing inherited `PGHOSTADDR` and
 `PGSERVICE`. It then decodes the connection URI into libpq `PG*` environment
 variables so passwords are absent from `psql` arguments. Other query options,
 including credentials and SSL settings, are preserved. Options without a libpq
-environment equivalent fail before `psql` runs. The local connection gets a
-10-second timeout plus five seconds for the permission query.
+environment equivalent fail before `psql` runs. The local connection preserves an
+explicit positive `connect_timeout` (including inherited `PGCONNECT_TIMEOUT`),
+defaulting to 10 seconds, plus five seconds for the permission query. Multiple
+PostgreSQL hosts are rejected for e2e.
 It then executes `make e2e` with the same environment and permissions. Outside a
 devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
 
@@ -131,8 +134,8 @@ The e2e launcher uses Python 3 for URI validation and streaming log redaction.
 Setup diagnostics distinguish URI validation, executable startup, connection,
 timeout, TLS, and rejected Redis operations without exposing credentials or raw
 client diagnostics. Explicit empty URI passwords override inherited passwords.
-The URI helper accepts only `redact`, `validate`, and `database` commands and
-reports credential-free validation reasons.
+The stdlib-only URI helper accepts `redact`, `validate`, `database`, and
+`e2e-database` commands and reports credential-free validation reasons.
 Before database setup, it strips `host`, `hostaddr`, `dbname`, and `service`
 query overrides, including encoded keys, and clears inherited `PGHOSTADDR` and
 `PGSERVICE`. Destructive helpers reject remaining target overrides or non-local
@@ -143,8 +146,9 @@ client's sandbox; configure the MCP process with those permissions in both phase
 Usable inherited cache directories are retained. For unit tests and e2e this
 includes Playwright's default browser cache and its `PLAYWRIGHT_BROWSERS_PATH=0`
 hermetic-install setting.
-Unwritable caches and unset Go, npm and temporary directories fall back to
-`sippy-dev-logs/test-cache/`.
+Unset Go caches are resolved with `go env`, and unset temporary directories use
+the system default. Unwritable caches fall back to `sippy-dev-logs/test-cache/`.
+The redactor preserves non-UTF-8 log bytes while removing credentials.
 For unit tests and e2e, `ARTIFACT_DIR` is preserved and must be writable by the MCP
 server; the runner fails early rather than losing CI artifacts. Without it,
 artifacts go to `sippy-dev-logs/artifacts/`. The e2e runner sets `SIPPY_TEST_OUTPUT_DIR` to
@@ -172,13 +176,14 @@ inherited `TMPDIR` for this pipe only; logs and coverage stay in the artifact di
 Startup defers signal exits until child PIDs are recorded. If interrupted before
 the API starts, cleanup stops the blocked reader and removes its FIFO; once the
 API has started, cleanup drains its logs after stopping it.
-Make runs are serialized within the MCP server because they share logs,
-artifacts, listeners, and services. Each make runner starts a separate process
+Only one make run starts at a time because runs share logs, artifacts, listeners,
+and services. Each make runner starts a separate process
 session. On run timeout, explicit cancellation, or server shutdown, the runner sends SIGTERM to the process
 group, allows up to 60 seconds for e2e cleanup (five seconds for other targets),
 then sends SIGKILL to remaining group members and reaps make. The run is marked
 cancelled only after cleanup completes. Client request cancellation does not trigger
-this cleanup.
+this cleanup. SIGTERM and SIGHUP stop the MCP server only after active make
+sessions finish process-group cleanup.
 
 ### Background processes
 

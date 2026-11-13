@@ -22,7 +22,9 @@ Use `cancel_make_run` to stop a run explicitly.
   service settings. `SIPPY_E2E_REDIS_URL` is an optional override. Never log
   credentials or retry with a passwordless DSN.
 - Use the `sippy-dev` MCP `run_e2e` tool in both solve and review. Its subprocess
-  checks local listener permissions, authenticated services, and writable output paths.
+  checks local listener permissions and writable output paths. In a devcontainer,
+  it also checks authenticated PostgreSQL and Redis services. Host runs let the
+  launcher replace its dedicated service containers.
 - If the tool is unavailable, fix MCP registration/startup for that phase. If its
   prerequisite check fails, fix the MCP environment, socket permissions, or artifact
   mount. Keep `ARTIFACT_DIR` writable so CI can collect results.

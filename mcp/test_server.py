@@ -1010,13 +1010,12 @@ class TestMcpTestEnvironment:
         assert not (tmp_path / "unused").exists()
 
     @pytest.mark.parametrize("port", [23433, 23479])
-    def test_host_service_port_conflict_fails_before_container_setup(self, port):
+    def test_host_launcher_can_replace_containers_holding_service_ports(self, port):
         with socket.socket() as occupied:
             occupied.bind(("127.0.0.1", port))
             occupied.listen()
             with mock.patch("testenv.Path.exists", return_value=False):
-                with pytest.raises(RuntimeError, match=f"port {port}"):
-                    testenv.check_prerequisites("e2e")
+                testenv.check_prerequisites("e2e")
 
     @pytest.mark.parametrize("suffix", ["user:@localhost/db", "localhost/db?password="])
     def test_empty_uri_password_replaces_inherited_password(self, suffix):
@@ -1062,14 +1061,14 @@ class TestMcpTestEnvironment:
         "dsn,expected",
         [
             (
-                "postgresql://user%40name:p%2Bss%3Dword@[::1]:5433/test%20db?sslmode=require&application_name=preflight",
-                {"PGHOST": "::1", "PGPORT": "5433", "PGUSER": "user@name", "PGPASSWORD": "p+ss=word",
+                "postgresql://user%40name:p%2Bss%3Dword@localhost:5433/test%20db?sslmode=require&application_name=preflight",
+                {"PGHOST": "localhost", "PGPORT": "5433", "PGUSER": "user@name", "PGPASSWORD": "p+ss=word",
                  "PGDATABASE": "test db", "PGSSLMODE": "require", "PGAPPNAME": "preflight"},
             ),
             (
-                "postgres://user:old@first:5432,second:5433/original?host=%2Ftmp&dbname=selected&password=new+secret&options=-c%20search_path%3Dpublic",
-                {"PGHOST": "/tmp", "PGPORT": "5432,5433", "PGUSER": "user", "PGPASSWORD": "new+secret",
-                 "PGDATABASE": "selected", "PGOPTIONS": "-c search_path=public"},
+                "postgres://user:old@localhost:5433/original?host=%2Ftmp&dbname=selected&password=new+secret&options=-c%20search_path%3Dpublic",
+                {"PGHOST": "localhost", "PGPORT": "5433", "PGUSER": "user", "PGPASSWORD": "new+secret",
+                 "PGDATABASE": "original", "PGOPTIONS": "-c search_path=public"},
             ),
             ("postgresql://localhost", {"PGHOST": "localhost", "PGDATABASE": "inherited", "PGUSER": "inherited"}),
         ],
@@ -1785,32 +1784,6 @@ class TestMakeTools:
         assert "SIPPY_E2E_REDIS_URL" not in env
         assert create.call_args.args[2] == target
 
-    def test_concurrent_make_calls_are_serialized(self, monkeypatch):
-        async def run():
-            monkeypatch.setattr(server, "_MAKE_PHASE_LOCK", asyncio.Lock())
-            started = asyncio.Event()
-            finish = asyncio.Event()
-            calls = []
-
-            async def phase(label, *args):
-                calls.append(label)
-                started.set()
-                await finish.wait()
-                return label
-
-            monkeypatch.setattr(server, "_run_make_phase_locked", phase)
-            first = asyncio.create_task(server._run_make_phase("run_lint", "lint", "lint.log", 0))
-            await started.wait()
-            second = asyncio.create_task(server._run_make_phase("run_tests", "test", "test.log", 0))
-            await asyncio.sleep(0)
-            assert calls == ["run_lint"]
-            finish.set()
-            assert await first == "run_lint"
-            assert await second == "run_tests"
-            assert calls == ["run_lint", "run_tests"]
-
-        asyncio.run(run())
-
     @pytest.mark.parametrize("target,grace", [("e2e", 60), ("lint", 5), ("test", 5)])
     def test_cancellation_uses_target_cleanup_grace(self, tmp_path, monkeypatch, target, grace):
         async def run():
@@ -1945,7 +1918,7 @@ class TestMakeRunResults:
             request.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await request
-            task = next(iter(server._MAKE_RUNS.values()))
+            task = next(iter(server._MAKE_RUNS.values())).task
             assert not task.done()
             status = await server.get_make_result(wait_seconds=0)
             run_id = next(iter(server._MAKE_RUNS))
@@ -2085,7 +2058,237 @@ class TestCheckServicesRedis:
         monkeypatch.setattr(server.asyncio, "create_subprocess_exec", create)
         monkeypatch.setattr(server, "redis_ping", ping)
         result = asyncio.run(server.check_services())
-        ping.assert_called_once_with(url)
+        ping.assert_called_once_with(url, setting_name="REDIS_URL")
         assert all(call.args[0] == "psql" for call in create.call_args_list)
         assert "redis: OK" in result if failure is None else "Redis rejected AUTH" in result
         assert "private" not in result
+
+
+class TestReviewRegressions:
+    @pytest.mark.parametrize("scheme", ["postgres", "postgresql", "redis", "rediss"])
+    def test_redactor_uses_last_userinfo_separator_and_preserves_invalid_bytes(self, scheme):
+        source = (f"ok\n{scheme}://user:p@ss@localhost/db?password=private\n".encode()
+                  + b"\xff bad\n" + f"{scheme}://user:tail@localhost/db\n".encode())
+        result = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "mcp/serviceurl.py"), "redact"],
+            input=source, capture_output=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == (
+            f"ok\n{scheme}://[redacted]@localhost/db?password=[redacted]\n".encode()
+            + b"\xff bad\n" + f"{scheme}://[redacted]@localhost/db\n".encode()
+        )
+
+    @pytest.mark.parametrize("password", ["p%3Fss%40word", "p@ss"])
+    def test_database_selection_uses_parsed_uri(self, password):
+        uri = f"postgresql://user:{password}@localhost:5433/original?sslmode=require&connect_timeout=7"
+        expected = f"postgresql://user:{password}@localhost:5433/sippy_e2e?sslmode=require&connect_timeout=7"
+        assert serviceurl.e2e_database_uri(uri, "sippy_e2e") == expected
+        result = TestE2eScriptSafety._run_helper('''
+psql() { return 0; }
+e2e_configure_existing_services || exit $?
+[ "$SIPPY_E2E_DSN" = "$EXPECTED_DSN" ]
+''', {"SIPPY_DATABASE_DSN": uri, "EXPECTED_DSN": expected})
+        assert result.returncode == 0, result.stderr
+
+    @pytest.mark.parametrize("stage", ["prepare", "directory", "log", "spawn"])
+    def test_launch_errors_identify_path_and_allow_next_run(self, tmp_path, monkeypatch, stage):
+        monkeypatch.setattr(server, "_MAKE_RUNS", {})
+        monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
+        monkeypatch.setattr(server, "prepare_environment", mock.Mock(return_value=os.environ.copy()))
+        monkeypatch.setattr(server.asyncio, "create_subprocess_exec", mock.AsyncMock(return_value=FakeProcess()))
+        target = {
+            "prepare": "server.prepare_environment", "directory": "server._ensure_dev_log_dir",
+            "log": "builtins.open", "spawn": "server.asyncio.create_subprocess_exec",
+        }[stage]
+        async def run():
+            with mock.patch(target, side_effect=PermissionError(13, "private diagnostic", "failed-path")):
+                result = await server.run_lint()
+            assert "failed-path" in result
+            assert "private diagnostic" not in result
+            assert ("cannot prepare test filesystem paths" if stage in ("prepare", "directory") else "failed to start") in result
+            assert "succeeded" in await server.run_lint()
+        asyncio.run(run())
+
+    @pytest.mark.parametrize("stage", ["term", "poll", "kill"])
+    def test_macos_exited_process_group_is_reaped(self, stage, monkeypatch):
+        proc = mock.Mock(pid=1234)
+        proc.wait = mock.AsyncMock(return_value=0)
+        calls = []
+        def killpg(pid, sig):
+            calls.append(sig)
+            if sig == {"term": signal.SIGTERM, "poll": 0, "kill": signal.SIGKILL}[stage]:
+                raise PermissionError(1, "Operation not permitted")
+            if sig == 0:
+                raise ProcessLookupError
+        monkeypatch.setattr(server.os, "killpg", killpg)
+        asyncio.run(server._stop_make_process(proc, 1))
+        proc.wait.assert_awaited_once()
+        assert signal.SIGTERM in calls
+        if stage != "term":
+            assert 0 in calls
+            assert signal.SIGKILL in calls
+
+    @pytest.mark.parametrize("requested,expected", [(600, 30), (-5, 0)])
+    def test_poll_wait_is_bounded_without_cancelling_run(self, monkeypatch, requested, expected):
+        async def run():
+            task = asyncio.create_task(asyncio.Event().wait())
+            monkeypatch.setattr(server, "_MAKE_RUNS", {"test": server._MakeRun(task, "lint", {})})
+            try:
+                with mock.patch("server.asyncio.wait_for", new=mock.AsyncMock(side_effect=asyncio.TimeoutError)) as wait:
+                    result = await server.get_make_result("test", wait_seconds=requested)
+                assert "running" in result
+                assert wait.call_args.kwargs["timeout"] == expected
+                assert not task.done()
+            finally:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+        asyncio.run(run())
+
+    @pytest.mark.parametrize("different_target", [True, False])
+    def test_conflicting_target_or_bigquery_request_is_not_started(self, tmp_path, monkeypatch, different_target):
+        async def run():
+            monkeypatch.setattr(server, "_MAKE_RUNS", {})
+            phase = mock.AsyncMock(side_effect=lambda *args: None)
+            finish = asyncio.Event()
+            async def active(*args):
+                await finish.wait()
+                return "original completed"
+            phase.side_effect = active
+            monkeypatch.setattr(server, "_run_make_phase", phase)
+            creds = tmp_path / "credentials.json"
+            creds.write_text('{}')
+            await server.run_e2e(wait_seconds=0)
+            original_id = next(iter(server._MAKE_RUNS))
+            if different_target:
+                result = await server.run_lint(wait_seconds=0)
+            else:
+                result = await server.run_e2e(str(creds), include_bigquery=True, wait_seconds=0)
+            assert "was not started" in result
+            assert original_id in result
+            assert "make e2e" in result
+            assert "does not validate this request" in result
+            assert len(server._MAKE_RUNS) == 1
+            finish.set()
+            assert await server.get_make_result(original_id) == "original completed"
+            assert phase.await_count == 1
+            result = await server.run_lint() if different_target else await server.run_e2e(str(creds), include_bigquery=True)
+            assert result == "original completed"
+            assert phase.await_count == 2
+            if not different_target:
+                assert phase.call_args.args[-1] == {"GCS_SA_JSON_PATH": str(creds)}
+        asyncio.run(run())
+
+    @pytest.mark.parametrize("timeout", ["3", "27"])
+    @pytest.mark.parametrize("source", ["uri", "environment"])
+    def test_postgres_timeout_is_preserved_in_probe_and_deadline(self, source, timeout):
+        parent = {"SIPPY_DATABASE_DSN": "postgresql://localhost/postgres", "SIPPY_E2E_REDIS_URL": "redis://localhost/1"}
+        if source == "uri":
+            parent["SIPPY_DATABASE_DSN"] += "?connect_timeout=" + timeout
+            parent["PGCONNECT_TIMEOUT"] = "99"
+        else:
+            parent["PGCONNECT_TIMEOUT"] = timeout
+        with (
+            mock.patch.dict(os.environ, parent, clear=True),
+            mock.patch("testenv.socket.socket"),
+            mock.patch("testenv.Path.exists", return_value=True),
+            mock.patch("testenv.subprocess.run", return_value=subprocess.CompletedProcess([], 0, "t\n")) as run,
+            mock.patch("testenv.redis_ping"),
+        ):
+            testenv.check_prerequisites()
+        assert run.call_args.kwargs["env"]["PGCONNECT_TIMEOUT"] == timeout
+        assert run.call_args.kwargs["timeout"] == int(timeout) + 5
+
+    @pytest.mark.parametrize("timeout", ["0", "-1", "private"])
+    def test_unbounded_or_invalid_postgres_timeouts_are_rejected(self, timeout):
+        with pytest.raises(ValueError, match="positive integer") as exc:
+            testenv.postgres_environment({"SIPPY_DATABASE_DSN": "postgresql://localhost/db?connect_timeout=" + timeout})
+        assert "private" not in str(exc.value)
+
+    def test_default_go_and_system_caches_are_reused(self, tmp_path, monkeypatch):
+        go_cache, go_mod = tmp_path / "go-build", tmp_path / "go-mod"
+        temporary = tmp_path / "system-tmp"
+        monkeypatch.setattr(testenv.tempfile, "gettempdir", lambda: str(temporary))
+        command = mock.Mock(return_value=subprocess.CompletedProcess([], 0, f"{go_cache}\n{go_mod}\n"))
+        monkeypatch.setattr(testenv.subprocess, "run", command)
+        env = testenv.prepare_environment({"HOME": str(tmp_path)}, tmp_path / "logs", "lint")
+        assert env["GOCACHE"] == str(go_cache)
+        assert env["GOMODCACHE"] == str(go_mod)
+        assert env["TMPDIR"] == env["GOTMPDIR"] == str(temporary)
+        assert env["npm_config_cache"] == str(tmp_path / ".npm")
+        command.assert_called_once()
+        assert command.call_args.args[0] == ["go", "env", "GOCACHE", "GOMODCACHE"]
+
+    @pytest.mark.parametrize("failure", [PermissionError(), subprocess.TimeoutExpired('go', 10), None])
+    def test_unavailable_go_defaults_use_writable_fallback(self, tmp_path, monkeypatch, failure):
+        command = mock.Mock(side_effect=failure, return_value=subprocess.CompletedProcess([], 1, ""))
+        monkeypatch.setattr(testenv.subprocess, "run", command)
+        env = testenv.prepare_environment({"HOME": str(tmp_path)}, tmp_path / "logs", "lint")
+        for key in ("GOCACHE", "GOMODCACHE"):
+            assert env[key] == str(tmp_path / "logs/test-cache" / key.lower())
+
+    @pytest.mark.parametrize("setting", ["REDIS_URL", "SIPPY_E2E_REDIS_URL"])
+    def test_redis_validation_names_the_callers_setting(self, setting):
+        with pytest.raises(ValueError, match=setting):
+            testenv.redis_ping("redis://[malformed", setting_name=setting)
+
+    @pytest.mark.parametrize("shutdown_signal", [signal.SIGTERM, signal.SIGHUP])
+    def test_server_shutdown_releases_detached_descendant_resources(self, tmp_path, shutdown_signal):
+        mcp_dir = tmp_path / "mcp"
+        mcp_dir.mkdir()
+        for filename in ("server.py", "testenv.py", "serviceurl.py"):
+            shutil.copyfile(REPO_ROOT / "mcp" / filename, mcp_dir / filename)
+        pidfile = tmp_path / "server.pid"
+        ready = tmp_path / "descendant.pid"
+        resource = tmp_path / "resource.lock"
+        wrapper = tmp_path / "serve.py"
+        wrapper.write_text(f'''import os, runpy, sys
+from pathlib import Path
+Path({str(pidfile)!r}).write_text(str(os.getpid()))
+sys.path.insert(0, {str(mcp_dir)!r})
+runpy.run_path({str(mcp_dir / 'server.py')!r}, run_name='__main__')
+''')
+        descendant = f'''import fcntl, os, signal, time
+from pathlib import Path
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+lock = open({str(resource)!r}, 'w')
+fcntl.flock(lock, fcntl.LOCK_EX)
+Path({str(ready)!r}).write_text(str(os.getpid()))
+while True: time.sleep(1)
+'''
+        make = tmp_path / "make"
+        make.write_text(f'''#!{sys.executable}
+import subprocess, sys
+subprocess.Popen([sys.executable, '-c', {descendant!r}]).wait()
+''')
+        make.chmod(0o755)
+        async def run():
+            transport = StdioTransport(
+                command=sys.executable, args=[str(wrapper)], cwd=str(tmp_path),
+                env={**os.environ, "PATH": f"{tmp_path}:{os.environ['PATH']}"},
+            )
+            async with Client(transport) as client:
+                result = await client.call_tool("run_lint", {"wait_seconds": 0})
+                assert "running" in result.content[0].text
+                deadline = time.monotonic() + 10
+                while not ready.exists() and time.monotonic() < deadline:
+                    await asyncio.sleep(0.01)
+                assert ready.exists()
+                os.kill(int(pidfile.read_text()), shutdown_signal)
+                with resource.open("w") as lock:
+                    while True:
+                        try:
+                            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            break
+                        except BlockingIOError:
+                            assert time.monotonic() < deadline, "server left its detached descendant alive"
+                            await asyncio.sleep(0.02)
+        try:
+            asyncio.run(run())
+        finally:
+            for path in (ready, pidfile):
+                if path.exists():
+                    try:
+                        os.kill(int(path.read_text()), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass

@@ -23,7 +23,8 @@ import (
 // TestCachePrimingReplacesStaleFixtures exercises the launcher's isolation boundary
 // against the running e2e API and Redis, including fixtures left by interrupted runs.
 func TestCachePrimingReplacesStaleFixtures(t *testing.T) {
-	if os.Getenv("SIPPY_E2E_REPO_ROOT") == "" {
+	root := os.Getenv("SIPPY_E2E_REPO_ROOT")
+	if root == "" {
 		t.Skip("SIPPY_E2E_REPO_ROOT not set, skipping e2e cache priming")
 	}
 	cache, err := NewE2ECacheManipulator(Release)
@@ -34,7 +35,8 @@ func TestCachePrimingReplacesStaleFixtures(t *testing.T) {
 		t.Helper()
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, "bash", "-c", "source ../../../scripts/e2e.sh; e2e_prime_component_readiness_cache")
+		cmd := exec.CommandContext(ctx, "bash", "-c", "source scripts/e2e.sh; e2e_prime_component_readiness_cache")
+		cmd.Dir = root
 		output, err := cmd.CombinedOutput()
 		require.NoError(t, err, "cache priming failed: %s", output)
 	}
