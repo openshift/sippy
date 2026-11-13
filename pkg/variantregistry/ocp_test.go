@@ -2764,10 +2764,9 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			// Upstream-parity jobs run TechPreviewNoUpgrade via FEATURE_SET env in their
-			// openshift/release config, so FeatureSet stays default (name-based variant)
-			// even though the job exercises the ExternalOIDCAsWebhook capability.
-			job: "periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-aws-external-oidc-upstream-parity",
+			// openshift/release#88708 moved webhook coverage to aswebhook-techpreview
+			// jobs; upstream-parity is default FeatureSet and must not get this capability.
+			job: "periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-aws-external-oidc-aswebhook-techpreview",
 			expected: map[string]string{
 				VariantRelease:          "5.1",
 				VariantReleaseMajor:     "5",
@@ -2785,7 +2784,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantJobTier:          "candidate",
 				VariantAggregation:      VariantNoValue,
 				VariantSecurityMode:     VariantDefaultValue,
-				VariantFeatureSet:       VariantDefaultValue,
+				VariantFeatureSet:       "techpreview",
 				VariantNetworkAccess:    VariantDefaultValue,
 				VariantScheduler:        VariantDefaultValue,
 				VariantContainerRuntime: "crun",
@@ -2797,7 +2796,7 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job: "periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-aws-sno-external-oidc-upstream-parity",
+			job: "periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-aws-sno-external-oidc-aswebhook-techpreview",
 			expected: map[string]string{
 				VariantRelease:          "5.1",
 				VariantReleaseMajor:     "5",
@@ -2815,7 +2814,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantJobTier:          "candidate",
 				VariantAggregation:      VariantNoValue,
 				VariantSecurityMode:     VariantDefaultValue,
-				VariantFeatureSet:       VariantDefaultValue,
+				VariantFeatureSet:       "techpreview",
 				VariantNetworkAccess:    VariantDefaultValue,
 				VariantScheduler:        VariantDefaultValue,
 				VariantContainerRuntime: "crun",
@@ -2827,7 +2826,7 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job: "periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-dualstack-external-oidc-upstream-parity",
+			job: "periodic-ci-openshift-cluster-authentication-operator-release-5.1-periodics-e2e-metal-ovn-dualstack-external-oidc-aswebhook-techpreview",
 			expected: map[string]string{
 				VariantRelease:          "5.1",
 				VariantReleaseMajor:     "5",
@@ -2845,7 +2844,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantJobTier:          "candidate",
 				VariantAggregation:      VariantNoValue,
 				VariantSecurityMode:     VariantDefaultValue,
-				VariantFeatureSet:       VariantDefaultValue,
+				VariantFeatureSet:       "techpreview",
 				VariantNetworkAccess:    VariantDefaultValue,
 				VariantScheduler:        VariantDefaultValue,
 				VariantContainerRuntime: "crun",
