@@ -81,6 +81,18 @@ e2e_log_tail() {
     tail -n 60 "$OUTPUT_DIR/e2e.log" >&2
 }
 
+e2e_prime_component_readiness_cache() {
+    # Prior runs can leave synthetic triage fixtures in these reports for an hour.
+    echo "Priming component readiness cache..."
+    local views view
+    views=$(curl -sf "http://localhost:$SIPPY_API_PORT/api/component_readiness/views") || { echo "Failed to fetch views"; return 1; }
+    for view in $(echo "$views" | grep -o '"name":"[^"]*"' | cut -d'"' -f4); do
+        echo "  Priming cache for view: $view"
+        curl -sf "http://localhost:$SIPPY_API_PORT/api/component_readiness?view=$view&forceRefresh=true" > /dev/null || { echo "Failed to prime cache for view: $view"; return 1; }
+    done
+    echo "Cache priming complete"
+}
+
 wait_for_sippy() {
     echo "Waiting for sippy API to start on port $SIPPY_API_PORT..."
     local started=$SECONDS deadline=$((SECONDS + 600)) status remaining
@@ -264,14 +276,8 @@ trap 'exit 143' TERM
 
 wait_for_sippy || exit $?
 
-# Prime the component readiness cache so triage tests can find cached reports
-echo "Priming component readiness cache..."
-VIEWS=$(curl -sf "http://localhost:$SIPPY_API_PORT/api/component_readiness/views") || { echo "Failed to fetch views"; exit 1; }
-for VIEW in $(echo "$VIEWS" | grep -o '"name":"[^"]*"' | cut -d'"' -f4); do
-    echo "  Priming cache for view: $VIEW"
-    curl -sf "http://localhost:$SIPPY_API_PORT/api/component_readiness?view=$VIEW" > /dev/null || { echo "Failed to prime cache for view: $VIEW"; exit 1; }
-done
-echo "Cache priming complete"
+# Prime fresh reports so triage tests can inject fixtures without reusing prior runs.
+e2e_prime_component_readiness_cache || exit $?
 
 # Run e2e tests
 gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile="$OUTPUT_DIR/e2e-test-coverage.out" -coverpkg=./pkg/...,./cmd/... 2>&1 | e2e_redact_logs | tee "$OUTPUT_DIR/e2e-gotestsum.log"

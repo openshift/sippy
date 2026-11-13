@@ -161,6 +161,9 @@ URI userinfo and `password`/`sslpassword` query parameters, including encoded ke
 Write failures in the seed and test-output pipelines fail the run. Coverage
 generation during cleanup is best effort and does not replace the test exit status.
 Cleanup only reports test results from the current invocation.
+Before tests run, cache priming requests `forceRefresh=true` for each configured
+seed view. This replaces reports containing synthetic triage fixtures from prior
+runs, including interrupted runs, without flushing Redis or deleting unrelated keys.
 API logs use a private named FIFO under `/tmp` and a regular background redactor process,
 allowing Bash 3.2 to wait for complete logs before early-exit diagnostics or cleanup.
 The pipe uses the system temporary filesystem because virtiofs workspaces and
