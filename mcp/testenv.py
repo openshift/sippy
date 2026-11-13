@@ -204,6 +204,37 @@ def redis_ping(url: str) -> None:
         connection.close()
 
 
+def check_frontend_dependencies(repo_root: Path) -> None:
+    """Diagnose reused Node modules with native binaries for a different platform."""
+    frontend = repo_root / "sippy-ng"
+    if not (frontend / "node_modules").is_dir():
+        # make installs dependencies when they are absent.
+        return
+    script = """
+try {
+    require('rollup');
+    require('esbuild').transformSync('let probe = 1');
+} catch {
+    process.exit(1);
+}
+"""
+    try:
+        result = subprocess.run(
+            ["node", "-e", script], cwd=frontend,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30,
+        )
+    except FileNotFoundError:
+        raise RuntimeError("Node executable not found; install Node or fix PATH") from None
+    except (OSError, subprocess.TimeoutExpired):
+        raise RuntimeError("Node native dependency check could not complete; check Node installation and permissions") from None
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Rollup/esbuild native dependencies cannot load on this Node platform. "
+            "node_modules may come from another OS/architecture. "
+            "Reinstall in this environment with: cd sippy-ng && npm ci --no-audit --ignore-scripts"
+        )
+
+
 def validate_target(target: str) -> None:
     """Reject unknown make targets before preparing settings or opening listeners."""
     if target not in ("lint", "test", "e2e"):
@@ -281,6 +312,8 @@ def check_prerequisites(target: str = "e2e") -> None:
 
 if __name__ == "__main__":
     try:
+        if sys.argv[1] == "test":
+            check_frontend_dependencies(Path(__file__).resolve().parent.parent)
         check_prerequisites(sys.argv[1])
     except (RuntimeError, ValueError) as error:
         print(f"MCP test prerequisite failed: {error}", file=sys.stderr)

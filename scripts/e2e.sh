@@ -244,7 +244,9 @@ fi
 # component report cache that triage e2e fixtures inject synthetic regressions into. e2e requests
 # already send X-Forwarded-User, so the mock user is not needed.
 # A regular background child is waitable on macOS's system Bash 3.2.
-API_LOG_DIR=$(mktemp -d "$OUTPUT_DIR/api-log.XXXXXX") || exit $?
+# Artifact mounts and inherited TMPDIR can be virtiofs, which cannot create FIFOs.
+# Only the private pipe lives on the system temporary filesystem; logs stay in OUTPUT_DIR.
+API_LOG_DIR=$(mktemp -d /tmp/sippy-api-log.XXXXXX) || exit $?
 mkfifo "$API_LOG_DIR/api.fifo" || exit $?
 # Defer signal exits until each launched child's PID is recorded for cleanup.
 API_START_STATUS=0

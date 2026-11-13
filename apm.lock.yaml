@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-11-12T18:31:57.091621+00:00'
+generated_at: '2026-11-13T01:26:42.457368+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -137,7 +137,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:2298574b5ed4bc4d725621ffd436f98a8e42e2b315d912d5d38efaed40eb0bfc
+  content_hash: sha256:d477adfde5e7c096d507af0c3fcce8009adfb456281819a582b0c96c1cafc22e
 - kind: project-relative
   target: claude
   value: .claude/rules/docs.md
@@ -191,7 +191,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:ed28c8c0ea39b8d4284699ae4181068c19681a4f868716a82cbbdfe886dc79f0
+  content_hash: sha256:a52d77be7c068752692480ae9caaa9e0baa8940e69f1dec571bd601b0b6f2b4d
 - kind: project-relative
   target: claude
   value: .claude/skills/sippy-dev-app
@@ -335,7 +335,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:9183829a5283ddf84f60d9c34a0044e3a073e2d65edcf2aa597dd7798e9fc80d
+  content_hash: sha256:48fad168633dbab1761ee8b1982974f215f41a3f8c9456e5ad0ef68c79e29e57
 - kind: project-relative
   target: claude
   value: .claude/skills/sippy-generate-release-views
@@ -533,7 +533,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:9183829a5283ddf84f60d9c34a0044e3a073e2d65edcf2aa597dd7798e9fc80d
+  content_hash: sha256:48fad168633dbab1761ee8b1982974f215f41a3f8c9456e5ad0ef68c79e29e57
 - kind: project-relative
   target: codex
   value: .agents/skills/sippy-generate-release-views
@@ -722,7 +722,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:48a2a0ad785a0e66b857ba3ab412536bfbb0a124c3b3321d991ca0e90bd91230
+  content_hash: sha256:eb5b5a72a68cf0a6e56c0abdebdc294afc92da030facaca4759ef9c5ab1af60d
 - kind: project-relative
   target: cursor
   value: .cursor/rules/docs.mdc
@@ -776,7 +776,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:d94ca805d24cb6788438519931df04e50dc4e198a1247fe574562d55453544ee
+  content_hash: sha256:c756787512fc3bc34ac332f5ab81bfcad61807e0eeb97637ddd152a31c865a21
 - kind: project-relative
   target: gemini
   value: .gemini/commands/sippy-dev-app.toml
@@ -1297,7 +1297,7 @@ local_deployed_file_hashes:
   .agents/skills/sippy-dev-restore-prodlike/SKILL.md: sha256:cd65d1dd0803deb7b77cd567fdf6fa96ba79548c72bab24c51f972229f51836b
   .agents/skills/sippy-dev-serve/SKILL.md: sha256:b7838a513236ea915a54fc41fe03260b95943e70cf3a6c7c9fbc4232c1162cd4
   .agents/skills/sippy-dev-setup/SKILL.md: sha256:172c4be3c349ebcdf667414ead603f17d14035e76a720d3eeaffd837e2c2ed8a
-  .agents/skills/sippy-dev-tests/SKILL.md: sha256:9183829a5283ddf84f60d9c34a0044e3a073e2d65edcf2aa597dd7798e9fc80d
+  .agents/skills/sippy-dev-tests/SKILL.md: sha256:48fad168633dbab1761ee8b1982974f215f41a3f8c9456e5ad0ef68c79e29e57
   .agents/skills/sippy-generate-release-views/SKILL.md: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
   .agents/skills/sippy-update-ga-release-views/SKILL.md: sha256:8fb3e633d401b21187499a5b4f70354ee07a9097e4e6a4095e1b152d0aa1d834
   .agents/skills/sippy-update-job-variant/SKILL.md: sha256:eeed3299f2ee00d17a3bad19c4ebc1bedcc85d9deaf2a45389e57412e9da90d3
@@ -1315,13 +1315,13 @@ local_deployed_file_hashes:
   .claude/commands/sippy-update-job-variant.md: sha256:4888a9409411ea4440c3c3c3e9b8d20ef400432bc74555875837f686520aff92
   .claude/rules/backend.md: sha256:60f9f7f5315eb4c1f9bc84af897529796e38abb343056c2ed6605cb0ddcf3401
   .claude/rules/config.md: sha256:96c5e42c039230f1e4e7f9ba56d04e6f76f23deeecdd858634c440d6029a6a83
-  .claude/rules/dev-commands.md: sha256:2298574b5ed4bc4d725621ffd436f98a8e42e2b315d912d5d38efaed40eb0bfc
+  .claude/rules/dev-commands.md: sha256:d477adfde5e7c096d507af0c3fcce8009adfb456281819a582b0c96c1cafc22e
   .claude/rules/docs.md: sha256:0025ced9676e2ddc19c1b32e2ff5724fbbfee9e20d1f0976ed5a59ccdbf8285b
   .claude/rules/frontend.md: sha256:28db16aa2c794b6e075e7fb5eaec5f27063da1624c4fad1121b0fd3faa06ba66
   .claude/rules/general.md: sha256:c5a73c538ef4e48cf65c033279d150ae6de7616e92cf6fe0d12a992faa3cb3cf
   .claude/rules/mcp.md: sha256:ddfe965e7cf8cddbba1374c6ae582a20ac0af17c958bf10e1a4edff6ff2ad0b8
   .claude/rules/query.md: sha256:794e82b9f9684609c1aae538fcd2b7062c06d85c99a79d81345650124d16750b
-  .claude/rules/testing.md: sha256:ed28c8c0ea39b8d4284699ae4181068c19681a4f868716a82cbbdfe886dc79f0
+  .claude/rules/testing.md: sha256:a52d77be7c068752692480ae9caaa9e0baa8940e69f1dec571bd601b0b6f2b4d
   .claude/skills/sippy-dev-app/SKILL.md: sha256:7bf32c46480f15e1d30a041c520b537348944e858ef569e12d2085f12c320590
   .claude/skills/sippy-dev-frontend/SKILL.md: sha256:6b8e15bd8161303e0ad43544081e7868574380ef7128668c39e5893adaabfdd3
   .claude/skills/sippy-dev-migrate/SKILL.md: sha256:370ff0cc8d409d2744be2b68e859a04c224199514493c91febafa1899be8ae73
@@ -1329,7 +1329,7 @@ local_deployed_file_hashes:
   .claude/skills/sippy-dev-restore-prodlike/SKILL.md: sha256:cd65d1dd0803deb7b77cd567fdf6fa96ba79548c72bab24c51f972229f51836b
   .claude/skills/sippy-dev-serve/SKILL.md: sha256:b7838a513236ea915a54fc41fe03260b95943e70cf3a6c7c9fbc4232c1162cd4
   .claude/skills/sippy-dev-setup/SKILL.md: sha256:172c4be3c349ebcdf667414ead603f17d14035e76a720d3eeaffd837e2c2ed8a
-  .claude/skills/sippy-dev-tests/SKILL.md: sha256:9183829a5283ddf84f60d9c34a0044e3a073e2d65edcf2aa597dd7798e9fc80d
+  .claude/skills/sippy-dev-tests/SKILL.md: sha256:48fad168633dbab1761ee8b1982974f215f41a3f8c9456e5ad0ef68c79e29e57
   .claude/skills/sippy-generate-release-views/SKILL.md: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
   .claude/skills/sippy-update-ga-release-views/SKILL.md: sha256:8fb3e633d401b21187499a5b4f70354ee07a9097e4e6a4095e1b152d0aa1d834
   .claude/skills/sippy-update-job-variant/SKILL.md: sha256:eeed3299f2ee00d17a3bad19c4ebc1bedcc85d9deaf2a45389e57412e9da90d3
@@ -1347,13 +1347,13 @@ local_deployed_file_hashes:
   .cursor/commands/sippy-update-job-variant.md: sha256:4888a9409411ea4440c3c3c3e9b8d20ef400432bc74555875837f686520aff92
   .cursor/rules/backend.mdc: sha256:f64404abf6d9fac0cf9abfa9f8a7920041d29d872193c5141b0ceebfb40d3bbf
   .cursor/rules/config.mdc: sha256:2f264175ca83e070fc5bc585feb598f2b4854ebc79efdb9de71f90f04a0ed5d8
-  .cursor/rules/dev-commands.mdc: sha256:48a2a0ad785a0e66b857ba3ab412536bfbb0a124c3b3321d991ca0e90bd91230
+  .cursor/rules/dev-commands.mdc: sha256:eb5b5a72a68cf0a6e56c0abdebdc294afc92da030facaca4759ef9c5ab1af60d
   .cursor/rules/docs.mdc: sha256:5cfb465cf2b81b824db529b792747fc9e7b66c57ff7d6701b070da016ee85a57
   .cursor/rules/frontend.mdc: sha256:6d92ebb3168603d8783912b6269b5021a5055d3ab60e7a7cbfd828adeef403d0
   .cursor/rules/general.mdc: sha256:d86b550eb0e608ac739334ffd8e59d1f60241e3b3e48fe9570e87dd8938ffd44
   .cursor/rules/mcp.mdc: sha256:d3df4022abb1fb83eedf950f82ddcf003bae72642f8b8199364d7655d6003ddd
   .cursor/rules/query.mdc: sha256:0140b0629330fa02022fd7a87c0f767f9baa30ed0864a3926b6b1b4a8017edec
-  .cursor/rules/testing.mdc: sha256:d94ca805d24cb6788438519931df04e50dc4e198a1247fe574562d55453544ee
+  .cursor/rules/testing.mdc: sha256:c756787512fc3bc34ac332f5ab81bfcad61807e0eeb97637ddd152a31c865a21
   .gemini/commands/sippy-dev-app.toml: sha256:4a79c99bb6bb43ba638699bcb92640e5d05b489403d9b9c9c7b1bdbdf03e6955
   .gemini/commands/sippy-dev-bdd.toml: sha256:415f1a2a9f967d98c0ba893626d8a208d1b5dc1d371d6397cea7655f728db744
   .gemini/commands/sippy-dev-frontend.toml: sha256:1df44b5c570c9002acdc249999bf64085fbb5b10a0de95fb9ed36900d5bc85f3

@@ -15,6 +15,8 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
 
 import server
 import serviceurl
@@ -600,6 +602,7 @@ class TestRunE2e:
             "bigquery_credentials_file",
             "timeout_seconds",
             "include_bigquery",
+            "wait_seconds",
         ]
         assert parameters["include_bigquery"].annotation is bool
         assert parameters["include_bigquery"].default is False
@@ -1474,6 +1477,15 @@ python3() {
     if [[ "$3" == redact ]]; then /bin/sleep 0.1; fi
     command python3 "$@"
 }
+mkfifo() {
+    # Model virtiofs: artifacts and TMPDIR can hold files, but not named pipes.
+    case "$1" in
+        /tmp/sippy-api-log.*/api.fifo) ;;
+        *) echo "FIFO on unsupported workspace filesystem" >&2; return 1 ;;
+    esac
+    echo "$1" > "$SIPPY_TEST_OUTPUT_DIR/fifo-path"
+    command mkfifo "$@"
+}
 psql() {
     if [[ "$*" == *"CREATE DATABASE"* && "$FAIL_STAGE" == create ]]; then return "$FAIL_STATUS"; fi
     if [[ "$*" == *"DROP DATABASE IF"* && "$FAIL_STAGE" == drop ]]; then return "$FAIL_STATUS"; fi
@@ -1582,6 +1594,9 @@ exec /bin/sleep 60
         for log in output_dir.glob("*.log"):
             assert "secret" not in log.read_text()
         assert not list(output_dir.glob("api-log.*"))
+        fifo_path = output_dir / "fifo-path"
+        if fifo_path.exists():
+            assert not Path(fifo_path.read_text().strip()).parent.exists()
         if stage == "serve":
             assert "API startup failed" in output
         if stage == "signal-writer-pid":
@@ -1784,9 +1799,9 @@ class TestMakeTools:
                 return label
 
             monkeypatch.setattr(server, "_run_make_phase_locked", phase)
-            first = asyncio.create_task(server.run_lint())
+            first = asyncio.create_task(server._run_make_phase("run_lint", "lint", "lint.log", 0))
             await started.wait()
-            second = asyncio.create_task(server.run_tests())
+            second = asyncio.create_task(server._run_make_phase("run_tests", "test", "test.log", 0))
             await asyncio.sleep(0)
             assert calls == ["run_lint"]
             finish.set()
@@ -1855,7 +1870,9 @@ subprocess.Popen([sys.executable, "-c", {child!r}]).wait()
         monkeypatch.setattr(server, "DEV_LOG_DIR", tmp_path / "logs")
         try:
             async def run():
-                task = asyncio.create_task(server.run_lint(timeout_seconds=2 if stop == "timeout" else 30))
+                task = asyncio.create_task(server._run_make_phase(
+                    "run_lint", "lint", "run_lint.log", 2 if stop == "timeout" else 30,
+                ))
                 if stop == "cancel":
                     deadline = time.monotonic() + 5
                     while not ready_path.exists() and time.monotonic() < deadline:
@@ -1890,7 +1907,7 @@ subprocess.Popen([sys.executable, "-c", {child!r}]).wait()
         with mock.patch("server._run_make_phase", new=mock.AsyncMock(return_value="completed")) as phase:
             result = asyncio.run(getattr(server, name)(timeout_seconds=123))
         assert result == "completed"
-        phase.assert_awaited_once_with(name, target, f"{name}.log", 123)
+        phase.assert_awaited_once_with(name, target, f"{name}.log", 123, None)
         tool = asyncio.run(mcp.get_tool(name))
         assert tool.parameters["properties"]["timeout_seconds"] == {"default": 7200, "type": "integer"}
 
@@ -1905,3 +1922,170 @@ subprocess.Popen([sys.executable, "-c", {child!r}]).wait()
         assert listener.call_count == listeners
         command.assert_not_called()
         ping.assert_not_called()
+
+
+class TestMakeRunResults:
+    @pytest.fixture(autouse=True)
+    def isolate_runs(self, monkeypatch):
+        monkeypatch.setattr(server, "_MAKE_RUNS", {})
+
+    def test_poll_and_recover_after_request_cancellation(self, monkeypatch):
+        async def run():
+            started = asyncio.Event()
+            finish = asyncio.Event()
+
+            async def phase(*args):
+                started.set()
+                await finish.wait()
+                return "run_tests succeeded (exit 0)"
+
+            monkeypatch.setattr(server, "_run_make_phase", phase)
+            request = asyncio.create_task(server.run_tests())
+            await started.wait()
+            request.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await request
+            task = next(iter(server._MAKE_RUNS.values()))
+            assert not task.done()
+            status = await server.get_make_result(wait_seconds=0)
+            run_id = next(iter(server._MAKE_RUNS))
+            assert run_id in status
+            # A retry must recover the same run instead of starting another suite.
+            assert "already active" in await server.run_tests(wait_seconds=0)
+            assert len(server._MAKE_RUNS) == 1
+            finish.set()
+            assert "succeeded" in await server.get_make_result(run_id)
+            assert "succeeded" in await server.get_make_result(run_id, wait_seconds=0)
+
+        asyncio.run(run())
+
+    def test_explicit_cancel_waits_for_cleanup(self, monkeypatch):
+        async def run():
+            started = asyncio.Event()
+            cleanup = asyncio.Event()
+
+            async def phase(*args):
+                started.set()
+                try:
+                    await asyncio.Event().wait()
+                except asyncio.CancelledError:
+                    await cleanup.wait()
+                    raise
+
+            monkeypatch.setattr(server, "_run_make_phase", phase)
+            await server.run_tests(wait_seconds=0)
+            await started.wait()
+            run_id = next(iter(server._MAKE_RUNS))
+            assert "Cancellation requested" in await server.cancel_make_run(run_id)
+            await asyncio.sleep(0)
+            assert "running" in await server.get_make_result(run_id, wait_seconds=0)
+            cleanup.set()
+            assert "cleanup complete" in await server.get_make_result(run_id)
+
+        asyncio.run(run())
+
+    def test_unknown_run_and_bounded_history(self, monkeypatch):
+        async def run():
+            assert "No matching" in await server.get_make_result()
+            assert "No matching" in await server.cancel_make_run("unknown")
+            monkeypatch.setattr(server, "_run_make_phase", mock.AsyncMock(return_value="completed"))
+            for _ in range(25):
+                assert await server.run_lint() == "completed"
+            assert len(server._MAKE_RUNS) == 20
+
+        asyncio.run(run())
+
+    def test_real_mcp_request_timeout_preserves_run(self, tmp_path):
+        mcp_dir = tmp_path / "mcp"
+        mcp_dir.mkdir()
+        for filename in ("server.py", "testenv.py", "serviceurl.py"):
+            shutil.copyfile(REPO_ROOT / "mcp" / filename, mcp_dir / filename)
+        finish = tmp_path / "finish"
+        make = tmp_path / "make"
+        make.write_text(f'''#!{sys.executable}
+import time
+from pathlib import Path
+deadline = time.monotonic() + 10
+while not Path({str(finish)!r}).exists():
+    if time.monotonic() > deadline:
+        raise SystemExit(1)
+    time.sleep(0.01)
+print('suite complete')
+''')
+        make.chmod(0o755)
+
+        async def run():
+            transport = StdioTransport(
+                command=sys.executable,
+                args=[str(mcp_dir / "server.py")],
+                cwd=str(tmp_path),
+                env={**os.environ, "PATH": f"{tmp_path}:{os.environ['PATH']}"},
+            )
+            async with Client(transport) as client:
+                with pytest.raises(Exception, match="(?i)timed out"):
+                    await client.call_tool("run_lint", {}, timeout=0.2)
+                result = await client.call_tool("get_make_result", {"wait_seconds": 0})
+                assert "running" in result.content[0].text
+                with pytest.raises(Exception, match="(?i)timed out"):
+                    await client.call_tool("get_make_result", {}, timeout=0.05)
+                finish.touch()
+                result = await client.call_tool("get_make_result", {})
+                assert "succeeded" in result.content[0].text
+                assert "suite complete" in result.content[0].text
+
+        asyncio.run(run())
+
+
+class TestFrontendPrerequisites:
+    @pytest.mark.parametrize("broken", [None, "rollup", "esbuild"])
+    def test_loads_native_packages_in_node(self, tmp_path, broken):
+        for name in ("rollup", "esbuild"):
+            package = tmp_path / "sippy-ng/node_modules" / name
+            package.mkdir(parents=True)
+            (package / "index.js").write_text(
+                "throw new Error('wrong platform')" if name == broken
+                else "module.exports.transformSync = () => ({code: ''});"
+            )
+        if broken:
+            with pytest.raises(RuntimeError, match="another OS/architecture"):
+                testenv.check_frontend_dependencies(tmp_path)
+        else:
+            testenv.check_frontend_dependencies(tmp_path)
+
+    def test_missing_modules_are_left_for_make(self, tmp_path):
+        with mock.patch("testenv.subprocess.run") as run:
+            testenv.check_frontend_dependencies(tmp_path)
+        run.assert_not_called()
+
+    @pytest.mark.parametrize("failure", [None, 1, FileNotFoundError(), subprocess.TimeoutExpired("node", 30)])
+    def test_native_dependency_diagnostic(self, tmp_path, failure):
+        (tmp_path / "sippy-ng/node_modules").mkdir(parents=True)
+        with mock.patch("testenv.subprocess.run") as run:
+            if isinstance(failure, Exception):
+                run.side_effect = failure
+            else:
+                run.return_value.returncode = failure or 0
+            if failure is None:
+                testenv.check_frontend_dependencies(tmp_path)
+            else:
+                with pytest.raises(RuntimeError, match="Node|node_modules"):
+                    testenv.check_frontend_dependencies(tmp_path)
+            assert run.call_args.kwargs["cwd"] == tmp_path / "sippy-ng"
+
+
+class TestCheckServicesRedis:
+    @pytest.mark.parametrize("url", ["redis://:private@localhost/1", "rediss://user:private@[::1]:6380/2"])
+    @pytest.mark.parametrize("failure", [None, testenv.RedisCommandError("Redis rejected AUTH")])
+    def test_uses_shared_probe_without_redis_cli(self, monkeypatch, url, failure):
+        monkeypatch.setenv("REDIS_URL", url)
+        process = mock.Mock(returncode=0)
+        process.communicate = mock.AsyncMock(return_value=(b"42", b""))
+        create = mock.AsyncMock(return_value=process)
+        ping = mock.Mock(side_effect=failure)
+        monkeypatch.setattr(server.asyncio, "create_subprocess_exec", create)
+        monkeypatch.setattr(server, "redis_ping", ping)
+        result = asyncio.run(server.check_services())
+        ping.assert_called_once_with(url)
+        assert all(call.args[0] == "psql" for call in create.call_args_list)
+        assert "redis: OK" in result if failure is None else "Redis rejected AUTH" in result
+        assert "private" not in result

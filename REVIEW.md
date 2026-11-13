@@ -10,6 +10,11 @@ Extra context for agentic review responses, layered on `/openshift-developer:add
 4. Commit fixes referencing the review feedback.
 5. Push: `git push fork HEAD` (or `git push origin HEAD`).
 
+Make tools return within 30 seconds. If a run ID is returned, keep the MCP server
+alive and poll `get_make_result` until the final result arrives before proceeding.
+Client request timeouts leave the run active; omit the ID to recover the latest run.
+Use `cancel_make_run` to stop a run explicitly.
+
 ## Environment
 
 - PostgreSQL uses password authentication. The MCP server must inherit setup's

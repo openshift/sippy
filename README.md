@@ -15,7 +15,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for information about standing up a
 local environment.
 
 Agentic solve and review use the `sippy-dev` MCP `run_tests`, `run_lint`, and
-`run_e2e` tools for unit tests, lint, and e2e. See
+`run_e2e` tools for unit tests, lint, and e2e. Poll `get_make_result` when a tool
+returns a run ID, keeping the MCP server alive until completion. See
 [MCP test execution](mcp/README.md#test-execution) for service, authentication,
 and permission requirements. The runner sets
 `SIPPY_TEST_OUTPUT_DIR` to `ARTIFACT_DIR/e2e` for e2e logs and coverage, preserving

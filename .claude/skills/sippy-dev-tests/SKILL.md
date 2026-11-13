@@ -9,6 +9,8 @@ Run these three steps in order. Stop if any step fails.
 
 Use the `sippy-dev` MCP tools in both agentic solve and review phases. They run the full make targets with writable caches, artifact output, and prerequisite checks in the test subprocess.
 
+Each make tool waits at most 30 seconds per request. If it returns a run ID, keep the MCP server alive and poll `get_make_result` until it returns the final result before proceeding. A client request timeout leaves the run active; omit the ID to recover the latest run. Use `cancel_make_run` for an explicit stop. The run's `timeout_seconds` applies independently of client request deadlines.
+
 1. **Lint**: call `run_lint` (`make lint`). Read the result and `sippy-dev-logs/run_lint.log`.
 
 2. **Unit tests**: call `run_tests` (`make test`). This includes the Component Readiness Playwright BDD suite, Go tests, Vitest, and MCP pytest. Read the result and `sippy-dev-logs/run_tests.log`.

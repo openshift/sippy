@@ -32,6 +32,8 @@ Run end-to-end tests with the `sippy-dev` MCP `run_e2e` tool (`make e2e`). BigQu
 
 Use these MCP tools in both agentic solve and review phases. They prepare writable caches and artifact output and check prerequisites in the test subprocess. Preserve inherited service credentials and connection settings. Read the tool result and its log under `sippy-dev-logs/` before reporting the full target's status. If the tools are unavailable, follow `mcp/README.md` to configure `mcp/run.sh` with the setup environment and required permissions.
 
+Make tools return within 30 seconds. When they return a run ID, poll `get_make_result` until the final result arrives before starting the next target or reporting success. Omit the ID to recover the latest run after a client timeout. Keep the MCP server alive between polls; client request cancellation leaves the run active. Use `cancel_make_run` for an explicit stop.
+
 Run only the Component Readiness browser tests: `make test-bdd`
 
 That target installs Playwright's Chromium and runs `npm run test:bdd` in `sippy-ng`. The suite uses that browser, not `CHROME_PATH`. The **sippy-dev-bdd** slash command runs this target. Instructions are in **`.apm/prompts/sippy-dev-bdd.prompt.md`**.

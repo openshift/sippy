@@ -51,6 +51,8 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 | `run_tests`          | `make test` (BDD, Go, Vitest, MCP)                                         | `sippy-dev-logs/run_tests.log`          |
 | `run_lint`           | `make lint` (Go, ESLint, dependency audit)                                 | `sippy-dev-logs/run_lint.log`           |
 | `run_e2e`            | `make e2e` (BigQuery coverage is opt-in)                                    | `sippy-dev-logs/run_e2e.log`            |
+| `get_make_result`    | Poll a make run's running status or final result                           | same log as the run                    |
+| `cancel_make_run`    | Explicitly stop a make run and clean up its process group                  | same log as the run                    |
 
 Optional parameters (timeouts, paths, DSNs, etc.) are documented on each function in **`server.py`**.
 
@@ -75,6 +77,17 @@ agentic solve and review phases. They execute `make test`, `make lint`, and
 Register `mcp/run.sh` in each client's MCP configuration and start it after service
 setup, with the setup environment inherited. A successful ordinary e2e presubmit
 alone does not verify this MCP execution path.
+
+Make tools wait at most 30 seconds per request (`wait_seconds`, default 30).
+If the run is still active, they return a run ID. Poll `get_make_result(run_id=...)`
+until it returns the final result, then read that run's log before reporting success.
+Omit the ID to recover the latest run after a lost response. A cancelled or timed-out
+client request leaves the server-owned run active. Keep the MCP server process alive
+between polls. `timeout_seconds` limits the run itself, independently of request
+deadlines. Calling another make tool while a run is active returns that run's status
+without starting more work; invoke the next tool after completion. The server retains
+the latest 20 results in memory. Restarting it loses those results, but preserves logs.
+Use `cancel_make_run(run_id=...)` to stop a run explicitly and poll for cleanup completion.
 
 Environment preparation is target-specific. Lint prepares writable caches without
 validating artifact or service settings. Unit tests additionally prepare artifacts
@@ -106,6 +119,14 @@ environment equivalent fail before `psql` runs. The local connection gets a
 10-second timeout plus five seconds for the permission query.
 It then executes `make e2e` with the same environment and permissions. Outside a
 devcontainer, `scripts/e2e.sh` provisions its dedicated service containers.
+
+Before unit tests start, an existing `sippy-ng/node_modules` is checked by loading
+Rollup and running esbuild in Node. Native modules copied from another OS or CPU
+architecture fail early with instructions to reinstall dependencies in the current
+environment. The runner does not replace that dependency tree automatically.
+`check_services` uses the same authenticated Python Redis probe as e2e and does
+not require `redis-cli` in the devcontainer.
+
 The e2e launcher uses Python 3 for URI validation and streaming log redaction.
 Setup diagnostics distinguish URI validation, executable startup, connection,
 timeout, TLS, and rejected Redis operations without exposing credentials or raw
@@ -140,17 +161,21 @@ URI userinfo and `password`/`sslpassword` query parameters, including encoded ke
 Write failures in the seed and test-output pipelines fail the run. Coverage
 generation during cleanup is best effort and does not replace the test exit status.
 Cleanup only reports test results from the current invocation.
-API logs use a private named FIFO and a regular background redactor process,
+API logs use a private named FIFO under `/tmp` and a regular background redactor process,
 allowing Bash 3.2 to wait for complete logs before early-exit diagnostics or cleanup.
+The pipe uses the system temporary filesystem because virtiofs workspaces and
+artifact mounts can reject FIFOs even when regular files are writable. It ignores
+inherited `TMPDIR` for this pipe only; logs and coverage stay in the artifact directory.
 Startup defers signal exits until child PIDs are recorded. If interrupted before
 the API starts, cleanup stops the blocked reader and removes its FIFO; once the
 API has started, cleanup drains its logs after stopping it.
-Make tool calls are serialized within the MCP server because they share logs,
+Make runs are serialized within the MCP server because they share logs,
 artifacts, listeners, and services. Each make runner starts a separate process
-session. On timeout or task cancellation, the runner sends SIGTERM to the process
+session. On run timeout, explicit cancellation, or server shutdown, the runner sends SIGTERM to the process
 group, allows up to 60 seconds for e2e cleanup (five seconds for other targets),
-then sends SIGKILL to remaining group members and reaps make. Cancellation is
-re-raised after cleanup completes.
+then sends SIGKILL to remaining group members and reaps make. The run is marked
+cancelled only after cleanup completes. Client request cancellation does not trigger
+this cleanup.
 
 ### Background processes
 

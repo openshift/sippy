@@ -6,13 +6,14 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
-from testenv import default_database_dsn, prepare_environment, seed_database_dsn
+from testenv import RedisPrerequisiteError, default_database_dsn, prepare_environment, redis_ping, seed_database_dsn
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 _DEVCONTAINER_ENV = REPO_ROOT / ".devcontainer" / ".env"
@@ -25,6 +26,7 @@ DEV_LOG_DIR = REPO_ROOT / "sippy-dev-logs"
 
 _MAX_TOOL_CHARS = 28000
 _MAKE_PHASE_LOCK = asyncio.Lock()
+_MAKE_RUNS: dict[str, asyncio.Task[str]] = {}
 
 
 def _ensure_dev_log_dir() -> None:
@@ -692,9 +694,12 @@ async def _run_make_phase(
 ) -> str:
     """Serialize make targets that share logs, artifacts, listeners and services."""
     async with _MAKE_PHASE_LOCK:
-        return await _run_make_phase_locked(
-            tool_label, make_target, log_filename, timeout_seconds, env_extra,
-        )
+        try:
+            return await _run_make_phase_locked(
+                tool_label, make_target, log_filename, timeout_seconds, env_extra,
+            )
+        except OSError:
+            return f"{tool_label} failed to start; check server filesystem permissions and executables."
 
 
 async def _stop_make_process(proc: asyncio.subprocess.Process, grace_seconds: int) -> None:
@@ -856,24 +861,93 @@ async def restore_prodlike_db(
     )
 
 
+async def _make_run_result(run_id: str, wait_seconds: int) -> str:
+    """Wait briefly without letting a request cancellation stop the owned make task."""
+    task = _MAKE_RUNS[run_id]
+    if task.done():
+        return f"Make run {run_id} cancelled; cleanup complete." if task.cancelled() else task.result()
+    try:
+        return await asyncio.wait_for(asyncio.shield(task), timeout=max(0, min(wait_seconds, 30)))
+    except asyncio.CancelledError:
+        if task.cancelled():
+            return f"Make run {run_id} cancelled; cleanup complete."
+        raise
+    except asyncio.TimeoutError:
+        return (
+            f"Make run {run_id} is running or queued. "
+            f"Call get_make_result(run_id='{run_id}') until it completes. "
+            "Request cancellation does not stop this run; its timeout still applies."
+        )
+
+
+async def _start_make_run(
+    tool_label: str,
+    make_target: str,
+    log_filename: str,
+    timeout_seconds: int,
+    wait_seconds: int,
+    env_extra: dict[str, str] | None = None,
+) -> str:
+    """Retain make tasks across short MCP requests, with bounded result history."""
+    # Recover an existing run rather than queueing duplicate work after a lost response.
+    for run_id, task in _MAKE_RUNS.items():
+        if not task.done():
+            return f"A make run is already active. {await _make_run_result(run_id, wait_seconds)}"
+    for run_id in list(_MAKE_RUNS)[:-19]:
+        del _MAKE_RUNS[run_id]
+    run_id = uuid.uuid4().hex
+    _MAKE_RUNS[run_id] = asyncio.create_task(
+        _run_make_phase(tool_label, make_target, log_filename, timeout_seconds, env_extra),
+    )
+    return await _make_run_result(run_id, wait_seconds)
+
+
 @mcp.tool()
-async def run_tests(timeout_seconds: int = 7200) -> str:
+async def get_make_result(run_id: str | None = None, wait_seconds: int = 30) -> str:
+    """Get the final result or running status of a make run, waiting at most 30s.
+
+    Omit ``run_id`` to recover the latest run after a lost/cancelled request.
+    Results are kept for the latest 20 runs in this MCP server process.
+    """
+    if run_id is None:
+        run_id = next(reversed(_MAKE_RUNS), None)
+    if run_id not in _MAKE_RUNS:
+        return "No matching make run in this server. Check sippy-dev-logs for earlier output."
+    return await _make_run_result(run_id, wait_seconds)
+
+
+@mcp.tool()
+async def cancel_make_run(run_id: str) -> str:
+    """Request make process-group cleanup; poll get_make_result for completion."""
+    task = _MAKE_RUNS.get(run_id)
+    if task is None:
+        return "No matching make run in this server."
+    if not task.done() and not task.cancelling():
+        task.cancel()
+    return f"Cancellation requested for make run {run_id}. Check get_make_result for completion."
+
+
+@mcp.tool()
+async def run_tests(timeout_seconds: int = 7200, wait_seconds: int = 30) -> str:
     """Run ``make test`` (BDD, Go, Vitest and MCP tests) with writable caches/artifacts.
 
     Checks local listener permissions in the test subprocess. Logs go to
     ``sippy-dev-logs/run_tests.log``. Use ``timeout_seconds=0`` for no limit.
+    Returns within 30s; poll ``get_make_result`` if still running. Client request
+    cancellation leaves the run active while this MCP server stays alive.
     """
-    return await _run_make_phase("run_tests", "test", "run_tests.log", timeout_seconds)
+    return await _start_make_run("run_tests", "test", "run_tests.log", timeout_seconds, wait_seconds)
 
 
 @mcp.tool()
-async def run_lint(timeout_seconds: int = 7200) -> str:
+async def run_lint(timeout_seconds: int = 7200, wait_seconds: int = 30) -> str:
     """Run ``make lint`` with writable caches.
 
     Includes Go lint, ESLint and the dependency audit. Logs go to
     ``sippy-dev-logs/run_lint.log``. Use ``timeout_seconds=0`` for no limit.
+    Returns within 30s; poll ``get_make_result`` if still running.
     """
-    return await _run_make_phase("run_lint", "lint", "run_lint.log", timeout_seconds)
+    return await _start_make_run("run_lint", "lint", "run_lint.log", timeout_seconds, wait_seconds)
 
 
 @mcp.tool()
@@ -881,6 +955,7 @@ async def run_e2e(
     bigquery_credentials_file: str | None = None,
     timeout_seconds: int = 7200,
     include_bigquery: bool = False,
+    wait_seconds: int = 30,
 ) -> str:
     """Run ``make e2e``, excluding BigQuery coverage by default.
 
@@ -890,6 +965,8 @@ async def run_e2e(
     inherited ``GCS_SA_JSON_PATH`` is suppressed. Log: ``sippy-dev-logs/run_e2e.log``. E2e is slow;
     use ``timeout_seconds=0`` for no limit. Prepares writable caches and artifact output,
     then checks listener permissions and authenticated services in the test subprocess.
+    Returns within 30s; poll ``get_make_result`` if still running. Client request
+    cancellation leaves the run active while this MCP server stays alive.
     """
     env_extra = {"GCS_SA_JSON_PATH": ""}
     if include_bigquery:
@@ -897,11 +974,12 @@ async def run_e2e(
         if err:
             return err
         env_extra["GCS_SA_JSON_PATH"] = str(creds_path)
-    return await _run_make_phase(
+    return await _start_make_run(
         "run_e2e",
         "e2e",
         "run_e2e.log",
         timeout_seconds,
+        wait_seconds,
         env_extra,
     )
 
@@ -934,20 +1012,11 @@ async def check_services() -> str:
         results.append(f"postgres: FAILED ({e})")
 
     # Check redis
-    redis_host = redis.replace("redis://", "").replace("rediss://", "").split("/")[0]
-    host, _, port = redis_host.partition(":")
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "redis-cli", "-h", host or "localhost", "-p", port or "6379", "PING",
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
-        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
-        if b"PONG" in stdout:
-            results.append("redis: OK")
-        else:
-            results.append(f"redis: FAILED (no PONG, got: {stdout.decode().strip()})")
-    except Exception as e:
-        results.append(f"redis: FAILED ({e})")
+        await asyncio.to_thread(redis_ping, redis)
+        results.append("redis: OK")
+    except (RedisPrerequisiteError, ValueError) as exc:
+        results.append(f"redis: FAILED ({str(exc).replace('SIPPY_E2E_REDIS_URL', 'REDIS_URL')})")
 
     # Check sippy binary
     sippy_bin = REPO_ROOT / "sippy"

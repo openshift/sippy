@@ -39,6 +39,11 @@ for components, pages, or other UI behavior.
 1. Use the `sippy-dev` MCP `run_tests` tool to run `make test`.
 2. Use its `run_lint` tool to run `make lint`.
 
+If a make tool returns a run ID, keep the MCP server alive and poll `get_make_result`
+until completion before starting the next target or reporting success. Client request
+timeouts leave runs active; omit the ID to recover the latest run. Use `cancel_make_run`
+for an explicit stop.
+
 ## Test Locally
 
 Use the sippy-dev MCP tools:
