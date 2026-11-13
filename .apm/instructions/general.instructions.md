@@ -5,7 +5,9 @@ applyTo: "**"
 
 ### APM context generation
 
-Sources under **`.apm/`** (instructions, prompts, `apm.yml`, etc.) drive generated agent context. After editing those files, run **`make apm`** to regenerate **AGENTS.md**, **CLAUDE.md**, **GEMINI.md**, and the integrated copies under **`.agents/`**, **`.claude/`**, **`.codex/`**, **`.cursor/`**, **`.gemini/`**, and **`.opencode/`**. CI enforces freshness with **`make verify-apm`**.
+Sources under **`.apm/`** (instructions, prompts, `apm.yml`, etc.) drive generated agent context. After editing those files, run **`make apm`** to regenerate **AGENTS.md**, **GEMINI.md**, and the integrated copies under **`.agents/`**, **`.claude/`**, **`.codex/`**, **`.cursor/`**, **`.gemini/`**, and **`.opencode/`**. CI enforces freshness with **`make verify-apm`**.
+
+Both targets compile with **`--clean`** and default instruction deduplication. Claude reads the deployed **`.claude/rules/`**; orphaned generated **CLAUDE.md** files are removed by the generator so they cannot duplicate those rules. Codex reads **AGENTS.md**. Do not restore redundant generated root guidance by hand.
 
 **Slash / agent commands:** content under **`.apm/skills/*/SKILL.md`** is the single source of truth. Each matching **`.apm/prompts/*.prompt.md`** file is a thin wrapper that preserves slash-command integration while pointing to its skill. **`apm install`** (part of **`make apm`**) deploys the skills and wrappers to editor targets (e.g. **`.claude/commands/`**, **`.claude/skills/`**, **`.agents/skills/`**). Do not add those generated paths by hand or installs will skip them as unmanaged duplicates.
 

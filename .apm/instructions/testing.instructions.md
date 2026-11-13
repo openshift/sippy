@@ -4,7 +4,9 @@ applyTo: "**/*_test.go"
 ---
 
 * Use `go vet` and `go test ./pkg/...` to validate changes before resorting to a full e2e run.
-* Run `make e2e 2>&1 | tee e2e-test.log` to verify your changes don't break end-to-end tests. You **MUST** read the log file (`e2e-test.log`) for results. Do not re-run e2e just to grep for different things. All output is already in the log file.
+* Use the `sippy-dev` MCP `run_tests`, `run_lint`, and `run_e2e` tools for the full `make test`, `make lint`, and `make e2e` targets in both agentic solve and review phases. See `mcp/README.md` for setup, inherited service settings, and required permissions.
+* If a make tool returns a run ID, keep the MCP server alive and poll `get_make_result` until completion before reporting results or starting another target. Client request timeouts leave runs active; omit the ID to recover the latest run. Use `cancel_make_run` to stop a run explicitly.
+* Run the MCP `run_e2e` tool to verify your changes don't break end-to-end tests. BigQuery coverage is opt-in via `include_bigquery=true`. You **MUST** read the tool result and `sippy-dev-logs/run_e2e.log` for results; e2e logs and coverage are retained under `ARTIFACT_DIR/e2e/` (default: `sippy-dev-logs/artifacts/e2e/`). Do not re-run e2e just to search different output. Report failures or unrun checks accurately; component passes do not mean the full target passed.
 * Do not mock storage clients (BigQuery, GCS, Postgres, etc.) when constructing golang unit tests.
   Go does not make it easy to substitute mocks for concrete SDK clients, and mock-heavy tests tend
   to verify the mock implementation rather than real behavior. Instead, structure code to separate

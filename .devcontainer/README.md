@@ -73,7 +73,18 @@ MCP and skill configuration is generated under `.codex/` and `.agents/`.
 
 `make lint` works inside the devcontainer (uses the installed `golangci-lint`). Outside the container, the script falls back to running `golangci-lint` via Podman.
 
-**`make e2e`** can run inside the devcontainer: `scripts/e2e.sh` uses `sippy-postgres` with a dedicated `sippy_e2e` database and **`redis://sippy-redis:6379/1`** (Redis logical DB `1`, separate from dev `sippy serve` on DB `0`). Override with **`SIPPY_E2E_REDIS_URL`** if needed.
+For agent runs, use the `sippy-dev` MCP `run_lint`, `run_tests`, and `run_e2e` tools.
+Poll `get_make_result` until each run completes. The e2e runner derives Redis
+logical database `1` from `REDIS_URL`, preserving authentication, unless
+`SIPPY_E2E_REDIS_URL` is set. Logs and coverage go to `ARTIFACT_DIR/e2e/`
+(default: `sippy-dev-logs/artifacts/e2e/`); tool summaries go to `sippy-dev-logs/`.
+
+Direct **`make e2e`** also works inside the devcontainer. `scripts/e2e.sh` uses
+`sippy-postgres` with a dedicated `sippy_e2e` database, but defaults to
+**`redis://sippy-redis:6379/1`** rather than deriving a URL from `REDIS_URL`.
+Set **`SIPPY_E2E_REDIS_URL`** for authenticated or other Redis services.
+Direct runs write artifacts to `SIPPY_TEST_OUTPUT_DIR`, or the current directory
+when unset. See [MCP test execution](../mcp/README.md#test-execution).
 
 ## Rebuilding
 

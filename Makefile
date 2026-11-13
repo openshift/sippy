@@ -77,7 +77,7 @@ clean:
 _uvx_env = $(if $(filter true,$(CI)),UV_CACHE_DIR=/tmp/uv-cache UV_TOOL_DIR=/tmp/uv-tools)
 apm:
 	$(_uvx_env) uvx --from apm-cli@0.35.0 apm install
-	$(_uvx_env) uvx --from apm-cli@0.35.0 apm compile
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm compile --clean
 
 verify-migrations:
 	./hack/verify-migrations.sh
@@ -86,7 +86,7 @@ APM_GENERATED_FILES := .agents .claude .codex .cursor .gemini .opencode AGENTS.m
 
 verify-apm:
 	$(_uvx_env) uvx --from apm-cli@0.35.0 apm install --frozen
-	$(_uvx_env) uvx --from apm-cli@0.35.0 apm compile
+	$(_uvx_env) uvx --from apm-cli@0.35.0 apm compile --clean
 	@if [ -n "$$(git status --porcelain -- $(APM_GENERATED_FILES))" ]; then \
 		echo "ERROR: Generated APM files are out of date. Run 'make apm' and commit the results."; \
 		git status --short -- $(APM_GENERATED_FILES); \
