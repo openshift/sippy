@@ -33,9 +33,13 @@ func runTests(m *testing.M) int {
 	ctx := context.Background()
 
 	var err error
-	pgContainer, err = intutil.StartPostgresContainer(ctx)
+	if dsn := os.Getenv("SIPPY_INTEGRATION_DSN"); dsn != "" {
+		pgContainer, err = intutil.ConnectToExternalPostgres(ctx, dsn)
+	} else {
+		pgContainer, err = intutil.StartPostgresContainer(ctx)
+	}
 	if err != nil {
-		panic("failed to start postgres container: " + err.Error())
+		panic("failed to start postgres: " + err.Error())
 	}
 	defer func() {
 		if err := pgContainer.Terminate(ctx); err != nil {
