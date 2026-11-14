@@ -116,7 +116,9 @@ func NewPostgresDatabaseFlags() *PostgresFlags {
 
 func (f *PostgresFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.Var(&f.LogLevel, "db-log-level", "GORM database log level")
-	fs.StringVar(&f.DSN, "database-dsn", f.DSN, "Database DSN for connecting to Postgres")
+	fs.StringVar(&f.DSN, "database-dsn", f.DSN, "Database DSN for connecting to Postgres (example: postgresql://user:password@db.example.invalid:5432/database)")
+	// Keep the runtime default, but do not expose credentials from the environment in help text.
+	fs.Lookup("database-dsn").DefValue = ""
 	fs.Var(&f.pinnedTime, "pinned-date-time", "Pin database results to a fixed end date/time")
 	fs.BoolVar(&f.EnablePartitionwise, "enable-partitionwise", true, "Enable PostgreSQL partitionwise aggregate and join optimizations")
 }
