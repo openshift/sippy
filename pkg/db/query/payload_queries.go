@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"time"
 
 	"gorm.io/gorm"
@@ -8,9 +9,9 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-func GetPayloadDiff(db *gorm.DB, fromPayload, toPayload string) ([]models.ReleasePullRequest, error) {
+func GetPayloadDiff(ctx context.Context, db *gorm.DB, fromPayload, toPayload string) ([]models.ReleasePullRequest, error) {
 	results := make([]models.ReleasePullRequest, 0)
-	result := db.Raw(`SELECT url,pull_request_id,name,description,bug_url FROM release_pull_requests 
+	result := db.WithContext(ctx).Raw(`SELECT url,pull_request_id,name,description,bug_url FROM release_pull_requests 
 		WHERE id IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?)) 
 		AND id NOT IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?)) ORDER BY url`, toPayload, fromPayload).Scan(&results)
 
@@ -22,10 +23,10 @@ func GetPayloadDiff(db *gorm.DB, fromPayload, toPayload string) ([]models.Releas
 }
 
 // GetLastAcceptedByArchitectureAndStream returns the last accepted payload for each architecture/stream combo.
-func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string, reportEnd time.Time) ([]models.ReleaseTag, error) {
+func GetLastAcceptedByArchitectureAndStream(ctx context.Context, db *gorm.DB, release string, reportEnd time.Time) ([]models.ReleaseTag, error) {
 	results := make([]models.ReleaseTag, 0)
 
-	result := db.Raw(`SELECT
+	result := db.WithContext(ctx).Raw(`SELECT
 						DISTINCT ON
 							(architecture, stream)
 							*
@@ -54,9 +55,9 @@ func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string, reportE
 // The prow_job_run_tests table is partitioned by (prow_job_run_release,
 // prow_job_run_timestamp). Both partition keys receive literal parameter values
 // to ensure partition pruning.
-func GetTestFailuresForPayloadStream(db *gorm.DB, release, stream, arch string, reportEnd time.Time, excludeTestName string) *gorm.DB {
+func GetTestFailuresForPayloadStream(ctx context.Context, db *gorm.DB, release, stream, arch string, reportEnd time.Time, excludeTestName string) *gorm.DB {
 	fourteenDaysAgo := reportEnd.Add(-14 * 24 * time.Hour)
-	return db.Raw(`
+	return db.WithContext(ctx).Raw(`
 SELECT pjrt.test_id, t.name,
        COUNT(*)::int AS failure_count,
        array_agg(rt.release_tag ORDER BY pj.name, pjr.id) AS release_tags,
@@ -88,9 +89,9 @@ GROUP BY pjrt.test_id, t.name`,
 		release, arch, stream, fourteenDaysAgo)
 }
 
-func GetTestFailuresForPayload(db *gorm.DB, payloadTag, release string, releaseTime time.Time) ([]models.PayloadFailedTest, error) {
+func GetTestFailuresForPayload(ctx context.Context, db *gorm.DB, payloadTag, release string, releaseTime time.Time) ([]models.PayloadFailedTest, error) {
 	results := make([]models.PayloadFailedTest, 0)
-	result := db.Raw(`SELECT DISTINCT
+	result := db.WithContext(ctx).Raw(`SELECT DISTINCT
 	rt.release,
 		rt.architecture,
 		rt.stream,
@@ -127,10 +128,10 @@ func GetTestFailuresForPayload(db *gorm.DB, payloadTag, release string, releaseT
 }
 
 // GetLastOSUpgradeByArchitectureAndStream returns the last release tag that contains an OS upgrade.
-func GetLastOSUpgradeByArchitectureAndStream(db *gorm.DB, release string) ([]models.ReleaseTag, error) {
+func GetLastOSUpgradeByArchitectureAndStream(ctx context.Context, db *gorm.DB, release string) ([]models.ReleaseTag, error) {
 	results := make([]models.ReleaseTag, 0)
 
-	result := db.Raw(`SELECT
+	result := db.WithContext(ctx).Raw(`SELECT
 						DISTINCT ON
 							(architecture, stream)
 							*
@@ -151,10 +152,10 @@ func GetLastOSUpgradeByArchitectureAndStream(db *gorm.DB, release string) ([]mod
 }
 
 // GetLastPayloadTags returns payloads tags for last two weeks, sorted by date in descending order.
-func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, reportEnd time.Time) ([]models.ReleaseTag, error) {
+func GetLastPayloadTags(ctx context.Context, db *gorm.DB, release, stream, arch string, reportEnd time.Time) ([]models.ReleaseTag, error) {
 	results := []models.ReleaseTag{}
 
-	result := db.Where("release = ?", release).
+	result := db.WithContext(ctx).Where("release = ?", release).
 		Where("stream = ?", stream).
 		Where("architecture = ?", arch).
 		Where("release_time >= ?", reportEnd.Add(-14*24*time.Hour)).
@@ -169,10 +170,10 @@ func GetLastPayloadTags(db *gorm.DB, release, stream, arch string, reportEnd tim
 // GetLastPayloadStatus returns the most recent payload status for an architecture/stream combination,
 // as well as the count of how many of the last payloads had that status (e.g., when this returns
 // Rejected, 5 -- it means the last 5 payloads were rejected.
-func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string, reportEnd time.Time) (string, int, error) {
+func GetLastPayloadStatus(ctx context.Context, db *gorm.DB, architecture, stream, release string, reportEnd time.Time) (string, int, error) {
 	count := models.PayloadPhaseCount{}
 
-	result := db.Raw(`
+	result := db.WithContext(ctx).Raw(`
 		WITH releases AS
 			(
 				SELECT
@@ -210,9 +211,9 @@ func GetLastPayloadStatus(db *gorm.DB, architecture, stream, release string, rep
 }
 
 // GetPayloadStreamPhaseCounts returns the number of payloads in each phase for a given stream.
-func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream string, since *time.Time, reportEnd time.Time) ([]models.PayloadPhaseCount, error) {
+func GetPayloadStreamPhaseCounts(ctx context.Context, db *gorm.DB, release, architecture, stream string, since *time.Time, reportEnd time.Time) ([]models.PayloadPhaseCount, error) {
 	phaseCounts := []models.PayloadPhaseCount{}
-	q := db.Table("release_tags").Select("phase, COUNT(phase)").
+	q := db.WithContext(ctx).Table("release_tags").Select("phase, COUNT(phase)").
 		Where("release = ? ", release).
 		Where("architecture = ?", architecture).
 		Where("stream = ?", stream).
@@ -225,10 +226,10 @@ func GetPayloadStreamPhaseCounts(db *gorm.DB, release, architecture, stream stri
 	return phaseCounts, r.Error
 }
 
-func GetPayloadAcceptanceStatistics(db *gorm.DB, release, architecture, stream string, since *time.Time, reportEnd time.Time) (models.PayloadStatistics, error) {
+func GetPayloadAcceptanceStatistics(ctx context.Context, db *gorm.DB, release, architecture, stream string, since *time.Time, reportEnd time.Time) (models.PayloadStatistics, error) {
 	results := models.PayloadStatistics{}
 
-	q := db.Table("release_tags").
+	q := db.WithContext(ctx).Table("release_tags").
 		Select(`release_time 										                 AS start,
                        LEAD(release_time, 1) OVER (ORDER BY release_time ASC)                AS next_time,
 					   LEAD(release_time, 1) OVER (ORDER BY release_time ASC) - release_time AS duration`).
@@ -242,7 +243,7 @@ func GetPayloadAcceptanceStatistics(db *gorm.DB, release, architecture, stream s
 		q = q.Where("release_time >= ?", *since)
 	}
 
-	q = db.Table("(?) as durations", q).
+	q = db.WithContext(ctx).Table("(?) as durations", q).
 		Select(`EXTRACT(epoch FROM AVG(duration))::bigint as mean_seconds_between,
 					   EXTRACT(epoch FROM MIN(duration))::bigint as min_seconds_between,
                        EXTRACT(epoch FROM MAX(duration))::bigint as max_seconds_between`).Scan(&results)
@@ -251,9 +252,9 @@ func GetPayloadAcceptanceStatistics(db *gorm.DB, release, architecture, stream s
 }
 
 // GetReleaseTag returns a release tag by its release_tag string.
-func GetReleaseTag(db *gorm.DB, releaseTag string) (*models.ReleaseTag, error) {
+func GetReleaseTag(ctx context.Context, db *gorm.DB, releaseTag string) (*models.ReleaseTag, error) {
 	var result models.ReleaseTag
-	if err := db.Where("release_tag = ?", releaseTag).First(&result).Error; err != nil {
+	if err := db.WithContext(ctx).Where("release_tag = ?", releaseTag).First(&result).Error; err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -261,16 +262,16 @@ func GetReleaseTag(db *gorm.DB, releaseTag string) (*models.ReleaseTag, error) {
 
 // GetPreviousPayload returns the payload that immediately precedes the given payload
 // in the same release, stream, and architecture by sorting on release_tag.
-func GetPreviousPayload(db *gorm.DB, toPayload string) (*models.ReleaseTag, error) {
+func GetPreviousPayload(ctx context.Context, db *gorm.DB, toPayload string) (*models.ReleaseTag, error) {
 	// First, look up the toPayload to get its release, stream, and architecture
 	var target models.ReleaseTag
-	if err := db.Where("release_tag = ?", toPayload).First(&target).Error; err != nil {
+	if err := db.WithContext(ctx).Where("release_tag = ?", toPayload).First(&target).Error; err != nil {
 		return nil, err
 	}
 
 	// Find the previous payload in the same stream by sorting on release_tag
 	var result models.ReleaseTag
-	if err := db.Where("release = ?", target.Release).
+	if err := db.WithContext(ctx).Where("release = ?", target.Release).
 		Where("stream = ?", target.Stream).
 		Where("architecture = ?", target.Architecture).
 		Where("release_tag < ?", toPayload).

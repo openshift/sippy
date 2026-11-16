@@ -732,7 +732,7 @@ func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, re
 		sqlQuery, queryArgs = p.buildAggregateGAQuery(cte, cteArgs, reqOptions.BaseRelease.Name, windowDays, includeVariants)
 	} else {
 		var err error
-		sqlQuery, queryArgs, err = p.buildAggregatePrefixSumQuery(cte, cteArgs, reqOptions.BaseRelease.Name, baseRange, includeVariants)
+		sqlQuery, queryArgs, err = p.buildAggregatePrefixSumQuery(ctx, cte, cteArgs, reqOptions.BaseRelease.Name, baseRange, includeVariants)
 		if err != nil {
 			return nil, []error{err}
 		}
@@ -746,8 +746,8 @@ func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, re
 	return p.processAggregateRows(rows, reqOptions)
 }
 
-func (p *PostgresProvider) buildAggregatePrefixSumQuery(cte string, cteArgs []any, release string, dateRange query.DateRange, includeVariants map[string][]string) (string, []any, error) {
-	if err := query.ResolveDateRanges(p.dbc, release, &dateRange); err != nil {
+func (p *PostgresProvider) buildAggregatePrefixSumQuery(ctx context.Context, cte string, cteArgs []any, release string, dateRange query.DateRange, includeVariants map[string][]string) (string, []any, error) {
+	if err := query.ResolveDateRanges(ctx, p.dbc, release, &dateRange); err != nil {
 		return "", nil, fmt.Errorf("resolving date ranges: %w", err)
 	}
 	lookupEnd := dateRange.End.AddDays(-1)

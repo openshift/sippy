@@ -1,6 +1,7 @@
 package flags
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -233,7 +234,7 @@ func getQueryCases() []queryCase {
 		{
 			name: "TestDurations",
 			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
-				durations, err := query.TestDurations(dbc, benchmarkRelease, benchmarkTestName, nil, nil)
+				durations, err := query.TestDurations(context.Background(), dbc, benchmarkRelease, benchmarkTestName, nil, nil)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -250,7 +251,7 @@ func getQueryCases() []queryCase {
 		{
 			name: "TestOutputs",
 			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
-				testOutputs, err := query.TestOutputs(dbc, benchmarkRelease, benchmarkTestName, nil, nil, 10)
+				testOutputs, err := query.TestOutputs(context.Background(), dbc, benchmarkRelease, benchmarkTestName, nil, nil, 10)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -355,7 +356,7 @@ func getQueryCases() []queryCase {
 		{
 			name: "TestCountsByLookback14",
 			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
-				jobRuns, testIDs, err := api.GetJobRunTestsCountByLookback(dbc, 14)
+				jobRuns, testIDs, err := api.GetJobRunTestsCountByLookback(context.Background(), dbc, 14)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -371,7 +372,7 @@ func getQueryCases() []queryCase {
 		{
 			name: "TestCountsByLookback9",
 			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
-				jobRuns, testIDs, err := api.GetJobRunTestsCountByLookback(dbc, 9)
+				jobRuns, testIDs, err := api.GetJobRunTestsCountByLookback(context.Background(), dbc, 9)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -455,7 +456,7 @@ func getQueryCases() []queryCase {
 					return validationSnapshot{}, res.Error
 				}
 
-				partKeys, err := query.LookupProwJobRunPartitionKeys(dbc.DB, jobRunID)
+				partKeys, err := query.LookupProwJobRunPartitionKeys(context.Background(), dbc.DB, jobRunID)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -498,7 +499,7 @@ func getQueryCases() []queryCase {
 					return validationSnapshot{}, fmt.Errorf("no job run found for %s/%s", benchmarkRelease, benchmarkJobName)
 				}
 
-				jobRun, err := api.FetchJobRun(dbc, jobRunID, true, nil, log.WithField("benchmark", "FetchJobRunOnlyNewTests"))
+				jobRun, err := api.FetchJobRun(context.Background(), dbc, jobRunID, true, nil, log.WithField("benchmark", "FetchJobRunOnlyNewTests"))
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -515,7 +516,7 @@ func getReportQueryCases() []queryCase {
 			name: "VariantReports",
 			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				start, boundary, end := util.PeriodToDates("default", asOf)
-				results, err := query.VariantReports(dbc, benchmarkRelease, start, boundary, end)
+				results, err := query.VariantReports(context.Background(), dbc, benchmarkRelease, start, boundary, end)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -527,7 +528,7 @@ func getReportQueryCases() []queryCase {
 			name: "JobReports",
 			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				start, boundary, end := util.PeriodToDates("default", asOf)
-				results, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, start, boundary, end)
+				results, err := query.JobReports(context.Background(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, start, boundary, end)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -539,7 +540,7 @@ func getReportQueryCases() []queryCase {
 			name: "BuildClusterHealth",
 			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
 				start, boundary, end := util.PeriodToDates("default", asOf)
-				results, err := query.BuildClusterHealth(dbc, benchmarkRelease, start, boundary, end)
+				results, err := query.BuildClusterHealth(context.Background(), dbc, benchmarkRelease, start, boundary, end)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -564,7 +565,7 @@ func getReportQueryCases() []queryCase {
 		{
 			name: "PullRequestReport",
 			fn: func(dbc *db.DB, _ time.Time) (validationSnapshot, error) {
-				results, err := query.PullRequestReport(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease)
+				results, err := query.PullRequestReport(context.Background(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -575,7 +576,7 @@ func getReportQueryCases() []queryCase {
 		{
 			name: "RepositoryReport",
 			fn: func(dbc *db.DB, asOf time.Time) (validationSnapshot, error) {
-				results, err := query.RepositoryReport(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, asOf)
+				results, err := query.RepositoryReport(context.Background(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, benchmarkRelease, asOf)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -590,7 +591,7 @@ func getReportQueryCases() []queryCase {
 				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
 					return validationSnapshot{}, err
 				}
-				count, err := query.ProwJobHistoricalTestCounts(dbc, prowJob.ID, benchmarkRelease)
+				count, err := query.ProwJobHistoricalTestCounts(context.Background(), dbc, prowJob.ID, benchmarkRelease)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -605,7 +606,7 @@ func getReportQueryCases() []queryCase {
 				if err := dbc.DB.Where("name = ? AND release = ?", benchmarkJobName, benchmarkRelease).First(&prowJob).Error; err != nil {
 					return validationSnapshot{}, err
 				}
-				count, err := query.ProwJobRunCount(dbc, prowJob.ID, benchmarkRelease, asOf.Add(-14*24*time.Hour))
+				count, err := query.ProwJobRunCount(context.Background(), dbc, prowJob.ID, benchmarkRelease, asOf.Add(-14*24*time.Hour))
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -634,7 +635,7 @@ func getReportQueryCases() []queryCase {
 				if result.ID == 0 {
 					return validationSnapshot{}, fmt.Errorf("no job run found for %s/%s", benchmarkRelease, benchmarkJobName)
 				}
-				count, err := query.JobRunTestCount(dbc, result.ID, benchmarkRelease, result.Timestamp)
+				count, err := query.JobRunTestCount(context.Background(), dbc, result.ID, benchmarkRelease, result.Timestamp)
 				if err != nil {
 					return validationSnapshot{}, err
 				}
@@ -941,7 +942,7 @@ func Test_CompareTestOutputsQueries(t *testing.T) {
 
 	var current []apitype.TestOutput
 	curStart := time.Now()
-	currentOutputs, err := query.TestOutputs(dbc, benchmarkRelease, benchmarkTestName, nil, nil, quantity)
+	currentOutputs, err := query.TestOutputs(context.Background(), dbc, benchmarkRelease, benchmarkTestName, nil, nil, quantity)
 	if err != nil {
 		t.Fatalf("current query failed: %v", err)
 	}
@@ -996,7 +997,7 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "MatviewTestReport7d",
 			fn: func(dbc *db.DB) error {
-				results, err := query.TestReportsByVariant(dbc, benchmarkRelease,
+				results, err := query.TestReportsByVariant(context.Background(), dbc, benchmarkRelease,
 					v1.CurrentReport, query.TestNameMatches{Substrings: []string{benchmarkTestName}}, nil, false)
 				if err == nil {
 					log.Printf("MatviewTestReport7d: %d results", len(results))
@@ -1007,7 +1008,7 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "MatviewTestReport2d",
 			fn: func(dbc *db.DB) error {
-				results, err := query.TestReportsByVariant(dbc, benchmarkRelease,
+				results, err := query.TestReportsByVariant(context.Background(), dbc, benchmarkRelease,
 					v1.TwoDayReport, query.TestNameMatches{Substrings: []string{benchmarkTestName}}, nil, false)
 				if err == nil {
 					log.Printf("MatviewTestReport2d: %d results", len(results))
@@ -1018,7 +1019,7 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "MatviewTestReportExcludeVariants",
 			fn: func(dbc *db.DB) error {
-				_, found := query.TestReportExcludeVariants(dbc, benchmarkRelease,
+				_, found := query.TestReportExcludeVariants(context.Background(), dbc, benchmarkRelease,
 					benchmarkTestName, []string{"never-stable"})
 				log.Printf("MatviewTestReportExcludeVariants: found=%v", found)
 				return nil
@@ -1040,7 +1041,7 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "AggregatedPayloadTestFailures",
 			fn: func(dbc *db.DB) error {
-				results, err := api.GetPayloadStreamTestFailures(dbc, benchmarkRelease, "nightly", "amd64",
+				results, err := api.GetPayloadStreamTestFailures(context.Background(), dbc, benchmarkRelease, "nightly", "amd64",
 					&filter.FilterOptions{Filter: &filter.Filter{}}, asOf)
 				if err != nil {
 					return err
@@ -1160,7 +1161,7 @@ func getAPIBenchmarkCases(asOf time.Time) []benchmarkCase {
 					},
 				}
 				sample, base := query.PeriodsForReportType(v1.CurrentReport)
-				inner, err := query.TestReportQuery(dbc, benchmarkRelease, sample, base, query.TestNameMatches{})
+				inner, err := query.TestReportQuery(context.Background(), dbc, benchmarkRelease, sample, base, query.TestNameMatches{})
 				if err != nil {
 					return err
 				}
@@ -1256,7 +1257,7 @@ func Test_BenchmarkCumulativeQueryTestsReport(t *testing.T) {
 				},
 			}
 			sample, base := query.PeriodsForReportType(v1.CurrentReport)
-			inner, err := query.TestReportQuery(dbc, benchmarkRelease, sample, base, query.TestNameMatches{})
+			inner, err := query.TestReportQuery(context.Background(), dbc, benchmarkRelease, sample, base, query.TestNameMatches{})
 			if err != nil {
 				return err
 			}

@@ -283,7 +283,7 @@ func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatvie
 	for _, lookback := range lookbacks {
 		wg.Add(1)
 		go func(lookback int) {
-			jobRunsCount, testIDsCount, err := api.GetJobRunTestsCountByLookback(dbc, lookback)
+			jobRunsCount, testIDsCount, err := api.GetJobRunTestsCountByLookback(context.Background(), dbc, lookback)
 			if err != nil {
 				log.Errorf("Error getting prow job run test lookback counts: %v", err)
 			} else {
@@ -452,14 +452,14 @@ func (s *Server) determineCapabilities() {
 		hasBuildCluster := false
 		backoff := 1 * time.Second
 		for attempt := 1; attempt <= 3; attempt++ {
-			buildClusterRelease, err := query.CurrentActiveRelease(s.db)
+			buildClusterRelease, err := query.CurrentActiveRelease(context.Background(), s.db)
 			if err != nil {
 				log.WithError(err).WithField("attempt", attempt).Warningf("could not determine active release for build cluster check")
 				time.Sleep(backoff)
 				backoff *= 2
 				continue
 			}
-			hasBuildCluster, err = query.HasBuildClusterData(s.db, buildClusterRelease, time.Now().Add(-14*24*time.Hour))
+			hasBuildCluster, err = query.HasBuildClusterData(context.Background(), s.db, buildClusterRelease, time.Now().Add(-14*24*time.Hour))
 			if err != nil {
 				log.WithError(err).WithField("attempt", attempt).Warningf("could not fetch build cluster data")
 				time.Sleep(backoff)
@@ -640,7 +640,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		"arch":    arch,
 	}).Info("analyzing payload stream")
 
-	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts, s.GetReportEnd())
+	result, err := api.GetPayloadStreamTestFailures(req.Context(), s.db, release, stream, arch, filterOpts, s.GetReportEnd())
 	if err != nil {
 		failureResponseWithError(w, "error analyzing payload", err)
 		return
@@ -662,7 +662,7 @@ func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Req
 	})
 	logger.Info("checking for test failures in payload")
 
-	result, err := api.GetPayloadTestFailures(s.db, payload, logger)
+	result, err := api.GetPayloadTestFailures(req.Context(), s.db, payload, logger)
 	if err != nil {
 		log.WithError(err).Error("error")
 		failureResponse(w, http.StatusInternalServerError, "Error looking up test failures for payload: "+err.Error())
@@ -678,7 +678,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	results, err := api.ReleaseHealthReports(s.db, release, s.GetReportEnd())
+	results, err := api.ReleaseHealthReports(req.Context(), s.db, release, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error generating release health report")
 		failureResponse(w, http.StatusInternalServerError, err.Error())
@@ -694,7 +694,7 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 
 	// If fromPayload is not specified, look up the previous payload in the same stream
 	if fromPayload == "" && toPayload != "" {
-		prevPayload, err := query.GetPreviousPayload(s.db.DB, toPayload)
+		prevPayload, err := query.GetPreviousPayload(req.Context(), s.db.DB, toPayload)
 		if err != nil {
 			log.WithError(err).Error("error looking up previous payload")
 			failureResponse(w, http.StatusBadRequest, "could not find previous payload for: "+toPayload)
@@ -703,7 +703,7 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 		fromPayload = prevPayload.ReleaseTag
 	}
 
-	results, err := api.GetPayloadDiffPullRequests(s.db, fromPayload, toPayload)
+	results, err := api.GetPayloadDiffPullRequests(req.Context(), s.db, fromPayload, toPayload)
 
 	if err != nil {
 		log.WithError(err).Error("error generating payload diff")
@@ -722,7 +722,7 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
-		gates, err := query.GetFeatureGatesFromDB(s.db, release, filterOpts)
+		gates, err := query.GetFeatureGatesFromDB(req.Context(), s.db, release, filterOpts)
 		if err != nil {
 			failureResponseWithError(w, "couldn't query feature gates", err)
 			return
@@ -750,7 +750,7 @@ func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request)
 			},
 		},
 	}
-	gates, err := query.GetFeatureGatesFromDB(s.db, release, filterOpts)
+	gates, err := query.GetFeatureGatesFromDB(req.Context(), s.db, release, filterOpts)
 	if err != nil {
 		failureResponseWithError(w, "couldn't query feature gate", err)
 		return
@@ -760,7 +760,7 @@ func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	matchingJobs, err := query.GetMatchingJobsForCapability(s.db, release, featureGate)
+	matchingJobs, err := query.GetMatchingJobsForCapability(req.Context(), s.db, release, featureGate)
 	if err != nil {
 		failureResponseWithError(w, "couldn't query matching jobs for capability", err)
 		return
@@ -898,7 +898,7 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	bugs, err := query.LoadBugsForTest(s.db, testName, false)
+	bugs, err := query.LoadBugsForTest(req.Context(), s.db, testName, false)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			api.RespondWithJSON(http.StatusOK, w, []models.Bug{})
@@ -928,7 +928,7 @@ func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	outputs, err := api.GetTestDurationsFromDB(s.db, release, testName, filters)
+	outputs, err := api.GetTestDurationsFromDB(req.Context(), s.db, release, testName, filters)
 	if err != nil {
 		failureResponseWithError(w, "error querying test durations from db", err)
 		return
@@ -953,7 +953,7 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	outputs, err := api.GetTestOutputsFromDB(s.db, release, testName, filters, 10)
+	outputs, err := api.GetTestOutputsFromDB(req.Context(), s.db, release, testName, filters, 10)
 	if err != nil {
 		failureResponseWithError(w, "error querying test outputs from db", err)
 		return
@@ -1328,13 +1328,13 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	limit := getLimitParam(req)
 	sortField, sort := getSortParams(req)
 
-	jobIDs, err := query.ListFilteredJobIDs(s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
+	jobIDs, err := query.ListFilteredJobIDs(req.Context(), s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
 	if err != nil {
 		failureResponseWithError(w, "error querying jobs", err)
 		return
 	}
 
-	bugs, err := query.LoadBugsForJobs(s.db, jobIDs, false)
+	bugs, err := query.LoadBugsForJobs(req.Context(), s.db, jobIDs, false)
 	if err != nil {
 		log.WithError(err).Error("error querying job bugs from db")
 		failureResponse(w, http.StatusInternalServerError, "error querying job bugs from db")
@@ -1367,7 +1367,7 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 	testSubstring := req.URL.Query()["test"]
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
-		api.PrintTestsDetailsJSONFromDB(w, release, testSubstring, s.db)
+		api.PrintTestsDetailsJSONFromDB(req.Context(), w, release, testSubstring, s.db)
 	}
 }
 
@@ -1383,7 +1383,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 	var lastUpdated time.Time
 	if s.db != nil {
 		var err error
-		lastUpdated, err = api.GetLastUpdateTime(s.db)
+		lastUpdated, err = api.GetLastUpdateTime(req.Context(), s.db)
 		if err != nil {
 			log.WithError(err).Error("error querying last updated from db")
 			failureResponse(w, http.StatusInternalServerError, "error querying last updated from db")
@@ -1421,7 +1421,7 @@ func (s *Server) jsonTestLifecyclesFromDB(w http.ResponseWriter, req *http.Reque
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
-		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetReportEnd())
+		api.PrintOverallReleaseHealthFromDB(req.Context(), w, s.db, release, s.GetReportEnd())
 	}
 }
 
@@ -1431,7 +1431,7 @@ func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request
 	release := param.SafeRead(req, "release")
 	if release == "" {
 		var err error
-		release, err = query.CurrentActiveRelease(s.db)
+		release, err = query.CurrentActiveRelease(req.Context(), s.db)
 		if err != nil {
 			log.WithError(err).Error("error determining release for build cluster health")
 			failureResponse(w, http.StatusInternalServerError, "error determining release: "+err.Error())
@@ -1439,7 +1439,7 @@ func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request
 		}
 	}
 
-	results, err := api.GetBuildClusterHealthReport(s.db, release, start, boundary, end)
+	results, err := api.GetBuildClusterHealthReport(req.Context(), s.db, release, start, boundary, end)
 	if err != nil {
 		log.WithError(err).Error("error querying build cluster health from db")
 		failureResponse(w, http.StatusInternalServerError, "error querying build cluster health from db: "+err.Error())
@@ -1455,7 +1455,7 @@ func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http
 	release := param.SafeRead(req, "release")
 	if release == "" {
 		var err error
-		release, err = query.CurrentActiveRelease(s.db)
+		release, err = query.CurrentActiveRelease(req.Context(), s.db)
 		if err != nil {
 			log.WithError(err).Error("error determining release for build cluster analysis")
 			failureResponse(w, http.StatusInternalServerError, "error determining release: "+err.Error())
@@ -1463,7 +1463,7 @@ func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http
 		}
 	}
 
-	results, err := api.GetBuildClusterHealthAnalysis(s.db, release, period)
+	results, err := api.GetBuildClusterHealthAnalysis(req.Context(), s.db, release, period)
 	if err != nil {
 		log.WithError(err).Error("error querying build cluster health from db")
 		failureResponse(w, http.StatusInternalServerError, "error querying build cluster health from db: "+err.Error())
@@ -1525,7 +1525,7 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 			return
 		}
 
-		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts, s.GetReportEnd())
+		results, err := api.GetRepositoriesReportFromDB(req.Context(), s.db, release, filterOpts, s.GetReportEnd())
 		if err != nil {
 			failureResponseWithError(w, "error fetching repositories", err)
 			return
@@ -1544,7 +1544,7 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 			return
 		}
 
-		results, err := api.GetPullRequestsReportFromDB(s.db, release, filterOpts)
+		results, err := api.GetPullRequestsReportFromDB(req.Context(), s.db, release, filterOpts)
 		if err != nil {
 			failureResponseWithError(w, "error fetching pull requests", err)
 			return
@@ -1609,7 +1609,7 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 	}
 	if useCurrentRelease {
 		var err error
-		release, err = query.CurrentActiveRelease(s.db)
+		release, err = query.CurrentActiveRelease(req.Context(), s.db)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, "determining current release: "+err.Error())
 			return
@@ -1666,7 +1666,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		logger = logger.WithField("jobRunID", jobRunID)
 
 		// lookup prowjob and run count
-		jobRun, err = api.FetchJobRun(s.db, jobRunID, false, nil, logger)
+		jobRun, err = api.FetchJobRun(req.Context(), s.db, jobRunID, false, nil, logger)
 
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1782,7 +1782,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		// JobName was not passed.
 		gcsPath = ""
 	}
-	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
+	result, err := jobrunintervals.JobRunIntervals(req.Context(), s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
 		intervalFile, logger.WithField("func", "JobRunIntervals"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1831,7 +1831,7 @@ func (s *Server) jsonJobRunEvents(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	result, err := jobrunevents.JobRunEvents(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
+	result, err := jobrunevents.JobRunEvents(req.Context(), s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
 		logger.WithField("func", "JobRunEvents"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1877,7 +1877,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	sortField, sort := getSortParams(req)
 	period := getPeriod(req, api.PeriodDay)
 
-	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, jobFilter, jobRunsFilter,
+	results, err := api.PrintJobAnalysisJSONFromDB(req.Context(), s.db, release, jobFilter, jobRunsFilter,
 		start, boundary, end, limit, sortField, sort, period, s.GetReportEnd())
 	if err != nil {
 		failureResponseWithError(w, "error in job analysis", err)

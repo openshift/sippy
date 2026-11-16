@@ -185,7 +185,7 @@ func RecordInfraFailureWithOutcome(ctx context.Context, dbc *gorm.DB, prowJobRun
 	var outcome RecordOutcome
 	err := dbc.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var txErr error
-		outcome, txErr = recordInfraFailureInTx(tx, prowJobRunID)
+		outcome, txErr = recordInfraFailureInTx(ctx, tx, prowJobRunID)
 		return txErr
 	})
 	if err != nil {
@@ -197,10 +197,10 @@ func RecordInfraFailureWithOutcome(ctx context.Context, dbc *gorm.DB, prowJobRun
 // recordInfraFailureInTx performs the label set and summary subtraction on the
 // supplied transaction. Returning an error rolls back the transaction so
 // neither the label nor the subtraction persists, preserving the invariant.
-func recordInfraFailureInTx(tx *gorm.DB, prowJobRunID int64) (RecordOutcome, error) {
+func recordInfraFailureInTx(ctx context.Context, tx *gorm.DB, prowJobRunID int64) (RecordOutcome, error) {
 	logger := log.WithField("prowJobRunID", prowJobRunID)
 
-	partKeys, err := query.LookupProwJobRunPartitionKeys(tx, prowJobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(ctx, tx, prowJobRunID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.Debug("prow job run not found in id map; nothing to label")

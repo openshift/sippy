@@ -25,12 +25,12 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		lastProwJobRun = *pl.loadSince
 		log.Infof("Using manually specified load-since time: %s", lastProwJobRun.UTC().Format(time.RFC3339))
 	} else {
-		release, err := query.CurrentActiveRelease(pl.dbc)
+		release, err := query.CurrentActiveRelease(pl.ctx, pl.dbc)
 		if err != nil {
 			log.WithError(err).Warnf("could not determine active release, importing previous %d days", DefaultLookbackDays)
 			lastProwJobRun = time.Now().AddDate(0, 0, -DefaultLookbackDays)
 		} else {
-			row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").
+			row := pl.dbc.DB.WithContext(pl.ctx).Table("prow_job_runs").Select("max(timestamp)").
 				Where("prow_job_release = ?", release).
 				Where("timestamp > NOW() - INTERVAL '14 days'").Row()
 			err = row.Scan(&lastProwJobRun)

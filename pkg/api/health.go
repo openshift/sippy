@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"math"
 	"net/http"
 	"strconv"
@@ -44,7 +45,7 @@ func useNewInstallTest(release string) bool {
 
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
-func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
+func PrintOverallReleaseHealthFromDB(ctx context.Context, w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
 	excludedVariants := testidentification.DefaultExcludedVariants
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
 	excludedInstallVariants := testidentification.DefaultExcludedVariants
@@ -59,32 +60,32 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		installTestName = testidentification.NewInstallTestName
 	}
 
-	if infraIndicator, found := query.TestReportExcludeVariants(dbc, release, infraTestName, excludedVariants); found {
+	if infraIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, infraTestName, excludedVariants); found {
 		indicators["infrastructure"] = infraIndicator
 	}
-	if installConfigIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants); found {
+	if installConfigIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants); found {
 		indicators["installConfig"] = installConfigIndicator
 	}
-	if bootstrapIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants); found {
+	if bootstrapIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants); found {
 		indicators["bootstrap"] = bootstrapIndicator
 	}
-	if installOtherIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants); found {
+	if installOtherIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants); found {
 		indicators["installOther"] = installOtherIndicator
 	}
-	if installIndicator, found := query.TestReportExcludeVariants(dbc, release, installTestName, excludedInstallVariants); found {
+	if installIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, installTestName, excludedInstallVariants); found {
 		indicators["install"] = installIndicator
 	}
-	if upgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.UpgradeTestName, excludedVariants); found {
+	if upgradeIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.UpgradeTestName, excludedVariants); found {
 		indicators["upgrade"] = upgradeIndicator
 	}
 
 	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
 	// the percentage of time that all tests passed. We should probably fix that.
-	if testsIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.OpenShiftTestsName, excludedVariants); found {
+	if testsIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.OpenShiftTestsName, excludedVariants); found {
 		indicators["tests"] = testsIndicator
 	}
 
-	lastUpdated, err := GetLastUpdateTime(dbc)
+	lastUpdated, err := GetLastUpdateTime(ctx, dbc)
 	if err != nil {
 		log.WithError(err).Error("error querying last update time")
 		return
@@ -101,7 +102,7 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	start := reportEnd.Add(-14 * 24 * time.Hour)
 	boundary := reportEnd.Add(-7 * 24 * time.Hour)
 	end := reportEnd
-	jobReports, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
+	jobReports, err := query.JobReports(ctx, dbc, filterOpts, release, start, boundary, end)
 	if err != nil {
 		log.WithError(err).Error("error querying job reports")
 		return

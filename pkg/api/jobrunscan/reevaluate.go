@@ -252,7 +252,7 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 		return result
 	}
 
-	partKeys, err := query.LookupProwJobRunPartitionKeys(r.db.DB, jobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(ctx, r.db.DB, jobRunID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			result.Status = ReEvalMissingError

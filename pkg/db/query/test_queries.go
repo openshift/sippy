@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -97,6 +98,7 @@ const (
 // per test is included via UNION ALL (Variant = "All", counting runs across all
 // variant_combination_ids without unnesting).
 func TestReportsByVariant(
+	ctx context.Context,
 	dbc *db.DB,
 	release string,
 	reportType v1.ReportType,
@@ -107,13 +109,13 @@ func TestReportsByVariant(
 	now := time.Now()
 
 	sample, base := PeriodsForReportType(reportType)
-	inner, err := TestReportQuery(dbc, release, sample, base, nameMatches)
+	inner, err := TestReportQuery(ctx, dbc, release, sample, base, nameMatches)
 	if err != nil {
 		return nil, err
 	}
 	excludeArr := pq.Array(excludeVariants)
 
-	perVariant := dbc.DB.Table("(?) AS r", inner).
+	perVariant := dbc.DB.WithContext(ctx).Table("(?) AS r", inner).
 		Select(`name, release,
 			sum(current_runs)       AS current_runs,
 			sum(current_successes)  AS current_successes,
@@ -129,7 +131,7 @@ func TestReportsByVariant(
 
 	var aggregated *gorm.DB
 	if includeAll {
-		allArm := dbc.DB.Table("(?) AS r", inner).
+		allArm := dbc.DB.WithContext(ctx).Table("(?) AS r", inner).
 			Select(`name, release,
 				sum(current_runs)       AS current_runs,
 				sum(current_successes)  AS current_successes,
@@ -142,13 +144,13 @@ func TestReportsByVariant(
 				'All'::text             AS variant`).
 			Where("NOT EXISTS (SELECT 1 FROM variant_combinations WHERE ? && variants AND id = variant_combination_id)", excludeArr).
 			Group("name, release")
-		aggregated = dbc.DB.Raw("? UNION ALL ?", perVariant, allArm)
+		aggregated = dbc.DB.WithContext(ctx).Raw("? UNION ALL ?", perVariant, allArm)
 	} else {
 		aggregated = perVariant
 	}
 
 	var testReports []api.Test
-	r := dbc.DB.Table("(?) AS agg", aggregated).
+	r := dbc.DB.WithContext(ctx).Table("(?) AS agg", aggregated).
 		Select(fmt.Sprintf("*, %s", QueryTestPercentages)).
 		Where("agg.current_runs > 0 OR agg.previous_runs > 0").
 		Scan(&testReports)
@@ -165,20 +167,20 @@ func TestReportsByVariant(
 // TestReportExcludeVariants returns a single test report the given test name in the db,
 // all variants collapsed, optionally with some excluded.
 // If the query fails, it is logged and the bool is left false.
-func TestReportExcludeVariants(dbc *db.DB, release, testName string, excludeVariants []string) (api.Test, bool) {
+func TestReportExcludeVariants(ctx context.Context, dbc *db.DB, release, testName string, excludeVariants []string) (api.Test, bool) {
 	now := time.Now()
 	logger := log.WithField("func", "TestReportExcludeVariants").
 		WithField("release", release).
 		WithField("test", testName)
 
 	sample, base := PeriodsForReportType(v1.CurrentReport)
-	inner, err := TestReportQuery(dbc, release, sample, base, TestNameMatches{ExactNames: []string{testName}})
+	inner, err := TestReportQuery(ctx, dbc, release, sample, base, TestNameMatches{ExactNames: []string{testName}})
 	if err != nil {
 		logger.WithError(err).Error("failed to build test report query")
 		return api.Test{}, false
 	}
 
-	aggregated := dbc.DB.Table("(?) AS r", inner).
+	aggregated := dbc.DB.WithContext(ctx).Table("(?) AS r", inner).
 		Select(`name, release,
 			sum(current_runs)       AS current_runs,
 			sum(current_successes)  AS current_successes,
@@ -192,7 +194,7 @@ func TestReportExcludeVariants(dbc *db.DB, release, testName string, excludeVari
 		Group("name, release")
 
 	var testReports []api.Test
-	r := dbc.DB.Table("(?) AS agg", aggregated).
+	r := dbc.DB.WithContext(ctx).Table("(?) AS agg", aggregated).
 		Select(fmt.Sprintf("*, %s", QueryTestPercentages)).
 		Limit(1).
 		Find(&testReports)
@@ -217,11 +219,11 @@ func TestReportExcludeVariants(dbc *db.DB, release, testName string, excludeVari
 }
 
 // LoadBugsForTest returns all bugs in the database for the given test, across all releases.
-func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.Bug, error) {
+func LoadBugsForTest(ctx context.Context, dbc *db.DB, testName string, filterClosed bool) ([]models.Bug, error) {
 	results := []models.Bug{}
 
 	test := models.Test{}
-	q := dbc.DB.Where("name = ?", testName)
+	q := dbc.DB.WithContext(ctx).Where("name = ?", testName)
 	timeLimit := "NOW() - last_change_time < interval '14 days'" // filter bugs since we no longer delete them
 	if filterClosed {
 		q = q.Preload("Bugs", timeLimit+" and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
@@ -253,8 +255,8 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 //
 // Any processedFilter items with unsupported operators (ILIKE, array membership) are
 // returned as remainingFilter for the caller to apply via GORM on the outer query.
-func UncollapsedTestReportWithStats(dbc *db.DB, release string, sample, base DateRange, nameFilter, variantFilter, processedFilter, lifecycleFilter *filter.Filter) (*gorm.DB, *filter.Filter, error) {
-	end, boundary, start, err := resolvePrefixSumDates(dbc, release, &sample, &base)
+func UncollapsedTestReportWithStats(ctx context.Context, dbc *db.DB, release string, sample, base DateRange, nameFilter, variantFilter, processedFilter, lifecycleFilter *filter.Filter) (*gorm.DB, *filter.Filter, error) {
+	end, boundary, start, err := resolvePrefixSumDates(ctx, dbc, release, &sample, &base)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -422,14 +424,14 @@ SELECT f.*,
 FROM %s
 LEFT JOIN stats s ON f.test_id = s.test_id AND f.suite_id = s.suite_id`, resultSource)
 
-	return dbc.DB.Raw(buf.String(), args...), remainingFilter, nil
+	return dbc.DB.WithContext(ctx).Raw(buf.String(), args...), remainingFilter, nil
 }
 
-func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVariants []string, quantity int) ([]api.TestOutput, error) {
+func TestOutputs(ctx context.Context, dbc *db.DB, release, test string, includedVariants, excludedVariants []string, quantity int) ([]api.TestOutput, error) {
 	results := make([]api.TestOutput, 0)
 
-	testQuery := dbc.DB.Table("tests").Where("name = ?", test).Select("id")
-	q := dbc.DB.Table("prow_job_run_tests").
+	testQuery := dbc.DB.WithContext(ctx).Table("tests").Where("name = ?", test).Select("id")
+	q := dbc.DB.WithContext(ctx).Table("prow_job_run_tests").
 		Joins("JOIN prow_job_run_test_outputs ON prow_job_run_test_outputs.prow_job_run_test_id = prow_job_run_tests.id AND prow_job_run_test_outputs.prow_job_run_test_timestamp = prow_job_run_tests.prow_job_run_timestamp").
 		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_runs.prow_job_release = prow_job_run_tests.prow_job_run_release AND prow_job_runs.timestamp = prow_job_run_tests.prow_job_run_timestamp").
 		Joins("JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
@@ -460,7 +462,7 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 	return results, res.Error
 }
 
-func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedVariants []string) (map[civil.Date]float64, error) {
+func TestDurations(ctx context.Context, dbc *db.DB, release, test string, includedVariants, excludedVariants []string) (map[civil.Date]float64, error) {
 	type testDuration struct {
 		Period          civil.Date `json:"period"`
 		AverageDuration float64    `json:"average_duration"`
@@ -468,8 +470,8 @@ func TestDurations(dbc *db.DB, release, test string, includedVariants, excludedV
 	rows := make([]testDuration, 0)
 	results := make(map[civil.Date]float64)
 
-	testQuery := dbc.DB.Table("tests").Where("name = ?", test).Select("id")
-	q := dbc.DB.Table("prow_job_run_tests").
+	testQuery := dbc.DB.WithContext(ctx).Table("tests").Where("name = ?", test).Select("id")
+	q := dbc.DB.WithContext(ctx).Table("prow_job_run_tests").
 		Joins("JOIN tests ON prow_job_run_tests.test_id = tests.id").
 		Joins("JOIN prow_jobs ON prow_jobs.id = prow_job_run_tests.prow_job_id").
 		Joins("JOIN prow_job_runs ON prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_runs.prow_job_release = prow_job_run_tests.prow_job_run_release AND prow_job_runs.timestamp = prow_job_run_tests.prow_job_run_timestamp").

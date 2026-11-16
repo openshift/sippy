@@ -22,11 +22,11 @@ import (
 // 1) using a GCS path that was calculated and passed in (we can retrieve intervals immediately)
 // 2) looking up the url given the jobRunID and extracting the prow job name (we need to wait until the sippyDB is populated)
 // If the GCS path could not be calculated, it will be empty.
-func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath, intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
+func JobRunIntervals(ctx context.Context, gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath, intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
 	jobRunURL := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/%s", gcsBucket, gcsPath)
 
-	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, nil, logger)
+	jobRun, err := api.FetchJobRun(ctx, dbc, jobRunID, false, nil, logger)
 	if err != nil {
 		// some jobs are not in the DB, and usually we have bucket/path without looking them up
 		logger.WithError(err).Debugf("failed to fetch job run %d", jobRunID)

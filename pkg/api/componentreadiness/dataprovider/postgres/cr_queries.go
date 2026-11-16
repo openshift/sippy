@@ -407,7 +407,7 @@ func (p *PostgresProvider) queryTestStatusPrefixSum(
 	dateRange query.DateRange,
 ) (map[string]crstatus.TestStatus, []error) {
 
-	if err := query.ResolveDateRanges(p.dbc, release, &dateRange); err != nil {
+	if err := query.ResolveDateRanges(ctx, p.dbc, release, &dateRange); err != nil {
 		return nil, []error{err}
 	}
 	lookupEnd := dateRange.End.AddDays(-1)
@@ -501,7 +501,7 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 			Start: civil.DateOf(reqOptions.SampleRelease.Start),
 			End:   civil.DateOf(reqOptions.SampleRelease.End).AddDays(1),
 		}
-		if err := query.ResolveDateRanges(p.dbc, sampleRelease, &sampleRange); err != nil {
+		if err := query.ResolveDateRanges(ctx, p.dbc, sampleRelease, &sampleRange); err != nil {
 			return nil, nil, []error{err}
 		}
 		sampleSpec = prefixSumSpec(sampleRelease, sampleRange.End.AddDays(-1), sampleRange.Start.AddDays(-1), reqOptions.Lifecycles)
@@ -519,7 +519,7 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 		baseWindowDays := baseRange.End.AddDays(-1).DaysSince(baseRange.Start)
 		baseSpec = gaSpec(baseRelease, baseWindowDays)
 	} else {
-		if err := query.ResolveDateRanges(p.dbc, baseRelease, &baseRange); err != nil {
+		if err := query.ResolveDateRanges(ctx, p.dbc, baseRelease, &baseRange); err != nil {
 			return nil, nil, []error{err}
 		}
 		baseLookupEnd := baseRange.End.AddDays(-1)

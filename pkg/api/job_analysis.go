@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -14,6 +15,7 @@ const PeriodDay = "day"
 const PeriodHour = "hour"
 
 func PrintJobAnalysisJSONFromDB(
+	ctx context.Context,
 	dbc *db.DB,
 	release string,
 	jobFilter *filter.Filter,
@@ -26,7 +28,7 @@ func PrintJobAnalysisJSONFromDB(
 	reportEnd time.Time) (apitype.JobAnalysisResult, error) {
 	result := apitype.JobAnalysisResult{}
 
-	jobs, err := query.ListFilteredJobIDs(dbc, release, jobFilter,
+	jobs, err := query.ListFilteredJobIDs(ctx, dbc, release, jobFilter,
 		start, boundary, end, limit, sortField, sort)
 	if err != nil {
 		return result, err
@@ -51,8 +53,8 @@ func PrintJobAnalysisJSONFromDB(
 		NoResult       int `gorm:"column:n"`
 	}
 	sums := make([]resultSum, 0)
-	prowJobRunsFiltered := jobRunsFilter.ToSQL(dbc.DB.Table("prow_job_runs"), apitype.JobRun{})
-	sumResults := dbc.DB.Table("(?) as prow_job_runs", prowJobRunsFiltered).
+	prowJobRunsFiltered := jobRunsFilter.ToSQL(dbc.DB.WithContext(ctx).Table("prow_job_runs"), apitype.JobRun{})
+	sumResults := dbc.DB.WithContext(ctx).Table("(?) as prow_job_runs", prowJobRunsFiltered).
 		Select(`date_trunc(?, timestamp)        AS period,
 	           count(*)                                              AS total_runs,
 	           sum(case when overall_result = 'S' then 1 else 0 end) AS "S",

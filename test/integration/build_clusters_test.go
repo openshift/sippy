@@ -41,7 +41,7 @@ func TestHasBuildClusterData(t *testing.T) {
 			})
 
 			since := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-			has, err := query.HasBuildClusterData(dbc, "4.16", since)
+			has, err := query.HasBuildClusterData(t.Context(), dbc, "4.16", since)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, has)
 		})
@@ -52,7 +52,7 @@ func TestHasBuildClusterDataEmpty(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
 	since := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	has, err := query.HasBuildClusterData(dbc, "4.16", since)
+	has, err := query.HasBuildClusterData(t.Context(), dbc, "4.16", since)
 	require.NoError(t, err)
 	assert.False(t, has)
 }
@@ -83,7 +83,7 @@ func TestBuildClusterHealth(t *testing.T) {
 		{timestamp: end, cluster: "build01"},
 	})
 
-	results, err := query.BuildClusterHealth(dbc, "4.16", start, boundary, end)
+	results, err := query.BuildClusterHealth(t.Context(), dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 
@@ -120,7 +120,7 @@ func TestBuildClusterHealthMultipleClusters(t *testing.T) {
 		})
 	}
 
-	results, err := query.BuildClusterHealth(dbc, "4.16", start, boundary, end)
+	results, err := query.BuildClusterHealth(t.Context(), dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	assert.Len(t, results, 2)
 
@@ -148,7 +148,7 @@ func TestBuildClusterHealthZeroRunsInPreviousPeriod(t *testing.T) {
 		{timestamp: boundary.Add(24 * time.Hour), cluster: "build01"},
 	})
 
-	results, err := query.BuildClusterHealth(dbc, "4.16", start, boundary, end)
+	results, err := query.BuildClusterHealth(t.Context(), dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 
@@ -180,7 +180,7 @@ func TestBuildClusterHealthExcludesNonPeriodic(t *testing.T) {
 		cluster:   "build01",
 	})
 
-	results, err := query.BuildClusterHealth(dbc, "4.16", start, boundary, end)
+	results, err := query.BuildClusterHealth(t.Context(), dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	assert.Empty(t, results)
 }
@@ -218,7 +218,7 @@ func TestBuildClusterAnalysis(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			results, err := query.BuildClusterAnalysis(dbc, "4.16", tt.period)
+			results, err := query.BuildClusterAnalysis(t.Context(), dbc, "4.16", tt.period)
 			require.NoError(t, err)
 			assert.Len(t, results, tt.wantRows)
 
@@ -251,7 +251,7 @@ func TestBuildClusterAnalysisByDay(t *testing.T) {
 		{timestamp: yesterday.Add(2 * time.Hour), cluster: "build01"},
 	})
 
-	results, err := query.BuildClusterAnalysis(dbc, "4.16", "day")
+	results, err := query.BuildClusterAnalysis(t.Context(), dbc, "4.16", "day")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 
@@ -277,7 +277,7 @@ func TestBuildClusterAnalysisExcludesOldData(t *testing.T) {
 		cluster:   "build01",
 	})
 
-	results, err := query.BuildClusterAnalysis(dbc, "4.16", "day")
+	results, err := query.BuildClusterAnalysis(t.Context(), dbc, "4.16", "day")
 	require.NoError(t, err)
 	assert.Empty(t, results)
 }
@@ -297,7 +297,7 @@ func TestBuildClusterAnalysisExcludesNonPeriodic(t *testing.T) {
 		cluster:   "build01",
 	})
 
-	results, err := query.BuildClusterAnalysis(dbc, "4.16", "day")
+	results, err := query.BuildClusterAnalysis(t.Context(), dbc, "4.16", "day")
 	require.NoError(t, err)
 	assert.Empty(t, results)
 }

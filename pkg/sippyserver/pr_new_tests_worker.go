@@ -1,6 +1,7 @@
 package sippyserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -66,7 +67,7 @@ type JobRunFilter interface {
 	// OnlyLatestSha filters out runs that are not against the PR's latest sha
 	OnlyLatestSha(entry *logrus.Entry, info prJobInfo) []*prow.ProwJob
 	// JobFailedEarly determines if a run did not get far enough to be included in new test analysis
-	JobFailedEarly(logger *logrus.Entry, run *models.ProwJobRun) bool
+	JobFailedEarly(ctx context.Context, logger *logrus.Entry, run *models.ProwJobRun) bool
 }
 
 type pgJobRunFilter struct {
@@ -78,7 +79,7 @@ type pgJobRunFilter struct {
 type NewTestsWorker struct {
 	dbc          *db.DB
 	jobRunFilter JobRunFilter
-	fetchJobRun  func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
+	fetchJobRun  func(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
 }
 
 // StandardNewTestsWorker is a convenience method to create a NewTestsWorker with standard filters
@@ -91,7 +92,7 @@ func StandardNewTestsWorker(dbc *db.DB) *NewTestsWorker {
 }
 
 // analyzeRisks processes one job's runs looking for new tests and assessing their risk
-func (ntw *NewTestsWorker) analyzeRisks(logger *logrus.Entry, jobs []prJobInfo) []*JobNewTestRisks {
+func (ntw *NewTestsWorker) analyzeRisks(ctx context.Context, logger *logrus.Entry, jobs []prJobInfo) []*JobNewTestRisks {
 	logger = logger.WithField("func", "analyzeRisks")
 	jobRisks := []*JobNewTestRisks{}
 	for _, jobInfo := range jobs {
@@ -103,7 +104,7 @@ func (ntw *NewTestsWorker) analyzeRisks(logger *logrus.Entry, jobs []prJobInfo) 
 			continue
 		}
 
-		risks := ntw.assessJobRisks(logger, latestRuns)
+		risks := ntw.assessJobRisks(ctx, logger, latestRuns)
 		if risks != nil { // there were runs to analyze and check for new tests
 			jobRisks = append(jobRisks, &JobNewTestRisks{JobName: jobInfo.name, NewTestRisks: risks})
 		} // else all runs were excluded; do not use this job's lack of new tests for comparison
@@ -200,7 +201,7 @@ func (jrf *pgJobRunFilter) OnlyLatestSha(logger *logrus.Entry, jobInfo prJobInfo
 // when looking for new tests, runs that broke before running all the tests will muddy the analysis.
 // such runs should be left to risk analysis for comment.
 // if any errors occur, return true so the run is not included in the new test analysis.
-func (jrf *pgJobRunFilter) JobFailedEarly(logger *logrus.Entry, run *models.ProwJobRun) bool {
+func (jrf *pgJobRunFilter) JobFailedEarly(ctx context.Context, logger *logrus.Entry, run *models.ProwJobRun) bool {
 	logger = logger.WithField("func", "JobFailedEarly").WithField("job", run.ProwJob.Name).WithField("run", run.ID)
 	if run.TestCount <= 0 { // this can in theory happen when building the run, filter these out
 		logger.Warn("Failed to count tests earlier, ignoring this run")
@@ -210,7 +211,7 @@ func (jrf *pgJobRunFilter) JobFailedEarly(logger *logrus.Entry, run *models.Prow
 	historicalCount, ok := jrf.historicalTestCount[run.ProwJob.ID]
 	if !ok {
 		var err error
-		historicalCount, err = query.ProwJobHistoricalTestCounts(jrf.dbc, run.ProwJobID, run.ProwJob.Release)
+		historicalCount, err = query.ProwJobHistoricalTestCounts(ctx, jrf.dbc, run.ProwJobID, run.ProwJob.Release)
 		if err != nil {
 			logger.WithError(err).Error("Error determining historical job test count, ignoring this run")
 			return true
@@ -228,7 +229,7 @@ func (jrf *pgJobRunFilter) JobFailedEarly(logger *logrus.Entry, run *models.Prow
 // assessJobRisks walks the runs for a job looking for new tests and assessing their risk.
 // returns map of risks by test name. this will likely be empty, meaning no risks were found.
 // if it is nil, all job runs were excluded, so this job should not be included in the analysis.
-func (ntw *NewTestsWorker) assessJobRisks(logger *logrus.Entry, jobRuns []*prow.ProwJob) map[string]*NewTestRisk {
+func (ntw *NewTestsWorker) assessJobRisks(ctx context.Context, logger *logrus.Entry, jobRuns []*prow.ProwJob) map[string]*NewTestRisk {
 	logger = logger.WithField("func", "assessJobRisks").WithField("runs", len(jobRuns))
 
 	// find the new tests in all the comparable runs we have for one job
@@ -236,7 +237,7 @@ func (ntw *NewTestsWorker) assessJobRisks(logger *logrus.Entry, jobRuns []*prow.
 	sawValidRun := false // track whether any runs were not excluded
 	for _, run := range jobRuns {
 		logger.Infof("Finding new tests for job %s run %s", run.Spec.Job, run.Status.BuildID)
-		if newTests, err := ntw.getNewTestsForJobRun(logger, run); err == nil {
+		if newTests, err := ntw.getNewTestsForJobRun(ctx, logger, run); err == nil {
 			sawValidRun = true
 			for _, test := range newTests {
 				newTestsByName[test.TestName] = append(newTestsByName[test.TestName], test)
@@ -287,13 +288,13 @@ func makeNewTestRisk(testName string, jobRuns int, tests []NewTest) *NewTestRisk
 }
 
 // getNewTestsForJobRun builds sippy's model of a job run and searches it for new tests.
-func (ntw *NewTestsWorker) getNewTestsForJobRun(logger *logrus.Entry, prowjob *prow.ProwJob) (newTests []NewTest, err error) {
+func (ntw *NewTestsWorker) getNewTestsForJobRun(ctx context.Context, logger *logrus.Entry, prowjob *prow.ProwJob) (newTests []NewTest, err error) {
 	logger = logger.WithField("func", "getNewTestsForJobRun").WithField("job", prowjob.Spec.Job).WithField("run", prowjob.Status.BuildID)
 	var jobRun *models.ProwJobRun
 	if jobRunIntID, err := strconv.ParseInt(prowjob.Status.BuildID, 10, 64); err != nil {
 		logger.WithError(err).Error("Failed to parse jobRunId id") // this would be exceedingly strange
 		return nil, err
-	} else if jobRun, err = ntw.fetchJobRun(ntw.dbc, jobRunIntID, true, nil, logger); err != nil {
+	} else if jobRun, err = ntw.fetchJobRun(ctx, ntw.dbc, jobRunIntID, true, nil, logger); err != nil {
 		// RecordNotFound can be expected if the jobRunId job isn't in sippy yet. log any other error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.Debug("Job run not found")
@@ -301,7 +302,7 @@ func (ntw *NewTestsWorker) getNewTestsForJobRun(logger *logrus.Entry, prowjob *p
 			logger.WithError(err).Error("Error fetching job run")
 		}
 		return nil, err
-	} else if ntw.jobRunFilter.JobFailedEarly(logger, jobRun) {
+	} else if ntw.jobRunFilter.JobFailedEarly(ctx, logger, jobRun) {
 		return nil, errors.New("job run failed early, ignore")
 	}
 

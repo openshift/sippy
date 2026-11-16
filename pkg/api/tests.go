@@ -30,8 +30,8 @@ import (
 	"github.com/openshift/sippy/pkg/util/param"
 )
 
-func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubstrings []string, dbc *db.DB) {
-	responseStr, err := installhtml.TestDetailTestsFromDB(dbc, release, testSubstrings)
+func PrintTestsDetailsJSONFromDB(ctx context.Context, w http.ResponseWriter, release string, testSubstrings []string, dbc *db.DB) {
+	responseStr, err := installhtml.TestDetailTestsFromDB(ctx, dbc, release, testSubstrings)
 	if err != nil {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
 		return
@@ -39,7 +39,7 @@ func PrintTestsDetailsJSONFromDB(w http.ResponseWriter, release string, testSubs
 	RespondWithJSON(http.StatusOK, w, responseStr)
 }
 
-func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filter, quantity int) ([]apitype.TestOutput, error) {
+func GetTestOutputsFromDB(ctx context.Context, dbc *db.DB, release, test string, filters *filter.Filter, quantity int) ([]apitype.TestOutput, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {
 		for _, f := range filters.Items {
@@ -53,7 +53,7 @@ func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filt
 		}
 	}
 
-	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
+	return query.TestOutputs(ctx, dbc, release, test, includedVariants, excludedVariants, quantity)
 }
 
 func GetTestRunsAndOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, testID string, prowJobRunIDs, prowJobNames []string, includeSuccess bool, startDate, endDate time.Time) ([]apitype.TestOutputBigQuery, error) {
@@ -205,7 +205,7 @@ LIMIT 500`
 	return outputs, nil
 }
 
-func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[civil.Date]float64, error) {
+func GetTestDurationsFromDB(ctx context.Context, dbc *db.DB, release, test string, filters *filter.Filter) (map[civil.Date]float64, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {
 		for _, f := range filters.Items {
@@ -219,7 +219,7 @@ func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Fi
 		}
 	}
 
-	return query.TestDurations(dbc, release, test, includedVariants, excludedVariants)
+	return query.TestDurations(ctx, dbc, release, test, includedVariants, excludedVariants)
 }
 
 type TestsAPIResult []apitype.Test
@@ -392,11 +392,11 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 	RespondWithJSON(http.StatusOK, w, testsResult)
 }
 
-func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, error) {
-	return GetJobRunTestsCountByLookbackAt(dbc, lookbackDays, civil.DateOf(time.Now().UTC()))
+func GetJobRunTestsCountByLookback(ctx context.Context, dbc *db.DB, lookbackDays int) (int64, int64, error) {
+	return GetJobRunTestsCountByLookbackAt(ctx, dbc, lookbackDays, civil.DateOf(time.Now().UTC()))
 }
 
-func GetJobRunTestsCountByLookbackAt(dbc *db.DB, lookbackDays int, today civil.Date) (int64, int64, error) {
+func GetJobRunTestsCountByLookbackAt(ctx context.Context, dbc *db.DB, lookbackDays int, today civil.Date) (int64, int64, error) {
 	if dbc == nil {
 		return -1, -1, errors.New("database connection is required")
 	}
@@ -410,12 +410,12 @@ func GetJobRunTestsCountByLookbackAt(dbc *db.DB, lookbackDays int, today civil.D
 	log.WithField("lookbackDays", lookbackDays).Info("starting lookback count queries")
 
 	// Count job runs from prow_job_runs (one row per run, much smaller than prow_job_run_tests).
-	release, err := query.CurrentActiveRelease(dbc)
+	release, err := query.CurrentActiveRelease(ctx, dbc)
 	if err != nil {
 		return -1, -1, fmt.Errorf("determining current release: %w", err)
 	}
 	var jobRunsCount int64
-	err = dbc.DB.Table("prow_job_runs").
+	err = dbc.DB.WithContext(ctx).Table("prow_job_runs").
 		Where("prow_job_release = ?", release).
 		Where("timestamp > ? AND deleted_at IS NULL", today.AddDays(-lookbackDays).In(time.UTC)).
 		Count(&jobRunsCount).
@@ -426,7 +426,7 @@ func GetJobRunTestsCountByLookbackAt(dbc *db.DB, lookbackDays int, today civil.D
 
 	// Count distinct tests using cumulative summaries for the active release.
 	var testIDs []int64
-	err = dbc.DB.Raw(`
+	err = dbc.DB.WithContext(ctx).Raw(`
 		WITH end_sums AS (
 		  SELECT test_id, SUM(prefix_sum_runs) AS total_runs
 		  FROM test_cumulative_summaries
@@ -509,7 +509,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	if spec.Collapse {
 		workMem = "16MB"
 
-		collapsedQuery, err := query.TestReportQueryCollapsed(dbc, spec.Release, sample, base, variantFilter, nameFilter, lifecycleFilter)
+		collapsedQuery, err := query.TestReportQueryCollapsed(ctx, dbc, spec.Release, sample, base, variantFilter, nameFilter, lifecycleFilter)
 		if err != nil {
 			errs = append(errs, err)
 			return
@@ -527,7 +527,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 			Where("current_runs > 0 or previous_runs > 0")
 		finalResults = dbc.DB.Table("(?) as final_results", processedResults)
 	} else {
-		rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(dbc, spec.Release, sample, base, nameFilter, variantFilter, processedFilter, lifecycleFilter)
+		rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(ctx, dbc, spec.Release, sample, base, nameFilter, variantFilter, processedFilter, lifecycleFilter)
 		if err != nil {
 			errs = append(errs, err)
 			return

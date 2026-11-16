@@ -46,7 +46,7 @@ func baseTestingJAQ(t *testing.T, pathGlob string, matcher ContentMatcher) *JobA
 
 func TestFunctional_JobRunPathFound(t *testing.T) {
 	query := baseTestingJAQ(t, "", nil)
-	jobRun, err := query.getJobRun(1898704060324777984)
+	jobRun, err := query.getJobRun(t.Context(), 1898704060324777984)
 	assert.NoError(t, err)
 	assert.Equal(t, "logs/periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn/1898704060324777984/", jobRun.BucketPath)
 	assert.Equal(t, "periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn", jobRun.JobName)
@@ -55,7 +55,7 @@ func TestFunctional_JobRunPathFound(t *testing.T) {
 
 func TestFunctional_ListFiles(t *testing.T) {
 	query := baseTestingJAQ(t, "", nil)
-	jobRun, err := query.getJobRun(1898704060324777984)
+	jobRun, err := query.getJobRun(t.Context(), 1898704060324777984)
 	assert.NoError(t, err)
 	files, truncated, err := query.getJobRunFiles(t.Context(), jobRun.GCSBucket, jobRun.BucketPath)
 	assert.NoError(t, err)
@@ -65,7 +65,7 @@ func TestFunctional_ListFiles(t *testing.T) {
 
 func TestFunctional_FilterFiles(t *testing.T) {
 	query := baseTestingJAQ(t, "artifacts/*e2e*/gather-extra/build-log.txt", nil)
-	jobRun, err := query.getJobRun(1898704060324777984)
+	jobRun, err := query.getJobRun(t.Context(), 1898704060324777984)
 	assert.NoError(t, err)
 	files, truncated, err := query.getJobRunFiles(t.Context(), jobRun.GCSBucket, jobRun.BucketPath)
 	assert.NoError(t, err)
@@ -78,7 +78,7 @@ func TestFunctional_FilterContent(t *testing.T) {
 	ctx := context.Background()
 
 	query := baseTestingJAQ(t, "", NewStringMatcher("ClusterVersion:", 0, 0, maxFileMatches))
-	jobRun, err := query.getJobRun(1898704060324777984)
+	jobRun, err := query.getJobRun(t.Context(), 1898704060324777984)
 	assert.NoError(t, err)
 	artifact := query.getFileContentMatches(ctx, 1898704060324777984, jobRun.GCSBucket, &storage.ObjectAttrs{Name: filePath})
 	assert.Empty(t, artifact.Error)
@@ -96,7 +96,7 @@ func TestFunctional_GzipContent(t *testing.T) {
 	const filePath = "logs/periodic-ci-openshift-release-master-ci-4.19-e2e-aws-ovn-techpreview/1909930323508989952/artifacts/e2e-aws-ovn-techpreview/gather-extra/artifacts/nodes/ip-10-0-59-177.us-east-2.compute.internal/journal"
 
 	query := baseTestingJAQ(t, "", NewStringMatcher("error", 0, 0, maxFileMatches))
-	jobRun, err := query.getJobRun(1909930323508989952)
+	jobRun, err := query.getJobRun(t.Context(), 1909930323508989952)
 	assert.NoError(t, err)
 	artifact := query.getFileContentMatches(context.Background(), 1909930323508989952, jobRun.GCSBucket, &storage.ObjectAttrs{Name: filePath, ContentType: "application/gzip"})
 	assert.Empty(t, artifact.Error)

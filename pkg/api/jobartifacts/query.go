@@ -40,7 +40,7 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 	// check the cache first
 	jobRunResponse, err := q.GetCachedJobRun(ctx, jobRunID)
 	if err != nil { // cache miss, look up the job run from scratch
-		if jobRunResponse, err = q.getJobRun(jobRunID); err != nil {
+		if jobRunResponse, err = q.getJobRun(ctx, jobRunID); err != nil {
 			logger.WithError(err).Error("could not query job's bucket path")
 			return jobRunResponse, err
 		}
@@ -101,18 +101,18 @@ func separateCompletedAndRequeries(cachedArtifacts []JobRunArtifact, fileAttrs [
 	return completedArtifacts, requeryAttrs
 }
 
-func (q *JobArtifactQuery) getJobRun(jobRunID int64) (JobRun, error) {
+func (q *JobArtifactQuery) getJobRun(ctx context.Context, jobRunID int64) (JobRun, error) {
 	jobRunResponse := JobRun{
 		ID:      strconv.FormatInt(jobRunID, 10),
 		IsFinal: true, // even errors are final - only if we timed out getting answers might a retry get more
 	}
-	partKeys, err := query.LookupProwJobRunPartitionKeys(q.DbClient.DB, jobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(ctx, q.DbClient.DB, jobRunID)
 	if err != nil {
 		return jobRunResponse, fmt.Errorf("looking up partition keys for job run %d: %w", jobRunID, err)
 	}
 
 	jobRunModel := new(models.ProwJobRun)
-	res := q.DbClient.DB.Preload("ProwJob").
+	res := q.DbClient.DB.WithContext(ctx).Preload("ProwJob").
 		Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
 		Take(jobRunModel, jobRunID)
 	if res.Error != nil {

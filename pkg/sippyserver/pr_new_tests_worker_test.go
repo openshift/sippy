@@ -56,7 +56,7 @@ func TestAssessJobRisks(t *testing.T) {
 	}
 
 	// Assess single job risks
-	jobRisks := ntw.assessJobRisks(logger, []*prow.ProwJob{jobRuns[numRuns-1]})
+	jobRisks := ntw.assessJobRisks(t.Context(), logger, []*prow.ProwJob{jobRuns[numRuns-1]})
 	if !assert.Equalf(t, numRuns, 2, "expect risks only for the two that were new; saw %+v", jobRisks) {
 		return
 	}
@@ -80,8 +80,8 @@ func TestAssessJobRisks(t *testing.T) {
 	// Wrap fetchJobRun to alternately drop new tests, simulating a test missing in some runs
 	realFetch := ntw.fetchJobRun
 	sawPrevious := map[string]bool{}
-	ntw.fetchJobRun = func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
-		jr, err := realFetch(dbc, jobRunID, onlyNewTests, preloads, logger)
+	ntw.fetchJobRun = func(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+		jr, err := realFetch(ctx, dbc, jobRunID, onlyNewTests, preloads, logger)
 		if err != nil || jr == nil {
 			return jr, err
 		}
@@ -95,7 +95,7 @@ func TestAssessJobRisks(t *testing.T) {
 		jr.Tests = filtered
 		return jr, nil
 	}
-	jobRisks = ntw.assessJobRisks(logger, jobRuns)
+	jobRisks = ntw.assessJobRisks(t.Context(), logger, jobRuns)
 	failed, ok = jobRisks["a failed test that has never been seen before"]
 	if assert.True(t, ok, "Should have found failed test") {
 		if !assert.True(t, failed.AnyMissing, "Expected test missing in at least one run") {
@@ -132,8 +132,8 @@ func TestAssessCrossJobRisks(t *testing.T) {
 	// Wrap fetchJobRun to only return new tests for one specific job
 	targetJob := "pull-ci-openshift-origin-master-e2e-aws-ovn-single-node"
 	realFetch := ntw.fetchJobRun
-	ntw.fetchJobRun = func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
-		jr, err := realFetch(dbc, jobRunID, onlyNewTests, preloads, logger)
+	ntw.fetchJobRun = func(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+		jr, err := realFetch(ctx, dbc, jobRunID, onlyNewTests, preloads, logger)
 		if err != nil || jr == nil {
 			return jr, err
 		}
@@ -146,7 +146,7 @@ func TestAssessCrossJobRisks(t *testing.T) {
 		completedJobs[idx].prowJobRuns = aw.buildProwJobRuns(logger, jobInfo.bucketPrefix)
 		completedJobs[idx].prShaSum = "8849ed78d4c51e2add729a68a2cbf8551c6d60c9" // so we can check whether runs are against the expected PR commit
 	}
-	risks := ntw.analyzeRisks(logger, completedJobs)
+	risks := ntw.analyzeRisks(t.Context(), logger, completedJobs)
 	if !assert.Greater(t, len(risks), 1, "Expected a risk each for the two new tests") {
 		return
 	}
@@ -249,13 +249,13 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		fetchJobRun   func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
+		fetchJobRun   func(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
 		expectedTests []NewTest
 		expectedError error
 	}{
 		{
 			name: "successful fetch",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				pjr := models.ProwJobRun{
 					ProwJobRelease: "4.12",
 					Tests: []models.ProwJobRunTest{
@@ -276,7 +276,7 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 		},
 		{
 			name: "jobRun run not found",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				return nil, gorm.ErrRecordNotFound
 			},
 			expectedTests: nil,
@@ -284,7 +284,7 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 		},
 		{
 			name: "error fetching jobRun run",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				return nil, errors.New("fetch error")
 			},
 			expectedTests: nil,
@@ -298,7 +298,7 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 				fetchJobRun:  tt.fetchJobRun,
 				jobRunFilter: &jobRunUnfiltered{},
 			}
-			newTests, err := ntw.getNewTestsForJobRun(logger, jobRun)
+			newTests, err := ntw.getNewTestsForJobRun(t.Context(), logger, jobRun)
 			assert.Equal(t, tt.expectedTests, newTests)
 			assert.Equal(t, tt.expectedError, err)
 		})
@@ -311,7 +311,7 @@ func (n *jobRunUnfiltered) OnlyLatestSha(_ *logrus.Entry, jobInfo prJobInfo) []*
 	return jobInfo.prowJobRuns
 }
 
-func (n *jobRunUnfiltered) JobFailedEarly(_ *logrus.Entry, _ *models.ProwJobRun) bool {
+func (n *jobRunUnfiltered) JobFailedEarly(_ context.Context, _ *logrus.Entry, _ *models.ProwJobRun) bool {
 	return false
 }
 
@@ -325,7 +325,7 @@ func TestFunc_getNewTestsForJobRun(t *testing.T) {
 	}
 	logrus.SetLevel(logrus.DebugLevel)
 	logger := logrus.WithContext(context.TODO())
-	newTests, err := ntw.getNewTestsForJobRun(logger, jobRun)
+	newTests, err := ntw.getNewTestsForJobRun(t.Context(), logger, jobRun)
 
 	fmt.Printf("new tests: %v\n", newTests)
 	assert.NoError(t, err, "Failed to get new tests")

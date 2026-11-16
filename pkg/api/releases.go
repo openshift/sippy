@@ -91,7 +91,7 @@ type testFailureRow struct {
 
 // GetPayloadStreamTestFailures loads the most recent payloads for a stream and attempts to search for most commonly
 // failing tests, possible perma-failing blockers, etc.
-func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filterOpts *filter.FilterOptions, reportEnd time.Time) ([]*apitype.TestFailureAnalysis, error) {
+func GetPayloadStreamTestFailures(ctx context.Context, dbc *db.DB, release, stream, arch string, filterOpts *filter.FilterOptions, reportEnd time.Time) ([]*apitype.TestFailureAnalysis, error) {
 
 	logger := log.WithFields(log.Fields{
 		"release": release,
@@ -104,7 +104,7 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 	}
 
 	// Get latest payload tags for analysis:
-	lastPayloads, err := query.GetLastPayloadTags(dbc.DB, release,
+	lastPayloads, err := query.GetLastPayloadTags(ctx, dbc.DB, release,
 		stream, arch, reportEnd)
 	if err != nil {
 		return nil, err
@@ -143,8 +143,8 @@ func GetPayloadStreamTestFailures(dbc *db.DB, release, stream, arch string, filt
 	logger.WithField("failedPayloads", len(onlyFailedPayloads)).Debug("failed payloads")
 
 	subquery := query.GetTestFailuresForPayloadStream(
-		dbc.DB, release, stream, arch, reportEnd, testidentification.OpenShiftTestsName)
-	q := dbc.DB.Table("(?) as test_failures", subquery)
+		ctx, dbc.DB, release, stream, arch, reportEnd, testidentification.OpenShiftTestsName)
+	q := dbc.DB.WithContext(ctx).Table("(?) as test_failures", subquery)
 	q, err = filter.FilterableDBResult(q, filterOpts, nil)
 	if err != nil {
 		return nil, err
@@ -241,14 +241,14 @@ func calculateBlockerScore(consecutiveFailedPayloadTags []string, ta *apitype.Te
 // GetPayloadTestFailures loads the test failures for a specific payload across all of it's jobs. At present,
 // aggregated sub-jobs are not included and we assume only what bubbles up to failing the aggregated job is
 // sufficient.
-func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogger) ([]*apitype.TestFailureAnalysis, error) {
+func GetPayloadTestFailures(ctx context.Context, dbc *db.DB, payloadTag string, logger log.FieldLogger) ([]*apitype.TestFailureAnalysis, error) {
 
 	result := &apitype.PayloadStreamAnalysis{
 		ConsecutiveFailedPayloads: []string{},
 	}
 
 	payload := &models.ReleaseTag{}
-	if err := dbc.DB.Where("release_tag = ?", payloadTag).First(payload).Error; err != nil {
+	if err := dbc.DB.WithContext(ctx).Where("release_tag = ?", payloadTag).First(payload).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return result.TestFailures, fmt.Errorf("no payload release tag found for: %s", payloadTag)
 		}
@@ -259,7 +259,7 @@ func GetPayloadTestFailures(dbc *db.DB, payloadTag string, logger log.FieldLogge
 	result.PayloadsAnalyzed = 1
 
 	// Query all test failures for the given payload stream in the last two weeks:
-	failedTests, err := query.GetTestFailuresForPayload(dbc.DB, payloadTag, payload.Release, payload.ReleaseTime)
+	failedTests, err := query.GetTestFailuresForPayload(ctx, dbc.DB, payloadTag, payload.Release, payload.ReleaseTime)
 	if err != nil {
 		logger.WithError(err).Error("unable to list test failures for payload")
 		return nil, err
@@ -409,42 +409,42 @@ func PrintReleasesReport(w http.ResponseWriter, req *http.Request, dbClient *db.
 
 // ReleaseHealthReports returns a report on the most recent payload status for each arch/stream in
 // the given release.
-func ReleaseHealthReports(dbClient *db.DB, release string, reportEnd time.Time) ([]apitype.ReleaseHealthReport, error) {
+func ReleaseHealthReports(ctx context.Context, dbClient *db.DB, release string, reportEnd time.Time) ([]apitype.ReleaseHealthReport, error) {
 	apiResults := make([]apitype.ReleaseHealthReport, 0)
 	if dbClient == nil || dbClient.DB == nil {
 		return apiResults, fmt.Errorf("no db client configured")
 	}
 
-	results, err := query.GetLastAcceptedByArchitectureAndStream(dbClient.DB, release, reportEnd)
+	results, err := query.GetLastAcceptedByArchitectureAndStream(ctx, dbClient.DB, release, reportEnd)
 	if err != nil {
 		return apiResults, err
 	}
 
 	for _, archStream := range results {
-		phase, count, err := query.GetLastPayloadStatus(dbClient.DB, archStream.Architecture, archStream.Stream, release, reportEnd)
+		phase, count, err := query.GetLastPayloadStatus(ctx, dbClient.DB, archStream.Architecture, archStream.Stream, release, reportEnd)
 		if err != nil {
 			return apiResults, pkgerrors.Wrapf(err, "error finding last %s payload status for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
-		totalPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil, reportEnd)
+		totalPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(ctx, dbClient.DB, release, archStream.Architecture, archStream.Stream, nil, reportEnd)
 		if err != nil {
 			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
-		totalAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(dbClient.DB, release, archStream.Architecture, archStream.Stream, nil, reportEnd)
+		totalAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(ctx, dbClient.DB, release, archStream.Architecture, archStream.Stream, nil, reportEnd)
 		if err != nil {
 			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
 
 		weekAgo := reportEnd.Add(-7 * 24 * time.Hour)
-		currentWeekPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo, reportEnd)
+		currentWeekPhaseCountsDB, err := query.GetPayloadStreamPhaseCounts(ctx, dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo, reportEnd)
 		if err != nil {
 			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload status counts for %s %s",
 				release, archStream.Architecture, archStream.Stream)
 		}
-		currentWeekAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo, reportEnd)
+		currentWeekAcceptanceStatistics, err := query.GetPayloadAcceptanceStatistics(ctx, dbClient.DB, release, archStream.Architecture, archStream.Stream, &weekAgo, reportEnd)
 		if err != nil {
 			return apiResults, pkgerrors.Wrapf(err, "error finding %s payload acceptance statistics for %s %s",
 				release, archStream.Architecture, archStream.Stream)
@@ -670,13 +670,13 @@ func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) ap
 // current active release. It uses query.CurrentActiveRelease to identify the
 // release, then queries the most recent created_at scoped to the last 14 days
 // for partition pruning.
-func GetLastUpdateTime(dbc *db.DB) (time.Time, error) {
-	rel, err := query.CurrentActiveRelease(dbc)
+func GetLastUpdateTime(ctx context.Context, dbc *db.DB) (time.Time, error) {
+	rel, err := query.CurrentActiveRelease(ctx, dbc)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("get current active release: %w", err)
 	}
 	var lastUpdated time.Time
-	if err := dbc.DB.Raw("SELECT COALESCE(MAX(created_at), '0001-01-01') FROM prow_job_runs WHERE prow_job_release = ? AND timestamp > NOW() - INTERVAL '14 days'", rel).
+	if err := dbc.DB.WithContext(ctx).Raw("SELECT COALESCE(MAX(created_at), '0001-01-01') FROM prow_job_runs WHERE prow_job_release = ? AND timestamp > NOW() - INTERVAL '14 days'", rel).
 		Scan(&lastUpdated).Error; err != nil {
 		return time.Time{}, fmt.Errorf("query last update time: %w", err)
 	}

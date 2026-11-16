@@ -61,7 +61,7 @@ var (
 // It queries test data using the same filters and query path as the /api/tests
 // endpoint, ensuring the evaluated data matches what HATEOAS links point to.
 func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, release, featureGate string) (*PromotionStatus, error) {
-	topologies, err := getGateTopologies(dbc, release, featureGate)
+	topologies, err := getGateTopologies(ctx, dbc, release, featureGate)
 	if err != nil {
 		return nil, fmt.Errorf("getting gate topologies: %w", err)
 	}
@@ -93,7 +93,7 @@ func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache
 
 	status := buildPromotionStatus(featureGate, release, variantsToCheck, allTests)
 
-	regressions, err := getCapabilityRegressions(dbc, release, featureGate)
+	regressions, err := getCapabilityRegressions(ctx, dbc, release, featureGate)
 	if err != nil {
 		return nil, fmt.Errorf("querying capability regressions: %w", err)
 	}
@@ -126,9 +126,9 @@ func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache
 }
 
 // getGateTopologies returns the set of topologies where this feature gate is enabled.
-func getGateTopologies(dbc *db.DB, release, featureGate string) (sets.Set[string], error) {
+func getGateTopologies(ctx context.Context, dbc *db.DB, release, featureGate string) (sets.Set[string], error) {
 	var topologies []string
-	tx := dbc.DB.Table("feature_gates").
+	tx := dbc.DB.WithContext(ctx).Table("feature_gates").
 		Select("DISTINCT topology").
 		Where("release = ? AND feature_gate = ? AND status = 'enabled'", release, featureGate).
 		Pluck("topology", &topologies)
@@ -172,12 +172,12 @@ func isFailureDueToUnpromotedGate(testName string, promotedGates sets.Set[string
 // getCapabilityRegressions returns tests with a working percentage below 92%
 // on jobs owned by this feature gate (via Capability variant). This uses a
 // lightweight query rather than the full /api/tests pipeline.
-func getCapabilityRegressions(dbc *db.DB, release, featureGate string) ([]CapabilityTestRegression, error) {
+func getCapabilityRegressions(ctx context.Context, dbc *db.DB, release, featureGate string) ([]CapabilityTestRegression, error) {
 	capabilityVariant := fmt.Sprintf("Capability:%s", featureGate)
 
 	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
 	dr := query.DateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
-	if err := query.ResolveDateRanges(dbc, release, &dr); err != nil {
+	if err := query.ResolveDateRanges(ctx, dbc, release, &dr); err != nil {
 		return nil, err
 	}
 	end := dr.End.AddDays(-1)
@@ -191,7 +191,7 @@ func getCapabilityRegressions(dbc *db.DB, release, featureGate string) ([]Capabi
 	}
 
 	var rows []queryResult
-	tx := dbc.DB.Raw(`
+	tx := dbc.DB.WithContext(ctx).Raw(`
 		SELECT t.name AS test_name,
 			CASE WHEN SUM(COALESCE(e.prefix_sum_runs - COALESCE(s.prefix_sum_runs, 0), 0)) = 0 THEN 0
 			ELSE (SUM(COALESCE(e.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))

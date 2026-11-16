@@ -48,7 +48,8 @@ func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions reqopts.RequestOption
 		reqOptions: reqOptions,
 		dbc:        dbc,
 		failureCounter: func(regressionID uint, after time.Time) (int, error) {
-			return query.CountRegressionFailuresAfter(dbc, regressionID, after)
+			// PostAnalysis has no request context; the query applies its own timeout.
+			return query.CountRegressionFailuresAfter(context.Background(), dbc, regressionID, after)
 		},
 	}
 }
@@ -67,27 +68,27 @@ type RegressionTracker struct {
 }
 
 func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
-	err := r.ensureRegressionsLoaded()
+	err := r.ensureRegressionsLoaded(ctx)
 	if err != nil {
 		utils.EnqueueAsync(wg, errCh, err)
 	}
 }
 
 func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error) {
-	err := r.ensureRegressionsLoaded()
+	err := r.ensureRegressionsLoaded(ctx)
 	if err != nil {
 		utils.EnqueueAsync(wg, errCh, err)
 	}
 }
 
-func (r *RegressionTracker) ensureRegressionsLoaded() error {
+func (r *RegressionTracker) ensureRegressionsLoaded(ctx context.Context) error {
 	if r.hasLoadedRegressions {
 		return nil
 	}
 
 	// Load all known regressions for this release:
 	var err error
-	r.openRegressions, err = query.ListOpenRegressions(r.dbc, r.reqOptions.SampleRelease.Name)
+	r.openRegressions, err = query.ListOpenRegressions(ctx, r.dbc, r.reqOptions.SampleRelease.Name)
 	if err != nil {
 		return err
 	}
@@ -129,7 +130,9 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 		// no need to adjust status for triage if this is no longer a regression
 		return nil
 	}
-	err := r.ensureRegressionsLoaded()
+	// PostAnalysis has no request context; regressions are normally loaded already during Query,
+	// but cached reports skip that phase.
+	err := r.ensureRegressionsLoaded(context.Background())
 	if err != nil {
 		return err
 	}
