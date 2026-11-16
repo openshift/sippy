@@ -65,7 +65,7 @@ func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc
 	}
 
 	// Post-analysis runs on both paths so fresh database state such as triage is reflected.
-	err := generator.PostAnalysisTestDetails(&report)
+	err := generator.PostAnalysisTestDetails(ctx, &report)
 	if err != nil {
 		return report, []error{err}
 	}
@@ -76,7 +76,7 @@ func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc
 // PostAnalysisTestDetails runs the PostAnalysis method for all middleware on this test details report.
 // This is done outside the caching mechanism so we can load fresh data from our db (which is fast and cheap),
 // and inject it into an expensive / slow report without recalculating everything.
-func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *testdetails.Report) error {
+func (c *ComponentReportGenerator) PostAnalysisTestDetails(ctx context.Context, report *testdetails.Report) error {
 
 	// Give middleware their chance to adjust the result
 	testKey := crtest.Identification{
@@ -84,7 +84,7 @@ func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *testdetails.R
 		ColumnIdentification: report.ColumnIdentification,
 	}
 	for i := range report.Analyses {
-		if err := c.middlewares.PostAnalysis(testKey, &report.Analyses[i].TestComparison); err != nil {
+		if err := c.middlewares.PostAnalysis(ctx, testKey, &report.Analyses[i].TestComparison); err != nil {
 			return err
 		}
 	}

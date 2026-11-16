@@ -56,7 +56,10 @@ func TestAssessJobRisks(t *testing.T) {
 	}
 
 	// Assess single job risks
-	jobRisks := ntw.assessJobRisks(t.Context(), logger, []*prow.ProwJob{jobRuns[numRuns-1]})
+	jobRisks, err := ntw.assessJobRisks(t.Context(), logger, []*prow.ProwJob{jobRuns[numRuns-1]})
+	if !assert.NoError(t, err) {
+		return
+	}
 	if !assert.Equalf(t, numRuns, 2, "expect risks only for the two that were new; saw %+v", jobRisks) {
 		return
 	}
@@ -95,7 +98,10 @@ func TestAssessJobRisks(t *testing.T) {
 		jr.Tests = filtered
 		return jr, nil
 	}
-	jobRisks = ntw.assessJobRisks(t.Context(), logger, jobRuns)
+	jobRisks, err = ntw.assessJobRisks(t.Context(), logger, jobRuns)
+	if !assert.NoError(t, err) {
+		return
+	}
 	failed, ok = jobRisks["a failed test that has never been seen before"]
 	if assert.True(t, ok, "Should have found failed test") {
 		if !assert.True(t, failed.AnyMissing, "Expected test missing in at least one run") {
@@ -146,7 +152,10 @@ func TestAssessCrossJobRisks(t *testing.T) {
 		completedJobs[idx].prowJobRuns = aw.buildProwJobRuns(logger, jobInfo.bucketPrefix)
 		completedJobs[idx].prShaSum = "8849ed78d4c51e2add729a68a2cbf8551c6d60c9" // so we can check whether runs are against the expected PR commit
 	}
-	risks := ntw.analyzeRisks(t.Context(), logger, completedJobs)
+	risks, err := ntw.analyzeRisks(t.Context(), logger, completedJobs)
+	if !assert.NoError(t, err) {
+		return
+	}
 	if !assert.Greater(t, len(risks), 1, "Expected a risk each for the two new tests") {
 		return
 	}
@@ -301,6 +310,61 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 			newTests, err := ntw.getNewTestsForJobRun(t.Context(), logger, jobRun)
 			assert.Equal(t, tt.expectedTests, newTests)
 			assert.Equal(t, tt.expectedError, err)
+		})
+	}
+}
+
+func TestUnit_assessJobRisksExclusions(t *testing.T) {
+	logger := logrus.NewEntry(logrus.New())
+	runs := []*prow.ProwJob{
+		{Spec: prow.ProwJobSpec{Job: "test-job"}, Status: prow.ProwJobStatus{BuildID: "1"}},
+		{Spec: prow.ProwJobSpec{Job: "test-job"}, Status: prow.ProwJobStatus{BuildID: "2"}},
+	}
+	canceledCtx := func(t *testing.T) context.Context {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		return ctx
+	}
+	tests := []struct {
+		name        string
+		ctx         func(t *testing.T) context.Context
+		fetchJobRun func(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
+		wantErr     error
+	}{
+		{
+			name: "fetch errors exclude every run",
+			ctx:  func(t *testing.T) context.Context { return t.Context() },
+			fetchJobRun: func(context.Context, *db.DB, int64, bool, []string, *logrus.Entry) (*models.ProwJobRun, error) {
+				return nil, gorm.ErrRecordNotFound
+			},
+		},
+		{
+			name: "canceled context interrupts instead of excluding",
+			ctx:  canceledCtx,
+			fetchJobRun: func(ctx context.Context, _ *db.DB, _ int64, _ bool, _ []string, _ *logrus.Entry) (*models.ProwJobRun, error) {
+				return nil, ctx.Err()
+			},
+			wantErr: context.Canceled,
+		},
+		{
+			name: "canceled context interrupts even when the error is swallowed",
+			ctx:  canceledCtx,
+			fetchJobRun: func(context.Context, *db.DB, int64, bool, []string, *logrus.Entry) (*models.ProwJobRun, error) {
+				return nil, errors.New("wrapped without the context error")
+			},
+			wantErr: context.Canceled,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ntw := &NewTestsWorker{fetchJobRun: tt.fetchJobRun, jobRunFilter: &jobRunUnfiltered{}}
+			risks, err := ntw.assessJobRisks(tt.ctx(t), logger, runs)
+			assert.Nil(t, risks)
+			if tt.wantErr == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorIs(t, err, tt.wantErr)
+			}
 		})
 	}
 }

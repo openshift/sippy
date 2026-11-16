@@ -483,7 +483,16 @@ func (aw *AnalysisWorker) determinePrComment(ctx context.Context, prCommentProsp
 	}
 
 	riskAnalyses := aw.buildPRJobRiskAnalysis(ctx, logger, completedJobs)
-	newTestRisks := aw.newTestsWorker.analyzeRisks(ctx, logger, completedJobs)
+	newTestRisks, err := aw.newTestsWorker.analyzeRisks(ctx, logger, completedJobs)
+	if err == nil {
+		// risk analysis logs and skips failed lookups, so a canceled ctx can leave it incomplete
+		err = ctx.Err()
+	}
+	if err != nil {
+		// an incomplete or empty comment would replace or clear the pending one, so leave it for a later cycle
+		logger.WithError(err).Warn("PR analysis interrupted, not preparing a comment")
+		return
+	}
 	preparedComment := PreparedComment{
 		comment:     buildCommentText(riskAnalyses, newTestRisks, prCommentProspect.SHA),
 		sha:         prCommentProspect.SHA,

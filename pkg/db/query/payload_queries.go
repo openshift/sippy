@@ -11,8 +11,8 @@ import (
 
 func GetPayloadDiff(ctx context.Context, db *gorm.DB, fromPayload, toPayload string) ([]models.ReleasePullRequest, error) {
 	results := make([]models.ReleasePullRequest, 0)
-	result := db.WithContext(ctx).Raw(`SELECT url,pull_request_id,name,description,bug_url FROM release_pull_requests 
-		WHERE id IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?)) 
+	result := db.WithContext(ctx).Raw(`SELECT url,pull_request_id,name,description,bug_url FROM release_pull_requests
+		WHERE id IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?))
 		AND id NOT IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?)) ORDER BY url`, toPayload, fromPayload).Scan(&results)
 
 	if result.Error != nil {

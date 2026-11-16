@@ -105,9 +105,72 @@ func TestQueryFunctionsHonorCanceledContext(t *testing.T) {
 			},
 		},
 		{
-			name: "CountRegressionFailuresAfter keeps the caller cancellation under its own timeout",
+			name: "CountRegressionFailuresAfter honors caller cancellation under its own timeout",
 			run: func(ctx context.Context, dbc *db.DB) error {
 				_, err := query.CountRegressionFailuresAfter(ctx, dbc, 1, start)
+				return err
+			},
+		},
+		{
+			name: "JobRunTestCount",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.JobRunTestCount(ctx, dbc, runID, "4.16", run.Timestamp)
+				return err
+			},
+		},
+		{
+			name: "ProwJobRunCount",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.ProwJobRunCount(ctx, dbc, job.ID, "4.16", start)
+				return err
+			},
+		},
+		{
+			name: "ProwJobHistoricalTestCounts",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.ProwJobHistoricalTestCounts(ctx, dbc, job.ID, "4.16")
+				return err
+			},
+		},
+		{
+			name: "PullRequestReport",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.PullRequestReport(ctx, dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16")
+				return err
+			},
+		},
+		{
+			name: "RepositoryReport",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.RepositoryReport(ctx, dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", end)
+				return err
+			},
+		},
+		{
+			name: "GetPayloadDiff",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.GetPayloadDiff(ctx, dbc.DB, "4.16.0-0.nightly-a", "4.16.0-0.nightly-b")
+				return err
+			},
+		},
+		{
+			name: "GetPayloadStreamPhaseCounts",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.GetPayloadStreamPhaseCounts(ctx, dbc.DB, "4.16", "amd64", "nightly", &start, end)
+				return err
+			},
+		},
+		{
+			name: "ListOpenRegressions",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.ListOpenRegressions(ctx, dbc, "4.16")
+				return err
+			},
+		},
+		{
+			name: "ListTriages",
+			run: func(ctx context.Context, dbc *db.DB) error {
+				_, err := query.ListTriages(ctx, dbc, "", false)
 				return err
 			},
 		},
@@ -165,6 +228,20 @@ func TestReturnedQueryBuildersCarryCallerContext(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
+				return func() error { return q.Scan(&[]map[string]any{}).Error }, nil
+			},
+		},
+		{
+			name: "PullRequestAveragePremergeFailures",
+			build: func(ctx context.Context) (func() error, error) {
+				q := query.PullRequestAveragePremergeFailures(ctx, dbc, "4.16", nil, &reportEnd)
+				return func() error { return q.Scan(&[]map[string]any{}).Error }, nil
+			},
+		},
+		{
+			name: "RepositoryRevertCount",
+			build: func(ctx context.Context) (func() error, error) {
+				q := query.RepositoryRevertCount(ctx, dbc, nil, &reportEnd)
 				return func() error { return q.Scan(&[]map[string]any{}).Error }, nil
 			},
 		},

@@ -256,8 +256,8 @@ func (s *Server) GetReportEnd() time.Time {
 // main postgresql tables.
 //
 // refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
-// the views appear to be empty.
-func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool) {
+// the views appear to be empty. ctx is the caller's lifecycle; canceling it stops the remaining queries.
+func refreshMaterializedViews(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool) {
 	var promPusher *push.Pusher
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
 		promPusher = push.New(pushgateway, "sippy-matviews")
@@ -283,7 +283,7 @@ func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatvie
 	for _, lookback := range lookbacks {
 		wg.Add(1)
 		go func(lookback int) {
-			jobRunsCount, testIDsCount, err := api.GetJobRunTestsCountByLookback(context.Background(), dbc, lookback)
+			jobRunsCount, testIDsCount, err := api.GetJobRunTestsCountByLookback(ctx, dbc, lookback)
 			if err != nil {
 				log.Errorf("Error getting prow job run test lookback counts: %v", err)
 			} else {
@@ -298,7 +298,7 @@ func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatvie
 	wg.Wait()
 	db.RefreshByPhase(db.PostgresMatViews, func(phaseMatViews []db.PostgresView) {
 		log.Infof("refreshing %d materialized views", len(phaseMatViews))
-		refreshMatviews(dbc, cacheClient, refreshMatviewOnlyIfEmpty, phaseMatViews)
+		refreshMatviews(ctx, dbc, cacheClient, refreshMatviewOnlyIfEmpty, phaseMatViews)
 	})
 
 	allElapsed := time.Since(allStart)
@@ -315,12 +315,12 @@ func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatvie
 	}
 }
 
-func refreshMatviews(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, matviews []db.PostgresView) {
+func refreshMatviews(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, matviews []db.PostgresView) {
 	ch := make(chan string)
 	wg := sync.WaitGroup{}
 	for t := 0; t < 2; t++ {
 		wg.Add(1)
-		go refreshMatview(dbc, cacheClient, refreshMatviewOnlyIfEmpty, ch, &wg)
+		go refreshMatview(ctx, dbc, cacheClient, refreshMatviewOnlyIfEmpty, ch, &wg)
 	}
 	for _, pmv := range matviews {
 		ch <- pmv.Name
@@ -329,7 +329,7 @@ func refreshMatviews(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEm
 	wg.Wait()
 }
 
-func refreshMatview(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
+func refreshMatview(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
 
 	for matView := range ch {
 		start := time.Now()
@@ -338,7 +338,7 @@ func refreshMatview(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmp
 		// If requested, we only refresh the materialized view if it has no rows
 		if refreshMatviewOnlyIfEmpty {
 			var count int
-			if res := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)).Scan(&count); res.Error != nil {
+			if res := dbc.DB.WithContext(ctx).Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)).Scan(&count); res.Error != nil {
 				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
 			} else if count > 0 {
 				tmpLog.Info("skipping matview refresh as it appears to be populated")
@@ -350,11 +350,11 @@ func refreshMatview(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmp
 		// populated (could be a developer env, or a schema migration on the view), fall back to the normal
 		// refresh which locks reads.
 		tmpLog.Info("refreshing materialized view")
-		if res := dbc.DB.Exec(
+		if res := dbc.DB.WithContext(ctx).Exec(
 			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", matView)); res.Error != nil {
 			tmpLog.WithError(res.Error).Warn("error refreshing materialized view concurrently, falling back to regular refresh")
 
-			if res := dbc.DB.Exec(
+			if res := dbc.DB.WithContext(ctx).Exec(
 				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", matView)); res.Error != nil {
 				tmpLog.WithError(res.Error).Error("error refreshing materialized view")
 			} else {
@@ -395,9 +395,10 @@ type RefreshOptions struct {
 // RefreshData refreshes materialized views. Summary tables
 // (test_daily_totals, test_cumulative_summaries) are updated
 // incrementally by the prow loader; use "sippy backfill" to repair them.
-func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
+// ctx bounds the refresh queries so the caller's shutdown can cancel them.
+func RefreshData(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
-	refreshMaterializedViews(dbc, cacheClient, opts.RefreshOnlyIfEmpty)
+	refreshMaterializedViews(ctx, dbc, cacheClient, opts.RefreshOnlyIfEmpty)
 	log.Info("Refresh complete")
 	return nil
 }

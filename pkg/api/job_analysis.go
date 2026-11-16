@@ -117,7 +117,7 @@ func PrintJobAnalysisJSONFromDB(
 	}
 	tr := make([]testResult, 0)
 
-	if err := dbc.DB.Table("prow_job_run_tests pjrt").
+	if err := dbc.DB.WithContext(ctx).Table("prow_job_run_tests pjrt").
 		Select("date_trunc(?, pjrt.prow_job_run_timestamp) AS period, tests.name AS test_name, count(tests.name) AS count", period).
 		Joins("JOIN tests ON pjrt.test_id = tests.id").
 		Where("pjrt.status = ?", v1sippyprocessing.TestStatusFailure).

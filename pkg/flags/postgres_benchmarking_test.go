@@ -1297,7 +1297,7 @@ func Test_BenchmarkRefreshData(t *testing.T) {
 	r := runBenchmarkCase(t, dbc, benchmarkCase{
 		name: "RefreshData",
 		fn: func(dbc *db.DB) error {
-			return sippyserver.RefreshData(dbc, nil, sippyserver.RefreshOptions{})
+			return sippyserver.RefreshData(t.Context(), dbc, nil, sippyserver.RefreshOptions{})
 		},
 	}, 1)
 	printSummaryTable(t, []benchmarkResult{r}, connName)

@@ -708,7 +708,7 @@ func seedSyntheticData(dbc *db.DB, clock seedClock, views apitype.SippyViews) er
 	}
 	log.Info("Seeded test outputs for periodic jobs")
 
-	if err := sippyserver.RefreshData(dbc, nil, sippyserver.RefreshOptions{}); err != nil {
+	if err := sippyserver.RefreshData(context.Background(), dbc, nil, sippyserver.RefreshOptions{}); err != nil {
 		return fmt.Errorf("failed to refresh data: %w", err)
 	}
 

@@ -99,7 +99,7 @@ func GetPromotionStatus(ctx context.Context, dbc *db.DB, cacheClient cache.Cache
 	}
 
 	if len(regressions) > 0 {
-		promotedGates, err := getPromotedGateNames(dbc, release)
+		promotedGates, err := getPromotedGateNames(ctx, dbc, release)
 		if err != nil {
 			return nil, fmt.Errorf("querying promoted gate names: %w", err)
 		}
@@ -140,9 +140,9 @@ func getGateTopologies(ctx context.Context, dbc *db.DB, release, featureGate str
 
 // getPromotedGateNames returns the set of feature gate names that are promoted
 // to the Default feature set in either SelfManagedHA or Hypershift topologies.
-func getPromotedGateNames(dbc *db.DB, release string) (sets.Set[string], error) {
+func getPromotedGateNames(ctx context.Context, dbc *db.DB, release string) (sets.Set[string], error) {
 	var names []string
-	tx := dbc.DB.Table("feature_gates").
+	tx := dbc.DB.WithContext(ctx).Table("feature_gates").
 		Select("DISTINCT feature_gate").
 		Where("release = ? AND status = 'enabled' AND feature_set = 'Default' AND topology IN ('SelfManagedHA', 'Hypershift')", release).
 		Pluck("feature_gate", &names)

@@ -91,8 +91,9 @@ func StandardNewTestsWorker(dbc *db.DB) *NewTestsWorker {
 	}
 }
 
-// analyzeRisks processes one job's runs looking for new tests and assessing their risk
-func (ntw *NewTestsWorker) analyzeRisks(ctx context.Context, logger *logrus.Entry, jobs []prJobInfo) []*JobNewTestRisks {
+// analyzeRisks processes one job's runs looking for new tests and assessing their risk.
+// it returns the context error if ctx ends mid-analysis, since the risks would be incomplete.
+func (ntw *NewTestsWorker) analyzeRisks(ctx context.Context, logger *logrus.Entry, jobs []prJobInfo) ([]*JobNewTestRisks, error) {
 	logger = logger.WithField("func", "analyzeRisks")
 	jobRisks := []*JobNewTestRisks{}
 	for _, jobInfo := range jobs {
@@ -104,7 +105,10 @@ func (ntw *NewTestsWorker) analyzeRisks(ctx context.Context, logger *logrus.Entr
 			continue
 		}
 
-		risks := ntw.assessJobRisks(ctx, logger, latestRuns)
+		risks, err := ntw.assessJobRisks(ctx, logger, latestRuns)
+		if err != nil {
+			return nil, err
+		}
 		if risks != nil { // there were runs to analyze and check for new tests
 			jobRisks = append(jobRisks, &JobNewTestRisks{JobName: jobInfo.name, NewTestRisks: risks})
 		} // else all runs were excluded; do not use this job's lack of new tests for comparison
@@ -118,7 +122,7 @@ func (ntw *NewTestsWorker) analyzeRisks(ctx context.Context, logger *logrus.Entr
 		assignRiskLevels(jobRisks)
 	}
 
-	return jobRisks
+	return jobRisks, nil
 }
 
 // look across the PR's jobs and upgrade risks for new tests that are only found in one job
@@ -229,7 +233,8 @@ func (jrf *pgJobRunFilter) JobFailedEarly(ctx context.Context, logger *logrus.En
 // assessJobRisks walks the runs for a job looking for new tests and assessing their risk.
 // returns map of risks by test name. this will likely be empty, meaning no risks were found.
 // if it is nil, all job runs were excluded, so this job should not be included in the analysis.
-func (ntw *NewTestsWorker) assessJobRisks(ctx context.Context, logger *logrus.Entry, jobRuns []*prow.ProwJob) map[string]*NewTestRisk {
+// a run that fails because ctx ended is not an exclusion, so the context error is returned instead.
+func (ntw *NewTestsWorker) assessJobRisks(ctx context.Context, logger *logrus.Entry, jobRuns []*prow.ProwJob) (map[string]*NewTestRisk, error) {
 	logger = logger.WithField("func", "assessJobRisks").WithField("runs", len(jobRuns))
 
 	// find the new tests in all the comparable runs we have for one job
@@ -237,16 +242,22 @@ func (ntw *NewTestsWorker) assessJobRisks(ctx context.Context, logger *logrus.En
 	sawValidRun := false // track whether any runs were not excluded
 	for _, run := range jobRuns {
 		logger.Infof("Finding new tests for job %s run %s", run.Spec.Job, run.Status.BuildID)
-		if newTests, err := ntw.getNewTestsForJobRun(ctx, logger, run); err == nil {
-			sawValidRun = true
-			for _, test := range newTests {
-				newTestsByName[test.TestName] = append(newTestsByName[test.TestName], test)
+		newTests, err := ntw.getNewTestsForJobRun(ctx, logger, run)
+		if err != nil {
+			// JobFailedEarly swallows its query errors, so check ctx rather than err
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return nil, fmt.Errorf("new test analysis interrupted: %w", ctxErr)
 			}
+			continue
+		}
+		sawValidRun = true
+		for _, test := range newTests {
+			newTestsByName[test.TestName] = append(newTestsByName[test.TestName], test)
 		}
 	}
 
 	if !sawValidRun {
-		return nil // no runs to analyze, do not consider this job in the analysis
+		return nil, nil // no runs to analyze, do not consider this job in the analysis
 	}
 
 	// evaluate this job's run(s) of each new test for risk
@@ -255,7 +266,7 @@ func (ntw *NewTestsWorker) assessJobRisks(ctx context.Context, logger *logrus.En
 		risksByName[testName] = makeNewTestRisk(testName, len(jobRuns), tests)
 	}
 	// later, we can further compare new tests across multiple jobs, for the same PR.
-	return risksByName
+	return risksByName, nil
 }
 
 // makeNewTestRisk builds the risk record of a new test based on multiple runs of one job

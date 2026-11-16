@@ -46,7 +46,7 @@ func NewRefreshCommand() *cobra.Command {
 			} else if cacheClient == nil {
 				logrus.Warn("no cache provided; refresh will not update cached timestamps, so cached data may not be properly invalidated")
 			}
-			return sippyserver.RefreshData(dbc, cacheClient, sippyserver.RefreshOptions{
+			return sippyserver.RefreshData(cmd.Context(), dbc, cacheClient, sippyserver.RefreshOptions{
 				RefreshOnlyIfEmpty: f.RefreshOnlyIfEmpty,
 			})
 		},

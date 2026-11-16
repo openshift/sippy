@@ -40,16 +40,15 @@ var _ middleware.Middleware = &RegressionTracker{}
 // failureCounterFunc counts post-resolution failures for a regression.
 // It is a field on RegressionTracker so tests can inject a stub without
 // needing a real database.
-type failureCounterFunc func(regressionID uint, after time.Time) (int, error)
+type failureCounterFunc func(ctx context.Context, regressionID uint, after time.Time) (int, error)
 
 func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions reqopts.RequestOptions) *RegressionTracker {
 	return &RegressionTracker{
 		log:        log.WithField("middleware", "RegressionTracker"),
 		reqOptions: reqOptions,
 		dbc:        dbc,
-		failureCounter: func(regressionID uint, after time.Time) (int, error) {
-			// PostAnalysis has no request context; the query applies its own timeout.
-			return query.CountRegressionFailuresAfter(context.Background(), dbc, regressionID, after)
+		failureCounter: func(ctx context.Context, regressionID uint, after time.Time) (int, error) {
+			return query.CountRegressionFailuresAfter(ctx, dbc, regressionID, after)
 		},
 	}
 }
@@ -125,14 +124,13 @@ func (r *RegressionTracker) Analyze(_ crtest.Identification, _ *testdetails.Test
 }
 
 // PostAnalysis adjusts triages and status code (and thus icons) based on the triaged state of open regressions.
-func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
+func (r *RegressionTracker) PostAnalysis(ctx context.Context, testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	if testStats.ReportStatus > crtest.SignificantTriagedRegression {
 		// no need to adjust status for triage if this is no longer a regression
 		return nil
 	}
-	// PostAnalysis has no request context; regressions are normally loaded already during Query,
-	// but cached reports skip that phase.
-	err := r.ensureRegressionsLoaded(context.Background())
+	// regressions are normally loaded already during Query, but cached reports skip that phase.
+	err := r.ensureRegressionsLoaded(ctx)
 	if err != nil {
 		return err
 	}
@@ -165,7 +163,7 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 			switch {
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure) &&
 				sippyutil.StrSliceContains(r.reqOptions.AdvancedOption.KeyTestNames, testKey.TestName):
-				failuresAfterFix, err := r.failureCounter(or.ID, lastResolution)
+				failuresAfterFix, err := r.failureCounter(ctx, or.ID, lastResolution)
 				if err != nil {
 					r.log.WithError(err).WithField("regression_id", or.ID).Warn("failed to count post-resolution failures for key test, falling back to FailedFixedRegression")
 					testStats.ReportStatus = crtest.FailedFixedRegression

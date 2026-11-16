@@ -251,7 +251,7 @@ func (p *PostgresProvider) QueryUniqueVariantValues(ctx context.Context, _ reqop
 }
 
 // fetchJobVariantsByIDs loads ProwJob variant maps for the given job IDs.
-func (p *PostgresProvider) fetchJobVariantsByIDs(ids []uint) (map[uint]map[string]string, error) {
+func (p *PostgresProvider) fetchJobVariantsByIDs(ctx context.Context, ids []uint) (map[uint]map[string]string, error) {
 	if len(ids) == 0 {
 		return map[uint]map[string]string{}, nil
 	}
@@ -262,7 +262,7 @@ func (p *PostgresProvider) fetchJobVariantsByIDs(ids []uint) (map[uint]map[strin
 	}
 
 	var jobRows []jobRow
-	if err := p.dbc.DB.Raw(`SELECT id, variants FROM prow_jobs WHERE id IN (?)`, ids).Scan(&jobRows).Error; err != nil {
+	if err := p.dbc.DB.WithContext(ctx).Raw(`SELECT id, variants FROM prow_jobs WHERE id IN (?)`, ids).Scan(&jobRows).Error; err != nil {
 		return nil, fmt.Errorf("fetching job variants: %w", err)
 	}
 
@@ -525,7 +525,7 @@ WHERE %s
 		jobIDs.Insert(r.ProwJobID)
 	}
 	ids := jobIDs.UnsortedList()
-	jobVariantMap, err := p.fetchJobVariantsByIDs(ids)
+	jobVariantMap, err := p.fetchJobVariantsByIDs(ctx, ids)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -743,7 +743,7 @@ func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, re
 		return nil, []error{fmt.Errorf("querying aggregate test details: %w", err)}
 	}
 
-	return p.processAggregateRows(rows, reqOptions)
+	return p.processAggregateRows(ctx, rows, reqOptions)
 }
 
 func (p *PostgresProvider) buildAggregatePrefixSumQuery(ctx context.Context, cte string, cteArgs []any, release string, dateRange query.DateRange, includeVariants map[string][]string) (string, []any, error) {
@@ -832,14 +832,14 @@ HAVING SUM(e.runs) > 0`
 	return sqlQuery, args
 }
 
-func (p *PostgresProvider) processAggregateRows(rows []aggregateTestDetailRow, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {
+func (p *PostgresProvider) processAggregateRows(ctx context.Context, rows []aggregateTestDetailRow, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {
 	dbGroupBy := reqOptions.VariantOption.DBGroupBy
 
 	jobIDs := sets.New[uint]()
 	for _, r := range rows {
 		jobIDs.Insert(r.ProwJobID)
 	}
-	jobVariantMap, err := p.fetchJobVariantsByIDs(jobIDs.UnsortedList())
+	jobVariantMap, err := p.fetchJobVariantsByIDs(ctx, jobIDs.UnsortedList())
 	if err != nil {
 		return nil, []error{err}
 	}
