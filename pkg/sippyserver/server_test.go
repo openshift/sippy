@@ -1,7 +1,9 @@
 package sippyserver
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -140,5 +142,36 @@ func TestEncodeDefaultHighRisk(t *testing.T) {
 
 	if analysis.OverallRisk.Level.Level != apitype.FailureRiskLevelHigh.Level {
 		t.Fatal("Invalid overall risk analysis after decoding")
+	}
+}
+
+func TestRefreshDataReportsCancellation(t *testing.T) {
+	tests := []struct {
+		name      string
+		cancelCtx bool
+		expectErr error
+	}{
+		{name: "active context reports success"},
+		{name: "canceled context returns the context error", cancelCtx: true, expectErr: context.Canceled},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			if tt.cancelCtx {
+				cancel()
+			}
+			// a nil db skips the refresh queries, isolating the completion check
+			err := RefreshData(ctx, nil, nil, RefreshOptions{})
+			if tt.expectErr == nil {
+				if err != nil {
+					t.Fatalf("RefreshData returned error: %v", err)
+				}
+				return
+			}
+			if !errors.Is(err, tt.expectErr) {
+				t.Fatalf("RefreshData error = %v, want %v", err, tt.expectErr)
+			}
+		})
 	}
 }

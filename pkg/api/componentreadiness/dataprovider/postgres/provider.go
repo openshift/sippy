@@ -262,7 +262,8 @@ func (p *PostgresProvider) fetchJobVariantsByIDs(ctx context.Context, ids []uint
 	}
 
 	var jobRows []jobRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(`SELECT id, variants FROM prow_jobs WHERE id IN (?)`, ids).Scan(&jobRows).Error; err != nil {
+	q := p.dbc.DB.WithContext(ctx).Raw(`SELECT id, variants FROM prow_jobs WHERE id IN (?)`, ids)
+	if err := query.ScanAll(q, &jobRows); err != nil {
 		return nil, fmt.Errorf("fetching job variants: %w", err)
 	}
 

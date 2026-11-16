@@ -652,24 +652,26 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 			Update("labels", pq.StringArray(prowJobRunLabels)).Error; err != nil {
 			return fmt.Errorf("updating prow_job_runs.labels: %w", err)
 		}
+
+		// Mirror the merged labels onto release_job_runs when this job run has a
+		// release row. Unlike prow_job_runs, release_job_runs is not coupled to the
+		// summary-table subtraction, so the merged set is written as-is. It shares
+		// the transaction so a cancellation cannot leave the two tables with
+		// different labels. Select only the primary key: it is all the label
+		// update needs.
+		var releaseJobRun models.ReleaseJobRun
+		if err := tx.Select("id").Where("prow_job_run_id = ?", jobRun.ID).First(&releaseJobRun).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("looking up release_job_runs for build %s: %w", buildID, err)
+			}
+			return nil
+		}
+		if err := tx.Model(&releaseJobRun).Update("labels", pq.StringArray(merged)).Error; err != nil {
+			return fmt.Errorf("updating release_job_runs.labels: %w", err)
+		}
 		return nil
 	}); err != nil {
 		return err
-	}
-
-	// Mirror the merged labels onto release_job_runs when this job run has a
-	// release row. Unlike prow_job_runs, release_job_runs is not coupled to the
-	// summary-table subtraction, so the merged set is written as-is. Select only
-	// the primary key: it is all the label update needs.
-	var releaseJobRun models.ReleaseJobRun
-	if err := r.db.DB.WithContext(ctx).Select("id").Where("prow_job_run_id = ?", jobRun.ID).First(&releaseJobRun).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("looking up release_job_runs for build %s: %w", buildID, err)
-		}
-	} else {
-		if err := r.db.DB.WithContext(ctx).Model(&releaseJobRun).Update("labels", pq.StringArray(merged)).Error; err != nil {
-			return fmt.Errorf("updating release_job_runs.labels: %w", err)
-		}
 	}
 
 	log.WithFields(log.Fields{"buildID": buildID, "labels": pq.StringArray(prowJobRunLabels)}).Debug("symptom reEval: updated PostgreSQL labels")

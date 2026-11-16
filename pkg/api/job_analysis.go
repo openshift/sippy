@@ -72,7 +72,7 @@ func PrintJobAnalysisJSONFromDB(
 		Where("prow_job_runs.timestamp BETWEEN ? AND ?", start, end).
 		Group("period")
 
-	if err := sumResults.Scan(&sums).Error; err != nil {
+	if err := query.ScanAll(sumResults, &sums); err != nil {
 		return result, err
 	}
 
@@ -117,15 +117,15 @@ func PrintJobAnalysisJSONFromDB(
 	}
 	tr := make([]testResult, 0)
 
-	if err := dbc.DB.WithContext(ctx).Table("prow_job_run_tests pjrt").
+	testFailures := dbc.DB.WithContext(ctx).Table("prow_job_run_tests pjrt").
 		Select("date_trunc(?, pjrt.prow_job_run_timestamp) AS period, tests.name AS test_name, count(tests.name) AS count", period).
 		Joins("JOIN tests ON pjrt.test_id = tests.id").
 		Where("pjrt.status = ?", v1sippyprocessing.TestStatusFailure).
 		Where("pjrt.prow_job_id IN ?", jobs).
 		Where("pjrt.prow_job_run_release = ?", release).
 		Where("pjrt.prow_job_run_timestamp BETWEEN ? AND ?", start, end).
-		Group("tests.name, period, pjrt.prow_job_id").
-		Scan(&tr).Error; err != nil {
+		Group("tests.name, period, pjrt.prow_job_id")
+	if err := query.ScanAll(testFailures, &tr); err != nil {
 		return results, err
 	}
 

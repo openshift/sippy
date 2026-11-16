@@ -399,6 +399,10 @@ type RefreshOptions struct {
 func RefreshData(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
 	refreshMaterializedViews(ctx, dbc, cacheClient, opts.RefreshOnlyIfEmpty)
+	// refreshMaterializedViews logs per-view failures, so cancellation would otherwise look like success
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("refresh canceled: %w", err)
+	}
 	log.Info("Refresh complete")
 	return nil
 }

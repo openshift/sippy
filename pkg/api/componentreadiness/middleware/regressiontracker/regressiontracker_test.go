@@ -913,6 +913,8 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 		testID            string
 		failureCount      int
 		failureCountErr   error
+		cancelContext     bool
+		expectErr         error
 		expectStatus      crtest.Status
 		expectExplanation string
 	}{
@@ -964,6 +966,15 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			expectStatus:      crtest.FailedFixedRegression,
 			expectExplanation: "failures have been observed",
 		},
+		{
+			name:            "key test with canceled context returns the context error without a fallback status",
+			testName:        keyTestName,
+			testID:          keyTestID,
+			failureCountErr: context.Canceled,
+			cancelContext:   true,
+			expectErr:       context.Canceled,
+			expectStatus:    crtest.ExtremeRegression,
+		},
 	}
 
 	for _, tt := range tests {
@@ -993,7 +1004,11 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			}
 
 			type ctxKey struct{}
-			ctx := context.WithValue(t.Context(), ctxKey{}, tt.name)
+			ctx, cancel := context.WithCancel(context.WithValue(t.Context(), ctxKey{}, tt.name))
+			defer cancel()
+			if tt.cancelContext {
+				cancel()
+			}
 			mw := RegressionTracker{
 				reqOptions: reqopts.RequestOptions{
 					BaseRelease:   reqopts.Release{Name: baseRelease},
@@ -1021,6 +1036,12 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			}
 
 			err := mw.PostAnalysis(ctx, testKey, testStats)
+			if tt.expectErr != nil {
+				require.ErrorIs(t, err, tt.expectErr)
+				assert.Equal(t, tt.expectStatus, testStats.ReportStatus)
+				assert.Empty(t, testStats.Explanations)
+				return
+			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectStatus, testStats.ReportStatus)
 			assert.Len(t, testStats.Explanations, 1)

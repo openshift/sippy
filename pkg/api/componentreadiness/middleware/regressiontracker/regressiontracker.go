@@ -165,6 +165,10 @@ func (r *RegressionTracker) PostAnalysis(ctx context.Context, testKey crtest.Ide
 				sippyutil.StrSliceContains(r.reqOptions.AdvancedOption.KeyTestNames, testKey.TestName):
 				failuresAfterFix, err := r.failureCounter(ctx, or.ID, lastResolution)
 				if err != nil {
+					// a canceled caller must not receive the fallback status as a completed analysis
+					if ctxErr := ctx.Err(); ctxErr != nil {
+						return ctxErr
+					}
 					r.log.WithError(err).WithField("regression_id", or.ID).Warn("failed to count post-resolution failures for key test, falling back to FailedFixedRegression")
 					testStats.ReportStatus = crtest.FailedFixedRegression
 					testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
