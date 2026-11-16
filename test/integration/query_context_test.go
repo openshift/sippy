@@ -5,12 +5,16 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
+	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	intutil "github.com/openshift/sippy/test/integration/util"
@@ -187,6 +191,45 @@ func TestReturnedQueryBuildersCarryCallerContext(t *testing.T) {
 			assert.ErrorIs(t, err, context.Canceled)
 		})
 	}
+}
+
+// TestScanAllReportsCancellationBeforeFirstRow verifies that ScanAll surfaces a context canceled
+// after the query returns but before its first row is read; GORM's Scan returns empty results with
+// a nil error in that window.
+func TestScanAllReportsCancellationBeforeFirstRow(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	// Cancel right after the query executes, and give database/sql time to close the rows,
+	// so the first row read fails deterministically.
+	err := dbc.DB.Callback().Row().After("gorm:row").Register("test:cancel_after_query", func(*gorm.DB) {
+		cancel()
+		time.Sleep(50 * time.Millisecond)
+	})
+	require.NoError(t, err)
+
+	var results []struct{ X int }
+	err = query.ScanAll(dbc.DB.WithContext(ctx).Raw(`SELECT generate_series(1, 3) AS x`), &results)
+	require.Error(t, err, "ScanAll should report the canceled context instead of empty results")
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Empty(t, results)
+}
+
+// TestJobRunRiskAnalysisHonorsCanceledContext verifies that a canceled request returns an
+// error rather than an assessment built from fallback values for the lookups that failed.
+func TestJobRunRiskAnalysisHonorsCanceledContext(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	jobRun := &models.ProwJobRun{
+		ProwJob:   models.ProwJob{Name: "periodic-ci-e2e-aws-4.16", Release: "4.16"},
+		TestCount: 10,
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err := api.JobRunRiskAnalysis(ctx, log.NewEntry(log.StandardLogger()), dbc, nil, nil, jobRun, false)
+	require.Error(t, err, "risk analysis should fail once the context is canceled")
+	assert.ErrorIs(t, err, context.Canceled)
 }
 
 // testsReportPeriodsOnly returns the fixed sample and base ranges shared by the

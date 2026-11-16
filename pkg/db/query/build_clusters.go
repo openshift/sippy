@@ -46,9 +46,10 @@ func BuildClusterHealth(ctx context.Context, dbc *db.DB, release string, start, 
 		current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
        previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-`).Scan(&results)
+`)
 
-	return results, q.Error
+	err := ScanAll(q, &results)
+	return results, err
 }
 
 func BuildClusterAnalysis(ctx context.Context, dbc *db.DB, release, period string) ([]models.BuildClusterHealth, error) {
@@ -77,6 +78,8 @@ AND
 AND
     timestamp > NOW() - INTERVAL '14 DAY'
 GROUP BY cluster, period
-`, period), sql.Named("release", release)).Scan(&results)
-	return results, q.Error
+`, period), sql.Named("release", release))
+
+	err := ScanAll(q, &results)
+	return results, err
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestJobRunPartitionKeyPredicate(t *testing.T) {
@@ -278,8 +277,7 @@ func TestRunJobAnalysis(t *testing.T) {
 				}
 			}
 
-			result, err := runJobRunAnalysis(context.TODO(), nil, fakeProwJobRun, "4.12", 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc, false)
-			require.NoError(t, err)
+			result := runJobRunAnalysis(context.TODO(), nil, fakeProwJobRun, "4.12", 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc, false)
 			assert.Equal(t, len(tc.expectedTestRisks), len(result.Tests))
 			for testName, expectedRisk := range tc.expectedTestRisks {
 				actualTestRisk := getTestRisk(result, testName)

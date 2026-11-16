@@ -58,6 +58,9 @@ func JobRunEvents(ctx context.Context, gcsClient *storage.Client, dbc *db.DB, jo
 	jobRun, err := api.FetchJobRun(ctx, dbc, jobRunID, false, nil, logger)
 	if err != nil {
 		logger.WithError(err).Debugf("failed to fetch job run %d", jobRunID)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
 		if gcsPath == "" {
 			return nil, errors.New("no GCS path given and no job run found in DB")
 		}
@@ -75,7 +78,7 @@ func JobRunEvents(ctx context.Context, gcsClient *storage.Client, dbc *db.DB, jo
 	}
 
 	gcsJobRun := gcs.NewGCSJobRun(gcsClient.Bucket(gcsBucket), gcsPath)
-	matches, err := gcsJobRun.FindAllMatches(context.TODO(), gcs.GlobEventsJSON)
+	matches, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobEventsJSON)
 	if err != nil {
 		return &EventListResponse{JobRunURL: jobRunURL}, err
 	}
@@ -88,7 +91,7 @@ func JobRunEvents(ctx context.Context, gcsClient *storage.Client, dbc *db.DB, jo
 	eventsPath := matches[0]
 	logger.WithField("events_path", eventsPath).Info("found events.json")
 
-	content, err := gcsJobRun.GetContent(context.TODO(), eventsPath)
+	content, err := gcsJobRun.GetContent(ctx, eventsPath)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting content for file: %s", eventsPath)
 		return nil, err

@@ -662,8 +662,12 @@ func JobRunRiskAnalysis(
 
 	historicalCount, err := query.ProwJobHistoricalTestCounts(ctx, dbc, jobRun.ProwJob.ID, jobRun.ProwJob.Release)
 
-	// if we had an error we will continue the risk analysis and not elevate based on test counts
+	// if we had an error we will continue the risk analysis and not elevate based on test counts,
+	// unless the caller gave up; a zero count then would understate the risk of an incomplete run.
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("getting historical test count for risk analysis: %w", ctxErr)
+		}
 		logger.WithError(err).Error("Error comparing historical job run test count")
 		historicalCount = 0
 	}
@@ -747,12 +751,18 @@ func JobRunRiskAnalysis(
 		}
 	}
 
-	return runJobRunAnalysis(ctx,
+	analysis := runJobRunAnalysis(ctx,
 		bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger,
 		jobNamesTestResultFunc(ctx, dbc, compareRelease),
 		variantsTestResultFunc(ctx, dbc, cacheClient),
 		compareOtherPRs,
 	)
+	// Lookups above log and continue on error, so cancellation midway would otherwise yield
+	// an assessment built from partial data with a nil error.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("risk analysis canceled: %w", ctxErr)
+	}
+	return analysis, nil
 }
 
 // testResultsByJobNameFunc is used for injecting db responses in unit tests.
@@ -846,7 +856,7 @@ func variantsTestResultFunc(ctx context.Context, dbc *db.DB, cacheClient cache.C
 	}
 }
 
-func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models.ProwJobRun, compareRelease string, historicalRunTestCount int, neverStableJob bool, jobNames []string, logger *log.Entry, testResultsJobNameFunc testResultsByJobNameFunc, testResultsVariantsFunc testResultsByVariantsFunc, compareOtherPRs bool) (apitype.ProwJobRunRiskAnalysis, error) {
+func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models.ProwJobRun, compareRelease string, historicalRunTestCount int, neverStableJob bool, jobNames []string, logger *log.Entry, testResultsJobNameFunc testResultsByJobNameFunc, testResultsVariantsFunc testResultsByVariantsFunc, compareOtherPRs bool) apitype.ProwJobRunRiskAnalysis {
 
 	logger = logger.WithField("func", "runJobRunAnalysis").WithField("job", jobRun.ProwJob.Name)
 	logger.Infof("analyzing prow job run with %d failed test(s)", len(jobRun.Tests))
@@ -877,21 +887,21 @@ func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models
 		response.OverallRisk.Level = apitype.FailureRiskLevelIncompleteTests
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): IncompleteTests (not enough tests ran to make a reasonable risk analysis; this could be due to infra, installation, or upgrade problems)", jobRun.TestCount, historicalRunTestCount))
-		return response, nil
+		return response
 
 	// Return early if no tests failed in this run:
 	case len(jobRun.Tests) == 0:
 		response.OverallRisk.Level = apitype.FailureRiskLevelNone
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			"No test failures found in this job run.")
-		return response, nil
+		return response
 
 	// Return early if we see mass test failures:
 	case len(jobRun.Tests) > maxFailuresToFullyAnalyze:
 		response.OverallRisk.Level = apitype.FailureRiskLevelHigh
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			fmt.Sprintf("%d tests failed in this run: High", len(jobRun.Tests)))
-		return response, nil
+		return response
 	}
 
 	maxTestRisk := apitype.FailureRiskLevelNone
@@ -917,7 +927,7 @@ func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, fmt.Sprintf("Maximum failed test risk: %s", maxTestRisk.Name))
 	}
 
-	return response, nil
+	return response
 }
 
 // For a failed test, query its pass rates by NURPs, find a matching variant combo, and

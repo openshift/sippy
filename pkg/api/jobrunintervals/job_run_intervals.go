@@ -30,6 +30,9 @@ func JobRunIntervals(ctx context.Context, gcsClient *storage.Client, dbc *db.DB,
 	if err != nil {
 		// some jobs are not in the DB, and usually we have bucket/path without looking them up
 		logger.WithError(err).Debugf("failed to fetch job run %d", jobRunID)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
 		if gcsPath == "" {
 			return nil, errors.New("no GCS path given and no job run found in DB")
 		}
@@ -48,11 +51,11 @@ func JobRunIntervals(ctx context.Context, gcsClient *storage.Client, dbc *db.DB,
 
 	gcsJobRun := gcs.NewGCSJobRun(gcsClient.Bucket(gcsBucket), gcsPath)
 	intervals := &apitype.EventIntervalList{}
-	intervalFiles, err := gcsJobRun.FindAllMatches(context.TODO(), gcs.GlobIntervalsJSON)
+	intervalFiles, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobIntervalsJSON)
 	if err != nil {
 		return intervals, err
 	}
-	timelineFiles, err := gcsJobRun.FindAllMatches(context.TODO(), gcs.GlobTimelinesJSON)
+	timelineFiles, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobTimelinesJSON)
 	if err != nil {
 		return intervals, err
 	}
@@ -94,7 +97,7 @@ func JobRunIntervals(ctx context.Context, gcsClient *storage.Client, dbc *db.DB,
 	baseFile := tokens[len(tokens)-1]
 
 	// Loading full intervals file into memory here briefly, they can be quite large...
-	content, err := gcsJobRun.GetContent(context.TODO(), fullGCSIntervalFile)
+	content, err := gcsJobRun.GetContent(ctx, fullGCSIntervalFile)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting content for file: %s", fullGCSIntervalFile)
 		return nil, err
