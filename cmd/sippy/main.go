@@ -51,6 +51,7 @@ func main() {
 		NewRefreshCommand(),
 		NewBackfillCommand(),
 		NewPruneCumulativeSummariesCommand(),
+		NewProwBackfillCommand(),
 		NewBackfillInfraFailuresCommand(),
 		NewComponentReadinessCommand(),
 		NewAutomateJiraCommand(),

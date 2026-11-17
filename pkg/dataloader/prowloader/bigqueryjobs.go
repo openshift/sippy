@@ -1,6 +1,7 @@
 package prowloader
 
 import (
+	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -21,7 +22,10 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 
 	// Figure out our last imported job timestamp:
 	var lastProwJobRun time.Time
-	if pl.loadSince != nil {
+	if pl.historicalStart != nil {
+		lastProwJobRun = *pl.historicalStart
+		log.Infof("Using manually specified historical load-since time: %s", lastProwJobRun.UTC().Format(time.RFC3339))
+	} else if pl.loadSince != nil {
 		lastProwJobRun = *pl.loadSince
 		log.Infof("Using manually specified load-since time: %s", lastProwJobRun.UTC().Format(time.RFC3339))
 	} else {
@@ -33,11 +37,13 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").
 				Where("prow_job_release = ?", release).
 				Where("timestamp > NOW() - INTERVAL '14 days'").Row()
-			err = row.Scan(&lastProwJobRun)
-			if err != nil || lastProwJobRun.IsZero() {
-				log.WithError(err).Warnf("no last prow job run found (new database?), importing previous %d days", DefaultLookbackDays)
+			var maxTimestamp sql.NullTime
+			err = row.Scan(&maxTimestamp)
+			if err != nil || !maxTimestamp.Valid {
+				log.WithError(err).Warnf("no recent prow job run found for active release, importing previous %d days", DefaultLookbackDays)
 				lastProwJobRun = time.Now().AddDate(0, 0, -DefaultLookbackDays)
 			} else {
+				lastProwJobRun = maxTimestamp.Time
 				// adjust the last job run time, we're querying all jobs that have completed since our last recorded
 				// job START time, but we need to subtract our max job runtime in-case a job ended early and was our last
 				// imported start time, while others that started before it hadn't completed yet.
@@ -49,7 +55,12 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		// we need to know how far back we are looking for partitioning
 		pl.loadSince = &lastProwJobRun
 	}
-	log.Infof("Loading prow jobs from bigquery completed since: %s", lastProwJobRun.UTC().Format(time.RFC3339))
+	log.Infof("Loading prow jobs from bigquery since: %s", lastProwJobRun.UTC().Format(time.RFC3339))
+	jobTimeFilter := `TIMESTAMP(prowjob_completion) > @queryFrom`
+	if pl.historicalStart != nil && pl.historicalEnd != nil {
+		jobTimeFilter = `TIMESTAMP(prowjob_start) >= @queryFrom
+		   AND TIMESTAMP(prowjob_start) < @queryUntil`
+	}
 
 	// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
 	// as the default UTC correctly.
@@ -72,15 +83,23 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			TIMESTAMP(prowjob_start) AS prowjob_start_ts,
 			TIMESTAMP(prowjob_completion) AS prowjob_completion_ts `+
 		"FROM `ci_analysis_us.jobs` "+
-		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
+		`WHERE `+jobTimeFilter+`
 	       AND prowjob_url IS NOT NULL
 	       AND prowjob_state NOT IN ('pending', 'triggered')
 	       ORDER BY prowjob_start_ts`)
 	bqQuery.Parameters = []bigquery.QueryParameter{
 		{
-			Name:  "queryFrom",
-			Value: lastProwJobRun,
+			Name: "queryFrom",
+			Value: func() time.Time {
+				if pl.historicalStart != nil {
+					return *pl.historicalStart
+				}
+				return lastProwJobRun
+			}(),
 		},
+	}
+	if pl.historicalStart != nil && pl.historicalEnd != nil {
+		bqQuery.Parameters = append(bqQuery.Parameters, bigquery.QueryParameter{Name: "queryUntil", Value: *pl.historicalEnd})
 	}
 	it, err := bqQuery.Read(pl.ctx)
 	if err != nil {
