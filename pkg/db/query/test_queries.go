@@ -2,7 +2,6 @@ package query
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -165,8 +164,9 @@ func TestReportsByVariant(
 
 // TestReportExcludeVariants returns a single test report the given test name in the db,
 // all variants collapsed, optionally with some excluded.
-// If the query fails, it is logged and the bool is left false.
-func TestReportExcludeVariants(ctx context.Context, dbc *db.DB, release, testName string, excludeVariants []string) (api.Test, bool) {
+// The bool reports whether the test was found; a missing test is not an error, so callers
+// can omit it, while a failed query is returned so callers do not mistake it for absence.
+func TestReportExcludeVariants(ctx context.Context, dbc *db.DB, release, testName string, excludeVariants []string) (api.Test, bool, error) {
 	now := time.Now()
 	logger := log.WithField("func", "TestReportExcludeVariants").
 		WithField("release", release).
@@ -175,8 +175,7 @@ func TestReportExcludeVariants(ctx context.Context, dbc *db.DB, release, testNam
 	sample, base := PeriodsForReportType(v1.CurrentReport)
 	inner, err := TestReportQuery(ctx, dbc, release, sample, base, TestNameMatches{ExactNames: []string{testName}})
 	if err != nil {
-		logger.WithError(err).Error("failed to build test report query")
-		return api.Test{}, false
+		return api.Test{}, false, fmt.Errorf("building test report query for %q: %w", testName, err)
 	}
 
 	aggregated := dbc.DB.WithContext(ctx).Table("(?) AS r", inner).
@@ -197,24 +196,16 @@ func TestReportExcludeVariants(ctx context.Context, dbc *db.DB, release, testNam
 		Select(fmt.Sprintf("*, %s", QueryTestPercentages)).
 		Limit(1).
 		Find(&testReports)
-	if r.Error == nil && len(testReports) == 0 {
-		r.Error = gorm.ErrRecordNotFound
-	}
-	var testReport api.Test
-	if len(testReports) > 0 {
-		testReport = testReports[0]
-	}
 	if r.Error != nil {
-		if errors.Is(r.Error, gorm.ErrRecordNotFound) {
-			logger.WithField("test", testName).Warn("test not found in cumulative summaries")
-		} else {
-			logger.WithError(r.Error).Error("query failed")
-		}
-		return testReport, false
+		return api.Test{}, false, fmt.Errorf("querying test report for %q: %w", testName, r.Error)
+	}
+	if len(testReports) == 0 {
+		logger.Warn("test not found in cumulative summaries")
+		return api.Test{}, false, nil
 	}
 
 	logger.Debugf("completed in %s", time.Since(now))
-	return testReport, true
+	return testReports[0], true, nil
 }
 
 // LoadBugsForTest returns all bugs in the database for the given test, across all releases.

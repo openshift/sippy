@@ -1019,10 +1019,10 @@ func getMatviewBenchmarkCases(asOf time.Time) []benchmarkCase {
 		{
 			name: "MatviewTestReportExcludeVariants",
 			fn: func(dbc *db.DB) error {
-				_, found := query.TestReportExcludeVariants(context.Background(), dbc, benchmarkRelease,
+				_, found, err := query.TestReportExcludeVariants(context.Background(), dbc, benchmarkRelease,
 					benchmarkTestName, []string{"never-stable"})
 				log.Printf("MatviewTestReportExcludeVariants: found=%v", found)
-				return nil
+				return err
 			},
 		},
 		{

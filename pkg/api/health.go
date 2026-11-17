@@ -62,35 +62,30 @@ func OverallReleaseHealthFromDB(ctx context.Context, dbc *db.DB, release string,
 		installTestName = testidentification.NewInstallTestName
 	}
 
-	if infraIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, infraTestName, excludedVariants); found {
-		indicators["infrastructure"] = infraIndicator
+	indicatorTests := []struct {
+		key      string
+		testName string
+		excluded []string
+	}{
+		{"infrastructure", infraTestName, excludedVariants},
+		{"installConfig", testidentification.InstallConfigTestName, excludedInstallVariants},
+		{"bootstrap", testidentification.InstallBootstrapTestName, excludedInstallVariants},
+		{"installOther", testidentification.InstallOtherTestName, excludedInstallVariants},
+		{"install", installTestName, excludedInstallVariants},
+		{"upgrade", testidentification.UpgradeTestName, excludedVariants},
+		// NOTE: this is not actually representing the percentage of tests that passed, it's representing
+		// the percentage of time that all tests passed. We should probably fix that.
+		{"tests", testidentification.OpenShiftTestsName, excludedVariants},
 	}
-	if installConfigIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants); found {
-		indicators["installConfig"] = installConfigIndicator
-	}
-	if bootstrapIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants); found {
-		indicators["bootstrap"] = bootstrapIndicator
-	}
-	if installOtherIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants); found {
-		indicators["installOther"] = installOtherIndicator
-	}
-	if installIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, installTestName, excludedInstallVariants); found {
-		indicators["install"] = installIndicator
-	}
-	if upgradeIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.UpgradeTestName, excludedVariants); found {
-		indicators["upgrade"] = upgradeIndicator
-	}
-
-	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
-	// the percentage of time that all tests passed. We should probably fix that.
-	if testsIndicator, found := query.TestReportExcludeVariants(ctx, dbc, release, testidentification.OpenShiftTestsName, excludedVariants); found {
-		indicators["tests"] = testsIndicator
-	}
-
-	// TestReportExcludeVariants logs and skips indicators whose query fails, so a canceled
-	// context would otherwise leave a report silently missing indicators.
-	if err := ctx.Err(); err != nil {
-		return apitype.Health{}, fmt.Errorf("querying health indicators: %w", err)
+	for _, it := range indicatorTests {
+		indicator, found, err := query.TestReportExcludeVariants(ctx, dbc, release, it.testName, it.excluded)
+		if err != nil {
+			return apitype.Health{}, fmt.Errorf("querying %s health indicator: %w", it.key, err)
+		}
+		// a test with no results is omitted rather than reported as an error
+		if found {
+			indicators[it.key] = indicator
+		}
 	}
 
 	lastUpdated, err := GetLastUpdateTime(ctx, dbc)

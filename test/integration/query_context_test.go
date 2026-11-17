@@ -329,6 +329,29 @@ func TestOverallReleaseHealthHonorsCanceledContext(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 }
 
+// TestOverallReleaseHealthReportsIndicatorQueryFailure verifies that a failed indicator query
+// with a live context yields an error, while a test with no results is simply omitted, so
+// /api/health never caches a report silently missing indicators.
+func TestOverallReleaseHealthReportsIndicatorQueryFailure(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	intutil.CreateReleaseDefinition(t, dbc, "4.16", 4, 16)
+	reportEnd := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	_, found, err := query.TestReportExcludeVariants(t.Context(), dbc, "4.16", "no such test", nil)
+	require.NoError(t, err, "a missing test should not be an error")
+	assert.False(t, found, "a missing test should not be found")
+
+	// the indicator query excludes variants through this table, so hiding it fails the query
+	require.NoError(t, dbc.DB.Exec("ALTER TABLE variant_combinations RENAME TO variant_combinations_hidden").Error)
+
+	_, _, err = query.TestReportExcludeVariants(t.Context(), dbc, "4.16", "no such test", nil)
+	require.Error(t, err, "a failed query should be returned rather than reported as not found")
+
+	_, err = api.OverallReleaseHealthFromDB(t.Context(), dbc, "4.16", reportEnd)
+	require.Error(t, err, "health report should fail when an indicator query fails")
+	assert.Contains(t, err.Error(), "health indicator")
+}
+
 func testsReportPeriodsOnly() (sample, base query.DateRange) {
 	sample, base, _, _, _ = testsReportPeriods()
 	return sample, base

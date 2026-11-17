@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -179,46 +180,47 @@ func TestRefreshDataReportsCancellation(t *testing.T) {
 
 func TestContextWithDisconnectGrace(t *testing.T) {
 	type ctxKey struct{}
-	const grace = 50 * time.Millisecond
+	const grace = 5 * time.Minute
 	tests := []struct {
 		name         string
 		cancelParent bool
 		cancelChild  bool
+		elapsed      time.Duration
 		expectDone   bool
-		waitFor      time.Duration
 	}{
-		{name: "live parent keeps the context open", waitFor: 2 * grace},
-		{name: "parent cancellation is deferred during the grace period", cancelParent: true, waitFor: grace / 5},
-		{name: "parent cancellation propagates after the grace period", cancelParent: true, expectDone: true, waitFor: 10 * grace},
-		{name: "cancel function stops the context immediately", cancelChild: true, expectDone: true, waitFor: grace / 5},
+		{name: "live parent keeps the context open", elapsed: 2 * grace},
+		{name: "parent cancellation is deferred during the grace period", cancelParent: true, elapsed: grace - time.Nanosecond},
+		{name: "parent cancellation propagates once the grace period expires", cancelParent: true, elapsed: grace, expectDone: true},
+		{name: "cancel function stops the context immediately", cancelChild: true, expectDone: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parent, cancelParent := context.WithCancel(context.WithValue(t.Context(), ctxKey{}, "value"))
-			defer cancelParent()
-			ctx, cancel := contextWithDisconnectGrace(parent, grace)
-			defer cancel()
+			// synctest's fake clock makes the grace boundary exact, independent of scheduling delays
+			synctest.Test(t, func(t *testing.T) {
+				parent, cancelParent := context.WithCancel(context.WithValue(t.Context(), ctxKey{}, "value"))
+				defer cancelParent()
+				ctx, cancel := contextWithDisconnectGrace(parent, grace)
+				defer cancel()
 
-			if got := ctx.Value(ctxKey{}); got != "value" {
-				t.Fatalf("context value = %v, want parent value", got)
-			}
-			if tt.cancelParent {
-				cancelParent()
-			}
-			if tt.cancelChild {
-				cancel()
-			}
+				if got := ctx.Value(ctxKey{}); got != "value" {
+					t.Fatalf("context value = %v, want parent value", got)
+				}
+				if tt.cancelParent {
+					cancelParent()
+				}
+				if tt.cancelChild {
+					cancel()
+				}
+				// let the cancellation callback start its grace timer before advancing the clock
+				synctest.Wait()
 
-			select {
-			case <-ctx.Done():
-				if !tt.expectDone {
-					t.Fatalf("context canceled early: %v", ctx.Err())
+				time.Sleep(tt.elapsed)
+				synctest.Wait()
+
+				if done := ctx.Err() != nil; done != tt.expectDone {
+					t.Fatalf("after %s: context done = %v (err %v), want %v", tt.elapsed, done, ctx.Err(), tt.expectDone)
 				}
-			case <-time.After(tt.waitFor):
-				if tt.expectDone {
-					t.Fatalf("context still open after %s", tt.waitFor)
-				}
-			}
+			})
 		})
 	}
 }
