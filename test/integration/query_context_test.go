@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/jobrunevents"
+	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
@@ -291,6 +293,42 @@ func TestScanAllReportsCancellationBeforeFirstRow(t *testing.T) {
 	require.Error(t, err, "ScanAll should report the canceled context instead of empty results")
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Empty(t, results)
+}
+
+// TestJobRunArtifactsStopBeforeGCSFallbackWhenCanceled verifies that a canceled job run
+// lookup returns the context error instead of being treated as a missing run and falling
+// back to GCS. The nil GCS client would panic if the fallback were reached.
+func TestJobRunArtifactsStopBeforeGCSFallbackWhenCanceled(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	logger := log.NewEntry(log.StandardLogger())
+	const missingRunID, bucket, path = int64(999999), "test-bucket", "logs/job/1"
+
+	tests := []struct {
+		name string
+		run  func(ctx context.Context) error
+	}{
+		{
+			name: "JobRunEvents",
+			run: func(ctx context.Context) error {
+				_, err := jobrunevents.JobRunEvents(ctx, nil, dbc, missingRunID, bucket, path, logger)
+				return err
+			},
+		},
+		{
+			name: "JobRunIntervals",
+			run: func(ctx context.Context) error {
+				_, err := jobrunintervals.JobRunIntervals(ctx, nil, dbc, missingRunID, bucket, path, "", logger)
+				return err
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			assert.ErrorIs(t, tt.run(ctx), context.Canceled)
+		})
+	}
 }
 
 // TestJobRunRiskAnalysisHonorsCanceledContext verifies that a canceled request returns an
