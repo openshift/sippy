@@ -366,6 +366,10 @@ export function testDetailsReport(options = {}) {
       ],
     },
   ]
+  // A closed regression is no longer tracked, so its report carries no regression.
+  if (options.untracked) {
+    delete analyses[0].regression
+  }
   if (options.historical) {
     analyses.push({
       status: 0,
@@ -761,4 +765,148 @@ export function emptyArtifactResults(jobRunIds) {
       artifacts: null,
     })),
   }
+}
+
+// A closed regression that rolled off the current report, as in TRT-3006.
+export const CLOSED_REGRESSION_ID = 104
+export const CLOSED_IN_VIEW_REGRESSION_ID = 105
+export const NO_FAILURE_REGRESSION_ID = 106
+export const CLOSED_TEST_NAME = 'should keep the pod network after upgrade'
+export const CLOSED_IN_VIEW_TEST_NAME = 'should keep egress routes'
+export const NO_FAILURE_TEST_NAME = 'should keep DNS answers'
+export const HISTORICAL_SAMPLE_START = '2026-09-22T00:00:00Z'
+export const HISTORICAL_SAMPLE_END = '2026-09-30T00:00:00Z'
+export const HISTORICAL_BASE_START = '2026-05-10T00:00:00Z'
+export const HISTORICAL_BASE_END = '2026-06-09T23:59:59Z'
+export const HISTORICAL_LAST_FAILURE = '2026-09-29T01:33:26Z'
+export const HISTORICAL_CLOSED_AT = '2026-10-02T08:00:00Z'
+export const HISTORICAL_RANGE = 'September 22–29, 2026'
+const historicalVariants = ['Architecture:amd64', 'Platform:aws']
+
+// The historical test_details link the API builds for a closed regression.
+export function historicalTestDetailsPath(regressionId = CLOSED_REGRESSION_ID) {
+  const params = new URLSearchParams()
+  params.set('view', VIEW)
+  params.set('testId', TEST_ID)
+  params.set('component', COMPONENT)
+  params.set('capability', CAPABILITY)
+  params.set('baseRelease', BASE_RELEASE)
+  params.set('sampleRelease', SAMPLE_RELEASE)
+  params.set('baseStartTime', HISTORICAL_BASE_START)
+  params.set('baseEndTime', HISTORICAL_BASE_END)
+  params.set('sampleStartTime', HISTORICAL_SAMPLE_START)
+  params.set('sampleEndTime', HISTORICAL_SAMPLE_END)
+  params.append('includeVariant', 'Platform:aws')
+  params.append('includeVariant', 'Architecture:amd64')
+  params.set('columnGroupBy', 'Architecture,Platform')
+  params.set('Architecture', 'amd64')
+  params.set('Platform', 'aws')
+  params.set('environment', 'Architecture:amd64 Platform:aws')
+  params.set('regressionId', String(regressionId))
+  return `/api/component_readiness/test_details?${params}`
+}
+
+export function closedRegression(overrides = {}) {
+  const id = overrides.id || CLOSED_REGRESSION_ID
+  return {
+    id,
+    test_id: TEST_ID,
+    test_name: CLOSED_TEST_NAME,
+    release: SAMPLE_RELEASE,
+    base_release: BASE_RELEASE,
+    component: COMPONENT,
+    capability: CAPABILITY,
+    variants: historicalVariants,
+    opened: '2026-09-20T00:00:00Z',
+    closed: { Time: HISTORICAL_CLOSED_AT, Valid: true },
+    last_failure: { Time: HISTORICAL_LAST_FAILURE, Valid: true },
+    views: [
+      {
+        view_name: VIEW,
+        active: false,
+        closed_at: { Time: HISTORICAL_CLOSED_AT, Valid: true },
+      },
+    ],
+    triages: [
+      {
+        id: SEEDED_TRIAGE_ID,
+        url: JIRA_URL,
+        description: 'pod network regression',
+        type: 'product',
+        created_at: GENERATED_AT,
+        updated_at: GENERATED_AT,
+        resolved: { Time: HISTORICAL_CLOSED_AT, Valid: true },
+      },
+    ],
+    links: {
+      self: `/api/component_readiness/regressions/${id}`,
+      [`test_details:${VIEW}`]: historicalTestDetailsPath(id),
+    },
+    ...overrides,
+  }
+}
+
+// A resolved triage whose only regression closed and rolled off, so the
+// expanded triage has no current regressed_tests.
+export function closedRegressionTriage() {
+  const record = triageRecord({
+    resolved: { Time: HISTORICAL_CLOSED_AT, Valid: true },
+  })
+  const { triages: _triages, ...regression } = closedRegression()
+  record.regressions = [regression]
+  record.regressed_tests = {}
+  return record
+}
+
+// A resolved triage that still has an open regression next to closed ones.
+export function mixedRegressionTriage() {
+  const record = triageRecord({
+    resolved: { Time: HISTORICAL_CLOSED_AT, Valid: true },
+  })
+  const strip = ({ triages: _triages, ...rest }) => rest
+  record.regressions = [
+    {
+      id: REGRESSION_ID,
+      test_name: TEST_NAME,
+      test_id: TEST_ID,
+      release: SAMPLE_RELEASE,
+      opened: regressionOpened,
+      variants: historicalVariants,
+      closed: { Time: null, Valid: false },
+      last_failure: { Time: lastFailure, Valid: true },
+      views: [{ view_name: VIEW, active: true }],
+      links: { [`test_details:${VIEW}`]: testDetailsPath(VIEW) },
+    },
+    strip(closedRegression()),
+    strip(
+      closedRegression({
+        id: CLOSED_IN_VIEW_REGRESSION_ID,
+        test_name: CLOSED_IN_VIEW_TEST_NAME,
+        closed: { Time: null, Valid: false },
+        views: [
+          {
+            view_name: VIEW,
+            active: false,
+            closed_at: { Time: HISTORICAL_CLOSED_AT, Valid: true },
+          },
+          { view_name: OTHER_VIEW, active: true },
+        ],
+        links: {
+          [`test_details:${VIEW}`]: historicalTestDetailsPath(
+            CLOSED_IN_VIEW_REGRESSION_ID
+          ),
+        },
+      })
+    ),
+    strip(
+      closedRegression({
+        id: NO_FAILURE_REGRESSION_ID,
+        test_name: NO_FAILURE_TEST_NAME,
+        last_failure: { Time: null, Valid: false },
+        links: {},
+      })
+    ),
+  ]
+  record.regressed_tests = { [VIEW]: [regressedTest(REGRESSION_ID)] }
+  return record
 }

@@ -18,11 +18,14 @@ import {
   createLatestRequest,
   getAPIUrl,
   getColumns,
+  getRegressionAPIUrl,
   getStatusAndIcon,
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
   noDataTable,
+  parseEnvironmentVariants,
+  validateHistoricalRegression,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
@@ -41,6 +44,7 @@ import CompReadyTestPanel from './CompReadyTestPanel'
 import CopyPageURL from './CopyPageURL'
 import FileBug from '../bugs/FileBug'
 import GeneratedAt from './GeneratedAt'
+import HistoricalRegressionNotice from './HistoricalRegressionNotice'
 import IconButton from '@mui/material/IconButton'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
@@ -130,6 +134,14 @@ export default function TestDetailsReport(props) {
   const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const writeEndpointsEnabled = capabilitiesContext.includes('write_endpoints')
   const { sampleRelease, urlParams } = useContext(CompReadyVarsContext)
+  const historicalRegressionId = urlParams?.regressionId
+
+  // Closure metadata for a historical link comes from the regression API. It
+  // is fetched alongside, and independently of, the cached statistical report
+  // so lifecycle changes show up without regenerating the report.
+  const [historicalLookup, setHistoricalLookup] = React.useState({
+    status: 'idle',
+  })
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -142,7 +154,9 @@ export default function TestDetailsReport(props) {
   }
   const copyRegressionID = (event) => {
     event.preventDefault()
-    navigator.clipboard.writeText(String(regressionId))
+    navigator.clipboard.writeText(
+      String(regressionId || historicalLookup.regression?.id || '')
+    )
     setCopyPopoverEl(event.currentTarget)
     setTimeout(() => setCopyPopoverEl(null), 2000)
   }
@@ -223,6 +237,38 @@ export default function TestDetailsReport(props) {
   }, [hasBeenTriaged, urlParams, testId])
 
   useEffect(() => {
+    if (!historicalRegressionId) {
+      setHistoricalLookup({ status: 'idle' })
+      return
+    }
+    setHistoricalLookup({ status: 'loading' })
+    const controller = new AbortController()
+    fetch(getRegressionAPIUrl(historicalRegressionId), {
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (response.status === 404) {
+          setHistoricalLookup({ status: 'missing' })
+          return
+        }
+        if (response.status !== 200) {
+          throw new Error('API server returned ' + response.status)
+        }
+        return response
+          .json()
+          .then((regression) =>
+            setHistoricalLookup({ status: 'loaded', regression })
+          )
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') {
+          setHistoricalLookup({ status: 'error', error: error.message })
+        }
+      })
+    return () => controller.abort()
+  }, [historicalRegressionId, hasBeenTriaged])
+
+  useEffect(() => {
     if (!data.analyses || !data.analyses[0]?.job_stats) {
       setLabelSummaries([])
       return
@@ -273,8 +319,36 @@ export default function TestDetailsReport(props) {
   const datesEnv = useContext(CompReadyVarsContext)
   useEffect(() => setLoadedParams(datesEnv), [])
 
+  const historicalValidation =
+    historicalLookup.status === 'loaded'
+      ? validateHistoricalRegression(historicalLookup.regression, {
+          testId,
+          sampleRelease: urlParams?.sampleRelease || sampleRelease,
+          variants: parseEnvironmentVariants(environment),
+          view: urlParams?.view,
+        })
+      : null
+  const historicalRegression = historicalValidation?.valid
+    ? historicalLookup.regression
+    : null
+  const historicalNotice = (noData) => (
+    <HistoricalRegressionNotice
+      regressionId={historicalRegressionId}
+      lookup={historicalLookup}
+      validation={historicalValidation}
+      urlParams={urlParams || {}}
+      view={urlParams?.view}
+      noData={noData}
+    />
+  )
+
   if (fetchError !== '') {
-    return gotFetchError(fetchError)
+    return (
+      <Fragment>
+        {historicalNotice(true)}
+        {gotFetchError(fetchError)}
+      </Fragment>
+    )
   }
 
   const pageTitle = makePageTitle(
@@ -294,16 +368,32 @@ export default function TestDetailsReport(props) {
   const columnNames = getColumns(data)
   if (columnNames[0] === 'Cancelled' || columnNames[0] === 'None') {
     return (
-      <CompReadyCancelled
-        message={columnNames[0]}
-        apiCallStr={testDetailsApiCall}
-      />
+      <Fragment>
+        {columnNames[0] === 'None' && historicalNotice(true)}
+        <CompReadyCancelled
+          message={columnNames[0]}
+          apiCallStr={testDetailsApiCall}
+        />
+      </Fragment>
     )
   }
 
   if (!data.analyses || !data.analyses[0]) {
-    return <Alert severity="info">No data found for this test.</Alert>
+    return (
+      <Fragment>
+        {historicalNotice(true)}
+        <Alert severity="info">No data found for this test.</Alert>
+      </Fragment>
+    )
   }
+
+  // A closed regression is no longer tracked by the report, so its ID and
+  // triages come from the validated regression record instead.
+  const displayRegressionId = regressionId || historicalRegression?.id || 0
+  const displayTriageEntries =
+    triageEntries.length > 0
+      ? triageEntries
+      : historicalRegression?.triages || []
 
   let status = data.analyses[0].status
   const [statusStr, assessmentIcon] = getStatusAndIcon(
@@ -450,6 +540,7 @@ View the [test details report|${document.location.href}] for additional context.
         pageTitle={pageTitle}
         apiCallStr={testDetailsApiCall}
       />
+      {historicalNotice(false)}
       {latestReportUrl && (
         <Alert severity="warning" sx={{ marginTop: 2, marginBottom: 2 }}>
           This report shows data from more than 48 hours ago.{' '}
@@ -472,10 +563,10 @@ View the [test details report|${document.location.href}] for additional context.
       </div>
       <Grid container>
         <Grid item xs={12}>
-          {triageEntries.length > 0 && (
+          {displayTriageEntries.length > 0 && (
             <Fragment>
               <h2>Triages</h2>
-              <TriagedTestsPanel triageEntries={triageEntries} />
+              <TriagedTestsPanel triageEntries={displayTriageEntries} />
             </Fragment>
           )}
 
@@ -547,11 +638,11 @@ View the [test details report|${document.location.href}] for additional context.
               </IconButton>
             </TableCell>
           </TableRow>
-          {regressionId > 0 && (
+          {displayRegressionId > 0 && (
             <TableRow>
               <TableCell>Regression ID:</TableCell>
               <TableCell>
-                {regressionId}
+                {displayRegressionId}
                 <IconButton
                   aria-label="Copy regression ID"
                   color="inherit"
