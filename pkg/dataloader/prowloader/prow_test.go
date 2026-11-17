@@ -2,6 +2,7 @@ package prowloader
 
 import (
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -306,4 +307,21 @@ func TestGetGCSPathForProwJobURL(t *testing.T) {
 		_, err := GetGCSPathForProwJobURL(pjLog, "x/gs/other/logs/job/1")
 		assert.Error(t, err)
 	})
+}
+
+func TestGCSPathFromProwJobURL(t *testing.T) {
+	path, err := GCSPathFromProwJobURL("https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/view/gs/test-platform-results/logs/job/123")
+	if err != nil {
+		t.Fatalf("GCSPathFromProwJobURL() unexpected error = %v", err)
+	}
+	if path != "logs/job/123" {
+		t.Fatalf("GCSPathFromProwJobURL() path = %q, want %q", path, "logs/job/123")
+	}
+
+	if _, err := GCSPathFromProwJobURL("https://prow.ci.openshift.org/view/something-else"); err == nil || !strings.Contains(err.Error(), "gcs path empty") {
+		t.Fatalf("GCSPathFromProwJobURL() missing gcs prefix error = %v, want loader-style error", err)
+	}
+	if _, err := GCSPathFromProwJobURL("://bad-url"); err == nil {
+		t.Fatal("GCSPathFromProwJobURL() accepted invalid URL")
+	}
 }
