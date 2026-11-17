@@ -39,6 +39,14 @@ const faqs = [
     answer: `Feature requests or bugs can be reported through <a href="https://redhat.atlassian.net/secure/CreateIssueDetails!init.jspa?pid=11604&issuetype=10009&description=Describe%20your%20feature%20request%20or%20bug%3A%0A%0A%0A%20%20%20%20%0A%20%20%20%20Relevant%20Sippy%20URL%3A%0A%0A%20%20%20%20http%3A%2F%2Flocalhost%3A3000%2Fsippy-ng%2Fcomponent_readiness%2Fhelp%0A%0A"><u>Jira</u></a>.`,
   },
   {
+    question: 'Where are the test results for a closed regression?',
+    answer: `Closed regressions roll off the current report, but triage tables keep a link to a historical test details report. It is shown as a
+    clock icon with a green check. The green check means the tracked regression closed (or closed in that view), not that the period passed.
+    The historical sample covers the seven UTC calendar days before the regression's last failure date plus that whole day, and the basis comes
+    from the view, evaluated relative to the last failure. The test details page then identifies the closed regression, its closure date, and
+    the windows used. If the data for that period is no longer available, the page says so instead of showing a newer window.`,
+  },
+  {
     question: 'How much data history does Component Readiness keep?',
     answer: `The BigQuery backing data stores are set to retain information for approximately two years, however the
     earliest data in these tables is from April 2023.`,
