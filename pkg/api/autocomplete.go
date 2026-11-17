@@ -39,9 +39,8 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 				fmt.Sprintf("%%%s%%", search))
 		}
 
-		q = q.Limit(50).Scan(&labelResult)
-		if q.Error != nil {
-			RespondWithJSON(503, w, map[string]string{"message": q.Error.Error()})
+		if err := query.ScanAll(q.Limit(50), &labelResult); err != nil {
+			RespondWithJSON(503, w, map[string]string{"message": err.Error()})
 			return
 		}
 		RespondWithJSON(200, w, labelResult)
@@ -124,9 +123,8 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 		q = sq.Where("name ILIKE ?", fmt.Sprintf("%%%s%%", search))
 	}
 
-	q = q.Limit(100).Scan(&result)
-	if q.Error != nil {
-		RespondWithJSON(503, w, map[string]string{"message": q.Error.Error()})
+	if err := query.ScanAll(q.Limit(100), &result); err != nil {
+		RespondWithJSON(503, w, map[string]string{"message": err.Error()})
 		return
 	}
 

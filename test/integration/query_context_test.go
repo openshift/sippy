@@ -311,6 +311,24 @@ func TestJobRunRiskAnalysisHonorsCanceledContext(t *testing.T) {
 
 // testsReportPeriodsOnly returns the fixed sample and base ranges shared by the
 // Tests-report integration tests.
+// TestOverallReleaseHealthHonorsCanceledContext verifies that a canceled request yields an error
+// instead of a health report missing the indicators whose queries were interrupted, because
+// /api/health caches successful responses.
+func TestOverallReleaseHealthHonorsCanceledContext(t *testing.T) {
+	dbc := intutil.NewTestDB(t, pgContainer)
+	intutil.CreateReleaseDefinition(t, dbc, "4.16", 4, 16)
+	reportEnd := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	_, err := api.OverallReleaseHealthFromDB(t.Context(), dbc, "4.16", reportEnd)
+	require.NoError(t, err, "health report should succeed with a live context")
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err = api.OverallReleaseHealthFromDB(ctx, dbc, "4.16", reportEnd)
+	require.Error(t, err, "health report should fail once the context is canceled")
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
 func testsReportPeriodsOnly() (sample, base query.DateRange) {
 	sample, base, _, _, _ = testsReportPeriods()
 	return sample, base

@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -43,9 +43,11 @@ func useNewInstallTest(release string) bool {
 	return true
 }
 
-// PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
-// infrastructure, install, upgrade, and variant success rates.
-func PrintOverallReleaseHealthFromDB(ctx context.Context, w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
+// OverallReleaseHealthFromDB gives a summarized status of the overall health, including
+// infrastructure, install, upgrade, and variant success rates. It returns an error rather than a
+// partial report when a query fails or ctx is canceled, so the caller does not cache an incomplete
+// response as a success.
+func OverallReleaseHealthFromDB(ctx context.Context, dbc *db.DB, release string, reportEnd time.Time) (apitype.Health, error) {
 	excludedVariants := testidentification.DefaultExcludedVariants
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
 	excludedInstallVariants := testidentification.DefaultExcludedVariants
@@ -85,10 +87,15 @@ func PrintOverallReleaseHealthFromDB(ctx context.Context, w http.ResponseWriter,
 		indicators["tests"] = testsIndicator
 	}
 
+	// TestReportExcludeVariants logs and skips indicators whose query fails, so a canceled
+	// context would otherwise leave a report silently missing indicators.
+	if err := ctx.Err(); err != nil {
+		return apitype.Health{}, fmt.Errorf("querying health indicators: %w", err)
+	}
+
 	lastUpdated, err := GetLastUpdateTime(ctx, dbc)
 	if err != nil {
-		log.WithError(err).Error("error querying last update time")
-		return
+		return apitype.Health{}, fmt.Errorf("querying last update time: %w", err)
 	}
 	log.WithField("lastUpdated", lastUpdated).Info("ran the last update query")
 
@@ -104,8 +111,7 @@ func PrintOverallReleaseHealthFromDB(ctx context.Context, w http.ResponseWriter,
 	end := reportEnd
 	jobReports, err := query.JobReports(ctx, dbc, filterOpts, release, start, boundary, end)
 	if err != nil {
-		log.WithError(err).Error("error querying job reports")
-		return
+		return apitype.Health{}, fmt.Errorf("querying job reports: %w", err)
 	}
 	currStats, prevStats := calculateJobResultStatistics(jobReports)
 
@@ -115,13 +121,17 @@ func PrintOverallReleaseHealthFromDB(ctx context.Context, w http.ResponseWriter,
 	// TODO: use or remove this logic
 	var warnings []string
 
-	RespondWithJSON(http.StatusOK, w, apitype.Health{
+	if err := ctx.Err(); err != nil {
+		return apitype.Health{}, err
+	}
+
+	return apitype.Health{
 		Indicators:  indicators,
 		LastUpdated: lastUpdated,
 		Current:     currStats,
 		Previous:    prevStats,
 		Warnings:    warnings,
-	})
+	}, nil
 }
 
 func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats sippyprocessingv1.Statistics) {

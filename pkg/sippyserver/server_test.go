@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -171,6 +172,52 @@ func TestRefreshDataReportsCancellation(t *testing.T) {
 			}
 			if !errors.Is(err, tt.expectErr) {
 				t.Fatalf("RefreshData error = %v, want %v", err, tt.expectErr)
+			}
+		})
+	}
+}
+
+func TestContextWithDisconnectGrace(t *testing.T) {
+	type ctxKey struct{}
+	const grace = 50 * time.Millisecond
+	tests := []struct {
+		name         string
+		cancelParent bool
+		cancelChild  bool
+		expectDone   bool
+		waitFor      time.Duration
+	}{
+		{name: "live parent keeps the context open", waitFor: 2 * grace},
+		{name: "parent cancellation is deferred during the grace period", cancelParent: true, waitFor: grace / 5},
+		{name: "parent cancellation propagates after the grace period", cancelParent: true, expectDone: true, waitFor: 10 * grace},
+		{name: "cancel function stops the context immediately", cancelChild: true, expectDone: true, waitFor: grace / 5},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parent, cancelParent := context.WithCancel(context.WithValue(t.Context(), ctxKey{}, "value"))
+			defer cancelParent()
+			ctx, cancel := contextWithDisconnectGrace(parent, grace)
+			defer cancel()
+
+			if got := ctx.Value(ctxKey{}); got != "value" {
+				t.Fatalf("context value = %v, want parent value", got)
+			}
+			if tt.cancelParent {
+				cancelParent()
+			}
+			if tt.cancelChild {
+				cancel()
+			}
+
+			select {
+			case <-ctx.Done():
+				if !tt.expectDone {
+					t.Fatalf("context canceled early: %v", ctx.Err())
+				}
+			case <-time.After(tt.waitFor):
+				if tt.expectDone {
+					t.Fatalf("context still open after %s", tt.waitFor)
+				}
 			}
 		})
 	}

@@ -653,7 +653,7 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 		}
 
 		var allRows []combinedRow
-		if qErr := tx.Raw(fullSQL, allArgs...).Scan(&allRows).Error; qErr != nil {
+		if qErr := query.ScanAll(tx.Raw(fullSQL, allArgs...), &allRows); qErr != nil {
 			return fmt.Errorf("querying combined test status: %w", qErr)
 		}
 

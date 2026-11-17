@@ -62,7 +62,7 @@ func ProwJobSimilarName(ctx context.Context, dbc *db.DB, rootName, release strin
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	if err := q.Scan(&jobs).Error; err != nil {
+	if err := ScanAll(q, &jobs); err != nil {
 		return nil, err
 	}
 
@@ -117,7 +117,7 @@ func JobReports(ctx context.Context, dbc *db.DB, filterOpts *filter.FilterOption
 		return jobReports, err
 	}
 
-	if err := q.Scan(&jobReports).Error; err != nil {
+	if err := ScanAll(q, &jobReports); err != nil {
 		return nil, err
 	}
 	elapsed := time.Since(now)
@@ -163,7 +163,7 @@ ORDER BY current_pass_percentage ASC;
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	if err := q.Scan(&variantResults).Error; err != nil {
+	if err := ScanAll(q, &variantResults); err != nil {
 		return nil, err
 	}
 	return variantResults, nil

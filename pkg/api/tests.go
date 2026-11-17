@@ -551,7 +551,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		if err := tx.Exec("SET LOCAL work_mem = '" + workMem + "'").Error; err != nil {
 			return err
 		}
-		return tx.Table("(?) AS q", finalResults).Scan(&testReports).Error
+		return query.ScanAll(tx.Table("(?) AS q", finalResults), &testReports)
 	})
 	if scanErr != nil {
 		log.WithError(scanErr).Error("error querying test reports")

@@ -150,13 +150,12 @@ func TestReportsByVariant(
 	}
 
 	var testReports []api.Test
-	r := dbc.DB.WithContext(ctx).Table("(?) AS agg", aggregated).
+	q := dbc.DB.WithContext(ctx).Table("(?) AS agg", aggregated).
 		Select(fmt.Sprintf("*, %s", QueryTestPercentages)).
-		Where("agg.current_runs > 0 OR agg.previous_runs > 0").
-		Scan(&testReports)
-	if r.Error != nil {
-		log.Error(r.Error)
-		return testReports, r.Error
+		Where("agg.current_runs > 0 OR agg.previous_runs > 0")
+	if err := ScanAll(q, &testReports); err != nil {
+		log.Error(err)
+		return testReports, err
 	}
 
 	elapsed := time.Since(now)

@@ -88,9 +88,8 @@ func GetFeatureGatesFromDB(ctx context.Context, dbc *db.DB, release string, filt
 	}
 
 	results := make([]api.FeatureGate, 0)
-	tx := q.Scan(&results)
-	if tx.Error != nil {
-		return nil, fmt.Errorf("failed to scan feature gates: %w", tx.Error)
+	if err := ScanAll(q, &results); err != nil {
+		return nil, fmt.Errorf("failed to scan feature gates: %w", err)
 	}
 
 	return results, nil

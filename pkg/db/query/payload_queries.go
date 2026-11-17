@@ -11,12 +11,12 @@ import (
 
 func GetPayloadDiff(ctx context.Context, db *gorm.DB, fromPayload, toPayload string) ([]models.ReleasePullRequest, error) {
 	results := make([]models.ReleasePullRequest, 0)
-	result := db.WithContext(ctx).Raw(`SELECT url,pull_request_id,name,description,bug_url FROM release_pull_requests
+	q := db.WithContext(ctx).Raw(`SELECT url,pull_request_id,name,description,bug_url FROM release_pull_requests
 		WHERE id IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?))
-		AND id NOT IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?)) ORDER BY url`, toPayload, fromPayload).Scan(&results)
+		AND id NOT IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?)) ORDER BY url`, toPayload, fromPayload)
 
-	if result.Error != nil {
-		return nil, result.Error
+	if err := ScanAll(q, &results); err != nil {
+		return nil, err
 	}
 
 	return results, nil
@@ -26,7 +26,7 @@ func GetPayloadDiff(ctx context.Context, db *gorm.DB, fromPayload, toPayload str
 func GetLastAcceptedByArchitectureAndStream(ctx context.Context, db *gorm.DB, release string, reportEnd time.Time) ([]models.ReleaseTag, error) {
 	results := make([]models.ReleaseTag, 0)
 
-	result := db.WithContext(ctx).Raw(`SELECT
+	q := db.WithContext(ctx).Raw(`SELECT
 						DISTINCT ON
 							(architecture, stream)
 							*
@@ -39,10 +39,10 @@ func GetLastAcceptedByArchitectureAndStream(ctx context.Context, db *gorm.DB, re
 						AND
 							release_time < ?
 						ORDER BY
-							architecture, stream, release_time desc`, release, reportEnd).Scan(&results)
+							architecture, stream, release_time desc`, release, reportEnd)
 
-	if result.Error != nil {
-		return nil, result.Error
+	if err := ScanAll(q, &results); err != nil {
+		return nil, err
 	}
 
 	return results, nil
@@ -91,7 +91,7 @@ GROUP BY pjrt.test_id, t.name`,
 
 func GetTestFailuresForPayload(ctx context.Context, db *gorm.DB, payloadTag, release string, releaseTime time.Time) ([]models.PayloadFailedTest, error) {
 	results := make([]models.PayloadFailedTest, 0)
-	result := db.WithContext(ctx).Raw(`SELECT DISTINCT
+	q := db.WithContext(ctx).Raw(`SELECT DISTINCT
 	rt.release,
 		rt.architecture,
 		rt.stream,
@@ -118,10 +118,10 @@ func GetTestFailuresForPayload(ctx context.Context, db *gorm.DB, payloadTag, rel
 	JOIN tests t ON t.id = pjrt.test_id
 	JOIN prow_jobs pj ON pj.id = pjr.prow_job_id
 	WHERE rt.release_tag = ?
-	ORDER BY pjrt.id DESC`, release, releaseTime, release, releaseTime, payloadTag).Scan(&results)
+	ORDER BY pjrt.id DESC`, release, releaseTime, release, releaseTime, payloadTag)
 
-	if result.Error != nil {
-		return nil, result.Error
+	if err := ScanAll(q, &results); err != nil {
+		return nil, err
 	}
 
 	return results, nil
@@ -131,7 +131,7 @@ func GetTestFailuresForPayload(ctx context.Context, db *gorm.DB, payloadTag, rel
 func GetLastOSUpgradeByArchitectureAndStream(ctx context.Context, db *gorm.DB, release string) ([]models.ReleaseTag, error) {
 	results := make([]models.ReleaseTag, 0)
 
-	result := db.WithContext(ctx).Raw(`SELECT
+	q := db.WithContext(ctx).Raw(`SELECT
 						DISTINCT ON
 							(architecture, stream)
 							*
@@ -142,10 +142,10 @@ func GetLastOSUpgradeByArchitectureAndStream(ctx context.Context, db *gorm.DB, r
 						AND
 							previous_os_version != ''
 						ORDER BY
-							architecture, stream, release_time desc`, release).Scan(&results)
+							architecture, stream, release_time desc`, release)
 
-	if result.Error != nil {
-		return nil, result.Error
+	if err := ScanAll(q, &results); err != nil {
+		return nil, err
 	}
 
 	return results, nil
@@ -173,7 +173,7 @@ func GetLastPayloadTags(ctx context.Context, db *gorm.DB, release, stream, arch 
 func GetLastPayloadStatus(ctx context.Context, db *gorm.DB, architecture, stream, release string, reportEnd time.Time) (string, int, error) {
 	count := models.PayloadPhaseCount{}
 
-	result := db.WithContext(ctx).Raw(`
+	q := db.WithContext(ctx).Raw(`
 		WITH releases AS
 			(
 				SELECT
@@ -205,9 +205,10 @@ func GetLastPayloadStatus(ctx context.Context, db *gorm.DB, architecture, stream
 		WHERE
 			groups.group = 1
 		GROUP BY
-			phase`, architecture, stream, release, reportEnd).Scan(&count)
+			phase`, architecture, stream, release, reportEnd)
 
-	return count.Phase, count.Count, result.Error
+	err := ScanAll(q, &count)
+	return count.Phase, count.Count, err
 }
 
 // GetPayloadStreamPhaseCounts returns the number of payloads in each phase for a given stream.
@@ -246,9 +247,10 @@ func GetPayloadAcceptanceStatistics(ctx context.Context, db *gorm.DB, release, a
 	q = db.WithContext(ctx).Table("(?) as durations", q).
 		Select(`EXTRACT(epoch FROM AVG(duration))::bigint as mean_seconds_between,
 					   EXTRACT(epoch FROM MIN(duration))::bigint as min_seconds_between,
-                       EXTRACT(epoch FROM MAX(duration))::bigint as max_seconds_between`).Scan(&results)
+                       EXTRACT(epoch FROM MAX(duration))::bigint as max_seconds_between`)
+	err := ScanAll(q, &results)
 
-	return results, q.Error
+	return results, err
 }
 
 // GetReleaseTag returns a release tag by its release_tag string.

@@ -151,7 +151,7 @@ func GetPayloadStreamTestFailures(ctx context.Context, dbc *db.DB, release, stre
 	}
 
 	var rows []testFailureRow
-	if err := q.Scan(&rows).Error; err != nil {
+	if err := query.ScanAll(q, &rows); err != nil {
 		return nil, err
 	}
 	logger.WithField("testCount", len(rows)).Debug("found test failure rows")
@@ -348,7 +348,7 @@ func GetPayloadEvents(dbClient *db.DB, release string, filterOpts *filter.Filter
 		q = q.Where("release_time <= ?", end)
 	}
 
-	if err := q.Scan(&releases).Error; err != nil {
+	if err := query.ScanAll(q, &releases); err != nil {
 		return nil, err
 	}
 
@@ -676,8 +676,8 @@ func GetLastUpdateTime(ctx context.Context, dbc *db.DB) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("get current active release: %w", err)
 	}
 	var lastUpdated time.Time
-	if err := dbc.DB.WithContext(ctx).Raw("SELECT COALESCE(MAX(created_at), '0001-01-01') FROM prow_job_runs WHERE prow_job_release = ? AND timestamp > NOW() - INTERVAL '14 days'", rel).
-		Scan(&lastUpdated).Error; err != nil {
+	if err := query.ScanAll(dbc.DB.WithContext(ctx).Raw("SELECT COALESCE(MAX(created_at), '0001-01-01') FROM prow_job_runs WHERE prow_job_release = ? AND timestamp > NOW() - INTERVAL '14 days'", rel),
+		&lastUpdated); err != nil {
 		return time.Time{}, fmt.Errorf("query last update time: %w", err)
 	}
 	return lastUpdated, nil

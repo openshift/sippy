@@ -338,8 +338,8 @@ func refreshMatview(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, re
 		// If requested, we only refresh the materialized view if it has no rows
 		if refreshMatviewOnlyIfEmpty {
 			var count int
-			if res := dbc.DB.WithContext(ctx).Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)).Scan(&count); res.Error != nil {
-				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
+			if err := query.ScanAll(dbc.DB.WithContext(ctx).Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)), &count); err != nil {
+				tmpLog.WithError(err).Warn("proceeding with refresh of matview that appears to be empty")
 			} else if count > 0 {
 				tmpLog.Info("skipping matview refresh as it appears to be populated")
 				continue
@@ -1425,9 +1425,15 @@ func (s *Server) jsonTestLifecyclesFromDB(w http.ResponseWriter, req *http.Reque
 
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
-	if release != "" {
-		api.PrintOverallReleaseHealthFromDB(req.Context(), w, s.db, release, s.GetReportEnd())
+	if release == "" {
+		return
 	}
+	health, err := api.OverallReleaseHealthFromDB(req.Context(), s.db, release, s.GetReportEnd())
+	if err != nil {
+		failureResponseWithError(w, "error building release health report", err)
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, health)
 }
 
 func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {
@@ -3353,10 +3359,37 @@ func respondFromCache(content []byte, w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
+// cacheFillGrace bounds how long a cache-miss handler keeps running after its client disconnects.
+// The public ingress drops requests with no response after 90 seconds, which cancels the request
+// context. Letting the handler finish and populate the cache means a retry can be served from the
+// cache instead of starting cold and timing out again.
+const cacheFillGrace = 5 * time.Minute
+
+// contextWithDisconnectGrace returns a context that carries parent's values but is canceled only
+// once grace has elapsed after parent is done, or when the returned cancel function is called.
+func contextWithDisconnectGrace(parent context.Context, grace time.Duration) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.WithoutCancel(parent))
+	stop := context.AfterFunc(parent, func() {
+		timer := time.NewTimer(grace)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+		case <-timer.C:
+			cancel()
+		}
+	})
+	return ctx, func() {
+		stop()
+		cancel()
+	}
+}
+
 func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter, r *http.Request, handler func(w http.ResponseWriter, r *http.Request)) {
 	apiResponse := cache.APIResponse{}
 	recorder := httptest.NewRecorder()
-	handler(recorder, r)
+	ctx, cancel := contextWithDisconnectGrace(r.Context(), cacheFillGrace)
+	defer cancel()
+	handler(recorder, r.WithContext(ctx))
 	apiResponse.Headers = w.Header()
 	for k, v := range recorder.Result().Header {
 		w.Header()[k] = v

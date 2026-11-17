@@ -41,7 +41,7 @@ func PullRequestReport(ctx context.Context, dbc *db.DB, filterOpts *filter.Filte
 	if err != nil {
 		return results, err
 	}
-	if err := q.Scan(&results).Error; err != nil {
+	if err := ScanAll(q, &results); err != nil {
 		return nil, err
 	}
 	return results, nil

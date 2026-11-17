@@ -622,9 +622,9 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 		// Read (and lock) the current labels from the row so we can preserve an
 		// InfraFailure that RecordInfraFailure already applied.
 		var currentRun models.ProwJobRun
-		if err := tx.Raw(
+		if err := query.ScanAll(tx.Raw(
 			"SELECT labels FROM prow_job_runs WHERE id = ? AND prow_job_release = ? AND timestamp = ? FOR UPDATE",
-			jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp).Scan(&currentRun).Error; err != nil {
+			jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp), &currentRun); err != nil {
 			return fmt.Errorf("locking prow_job_runs row for build %s: %w", buildID, err)
 		}
 

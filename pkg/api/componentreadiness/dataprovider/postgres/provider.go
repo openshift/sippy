@@ -514,7 +514,7 @@ WHERE %s
 	sqlQuery += " ORDER BY pjr.timestamp"
 
 	var rows []testDetailRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(sqlQuery, args...).Scan(&rows).Error; err != nil {
+	if err := query.ScanAll(p.dbc.DB.WithContext(ctx).Raw(sqlQuery, args...), &rows); err != nil {
 		return nil, []error{fmt.Errorf("querying test details: %w", err)}
 	}
 
@@ -740,7 +740,7 @@ func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, re
 	}
 
 	var rows []aggregateTestDetailRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(sqlQuery, queryArgs...).Scan(&rows).Error; err != nil {
+	if err := query.ScanAll(p.dbc.DB.WithContext(ctx).Raw(sqlQuery, queryArgs...), &rows); err != nil {
 		return nil, []error{fmt.Errorf("querying aggregate test details: %w", err)}
 	}
 
@@ -920,7 +920,7 @@ func (p *PostgresProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.
 	}
 
 	var rows []jobRunRow
-	err := p.dbc.DB.WithContext(ctx).Raw(`
+	err := query.ScanAll(p.dbc.DB.WithContext(ctx).Raw(`
 		SELECT
 			pj.name AS job_name,
 			COUNT(DISTINCT pjr.id) AS total_runs,
@@ -934,7 +934,7 @@ func (p *PostgresProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.
 			AND (pj.name LIKE 'periodic-%%' OR pj.name LIKE 'release-%%' OR pj.name LIKE 'aggregator-%%')
 		GROUP BY pj.name
 		ORDER BY pj.name
-	`, release, start, end, release).Scan(&rows).Error
+	`, release, start, end, release), &rows)
 	if err != nil {
 		return nil, fmt.Errorf("querying job runs: %w", err)
 	}
@@ -957,7 +957,7 @@ func (p *PostgresProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.
 			Variants pq.StringArray `gorm:"column:variants;type:text[]"`
 		}
 		var jvRows []jvRow
-		if err := p.dbc.DB.WithContext(ctx).Raw(`SELECT name, variants FROM prow_jobs WHERE name IN (?) AND deleted_at IS NULL`, jobNames).Scan(&jvRows).Error; err != nil {
+		if err := query.ScanAll(p.dbc.DB.WithContext(ctx).Raw(`SELECT name, variants FROM prow_jobs WHERE name IN (?) AND deleted_at IS NULL`, jobNames), &jvRows); err != nil {
 			return nil, fmt.Errorf("fetching job variants: %w", err)
 		}
 		for _, jr := range jvRows {
@@ -1000,7 +1000,7 @@ func (p *PostgresProvider) QueryJobVariantValues(ctx context.Context, _ reqopts.
 	}
 
 	var rows []jvRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(`SELECT name, variants FROM prow_jobs WHERE name IN (?) AND deleted_at IS NULL`, jobNames).Scan(&rows).Error; err != nil {
+	if err := query.ScanAll(p.dbc.DB.WithContext(ctx).Raw(`SELECT name, variants FROM prow_jobs WHERE name IN (?) AND deleted_at IS NULL`, jobNames), &rows); err != nil {
 		return nil, fmt.Errorf("querying job variant values: %w", err)
 	}
 
@@ -1033,7 +1033,7 @@ func (p *PostgresProvider) LookupJobVariants(ctx context.Context, _ reqopts.Requ
 	}
 
 	var row jvRow
-	err := p.dbc.DB.WithContext(ctx).Raw(`SELECT variants FROM prow_jobs WHERE name = ? AND deleted_at IS NULL LIMIT 1`, jobName).Scan(&row).Error
+	err := query.ScanAll(p.dbc.DB.WithContext(ctx).Raw(`SELECT variants FROM prow_jobs WHERE name = ? AND deleted_at IS NULL LIMIT 1`, jobName), &row)
 	if err != nil {
 		return nil, fmt.Errorf("looking up job variants: %w", err)
 	}
@@ -1105,7 +1105,7 @@ func (p *PostgresProvider) QuerySpotCheckTestStatus(
 	}
 
 	var rows []spotCheckRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(sqlQuery, args...).Scan(&rows).Error; err != nil {
+	if err := query.ScanAll(p.dbc.DB.WithContext(ctx).Raw(sqlQuery, args...), &rows); err != nil {
 		return nil, fmt.Errorf("querying spot-check test status: %w", err)
 	}
 
@@ -1281,7 +1281,7 @@ func (p *PostgresProvider) QuerySpotCheckTestDetails(
 	}
 
 	var rows []detailRow
-	if err := p.dbc.DB.WithContext(ctx).Raw(sqlQuery, args...).Scan(&rows).Error; err != nil {
+	if err := query.ScanAll(p.dbc.DB.WithContext(ctx).Raw(sqlQuery, args...), &rows); err != nil {
 		return nil, fmt.Errorf("querying spot-check test details: %w", err)
 	}
 
