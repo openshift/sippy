@@ -122,3 +122,23 @@ func TestParseFieldSelection(t *testing.T) {
 		})
 	}
 }
+
+func TestFieldSelectionIncludes(t *testing.T) {
+	tests := []struct {
+		name     string
+		fields   string
+		field    string
+		expected bool
+	}{
+		{name: "empty selection includes every field", fields: "", field: "regressions", expected: true},
+		{name: "selected field", fields: "id,regressions", field: "regressions", expected: true},
+		{name: "unselected field", fields: "id,description", field: "regressions", expected: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fields, err := ParseFieldSelection(tc.fields, models.Triage{})
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, fields.Includes(tc.field))
+		})
+	}
+}

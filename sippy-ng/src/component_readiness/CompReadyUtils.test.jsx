@@ -555,6 +555,28 @@ describe('historical closed regression helpers', () => {
     expect(result.scope).toBe('view')
   })
 
+  test.each([
+    [
+      'closed globally',
+      { Valid: true, Time: '2026-10-01T00:00:00Z' },
+      'regression',
+    ],
+    ['open globally', { Valid: false }, 'unknown'],
+  ])(
+    'validateHistoricalRegression without a view, regression %s',
+    (_, closed, scope) => {
+      const result = validateHistoricalRegression(
+        {
+          ...closedRegression,
+          closed,
+          views: [{ view_name: '5.0-main', active: false }],
+        },
+        { ...request, view: undefined }
+      )
+      expect(result).toEqual({ valid: true, mismatches: [], scope })
+    }
+  )
+
   test('validateHistoricalRegression handles a missing record', () => {
     expect(validateHistoricalRegression(null, request).valid).toBe(false)
   })

@@ -19,8 +19,8 @@ resolved flag or the linked Jira status. One triage can contain both kinds.
 | Regression | View association | Link |
 |------------|------------------|------|
 | Open | Active | Current report for the view (unchanged behavior). |
-| Open | Inactive | Historical, labelled "Closed in this view". |
-| Closed (including force closed) | Any | Historical, labelled "Closed regression". |
+| Open | Inactive | Historical, labeled "Closed in this view". |
+| Closed (including force closed) | Any | Historical, labeled "Closed regression". |
 
 No link is produced, and the UI explains why, when the regression has no
 recorded `last_failure`, when the view is no longer configured, or when the
@@ -28,7 +28,8 @@ view's basis cannot be resolved (for example a missing GA date).
 
 ## Date semantics
 
-All windows are whole UTC calendar days.
+The sample window covers whole UTC calendar days. The basis follows the
+view's configured boundaries, which may be absolute timestamps.
 
 * **Sample**: from 00:00 UTC seven calendar days before the last-failure date,
   through the whole last-failure date. The end is serialized as the following
@@ -107,6 +108,10 @@ still rounded to keep "now"-like requests cacheable.
 * The view's current configuration is used, so a view whose grouping or filters
   changed since the regression closed can produce a slightly different report
   than the one that originally flagged it.
+* The anchor is the regression's last failure across all views, because
+  associations do not record their own. For a view association that closed
+  while the regression stayed open in another view, the window ends at that
+  later failure and may not cover the period when the association was active.
 * A regression record that does not match the report, or that no longer exists,
   produces a warning instead of closure details.
 

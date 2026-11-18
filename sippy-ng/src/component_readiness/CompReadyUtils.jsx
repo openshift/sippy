@@ -1190,7 +1190,9 @@ export function parseEnvironmentVariants(environment) {
 // validateHistoricalRegression checks that a regression record loaded from the
 // API identifies the report being shown before its closure metadata is
 // presented as this report's context. It returns the mismatched fields and
-// the closure scope for the requested view.
+// the closure scope for the requested view. Without a view, an open
+// regression's per-view closure cannot be checked, so its scope is 'unknown'
+// rather than 'open'.
 export function validateHistoricalRegression(regression, request) {
   const mismatches = []
   if (!regression) {
@@ -1221,6 +1223,8 @@ export function validateHistoricalRegression(regression, request) {
   let scope = 'open'
   if (regression.closed?.Valid) {
     scope = 'regression'
+  } else if (!request.view) {
+    scope = 'unknown'
   } else if (association && !association.active) {
     scope = 'view'
   }

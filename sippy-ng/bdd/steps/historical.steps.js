@@ -9,9 +9,11 @@ import {
   HISTORICAL_SAMPLE_END,
   HISTORICAL_SAMPLE_START,
   historicalTestDetailsPath,
+  JIRA_URL,
   mixedRegressionTriage,
   NO_FAILURE_REGRESSION_ID,
   REGRESSION_ID,
+  SEEDED_TRIAGE_ID,
   VIEW,
 } from '../fixtures/data.js'
 import { createBdd } from 'playwright-bdd'
@@ -97,12 +99,36 @@ Then(
 Then(
   'the historical link can be reached from the keyboard',
   async ({ page }) => {
-    const link = gridRow(page, CLOSED_REGRESSION_ID).getByRole('link', {
-      name: closedTooltip,
-      exact: true,
-    })
-    await link.focus()
+    // Focus the row's first cell, then arrow to the status cell. The grid's
+    // managed tab index must hand focus to the link for Enter to open it.
+    const row = gridRow(page, CLOSED_REGRESSION_ID)
+    const link = row.getByRole('link', { name: closedTooltip, exact: true })
+    const idCell = row.locator('[data-field="id"][role="gridcell"]')
+    const statusCell = row.locator(
+      `[data-field="status:${VIEW}"][role="gridcell"]`
+    )
+    await idCell.click()
+    await expect(idCell).toBeFocused()
+    const columnCount = await row.locator('[role="gridcell"]').count()
+    for (let i = 0; i < columnCount; i++) {
+      const inStatusCell = await statusCell.evaluate((cell) =>
+        cell.contains(document.activeElement)
+      )
+      if (inStatusCell) break
+      await page.keyboard.press('ArrowRight')
+    }
     await expect(link).toBeFocused()
+    const popup = page.waitForEvent('popup')
+    await page.keyboard.press('Enter')
+    const report = await popup
+    await report.waitForURL(/\/component_readiness\/test_details\?/, {
+      waitUntil: 'commit',
+    })
+    const opened = new URL(report.url())
+    expect(opened.searchParams.get('regressionId')).toBe(
+      String(CLOSED_REGRESSION_ID)
+    )
+    await report.close()
   }
 )
 
@@ -180,6 +206,11 @@ Then('the regression ID row shows the closed regression', async ({ page }) => {
 
 Then("the closed regression's triage is listed", async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Triages' })).toBeVisible()
+  const triageRow = gridRow(page, SEEDED_TRIAGE_ID)
+  await expect(triageRow).toBeVisible()
+  await expect(
+    triageRow.locator('[data-field="jira_key"]').getByRole('link')
+  ).toHaveAttribute('href', JIRA_URL)
 })
 
 Then(

@@ -8,6 +8,7 @@ const titles = {
   regression: 'Closed regression, historical report',
   view: 'Closed in this view, historical report',
   open: 'Historical report for an open regression',
+  unknown: 'Historical report for a tracked regression',
 }
 
 // HistoricalRegressionNotice explains the closure context of the regression a
@@ -23,7 +24,15 @@ export default function HistoricalRegressionNotice({
   view,
   noData,
 }) {
-  if (!regressionId || lookup.status === 'loading') return null
+  // idle covers the render before the lookup effect starts, such as when
+  // navigation adds regressionId to an already mounted report.
+  if (
+    !regressionId ||
+    lookup.status === 'idle' ||
+    lookup.status === 'loading'
+  ) {
+    return null
+  }
 
   if (lookup.status === 'missing') {
     return (
@@ -40,6 +49,7 @@ export default function HistoricalRegressionNotice({
       </Alert>
     )
   }
+  if (!validation) return null
   if (!validation.valid) {
     return (
       <Alert severity="warning" sx={{ my: 2 }} data-testid="historical-notice">
@@ -64,6 +74,9 @@ export default function HistoricalRegressionNotice({
   let closedText = 'Open'
   if (validation.scope === 'regression') {
     closedText = formatDateToSeconds(regression.closed.Time)
+  } else if (validation.scope === 'unknown') {
+    closedText =
+      'Not closed overall; closure in a specific view is unknown because this report has no view'
   } else if (validation.scope === 'view') {
     closedText = association?.closed_at?.Valid
       ? `Closed in ${view} on ${formatDateToSeconds(

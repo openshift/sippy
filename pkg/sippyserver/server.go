@@ -1925,7 +1925,12 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
 		fields.Insert("links")
 	}
 	includeArchived := req.URL.Query().Get("include_archived") == "true"
-	triages, err := componentreadiness.ListTriages(s.db, req, includeArchived, s.regressionLinkConfig(req.Context()))
+	// The release lookup only feeds regression links, so skip it when the response omits regressions.
+	var linkConfig *componentreadiness.RegressionLinkConfig
+	if fields.Includes("regressions") {
+		linkConfig = s.regressionLinkConfig(req.Context())
+	}
+	triages, err := componentreadiness.ListTriages(s.db, req, includeArchived, linkConfig)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
