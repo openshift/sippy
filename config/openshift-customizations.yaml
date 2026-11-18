@@ -143,6 +143,12 @@ releases:
       periodic-ci-openshift-online-gcp-hcp-infra-main-e2e-hostedcluster-stg: true
       branch-ci-openshift-online-gcp-hcp-infra-environmentsector-integration-main-e2e-hostedcluster-int: true
       branch-ci-openshift-online-gcp-hcp-infra-environmentsector-stage-main-e2e-hostedcluster-stg: true
+  logging-6.6:
+    synthetic: true
+    regexp:
+      # OpenShift Logging 6.6 e2e suites (cluster-logging and loki operators) from
+      # openshift-eng/openshift-logging-e2e-tests, run against stable OCP payloads.
+      - "^periodic-ci-openshift-eng-openshift-logging-e2e-tests-.*-openshift-logging-6\\.6-.*"
   quay-3.10:
     synthetic: true
     regexp:

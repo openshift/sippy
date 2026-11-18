@@ -82,6 +82,10 @@ var testSuites = []string{
 	"OpenshiftPipelines-lp-interop",
 	"tracing-uiplugin",
 	"TLSSecurityScan",
+
+	// OpenShift Logging (openshift-eng/openshift-logging-e2e-tests), logging-* releases
+	"openshift-logging-e2e-tests/cluster-logging-operator/all",
+	"openshift-logging-e2e-tests/loki-operator/all",
 }
 
 // testSuitePatterns are regular expressions for suite names that should be imported

@@ -514,14 +514,19 @@ export function getTestStatus(stats, flake, fail, success) {
 const JIRA_PROJECTS = {
   OCPBUGS: { key: 'OCPBUGS', pid: '10325' },
   PROJQUAY: { key: 'PROJQUAY', pid: '10217' },
+  LOG: { key: 'LOG', pid: '10248' },
 }
 
 // jiraProjectForRelease returns the Jira project (key and redhat.atlassian.net
 // project id) that bugs for the given release should be filed into. The quay-*
-// synthetic releases file into PROJQUAY instead of the default OCPBUGS.
+// synthetic releases file into PROJQUAY, logging-* into LOG, everything else
+// defaults to OCPBUGS.
 export function jiraProjectForRelease(release) {
   if (typeof release === 'string' && release.startsWith('quay-')) {
     return JIRA_PROJECTS.PROJQUAY
+  }
+  if (typeof release === 'string' && release.startsWith('logging-')) {
+    return JIRA_PROJECTS.LOG
   }
   return JIRA_PROJECTS.OCPBUGS
 }

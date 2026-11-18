@@ -151,3 +151,28 @@ func TestIsSuiteImportablePlaywrightSpec(t *testing.T) {
 		}
 	}
 }
+
+func TestIsSuiteImportableLogging(t *testing.T) {
+	importable := []string{
+		"openshift-logging-e2e-tests/cluster-logging-operator/all",
+		"openshift-logging-e2e-tests/loki-operator/all",
+	}
+	for _, s := range importable {
+		if !IsSuiteImportable(s) {
+			t.Fatalf("expected Logging suite %q to be importable", s)
+		}
+	}
+
+	rejected := []string{
+		"openshift-logging-e2e-tests",
+		"openshift-logging-e2e-tests/",
+		"openshift-logging-e2e-tests/unknown-operator/all",
+		"openshift-logging-e2e-tests/loki-operator/all/extra",
+		"prefix-openshift-logging-e2e-tests/loki-operator/all",
+	}
+	for _, s := range rejected {
+		if IsSuiteImportable(s) {
+			t.Fatalf("expected %q to be rejected", s)
+		}
+	}
+}
