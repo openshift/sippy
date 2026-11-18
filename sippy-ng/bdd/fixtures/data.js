@@ -407,17 +407,25 @@ export function testDetailsReport(options = {}) {
 }
 
 // useHistoricalSample moves an analysis's sample statistics and runs into the
-// historical window, ending with the recorded last failure.
+// historical window, ending with the recorded last failure, and dates its
+// basis statistics with the basis window the historical link requests.
 function useHistoricalSample(analysis) {
-  const inWindow = (stats) => ({
+  const inSample = (stats) => ({
     ...stats,
     Start: HISTORICAL_SAMPLE_START,
     End: HISTORICAL_SAMPLE_END,
   })
-  analysis.sample_stats = inWindow(analysis.sample_stats)
+  const inBasis = (stats) => ({
+    ...stats,
+    Start: HISTORICAL_BASE_START,
+    End: HISTORICAL_BASE_END,
+  })
+  analysis.sample_stats = inSample(analysis.sample_stats)
+  analysis.base_stats = inBasis(analysis.base_stats)
   if (analysis.last_failure) analysis.last_failure = HISTORICAL_LAST_FAILURE
   for (const jobStats of analysis.job_stats) {
-    jobStats.sample_stats = inWindow(jobStats.sample_stats)
+    jobStats.sample_stats = inSample(jobStats.sample_stats)
+    jobStats.base_stats = inBasis(jobStats.base_stats)
     for (const run of jobStats.sample_job_run_stats) {
       run.start_time =
         run.job_run_id === FAILED_RUN_ID

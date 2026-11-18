@@ -2025,10 +2025,13 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 			map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}, start, end)
 		require.Empty(t, errs)
 
-		// Pair each run's timestamp with its outcome so a swapped status cannot pass.
+		// Pair each run's timestamp with its exact counts so a swapped status, or
+		// a flake standing in for the pass, cannot satisfy the assertion.
 		type runOutcome struct {
 			timestamp time.Time
-			failed    bool
+			successes int
+			flakes    int
+			failures  int
 		}
 		var outcomes []runOutcome
 		for _, summaries := range result {
@@ -2036,12 +2039,18 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 				for _, jr := range s.JobRuns {
 					outcomes = append(outcomes, runOutcome{
 						timestamp: jr.StartTime.UTC(),
-						failed:    jr.TotalCount-jr.SuccessCount-jr.FlakeCount > 0,
+						successes: jr.SuccessCount,
+						flakes:    jr.FlakeCount,
+						failures:  jr.TotalCount - jr.SuccessCount - jr.FlakeCount,
 					})
 				}
 			}
 		}
-		assert.ElementsMatch(t, []runOutcome{{start, false}, {lastFailure, true}}, outcomes,
+		expected := []runOutcome{
+			{timestamp: start, successes: 1},
+			{timestamp: lastFailure, failures: 1},
+		}
+		assert.ElementsMatch(t, expected, outcomes,
 			"window must include a pass at its first instant and the last failure, and exclude the following midnight")
 	})
 

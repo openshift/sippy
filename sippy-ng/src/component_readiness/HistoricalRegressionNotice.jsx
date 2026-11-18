@@ -25,11 +25,14 @@ export default function HistoricalRegressionNotice({
   noData,
 }) {
   // idle covers the render before the lookup effect starts, such as when
-  // navigation adds regressionId to an already mounted report.
+  // navigation adds regressionId to an already mounted report. A loaded record
+  // for a different ID is likewise stale until the lookup effect replaces it.
   if (
     !regressionId ||
     lookup.status === 'idle' ||
-    lookup.status === 'loading'
+    lookup.status === 'loading' ||
+    (lookup.status === 'loaded' &&
+      String(lookup.regression?.id) !== String(regressionId))
   ) {
     return null
   }
