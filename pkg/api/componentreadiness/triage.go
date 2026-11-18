@@ -848,7 +848,9 @@ func injectTriageRegressionLinks(triage *models.Triage, linkConfig *RegressionLi
 // An open regression with an active view association links to the view's current report. A closed
 // regression, or an association that closed while the regression stays open elsewhere, links to a
 // historical report anchored to the regression's last failure, because the current report no longer
-// contains the evidence that led to the regression.
+// contains the evidence that led to the regression. The last failure is regression-wide (views do not
+// record their own), so for an association that closed while another view kept the regression open,
+// the window may end after that association's own closure.
 func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, baseAPIURL, baseFrontendURL string) {
 	regression.Links = map[string]string{
 		"self": fmt.Sprintf(regressionLink, baseAPIURL, regression.ID),
@@ -907,9 +909,9 @@ func HistoricalSampleWindow(lastFailure time.Time) (start, end time.Time) {
 	return start, end
 }
 
-// generateHistoricalTestDetailsURL builds a test_details link that reconstructs the query that showed
-// this regression: the sample ends with the last failure and the view's basis is resolved relative to
-// that anchor. Concrete dates are serialized so reopening the link never advances the windows. The
+// generateHistoricalTestDetailsURL builds a test_details link that approximates the query that showed
+// this regression: the sample ends with the regression-wide last failure and the view's basis is
+// resolved relative to that anchor. Concrete dates are serialized so reopening the link never advances the windows. The
 // regressionId parameter lets the UI load authoritative closure metadata for the report.
 func generateHistoricalTestDetailsURL(regression *models.TestRegression, view crview.View, releases []v1.Release, baseURL string) (string, error) {
 	if regression == nil {

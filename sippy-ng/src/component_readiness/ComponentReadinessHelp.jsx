@@ -44,7 +44,9 @@ const faqs = [
     clock icon with a green check. The green check means the tracked regression closed (or closed in that view), not that the period passed.
     The historical sample covers the seven UTC calendar days before the regression's last failure date plus that whole day, and the basis comes
     from the view, evaluated relative to the last failure. The test details page then identifies the closed regression, its closure date, and
-    the windows used. If the data for that period is no longer available, the page says so instead of showing a newer window.`,
+    the windows used. A greyed out clock icon has no link: hover over it for the reason, such as a regression with no recorded last failure
+    or a view that is no longer configured. When a link opens but the data for that period is no longer available, the page says so
+    instead of showing a newer window.`,
   },
   {
     question: 'How much data history does Component Readiness keep?',

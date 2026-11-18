@@ -366,10 +366,6 @@ export function testDetailsReport(options = {}) {
       ],
     },
   ]
-  // A closed regression is no longer tracked, so its report carries no regression.
-  if (options.untracked) {
-    delete analyses[0].regression
-  }
   if (options.historical) {
     analyses.push({
       status: 0,
@@ -379,6 +375,13 @@ export function testDetailsReport(options = {}) {
       base_stats: releaseStats(BASE_RELEASE, 0, 120),
       job_stats: [],
     })
+  }
+  // A closed regression is no longer tracked, so its report carries no
+  // regression, and its sample comes from the historical window the link
+  // requests rather than the current October data.
+  if (options.untracked) {
+    delete analyses[0].regression
+    analyses.forEach(useHistoricalSample)
   }
   const report = {
     component: COMPONENT,
@@ -401,6 +404,27 @@ export function testDetailsReport(options = {}) {
     }
   }
   return report
+}
+
+// useHistoricalSample moves an analysis's sample statistics and runs into the
+// historical window, ending with the recorded last failure.
+function useHistoricalSample(analysis) {
+  const inWindow = (stats) => ({
+    ...stats,
+    Start: HISTORICAL_SAMPLE_START,
+    End: HISTORICAL_SAMPLE_END,
+  })
+  analysis.sample_stats = inWindow(analysis.sample_stats)
+  if (analysis.last_failure) analysis.last_failure = HISTORICAL_LAST_FAILURE
+  for (const jobStats of analysis.job_stats) {
+    jobStats.sample_stats = inWindow(jobStats.sample_stats)
+    for (const run of jobStats.sample_job_run_stats) {
+      run.start_time =
+        run.job_run_id === FAILED_RUN_ID
+          ? HISTORICAL_LAST_FAILURE
+          : HISTORICAL_PASSED_RUN
+    }
+  }
 }
 
 export function cancelledReport() {
@@ -781,6 +805,7 @@ export const HISTORICAL_BASE_END = '2026-06-09T23:59:59Z'
 export const HISTORICAL_LAST_FAILURE = '2026-09-29T01:33:26Z'
 export const HISTORICAL_CLOSED_AT = '2026-10-02T08:00:00Z'
 export const HISTORICAL_RANGE = 'September 22–29, 2026'
+const HISTORICAL_PASSED_RUN = '2026-09-24T00:00:00Z'
 const historicalVariants = ['Architecture:amd64', 'Platform:aws']
 
 // The historical test_details link the API builds for a closed regression.

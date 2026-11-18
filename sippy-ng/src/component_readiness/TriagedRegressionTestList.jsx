@@ -48,15 +48,17 @@ function HistoricalIcon() {
 }
 
 // HistoricalStatusCell links a closed regression to its historical report, or
-// explains why no historical report is available.
-function HistoricalStatusCell({ cell }) {
+// explains why no historical report is available. tabIndex is the grid's
+// managed value, so arrow-key navigation focuses the control and inactive
+// cells stay out of the tab sequence.
+function HistoricalStatusCell({ cell, tabIndex }) {
   if (cell.kind === 'unavailable') {
     return (
       <Tooltip title={cell.tooltip}>
         <span
           role="img"
           aria-label={cell.tooltip}
-          tabIndex={0}
+          tabIndex={tabIndex}
           className="historical-unavailable"
         >
           <HistoryToggleOff color="disabled" />
@@ -71,6 +73,7 @@ function HistoricalStatusCell({ cell }) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label={cell.tooltip}
+        tabIndex={tabIndex}
         className="historical-test-details"
         onClick={(e) => e.stopPropagation()}
       >
@@ -82,6 +85,7 @@ function HistoricalStatusCell({ cell }) {
 
 HistoricalStatusCell.propTypes = {
   cell: PropTypes.object.isRequired,
+  tabIndex: PropTypes.number,
 }
 
 export default function TriagedRegressionTestList(props) {
@@ -321,8 +325,10 @@ export default function TriagedRegressionTestList(props) {
       },
     },
     ...(showStatus
-      ? viewNames.map((viewName, index) => {
-          const field = `status_${index}`
+      ? viewNames.map((viewName) => {
+          // Keyed by view name so a saved sort stays on the same view when a
+          // historical column is added or the columns reorder.
+          const field = `status:${viewName}`
           return {
             field,
             headerName: viewName,
@@ -352,7 +358,10 @@ export default function TriagedRegressionTestList(props) {
               if (cell.kind !== 'current') {
                 return (
                   <StatusCell className="status">
-                    <HistoricalStatusCell cell={cell} />
+                    <HistoricalStatusCell
+                      cell={cell}
+                      tabIndex={params.tabIndex}
+                    />
                   </StatusCell>
                 )
               }

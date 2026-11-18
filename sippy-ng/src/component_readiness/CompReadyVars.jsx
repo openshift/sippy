@@ -403,8 +403,9 @@ export const CompReadyVarsProvider = ({ children }) => {
       variantCrossCompare: variantCrossCompare,
       compareVariant: convertVariantItemsToParam(compareVariantsCheckedItems),
       crDataSource: dataSource || undefined,
-      // Keep the historical regression identity; its report context is
-      // re-validated against the regenerated query.
+      // Keep the historical regression identity; its test, release, and
+      // variants are re-validated against the regenerated query. Without a
+      // view, per-view closure cannot be checked and the notice says so.
       regressionId: params.regressionId,
     })
   }
