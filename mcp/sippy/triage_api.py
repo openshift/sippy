@@ -193,8 +193,9 @@ class _RequestDeadline:
     """Shuts a request's socket down once its total deadline passes.
 
     urllib's timeout applies to each socket operation, and a single http.client call can make many
-    of them (reading headers, chunk sizes, or trailers), so a peer trickling bytes could hold a
-    request open indefinitely. Shutting the socket down unblocks any read in progress.
+    of them (a proxy CONNECT response, the TLS handshake, headers, chunk sizes, or trailers), so a
+    peer trickling bytes could hold a request open indefinitely. Shutting the socket down unblocks
+    any read in progress.
     """
 
     def __init__(self, timeout: float, clock: Callable[[], float] = time.monotonic) -> None:
@@ -212,20 +213,30 @@ class _RequestDeadline:
 
     def __exit__(self, *exc_info: object) -> None:
         self._timer.cancel()
+        with self._lock:
+            sockets, self._sockets = self._sockets, []
+            for sock in sockets:
+                sock.close()
 
     def watch(self, sock: socket.socket) -> None:
+        """Bound every later read on sock's connection, including after TLS wraps it.
+
+        TLS wrapping detaches the original socket object and completes the handshake before
+        returning the wrapped one. A duplicate descriptor still refers to the same connection, so
+        shutting it down unblocks the handshake and every read on the wrapped socket.
+        """
+        watched = sock.dup()
         with self._lock:
-            self._sockets.append(sock)
-            if not self.expired:
-                return
-        _shutdown(sock)
+            self._sockets.append(watched)
+            if self.expired:
+                _shutdown(watched)
 
     def _expire(self) -> None:
+        # Shutting down under the lock keeps __exit__ from closing a descriptor mid-shutdown.
         with self._lock:
             self.expired = True
-            sockets = list(self._sockets)
-        for sock in sockets:
-            _shutdown(sock)
+            for sock in self._sockets:
+                _shutdown(sock)
 
 
 # The deadline of the request being sent on this thread; connections register their sockets with it.
@@ -233,11 +244,28 @@ _active_deadline: contextvars.ContextVar[_RequestDeadline | None] = contextvars.
 
 
 class _DeadlineConnectionMixin:
-    def connect(self) -> None:
-        super().connect()  # type: ignore[misc]
-        deadline = _active_deadline.get()
-        if deadline is not None:
-            deadline.watch(self.sock)  # type: ignore[attr-defined]
+    """Registers each new TCP socket with the active deadline before anything is read from it.
+
+    connect() reads an inherited proxy's CONNECT response and completes the TLS handshake before it
+    returns, so registering afterwards would leave both unbounded.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        create_connection = self._create_connection
+
+        def create_watched_connection(*conn_args: Any, **conn_kwargs: Any) -> socket.socket:
+            sock = create_connection(*conn_args, **conn_kwargs)
+            deadline = _active_deadline.get()
+            if deadline is not None:
+                try:
+                    deadline.watch(sock)
+                except OSError:
+                    sock.close()
+                    raise
+            return sock
+
+        self._create_connection = create_watched_connection
 
 
 class _DeadlineHTTPConnection(_DeadlineConnectionMixin, http.client.HTTPConnection):

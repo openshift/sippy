@@ -7,6 +7,7 @@ import ast
 import asyncio
 import http.server
 import json
+import socket
 import threading
 import time
 import urllib.request
@@ -402,6 +403,63 @@ def test_urllib_transport_enforces_total_deadline_on_trickled_chunked_trailer(lo
         urllib_transport("POST", f"{local_http}/trickle-trailer", {"Content-Type": "application/json"}, b"{}", 0.5)
     assert time.monotonic() - started < 1.5
     assert [s["path"] for s in _Recorder.seen] == ["/trickle-trailer"], "a timed-out mutation must not be replayed"
+
+
+@pytest.fixture
+def trickling_peer():
+    """Starts a TCP peer that, after reading the client's first message, sends bytes one at a time.
+
+    Each byte arrives well within the per-read timeout, so only a total deadline can stop the client.
+    Yields a function that takes the bytes to trickle and returns the peer's port.
+    """
+    servers: list[socket.socket] = []
+
+    def serve(payload: bytes) -> int:
+        server = socket.create_server(("127.0.0.1", 0))
+        servers.append(server)
+
+        def run() -> None:
+            try:
+                conn, _ = server.accept()
+            except OSError:
+                return  # the fixture closed the listener
+            with conn:
+                try:
+                    conn.recv(65536)
+                    for byte in payload:
+                        conn.sendall(bytes([byte]))
+                        time.sleep(0.1)
+                except OSError:
+                    pass  # the client gave up, which is what the test expects
+
+        threading.Thread(target=run, daemon=True).start()
+        return server.getsockname()[1]
+
+    yield serve
+    for server in servers:
+        server.close()
+
+
+def test_urllib_transport_enforces_total_deadline_on_trickled_proxy_connect(trickling_peer, monkeypatch):
+    port = trickling_peer(b"HTTP/1.1 200 Connection established\r\nX-Padding: " + b"x" * 20 + b"\r\n\r\n")
+    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda host: False)
+    proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"https": f"http://127.0.0.1:{port}"}), *triage_api._HANDLERS)
+    monkeypatch.setattr(triage_api, "_OPENER", proxied)
+    started = time.monotonic()
+    with pytest.raises(TransportError, match="TimeoutError"):
+        urllib_transport("GET", "https://sippy.example.invalid/api", {}, None, 0.5)
+    assert time.monotonic() - started < 1.5
+
+
+def test_urllib_transport_enforces_total_deadline_on_trickled_tls_handshake(trickling_peer):
+    # Guards that registering the pre-TLS socket keeps a direct handshake bounded and reported as a
+    # timeout. The peer sends a handshake record and ServerHello header announcing a long message,
+    # which then never completes in time.
+    port = trickling_peer(b"\x16\x03\x03\x40\x00" + b"\x02\x00\x3f\xfc" + b"\x03\x03" + b"\x00" * 30)
+    started = time.monotonic()
+    with pytest.raises(TransportError, match="TimeoutError"):
+        urllib_transport("GET", f"https://127.0.0.1:{port}/api", {}, None, 0.5)
+    assert time.monotonic() - started < 1.5
 
 
 def test_loopback_requests_bypass_inherited_proxy(local_http, monkeypatch):
