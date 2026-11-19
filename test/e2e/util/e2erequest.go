@@ -119,3 +119,39 @@ func SippyPut(path string, bodyData, responseData interface{}) error {
 func SippyDelete(path string) error {
 	return sippyMutatingRequest(http.MethodDelete, path, nil, nil)
 }
+
+const (
+	// TrustedDelegator and SecondTrustedDelegator are the principals scripts/e2e.sh passes to
+	// --trusted-delegator. These values must be kept in sync.
+	TrustedDelegator       = "system:serviceaccount:sippy-e2e:sippy-mcp"
+	SecondTrustedDelegator = "sippy-e2e-second-delegator"
+)
+
+// SippyRequestWithHeaders sends a request with exactly the supplied identity headers (no default
+// X-Forwarded-User), returning the status code and body so tests can assert on rejections.
+func SippyRequestWithHeaders(method, path string, headers map[string]string, bodyData interface{}) (int, []byte, error) {
+	var bodyReader io.Reader
+	if bodyData != nil {
+		bodyBytes, err := json.Marshal(bodyData)
+		if err != nil {
+			return 0, nil, err
+		}
+		bodyReader = strings.NewReader(string(bodyBytes))
+	}
+	req, err := http.NewRequest(method, BuildE2EURL(path), bodyReader)
+	if err != nil {
+		return 0, nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	for name, value := range headers {
+		req.Header.Set(name, value)
+	}
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from test helper's hardcoded localhost base URL
+	if err != nil {
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	return resp.StatusCode, body, err
+}

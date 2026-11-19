@@ -43,7 +43,7 @@ else
 endif
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; npm test -- --coverage
 	cd mcp && ./run.sh --sippy-dev-setup-only && \
-		.venv/bin/pytest test_server.py test_run.py -v $(if $(ARTIFACT_DIR),--junitxml=$(ARTIFACT_DIR)/mcp-junit.xml)
+		.venv/bin/pytest test_server.py test_run.py production/ -v $(if $(ARTIFACT_DIR),--junitxml=$(ARTIFACT_DIR)/mcp-junit.xml)
 
 .PHONY: test-bdd
 # Playwright's worker sets FORCE_COLOR, so drop NO_COLOR or Node warns.
@@ -112,6 +112,12 @@ endif
 
 images:
 	$(DOCKER) build .
+
+# Production MCP server image (triage management); see mcp/production/README.md.
+.PHONY: mcp-production-image
+MCP_PRODUCTION_IMAGE ?= sippy-mcp-production:latest
+mcp-production-image:
+	$(DOCKER) build -f mcp/production/Dockerfile -t $(MCP_PRODUCTION_IMAGE) mcp/production
 
 update-variants: sippy
 	./sippy variants snapshot --config ./config/openshift.yaml --views ./config/views.yaml

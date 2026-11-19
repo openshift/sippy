@@ -235,8 +235,10 @@ sippy load \
 
 In production, the oauth proxy sets the `X-Forwarded-User` header, and user-attributed write
 endpoints (triage create/update/delete audit logs, regression force close, symptom edits) record
-that user. The server itself only rejects requests without the header on a few endpoints (regression
-force close and Jira bug filing); the other write paths rely on the oauth proxy to set it. Local
+that user. The server rejects requests without a user on triage create/update/delete, regression
+force close, and Jira bug filing; the other write paths rely on the oauth proxy to set it. Principals
+configured with `--trusted-delegator` act for the user named in `X-Acting-For` (see
+`config/README.md`); the mock user never delegates. Local
 development and the `agentic-staging` environment have no oauth proxy, so `sippy serve` can
 attribute those requests to a mock user instead.
 
@@ -254,7 +256,7 @@ attribute those requests to a mock user instead.
 * **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
   the header is missing.
 * **Production:** production leaves `DEV_MODE` unset, so endpoints that check for a user still
-  reject requests without one (for example, force close returns `401 Unauthorized`).
+  reject requests without one (for example, triage writes and force close return `401 Unauthorized`).
 * **Isolation:** with the mock active, any client that can reach the server can perform
   user-attributed writes as `developer`. Only enable it on deployments that are not reachable from
   untrusted networks and that do not use production data.

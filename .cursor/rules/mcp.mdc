@@ -1,8 +1,10 @@
 ---
-description: MCP server (sippy-dev) for AI-callable dev tasks
+description: 'MCP servers: sippy-dev (dev tasks) and sippy-production (triage management)'
 globs: mcp/**
 ---
 
 Shared MCP server for AI-callable dev tasks (migrate, serve, restore prod-like DB, lint, test, e2e). Configuration, tool list, logs, and extension notes: **[README.md](../../mcp/README.md)**.
 
 When adding or modifying MCP tools, follow existing patterns in `server.py` (subprocess, `_repo_path`, `_ensure_dev_log_dir`, credentials helpers). Restart the MCP server after changes.
+
+`mcp/production/` is a separate production server (`sippy-production`) for triage management; see **[production/README.md](../../mcp/production/README.md)**. Keep it independent of the dev server: never import `server.py`, `testenv.py`, or dotenv there, and never add development-workflow tools to it. Every production tool requires `acting_for`, sent as `X-Acting-For`; it must come from the consumer's authenticated context. Credentials come only from runtime configuration (never defaults or image content), missing configuration fails closed, and mutations are verified by readback and never retried automatically. Production tests run from `make test` (`production/`) and `make e2e` (integration).
