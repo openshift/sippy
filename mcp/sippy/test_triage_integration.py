@@ -18,6 +18,7 @@ import os
 import threading
 import urllib.parse
 import uuid
+from datetime import datetime
 
 import pytest
 
@@ -112,23 +113,29 @@ def _audit(triage_id: int) -> list[dict]:
     return _sippy_json(f"{TRIAGES_PATH}/{triage_id}/audit") or []
 
 
+def _instant(value: str | None) -> datetime | None:
+    """Parse an RFC 3339 timestamp so instants compare equal regardless of offset formatting."""
+    return datetime.fromisoformat(value) if value else None
+
+
 def _triage_urls() -> set[str]:
     response = _sippy("GET", f"{TRIAGES_PATH}?include_archived=true")
     assert response.status == 200
     return {t["url"] for t in json.loads(response.body) or []}
 
 
-def test_lifecycle_with_readback_and_audit_attribution(service, unique_url, regression_ids):
+def test_lifecycle_with_audit_attribution(service, unique_url, regression_ids):
     assert len(regression_ids) >= 2, "the isolated instance must have at least two seeded regressions"
     first, second = regression_ids[0], regression_ids[1]
 
     created = service.create_triage("alice@example.com", unique_url, "product", description="initial", regression_ids=[first])
-    assert created.get("verified") is True, created
+    assert "error" not in created, created
+    assert (created["triage"]["description"], created["triage"]["regression_ids"]) == ("initial", [first])
     tid = created["triage"]["id"]
 
     try:
         updated = service.update_triage("alice@example.com", tid, description="changed")
-        assert updated.get("verified") is True, updated
+        assert "error" not in updated, updated
         triage = updated["triage"]
         assert (triage["url"], triage["type"], triage["regression_ids"]) == (unique_url, "product", [first])
 
@@ -140,7 +147,7 @@ def test_lifecycle_with_readback_and_audit_attribution(service, unique_url, regr
         assert resolved["triage"]["resolved"] is not None and resolved["triage"]["resolution_reason"] == "user"
         # A later edit that leaves the resolution alone must not disturb it.
         kept = service.update_triage("bob@example.com", tid, type="test")
-        assert kept["triage"]["resolved"] == resolved["triage"]["resolved"], kept
+        assert _instant(kept["triage"]["resolved"]) == _instant(resolved["triage"]["resolved"]), kept
         assert kept["triage"]["regression_ids"] == [second]
         cleared = service.update_triage("bob@example.com", tid, clear_resolved=True)
         assert cleared["triage"]["resolved"] is None
@@ -149,7 +156,7 @@ def test_lifecycle_with_readback_and_audit_attribution(service, unique_url, regr
         assert [t["id"] for t in listed["triages"]] == [tid]
     finally:
         deleted = service.delete_triage("carol@example.com", tid)
-    assert deleted.get("verified") is True, deleted
+    assert deleted.get("deleted") is True, deleted
     assert service.get_triage(tid)["error"]["code"] == "not_found"
 
     users_by_operation = [(a["operation"], a["user"]) for a in reversed(_audit(tid))]

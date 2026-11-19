@@ -110,10 +110,11 @@ def register_triage_tools(server: FastMCP, service: TriageService) -> None:
         description: str | None = None,
         regression_ids: list[int] | None = None,
     ) -> dict:
-        """Create a triage (POST /api/component_readiness/triages) and verify it by reading it back.
+        """Create a triage (POST /api/component_readiness/triages).
 
         url is required (typically a Jira issue). type is ci-infra, product-infra, product, or test.
-        regression_ids links existing regressions (omit for none). Returns {"triage": ..., "verified": true}.
+        regression_ids links existing regressions (omit for none). Returns {"triage": ...} with the
+        record Sippy persisted.
         """
         return service.create_triage(acting_for, url, type, description=description, regression_ids=regression_ids)
 
@@ -133,17 +134,14 @@ def register_triage_tools(server: FastMCP, service: TriageService) -> None:
         """Partially update a triage; omitted (or null) fields and regression links are preserved.
 
         Reads the full record, applies only the supplied changes, replaces it with
-        PUT /api/component_readiness/triages/{id}, then verifies by reading it back.
-        description="" clears the description. resolved is an RFC 3339 timestamp that marks the
+        PUT /api/component_readiness/triages/{id}, and returns the record Sippy persisted with
+        changed_fields. description="" clears the description. resolved is an RFC 3339 timestamp that marks the
         triage resolved; clear_resolved=true unresolves it (not both). add_regression_ids links
         regressions that are not yet linked; remove_regression_ids unlinks currently linked ones.
         Empty lists, overlapping ids, and requests with no changes are rejected.
 
-        verified=true confirms only that the fields you changed have the requested values after the
-        write. It does not confirm that omitted fields are unchanged: the PUT replaces the whole
-        record from the earlier read (last writer wins), so a concurrent change between the read and
-        the write is overwritten. warnings reports omitted fields that differ from that read, but an
-        overwrite that restores the read value cannot be detected.
+        The PUT replaces the whole record from the earlier read (last writer wins), so a concurrent
+        change made between the read and the write is overwritten.
         """
         return service.update_triage(
             acting_for,
@@ -162,8 +160,8 @@ def register_triage_tools(server: FastMCP, service: TriageService) -> None:
     def delete_triage(acting_for: str, triage_id: int) -> dict:
         """Permanently delete a triage (DELETE /api/component_readiness/triages/{id}).
 
-        Verifies removal by confirming a subsequent read returns not found. Returns the deleted
-        record's summary. Prefer resolving a triage (update_triage with resolved) over deleting it.
+        Returns {"deleted": true, "triage_id": ...}, or not_found when the triage does not exist.
+        Prefer resolving a triage (update_triage with resolved) over deleting it.
         """
         return service.delete_triage(acting_for, triage_id)
 

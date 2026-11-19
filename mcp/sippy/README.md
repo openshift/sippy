@@ -9,7 +9,7 @@ REST API. It is separate from the **`sippy-dev`** development-workflow server in
 | File | Purpose |
 | --- | --- |
 | `sippy_mcp_server.py` | Entry point, tool registration, runtime (transport) settings |
-| `triage_api.py` | Configuration, HTTP client, triage operations, readback verification |
+| `triage_api.py` | Configuration, HTTP client, triage operations |
 | `Dockerfile` | Multi-stage image (runtime dependencies and the two modules above only, no build tools) |
 | `requirements.txt`, `requirements.lock` | Runtime dependency and hashed lockfile |
 | `test_*.py` | Unit, registration, transport, and integration tests |
@@ -22,7 +22,7 @@ The server follows the ship-status trusted-delegation pattern.
    it. It holds a service-account bearer token (`SIPPY_MCP_AUTH_TOKEN_FILE`) for the Sippy API.
 2. Every tool call sends `Authorization: Bearer <token>` to `SIPPY_MCP_API_URL`, which must be
    Sippy's **authenticated** route. Mutating tools also send `X-Acting-For: <acting_for>`, including
-   on the reads they make before and after the write. The proxy in front of Sippy authenticates the
+   on the read `update_triage` makes before its write. The proxy in front of Sippy authenticates the
    token and sets `X-Forwarded-User` to the service account's principal.
 3. Sippy compares the complete `X-Forwarded-User` value with its `--trusted-delegator` allowlist
    (exact match, no wildcards). For an allowlisted principal, Sippy uses a non-blank `X-Acting-For`
@@ -66,9 +66,9 @@ with status 2 before it serves anything.
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `SIPPY_MCP_API_URL` | yes | none | Base URL of the authenticated Sippy API, for example `https://sippy-auth.example.com`. HTTPS is required except for loopback hosts. Credentials, invalid ports, and query or fragment delimiters (even empty ones) are rejected. Loopback requests never use an inherited HTTP proxy. |
+| `SIPPY_MCP_API_URL` | yes | none | Base URL of the authenticated Sippy API, for example `https://sippy-auth.example.com`. HTTPS is required except for loopback hosts. Credentials, invalid ports, whitespace or control characters anywhere in the value (after trimming the ends), and query or fragment delimiters (even empty ones) are rejected. Loopback requests never use an inherited HTTP proxy. |
 | `SIPPY_MCP_AUTH_TOKEN_FILE` | yes | none | Path to the service-account bearer token. Read on every request so rotated tokens apply. Must be readable at startup and contain a single bearer token (a trailing newline is fine). |
-| `SIPPY_MCP_REQUEST_TIMEOUT` | no | `30` | Seconds per Sippy request (greater than 0, at most 300). |
+| `SIPPY_MCP_REQUEST_TIMEOUT` | no | `30` | Seconds per Sippy request (greater than 0, at most 300). It bounds each socket operation and the total time spent reading the response body, so a slowly trickled body fails instead of holding the call open. |
 | `SIPPY_MCP_TRANSPORT` | no | `stdio` | `stdio` or `streamable-http`. The image sets `streamable-http`. |
 | `SIPPY_MCP_HTTP_HOST` | no | `127.0.0.1` | Listen address for `streamable-http`. Loopback keeps it reachable only by a same-pod proxy. |
 | `SIPPY_MCP_HTTP_PORT` | no | `8090` | Listen port for `streamable-http`. The MCP endpoint is `/mcp`; `/healthz` returns `{"status": "ok"}`. |
@@ -76,7 +76,8 @@ with status 2 before it serves anything.
 
 Tokens are never logged or returned. Upstream error bodies are reduced to Sippy's JSON `message`
 (truncated to 500 characters); other bodies, such as HTML from a proxy, are replaced by the status.
-Redirects are not followed, so the token is never resent to another location.
+Redirects are not followed, so the token is never resent to another location. A response body
+larger than 32 MiB is rejected as a transport failure.
 
 ## Tools
 
@@ -89,13 +90,15 @@ an explicit `null` both mean "not supplied".
 | --- | --- | --- | --- |
 | `list_triages` | `GET /api/component_readiness/triages` | optional `view`, `include_archived` (bool, default false), `type`, `status` (`open` or `resolved`), `url_contains` (case-insensitive), `regression_id`, `limit` (1 to 200, default 50) | `triages` (newest first, summaries with `regression_ids`), `count`, `total_matches`, `truncated`. No matches gives an empty list. |
 | `get_triage` | `GET /api/component_readiness/triages/{id}` | `triage_id` | `triage` including `regressions` summaries |
-| `create_triage` | `POST /api/component_readiness/triages`, then `GET .../{id}` | `acting_for`, `url` (absolute http(s), typically Jira), `type`; optional `description`, `regression_ids` (non-empty, unique) | `triage`, `verified: true` |
-| `update_triage` | `GET .../{id}`, `PUT .../{id}`, `GET .../{id}` | `acting_for`, `triage_id`; optional `url`, `description`, `type`, `resolved` (RFC 3339 with timezone), `clear_resolved` (bool), `add_regression_ids`, `remove_regression_ids` | `triage`, `verified: true`, `changed_fields`, optional `warnings` |
-| `delete_triage` | `GET .../{id}`, `DELETE .../{id}`, `GET .../{id}` (expects 404) | `acting_for`, `triage_id` | `deleted: true`, `verified: true`, `triage_id`, `deleted_triage` |
+| `create_triage` | `POST /api/component_readiness/triages` | `acting_for`, `url` (absolute http(s), typically Jira), `type`; optional `description`, `regression_ids` (non-empty, unique) | `triage` (as persisted by Sippy) |
+| `update_triage` | `GET .../{id}`, `PUT .../{id}` | `acting_for`, `triage_id`; optional `url`, `description`, `type`, `resolved` (RFC 3339 with timezone), `clear_resolved` (bool), `add_regression_ids`, `remove_regression_ids` | `triage` (as persisted by Sippy), `changed_fields` |
+| `delete_triage` | `DELETE .../{id}` | `acting_for`, `triage_id` | `deleted: true`, `triage_id` |
 
 `view` and `include_archived` are applied by Sippy (see
 [pkg/api/README.md](../../pkg/api/README.md#component-readiness-triages)); the other list filters
-are applied to Sippy's response. Triage `type` is one of `ci-infra`, `product-infra`, `product`,
+are applied to Sippy's response. Sippy's list endpoint has no paging, so `list_triages` always
+fetches the full listing for the view (subject to the 32 MiB response limit) before filtering and
+applying `limit`. Triage `type` is one of `ci-infra`, `product-infra`, `product`,
 `test`. Record identifiers are Sippy's numeric triage and regression IDs.
 
 A triage summary contains `id`, `url`, `description`, `type`, `resolved` (RFC 3339 or null),
@@ -119,19 +122,13 @@ the supplied changes, and sends the full replacement:
   IDs, an ID in both lists, and requests with no changes are rejected.
 
 Concurrency: Sippy has no version or precondition check, so the read and the write are not atomic.
-A change another writer makes between them can be overwritten (last writer wins). After writing,
-the tool compares the fields you did not change with the record it read first and adds a
-`warnings` entry when they differ.
+A change another writer makes between them is overwritten (last writer wins).
 
-`verified: true` therefore confirms only that the fields you changed have the requested values. It
-does not confirm that omitted fields are unchanged: the replacement restores the values from the
-first read, so a concurrent change that the `PUT` overwrites leaves no difference for the drift
-check to report.
+### Results and error codes
 
-### Verification and error codes
-
-Create and update read the record back and compare the requested values. Delete confirms that a
-subsequent read returns not found. Mutations are never retried.
+Create and update return the record from Sippy's `POST` or `PUT` response, which is what Sippy
+persisted, so no extra read is made. A successful `DELETE` confirms removal. Mutations are never
+retried.
 
 | Code | Meaning |
 | --- | --- |
@@ -140,11 +137,9 @@ subsequent read returns not found. Mutations are never retried.
 | `unauthenticated`, `forbidden` | Sippy or its proxy rejected the credentials (`401`, `403`, or a redirect). |
 | `unsupported` | Sippy lacks the capability, for example write endpoints are disabled (`501`). |
 | `configuration_error` | The token file is missing, unreadable, or malformed. No request was sent. |
-| `upstream_error` | Unexpected Sippy failure. For a mutation, the message says the outcome may be unknown. |
+| `upstream_error` | Unexpected Sippy failure. For a mutation, the message says the outcome may be unknown. An update that Sippy accepted but answered with an unexpected body also reports this; read the triage to see its state. |
 | `upstream_unavailable` | A read received no response. |
-| `outcome_unknown` | A mutation received no response. Read the triage before trying again. |
-| `verification_failed` | The mutation succeeded but the persisted state differs (`mismatches` lists fields). |
-| `verification_unavailable` | The mutation succeeded but the readback failed, including when the token became unreadable after the write. `triage_id` names the record. |
+| `outcome_unknown` | A mutation received no complete response, or a create succeeded without returning a triage ID. Read the triage before trying again. |
 
 ## Running
 
