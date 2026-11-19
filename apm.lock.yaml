@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-11-21T11:09:18.066518+00:00'
+generated_at: '2026-11-21T11:09:31.958262+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -173,7 +173,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:4bae6fe0c9512a726b700e9205a37f2b51f7ea1bd5b34d7cbf9bc0a23a09275d
+  content_hash: sha256:9e557d39de192e70bf26012138aa9a53807fb0ccf6c680b4d959e4c99258276b
 - kind: project-relative
   target: claude
   value: .claude/rules/query.md
@@ -758,7 +758,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:b534ff3e85eaaf5f286b206272c2608bb8fb887ca08c8c6ddd090f75389e1e3c
+  content_hash: sha256:610561e4a7dce57388c7d0fdb3a2725ee184c9420a78b65684a2b7b0f2714e3c
 - kind: project-relative
   target: cursor
   value: .cursor/rules/query.mdc
@@ -1319,7 +1319,7 @@ local_deployed_file_hashes:
   .claude/rules/docs.md: sha256:0025ced9676e2ddc19c1b32e2ff5724fbbfee9e20d1f0976ed5a59ccdbf8285b
   .claude/rules/frontend.md: sha256:28db16aa2c794b6e075e7fb5eaec5f27063da1624c4fad1121b0fd3faa06ba66
   .claude/rules/general.md: sha256:1ea2e2bd69213c7e4e8d8b63cd1e3a755f172e6d295d97b77a7eb85d88541a15
-  .claude/rules/mcp.md: sha256:4bae6fe0c9512a726b700e9205a37f2b51f7ea1bd5b34d7cbf9bc0a23a09275d
+  .claude/rules/mcp.md: sha256:9e557d39de192e70bf26012138aa9a53807fb0ccf6c680b4d959e4c99258276b
   .claude/rules/query.md: sha256:c3a5d8bec1796972e03a530bc65d857c887ec0c54b867ddfc112a6e1537dcb49
   .claude/rules/testing.md: sha256:a52d77be7c068752692480ae9caaa9e0baa8940e69f1dec571bd601b0b6f2b4d
   .claude/skills/sippy-dev-app/SKILL.md: sha256:7bf32c46480f15e1d30a041c520b537348944e858ef569e12d2085f12c320590
@@ -1351,7 +1351,7 @@ local_deployed_file_hashes:
   .cursor/rules/docs.mdc: sha256:5cfb465cf2b81b824db529b792747fc9e7b66c57ff7d6701b070da016ee85a57
   .cursor/rules/frontend.mdc: sha256:6d92ebb3168603d8783912b6269b5021a5055d3ab60e7a7cbfd828adeef403d0
   .cursor/rules/general.mdc: sha256:f07c2dfa4aa1e40b56c326355dea03512ba807613b02a32f39517dbe9a4d807c
-  .cursor/rules/mcp.mdc: sha256:b534ff3e85eaaf5f286b206272c2608bb8fb887ca08c8c6ddd090f75389e1e3c
+  .cursor/rules/mcp.mdc: sha256:610561e4a7dce57388c7d0fdb3a2725ee184c9420a78b65684a2b7b0f2714e3c
   .cursor/rules/query.mdc: sha256:bbe2675a00781f38bc2455884106ac640b73bb5b2c716e8e3541b806c172e8c2
   .cursor/rules/testing.mdc: sha256:c756787512fc3bc34ac332f5ab81bfcad61807e0eeb97637ddd152a31c865a21
   .gemini/commands/sippy-dev-app.toml: sha256:4a79c99bb6bb43ba638699bcb92640e5d05b489403d9b9c9c7b1bdbdf03e6955

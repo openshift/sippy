@@ -296,6 +296,26 @@ class _Recorder(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
+    def do_POST(self):
+        _Recorder.seen.append({"method": "POST", "path": self.path})
+        self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        if self.path == "/trickle-trailer":
+            # A complete chunked body whose trailer then arrives one byte at a time. http.client reads
+            # the whole trailer inside a single read1 call, so only a total deadline can stop it.
+            self.send_response(201)
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            try:
+                self.wfile.write(b"2\r\n{}\r\n0\r\n")
+                self.wfile.flush()
+                for byte in b"X-Trailer: " + b"x" * 20 + b"\r\n\r\n":
+                    self.wfile.write(bytes([byte]))
+                    self.wfile.flush()
+                    time.sleep(0.1)
+            except OSError:
+                pass  # the client gave up, which is what the test expects
+            self.close_connection = True
+
     def do_GET(self):
         _Recorder.seen.append({"path": self.path, "authorization": self.headers.get("Authorization")})
         if self.path in ("/truncated", "/truncated-error"):
@@ -374,6 +394,14 @@ def test_urllib_transport_enforces_total_deadline_on_trickled_body(local_http):
     with pytest.raises(TransportError, match="TimeoutError"):
         urllib_transport("GET", f"{local_http}/trickle", {}, None, 0.5)
     assert time.monotonic() - started < 1.5
+
+
+def test_urllib_transport_enforces_total_deadline_on_trickled_chunked_trailer(local_http):
+    started = time.monotonic()
+    with pytest.raises(TransportError, match="TimeoutError"):
+        urllib_transport("POST", f"{local_http}/trickle-trailer", {"Content-Type": "application/json"}, b"{}", 0.5)
+    assert time.monotonic() - started < 1.5
+    assert [s["path"] for s in _Recorder.seen] == ["/trickle-trailer"], "a timed-out mutation must not be replayed"
 
 
 def test_loopback_requests_bypass_inherited_proxy(local_http, monkeypatch):

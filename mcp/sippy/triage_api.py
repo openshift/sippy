@@ -8,12 +8,15 @@ rather than this server. Read tools need no delegated user.
 
 from __future__ import annotations
 
+import contextvars
 import http.client
 import ipaddress
 import json
 import logging
 import os
 import re
+import socket
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -177,10 +180,90 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect)
+def _shutdown(sock: socket.socket) -> None:
+    try:
+        # The base-class shutdown, because SSLSocket.shutdown also discards TLS state that the
+        # request thread may be reading through.
+        socket.socket.shutdown(sock, socket.SHUT_RDWR)
+    except OSError:
+        pass  # already closed
+
+
+class _RequestDeadline:
+    """Shuts a request's socket down once its total deadline passes.
+
+    urllib's timeout applies to each socket operation, and a single http.client call can make many
+    of them (reading headers, chunk sizes, or trailers), so a peer trickling bytes could hold a
+    request open indefinitely. Shutting the socket down unblocks any read in progress.
+    """
+
+    def __init__(self, timeout: float, clock: Callable[[], float] = time.monotonic) -> None:
+        # The timer starts after this, so it never fires before the deadline a reader checks.
+        self.at = clock() + timeout
+        self.expired = False
+        self._lock = threading.Lock()
+        self._sockets: list[socket.socket] = []
+        self._timer = threading.Timer(timeout, self._expire)
+        self._timer.daemon = True
+
+    def __enter__(self) -> _RequestDeadline:
+        self._timer.start()
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self._timer.cancel()
+
+    def watch(self, sock: socket.socket) -> None:
+        with self._lock:
+            self._sockets.append(sock)
+            if not self.expired:
+                return
+        _shutdown(sock)
+
+    def _expire(self) -> None:
+        with self._lock:
+            self.expired = True
+            sockets = list(self._sockets)
+        for sock in sockets:
+            _shutdown(sock)
+
+
+# The deadline of the request being sent on this thread; connections register their sockets with it.
+_active_deadline: contextvars.ContextVar[_RequestDeadline | None] = contextvars.ContextVar("_active_deadline", default=None)
+
+
+class _DeadlineConnectionMixin:
+    def connect(self) -> None:
+        super().connect()  # type: ignore[misc]
+        deadline = _active_deadline.get()
+        if deadline is not None:
+            deadline.watch(self.sock)  # type: ignore[attr-defined]
+
+
+class _DeadlineHTTPConnection(_DeadlineConnectionMixin, http.client.HTTPConnection):
+    pass
+
+
+class _DeadlineHTTPSConnection(_DeadlineConnectionMixin, http.client.HTTPSConnection):
+    pass
+
+
+class _DeadlineHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req):  # noqa: D102
+        return self.do_open(_DeadlineHTTPConnection, req)
+
+
+class _DeadlineHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):  # noqa: D102
+        # No context argument, so TLS verification keeps http.client's defaults.
+        return self.do_open(_DeadlineHTTPSConnection, req)
+
+
+_HANDLERS = (_DeadlineHTTPHandler, _DeadlineHTTPSHandler, _NoRedirect)
+_OPENER = urllib.request.build_opener(*_HANDLERS)
 # Plain HTTP is only allowed for loopback, so it must never be sent through an inherited proxy, which
 # would carry the bearer token in cleartext off the host.
-_DIRECT_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect)
+_DIRECT_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), *_HANDLERS)
 
 
 def _opener_for(url: str) -> urllib.request.OpenerDirector:
@@ -190,16 +273,15 @@ def _opener_for(url: str) -> urllib.request.OpenerDirector:
 def read_body(response: Any, deadline: float, clock: Callable[[], float] = time.monotonic) -> bytes:
     """Read a response body before deadline (a clock() value) and within MAX_RESPONSE_BYTES.
 
-    urllib's timeout applies to each socket operation, so a body trickled a byte at a time would
-    never time out. read1 performs at most one socket read, which lets the deadline be checked
-    between reads; a call can overrun it by at most one per-operation timeout.
+    The deadline is checked after every read, so an EOF caused by _RequestDeadline shutting the
+    socket down is reported as a timeout rather than as the end of the body.
     """
     chunks: list[bytes] = []
     size = 0
     while True:
-        if clock() > deadline:
-            raise TimeoutError("request deadline exceeded")
         chunk = response.read1(_READ_CHUNK_BYTES)
+        if clock() >= deadline:
+            raise TimeoutError("request deadline exceeded")
         if not chunk:
             # Unlike read(), read1 reports a body cut short of its Content-Length as a plain EOF,
             # leaving the unread byte count in length.
@@ -214,22 +296,26 @@ def read_body(response: Any, deadline: float, clock: Callable[[], float] = time.
 
 
 def urllib_transport(method: str, url: str, headers: dict[str, str], body: bytes | None, timeout: float) -> HTTPResponse:
-    """Send one request, bounding the body read by a total deadline of timeout seconds."""
-    deadline = time.monotonic() + timeout
+    """Send one request, bounding everything after connect by a total deadline of timeout seconds."""
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
-    # Failures while reading either a success or an error body (for example IncompleteRead or a
-    # timeout) mean no complete response arrived, so they are reported as an unknown outcome.
-    try:
+    with _RequestDeadline(timeout) as deadline:
+        active = _active_deadline.set(deadline)
+        # Failures while reading either a success or an error body (for example IncompleteRead or a
+        # timeout) mean no complete response arrived, so they are reported as an unknown outcome.
         try:
-            with _opener_for(url).open(request, timeout=timeout) as response:
-                return HTTPResponse(response.status, read_body(response, deadline))
-        except urllib.error.HTTPError as e:
             try:
-                return HTTPResponse(e.code, read_body(e, deadline))
-            finally:
-                e.close()
-    except (urllib.error.URLError, http.client.HTTPException, OSError) as e:
-        raise TransportError(type(e).__name__) from None
+                with _opener_for(url).open(request, timeout=timeout) as response:
+                    return HTTPResponse(response.status, read_body(response, deadline.at))
+            except urllib.error.HTTPError as e:
+                try:
+                    return HTTPResponse(e.code, read_body(e, deadline.at))
+                finally:
+                    e.close()
+        except (urllib.error.URLError, http.client.HTTPException, OSError) as e:
+            # A shut-down socket surfaces as whatever error the interrupted read produced.
+            raise TransportError("TimeoutError" if deadline.expired else type(e).__name__) from None
+        finally:
+            _active_deadline.reset(active)
 
 
 class SippyClient:

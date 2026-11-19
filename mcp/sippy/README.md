@@ -68,7 +68,7 @@ with status 2 before it serves anything.
 | --- | --- | --- | --- |
 | `SIPPY_MCP_API_URL` | yes | none | Base URL of the authenticated Sippy API, for example `https://sippy-auth.example.com`. HTTPS is required except for loopback hosts. Credentials, invalid ports, whitespace or control characters anywhere in the value (after trimming the ends), and query or fragment delimiters (even empty ones) are rejected. Loopback requests never use an inherited HTTP proxy. |
 | `SIPPY_MCP_AUTH_TOKEN_FILE` | yes | none | Path to the service-account bearer token. Read on every request so rotated tokens apply. Must be readable at startup and contain a single bearer token (a trailing newline is fine). |
-| `SIPPY_MCP_REQUEST_TIMEOUT` | no | `30` | Seconds per Sippy request (greater than 0, at most 300). It bounds each socket operation and the total time spent reading the response body, so a slowly trickled body fails instead of holding the call open. |
+| `SIPPY_MCP_REQUEST_TIMEOUT` | no | `30` | Seconds per Sippy request (greater than 0, at most 300). It bounds connecting and, once connected, the whole exchange (headers, body, and chunked framing), so a slowly trickled response fails instead of holding the call open. |
 | `SIPPY_MCP_TRANSPORT` | no | `stdio` | `stdio` or `streamable-http`. The image sets `streamable-http`. |
 | `SIPPY_MCP_HTTP_HOST` | no | `127.0.0.1` | Listen address for `streamable-http`. Loopback keeps it reachable only by a same-pod proxy. |
 | `SIPPY_MCP_HTTP_PORT` | no | `8090` | Listen port for `streamable-http`. The MCP endpoint is `/mcp`; `/healthz` returns `{"status": "ok"}`. |
