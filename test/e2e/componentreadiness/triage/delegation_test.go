@@ -88,6 +88,7 @@ func Test_TriageDelegation(t *testing.T) {
 	defer deleteRegression(t, dbc, regression)
 
 	t.Run("each configured delegator attributes create, update, and delete to the delegated user", func(t *testing.T) {
+		util.RequireTrustedDelegators(t)
 		defer cleanupAllTriages(dbc)
 		for _, tc := range []struct{ principal, user string }{
 			{principal: util.TrustedDelegator, user: "alice@example.com"},
@@ -135,6 +136,7 @@ func Test_TriageDelegation(t *testing.T) {
 	})
 
 	t.Run("delegator without a delegated identity cannot create", func(t *testing.T) {
+		util.RequireTrustedDelegators(t)
 		defer cleanupAllTriages(dbc)
 		triagesBefore, auditsBefore := countTriages(t, dbc), countAuditLogs(t, dbc)
 		for _, actingFor := range []string{"", "   "} {
@@ -149,6 +151,7 @@ func Test_TriageDelegation(t *testing.T) {
 	})
 
 	t.Run("delegator without a delegated identity cannot update or delete", func(t *testing.T) {
+		util.RequireTrustedDelegators(t)
 		defer cleanupAllTriages(dbc)
 		created := createTriageAs(t, delegatedHeaders(util.TrustedDelegator, "alice@example.com"), regression)
 		auditsBefore := countAuditLogs(t, dbc)
