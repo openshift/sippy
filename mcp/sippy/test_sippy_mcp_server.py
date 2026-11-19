@@ -8,6 +8,7 @@ import asyncio
 import http.server
 import json
 import threading
+import time
 import urllib.request
 from pathlib import Path
 
@@ -146,7 +147,7 @@ def test_calls_flow_through_mcp_with_delegated_identity(server, fake):
             return created, updated, deleted
 
     created, updated, deleted = asyncio.run(run())
-    assert created.structured_content["verified"] is True
+    assert created.structured_content["triage"]["url"] == "https://redhat.atlassian.net/browse/OCPBUGS-9"
     assert updated.structured_content["triage"]["description"] == "d"
     assert deleted.structured_content["deleted"] is True
     assert {c["headers"]["X-Acting-For"] for c in fake.calls} == {"alice"}
@@ -306,6 +307,20 @@ class _Recorder(http.server.BaseHTTPRequestHandler):
             self.wfile.flush()
             self.close_connection = True
             return
+        if self.path == "/trickle":
+            # Each byte arrives well within the per-read timeout, but the body as a whole does not.
+            self.send_response(200)
+            self.send_header("Content-Length", "20")
+            self.end_headers()
+            try:
+                for _ in range(20):
+                    self.wfile.write(b"x")
+                    self.wfile.flush()
+                    time.sleep(0.1)
+            except OSError:
+                pass  # the client gave up, which is what the test expects
+            self.close_connection = True
+            return
         if self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "/login")
@@ -352,6 +367,13 @@ def test_urllib_transport_connection_failure():
 def test_urllib_transport_incomplete_response_is_transport_error(local_http, path):
     with pytest.raises(TransportError, match="IncompleteRead"):
         urllib_transport("GET", f"{local_http}{path}", {}, None, 5)
+
+
+def test_urllib_transport_enforces_total_deadline_on_trickled_body(local_http):
+    started = time.monotonic()
+    with pytest.raises(TransportError, match="TimeoutError"):
+        urllib_transport("GET", f"{local_http}/trickle", {}, None, 0.5)
+    assert time.monotonic() - started < 1.5
 
 
 def test_loopback_requests_bypass_inherited_proxy(local_http, monkeypatch):

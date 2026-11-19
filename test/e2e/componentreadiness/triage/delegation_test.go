@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	triagesPath       = "/api/component_readiness/triages"
-	delegationTestURL = "https://redhat.atlassian.net/browse/MYBUGS-3105"
+	triagesPath       string = "/api/component_readiness/triages"
+	delegationTestURL string = "https://redhat.atlassian.net/browse/MYBUGS-3105"
 )
 
 func delegatedHeaders(principal, actingFor string) map[string]string {

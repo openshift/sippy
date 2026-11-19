@@ -1,9 +1,9 @@
 """Sippy triage REST client and domain operations for the Sippy MCP server.
 
 Every request goes to the authenticated Sippy API with the server's service-account bearer token.
-Mutations also send the delegated user in X-Acting-For. Sippy resolves that header only for configured
-trusted delegators, so authorization and triage audit records name the requesting user rather than
-this server. Reads need no delegated user.
+Mutating tools also send the delegated user in X-Acting-For. Sippy resolves that header only for
+configured trusted delegators, so authorization and triage audit records name the requesting user
+rather than this server. Read tools need no delegated user.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -39,11 +40,17 @@ MAX_LIST_LIMIT = 200
 MAX_ACTING_FOR_CHARS = 256
 MAX_ERROR_MESSAGE_CHARS = 500
 MAX_ID = 2**63 - 1
+# Bounds memory for a single response. The triage list endpoint is unpaginated, so this is sized well
+# above a realistic full listing while still stopping a runaway body.
+MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+_READ_CHUNK_BYTES = 64 * 1024
 
 # Go's zero time; Sippy decodes {"Valid": false} with this value as an unresolved triage.
 _UNRESOLVED = {"Time": "0001-01-01T00:00:00Z", "Valid": False}
 # Presentation-only fields a GET returns that must not be echoed into a PUT replacement body.
 _READ_ONLY_FIELDS = ("links", "bug")
+# Scalar fields update_triage can replace directly from tool arguments.
+_EDITABLE_FIELDS = ("url", "description", "type")
 _LOOPBACK_HOSTNAMES = ("localhost",)
 # RFC 6750 b64token, the only form a bearer credential may take in an Authorization header.
 _BEARER_TOKEN = re.compile(r"[A-Za-z0-9\-._~+/]+=*")
@@ -100,6 +107,10 @@ def validate_api_url(raw: str) -> str:
     value = (raw or "").strip()
     if not value:
         raise ConfigurationError(f"{API_URL_ENV} is required; there is no default API endpoint")
+    # urlsplit silently drops tabs and newlines and keeps spaces, so a malformed value would otherwise
+    # be accepted as a different URL than the one configured.
+    if any(ch.isspace() or not ch.isprintable() for ch in value):
+        raise ConfigurationError(f"{API_URL_ENV} must not contain whitespace or control characters")
     # Request paths are appended to this value, so even an empty query or fragment would swallow them.
     if "?" in value or "#" in value:
         raise ConfigurationError(f"{API_URL_ENV} must not contain a query or fragment")
@@ -176,17 +187,45 @@ def _opener_for(url: str) -> urllib.request.OpenerDirector:
     return _DIRECT_OPENER if _is_loopback(urllib.parse.urlsplit(url).hostname or "") else _OPENER
 
 
+def read_body(response: Any, deadline: float, clock: Callable[[], float] = time.monotonic) -> bytes:
+    """Read a response body before deadline (a clock() value) and within MAX_RESPONSE_BYTES.
+
+    urllib's timeout applies to each socket operation, so a body trickled a byte at a time would
+    never time out. read1 performs at most one socket read, which lets the deadline be checked
+    between reads; a call can overrun it by at most one per-operation timeout.
+    """
+    chunks: list[bytes] = []
+    size = 0
+    while True:
+        if clock() > deadline:
+            raise TimeoutError("request deadline exceeded")
+        chunk = response.read1(_READ_CHUNK_BYTES)
+        if not chunk:
+            # Unlike read(), read1 reports a body cut short of its Content-Length as a plain EOF,
+            # leaving the unread byte count in length.
+            remaining = getattr(response, "length", None)
+            if isinstance(remaining, int) and remaining > 0:
+                raise http.client.IncompleteRead(b"".join(chunks), remaining)
+            return b"".join(chunks)
+        size += len(chunk)
+        if size > MAX_RESPONSE_BYTES:
+            raise TransportError(f"response body exceeded {MAX_RESPONSE_BYTES} bytes")
+        chunks.append(chunk)
+
+
 def urllib_transport(method: str, url: str, headers: dict[str, str], body: bytes | None, timeout: float) -> HTTPResponse:
+    """Send one request, bounding the body read by a total deadline of timeout seconds."""
+    deadline = time.monotonic() + timeout
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
     # Failures while reading either a success or an error body (for example IncompleteRead or a
     # timeout) mean no complete response arrived, so they are reported as an unknown outcome.
     try:
         try:
             with _opener_for(url).open(request, timeout=timeout) as response:
-                return HTTPResponse(response.status, response.read())
+                return HTTPResponse(response.status, read_body(response, deadline))
         except urllib.error.HTTPError as e:
             try:
-                return HTTPResponse(e.code, e.read())
+                return HTTPResponse(e.code, read_body(e, deadline))
             finally:
                 e.close()
     except (urllib.error.URLError, http.client.HTTPException, OSError) as e:
@@ -296,15 +335,6 @@ def _parse_time(value: str) -> datetime:
     return parsed
 
 
-def _same_instant(a: str | None, b: str | None) -> bool:
-    if a is None or b is None:
-        return a is b
-    try:
-        return _parse_time(a) == _parse_time(b)
-    except ValueError:
-        return False
-
-
 def _regression_ids(raw: Mapping[str, Any]) -> list[int]:
     return [r["id"] for r in raw.get("regressions") or [] if isinstance(r, dict) and isinstance(r.get("id"), int)]
 
@@ -326,7 +356,9 @@ def summarize_regression(raw: Mapping[str, Any]) -> dict[str, Any]:
 
 def summarize_triage(raw: Mapping[str, Any], *, include_regressions: bool) -> dict[str, Any]:
     """Return a stable, compact triage representation for tool output."""
-    bug = raw.get("bug") if isinstance(raw.get("bug"), dict) else None
+    bug = raw.get("bug")
+    if not isinstance(bug, dict):
+        bug = None
     summary: dict[str, Any] = {
         "id": raw.get("id"),
         "url": raw.get("url"),
@@ -443,9 +475,11 @@ def _tool(fn: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
 
 
 class TriageService:
-    """Triage CRUD over Sippy's existing REST API with readback verification.
+    """Triage CRUD over Sippy's existing REST API.
 
-    Mutations are never retried: when the outcome is unknown the caller is told to read state first.
+    Create and update return the record Sippy persisted, which the POST and PUT responses already
+    contain. Mutations are never retried: when the outcome is unknown the caller is told to read state
+    first.
     """
 
     def __init__(self, client: SippyClient) -> None:
@@ -471,21 +505,6 @@ class TriageService:
         if not isinstance(raw, dict) or raw.get("id") != triage_id:
             raise ToolFailure("upstream_error", "Sippy returned an unexpected triage record", triage_id=triage_id)
         return raw
-
-    def _readback(self, triage_id: int, acting_for: str, operation: str) -> dict[str, Any]:
-        """Read a triage after a successful write. Any failure, including a credential error, is
-        verification_unavailable: configuration_error would wrongly tell the caller nothing was sent."""
-        try:
-            return self._fetch(triage_id, acting_for)
-        except ToolFailure as e:
-            reason = e.message
-        except ConfigurationError as e:
-            reason = str(e)
-        raise ToolFailure(
-            "verification_unavailable",
-            f"The {operation} request succeeded but reading the triage back failed: {reason}",
-            triage_id=triage_id,
-        )
 
     @_tool
     def list_triages(
@@ -518,6 +537,8 @@ class TriageService:
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= MAX_LIST_LIMIT:
             raise _invalid(f"limit must be an integer between 1 and {MAX_LIST_LIMIT}")
 
+        # Sippy's list endpoint has no paging or server-side filters beyond view and include_archived,
+        # so the full listing is fetched (bounded by MAX_RESPONSE_BYTES) and filtered here.
         raw = _decode_json(self._send("GET", TRIAGES_PATH, None, mutation=False, query=query or None))
         if raw is None:
             raw = []
@@ -577,18 +598,7 @@ class TriageService:
         triage_id = created.get("id") if isinstance(created, dict) else None
         if not isinstance(triage_id, int) or triage_id <= 0:
             raise ToolFailure("outcome_unknown", f"Sippy accepted the request but returned no triage id. {_UNKNOWN_OUTCOME_HINT}")
-
-        persisted = self._readback(triage_id, acting_for, "create")
-        mismatches = _mismatches(
-            persisted,
-            url=body["url"],
-            type=body["type"],
-            description=body.get("description", ""),
-            regression_ids=set(ids),
-        )
-        if mismatches:
-            raise ToolFailure("verification_failed", "The created triage does not match the request", triage_id=triage_id, mismatches=mismatches)
-        return {"triage": summarize_triage(persisted, include_regressions=True), "verified": True}
+        return {"triage": summarize_triage(created, include_regressions=True)}
 
     @_tool
     def update_triage(
@@ -638,7 +648,7 @@ class TriageService:
         body = {k: v for k, v in current.items() if k not in _READ_ONLY_FIELDS}
         new_ids = [i for i in current_ids if i not in remove] + add
         body["regressions"] = [{"id": i} for i in new_ids]
-        for field in ("url", "description", "type"):
+        for field in _EDITABLE_FIELDS:
             if field in changes:
                 body[field] = changes[field]
         if "resolved" in changes:
@@ -646,81 +656,28 @@ class TriageService:
         elif clear_resolved:
             body["resolved"] = dict(_UNRESOLVED)
 
-        self._send("PUT", f"{TRIAGES_PATH}/{triage_id}", acting_for, mutation=True, triage_id=triage_id, body=body)
-        persisted = self._readback(triage_id, acting_for, "update")
+        response = self._send("PUT", f"{TRIAGES_PATH}/{triage_id}", acting_for, mutation=True, triage_id=triage_id, body=body)
+        try:
+            updated = _decode_json(response)
+        except ToolFailure:
+            updated = None
+        if not isinstance(updated, dict) or updated.get("id") != triage_id:
+            raise ToolFailure(
+                "upstream_error",
+                "Sippy accepted the update but returned an unexpected triage record; read the triage to see its state",
+                triage_id=triage_id,
+            )
 
-        expected: dict[str, Any] = {k: changes[k] for k in ("url", "description", "type") if k in changes}
-        if "resolved" in changes:
-            expected["resolved"] = changes["resolved"]
-        elif clear_resolved:
-            expected["resolved"] = None
+        changed_fields = [k for k in _EDITABLE_FIELDS if k in changes]
+        if "resolved" in changes or clear_resolved:
+            changed_fields.append("resolved")
         if add or remove:
-            expected["regression_ids"] = set(new_ids)
-        mismatches = _mismatches(persisted, **expected)
-        if mismatches:
-            raise ToolFailure("verification_failed", "The updated triage does not match the request", triage_id=triage_id, mismatches=mismatches)
-
-        # Omitted fields were sent unchanged; a difference now means another writer changed them.
-        preserved: dict[str, Any] = {k: current.get(k) or "" for k in ("url", "description", "type") if k not in expected}
-        if "resolved" not in expected:
-            preserved["resolved"] = _null_time(current.get("resolved"))
-        if "regression_ids" not in expected:
-            preserved["regression_ids"] = set(current_ids)
-        result: dict[str, Any] = {
-            "triage": summarize_triage(persisted, include_regressions=True),
-            "verified": True,
-            "changed_fields": sorted(expected),
-        }
-        drift = _mismatches(persisted, **preserved)
-        if drift:
-            result["warnings"] = [
-                "Fields you did not change differ from the record read before the update, likely due to "
-                "a concurrent update: " + ", ".join(sorted(m["field"] for m in drift))
-            ]
-        return result
+            changed_fields.append("regression_ids")
+        return {"triage": summarize_triage(updated, include_regressions=True), "changed_fields": sorted(changed_fields)}
 
     @_tool
     def delete_triage(self, acting_for: str, triage_id: int) -> dict[str, Any]:
         acting_for = validate_acting_for(acting_for)
         triage_id = validate_id(triage_id, "triage_id")
-        existing = self._fetch(triage_id, acting_for)
         self._send("DELETE", f"{TRIAGES_PATH}/{triage_id}", acting_for, mutation=True, triage_id=triage_id)
-        try:
-            self._fetch(triage_id, acting_for)
-        except ToolFailure as e:
-            if e.code == "not_found":
-                return {
-                    "deleted": True,
-                    "verified": True,
-                    "triage_id": triage_id,
-                    "deleted_triage": summarize_triage(existing, include_regressions=False),
-                }
-            reason = e.message
-        except ConfigurationError as e:
-            reason = str(e)
-        else:
-            raise ToolFailure("verification_failed", f"triage {triage_id} still exists after delete", triage_id=triage_id)
-        raise ToolFailure(
-            "verification_unavailable",
-            f"The delete request succeeded but confirming removal failed: {reason}",
-            triage_id=triage_id,
-        )
-
-
-def _mismatches(persisted: Mapping[str, Any], **expected: Any) -> list[dict[str, Any]]:
-    """Compare persisted state with expected values; regression_ids compares as a set, resolved as an instant."""
-    mismatches = []
-    for field, want in expected.items():
-        if field == "regression_ids":
-            got: Any = set(_regression_ids(persisted))
-            if got != want:
-                mismatches.append({"field": field, "expected": sorted(want), "actual": sorted(got)})
-        elif field == "resolved":
-            got = _null_time(persisted.get("resolved"))
-            if not _same_instant(got, want):
-                mismatches.append({"field": field, "expected": want, "actual": got})
-        else:
-            got = persisted.get(field) or ""
-            if got != want:
-                mismatches.append({"field": field, "expected": want, "actual": got})
-    return mismatches
+        return {"deleted": True, "triage_id": triage_id}

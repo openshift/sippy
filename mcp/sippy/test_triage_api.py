@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import copy
+import http.client
 import json
-import os
 import re
 from collections.abc import Callable
 
@@ -12,6 +12,7 @@ import pytest
 
 from triage_api import (
     API_URL_ENV,
+    MAX_RESPONSE_BYTES,
     TOKEN_FILE_ENV,
     ConfigurationError,
     HTTPResponse,
@@ -19,6 +20,7 @@ from triage_api import (
     SippyClient,
     TransportError,
     TriageService,
+    read_body,
     read_token,
     validate_api_url,
 )
@@ -208,6 +210,13 @@ def _assert_no_secret(result) -> None:
         ({API_URL_ENV: "https://[::1", TOKEN_FILE_ENV: "/t"}, "valid"),
         ({API_URL_ENV: "ftp://sippy.example.com", TOKEN_FILE_ENV: "/t"}, "absolute"),
         ({API_URL_ENV: "sippy.example.com", TOKEN_FILE_ENV: "/t"}, "absolute"),
+        ({API_URL_ENV: "https://sippy example.com", TOKEN_FILE_ENV: "/t"}, "whitespace"),
+        ({API_URL_ENV: "https://sippy\nexample.com", TOKEN_FILE_ENV: "/t"}, "whitespace"),
+        ({API_URL_ENV: "https://sippy.example.com/a b", TOKEN_FILE_ENV: "/t"}, "whitespace"),
+        ({API_URL_ENV: "https://sippy.example.com/a\nb", TOKEN_FILE_ENV: "/t"}, "whitespace"),
+        ({API_URL_ENV: "https://sippy.example.com/a\tb", TOKEN_FILE_ENV: "/t"}, "whitespace"),
+        ({API_URL_ENV: "https://sippy.example.com/a\x00b", TOKEN_FILE_ENV: "/t"}, "control"),
+        ({API_URL_ENV: "https://sippy.example.com/a\x7fb", TOKEN_FILE_ENV: "/t"}, "control"),
         ({API_URL_ENV: API_URL, TOKEN_FILE_ENV: "/t", "SIPPY_MCP_REQUEST_TIMEOUT": "soon"}, "number"),
         ({API_URL_ENV: API_URL, TOKEN_FILE_ENV: "/t", "SIPPY_MCP_REQUEST_TIMEOUT": "0"}, "between"),
     ],
@@ -235,6 +244,56 @@ def test_config_ignores_development_settings():
 )
 def test_validate_api_url_accepts(raw, expected):
     assert validate_api_url(raw) == expected
+
+
+class _ChunkedBody:
+    """A response body whose read1 returns one queued chunk per call, like a single socket read."""
+
+    def __init__(self, chunks: list[bytes]) -> None:
+        self.chunks = list(chunks)
+        self.reads = 0
+
+    def read1(self, size: int) -> bytes:
+        self.reads += 1
+        return self.chunks.pop(0) if self.chunks else b""
+
+
+class _Clock:
+    """A clock that advances by step seconds on every reading."""
+
+    def __init__(self, step: float) -> None:
+        self.now = 0.0
+        self.step = step
+
+    def __call__(self) -> float:
+        self.now += self.step
+        return self.now
+
+
+@pytest.mark.parametrize(
+    "name, chunks, step, deadline, expected",
+    [
+        ("complete body before deadline", [b"ab", b"cd"], 1.0, 10.0, b"abcd"),
+        ("empty body", [], 1.0, 10.0, b""),
+        ("trickled body exceeds deadline", [b"a"] * 20, 1.0, 5.0, TimeoutError),
+        ("body exceeds size bound", [b"x" * MAX_RESPONSE_BYTES, b"y", b"z"], 0.0, 10.0, TransportError),
+    ],
+)
+def test_read_body_enforces_deadline_and_size(name, chunks, step, deadline, expected):
+    body = _ChunkedBody(chunks)
+    if isinstance(expected, bytes):
+        assert read_body(body, deadline, clock=_Clock(step)) == expected
+        return
+    with pytest.raises(expected):
+        read_body(body, deadline, clock=_Clock(step))
+    assert body.chunks, "reading must stop before the whole body is consumed"
+
+
+def test_read_body_reports_body_shorter_than_content_length():
+    body = _ChunkedBody([b'{"id": 1'])
+    body.length = 92  # http.client leaves the unread Content-Length byte count here
+    with pytest.raises(http.client.IncompleteRead):
+        read_body(body, 10.0, clock=_Clock(0.0))
 
 
 def test_read_token_errors_do_not_expose_contents(tmp_path):
@@ -287,7 +346,7 @@ def test_reads_carry_bearer_token_without_delegated_user(service, fake):
 def test_mutations_carry_bearer_token_and_delegated_user(service, fake):
     fake.add_triage(id=5)
     result = service.update_triage("  alice@example.com ", 5, description="d")
-    assert result["verified"] is True
+    assert result["triage"]["description"] == "d"
     for call in fake.calls:
         assert call["headers"]["Authorization"] == f"Bearer {TOKEN}"
         assert call["headers"]["X-Acting-For"] == "alice@example.com"
@@ -404,16 +463,13 @@ def test_get_invalid_id(service, fake, triage_id):
 # --- create -----------------------------------------------------------------------------------
 
 
-def test_create_verifies_by_readback(service, fake):
+def test_create_returns_persisted_record_without_extra_requests(service, fake):
     result = service.create_triage(
         "alice", "https://redhat.atlassian.net/browse/OCPBUGS-9", "product", description="d", regression_ids=[11, 12]
     )
-    assert result["verified"] is True
     assert result["triage"]["regression_ids"] == [11, 12]
-    assert [(c["method"], c["path"]) for c in fake.calls] == [
-        ("POST", "/api/component_readiness/triages"),
-        ("GET", f"/api/component_readiness/triages/{result['triage']['id']}"),
-    ]
+    assert result["triage"]["regressions"][0]["test_name"] == "test name 11"
+    assert [(c["method"], c["path"]) for c in fake.calls] == [("POST", "/api/component_readiness/triages")]
     assert fake.calls[0]["body"] == {
         "url": "https://redhat.atlassian.net/browse/OCPBUGS-9",
         "type": "product",
@@ -448,17 +504,6 @@ def test_create_upstream_validation_error(service, fake):
     assert _error_code(result) == "invalid_input"
     assert "99" in result["error"]["message"]
     assert fake.triages == {}
-
-
-def test_create_verification_failure_is_reported(service, fake):
-    def accept_without_regressions():
-        record = fake.add_triage(url="https://redhat.atlassian.net/browse/OCPBUGS-9", regressions=[])
-        return _json(200, record)
-
-    fake.scripted[("POST", "/api/component_readiness/triages")] = [accept_without_regressions]
-    result = service.create_triage("alice", "https://redhat.atlassian.net/browse/OCPBUGS-9", "product", regression_ids=[11])
-    assert _error_code(result) == "verification_failed"
-    assert {m["field"] for m in result["error"]["mismatches"]} >= {"regression_ids"}
 
 
 @pytest.mark.parametrize(
@@ -498,59 +543,6 @@ def test_create_success_without_id_is_outcome_unknown(service, fake, body):
     assert len(fake.mutations()) == 1
 
 
-def _remove_token(token_file):
-    os.remove(token_file)
-
-
-def _corrupt_token(token_file):
-    with open(token_file, "wb") as f:
-        f.write(b"\xff\xfe")
-
-
-def _break_token_after_first_write(fake, token_file, method, breakage):
-    """Make the token unreadable as soon as the first mutation succeeds, so only the readback fails."""
-    original = fake.__call__
-
-    def transport(m, url, headers, body, timeout):
-        response = original(m, url, headers, body, timeout)
-        if m == method:
-            breakage(token_file)
-        return response
-
-    return transport
-
-
-@pytest.mark.parametrize("breakage", [_remove_token, _corrupt_token], ids=["missing", "invalid-utf8"])
-@pytest.mark.parametrize(
-    "method, call",
-    [
-        ("POST", lambda s: s.create_triage("alice", "https://redhat.atlassian.net/browse/OCPBUGS-9", "product")),
-        ("PUT", lambda s: s.update_triage("alice", 5, description="x")),
-        ("DELETE", lambda s: s.delete_triage("alice", 5)),
-    ],
-)
-def test_readback_credential_failure_is_verification_unavailable(fake, token_file, method, call, breakage):
-    fake.add_triage(id=5)
-    transport = _break_token_after_first_write(fake, token_file, method, breakage)
-    svc = TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file), transport=transport))
-    result = call(svc)
-    assert _error_code(result) == "verification_unavailable", result
-    assert isinstance(result["error"]["triage_id"], int)
-    assert len(fake.mutations()) == 1
-
-
-def test_create_readback_failure(service, fake):
-    def created():
-        record = fake.add_triage(id=321, url="https://redhat.atlassian.net/browse/OCPBUGS-9")
-        return _json(200, record)
-
-    fake.scripted[("POST", "/api/component_readiness/triages")] = [created]
-    fake.scripted[("GET", "/api/component_readiness/triages/321")] = [TransportError("ConnectionResetError")]
-    result = service.create_triage("alice", "https://redhat.atlassian.net/browse/OCPBUGS-9", "product")
-    assert _error_code(result) == "verification_unavailable"
-    assert result["error"]["triage_id"] == 321
-
-
 # --- update -----------------------------------------------------------------------------------
 
 
@@ -562,11 +554,11 @@ def test_update_preserves_omitted_fields_and_regressions(service, fake):
         resolution_reason="jira-progression",
     )
     result = service.update_triage("alice", 5, description="new description")
-    assert result["verified"] is True and result["changed_fields"] == ["description"]
-    assert "warnings" not in result
+    assert result["changed_fields"] == ["description"]
+    assert result["triage"]["regression_ids"] == [11, 12]
 
     put = next(c for c in fake.calls if c["method"] == "PUT")
-    assert [(c["method"]) for c in fake.calls] == ["GET", "PUT", "GET"]
+    assert [(c["method"]) for c in fake.calls] == ["GET", "PUT"]
     body = put["body"]
     assert body["description"] == "new description"
     assert body["url"] == "https://redhat.atlassian.net/browse/OCPBUGS-1"
@@ -594,6 +586,15 @@ def test_update_adds_and_removes_regressions(service, fake):
     result = service.update_triage("alice", 5, add_regression_ids=[13], remove_regression_ids=[11])
     assert result["triage"]["regression_ids"] == [12, 13]
     assert result["changed_fields"] == ["regression_ids"]
+
+
+def test_update_reports_every_changed_field(service, fake):
+    fake.add_triage(id=5, regressions=[11])
+    result = service.update_triage(
+        "alice", 5, url="https://redhat.atlassian.net/browse/OCPBUGS-2", type="test",
+        resolved="2026-11-03T10:00:00Z", add_regression_ids=[12],
+    )
+    assert result["changed_fields"] == ["regression_ids", "resolved", "type", "url"]
 
 
 def test_update_can_remove_all_regressions_explicitly(service, fake):
@@ -675,52 +676,32 @@ def test_update_authorization_rejection_makes_no_change(service, fake):
     assert fake.triages[5]["description"] == "original"
 
 
-def test_update_verification_failure(service, fake):
+@pytest.mark.parametrize("body", [b"<html>ok</html>", b"{}", b"null", json.dumps({"id": 6}).encode()])
+def test_update_unexpected_success_body_is_reported(service, fake, body):
     fake.add_triage(id=5)
-    fake.scripted[("PUT", "/api/component_readiness/triages/5")] = [_json(200, {})]  # accepted but not applied
+    fake.scripted[("PUT", "/api/component_readiness/triages/5")] = [HTTPResponse(200, body)]
     result = service.update_triage("alice", 5, description="x")
-    assert _error_code(result) == "verification_failed"
-    assert result["error"]["mismatches"] == [{"field": "description", "expected": "x", "actual": "original"}]
-
-
-def test_update_warns_about_concurrent_changes(service, fake):
-    fake.add_triage(id=5, regressions=[11])
-    original_put = fake.__call__
-
-    def concurrent_put():
-        response = original_put("PUT", f"{API_URL}/api/component_readiness/triages/5", {"X-Acting-For": "alice"},
-                                json.dumps(fake.calls[-1]["body"]).encode(), 1)
-        fake.triages[5]["url"] = "https://redhat.atlassian.net/browse/OCPBUGS-777"
-        return response
-
-    fake.scripted[("PUT", "/api/component_readiness/triages/5")] = [concurrent_put]
-    result = service.update_triage("alice", 5, description="x")
-    assert result["verified"] is True
-    assert "url" in result["warnings"][0]
+    assert _error_code(result) == "upstream_error"
+    assert "read the triage" in result["error"]["message"]
+    assert len(fake.mutations()) == 1
 
 
 # --- delete -----------------------------------------------------------------------------------
 
 
-def test_delete_verifies_not_found(service, fake):
+def test_delete_sends_only_the_delete(service, fake):
     fake.add_triage(id=5, regressions=[11])
     result = service.delete_triage("alice", 5)
-    assert result["deleted"] is True and result["verified"] is True
-    assert result["deleted_triage"]["id"] == 5
-    assert [c["method"] for c in fake.calls] == ["GET", "DELETE", "GET"]
+    assert result == {"deleted": True, "triage_id": 5}
+    assert [c["method"] for c in fake.calls] == ["DELETE"]
+    assert 5 not in fake.triages
     assert fake.audit == [("delete", 5, "alice")]
 
 
 def test_delete_nonexistent(service, fake):
-    assert _error_code(service.delete_triage("alice", 5)) == "not_found"
-    assert fake.mutations() == []
-
-
-def test_delete_still_present_is_reported(service, fake):
-    fake.add_triage(id=5)
-    fake.scripted[("DELETE", "/api/component_readiness/triages/5")] = [_json(200, None)]
     result = service.delete_triage("alice", 5)
-    assert _error_code(result) == "verification_failed"
+    assert _error_code(result) == "not_found"
+    assert result["error"]["triage_id"] == 5
 
 
 def test_delete_unknown_outcome(service, fake):

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -12,11 +13,21 @@ import (
 
 const (
 	// forwardedUserHeader carries the principal authenticated by the oauth proxy in front of Sippy.
-	forwardedUserHeader = "X-Forwarded-User"
+	forwardedUserHeader string = "X-Forwarded-User"
 
 	// actingForHeader lets a trusted delegator (for example the Sippy MCP server's service account)
 	// name the user it is acting for, so authorization and audit records reflect that user.
-	actingForHeader = "X-Acting-For"
+	actingForHeader string = "X-Acting-For"
+
+	// MockUser is the identity attributed to requests that arrive without an authenticated user when
+	// DEV_MODE is enabled. It lets developers exercise user-attributed write flows (triage audit logs,
+	// regression force close) without the oauth proxy that sets X-Forwarded-User in production.
+	MockUser string = "developer"
+
+	// devModeEnvVar is the existing development toggle; non-production deployments such as local
+	// development and agentic-staging (via hack/agentic_setup.sh) set it to "1". Production leaves
+	// it unset.
+	devModeEnvVar string = "DEV_MODE"
 )
 
 // identityContextKey is the request context key holding the effective user resolved by
@@ -96,8 +107,39 @@ func (r delegationResolver) middleware(next http.Handler) http.Handler {
 	})
 }
 
-// delegatedUserFromContext returns the identity resolved by the delegation middleware, if any.
+// delegatedUserFromContext returns the identity resolved by the delegation middleware, if any. The
+// middleware stores only trimmed, non-empty identities, so presence alone means delegation applied.
 func delegatedUserFromContext(ctx context.Context) (string, bool) {
 	user, ok := ctx.Value(identityContextKey{}).(string)
-	return user, ok && user != ""
+	return user, ok
+}
+
+// mockAuthEnabled reports whether requests without an authenticated user should be attributed to
+// MockUser. getenv is injected so the decision can be tested without mutating process state.
+func mockAuthEnabled(getenv func(string) string) bool {
+	return getenv(devModeEnvVar) == "1"
+}
+
+// userForRequest returns the effective requesting user. A delegated identity resolved by the
+// delegation middleware wins; otherwise it is the authenticated user from the X-Forwarded-User
+// header, falling back to MockUser only when mock authentication is enabled. A real header always
+// takes precedence over the mock so that an environment fronted by the oauth proxy still records
+// the real user.
+func userForRequest(req *http.Request, getenv func(string) string) string {
+	if user, ok := delegatedUserFromContext(req.Context()); ok {
+		return user
+	}
+	if user := req.Header.Get(forwardedUserHeader); user != "" {
+		return user
+	}
+	if mockAuthEnabled(getenv) {
+		return MockUser
+	}
+	return ""
+}
+
+// getUserForRequest returns the user making the request, using the process environment to decide
+// whether mock authentication applies.
+func getUserForRequest(req *http.Request) string {
+	return userForRequest(req, os.Getenv)
 }

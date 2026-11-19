@@ -65,45 +65,18 @@ func SippyGetAbsolute(url string, data interface{}) error {
 	return nil
 }
 
-// sippyMutatingRequest performs a generic HTTP request with JSON body to the Sippy API
+// sippyMutatingRequest performs a JSON request as the default e2e user, failing on any non-200
+// status and decoding the response into responseData when it is non-nil.
 func sippyMutatingRequest(method, path string, bodyData, responseData interface{}) error {
-	var bodyReader io.Reader
-	if bodyData != nil {
-		bodyBytes, err := json.Marshal(bodyData)
-		if err != nil {
-			return err
-		}
-		bodyReader = strings.NewReader(string(bodyBytes))
-	}
-
-	req, err := http.NewRequest(method, BuildE2EURL(path), bodyReader)
+	status, body, err := SippyRequestWithHeaders(method, path, map[string]string{"X-Forwarded-User": "developer"}, bodyData)
 	if err != nil {
 		return err
 	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Forwarded-User", "developer")
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from test helper's hardcoded localhost base URL
-	if err != nil {
-		return err
+	if status != http.StatusOK {
+		return fmt.Errorf("sippy API request failed with code %d: %s", status, string(body))
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("sippy API request failed with code %d: %s", resp.StatusCode, string(body))
-	}
-
 	if responseData != nil {
-		err = json.Unmarshal(body, responseData)
-		if err != nil {
-			return err
-		}
+		return json.Unmarshal(body, responseData)
 	}
 	return nil
 }
@@ -123,12 +96,13 @@ func SippyDelete(path string) error {
 const (
 	// TrustedDelegator and SecondTrustedDelegator are the principals scripts/e2e.sh passes to
 	// --trusted-delegator. These values must be kept in sync.
-	TrustedDelegator       = "system:serviceaccount:sippy-e2e:sippy-mcp"
-	SecondTrustedDelegator = "sippy-e2e-second-delegator"
+	TrustedDelegator       string = "system:serviceaccount:sippy-e2e:sippy-mcp"
+	SecondTrustedDelegator string = "sippy-e2e-second-delegator"
 )
 
-// SippyRequestWithHeaders sends a request with exactly the supplied identity headers (no default
-// X-Forwarded-User), returning the status code and body so tests can assert on rejections.
+// SippyRequestWithHeaders sends a JSON request with exactly the supplied headers (no default
+// X-Forwarded-User), returning the status code and body so tests can assert on rejections. It is the
+// single place e2e helpers build and send mutating requests.
 func SippyRequestWithHeaders(method, path string, headers map[string]string, bodyData interface{}) (int, []byte, error) {
 	var bodyReader io.Reader
 	if bodyData != nil {
