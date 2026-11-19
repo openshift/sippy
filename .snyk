@@ -50,3 +50,7 @@ exclude:
     - mcp/server.py
     - pkg/db/query/uncollapsed_test_report.go
     - pkg/api/job_runs_filters.go
+    # Sippy MCP server: the path flagged at load_service is SIPPY_MCP_AUTH_TOKEN_FILE, operator runtime
+    # configuration naming a mounted secret by design; it is read only as a validated bearer token and its
+    # contents are never returned to clients, so this is not a path traversal vector
+    - mcp/sippy/sippy_mcp_server.py
