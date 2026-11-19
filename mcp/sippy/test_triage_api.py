@@ -1,9 +1,10 @@
-"""Unit tests for the production triage client using a client-level fake transport."""
+"""Unit tests for the Sippy MCP triage client using a client-level fake transport."""
 
 from __future__ import annotations
 
 import copy
 import json
+import os
 import re
 from collections.abc import Callable
 
@@ -104,6 +105,9 @@ class FakeSippy:
                 return result()
             return result
         user = headers.get("X-Acting-For")
+        # Like Sippy for a trusted delegator: mutations must name a user, reads need not.
+        if method != "GET" and not user:
+            return _failure(400, "X-Acting-For is required for requests from a trusted delegator")
         if path == "/api/component_readiness/triages":
             if method == "GET":
                 return _json(200, [self._out(t) for t in self.triages.values()])
@@ -197,6 +201,11 @@ def _assert_no_secret(result) -> None:
         ({API_URL_ENV: "http://sippy.example.com", TOKEN_FILE_ENV: "/t"}, "https"),
         ({API_URL_ENV: "https://user:pw@sippy.example.com", TOKEN_FILE_ENV: "/t"}, "credentials"),
         ({API_URL_ENV: "https://sippy.example.com?x=1", TOKEN_FILE_ENV: "/t"}, "query"),
+        ({API_URL_ENV: "https://sippy.example.com?", TOKEN_FILE_ENV: "/t"}, "query"),
+        ({API_URL_ENV: "https://sippy.example.com/#", TOKEN_FILE_ENV: "/t"}, "query"),
+        ({API_URL_ENV: "https://sippy.example.com:abc", TOKEN_FILE_ENV: "/t"}, "valid"),
+        ({API_URL_ENV: "https://sippy.example.com:70000", TOKEN_FILE_ENV: "/t"}, "valid"),
+        ({API_URL_ENV: "https://[::1", TOKEN_FILE_ENV: "/t"}, "valid"),
         ({API_URL_ENV: "ftp://sippy.example.com", TOKEN_FILE_ENV: "/t"}, "absolute"),
         ({API_URL_ENV: "sippy.example.com", TOKEN_FILE_ENV: "/t"}, "absolute"),
         ({API_URL_ENV: API_URL, TOKEN_FILE_ENV: "/t", "SIPPY_MCP_REQUEST_TIMEOUT": "soon"}, "number"),
@@ -237,25 +246,55 @@ def test_read_token_errors_do_not_expose_contents(tmp_path):
         read_token(str(tmp_path / "missing"))
 
 
+@pytest.mark.parametrize(
+    "contents",
+    [f"{TOKEN}\nsecond-line", f"{TOKEN} trailing", f"{TOKEN}\r\nX-Injected: 1", f"tok\u00e9n-{TOKEN}"],
+)
+def test_read_token_rejects_malformed_tokens_without_exposing_them(tmp_path, contents):
+    path = tmp_path / "token"
+    path.write_text(contents, encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="single bearer token") as excinfo:
+        read_token(str(path))
+    assert TOKEN not in str(excinfo.value)
+
+
+@pytest.mark.parametrize("contents", [f"{TOKEN}\n", "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ4In0.c2ln-_", "dG9rZW4="])
+def test_read_token_accepts_bearer_tokens(tmp_path, contents):
+    path = tmp_path / "token"
+    path.write_text(contents, encoding="utf-8")
+    assert read_token(str(path)) == contents.strip()
+
+
 # --- request construction ---------------------------------------------------------------------
 
 
-def test_requests_carry_bearer_token_and_delegated_user(service, fake):
+def test_reads_carry_bearer_token_without_delegated_user(service, fake):
     fake.add_triage(id=5)
-    result = service.get_triage("  alice@example.com ", 5)
+    result = service.get_triage(5)
     assert result["triage"]["id"] == 5
-    headers = fake.calls[0]["headers"]
-    assert headers["Authorization"] == f"Bearer {TOKEN}"
-    assert headers["X-Acting-For"] == "alice@example.com"
+    service.list_triages()
+    for call in fake.calls:
+        assert call["headers"]["Authorization"] == f"Bearer {TOKEN}"
+        assert "X-Acting-For" not in call["headers"]
+    _assert_no_secret(result)
+
+
+def test_mutations_carry_bearer_token_and_delegated_user(service, fake):
+    fake.add_triage(id=5)
+    result = service.update_triage("  alice@example.com ", 5, description="d")
+    assert result["verified"] is True
+    for call in fake.calls:
+        assert call["headers"]["Authorization"] == f"Bearer {TOKEN}"
+        assert call["headers"]["X-Acting-For"] == "alice@example.com"
     _assert_no_secret(result)
 
 
 def test_token_is_reread_for_rotation(service, fake, token_file):
     fake.add_triage(id=5)
-    service.get_triage("alice", 5)
+    service.get_triage(5)
     with open(token_file, "w", encoding="utf-8") as f:
         f.write("rotated-token")
-    service.get_triage("alice", 5)
+    service.get_triage(5)
     assert fake.calls[1]["headers"]["Authorization"] == "Bearer rotated-token"
 
 
@@ -266,12 +305,12 @@ def test_missing_token_rejects_without_request(fake, tmp_path):
     assert fake.calls == []
 
 
-@pytest.mark.parametrize("acting_for", ["", "   ", None, "a" * 257, "alice\nX-Forwarded-User: admin", "bob\x00"])
+@pytest.mark.parametrize(
+    "acting_for", ["", "   ", None, "a" * 257, "alice\nX-Forwarded-User: admin", "bob\x00", "\u674e", "jos\u00e9@example.com"]
+)
 @pytest.mark.parametrize(
     "call",
     [
-        lambda s, a: s.list_triages(a),
-        lambda s, a: s.get_triage(a, 1),
         lambda s, a: s.create_triage(a, "https://redhat.atlassian.net/browse/OCPBUGS-9", "product"),
         lambda s, a: s.update_triage(a, 1, description="x"),
         lambda s, a: s.delete_triage(a, 1),
@@ -286,13 +325,13 @@ def test_invalid_acting_for_is_rejected_before_any_request(service, fake, call: 
 
 
 def test_list_empty_result(service, fake):
-    result = service.list_triages("alice")
+    result = service.list_triages()
     assert result == {"triages": [], "count": 0, "total_matches": 0, "truncated": False}
 
 
 def test_list_null_response_is_empty(service, fake):
     fake.scripted[("GET", "/api/component_readiness/triages")] = [_json(200, None)]
-    assert service.list_triages("alice")["triages"] == []
+    assert service.list_triages()["triages"] == []
 
 
 def test_list_filters_and_limits(service, fake):
@@ -301,18 +340,18 @@ def test_list_filters_and_limits(service, fake):
                     resolved={"Time": "2026-11-02T00:00:00Z", "Valid": True}, resolution_reason="user")
     fake.add_triage(id=3, type="product", url="https://redhat.atlassian.net/browse/TRT-1", regressions=[12])
 
-    result = service.list_triages("alice", view="4.22-main", include_archived=True, limit=2)
+    result = service.list_triages(view="4.22-main", include_archived=True, limit=2)
     assert [t["id"] for t in result["triages"]] == [3, 2]
     assert result["total_matches"] == 3 and result["truncated"] is True
     assert "view=4.22-main" in fake.calls[0]["url"] and "include_archived=true" in fake.calls[0]["url"]
     assert "regressions" not in result["triages"][0]
 
-    assert [t["id"] for t in service.list_triages("alice", type="product")["triages"]] == [3, 1]
-    assert [t["id"] for t in service.list_triages("alice", status="resolved")["triages"]] == [2]
-    assert [t["id"] for t in service.list_triages("alice", status="open")["triages"]] == [3, 1]
-    assert [t["id"] for t in service.list_triages("alice", url_contains="ocpbugs")["triages"]] == [2, 1]
-    assert [t["id"] for t in service.list_triages("alice", regression_id=12)["triages"]] == [3]
-    resolved = service.list_triages("alice", status="resolved")["triages"][0]
+    assert [t["id"] for t in service.list_triages(type="product")["triages"]] == [3, 1]
+    assert [t["id"] for t in service.list_triages(status="resolved")["triages"]] == [2]
+    assert [t["id"] for t in service.list_triages(status="open")["triages"]] == [3, 1]
+    assert [t["id"] for t in service.list_triages(url_contains="ocpbugs")["triages"]] == [2, 1]
+    assert [t["id"] for t in service.list_triages(regression_id=12)["triages"]] == [3]
+    resolved = service.list_triages(status="resolved")["triages"][0]
     assert resolved["resolved"] == "2026-11-02T00:00:00Z" and resolved["resolution_reason"] == "user"
 
 
@@ -331,13 +370,13 @@ def test_list_filters_and_limits(service, fake):
     ],
 )
 def test_list_invalid_inputs(service, fake, kwargs):
-    assert _error_code(service.list_triages("alice", **kwargs)) == "invalid_input"
+    assert _error_code(service.list_triages(**kwargs)) == "invalid_input"
     assert fake.calls == []
 
 
 def test_get_returns_regression_summaries(service, fake):
     fake.add_triage(id=5, regressions=[11, 12])
-    triage = service.get_triage("alice", 5)["triage"]
+    triage = service.get_triage(5)["triage"]
     assert triage["regression_ids"] == [11, 12]
     assert triage["regressions"][0]["test_name"] == "test name 11"
     assert "job_runs" not in triage["regressions"][0]
@@ -346,14 +385,14 @@ def test_get_returns_regression_summaries(service, fake):
 
 
 def test_get_not_found(service):
-    result = service.get_triage("alice", 404404)
+    result = service.get_triage(404404)
     assert _error_code(result) == "not_found"
     assert result["error"]["triage_id"] == 404404
 
 
 @pytest.mark.parametrize("triage_id", [0, -3, True, "5", 2**63])
 def test_get_invalid_id(service, fake, triage_id):
-    assert _error_code(service.get_triage("alice", triage_id)) == "invalid_input"
+    assert _error_code(service.get_triage(triage_id)) == "invalid_input"
     assert fake.calls == []
 
 
@@ -384,6 +423,9 @@ def test_create_verifies_by_readback(service, fake):
     [
         {"url": "", "type": "product"},
         {"url": "OCPBUGS-1", "type": "product"},
+        {"url": "https://[::1", "type": "product"},
+        {"url": "https://:443", "type": "product"},
+        {"url": "https://redhat.atlassian.net:abc/browse/OCPBUGS-1", "type": "product"},
         {"url": "https://redhat.atlassian.net/browse/OCPBUGS-1", "type": "bogus"},
         {"url": "https://redhat.atlassian.net/browse/OCPBUGS-1", "type": "product", "regression_ids": []},
         {"url": "https://redhat.atlassian.net/browse/OCPBUGS-1", "type": "product", "regression_ids": [11, 11]},
@@ -448,6 +490,37 @@ def test_create_success_without_id_is_outcome_unknown(service, fake, body):
     fake.scripted[("POST", "/api/component_readiness/triages")] = [HTTPResponse(200, body)]
     result = service.create_triage("alice", "https://redhat.atlassian.net/browse/OCPBUGS-9", "product")
     assert _error_code(result) == "outcome_unknown"
+    assert len(fake.mutations()) == 1
+
+
+def _break_token_after_first_write(fake, token_file, method):
+    """Make the token unreadable as soon as the first mutation succeeds, so only the readback fails."""
+    original = fake.__call__
+
+    def transport(m, url, headers, body, timeout):
+        response = original(m, url, headers, body, timeout)
+        if m == method:
+            os.remove(token_file)
+        return response
+
+    return transport
+
+
+@pytest.mark.parametrize(
+    "method, call",
+    [
+        ("POST", lambda s: s.create_triage("alice", "https://redhat.atlassian.net/browse/OCPBUGS-9", "product")),
+        ("PUT", lambda s: s.update_triage("alice", 5, description="x")),
+        ("DELETE", lambda s: s.delete_triage("alice", 5)),
+    ],
+)
+def test_readback_credential_failure_is_verification_unavailable(fake, token_file, method, call):
+    fake.add_triage(id=5)
+    transport = _break_token_after_first_write(fake, token_file, method)
+    svc = TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file), transport=transport))
+    result = call(svc)
+    assert _error_code(result) == "verification_unavailable", result
+    assert isinstance(result["error"]["triage_id"], int)
     assert len(fake.mutations()) == 1
 
 
@@ -651,4 +724,4 @@ def test_delete_forbidden_makes_no_change(service, fake):
 
 def test_read_transport_failure(service, fake):
     fake.scripted[("GET", "/api/component_readiness/triages/5")] = [TransportError("ConnectionRefusedError")]
-    assert _error_code(service.get_triage("alice", 5)) == "upstream_unavailable"
+    assert _error_code(service.get_triage(5)) == "upstream_unavailable"

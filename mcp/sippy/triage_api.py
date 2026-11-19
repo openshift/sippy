@@ -1,16 +1,19 @@
-"""Sippy triage REST client and domain operations for the production MCP server.
+"""Sippy triage REST client and domain operations for the Sippy MCP server.
 
-Every request goes to the authenticated Sippy API with the server's service-account bearer token and
-the delegated user in X-Acting-For. Sippy resolves that header only for configured trusted delegators,
-so authorization and triage audit records name the requesting user rather than this server.
+Every request goes to the authenticated Sippy API with the server's service-account bearer token.
+Mutations also send the delegated user in X-Acting-For. Sippy resolves that header only for configured
+trusted delegators, so authorization and triage audit records name the requesting user rather than
+this server. Reads need no delegated user.
 """
 
 from __future__ import annotations
 
+import http.client
 import ipaddress
 import json
 import logging
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -42,6 +45,8 @@ _UNRESOLVED = {"Time": "0001-01-01T00:00:00Z", "Valid": False}
 # Presentation-only fields a GET returns that must not be echoed into a PUT replacement body.
 _READ_ONLY_FIELDS = ("links", "bug")
 _LOOPBACK_HOSTNAMES = ("localhost",)
+# RFC 6750 b64token, the only form a bearer credential may take in an Authorization header.
+_BEARER_TOKEN = re.compile(r"[A-Za-z0-9\-._~+/]+=*")
 
 
 class ConfigurationError(Exception):
@@ -95,14 +100,20 @@ def validate_api_url(raw: str) -> str:
     value = (raw or "").strip()
     if not value:
         raise ConfigurationError(f"{API_URL_ENV} is required; there is no default API endpoint")
-    parts = urllib.parse.urlsplit(value)
-    if parts.scheme not in ("https", "http") or not parts.hostname:
+    # Request paths are appended to this value, so even an empty query or fragment would swallow them.
+    if "?" in value or "#" in value:
+        raise ConfigurationError(f"{API_URL_ENV} must not contain a query or fragment")
+    try:
+        parts = urllib.parse.urlsplit(value)
+        hostname = parts.hostname
+        parts.port  # noqa: B018 - raises ValueError for a non-numeric or out-of-range port
+    except ValueError:
+        raise ConfigurationError(f"{API_URL_ENV} must be a valid absolute http(s) URL") from None
+    if parts.scheme not in ("https", "http") or not hostname:
         raise ConfigurationError(f"{API_URL_ENV} must be an absolute http(s) URL")
     if parts.username is not None or parts.password is not None:
         raise ConfigurationError(f"{API_URL_ENV} must not contain credentials")
-    if parts.query or parts.fragment:
-        raise ConfigurationError(f"{API_URL_ENV} must not contain a query or fragment")
-    if parts.scheme == "http" and not _is_loopback(parts.hostname):
+    if parts.scheme == "http" and not _is_loopback(hostname):
         raise ConfigurationError(f"{API_URL_ENV} must use https unless it targets a loopback host")
     return value.rstrip("/")
 
@@ -115,6 +126,9 @@ def read_token(path: str) -> str:
         raise ConfigurationError(f"the file named by {TOKEN_FILE_ENV} could not be read ({type(e).__name__})") from None
     if not token:
         raise ConfigurationError(f"the file named by {TOKEN_FILE_ENV} is empty")
+    # http.client echoes an invalid header value in its exception, so never let one reach a request.
+    if not _BEARER_TOKEN.fullmatch(token):
+        raise ConfigurationError(f"the file named by {TOKEN_FILE_ENV} must contain a single bearer token")
     return token
 
 
@@ -153,19 +167,29 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 _OPENER = urllib.request.build_opener(_NoRedirect)
+# Plain HTTP is only allowed for loopback, so it must never be sent through an inherited proxy, which
+# would carry the bearer token in cleartext off the host.
+_DIRECT_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect)
+
+
+def _opener_for(url: str) -> urllib.request.OpenerDirector:
+    return _DIRECT_OPENER if _is_loopback(urllib.parse.urlsplit(url).hostname or "") else _OPENER
 
 
 def urllib_transport(method: str, url: str, headers: dict[str, str], body: bytes | None, timeout: float) -> HTTPResponse:
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    # Failures while reading either a success or an error body (for example IncompleteRead or a
+    # timeout) mean no complete response arrived, so they are reported as an unknown outcome.
     try:
-        with _OPENER.open(request, timeout=timeout) as response:
-            return HTTPResponse(response.status, response.read())
-    except urllib.error.HTTPError as e:
         try:
-            return HTTPResponse(e.code, e.read())
-        finally:
-            e.close()
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
+            with _opener_for(url).open(request, timeout=timeout) as response:
+                return HTTPResponse(response.status, response.read())
+        except urllib.error.HTTPError as e:
+            try:
+                return HTTPResponse(e.code, e.read())
+            finally:
+                e.close()
+    except (urllib.error.URLError, http.client.HTTPException, OSError) as e:
         raise TransportError(type(e).__name__) from None
 
 
@@ -180,11 +204,12 @@ class SippyClient:
         self,
         method: str,
         path: str,
-        acting_for: str,
+        acting_for: str | None = None,
         *,
         body: dict[str, Any] | None = None,
         query: dict[str, str] | None = None,
     ) -> HTTPResponse:
+        """Send a request; acting_for is sent as X-Acting-For when given (required by Sippy for mutations)."""
         token = read_token(self.config.token_file)
         url = self.config.api_url + path
         if query:
@@ -192,8 +217,9 @@ class SippyClient:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
-            "X-Acting-For": acting_for,
         }
+        if acting_for is not None:
+            headers["X-Acting-For"] = acting_for
         data = None
         if body is not None:
             headers["Content-Type"] = "application/json"
@@ -334,8 +360,10 @@ def validate_acting_for(acting_for: Any) -> str:
     value = acting_for.strip()
     if len(value) > MAX_ACTING_FOR_CHARS:
         raise _invalid(f"acting_for must be at most {MAX_ACTING_FOR_CHARS} characters")
-    if not value.isprintable():
-        raise _invalid("acting_for must not contain control characters")
+    # HTTP header values are not reliably transported beyond ASCII, and an audit identity must never be
+    # silently altered, so anything else is rejected rather than encoded or replaced.
+    if not value.isascii() or not value.isprintable():
+        raise _invalid("acting_for must contain only printable ASCII characters")
     return value
 
 
@@ -360,9 +388,15 @@ def validate_url(value: Any) -> str:
     if not isinstance(value, str) or not value.strip():
         raise _invalid("url is required and must not be blank")
     url = value.strip()
-    parts = urllib.parse.urlsplit(url)
-    if parts.scheme not in ("http", "https") or not parts.netloc:
-        raise _invalid("url must be an absolute http(s) URL, typically a Jira issue")
+    message = "url must be an absolute http(s) URL, typically a Jira issue"
+    try:
+        parts = urllib.parse.urlsplit(url)
+        hostname = parts.hostname
+        parts.port  # noqa: B018 - raises ValueError for a non-numeric or out-of-range port
+    except ValueError:
+        raise _invalid(message) from None
+    if parts.scheme not in ("http", "https") or not hostname:
+        raise _invalid(message)
     return url
 
 
@@ -417,7 +451,7 @@ class TriageService:
     def __init__(self, client: SippyClient) -> None:
         self.client = client
 
-    def _send(self, method: str, path: str, acting_for: str, *, mutation: bool, triage_id: int | None = None, **kwargs: Any) -> HTTPResponse:
+    def _send(self, method: str, path: str, acting_for: str | None, *, mutation: bool, triage_id: int | None = None, **kwargs: Any) -> HTTPResponse:
         try:
             response = self.client.request(method, path, acting_for, **kwargs)
         except TransportError as e:
@@ -431,7 +465,7 @@ class TriageService:
         _raise_for_status(response, mutation=mutation, triage_id=triage_id)
         return response
 
-    def _fetch(self, triage_id: int, acting_for: str) -> dict[str, Any]:
+    def _fetch(self, triage_id: int, acting_for: str | None = None) -> dict[str, Any]:
         response = self._send("GET", f"{TRIAGES_PATH}/{triage_id}", acting_for, mutation=False, triage_id=triage_id)
         raw = _decode_json(response)
         if not isinstance(raw, dict) or raw.get("id") != triage_id:
@@ -439,19 +473,23 @@ class TriageService:
         return raw
 
     def _readback(self, triage_id: int, acting_for: str, operation: str) -> dict[str, Any]:
+        """Read a triage after a successful write. Any failure, including a credential error, is
+        verification_unavailable: configuration_error would wrongly tell the caller nothing was sent."""
         try:
             return self._fetch(triage_id, acting_for)
         except ToolFailure as e:
-            raise ToolFailure(
-                "verification_unavailable",
-                f"The {operation} request succeeded but reading the triage back failed: {e.message}",
-                triage_id=triage_id,
-            ) from None
+            reason = e.message
+        except ConfigurationError as e:
+            reason = str(e)
+        raise ToolFailure(
+            "verification_unavailable",
+            f"The {operation} request succeeded but reading the triage back failed: {reason}",
+            triage_id=triage_id,
+        )
 
     @_tool
     def list_triages(
         self,
-        acting_for: str,
         view: str | None = None,
         include_archived: bool = False,
         type: str | None = None,
@@ -460,7 +498,6 @@ class TriageService:
         regression_id: int | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
     ) -> dict[str, Any]:
-        acting_for = validate_acting_for(acting_for)
         query: dict[str, str] = {}
         if view is not None:
             if not isinstance(view, str) or not view.strip():
@@ -481,7 +518,7 @@ class TriageService:
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= MAX_LIST_LIMIT:
             raise _invalid(f"limit must be an integer between 1 and {MAX_LIST_LIMIT}")
 
-        raw = _decode_json(self._send("GET", TRIAGES_PATH, acting_for, mutation=False, query=query or None))
+        raw = _decode_json(self._send("GET", TRIAGES_PATH, None, mutation=False, query=query or None))
         if raw is None:
             raw = []
         if not isinstance(raw, list):
@@ -512,10 +549,9 @@ class TriageService:
         }
 
     @_tool
-    def get_triage(self, acting_for: str, triage_id: int) -> dict[str, Any]:
-        acting_for = validate_acting_for(acting_for)
+    def get_triage(self, triage_id: int) -> dict[str, Any]:
         triage_id = validate_id(triage_id, "triage_id")
-        return {"triage": summarize_triage(self._fetch(triage_id, acting_for), include_regressions=True)}
+        return {"triage": summarize_triage(self._fetch(triage_id), include_regressions=True)}
 
     @_tool
     def create_triage(
@@ -659,12 +695,16 @@ class TriageService:
                     "triage_id": triage_id,
                     "deleted_triage": summarize_triage(existing, include_regressions=False),
                 }
-            raise ToolFailure(
-                "verification_unavailable",
-                f"The delete request succeeded but confirming removal failed: {e.message}",
-                triage_id=triage_id,
-            ) from None
-        raise ToolFailure("verification_failed", f"triage {triage_id} still exists after delete", triage_id=triage_id)
+            reason = e.message
+        except ConfigurationError as e:
+            reason = str(e)
+        else:
+            raise ToolFailure("verification_failed", f"triage {triage_id} still exists after delete", triage_id=triage_id)
+        raise ToolFailure(
+            "verification_unavailable",
+            f"The delete request succeeded but confirming removal failed: {reason}",
+            triage_id=triage_id,
+        )
 
 
 def _mismatches(persisted: Mapping[str, Any], **expected: Any) -> list[dict[str, Any]]:

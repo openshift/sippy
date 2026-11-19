@@ -161,22 +161,23 @@ while token renewal requires a client that remains active past token expiry.
 ## Trusted delegators
 
 `sippy serve` and `sippy component-readiness` accept `--trusted-delegator <principal>` to let an
-authenticated service (for example the production MCP server in `mcp/production/`) act for the user
-it serves. Repeat the flag once per principal; values are not split on commas.
+authenticated service (for example the `sippy` MCP server in `mcp/sippy/`) act for the user it
+serves. Repeat the flag once per principal; values are not split on commas.
 
 * Each value is compared with the complete authenticated `X-Forwarded-User` value set by the
   oauth proxy in front of Sippy. Matching is exact: no wildcards, substrings, suffixes, namespaces,
   or case folding. Blank values and values with surrounding whitespace fail startup.
 * Omitting the flag enables no delegation.
-* A request from a listed principal must send a non-blank `X-Acting-For` header (whitespace is
-  trimmed). Sippy uses that value as the requesting user for authorization checks and audit
-  records. A missing or blank value returns `400 Bad Request` and nothing is changed.
+* A mutating request (any method other than `GET`, `HEAD`, or `OPTIONS`) from a listed principal
+  must send a non-blank `X-Acting-For` header (whitespace is trimmed). Sippy uses that value as the
+  requesting user for authorization checks and audit records. A missing or blank value returns
+  `400 Bad Request` and nothing is changed. Reads without the header run as the principal itself.
 * For every other principal `X-Acting-For` is ignored, and an unauthenticated request never gains an
   identity from it. `DEV_MODE=1` mock authentication does not delegate.
 
 Production values, including the exact principal the proxy reports for the MCP server's service
 account (for example `system:serviceaccount:<namespace>:<name>`), are deployment configuration and
-are not stored in this repository. See `mcp/production/README.md` for the full contract.
+are not stored in this repository. See `mcp/sippy/README.md` for the full contract.
 
 ```
 sippy serve --enable-write-endpoints \

@@ -740,8 +740,8 @@ all other triage endpoints, regression triage associations, and the regression
 potential-match endpoint continue to access historical triages. Frontend listings
 and reuse selectors use ordinary listings, with view filters where applicable,
 preserving non-archived cross-release candidates. There is no separate BigQuery
-triage listing implementation. The production MCP server's `list_triages` tool
-(`mcp/production/`) calls this endpoint.
+triage listing implementation. The `sippy` MCP server's `list_triages` tool
+(`mcp/sippy/`) calls this endpoint.
 
 ### Parameters
 
@@ -775,8 +775,9 @@ Endpoint: `PUT /api/component_readiness/triages/{id}`
 Updates an existing triage record by replacing it: fields missing from the body are
 cleared and `regressions` becomes exactly the listed IDs. Retrieve the full record
 first and send it back with your changes. There is no version check, so concurrent
-replacements are last writer wins. Resubmitting an unchanged `resolved` instant keeps
-the existing `resolution_reason`; setting or changing it sets the reason to `user`.
+replacements are last writer wins. `resolution_reason` is system-owned: resubmitting
+an unchanged `resolved` instant keeps the stored reason whatever the body sends,
+setting or changing it sets the reason to `user`, and clearing it clears the reason.
 A triage `id` that does not exist returns `404 Not Found`.
 
 Endpoint: `DELETE /api/component_readiness/triages/{id}`
@@ -791,12 +792,13 @@ when no user can be determined. The user is the authenticated `X-Forwarded-User`
 set by the oauth proxy, or the `DEV_MODE=1` mock user locally (see `DEVELOPMENT.md`).
 
 For principals configured with `--trusted-delegator` (see `config/README.md`), every
-request must also send `X-Acting-For: <user>`; Sippy uses that user for authorization
-and audit records, and rejects a missing or blank value with `400 Bad Request`
-before any change. Other callers' `X-Acting-For` headers are ignored. The check runs
-for every request from such a principal, so all endpoints that attribute work to a
-user (triage writes, regression force close, Jira bug filing, and symptom changes)
-see the same delegated user.
+mutating request (any method other than `GET`, `HEAD`, or `OPTIONS`) must also send
+`X-Acting-For: <user>`; Sippy uses that user for authorization and audit records, and
+rejects a missing or blank value with `400 Bad Request` before any change. Reads may
+omit it and run as the principal. Other callers' `X-Acting-For` headers are ignored.
+The check runs in middleware for every request from such a principal, so all
+endpoints that attribute work to a user (triage writes, regression force close, Jira
+bug filing, and symptom changes) see the same delegated user.
 
 Endpoint: `POST /api/component_readiness/triages/{id}/force_close_regressions`
 

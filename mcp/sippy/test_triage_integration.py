@@ -1,16 +1,17 @@
-"""Integration tests for the production triage tools against an isolated Sippy test instance.
+"""Integration tests for the Sippy MCP triage tools against an isolated Sippy test instance.
 
 scripts/e2e.sh runs these against its throwaway database before the Go e2e suite, which deletes
 seeded regressions. They are skipped unless SIPPY_MCP_INTEGRATION_SIPPY_URL (the e2e Sippy API) and
 SIPPY_MCP_INTEGRATION_DELEGATOR (a principal passed to that server with --trusted-delegator) are
 set. Never point them at production.
 
-A local stand-in for the production oauth-proxy authenticates the MCP client's bearer token, discards
+A local stand-in for the deployed oauth-proxy authenticates the MCP client's bearer token, discards
 any client-supplied X-Forwarded-User, and sets it to the configured delegator principal.
 """
 
 from __future__ import annotations
 
+import hmac
 import http.server
 import json
 import os
@@ -45,13 +46,13 @@ def _sippy_json(path: str):
 
 
 class _AuthProxy(http.server.BaseHTTPRequestHandler):
-    """Simulates the authenticating proxy that fronts the production Sippy write API."""
+    """Simulates the authenticating proxy that fronts the deployed Sippy write API."""
 
     def log_message(self, *args):
         pass
 
     def _forward(self):
-        if self.headers.get("Authorization") != f"Bearer {PROXY_TOKEN}":
+        if not hmac.compare_digest(self.headers.get("Authorization", ""), f"Bearer {PROXY_TOKEN}"):
             self._reply(HTTPResponse(401, json.dumps({"code": 401, "message": "proxy rejected token"}).encode()))
             return
         headers = {name: self.headers[name] for name in _FORWARDED_REQUEST_HEADERS if self.headers.get(name) is not None}
@@ -144,12 +145,12 @@ def test_lifecycle_with_readback_and_audit_attribution(service, unique_url, regr
         cleared = service.update_triage("bob@example.com", tid, clear_resolved=True)
         assert cleared["triage"]["resolved"] is None
 
-        listed = service.list_triages("alice@example.com", url_contains=unique_url)
+        listed = service.list_triages(url_contains=unique_url)
         assert [t["id"] for t in listed["triages"]] == [tid]
     finally:
         deleted = service.delete_triage("carol@example.com", tid)
     assert deleted.get("verified") is True, deleted
-    assert service.get_triage("carol@example.com", tid)["error"]["code"] == "not_found"
+    assert service.get_triage(tid)["error"]["code"] == "not_found"
 
     users_by_operation = [(a["operation"], a["user"]) for a in reversed(_audit(tid))]
     assert users_by_operation[0] == ("CREATE", "alice@example.com")
@@ -160,13 +161,13 @@ def test_lifecycle_with_readback_and_audit_attribution(service, unique_url, regr
 
 
 def test_empty_list_result(service):
-    result = service.list_triages("alice@example.com", url_contains=f"no-such-triage-{uuid.uuid4().hex}")
+    result = service.list_triages(url_contains=f"no-such-triage-{uuid.uuid4().hex}")
     assert result == {"triages": [], "count": 0, "total_matches": 0, "truncated": False}
 
 
 def test_nonexistent_records(service):
     missing = 2**62
-    assert service.get_triage("alice@example.com", missing)["error"]["code"] == "not_found"
+    assert service.get_triage(missing)["error"]["code"] == "not_found"
     assert service.update_triage("alice@example.com", missing, description="x")["error"]["code"] == "not_found"
     assert service.delete_triage("alice@example.com", missing)["error"]["code"] == "not_found"
 
@@ -184,9 +185,15 @@ def test_rejected_token_makes_no_change(proxy_url, tmp_path, unique_url):
     assert unique_url not in _triage_urls()
 
 
-def test_sippy_rejects_delegator_without_acting_for(service, unique_url):
+def test_sippy_rejects_delegator_mutation_without_acting_for(service, unique_url):
     """Bypasses the tool's own validation to confirm the server-side delegation check."""
-    response = service.client.request("POST", TRIAGES_PATH, "", body={"url": unique_url, "type": "product"})
-    assert response.status == 400
-    assert "X-Acting-For" in json.loads(response.body)["message"]
+    for acting_for in (None, ""):
+        response = service.client.request("POST", TRIAGES_PATH, acting_for, body={"url": unique_url, "type": "product"})
+        assert response.status == 400
+        assert "X-Acting-For" in json.loads(response.body)["message"]
     assert unique_url not in _triage_urls()
+
+
+def test_sippy_allows_delegator_reads_without_acting_for(service):
+    response = service.client.request("GET", TRIAGES_PATH)
+    assert response.status == 200, response.body

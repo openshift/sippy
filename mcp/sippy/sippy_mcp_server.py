@@ -1,9 +1,10 @@
-"""Production Sippy MCP server exposing component readiness triage management.
+"""Sippy MCP server ("sippy") exposing component readiness triage management.
 
 This entry point is separate from the development-workflow server (mcp/server.py, "sippy-dev") and
 exposes no development commands. It is meant to run behind an authenticating proxy, holds a
-service-account token for the authenticated Sippy API, and forwards each tool's acting_for value as
-X-Acting-For so Sippy attributes changes to the requesting user. See README.md in this directory.
+service-account token for the authenticated Sippy API, and forwards each mutating tool's acting_for
+value as X-Acting-For so Sippy attributes changes to the requesting user. See README.md in this
+directory.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ from triage_api import (
 
 logger = logging.getLogger(__name__)
 
-SERVER_NAME = "sippy-production"
+SERVER_NAME = "sippy"
 TRANSPORT_ENV = "SIPPY_MCP_TRANSPORT"
 HOST_ENV = "SIPPY_MCP_HTTP_HOST"
 PORT_ENV = "SIPPY_MCP_HTTP_PORT"
@@ -43,13 +44,14 @@ DEFAULT_HTTP_PORT = 8090
 SUPPORTED_TRANSPORTS = ("stdio", "streamable-http")
 
 _INSTRUCTIONS = """\
-Manage Sippy component readiness triage records in production.
+Manage Sippy component readiness triage records.
 
-Every tool requires acting_for: the identity of the human the change is made for, taken from the
-consumer's authenticated context (never from free text typed by a user). Sippy records that identity
-in triage audit logs. Read a triage with get_triage before changing it, and confirm destructive
-changes with the user. Mutations are not retried automatically; an outcome_unknown error means you
-must read current state before trying again.
+Every tool that changes a triage (create_triage, update_triage, delete_triage) requires acting_for:
+the identity of the human the change is made for, taken from the consumer's authenticated context
+(never from free text typed by a user). Sippy records that identity in triage audit logs. Reads
+(list_triages, get_triage) need no identity. Read a triage with get_triage before changing it, and
+confirm destructive changes with the user. Mutations are not retried automatically; an
+outcome_unknown error means you must read current state before trying again.
 """
 
 _ACTING_FOR_DOC = (
@@ -65,9 +67,7 @@ def _document_acting_for(fn):
 
 def register_triage_tools(server: FastMCP, service: TriageService) -> None:
     @server.tool()
-    @_document_acting_for
     def list_triages(
-        acting_for: str,
         view: str | None = None,
         include_archived: bool = False,
         type: str | None = None,
@@ -84,7 +84,6 @@ def register_triage_tools(server: FastMCP, service: TriageService) -> None:
         regression_ids), count, total_matches, and truncated. No matches returns an empty list.
         """
         return service.list_triages(
-            acting_for,
             view=view,
             include_archived=include_archived,
             type=type,
@@ -95,13 +94,12 @@ def register_triage_tools(server: FastMCP, service: TriageService) -> None:
         )
 
     @server.tool()
-    @_document_acting_for
-    def get_triage(acting_for: str, triage_id: int) -> dict:
+    def get_triage(triage_id: int) -> dict:
         """Fetch one triage with its linked regressions (GET /api/component_readiness/triages/{id}).
 
         Returns {"triage": ...} or an error with code not_found.
         """
-        return service.get_triage(acting_for, triage_id)
+        return service.get_triage(triage_id)
 
     @server.tool()
     @_document_acting_for
@@ -139,9 +137,13 @@ def register_triage_tools(server: FastMCP, service: TriageService) -> None:
         description="" clears the description. resolved is an RFC 3339 timestamp that marks the
         triage resolved; clear_resolved=true unresolves it (not both). add_regression_ids links
         regressions that are not yet linked; remove_regression_ids unlinks currently linked ones.
-        Empty lists, overlapping ids, and requests with no changes are rejected. Not atomic: a
-        concurrent update between the read and the write can be overwritten (reported as a warning
-        when detected).
+        Empty lists, overlapping ids, and requests with no changes are rejected.
+
+        verified=true confirms only that the fields you changed have the requested values after the
+        write. It does not confirm that omitted fields are unchanged: the PUT replaces the whole
+        record from the earlier read (last writer wins), so a concurrent change between the read and
+        the write is overwritten. warnings reports omitted fields that differ from that read, but an
+        overwrite that restores the read value cannot be detected.
         """
         return service.update_triage(
             acting_for,
@@ -166,9 +168,9 @@ def register_triage_tools(server: FastMCP, service: TriageService) -> None:
         return service.delete_triage(acting_for, triage_id)
 
 
-
 def build_server(service: TriageService) -> FastMCP:
-    server = FastMCP(SERVER_NAME, instructions=_INSTRUCTIONS)
+    # Strict validation stops type coercion (for example true -> 1 for an id) before a tool runs.
+    server = FastMCP(SERVER_NAME, instructions=_INSTRUCTIONS, strict_input_validation=True)
     register_triage_tools(server, service)
 
     @server.custom_route("/healthz", methods=["GET"], include_in_schema=False)
@@ -206,6 +208,12 @@ def runtime_settings_from_env(environ: Mapping[str, str] | None = None) -> Runti
     return RuntimeSettings(transport=transport, host=host, port=port, allowed_hosts=allowed or None)
 
 
+def http_transport_options(settings: RuntimeSettings) -> dict:
+    """Options that make the HTTP listener reject requests whose Host is not loopback, the bind address,
+    or listed in SIPPY_MCP_ALLOWED_HOSTS. FastMCP ignores allowed_hosts unless protection is enabled."""
+    return {"host_origin_protection": True, "allowed_hosts": settings.allowed_hosts}
+
+
 def load_service(environ: Mapping[str, str] | None = None) -> TriageService:
     """Build the service from the environment and confirm the token is readable before serving."""
     config = SippyAPIConfig.from_env(environ)
@@ -232,7 +240,7 @@ def main() -> int:
             host=settings.host,
             port=settings.port,
             show_banner=False,
-            allowed_hosts=settings.allowed_hosts,
+            **http_transport_options(settings),
         )
     return 0
 

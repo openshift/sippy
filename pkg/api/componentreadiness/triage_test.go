@@ -994,6 +994,18 @@ func TestApplyResolutionReason(t *testing.T) {
 			want:     string(models.JiraProgression),
 		},
 		{
+			name:     "resubmitting the same instant ignores a different submitted reason",
+			existing: models.Triage{Resolved: resolved(resolvedAt), ResolutionReason: models.JiraProgression},
+			updated:  models.Triage{Resolved: resolved(sameInstantElsewhere), ResolutionReason: models.User},
+			want:     string(models.JiraProgression),
+		},
+		{
+			name:     "resubmitting the same instant without a reason keeps the stored reason",
+			existing: models.Triage{Resolved: resolved(resolvedAt), ResolutionReason: models.RegressionsRolledOff},
+			updated:  models.Triage{Resolved: resolved(resolvedAt)},
+			want:     string(models.RegressionsRolledOff),
+		},
+		{
 			name:     "clearing the resolution unsets the reason",
 			existing: models.Triage{Resolved: resolved(resolvedAt), ResolutionReason: models.RegressionsRolledOff},
 			updated:  models.Triage{ResolutionReason: models.RegressionsRolledOff},
