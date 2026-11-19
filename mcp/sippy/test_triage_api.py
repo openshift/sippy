@@ -289,6 +289,19 @@ def test_read_body_enforces_deadline_and_size(name, chunks, step, deadline, expe
     assert body.chunks, "reading must stop before the whole body is consumed"
 
 
+def test_read_body_reports_eof_after_deadline_as_timeout():
+    # A socket shut down at the deadline reads as EOF, which must not pass for a complete body.
+    clock = _Clock(0.0)
+
+    class _BlockedUntilShutdown:
+        def read1(self, size: int) -> bytes:
+            clock.now += 5.0
+            return b""
+
+    with pytest.raises(TimeoutError):
+        read_body(_BlockedUntilShutdown(), 1.0, clock=clock)
+
+
 def test_read_body_reports_body_shorter_than_content_length():
     body = _ChunkedBody([b'{"id": 1'])
     body.length = 92  # http.client leaves the unread Content-Length byte count here
