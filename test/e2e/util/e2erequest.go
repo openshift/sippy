@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 )
 
@@ -99,6 +100,22 @@ const (
 	TrustedDelegator       string = "system:serviceaccount:sippy-e2e:sippy-mcp"
 	SecondTrustedDelegator string = "sippy-e2e-second-delegator"
 )
+
+// RequireTrustedDelegators skips a test unless the server under test was started with the e2e
+// trusted delegators. scripts/e2e.sh exports SIPPY_E2E_TRUSTED_DELEGATOR and
+// SIPPY_E2E_SECOND_TRUSTED_DELEGATOR alongside the matching --trusted-delegator flags; the Prow e2e
+// step deploys its own server without them. Values that drift from the constants fail the test.
+func RequireTrustedDelegators(t *testing.T) {
+	t.Helper()
+	first, second := os.Getenv("SIPPY_E2E_TRUSTED_DELEGATOR"), os.Getenv("SIPPY_E2E_SECOND_TRUSTED_DELEGATOR")
+	if first == "" && second == "" {
+		t.Skip("SIPPY_E2E_TRUSTED_DELEGATOR not set, server under test has no trusted delegators")
+	}
+	if first != TrustedDelegator || second != SecondTrustedDelegator {
+		t.Fatalf("trusted delegator env (%q, %q) does not match util constants (%q, %q)",
+			first, second, TrustedDelegator, SecondTrustedDelegator)
+	}
+}
 
 // SippyRequestWithHeaders sends a JSON request with exactly the supplied headers (no default
 // X-Forwarded-User), returning the status code and body so tests can assert on rejections. It is the
