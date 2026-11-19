@@ -2,6 +2,8 @@
 
 Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor**, **Claude Code**, and **Codex**.
 
+The **production** triage server (`sippy-production`) is a separate entry point in [`production/`](production/README.md). It shares no code or tools with this development server, and its tests run as part of `make test` (unit) and `make e2e` (integration against the isolated e2e server). Never add development-workflow tools to it.
+
 Simple local commands are documented in project instructions via [APM](../apm.yml); see `.apm/instructions/dev-commands.instructions.md`.
 
 ## Setup
@@ -48,7 +50,7 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 | `sippy_serve`        | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)     | `sippy-dev-logs/sippy_serve.log`        |
 | `sippy_ng_start`     | Background `npm start` in `sippy-ng/` (typically port **3000**)             | `sippy-dev-logs/sippy_ng_start.log`     |
 | `sippy_stop`         | Stops background `sippy_serve` and `sippy_ng_start` processes               | none                                    |
-| `run_tests`          | `make test` (BDD, Go, Vitest, MCP)                                         | `sippy-dev-logs/run_tests.log`          |
+| `run_tests`          | `make test` (BDD, Go, Vitest, MCP including `production/`)                 | `sippy-dev-logs/run_tests.log`          |
 | `run_lint`           | `make lint` (Go, ESLint, dependency audit)                                 | `sippy-dev-logs/run_lint.log`           |
 | `run_e2e`            | `make e2e` (BigQuery coverage is opt-in)                                    | `sippy-dev-logs/run_e2e.log`            |
 | `get_make_result`    | Poll a make run's running status or final result                           | same log as the run                    |
@@ -155,7 +157,7 @@ For unit tests and e2e, `ARTIFACT_DIR` is preserved and must be writable by the 
 server; the runner fails early rather than losing CI artifacts. Without it,
 artifacts go to `sippy-dev-logs/artifacts/`. The e2e runner sets `SIPPY_TEST_OUTPUT_DIR` to
 `ARTIFACT_DIR/e2e/` for e2e logs and coverage, including `e2e-seed.log`, `e2e.log`,
-and `e2e-gotestsum.log`. Tool summaries and prerequisite diagnostics are in
+`e2e-gotestsum.log`, and `e2e-mcp-production.log` (production MCP integration tests). Tool summaries and prerequisite diagnostics are in
 `sippy-dev-logs/run_tests.log`, `run_lint.log`, and `run_e2e.log`.
 
 Database setup/seeding errors stop execution immediately. An API process that exits

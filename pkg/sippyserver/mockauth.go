@@ -23,11 +23,16 @@ func mockAuthEnabled(getenv func(string) string) bool {
 	return getenv(devModeEnvVar) == "1"
 }
 
-// userForRequest returns the authenticated user from the X-Forwarded-User header, falling back to
-// MockUser only when mock authentication is enabled. A real header always takes precedence so that
-// an environment fronted by the oauth proxy still records the real user.
+// userForRequest returns the effective requesting user. A delegated identity resolved by the
+// delegation middleware wins; otherwise it is the authenticated user from the X-Forwarded-User
+// header, falling back to MockUser only when mock authentication is enabled. A real header always
+// takes precedence over the mock so that an environment fronted by the oauth proxy still records
+// the real user.
 func userForRequest(req *http.Request, getenv func(string) string) string {
-	if user := req.Header.Get("X-Forwarded-User"); user != "" {
+	if user, ok := delegatedUserFromContext(req.Context()); ok {
+		return user
+	}
+	if user := req.Header.Get(forwardedUserHeader); user != "" {
 		return user
 	}
 	if mockAuthEnabled(getenv) {

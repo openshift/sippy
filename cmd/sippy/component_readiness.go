@@ -96,6 +96,9 @@ func (f *ComponentReadinessFlags) Validate() error {
 	if err := f.ComponentReadinessFlags.Validate(); err != nil {
 		return err
 	}
+	if err := f.APIFlags.Validate(); err != nil {
+		return err
+	}
 	if f.DataProvider == reqopts.DataSourceBigQuery {
 		return f.GoogleCloudFlags.Validate()
 	}
@@ -226,6 +229,7 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 		f.APIFlags.EnableWriteEndpoints,
 		jiraClient,
 	)
+	server.SetTrustedDelegators(f.APIFlags.TrustedDelegators)
 
 	if f.APIFlags.MetricsAddr != "" {
 		// Do an immediate metrics update
