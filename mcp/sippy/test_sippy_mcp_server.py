@@ -355,6 +355,8 @@ def test_urllib_transport_incomplete_response_is_transport_error(local_http, pat
 
 
 def test_loopback_requests_bypass_inherited_proxy(local_http, monkeypatch):
+    # Ignore NO_PROXY so selecting the proxied opener for loopback would actually hit the closed port.
+    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda host: False)
     # An inherited proxy pointing at a closed port: using it for the loopback API would fail.
     proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"http": "http://127.0.0.1:9"}), triage_api._NoRedirect)
     monkeypatch.setattr(triage_api, "_OPENER", proxied)

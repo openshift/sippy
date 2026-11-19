@@ -122,7 +122,7 @@ def read_token(path: str) -> str:
     """Read the bearer token on every call so rotated service-account tokens take effect."""
     try:
         token = Path(path).read_text(encoding="utf-8").strip()
-    except OSError as e:
+    except (OSError, UnicodeError) as e:
         raise ConfigurationError(f"the file named by {TOKEN_FILE_ENV} could not be read ({type(e).__name__})") from None
     if not token:
         raise ConfigurationError(f"the file named by {TOKEN_FILE_ENV} is empty")

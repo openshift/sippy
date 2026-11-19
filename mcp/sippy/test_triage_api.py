@@ -244,6 +244,11 @@ def test_read_token_errors_do_not_expose_contents(tmp_path):
         read_token(str(empty))
     with pytest.raises(ConfigurationError, match="could not be read"):
         read_token(str(tmp_path / "missing"))
+    not_utf8 = tmp_path / "not-utf8"
+    not_utf8.write_bytes(b"\xff\xfesecret")
+    with pytest.raises(ConfigurationError, match=r"could not be read \(UnicodeDecodeError\)") as excinfo:
+        read_token(str(not_utf8))
+    assert "secret" not in str(excinfo.value)
 
 
 @pytest.mark.parametrize(
@@ -493,19 +498,29 @@ def test_create_success_without_id_is_outcome_unknown(service, fake, body):
     assert len(fake.mutations()) == 1
 
 
-def _break_token_after_first_write(fake, token_file, method):
+def _remove_token(token_file):
+    os.remove(token_file)
+
+
+def _corrupt_token(token_file):
+    with open(token_file, "wb") as f:
+        f.write(b"\xff\xfe")
+
+
+def _break_token_after_first_write(fake, token_file, method, breakage):
     """Make the token unreadable as soon as the first mutation succeeds, so only the readback fails."""
     original = fake.__call__
 
     def transport(m, url, headers, body, timeout):
         response = original(m, url, headers, body, timeout)
         if m == method:
-            os.remove(token_file)
+            breakage(token_file)
         return response
 
     return transport
 
 
+@pytest.mark.parametrize("breakage", [_remove_token, _corrupt_token], ids=["missing", "invalid-utf8"])
 @pytest.mark.parametrize(
     "method, call",
     [
@@ -514,9 +529,9 @@ def _break_token_after_first_write(fake, token_file, method):
         ("DELETE", lambda s: s.delete_triage("alice", 5)),
     ],
 )
-def test_readback_credential_failure_is_verification_unavailable(fake, token_file, method, call):
+def test_readback_credential_failure_is_verification_unavailable(fake, token_file, method, call, breakage):
     fake.add_triage(id=5)
-    transport = _break_token_after_first_write(fake, token_file, method)
+    transport = _break_token_after_first_write(fake, token_file, method, breakage)
     svc = TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file), transport=transport))
     result = call(svc)
     assert _error_code(result) == "verification_unavailable", result
