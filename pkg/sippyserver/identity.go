@@ -14,8 +14,8 @@ const (
 	// forwardedUserHeader carries the principal authenticated by the oauth proxy in front of Sippy.
 	forwardedUserHeader = "X-Forwarded-User"
 
-	// actingForHeader lets a trusted delegator (for example the production MCP server's service
-	// account) name the user it is acting for, so authorization and audit records reflect that user.
+	// actingForHeader lets a trusted delegator (for example the Sippy MCP server's service account)
+	// name the user it is acting for, so authorization and audit records reflect that user.
 	actingForHeader = "X-Acting-For"
 )
 
@@ -23,12 +23,14 @@ const (
 // delegationResolver, kept unexported so no other package can forge it.
 type identityContextKey struct{}
 
-// errMissingActingFor is returned when a trusted delegator omits the delegated identity. It maps to
-// 400 Bad Request, matching ship-status, and the request never falls back to the delegator identity.
+// errMissingActingFor is returned when a trusted delegator omits the delegated identity on a
+// mutating request. It maps to 400 Bad Request, matching ship-status, and the request never falls back
+// to the delegator identity.
 var errMissingActingFor = fmt.Errorf("%s is required for requests from a trusted delegator", actingForHeader)
 
 // delegationResolver determines the effective requesting user for a request. Principals in the
-// trusted delegator allowlist must name the user they act for; everyone else is unaffected.
+// trusted delegator allowlist must name the user they act for on mutating requests; everyone else is
+// unaffected.
 type delegationResolver struct {
 	// trustedDelegators holds exact authenticated principal strings allowed to delegate. An empty
 	// set enables no delegation.
@@ -40,28 +42,37 @@ func newDelegationResolver(trustedDelegators []string) delegationResolver {
 	return delegationResolver{trustedDelegators: sets.New[string](trustedDelegators...)}
 }
 
-// resolve returns the effective user for an authenticated principal and the raw X-Acting-For value.
-// delegated reports whether the identity came from X-Acting-For. Only a non-empty authenticated
-// principal that exactly matches an allowlist entry can delegate, so an unauthenticated request can
-// never acquire an identity from the header.
-func (r delegationResolver) resolve(authenticatedUser, actingFor string) (user string, delegated bool, err error) {
+// safeMethods are read-only HTTP methods. A trusted delegator may send them without X-Acting-For
+// because they change nothing that needs attribution.
+var safeMethods = sets.New[string](http.MethodGet, http.MethodHead, http.MethodOptions)
+
+// resolve returns the effective user for an authenticated principal, the request method, and the raw
+// X-Acting-For value. delegated reports whether the identity came from X-Acting-For. Only a non-empty
+// authenticated principal that exactly matches an allowlist entry can delegate, so an unauthenticated
+// request can never acquire an identity from the header. A trusted delegator must name a user on
+// mutating requests; on safe methods without one it keeps its own identity.
+func (r delegationResolver) resolve(authenticatedUser, method, actingFor string) (user string, delegated bool, err error) {
 	if authenticatedUser == "" || !r.trustedDelegators.Has(authenticatedUser) {
 		return authenticatedUser, false, nil
 	}
 	actingFor = strings.TrimSpace(actingFor)
-	if actingFor == "" {
-		return "", false, errMissingActingFor
+	if actingFor != "" {
+		return actingFor, true, nil
 	}
-	return actingFor, true, nil
+	if safeMethods.Has(method) {
+		return authenticatedUser, false, nil
+	}
+	return "", false, errMissingActingFor
 }
 
-// middleware resolves delegation before any handler runs. Requests from trusted delegators without a
-// delegated identity are rejected with 400 so no mutation can proceed or be attributed to the delegator.
+// middleware resolves delegation before any handler runs. Mutating requests from trusted delegators
+// without a delegated identity are rejected with 400 so no mutation can proceed or be attributed to
+// the delegator.
 // Resolved identities are stored in the request context for getUserForRequest.
 func (r delegationResolver) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		authenticatedUser := req.Header.Get(forwardedUserHeader)
-		user, delegated, err := r.resolve(authenticatedUser, req.Header.Get(actingForHeader))
+		user, delegated, err := r.resolve(authenticatedUser, req.Method, req.Header.Get(actingForHeader))
 		if err != nil {
 			log.WithFields(log.Fields{
 				"principal": authenticatedUser,

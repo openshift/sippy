@@ -36,6 +36,13 @@ func triagePath(id uint) string {
 	return fmt.Sprintf("%s/%d", triagesPath, id)
 }
 
+// deleteRegression removes a regression fixture, reporting a failed cleanup instead of hiding it.
+func deleteRegression(t *testing.T, dbc *db.DB, regression *models.TestRegression) {
+	if err := dbc.DB.Delete(regression).Error; err != nil {
+		t.Errorf("failed to delete regression fixture %d: %v", regression.ID, err)
+	}
+}
+
 // latestAuditLog returns the newest audit record for a triage.
 func latestAuditLog(t *testing.T, dbc *db.DB, triageID uint) models.AuditLog {
 	var auditLog models.AuditLog
@@ -78,7 +85,7 @@ func Test_TriageDelegation(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 	regression := createTestRegression(t, tracker, view, "delegation-testid")
-	defer dbc.DB.Delete(regression)
+	defer deleteRegression(t, dbc, regression)
 
 	t.Run("each configured delegator attributes create, update, and delete to the delegated user", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
@@ -117,10 +124,10 @@ func Test_TriageDelegation(t *testing.T) {
 		}
 	})
 
-	t.Run("delegated reads require a delegated identity", func(t *testing.T) {
+	t.Run("delegated reads do not require a delegated identity", func(t *testing.T) {
 		status, body, err := util.SippyRequestWithHeaders(http.MethodGet, triagesPath, delegatedHeaders(util.TrustedDelegator, ""), nil)
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, status, string(body))
+		assert.Equal(t, http.StatusOK, status, string(body))
 
 		status, body, err = util.SippyRequestWithHeaders(http.MethodGet, triagesPath, delegatedHeaders(util.TrustedDelegator, "alice@example.com"), nil)
 		require.NoError(t, err)
@@ -217,7 +224,7 @@ func Test_TriageUpdatePreservesResolutionReason(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 	regression := createTestRegression(t, tracker, view, "resolution-reason-testid")
-	defer dbc.DB.Delete(regression)
+	defer deleteRegression(t, dbc, regression)
 	defer cleanupAllTriages(dbc)
 
 	created := createTriageAs(t, delegatedHeaders("developer", ""), regression)

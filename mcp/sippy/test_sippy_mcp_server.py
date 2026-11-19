@@ -1,5 +1,5 @@
-"""Tests for the production MCP server entry point: tool registration, separation from the
-development server, runtime configuration, and the real HTTP transport."""
+"""Tests for the Sippy MCP server entry point: tool registration, separation from the development
+server (sippy-dev), runtime configuration, and the real HTTP transport."""
 
 from __future__ import annotations
 
@@ -8,16 +8,19 @@ import asyncio
 import http.server
 import json
 import threading
+import urllib.request
 from pathlib import Path
 
 import pytest
 from fastmcp import Client
 
 import sippy_mcp_server
+import triage_api
 from sippy_mcp_server import (
     DEFAULT_HTTP_HOST,
     DEFAULT_HTTP_PORT,
     build_server,
+    http_transport_options,
     load_service,
     runtime_settings_from_env,
 )
@@ -33,9 +36,10 @@ from triage_api import (
     urllib_transport,
 )
 
-PRODUCTION_DIR = Path(__file__).resolve().parent
+SERVER_DIR = Path(__file__).resolve().parent
 _TRIAGE_TOOLS = {"list_triages", "get_triage", "create_triage", "update_triage", "delete_triage"}
 _MUTATION_TOOLS = {"create_triage", "update_triage", "delete_triage"}
+_READ_TOOLS = _TRIAGE_TOOLS - _MUTATION_TOOLS
 # Tools registered by the development-workflow server (mcp/server.py); none may appear here.
 _DEV_TOOLS = {
     "regression_cache",
@@ -82,11 +86,18 @@ def test_no_development_tools(server):
     assert not set(_tools(server)) & _DEV_TOOLS
 
 
-def test_every_tool_requires_acting_for(server):
-    for name, tool in _tools(server).items():
-        assert "acting_for" in tool.parameters["properties"], name
-        assert "acting_for" in tool.parameters["required"], name
-        assert "acting_for" in tool.description, name
+def test_every_mutation_tool_requires_acting_for(server):
+    tools = _tools(server)
+    for name in _MUTATION_TOOLS:
+        assert "acting_for" in tools[name].parameters["properties"], name
+        assert "acting_for" in tools[name].parameters["required"], name
+        assert "acting_for" in tools[name].description, name
+
+
+def test_read_tools_take_no_acting_for(server):
+    tools = _tools(server)
+    for name in _READ_TOOLS:
+        assert "acting_for" not in tools[name].parameters["properties"], name
 
 
 def test_mutation_tools_document_rest_mapping(server):
@@ -117,8 +128,8 @@ def _imported_modules(path: Path) -> set[str]:
 
 
 @pytest.mark.parametrize("module", ["sippy_mcp_server.py", "triage_api.py"])
-def test_production_modules_do_not_import_development_code(module):
-    imported = _imported_modules(PRODUCTION_DIR / module)
+def test_server_modules_do_not_import_development_code(module):
+    imported = _imported_modules(SERVER_DIR / module)
     assert not imported & {"server", "testenv", "serviceurl", "dotenv", "subprocess"}
 
 
@@ -141,6 +152,47 @@ def test_calls_flow_through_mcp_with_delegated_identity(server, fake):
     assert {c["headers"]["X-Acting-For"] for c in fake.calls} == {"alice"}
 
 
+def test_read_tools_flow_through_mcp_without_identity(server, fake):
+    fake.add_triage(id=5)
+
+    async def run():
+        async with Client(server) as client:
+            listed = await client.call_tool("list_triages", {})
+            fetched = await client.call_tool("get_triage", {"triage_id": 5})
+            return listed, fetched
+
+    listed, fetched = asyncio.run(run())
+    assert [t["id"] for t in listed.structured_content["triages"]] == [5]
+    assert fetched.structured_content["triage"]["id"] == 5
+    assert all("X-Acting-For" not in c["headers"] for c in fake.calls)
+
+
+@pytest.mark.parametrize("triage_id", [True, "5", 5.0])
+def test_strict_input_validation_rejects_coerced_ids(server, fake, triage_id):
+    fake.add_triage(id=1)
+    fake.add_triage(id=5)
+
+    async def run():
+        async with Client(server) as client:
+            return await client.call_tool("delete_triage", {"acting_for": "alice", "triage_id": triage_id}, raise_on_error=False)
+
+    assert asyncio.run(run()).is_error
+    assert fake.calls == [], "a coerced id must not reach Sippy"
+    assert set(fake.triages) == {1, 5}
+
+
+def test_strict_input_validation_accepts_json_integers(server, fake):
+    fake.add_triage(id=1)
+
+    async def run():
+        async with Client(server) as client:
+            return await client.call_tool("delete_triage", {"acting_for": "alice", "triage_id": 1}, raise_on_error=False)
+
+    result = asyncio.run(run())
+    assert not result.is_error
+    assert result.structured_content["deleted"] is True
+
+
 def test_missing_acting_for_is_rejected_by_schema(server, fake):
     async def run():
         async with Client(server) as client:
@@ -150,15 +202,39 @@ def test_missing_acting_for_is_rejected_by_schema(server, fake):
     assert fake.calls == []
 
 
+def _http_app(allowed_hosts: str = ""):
+    service = TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file="/nonexistent")))
+    settings = runtime_settings_from_env({"SIPPY_MCP_TRANSPORT": "streamable-http", "SIPPY_MCP_ALLOWED_HOSTS": allowed_hosts})
+    return build_server(service).http_app(transport="streamable-http", **http_transport_options(settings))
+
+
 def test_healthz():
     from starlette.testclient import TestClient
 
-    service = TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file="/nonexistent")))
-    app = build_server(service).http_app()
-    with TestClient(app) as client:
+    with TestClient(_http_app(), base_url="http://127.0.0.1:8090") as client:
         response = client.get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.parametrize(
+    "allowed_hosts, host, want_status",
+    [
+        ("", "127.0.0.1:8090", 200),
+        ("", "localhost:8090", 200),
+        ("", "sippy-mcp.example.com", 421),
+        ("sippy-mcp.example.com", "sippy-mcp.example.com", 200),
+        ("sippy-mcp.example.com", "evil.example.com", 421),
+    ],
+)
+def test_http_listener_enforces_allowed_hosts(allowed_hosts, host, want_status):
+    from starlette.testclient import TestClient
+
+    # The test client reports base_url's host as the bound server address, which the guard always
+    # allows, so bind to loopback and send the Host header under test explicitly.
+    with TestClient(_http_app(allowed_hosts), base_url="http://127.0.0.1:8090") as client:
+        response = client.get("/healthz", headers={"Host": host})
+    assert response.status_code == want_status, response.text
 
 
 # --- runtime configuration --------------------------------------------------------------------
@@ -221,6 +297,15 @@ class _Recorder(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         _Recorder.seen.append({"path": self.path, "authorization": self.headers.get("Authorization")})
+        if self.path in ("/truncated", "/truncated-error"):
+            # Promise more body than is sent, then close: the client sees an incomplete response.
+            self.send_response(200 if self.path == "/truncated" else 500)
+            self.send_header("Content-Length", "100")
+            self.end_headers()
+            self.wfile.write(b'{"id": 1')
+            self.wfile.flush()
+            self.close_connection = True
+            return
         if self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "/login")
@@ -261,3 +346,19 @@ def test_urllib_transport_does_not_follow_redirects(local_http):
 def test_urllib_transport_connection_failure():
     with pytest.raises(TransportError):
         urllib_transport("GET", "http://127.0.0.1:9/unreachable", {}, None, 2)
+
+
+@pytest.mark.parametrize("path", ["/truncated", "/truncated-error"])
+def test_urllib_transport_incomplete_response_is_transport_error(local_http, path):
+    with pytest.raises(TransportError, match="IncompleteRead"):
+        urllib_transport("GET", f"{local_http}{path}", {}, None, 5)
+
+
+def test_loopback_requests_bypass_inherited_proxy(local_http, monkeypatch):
+    # An inherited proxy pointing at a closed port: using it for the loopback API would fail.
+    proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"http": "http://127.0.0.1:9"}), triage_api._NoRedirect)
+    monkeypatch.setattr(triage_api, "_OPENER", proxied)
+    response = urllib_transport("GET", f"{local_http}/ok", {"Authorization": "Bearer secret"}, None, 5)
+    assert response.status == 200
+    assert [s["path"] for s in _Recorder.seen] == ["/ok"]
+    assert triage_api._opener_for("https://sippy.example.com/api") is proxied

@@ -292,14 +292,17 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 
 // applyResolutionReason sets the resolution reason to persist for an update. Setting or changing the
 // resolution attributes it to the user, clearing it unsets the reason, and resubmitting the same
-// resolution instant keeps the submitted reason. Instants are compared with Equal because a JSON round
-// trip can change a time's location without changing the moment it represents.
+// resolution instant keeps the stored reason, so clients cannot rewrite this system-owned field.
+// Instants are compared with Equal because a JSON round trip can change a time's location without
+// changing the moment it represents.
 func applyResolutionReason(existing models.Triage, updated *models.Triage) {
 	switch {
 	case !updated.Resolved.Valid:
 		updated.ResolutionReason = ""
 	case !existing.Resolved.Valid || !existing.Resolved.Time.Equal(updated.Resolved.Time):
 		updated.ResolutionReason = models.User
+	default:
+		updated.ResolutionReason = existing.ResolutionReason
 	}
 }
 
