@@ -257219,7 +257219,7 @@ periodic-ci-openshift-release-main-ci-5.1-e2e-gcp-ovn-techpreview:
     Suite: unknown
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-ci-5.1-e2e-gcp-ovn-techpreview-serial-1of2:
+periodic-ci-openshift-release-main-ci-5.1-e2e-gcp-ovn-techpreview-serial-1of3:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
@@ -257243,7 +257243,31 @@ periodic-ci-openshift-release-main-ci-5.1-e2e-gcp-ovn-techpreview-serial-1of2:
     Suite: serial
     Topology: ha
     Upgrade: none
-periodic-ci-openshift-release-main-ci-5.1-e2e-gcp-ovn-techpreview-serial-2of2:
+periodic-ci-openshift-release-main-ci-5.1-e2e-gcp-ovn-techpreview-serial-2of3:
+    Aggregation: none
+    Architecture: amd64
+    CGroupMode: v2
+    ContainerRuntime: crun
+    FeatureSet: techpreview
+    Installer: ipi
+    JobTier: informing
+    LayeredProduct: none
+    Network: ovn
+    NetworkAccess: default
+    NetworkStack: ipv4
+    OS: rhcos10
+    Owner: eng
+    Platform: gcp
+    Procedure: serial
+    Release: "5.1"
+    ReleaseMajor: "5"
+    ReleaseMinor: "1"
+    Scheduler: default
+    SecurityMode: default
+    Suite: serial
+    Topology: ha
+    Upgrade: none
+periodic-ci-openshift-release-main-ci-5.1-e2e-gcp-ovn-techpreview-serial-3of3:
     Aggregation: none
     Architecture: amd64
     CGroupMode: v2
