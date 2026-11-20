@@ -207,6 +207,106 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[r2.Regression.ID], "Second regressed test should have SignificantTriagedRegression status")
 		assert.NotContains(t, expandedTriage.RegressedTests, unknownViewName, "unknown view should not appear in regressed tests")
 	})
+	t.Run("embedded regressions carry current and historical test details links", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		closedReg := createTestRegression(t, tracker, view, "historical-closed-test")
+		defer dbc.DB.Delete(closedReg)
+		require.NoError(t, tracker.UpsertRegressionView(closedReg.ID, view.Name))
+		closedReg.LastFailure = sql.NullTime{Time: time.Date(2026, 9, 29, 1, 33, 26, 0, time.UTC), Valid: true}
+		closedReg.Closed = sql.NullTime{Time: time.Date(2026, 10, 2, 8, 0, 0, 0, time.UTC), Valid: true}
+		require.NoError(t, tracker.UpdateRegression(closedReg))
+		require.NoError(t, tracker.DeactivateRolledOffViews([]uint{closedReg.ID}, map[uint][]string{}))
+
+		noFailureReg := createTestRegression(t, tracker, view, "historical-no-failure-test")
+		defer dbc.DB.Delete(noFailureReg)
+		require.NoError(t, tracker.UpsertRegressionView(noFailureReg.ID, view.Name))
+		noFailureReg.Closed = sql.NullTime{Time: time.Date(2026, 10, 2, 8, 0, 0, 0, time.UTC), Valid: true}
+		require.NoError(t, tracker.UpdateRegression(noFailureReg))
+		require.NoError(t, tracker.DeactivateRolledOffViews([]uint{noFailureReg.ID}, map[uint][]string{}))
+
+		openReg := createTestRegression(t, tracker, view, "historical-open-test")
+		defer dbc.DB.Delete(openReg)
+		require.NoError(t, tracker.UpsertRegressionView(openReg.ID, view.Name))
+
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: closedReg.ID}, {ID: noFailureReg.ID}, {ID: openReg.ID},
+			},
+		}
+		var created models.Triage
+		require.NoError(t, util.SippyPost("/api/component_readiness/triages", &triage, &created))
+
+		linkKey := "test_details:" + view.Name
+		assertLinks := func(t *testing.T, regressions []models.TestRegression) {
+			byID := map[uint]models.TestRegression{}
+			for _, r := range regressions {
+				byID[r.ID] = r
+			}
+			require.Contains(t, byID, closedReg.ID)
+			require.Contains(t, byID, noFailureReg.ID)
+			require.Contains(t, byID, openReg.ID)
+
+			closedLink := byID[closedReg.ID].Links[linkKey]
+			require.NotEmpty(t, closedLink, "closed regression should keep a historical link for its inactive view")
+			u, err := url.Parse(closedLink)
+			require.NoError(t, err)
+			q := u.Query()
+			assert.Equal(t, fmt.Sprintf("%d", closedReg.ID), q.Get("regressionId"))
+			assert.Equal(t, view.Name, q.Get("view"))
+			assert.Equal(t, closedReg.TestID, q.Get("testId"))
+			assert.Equal(t, closedReg.Release, q.Get("sampleRelease"))
+			assert.Equal(t, "2026-09-22T00:00:00Z", q.Get("sampleStartTime"))
+			assert.Equal(t, "2026-09-30T00:00:00Z", q.Get("sampleEndTime"))
+			assert.NotEmpty(t, q.Get("baseStartTime"))
+			assert.NotEmpty(t, q.Get("baseEndTime"))
+			assert.Equal(t, "b", q.Get("a"))
+			assert.Equal(t, "d", q.Get("c"))
+
+			assert.NotContains(t, byID[noFailureReg.ID].Links, linkKey, "no historical link can be built without a last failure")
+			assert.NotEmpty(t, byID[noFailureReg.ID].Links["self"])
+
+			openLink := byID[openReg.ID].Links[linkKey]
+			require.NotEmpty(t, openLink, "open regression should keep its current link")
+			ou, err := url.Parse(openLink)
+			require.NoError(t, err)
+			assert.False(t, ou.Query().Has("regressionId"), "current links do not identify a historical regression")
+		}
+
+		t.Run("get", func(t *testing.T) {
+			var got models.Triage
+			require.NoError(t, util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d", created.ID), &got))
+			assertLinks(t, got.Regressions)
+		})
+		t.Run("list", func(t *testing.T) {
+			var triages []models.Triage
+			require.NoError(t, util.SippyGet("/api/component_readiness/triages", &triages))
+			var found *models.Triage
+			for i := range triages {
+				if triages[i].ID == created.ID {
+					found = &triages[i]
+				}
+			}
+			require.NotNil(t, found)
+			assertLinks(t, found.Regressions)
+		})
+		t.Run("regression endpoint agrees with the triage", func(t *testing.T) {
+			var triageResp models.Triage
+			require.NoError(t, util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d", created.ID), &triageResp))
+			var regression models.TestRegression
+			require.NoError(t, util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions/%d", closedReg.ID), &regression))
+			for _, r := range triageResp.Regressions {
+				if r.ID == closedReg.ID {
+					assert.Equal(t, regression.Links[linkKey], r.Links[linkKey])
+				}
+			}
+			assert.True(t, regression.Closed.Valid)
+			require.Len(t, regression.Triages, 1)
+			assert.Equal(t, created.ID, regression.Triages[0].ID)
+		})
+	})
 	t.Run("list", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)

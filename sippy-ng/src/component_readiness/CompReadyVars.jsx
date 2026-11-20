@@ -9,10 +9,13 @@ import {
   convertVariantItemsToParam,
   dateEndFormat,
   dateFormat,
+  endTimeControlValue,
+  endTimeParam,
   formatLongDate,
   getComponentReadinessViewsAPIUrl,
   getJobVariantsAPIUrl,
   gotFetchError,
+  viewControlDefaults,
 } from './CompReadyUtils'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
@@ -129,6 +132,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     variantCrossCompare: ArrayParam, // variant groups (e.g. "Architecture") selected for cross-variant comparison
     compareVariant: ArrayParam, // individual variants (e.g. "Architecture:arm64") checked for cross-variant comparison
     crDataSource: StringParam, // "postgres" to route CR queries to PG instead of BigQuery
+    regressionId: NumberParam, // identifies the closed regression a historical test details link reconstructs
   })
 
   // Find the most recent GA releases
@@ -286,9 +290,10 @@ export const CompReadyVarsProvider = ({ children }) => {
       params.baseStartTime || formatLongDate(initialBaseStartTime, dateFormat)
     )
 
-    // Initialize baseEndTime
+    // Initialize baseEndTime; an exclusive midnight end is shown as the last included day
     setBaseEndTime(
-      params.baseEndTime || formatLongDate(initialBaseEndTime, dateEndFormat)
+      endTimeControlValue(params.baseEndTime) ||
+        formatLongDate(initialBaseEndTime, dateEndFormat)
     )
 
     // Initialize sampleStartTime
@@ -297,9 +302,9 @@ export const CompReadyVarsProvider = ({ children }) => {
         formatLongDate(initialSampleStartTime, dateFormat)
     )
 
-    // Initialize sampleEndTime
+    // Initialize sampleEndTime; an exclusive midnight end is shown as the last included day
     setSampleEndTime(
-      params.sampleEndTime ||
+      endTimeControlValue(params.sampleEndTime) ||
         formatLongDate(initialSampleEndTime, dateEndFormat)
     )
 
@@ -367,10 +372,10 @@ export const CompReadyVarsProvider = ({ children }) => {
       view: undefined,
       baseRelease,
       baseStartTime: formatLongDate(baseStartTime, dateFormat),
-      baseEndTime: formatLongDate(baseEndTime, dateEndFormat),
+      baseEndTime: endTimeParam(baseEndTime, params.baseEndTime),
       sampleRelease,
       sampleStartTime: formatLongDate(sampleStartTime, dateFormat),
-      sampleEndTime: formatLongDate(sampleEndTime, dateEndFormat),
+      sampleEndTime: endTimeParam(sampleEndTime, params.sampleEndTime),
       confidence,
       pity,
       minFail,
@@ -398,6 +403,10 @@ export const CompReadyVarsProvider = ({ children }) => {
       variantCrossCompare: variantCrossCompare,
       compareVariant: convertVariantItemsToParam(compareVariantsCheckedItems),
       crDataSource: dataSource || undefined,
+      // Keep the historical regression identity; its test, release, and
+      // variants are re-validated against the regenerated query. Without a
+      // view, per-view closure cannot be checked and the notice says so.
+      regressionId: params.regressionId,
     })
   }
 
@@ -413,66 +422,53 @@ export const CompReadyVarsProvider = ({ children }) => {
       view: view.name,
       crDataSource: dataSource || undefined,
     })
-    updateVarsFromView(view.name, views)
+    // The new view's current window replaces every URL override.
+    updateVarsFromView(view.name, views, {})
   }
 
-  const updateVarsFromView = (viewName, loadedViews = []) => {
+  // Maps each view-provided control value to its setter.
+  const viewControlSetters = {
+    baseRelease: setBaseRelease,
+    baseStartTime: setBaseStartTime,
+    baseEndTime: setBaseEndTime,
+    sampleRelease: setSampleRelease,
+    sampleStartTime: setSampleStartTime,
+    sampleEndTime: setSampleEndTime,
+    columnGroupBy: setColumnGroupByCheckedItems,
+    dbGroupBy: setDbGroupByVariants,
+    includeVariants: setIncludeVariantsCheckedItems,
+    variantCrossCompare: setVariantCrossCompare,
+    compareVariants: setCompareVariantsCheckedItems,
+    testLifecycles: setTestLifecycles,
+    testCapabilities: setTestCapabilities,
+    confidence: setConfidence,
+    pity: setPity,
+    minFail: setMinFail,
+    passRateNewTests: setPassRateNewTests,
+    passRateAllTests: setPassRateAllTests,
+    ignoreDisruption: setIgnoreDisruption,
+    ignoreMissing: setIgnoreMissing,
+    flakeAsFailure: setFlakeAsFailure,
+    includeMultiReleaseAnalysis: setIncludeMultiReleaseAnalysis,
+  }
+
+  // Syncs the controls to a view. Values given explicitly in urlParams win
+  // over the view's defaults, matching how the API applies them, so the
+  // controls agree with the report being shown.
+  const updateVarsFromView = (
+    viewName,
+    loadedViews = [],
+    urlParams = params
+  ) => {
     if (params.view === undefined || loadedViews.length === 0) return
     // A view query param was requested and we have our views list; sync the controls to match:
     let view = loadedViews.find((v) => v.name === viewName)
     if (!view) return // TODO: alert when view not found in loaded views?
 
-    setBaseRelease(view.base_release.release)
-    setBaseStartTime(formatLongDate(view.base_release.start, dateFormat))
-    setBaseEndTime(formatLongDate(view.base_release.end, dateFormat))
-    setSampleRelease(view.sample_release.release)
-    setSampleStartTime(formatLongDate(view.sample_release.start, dateFormat))
-    setSampleEndTime(formatLongDate(view.sample_release.end, dateFormat))
-
-    // Build array of columns to group by given the view:
-    setColumnGroupByCheckedItems(
-      Object.keys(view.variant_options.column_group_by)
-    )
-    setDbGroupByVariants(Object.keys(view.variant_options.db_group_by))
-
-    if (Object.hasOwn(view.variant_options, 'include_variants'))
-      setIncludeVariantsCheckedItems(view.variant_options.include_variants)
-    if (Object.hasOwn(view.variant_options, 'variant_cross_compare'))
-      setVariantCrossCompare(view.variant_options.variant_cross_compare)
-    if (Object.hasOwn(view.variant_options, 'compare_variants'))
-      setCompareVariantsCheckedItems(view.variant_options.compare_variants)
-    if (view.test_filters) {
-      if (Object.hasOwn(view.test_filters, 'lifecycles'))
-        setTestLifecycles(view.test_filters.lifecycles)
-      else setTestLifecycles([])
-      if (Object.hasOwn(view.test_filters, 'capabilities'))
-        setTestCapabilities(view.test_filters.capabilities)
-      else setTestCapabilities([])
-    } else {
-      setTestLifecycles([])
-      setTestCapabilities([])
+    const defaults = viewControlDefaults(view, urlParams)
+    for (const [control, value] of Object.entries(defaults)) {
+      viewControlSetters[control](value)
     }
-
-    if (Object.hasOwn(view.advanced_options, 'confidence'))
-      setConfidence(view.advanced_options.confidence)
-    if (Object.hasOwn(view.advanced_options, 'pity_factor'))
-      setPity(view.advanced_options.pity_factor)
-    if (Object.hasOwn(view.advanced_options, 'minimum_failure'))
-      setMinFail(view.advanced_options.minimum_failure)
-    if (Object.hasOwn(view.advanced_options, 'pass_rate_required_new_tests'))
-      setPassRateNewTests(view.advanced_options.pass_rate_required_new_tests)
-    if (Object.hasOwn(view.advanced_options, 'pass_rate_required_all_tests'))
-      setPassRateAllTests(view.advanced_options.pass_rate_required_all_tests)
-    if (Object.hasOwn(view.advanced_options, 'ignore_disruption'))
-      setIgnoreDisruption(view.advanced_options.ignore_disruption)
-    if (Object.hasOwn(view.advanced_options, 'ignore_missing'))
-      setIgnoreMissing(view.advanced_options.ignore_missing)
-    if (Object.hasOwn(view.advanced_options, 'flake_as_failure'))
-      setFlakeAsFailure(view.advanced_options.flake_as_failure)
-    if (Object.hasOwn(view.advanced_options, 'include_multi_release_analysis'))
-      setIncludeMultiReleaseAnalysis(
-        view.advanced_options.include_multi_release_analysis
-      )
   }
 
   useEffect(() => {
@@ -678,6 +674,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         testId,
         testName,
         testBasisRelease,
+        regressionId: params.regressionId,
         handleGenerateReport,
         syncView,
         isLoaded,

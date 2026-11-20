@@ -1986,6 +1986,74 @@ func TestQuerySampleJobRunTestStatus(t *testing.T) {
 		}
 	})
 
+	t.Run("historical regression window includes the last failure", func(t *testing.T) {
+		dbc := crTestDB(t)
+		release := "4.16"
+
+		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+		job := createProwJobWithVC(t, dbc, "periodic-jr-historical", release, vc)
+		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] historical window test")
+		suite := intutil.CreateSuite(t, dbc, "openshift-tests-historical")
+		tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:historical", "Storage", []string{"PVC"})
+
+		lastFailure := time.Date(2024, 6, 7, 23, 59, 30, 0, time.UTC)
+		start, end := componentreadiness.HistoricalSampleWindow(lastFailure)
+		require.Equal(t, time.Date(2024, 5, 31, 0, 0, 0, 0, time.UTC), start)
+		require.Equal(t, time.Date(2024, 6, 8, 0, 0, 0, 0, time.UTC), end)
+
+		// status 1 = pass, 12 = fail
+		runs := []struct {
+			timestamp time.Time
+			status    int
+		}{
+			{start.Add(-time.Second), 12}, // the day before the window
+			{start, 1},                    // first instant of the window
+			{lastFailure, 12},             // the recorded last failure
+			{end, 12},                     // the exclusive end belongs to the next day
+		}
+		for _, r := range runs {
+			run := createProwJobRunForCR(t, dbc, job.ID, release, r.timestamp)
+			createProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, &suite.ID, r.status, release, r.timestamp)
+		}
+
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions(release)
+		opts.SampleRelease.Start, opts.SampleRelease.End = start, end
+		opts.TestIDOptions = []reqopts.TestIdentification{{TestID: tow.UniqueID}}
+
+		result, errs := provider.QuerySampleJobRunTestStatus(context.Background(), opts,
+			map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}, start, end)
+		require.Empty(t, errs)
+
+		// Pair each run's timestamp with its exact counts so a swapped status, or
+		// a flake standing in for the pass, cannot satisfy the assertion.
+		type runOutcome struct {
+			timestamp time.Time
+			successes int
+			flakes    int
+			failures  int
+		}
+		var outcomes []runOutcome
+		for _, summaries := range result {
+			for _, s := range summaries {
+				for _, jr := range s.JobRuns {
+					outcomes = append(outcomes, runOutcome{
+						timestamp: jr.StartTime.UTC(),
+						successes: jr.SuccessCount,
+						flakes:    jr.FlakeCount,
+						failures:  jr.TotalCount - jr.SuccessCount - jr.FlakeCount,
+					})
+				}
+			}
+		}
+		expected := []runOutcome{
+			{timestamp: start, successes: 1},
+			{timestamp: lastFailure, failures: 1},
+		}
+		assert.ElementsMatch(t, expected, outcomes,
+			"window must include a pass at its first instant and the last failure, and exclude the following midnight")
+	})
+
 	t.Run("release isolation", func(t *testing.T) {
 		dbc := crTestDB(t)
 		sampleRelease := "4.17"

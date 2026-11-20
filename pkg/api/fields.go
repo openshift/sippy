@@ -48,6 +48,12 @@ func ParseFieldSelection(raw string, model any) (FieldSelection, error) {
 	return selection, nil
 }
 
+// Includes reports whether a response projected with this selection contains name, so callers
+// can skip work for fields a sparse request discards. An empty selection includes every field.
+func (s FieldSelection) Includes(name string) bool {
+	return s.Len() == 0 || s.Has(name)
+}
+
 // Project retains selected fields in an object or array while preserving JSON encodings,
 // including custom marshalers, omitted fields, null values, and integer precision.
 func (s FieldSelection) Project(data any) (any, error) {
