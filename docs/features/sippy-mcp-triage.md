@@ -44,7 +44,7 @@ the REST API replaces the whole record. The API has no version check, so this is
 | `pkg/api/componentreadiness/triage.go` | Triage CRUD and `applyResolutionReason` |
 | `pkg/db/models/triage.go` | Audit hooks that record `CurrentUserKey` |
 | `mcp/sippy/` | `sippy` MCP server, client, tests, Dockerfile ([README](../../mcp/sippy/README.md)) |
-| `test/e2e/componentreadiness/triage/delegation_test.go` | Server-side delegation and audit e2e tests. Delegator cases run only when `scripts/e2e.sh` exports `SIPPY_E2E_TRUSTED_DELEGATOR` and `SIPPY_E2E_SECOND_TRUSTED_DELEGATOR`, and they skip against servers started without `--trusted-delegator` (such as the Prow e2e step) |
+| `test/e2e/componentreadiness/triage/delegation_test.go` | Server-side delegation and audit e2e tests |
 
 Configuration is documented in `config/README.md` (trusted delegators) and
 `mcp/sippy/README.md` (MCP runtime settings and consumer contract). Deployment values live
