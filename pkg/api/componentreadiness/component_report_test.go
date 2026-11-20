@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
@@ -1997,4 +1998,173 @@ func TestGetCacheKeySpotCheckSamples(t *testing.T) {
 		keyFor(sample("a", 30, variants))
 		assert.Equal(t, []string{"y", "x"}, variants["JobTier"])
 	})
+}
+
+// TestValidateSampleStatus guards the mass closure path: a release window whose sample query
+// returned nothing must be reported as an error, not analyzed into an empty report where every
+// regression looks resolved. Drilldown, spot-check, pull request and payload requests are the
+// exceptions, since each legitimately leaves the release window sample empty.
+func TestValidateSampleStatus(t *testing.T) {
+	windowRelease := reqopts.Release{
+		Name:  "4.16",
+		Start: time.Date(2026, 10, 25, 0, 0, 0, 0, time.UTC),
+		End:   time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC),
+	}
+	prRelease := windowRelease
+	prRelease.PullRequestOptions = &reqopts.PullRequest{Org: "openshift", Repo: "sippy", PRNumber: "4127"}
+	payloadRelease := windowRelease
+	payloadRelease.PayloadOptions = &reqopts.Payload{Tags: []string{"4.16.0-0.nightly-2026-11-01-000000"}}
+	spotCheckSamples := []reqopts.SpotCheckJobSampleOpts{{
+		Name:            "spotcheck-30d",
+		Release:         windowRelease,
+		IncludeVariants: map[string][]string{"JobTier": {"spotcheck-30d"}},
+	}}
+
+	tests := []struct {
+		name        string
+		sampleCount int
+		release     reqopts.Release
+		spotCheck   []reqopts.SpotCheckJobSampleOpts
+		testIDOpts  []reqopts.TestIdentification
+		wantErr     bool
+	}{
+		{
+			name:        "release window with no sample rows is an error",
+			sampleCount: 0,
+			release:     windowRelease,
+			wantErr:     true,
+		},
+		{
+			name:        "release window with sample rows is fine",
+			sampleCount: 1,
+			release:     windowRelease,
+		},
+		{
+			// Both cache loaders and the query param parser hand an unfiltered request one
+			// empty TestIdentification, so this is the shape of the report that closed every
+			// 4.x regression. It must stay guarded.
+			name:        "unfiltered request carrying one empty test identification is still an error",
+			sampleCount: 0,
+			release:     windowRelease,
+			testIDOpts:  []reqopts.TestIdentification{{RequestedVariants: map[string]string{}}},
+			wantErr:     true,
+		},
+		{
+			name:        "component drilldown may have an empty release window sample",
+			sampleCount: 0,
+			release:     windowRelease,
+			testIDOpts:  []reqopts.TestIdentification{{Component: "OldComponent"}},
+		},
+		{
+			name:        "capability drilldown may have an empty release window sample",
+			sampleCount: 0,
+			release:     windowRelease,
+			testIDOpts:  []reqopts.TestIdentification{{Component: "OldComponent", Capability: "Legacy"}},
+		},
+		{
+			name:        "exact test drilldown may have an empty release window sample",
+			sampleCount: 0,
+			release:     windowRelease,
+			testIDOpts: []reqopts.TestIdentification{{
+				Component:         "OldComponent",
+				Capability:        "Legacy",
+				TestID:            "removed-test",
+				RequestedVariants: map[string]string{"Platform": "aws"},
+			}},
+		},
+		{
+			name:        "spot-check request may have an empty release window sample",
+			sampleCount: 0,
+			release:     windowRelease,
+			spotCheck:   spotCheckSamples,
+		},
+		{
+			name:        "pull request sample may be empty",
+			sampleCount: 0,
+			release:     prRelease,
+		},
+		{
+			name:        "payload sample may be empty",
+			sampleCount: 0,
+			release:     payloadRelease,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateSampleStatus(tc.sampleCount, reqopts.RequestOptions{
+				SampleRelease:       tc.release,
+				SpotCheckJobSamples: tc.spotCheck,
+				TestIDOptions:       tc.testIDOpts,
+			})
+			if !tc.wantErr {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, errEmptySampleStatus)
+			assert.Contains(t, err.Error(), "4.16")
+		})
+	}
+}
+
+// TestGenerateComponentReportFilteredEmptySample is the regression test for the empty sample
+// guard firing on drilldowns. Providers apply TestIDOptions before returning, so a capability
+// whose only test was removed comes back with baseline rows and no sample rows even though the
+// release is healthy. The guard must stand aside and let the regular analysis report
+// MissingSample, which is what tells the UI the test is gone rather than failing the request.
+func TestGenerateComponentReportFilteredEmptySample(t *testing.T) {
+	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
+
+	removedTest := crtest.KeyWithVariants{
+		TestID: "2",
+		Variants: map[string]string{
+			"Platform":     "aws",
+			"Architecture": "amd64",
+			"Network":      "sdn",
+		},
+	}
+	baseStatus := map[string]crstatus.TestStatus{
+		removedTest.Encode(): withTestKey(removedTest, crstatus.TestStatus{
+			TestName: "test 2", // fakeComponentAndCapabilityGetter maps this to component 2 / cap22
+			Count:    crtest.Count{TotalCount: 1000, SuccessCount: 990, FlakeCount: 10},
+		}),
+	}
+
+	// capabilityPageGenerator drills into component 2 / cap22, the capability the removed test
+	// belonged to, so the provider would return these base rows and no sample rows at all.
+	generator := capabilityPageGenerator
+	require.True(t, reqopts.AnyAreFiltered(generator.ReqOptions.TestIDOptions),
+		"fixture must be a filtered request for this regression test to mean anything")
+
+	assert.NoError(t, validateSampleStatus(0, generator.ReqOptions),
+		"a filtered request with an empty sample must not be rejected as an empty release window")
+
+	generator.initializeMiddleware()
+	report, err := generator.generateComponentTestReport(baseStatus, map[string]crstatus.TestStatus{})
+	require.NoError(t, err)
+
+	// A capability drilldown lists one row per test in that capability.
+	row := requireReportRow(t, report, crtest.RowIdentification{
+		Component:  "component 2",
+		Capability: "cap22",
+		TestName:   "test 2",
+		TestID:     removedTest.TestID,
+	})
+	require.Len(t, row.Columns, 1)
+	assert.Equal(t, crtest.MissingSample, row.Columns[0].Status,
+		"a test present only in the basis should be reported as MissingSample")
+	assert.Empty(t, row.Columns[0].RegressedTests, "MissingSample should not appear in regressed tests")
+}
+
+// requireReportRow returns the report row with the given identification, failing the test when
+// the report has no such row.
+func requireReportRow(t *testing.T, report crtype.ComponentReport, want crtest.RowIdentification) crtype.ReportRow {
+	t.Helper()
+	for _, row := range report.Rows {
+		if row.RowIdentification == want {
+			return row
+		}
+	}
+	require.FailNowf(t, "row not found", "no row %+v in report %+v", want, report.Rows)
+	return crtype.ReportRow{}
 }

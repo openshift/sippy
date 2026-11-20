@@ -97,6 +97,31 @@ type TestIdentification struct {
 	BaseOverrideRelease string `json:"base_override_release,omitempty" yaml:"base_override_release,omitempty"`
 }
 
+// IsEmpty reports whether the identification narrows a report at all. Callers with no drilldown
+// to express still build a one element TestIDOptions slice holding a zero value
+// TestIdentification (the query param parser and both cache loaders all do), so "unfiltered" has
+// to be recognized by content rather than by slice length.
+func (t TestIdentification) IsEmpty() bool {
+	return t.Component == "" &&
+		t.Capability == "" &&
+		t.TestID == "" &&
+		t.BaseOverrideRelease == "" &&
+		len(t.RequestedVariants) == 0
+}
+
+// AnyAreFiltered reports whether opts restricts a report to particular components, capabilities,
+// tests or variants, as the component, capability and test drilldowns do. A report that is
+// filtered covers only a slice of the release, so its result counts cannot be compared against
+// what a whole release is expected to produce.
+func AnyAreFiltered(opts []TestIdentification) bool {
+	for _, tid := range opts {
+		if !tid.IsEmpty() {
+			return true
+		}
+	}
+	return false
+}
+
 func AnyAreBaseOverrides(opts []TestIdentification) bool {
 	for _, tid := range opts {
 		if tid.BaseOverrideRelease != "" {
