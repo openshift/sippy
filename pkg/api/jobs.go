@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -114,7 +115,7 @@ func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
 
 	log.Debugf("Querying between %s -> %s -> %s", start.Format(time.RFC3339), boundary.Format(time.RFC3339), end.Format(time.RFC3339))
 
-	variantsResult, err := query.VariantReports(dbc, release, start, boundary, end)
+	variantsResult, err := query.VariantReports(req.Context(), dbc, release, start, boundary, end)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building variant report:" + err.Error()})
 		return
@@ -182,7 +183,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 		return
 	}
 
-	jobsResult, err := JobReportsFromDB(dbc, release, req.URL.Query().Get("period"), filterOpts, start, boundary, end, reportEnd)
+	jobsResult, err := JobReportsFromDB(req.Context(), dbc, release, req.URL.Query().Get("period"), filterOpts, start, boundary, end, reportEnd)
 	if err != nil {
 		RespondWithError(w, "error building job report", err)
 		return
@@ -191,7 +192,7 @@ func PrintJobsReportFromDB(w http.ResponseWriter, req *http.Request,
 	RespondWithJSON(http.StatusOK, w, jobsResult)
 }
 
-func JobReportsFromDB(dbc *db.DB, release, period string, filterOpts *filter.FilterOptions, start, boundary, end, reportEnd time.Time) ([]apitype.Job, error) {
+func JobReportsFromDB(ctx context.Context, dbc *db.DB, release, period string, filterOpts *filter.FilterOptions, start, boundary, end, reportEnd time.Time) ([]apitype.Job, error) {
 
 	// set a default filter if none provided
 	if filterOpts == nil {
@@ -223,7 +224,7 @@ func JobReportsFromDB(dbc *db.DB, release, period string, filterOpts *filter.Fil
 		end = reportEnd
 	}
 
-	jobsResult, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
+	jobsResult, err := query.JobReports(ctx, dbc, filterOpts, release, start, boundary, end)
 
 	if err != nil {
 		return nil, err

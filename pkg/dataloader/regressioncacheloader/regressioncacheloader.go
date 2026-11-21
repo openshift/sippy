@@ -322,7 +322,7 @@ func (l *RegressionCacheLoader) generateAndCacheReport(
 		return nil, fmt.Errorf("component report generation encountered errors: %s",
 			strings.Join(strErrors, "; "))
 	}
-	err := generator.PostAnalysis(&report)
+	err := generator.PostAnalysis(ctx, &report)
 	return &report, err
 }
 

@@ -1,6 +1,7 @@
 package regressiontracker
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
@@ -291,7 +292,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			mw.openRegressions = []*models.TestRegression{&tt.openRegression}
 			mw.hasLoadedRegressions = true
 			mw.log = logrus.New()
-			err := mw.PostAnalysis(testKey, &tt.testStats)
+			err := mw.PostAnalysis(t.Context(), testKey, &tt.testStats)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedExplanationsCount, len(tt.testStats.Explanations), tt.testStats.Explanations)
 			assert.Equal(t, tt.expectStatus, tt.testStats.ReportStatus)
@@ -912,6 +913,8 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 		testID            string
 		failureCount      int
 		failureCountErr   error
+		cancelContext     bool
+		expectErr         error
 		expectStatus      crtest.Status
 		expectExplanation string
 	}{
@@ -963,6 +966,15 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			expectStatus:      crtest.FailedFixedRegression,
 			expectExplanation: "failures have been observed",
 		},
+		{
+			name:            "key test with canceled context returns the context error without a fallback status",
+			testName:        keyTestName,
+			testID:          keyTestID,
+			failureCountErr: context.Canceled,
+			cancelContext:   true,
+			expectErr:       context.Canceled,
+			expectStatus:    crtest.ExtremeRegression,
+		},
 	}
 
 	for _, tt := range tests {
@@ -991,6 +1003,12 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 				Triages:  []models.Triage{resolvedTriage},
 			}
 
+			type ctxKey struct{}
+			ctx, cancel := context.WithCancel(context.WithValue(t.Context(), ctxKey{}, tt.name))
+			defer cancel()
+			if tt.cancelContext {
+				cancel()
+			}
 			mw := RegressionTracker{
 				reqOptions: reqopts.RequestOptions{
 					BaseRelease:   reqopts.Release{Name: baseRelease},
@@ -1002,7 +1020,9 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 				},
 				openRegressions:      []*models.TestRegression{openRegression},
 				hasLoadedRegressions: true,
-				failureCounter: func(_ uint, _ time.Time) (int, error) {
+				failureCounter: func(counterCtx context.Context, _ uint, _ time.Time) (int, error) {
+					// the count query must stay cancellable with the caller's request
+					assert.Equal(t, tt.name, counterCtx.Value(ctxKey{}), "failure counter did not receive the caller's context")
 					return tt.failureCount, tt.failureCountErr
 				},
 				log: logrus.New(),
@@ -1015,7 +1035,13 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 				Regression:   openRegression,
 			}
 
-			err := mw.PostAnalysis(testKey, testStats)
+			err := mw.PostAnalysis(ctx, testKey, testStats)
+			if tt.expectErr != nil {
+				require.ErrorIs(t, err, tt.expectErr)
+				assert.Equal(t, tt.expectStatus, testStats.ReportStatus)
+				assert.Empty(t, testStats.Explanations)
+				return
+			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectStatus, testStats.ReportStatus)
 			assert.Len(t, testStats.Explanations, 1)

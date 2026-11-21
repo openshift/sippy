@@ -25,7 +25,7 @@ func PrintUpgradeJSONReportFromDB(w http.ResponseWriter, req *http.Request, dbc 
 		testidentification.CVOAcknowledgesUpgradeTest,
 	)
 
-	variantColumns, tests, err := VariantTestsReport(dbc, release, v1.CurrentReport,
+	variantColumns, tests, err := VariantTestsReport(req.Context(), dbc, release, v1.CurrentReport,
 		exactTestNames, testPrefixes, testSubStrings, testidentification.DefaultExcludedVariants)
 	if err != nil {
 		log.WithError(err).Error("could not generate upgrade report")

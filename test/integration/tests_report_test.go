@@ -50,7 +50,7 @@ func testsReportPeriods() (sample, base query.DateRange, start, boundary, end ci
 // does on its own.
 func runCollapsedReport(t *testing.T, dbc *db.DB, release string, sample, base query.DateRange, variantFilter, nameFilter, lifecycleFilter *filter.Filter) ([]apitype.Test, error) {
 	t.Helper()
-	collapsedQuery, err := query.TestReportQueryCollapsed(dbc, release, sample, base, variantFilter, nameFilter, lifecycleFilter)
+	collapsedQuery, err := query.TestReportQueryCollapsed(t.Context(), dbc, release, sample, base, variantFilter, nameFilter, lifecycleFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func runCollapsedReport(t *testing.T, dbc *db.DB, release string, sample, base q
 // itself, so no further wrapping is needed to match production output.
 func runUncollapsedReport(t *testing.T, dbc *db.DB, release string, sample, base query.DateRange, nameFilter, variantFilter, processedFilter, lifecycleFilter *filter.Filter) ([]apitype.Test, *filter.Filter, error) {
 	t.Helper()
-	rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(dbc, release, sample, base, nameFilter, variantFilter, processedFilter, lifecycleFilter)
+	rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(t.Context(), dbc, release, sample, base, nameFilter, variantFilter, processedFilter, lifecycleFilter)
 	if err != nil {
 		return nil, nil, err
 	}

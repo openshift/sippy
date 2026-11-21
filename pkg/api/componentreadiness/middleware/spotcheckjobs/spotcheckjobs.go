@@ -39,7 +39,7 @@ func (s *SpotCheckJobs) PreAnalysis(_ crtest.Identification, _ *testdetails.Test
 	return nil
 }
 
-func (s *SpotCheckJobs) PostAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
+func (s *SpotCheckJobs) PostAnalysis(_ context.Context, _ crtest.Identification, _ *testdetails.TestComparison) error {
 	return nil
 }
 

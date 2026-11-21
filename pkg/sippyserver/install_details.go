@@ -16,5 +16,5 @@ func (s *Server) jsonUpgradeReportFromDB(w http.ResponseWriter, req *http.Reques
 func (s *Server) jsonInstallReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := param.SafeRead(req, "release")
 
-	api.PrintInstallJSONReportFromDB(w, s.db, release)
+	api.PrintInstallJSONReportFromDB(req.Context(), w, s.db, release)
 }

@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -96,7 +97,7 @@ func timePtr(t time.Time) *time.Time {
 }
 
 func fetchJobRunInt64(dbc *db.DB, id uint, onlyNewTests bool, preloads []string, logger *log.Entry) (*models.ProwJobRun, error) {
-	return api.FetchJobRun(dbc, int64(id), onlyNewTests, preloads, logger) //nolint:gosec // G115: test ID from serial, within int64 range
+	return api.FetchJobRun(context.Background(), dbc, int64(id), onlyNewTests, preloads, logger) //nolint:gosec // G115: test ID from serial, within int64 range
 }
 
 func TestFetchJobRunOnlyNewTests(t *testing.T) {
@@ -154,7 +155,7 @@ func TestPrintJobAnalysisEmptyJobs(t *testing.T) {
 	}
 
 	result, err := api.PrintJobAnalysisJSONFromDB(
-		dbc, "4.99", noMatchFilter, &filter.Filter{},
+		t.Context(), dbc, "4.99", noMatchFilter, &filter.Filter{},
 		start, boundary, now, 10, "name", apitype.SortDescending, api.PeriodDay, now,
 	)
 	require.NoError(t, err)

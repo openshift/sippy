@@ -90,7 +90,7 @@ func GetComponentReport(
 		if errs != nil {
 			return report, errs
 		}
-		err = generator.PostAnalysis(&report)
+		err = generator.PostAnalysis(ctx, &report)
 		if err != nil {
 			return report, []error{err}
 		}
@@ -107,7 +107,7 @@ func GetComponentReport(
 		return report, errs
 	}
 
-	err = generator.PostAnalysis(&report)
+	err = generator.PostAnalysis(ctx, &report)
 	if err != nil {
 		return report, []error{err}
 	}
@@ -118,7 +118,7 @@ func GetComponentReport(
 // PostAnalysis runs the PostAnalysis method for all middleware on this component report.
 // This is done outside the caching mechanism so we can load fresh data from our db (which is fast and cheap),
 // and inject it into an expensive / slow report without recalculating everything.
-func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) error {
+func (c *ComponentReportGenerator) PostAnalysis(ctx context.Context, report *crtype.ComponentReport) error {
 
 	// Give middleware their chance to adjust the result
 	for ri, row := range report.Rows {
@@ -131,7 +131,7 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 					RowIdentification:    col.RegressedTests[rti].RowIdentification,
 					ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
 				}
-				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison); err != nil {
+				if err := c.middlewares.PostAnalysis(ctx, testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison); err != nil {
 					return err
 				}
 				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].ReportStatus; rti == 0 || newStatus < worstStatus {
@@ -148,7 +148,7 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 						RowIdentification:    col.AllTests[ati].RowIdentification,
 						ColumnIdentification: col.AllTests[ati].ColumnIdentification,
 					}
-					if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].AllTests[ati].TestComparison); err != nil {
+					if err := c.middlewares.PostAnalysis(ctx, testKey, &report.Rows[ri].Columns[ci].AllTests[ati].TestComparison); err != nil {
 						return err
 					}
 				}

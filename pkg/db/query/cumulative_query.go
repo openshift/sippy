@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -128,8 +129,8 @@ func PeriodsForReportType(reportType v1.ReportType) (sample, base DateRange) {
 // metadata (test name, suite, jira component, open bugs, variants). It does NOT
 // include percentages or cross-variant statistics; callers that need those should
 // use UncollapsedTestReportWithStats instead.
-func TestReportQuery(dbc *db.DB, release string, sample, base DateRange, nameMatches TestNameMatches) (*gorm.DB, error) {
-	return testReportPreAgg(dbc, release, sample, base, nameMatches)
+func TestReportQuery(ctx context.Context, dbc *db.DB, release string, sample, base DateRange, nameMatches TestNameMatches) (*gorm.DB, error) {
+	return testReportPreAgg(ctx, dbc, release, sample, base, nameMatches)
 }
 
 // ResolveDateRanges clamps the Start and End of each DateRange to the latest
@@ -137,9 +138,9 @@ func TestReportQuery(dbc *db.DB, release string, sample, base DateRange, nameMat
 // in test_cumulative_summaries. This ensures the planner sees literal dates it
 // can use for partition pruning, and handles cases where data hasn't been
 // backfilled up to the requested dates.
-func ResolveDateRanges(dbc *db.DB, release string, ranges ...*DateRange) error {
+func ResolveDateRanges(ctx context.Context, dbc *db.DB, release string, ranges ...*DateRange) error {
 	var maxDate *civil.Date
-	row := dbc.DB.Table("test_cumulative_summaries").
+	row := dbc.DB.WithContext(ctx).Table("test_cumulative_summaries").
 		Select("MAX(date)").
 		Where("release = ?", release).
 		Row()
@@ -161,8 +162,8 @@ func ResolveDateRanges(dbc *db.DB, release string, ranges ...*DateRange) error {
 	return nil
 }
 
-func openBugsSubquery(dbc *db.DB) *gorm.DB {
-	return dbc.DB.Table("bug_tests").
+func openBugsSubquery(ctx context.Context, dbc *db.DB) *gorm.DB {
+	return dbc.DB.WithContext(ctx).Table("bug_tests").
 		Select("bug_tests.test_id, COUNT(DISTINCT bugs.id) AS open_bugs").
 		Joins("INNER JOIN bugs ON bug_tests.bug_id = bugs.id").
 		Where("LOWER(bugs.status) <> 'closed'").
@@ -310,8 +311,8 @@ func processedFilterConditions(f *filter.Filter) (conditions []string, args []an
 // warns if their boundaries don't align, and converts the half-open interval
 // dates to the three prefix sum lookup dates used by the 3-way self-join
 // (each shifted by -1 day): end (e), boundary (m), and start (s).
-func resolvePrefixSumDates(dbc *db.DB, release string, sample, base *DateRange) (end, boundary, start civil.Date, err error) {
-	if err = ResolveDateRanges(dbc, release, sample, base); err != nil {
+func resolvePrefixSumDates(ctx context.Context, dbc *db.DB, release string, sample, base *DateRange) (end, boundary, start civil.Date, err error) {
+	if err = ResolveDateRanges(ctx, dbc, release, sample, base); err != nil {
 		return
 	}
 	if sample.Start != base.End {
@@ -329,13 +330,13 @@ func resolvePrefixSumDates(dbc *db.DB, release string, sample, base *DateRange) 
 // here produces one row per variant combination (matching the old matview
 // granularity). Keeping rows narrow lets callers add percentages before
 // metadata joins.
-func testReportCoreJoin(dbc *db.DB, release string, sample, base DateRange, nameMatches TestNameMatches) (*gorm.DB, error) {
-	end, boundary, start, err := resolvePrefixSumDates(dbc, release, &sample, &base)
+func testReportCoreJoin(ctx context.Context, dbc *db.DB, release string, sample, base DateRange, nameMatches TestNameMatches) (*gorm.DB, error) {
+	end, boundary, start, err := resolvePrefixSumDates(ctx, dbc, release, &sample, &base)
 	if err != nil {
 		return nil, err
 	}
 
-	query := dbc.DB.
+	query := dbc.DB.WithContext(ctx).
 		Table("test_cumulative_summaries e").
 		Select(`e.test_id, e.suite_id, pj.variant_combination_id, e.release,
 			SUM(COALESCE(m.prefix_sum_successes - COALESCE(s.prefix_sum_successes, 0), 0))::bigint AS previous_successes,
@@ -364,14 +365,14 @@ func testReportCoreJoin(dbc *db.DB, release string, sample, base DateRange, name
 // test_ownerships, jira_components, variant_combinations, open_bugs). The planner
 // flattens the core subquery so the resulting plan is identical to a single-level
 // query with all joins together.
-func testReportPreAgg(dbc *db.DB, release string, sample, base DateRange, nameMatches TestNameMatches) (*gorm.DB, error) {
-	core, err := testReportCoreJoin(dbc, release, sample, base, nameMatches)
+func testReportPreAgg(ctx context.Context, dbc *db.DB, release string, sample, base DateRange, nameMatches TestNameMatches) (*gorm.DB, error) {
+	core, err := testReportCoreJoin(ctx, dbc, release, sample, base, nameMatches)
 	if err != nil {
 		return nil, err
 	}
-	openBugs := openBugsSubquery(dbc)
+	openBugs := openBugsSubquery(ctx, dbc)
 
-	return dbc.DB.
+	return dbc.DB.WithContext(ctx).
 		Table("(?) AS pre", core).
 		Select(`tests.name, pre.suite_id, suites.name AS suite_name,
 			jira_components.name AS jira_component, jira_components.id AS jira_component_id,
@@ -390,8 +391,8 @@ func testReportPreAgg(dbc *db.DB, release string, sample, base DateRange, nameMa
 // It aggregates prefix sums per date partition separately (~16K groups each), then joins
 // the three small results to compute period counts. This avoids the expensive 3-way
 // self-join on all ~1.8M per-prow_job rows that the uncollapsed path requires.
-func TestReportQueryCollapsed(dbc *db.DB, release string, sample, base DateRange, variantFilter, nameFilter, lifecycleFilter *filter.Filter) (*gorm.DB, error) {
-	end, boundary, start, err := resolvePrefixSumDates(dbc, release, &sample, &base)
+func TestReportQueryCollapsed(ctx context.Context, dbc *db.DB, release string, sample, base DateRange, variantFilter, nameFilter, lifecycleFilter *filter.Filter) (*gorm.DB, error) {
+	end, boundary, start, err := resolvePrefixSumDates(ctx, dbc, release, &sample, &base)
 	if err != nil {
 		return nil, err
 	}
@@ -480,5 +481,5 @@ LEFT JOIN (
   ` + openBugsSQL + `
 ) AS ob ON t.id = ob.test_id`)
 
-	return dbc.DB.Raw(buf.String(), args...), nil
+	return dbc.DB.WithContext(ctx).Raw(buf.String(), args...), nil
 }

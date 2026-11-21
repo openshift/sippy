@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/openshift/sippy/pkg/db"
@@ -11,9 +12,9 @@ import (
 // If no in-development release exists (all have a GA date), it falls back to
 // the release with the most recent GA date. Used as a fallback for
 // partition-scoped queries when no specific release is available from the caller.
-func CurrentActiveRelease(dbc *db.DB) (string, error) {
+func CurrentActiveRelease(ctx context.Context, dbc *db.DB) (string, error) {
 	var release string
-	err := dbc.DB.Table("release_definitions").
+	err := dbc.DB.WithContext(ctx).Table("release_definitions").
 		Where("ga_date IS NULL").
 		Where("product = ?", "OCP").
 		Where("release ~ ?", `^\d+\.\d+$`).
@@ -26,7 +27,7 @@ func CurrentActiveRelease(dbc *db.DB) (string, error) {
 	if release != "" {
 		return release, nil
 	}
-	err = dbc.DB.Table("release_definitions").
+	err = dbc.DB.WithContext(ctx).Table("release_definitions").
 		Where("ga_date IS NOT NULL").
 		Where("product = ?", "OCP").
 		Where("release ~ ?", `^\d+\.\d+$`).

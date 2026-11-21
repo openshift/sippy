@@ -252,7 +252,7 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 		return result
 	}
 
-	partKeys, err := query.LookupProwJobRunPartitionKeys(r.db.DB, jobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(ctx, r.db.DB, jobRunID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			result.Status = ReEvalMissingError
@@ -265,7 +265,7 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	}
 
 	jobRunModel := new(models.ProwJobRun)
-	res := r.db.DB.Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
+	res := r.db.DB.WithContext(ctx).Where("prow_job_release = ? AND timestamp = ?", partKeys.ProwJobRelease, partKeys.Timestamp).
 		Take(jobRunModel, jobRunID)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
@@ -296,7 +296,7 @@ func (r *ReEvaluator) reEvaluateOne(ctx context.Context, buildID string, symptom
 	}
 
 	// Compute the label set from matches
-	bqLabels, bucketLabels, err := r.buildOutputs(matches, buildID, jobRunModel)
+	bqLabels, bucketLabels, err := r.buildOutputs(ctx, matches, buildID, jobRunModel)
 	if err != nil {
 		result.Status = ReEvalEvalError
 		result.Error = err.Error()
@@ -422,7 +422,7 @@ func ContentMatcherForSymptom(symptom jobrunscan.SymptomContent) (jobartifacts.C
 }
 
 // buildOutputs creates the BQ labels and GCS bucket labels from symptom matches.
-func (r *ReEvaluator) buildOutputs(matches []symptomMatch, buildID string, jobRun *models.ProwJobRun) ([]models.JobRunLabel, []jobrunannotator.JobRunBucketLabel, error) {
+func (r *ReEvaluator) buildOutputs(ctx context.Context, matches []symptomMatch, buildID string, jobRun *models.ProwJobRun) ([]models.JobRunLabel, []jobrunannotator.JobRunBucketLabel, error) {
 	now := civil.DateTimeOf(time.Now())
 	startTime := civil.DateTimeOf(jobRun.Timestamp)
 	jobRunPath := jobRunPathFromURL(jobRun.URL)
@@ -430,7 +430,7 @@ func (r *ReEvaluator) buildOutputs(matches []symptomMatch, buildID string, jobRu
 	var bqLabels []models.JobRunLabel
 	var bucketLabels []jobrunannotator.JobRunBucketLabel
 
-	labelDefs, err := r.loadLabelDefinitions(matches)
+	labelDefs, err := r.loadLabelDefinitions(ctx, matches)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading label definitions: %w", err)
 	}
@@ -466,7 +466,7 @@ func (r *ReEvaluator) buildOutputs(matches []symptomMatch, buildID string, jobRu
 }
 
 // loadLabelDefinitions fetches label content for the labels referenced by matched symptoms.
-func (r *ReEvaluator) loadLabelDefinitions(matches []symptomMatch) (map[string]jobrunscan.LabelContent, error) {
+func (r *ReEvaluator) loadLabelDefinitions(ctx context.Context, matches []symptomMatch) (map[string]jobrunscan.LabelContent, error) {
 	ids := sets.New[string]()
 	for _, m := range matches {
 		ids.Insert(m.symptom.LabelIDs...)
@@ -476,7 +476,7 @@ func (r *ReEvaluator) loadLabelDefinitions(matches []symptomMatch) (map[string]j
 	}
 
 	var labels []jobrunscan.Label
-	if err := r.db.DB.Where("id IN ?", ids.UnsortedList()).Find(&labels).Error; err != nil {
+	if err := r.db.DB.WithContext(ctx).Where("id IN ?", ids.UnsortedList()).Find(&labels).Error; err != nil {
 		return nil, fmt.Errorf("querying label definitions for %v: %w", ids.UnsortedList(), err)
 	}
 
@@ -622,9 +622,9 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 		// Read (and lock) the current labels from the row so we can preserve an
 		// InfraFailure that RecordInfraFailure already applied.
 		var currentRun models.ProwJobRun
-		if err := tx.Raw(
+		if err := query.ScanAll(tx.Raw(
 			"SELECT labels FROM prow_job_runs WHERE id = ? AND prow_job_release = ? AND timestamp = ? FOR UPDATE",
-			jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp).Scan(&currentRun).Error; err != nil {
+			jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp), &currentRun); err != nil {
 			return fmt.Errorf("locking prow_job_runs row for build %s: %w", buildID, err)
 		}
 
@@ -652,24 +652,26 @@ func (r *ReEvaluator) updatePostgresLabels(ctx context.Context, buildID string, 
 			Update("labels", pq.StringArray(prowJobRunLabels)).Error; err != nil {
 			return fmt.Errorf("updating prow_job_runs.labels: %w", err)
 		}
+
+		// Mirror the merged labels onto release_job_runs when this job run has a
+		// release row. Unlike prow_job_runs, release_job_runs is not coupled to the
+		// summary-table subtraction, so the merged set is written as-is. It shares
+		// the transaction so a cancellation cannot leave the two tables with
+		// different labels. Select only the primary key: it is all the label
+		// update needs.
+		var releaseJobRun models.ReleaseJobRun
+		if err := tx.Select("id").Where("prow_job_run_id = ?", jobRun.ID).First(&releaseJobRun).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("looking up release_job_runs for build %s: %w", buildID, err)
+			}
+			return nil
+		}
+		if err := tx.Model(&releaseJobRun).Update("labels", pq.StringArray(merged)).Error; err != nil {
+			return fmt.Errorf("updating release_job_runs.labels: %w", err)
+		}
 		return nil
 	}); err != nil {
 		return err
-	}
-
-	// Mirror the merged labels onto release_job_runs when this job run has a
-	// release row. Unlike prow_job_runs, release_job_runs is not coupled to the
-	// summary-table subtraction, so the merged set is written as-is. Select only
-	// the primary key: it is all the label update needs.
-	var releaseJobRun models.ReleaseJobRun
-	if err := r.db.DB.Select("id").Where("prow_job_run_id = ?", jobRun.ID).First(&releaseJobRun).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("looking up release_job_runs for build %s: %w", buildID, err)
-		}
-	} else {
-		if err := r.db.DB.Model(&releaseJobRun).Update("labels", pq.StringArray(merged)).Error; err != nil {
-			return fmt.Errorf("updating release_job_runs.labels: %w", err)
-		}
 	}
 
 	log.WithFields(log.Fields{"buildID": buildID, "labels": pq.StringArray(prowJobRunLabels)}).Debug("symptom reEval: updated PostgreSQL labels")

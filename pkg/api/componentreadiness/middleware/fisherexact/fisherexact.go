@@ -34,7 +34,7 @@ func (f *FisherExact) PreAnalysis(_ crtest.Identification, _ *testdetails.TestCo
 	return nil
 }
 
-func (f *FisherExact) PostAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
+func (f *FisherExact) PostAnalysis(_ context.Context, _ crtest.Identification, _ *testdetails.TestComparison) error {
 	return nil
 }
 

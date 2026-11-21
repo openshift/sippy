@@ -52,12 +52,15 @@ type EventListResponse struct {
 
 // JobRunEvents fetches events.json for a given job run from the GCS path
 // artifacts/*e2e*/gather-extra/artifacts/events.json
-func JobRunEvents(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath string, logger *log.Entry) (*EventListResponse, error) {
+func JobRunEvents(ctx context.Context, gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath string, logger *log.Entry) (*EventListResponse, error) {
 	jobRunURL := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/%s", gcsBucket, gcsPath)
 
-	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, nil, logger)
+	jobRun, err := api.FetchJobRun(ctx, dbc, jobRunID, false, nil, logger)
 	if err != nil {
 		logger.WithError(err).Debugf("failed to fetch job run %d", jobRunID)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
 		if gcsPath == "" {
 			return nil, errors.New("no GCS path given and no job run found in DB")
 		}
@@ -75,7 +78,7 @@ func JobRunEvents(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBuck
 	}
 
 	gcsJobRun := gcs.NewGCSJobRun(gcsClient.Bucket(gcsBucket), gcsPath)
-	matches, err := gcsJobRun.FindAllMatches(context.TODO(), gcs.GlobEventsJSON)
+	matches, err := gcsJobRun.FindAllMatches(ctx, gcs.GlobEventsJSON)
 	if err != nil {
 		return &EventListResponse{JobRunURL: jobRunURL}, err
 	}
@@ -88,7 +91,7 @@ func JobRunEvents(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBuck
 	eventsPath := matches[0]
 	logger.WithField("events_path", eventsPath).Info("found events.json")
 
-	content, err := gcsJobRun.GetContent(context.TODO(), eventsPath)
+	content, err := gcsJobRun.GetContent(ctx, eventsPath)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting content for file: %s", eventsPath)
 		return nil, err

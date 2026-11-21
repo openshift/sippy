@@ -20,6 +20,7 @@ type LabelOption struct {
 // PrintAutocompleteFromDB returns autocomplete results for a particular field,
 // such as test or job names. It optionally takes a release and search query filter.
 func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	field := vars["field"]
 	search := req.URL.Query().Get("search")
@@ -28,7 +29,7 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 	// Special handling for labels which returns objects with id and title
 	if field == "labels" {
 		labelResult := make([]LabelOption, 0)
-		q := dbc.DB.Table("job_run_labels").
+		q := dbc.DB.WithContext(ctx).Table("job_run_labels").
 			Select("id as name, label_title as title").
 			Order("name")
 
@@ -38,9 +39,8 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 				fmt.Sprintf("%%%s%%", search))
 		}
 
-		q = q.Limit(50).Scan(&labelResult)
-		if q.Error != nil {
-			RespondWithJSON(503, w, map[string]string{"message": q.Error.Error()})
+		if err := query.ScanAll(q.Limit(50), &labelResult); err != nil {
+			RespondWithJSON(503, w, map[string]string{"message": err.Error()})
 			return
 		}
 		RespondWithJSON(200, w, labelResult)
@@ -49,7 +49,7 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 
 	// Standard string autocomplete for other fields
 	result := make([]string, 0)
-	q := dbc.DB
+	q := dbc.DB.WithContext(ctx)
 
 	switch field {
 	case "variants": //nolint:goconst
@@ -80,7 +80,7 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 		clusterRelease := release
 		if clusterRelease == "" {
 			var err error
-			clusterRelease, err = query.CurrentActiveRelease(dbc)
+			clusterRelease, err = query.CurrentActiveRelease(ctx, dbc)
 			if err != nil {
 				log.WithError(err).Warn("could not determine current development release for cluster autocomplete")
 				// do not return error for autocomplete, default to empty results
@@ -119,13 +119,12 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 	}
 
 	if search != "" {
-		sq := dbc.DB.Table("(?) as q", q)
+		sq := dbc.DB.WithContext(ctx).Table("(?) as q", q)
 		q = sq.Where("name ILIKE ?", fmt.Sprintf("%%%s%%", search))
 	}
 
-	q = q.Limit(100).Scan(&result)
-	if q.Error != nil {
-		RespondWithJSON(503, w, map[string]string{"message": q.Error.Error()})
+	if err := query.ScanAll(q.Limit(100), &result); err != nil {
+		RespondWithJSON(503, w, map[string]string{"message": err.Error()})
 		return
 	}
 

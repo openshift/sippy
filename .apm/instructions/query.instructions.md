@@ -11,3 +11,11 @@ applyTo: "pkg/**/query/**"
   CTEs into helper functions when they grow beyond that.
 * When constructing SQL queries, prefer using a format string and/or multi-line string rather than
   concatenation of short strings; and always use placeholders for parameters.
+* PostgreSQL query functions take `ctx context.Context` as their first parameter and run their
+  GORM calls through `WithContext(ctx)`, including builders that return a `*gorm.DB` for the
+  caller to execute. HTTP handlers pass `req.Context()` so a canceled request stops the query;
+  background jobs pass their own context, or `context.Background()` when none exists.
+* Use `query.ScanAll(q, &dest)` instead of GORM's `q.Scan(&dest)` for context-bound queries.
+  GORM v1.22.2 `Scan` drops `rows.Err()` when the first row read fails, so a canceled context can
+  yield empty results with no error, which callers then return or cache as success. `Find`,
+  `First`, `Pluck`, and `Count` already report that error.

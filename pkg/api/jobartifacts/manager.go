@@ -2,6 +2,7 @@ package jobartifacts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -84,10 +85,11 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 			}
 			remaining.Delete(response.jobRun) // we have seen it, it is no longer remaining
 			if response.error != nil {
-				result.Errors = append(result.Errors, JobRunError{
-					ID:    strconv.FormatInt(response.jobRun, 10),
-					Error: response.error.Error(),
-				})
+				jobRunErr := newJobRunError(response.jobRun, response.error)
+				if jobRunErr.TimedOut {
+					result.IsFinal = false
+				}
+				result.Errors = append(result.Errors, jobRunErr)
 			} else {
 				result.JobRuns = append(result.JobRuns, response.response)
 				if !response.response.IsFinal {
@@ -129,6 +131,16 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 		return strings.Compare(a.ID, b.ID)
 	})
 	return
+}
+
+// newJobRunError reports a job run that failed. Deadline errors are marked as timed out because
+// the worker's artifact context expires before the job deadline, and a retry could still succeed.
+func newJobRunError(jobRunID int64, err error) JobRunError {
+	return JobRunError{
+		ID:       strconv.FormatInt(jobRunID, 10),
+		Error:    err.Error(),
+		TimedOut: errors.Is(err, context.DeadlineExceeded),
+	}
 }
 
 // a jobRunRequest channels a single job run to be processed and returned with matching file paths
