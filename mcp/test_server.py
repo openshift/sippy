@@ -1462,6 +1462,7 @@ e2e_create_database sippy_e2e "$SIPPY_DATABASE_DSN"
             ("tests", 35, "Cache priming complete", "API exited before readiness"),
             ("tee", 36, "Cache priming complete", "API exited before readiness"),
             ("success", 0, "Cache priming complete", "API exited before readiness"),
+            ("mcp-sippy", 37, "Sippy MCP stub failed", "API exited before readiness"),
         ],
     )
     def test_failure_status_survives_cleanup(self, tmp_path, stage, status, expected, forbidden):
@@ -1559,6 +1560,17 @@ fi
 exec /bin/sleep 60
 ''')
         sippy.chmod(0o755)
+        # Stand-ins for mcp/run.sh and the Sippy MCP integration tests.
+        mcp_dir = tmp_path / "mcp-stub"
+        (mcp_dir / ".venv" / "bin").mkdir(parents=True)
+        (mcp_dir / "run.sh").write_text("#!/bin/bash\n[[ \"$1\" == --sippy-dev-setup-only ]]\n")
+        (mcp_dir / ".venv" / "bin" / "pytest").write_text('''#!/bin/bash
+echo "Sippy MCP stub $1 for $SIPPY_MCP_INTEGRATION_DELEGATOR at $SIPPY_MCP_INTEGRATION_SIPPY_URL"
+echo "redis://:secret@localhost/1" >&2
+if [[ "$FAIL_STAGE" == mcp-sippy ]]; then echo "Sippy MCP stub failed"; exit "$FAIL_STATUS"; fi
+''')
+        for script in (mcp_dir / "run.sh", mcp_dir / ".venv" / "bin" / "pytest"):
+            script.chmod(0o755)
         output_dir = tmp_path / "artifacts"
         output_dir.mkdir()
         (output_dir / "e2e-gotestsum.log").write_text("DONE previous run\n")
@@ -1566,7 +1578,7 @@ exec /bin/sleep 60
             ["bash", str(E2E_SCRIPT)], cwd=tmp_path,
             env={**os.environ, "BASH_ENV": str(bash_env), "FAIL_STAGE": stage,
                  "FAIL_STATUS": str(status), "GCS_SA_JSON_PATH": "",
-                 "SIPPY_TEST_OUTPUT_DIR": str(output_dir),
+                 "SIPPY_TEST_OUTPUT_DIR": str(output_dir), "SIPPY_E2E_MCP_DIR": str(mcp_dir),
                  "SIPPY_DATABASE_DSN": "postgresql://test:secret@localhost:5432/postgres?sslmode=disable"},
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
         )
@@ -1587,8 +1599,12 @@ exec /bin/sleep 60
         assert expected in output
         assert forbidden not in output
         assert "DONE previous run" not in output
-        if stage in ("tests", "success"):
-            assert "DONE test stub" in output
+        if stage in ("tests", "success", "mcp-sippy"):
+            assert "DONE test stub" in output, "Go e2e tests must run even when Sippy MCP tests fail"
+            assert (
+                "Sippy MCP stub sippy/test_triage_integration.py for "
+                "system:serviceaccount:sippy-e2e:sippy-mcp at http://127.0.0.1:18080"
+            ) in output
         assert "secret" not in output
         for log in output_dir.glob("*.log"):
             assert "secret" not in log.read_text()

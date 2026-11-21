@@ -183,6 +183,16 @@ type Server struct {
 	symptomReSubmitter     *symptomre.Submitter
 	symptomReStatusQuerier *symptomre.StatusQuerier
 	symptomReCanceller     *symptomre.BatchCanceller
+	delegation             delegationResolver
+}
+
+// SetTrustedDelegators configures the exact authenticated principals allowed to act for another
+// user through the X-Acting-For header. An empty list (the default) enables no delegation.
+func (s *Server) SetTrustedDelegators(principals []string) {
+	s.delegation = newDelegationResolver(principals)
+	if len(principals) > 0 {
+		log.WithField("count", len(principals)).Info("trusted delegators configured")
+	}
 }
 
 // SetSymptomReEvaluation wires the async symptom re-evaluation submitter,
@@ -1995,8 +2005,23 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, et)
 }
 
-func (s *Server) jsonCreateTriage(w http.ResponseWriter, req *http.Request) {
+// requireTriageWriteUser returns the effective user for a triage mutation, writing 401 Unauthorized
+// when it cannot be determined. Triage audit records must name a user, so an unauthenticated
+// mutation is refused rather than recorded with an empty user.
+func requireTriageWriteUser(w http.ResponseWriter, req *http.Request) (string, bool) {
 	user := getUserForRequest(req)
+	if strings.TrimSpace(user) == "" {
+		failureResponse(w, http.StatusUnauthorized, "cannot determine user for triage change; authentication is required")
+		return "", false
+	}
+	return user, true
+}
+
+func (s *Server) jsonCreateTriage(w http.ResponseWriter, req *http.Request) {
+	user, ok := requireTriageWriteUser(w, req)
+	if !ok {
+		return
+	}
 	log.Infof("triage POST made by user: %s", user)
 	var triage models.Triage
 	if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
@@ -2022,7 +2047,10 @@ func (s *Server) jsonUpdateTriage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	user := getUserForRequest(req)
+	user, ok := requireTriageWriteUser(w, req)
+	if !ok {
+		return
+	}
 	log.Infof("triage PUT made by user: %s", user)
 	var triage models.Triage
 	if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
@@ -2037,6 +2065,10 @@ func (s *Server) jsonUpdateTriage(w http.ResponseWriter, req *http.Request) {
 	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
 	triage, err = componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), s.jiraClient, triage, req)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			failureResponse(w, http.StatusNotFound, fmt.Sprintf("triage %d not found", triageID))
+			return
+		}
 		log.WithError(err).Error("error updating triage")
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -2145,10 +2177,17 @@ func (s *Server) jsonDeleteTriage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	user := getUserForRequest(req)
+	user, ok := requireTriageWriteUser(w, req)
+	if !ok {
+		return
+	}
 	log.Infof("triage DELETE made by user: %s", user)
 	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
 	if err := componentreadiness.DeleteTriage(s.db.DB.WithContext(ctx), triageID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			failureResponse(w, http.StatusNotFound, fmt.Sprintf("triage %d not found", triageID))
+			return
+		}
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -3222,6 +3261,8 @@ func (s *Server) Serve() {
 
 	var handler http.Handler = router
 	handler = logRequestHandler(handler)
+	// Resolve delegation before request logging so BigQuery labels and handlers see the effective user.
+	handler = s.delegation.middleware(handler)
 
 	// Middleware for http metrics
 	metricsMiddleware := middleware.New(middleware.Config{

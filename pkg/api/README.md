@@ -735,7 +735,8 @@ all other triage endpoints, regression triage associations, and the regression
 potential-match endpoint continue to access historical triages. Frontend listings
 and reuse selectors use ordinary listings, with view filters where applicable,
 preserving non-archived cross-release candidates. There is no separate BigQuery
-triage listing implementation or MCP triage listing tool.
+triage listing implementation. The `sippy` MCP server's `list_triages` tool
+(`mcp/sippy/`) calls this endpoint.
 
 ### Parameters
 
@@ -758,17 +759,41 @@ Returns a single triage record by ID. Use `expand=regressions` to include
 regressed test summaries. Regression job runs in the response may contain
 applied `job_labels`.
 
+A triage `id` that does not exist returns `404 Not Found`.
+
 Endpoint: `POST /api/component_readiness/triages`
 
 Creates a new triage record.
 
 Endpoint: `PUT /api/component_readiness/triages/{id}`
 
-Updates an existing triage record.
+Updates an existing triage record by replacing it: fields missing from the body are
+cleared and `regressions` becomes exactly the listed IDs. Retrieve the full record
+first and send it back with your changes. There is no version check, so concurrent
+replacements are last writer wins. `resolution_reason` is system-owned: resubmitting
+an unchanged `resolved` instant keeps the stored reason whatever the body sends,
+setting or changing it sets the reason to `user`, and clearing it clears the reason.
+A triage `id` that does not exist returns `404 Not Found`.
 
 Endpoint: `DELETE /api/component_readiness/triages/{id}`
 
-Deletes a triage record.
+Deletes a triage record. A triage `id` that does not exist returns `404 Not Found`.
+
+### Triage write identity
+
+Create, update, and delete record the requesting user in the triage audit log
+(`GET /api/component_readiness/triages/{id}/audit`) and return `401 Unauthorized`
+when no user can be determined. The user is the authenticated `X-Forwarded-User`
+set by the oauth proxy, or the `DEV_MODE=1` mock user locally (see `DEVELOPMENT.md`).
+
+For principals configured with `--trusted-delegator` (see `config/README.md`), every
+mutating request (any method other than `GET`, `HEAD`, or `OPTIONS`) must also send
+`X-Acting-For: <user>`; Sippy uses that user for authorization and audit records, and
+rejects a missing or blank value with `400 Bad Request` before any change. Reads may
+omit it and run as the principal. Other callers' `X-Acting-For` headers are ignored.
+The check runs in middleware for every request from such a principal, so all
+endpoints that attribute work to a user (triage writes, regression force close, Jira
+bug filing, and symptom changes) see the same delegated user.
 
 Endpoint: `POST /api/component_readiness/triages/{id}/force_close_regressions`
 

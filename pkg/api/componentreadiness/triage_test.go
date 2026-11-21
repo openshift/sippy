@@ -962,3 +962,67 @@ func TestValidateJiraPrefix(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyResolutionReason(t *testing.T) {
+	resolvedAt := time.Date(2026, 3, 4, 5, 6, 7, 123456000, time.UTC)
+	// The same instant in a different location, as produced by a JSON round trip of a database value.
+	sameInstantElsewhere := resolvedAt.In(time.FixedZone("UTC-5", -5*60*60))
+	resolved := func(t time.Time) sql.NullTime { return sql.NullTime{Time: t, Valid: true} }
+
+	tests := []struct {
+		name     string
+		existing models.Triage
+		updated  models.Triage
+		want     string
+	}{
+		{
+			name:     "resolving an unresolved triage attributes it to the user",
+			existing: models.Triage{},
+			updated:  models.Triage{Resolved: resolved(resolvedAt)},
+			want:     string(models.User),
+		},
+		{
+			name:     "changing the resolution time attributes it to the user",
+			existing: models.Triage{Resolved: resolved(resolvedAt), ResolutionReason: models.JiraProgression},
+			updated:  models.Triage{Resolved: resolved(resolvedAt.Add(time.Hour)), ResolutionReason: models.JiraProgression},
+			want:     string(models.User),
+		},
+		{
+			name:     "resubmitting the same instant preserves a system resolution reason",
+			existing: models.Triage{Resolved: resolved(resolvedAt), ResolutionReason: models.JiraProgression},
+			updated:  models.Triage{Resolved: resolved(sameInstantElsewhere), ResolutionReason: models.JiraProgression},
+			want:     string(models.JiraProgression),
+		},
+		{
+			name:     "resubmitting the same instant ignores a different submitted reason",
+			existing: models.Triage{Resolved: resolved(resolvedAt), ResolutionReason: models.JiraProgression},
+			updated:  models.Triage{Resolved: resolved(sameInstantElsewhere), ResolutionReason: models.User},
+			want:     string(models.JiraProgression),
+		},
+		{
+			name:     "resubmitting the same instant without a reason keeps the stored reason",
+			existing: models.Triage{Resolved: resolved(resolvedAt), ResolutionReason: models.RegressionsRolledOff},
+			updated:  models.Triage{Resolved: resolved(resolvedAt)},
+			want:     string(models.RegressionsRolledOff),
+		},
+		{
+			name:     "clearing the resolution unsets the reason",
+			existing: models.Triage{Resolved: resolved(resolvedAt), ResolutionReason: models.RegressionsRolledOff},
+			updated:  models.Triage{ResolutionReason: models.RegressionsRolledOff},
+			want:     "",
+		},
+		{
+			name:     "unresolved triage stays without a reason",
+			existing: models.Triage{},
+			updated:  models.Triage{ResolutionReason: models.User},
+			want:     "",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			updated := tc.updated
+			applyResolutionReason(tc.existing, &updated)
+			assert.Equal(t, tc.want, string(updated.ResolutionReason))
+		})
+	}
+}
