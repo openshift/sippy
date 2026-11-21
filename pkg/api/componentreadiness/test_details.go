@@ -751,45 +751,49 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 	result = testdetails.Report{Identification: testKey}
 	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
 
-	// Callers pass statuses already split by test key, so each job maps to at most
-	// one summary here; the job-name assignments below rely on that.
 	jobNames := sets.New(slices.Collect(maps.Keys(baseStatus))...)
 	jobNames.Insert(slices.Collect(maps.Keys(sampleStatus))...)
-	for job := range jobNames {
-		jobStats := testdetails.JobStats{}
-		if sampleSummaries, ok := sampleStatus[job]; ok {
-			for _, summary := range sampleSummaries {
-				jobStats.SampleJobName = summary.ProwJob
-				jobStats.SampleStats = jobStats.SampleStats.Add(summary.Stats, faf)
-				c.extractMetadata(summary, &result)
-				for _, run := range summary.JobRuns {
-					start := run.StartTime.In(time.UTC)
-					if start.After(lastFailure) && run.Failures() > 0 {
-						lastFailure = start
-					}
-					jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.toJobRunStats(run))
+	for _, job := range slices.Sorted(maps.Keys(jobNames)) {
+		baseSummaries := baseStatus[job]
+		sampleSummaries := sampleStatus[job]
+		for _, summary := range baseSummaries {
+			totalBase = totalBase.Add(summary.Stats, faf)
+			c.extractMetadata(summary, &result)
+		}
+		for _, summary := range sampleSummaries {
+			totalSample = totalSample.Add(summary.Stats, faf)
+			c.extractMetadata(summary, &result)
+			for _, run := range summary.JobRuns {
+				start := run.StartTime.In(time.UTC)
+				if start.After(lastFailure) && run.Failures() > 0 {
+					lastFailure = start
 				}
 			}
-			totalSample = totalSample.Add(jobStats.SampleStats, faf)
-		}
-		if baseSummaries, ok := baseStatus[job]; ok {
-			for _, summary := range baseSummaries {
-				jobStats.BaseJobName = summary.ProwJob
-				jobStats.BaseStats = jobStats.BaseStats.Add(summary.Stats, faf)
-				c.extractMetadata(summary, &result)
-				for _, run := range summary.JobRuns {
-					jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.toJobRunStats(run))
-				}
-			}
-			totalBase = totalBase.Add(jobStats.BaseStats, faf)
 		}
 
-		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
-		bFail, bPass := jobStats.BaseStats.FailPassWithFlakes(faf)
-		_, _, r, _ := fet.FisherExactTest(sFail, sPass, bFail, bPass)
-		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
+		baseByStoredJob := recordedStatsByStoredJob(baseSummaries)
+		sampleByStoredJob := recordedStatsByStoredJob(sampleSummaries)
+		baseStoredJobNames := sets.New(slices.Collect(maps.Keys(baseByStoredJob))...)
+		sampleStoredJobNames := sets.New(slices.Collect(maps.Keys(sampleByStoredJob))...)
+		for _, storedJobName := range slices.Sorted(maps.Keys(baseStoredJobNames.Intersection(sampleStoredJobNames))) {
+			report.JobStats = append(report.JobStats, c.recordedJobStats(baseByStoredJob[storedJobName], sampleByStoredJob[storedJobName]))
+			delete(baseByStoredJob, storedJobName)
+			delete(sampleByStoredJob, storedJobName)
+		}
 
-		report.JobStats = append(report.JobStats, jobStats)
+		remainingBaseJobs := slices.Sorted(maps.Keys(baseByStoredJob))
+		remainingSampleJobs := slices.Sorted(maps.Keys(sampleByStoredJob))
+		if baseStoredJobNames.Len() == 1 && sampleStoredJobNames.Len() == 1 &&
+			len(remainingBaseJobs) == 1 && len(remainingSampleJobs) == 1 {
+			report.JobStats = append(report.JobStats, c.recordedJobStats(baseByStoredJob[remainingBaseJobs[0]], sampleByStoredJob[remainingSampleJobs[0]]))
+			continue
+		}
+		for _, storedJobName := range remainingBaseJobs {
+			report.JobStats = append(report.JobStats, c.recordedJobStats(baseByStoredJob[storedJobName], nil))
+		}
+		for _, storedJobName := range remainingSampleJobs {
+			report.JobStats = append(report.JobStats, c.recordedJobStats(nil, sampleByStoredJob[storedJobName]))
+		}
 	}
 
 	sort.Slice(report.JobStats, func(i, j int) bool {
@@ -797,6 +801,42 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 			report.JobStats[j].SampleJobName+":"+report.JobStats[j].BaseJobName
 	})
 	return
+}
+
+// recordedStatsByStoredJob retains physical Prow job identity within a normalized job bucket.
+func recordedStatsByStoredJob(summaries []crstatus.TestDetailsSummary) map[string][]crstatus.TestDetailsSummary {
+	byStoredJob := make(map[string][]crstatus.TestDetailsSummary)
+	for _, summary := range summaries {
+		byStoredJob[summary.ProwJob] = append(byStoredJob[summary.ProwJob], summary)
+	}
+	return byStoredJob
+}
+
+// recordedJobStats combines summaries for one exact stored base job and one exact stored sample job.
+func (c *ComponentReportGenerator) recordedJobStats(
+	baseSummaries, sampleSummaries []crstatus.TestDetailsSummary,
+) testdetails.JobStats {
+	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
+	jobStats := testdetails.JobStats{}
+	for _, summary := range sampleSummaries {
+		jobStats.SampleJobName = summary.ProwJob
+		jobStats.SampleStats = jobStats.SampleStats.Add(summary.Stats, faf)
+		for _, run := range summary.JobRuns {
+			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.toJobRunStats(run))
+		}
+	}
+	for _, summary := range baseSummaries {
+		jobStats.BaseJobName = summary.ProwJob
+		jobStats.BaseStats = jobStats.BaseStats.Add(summary.Stats, faf)
+		for _, run := range summary.JobRuns {
+			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.toJobRunStats(run))
+		}
+	}
+	sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
+	bFail, bPass := jobStats.BaseStats.FailPassWithFlakes(faf)
+	_, _, r, _ := fet.FisherExactTest(sFail, sPass, bFail, bPass)
+	jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
+	return jobStats
 }
 
 func (c *ComponentReportGenerator) extractMetadata(summary crstatus.TestDetailsSummary, result *testdetails.Report) {

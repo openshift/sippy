@@ -193,6 +193,18 @@ func TestParseCRReleaseTimeAt(t *testing.T) {
 			roundingOffset: 4 * time.Hour,
 			expectedTime:   time.Date(2026, 3, 9, 20, 0, 0, 0, time.UTC),
 		},
+		{
+			name:         "RFC3339 positive offset crossing midnight returns UTC",
+			now:          afterBoundary,
+			timeStr:      "2026-03-09T01:30:00+09:00",
+			expectedTime: time.Date(2026, 3, 8, 16, 30, 0, 0, time.UTC),
+		},
+		{
+			name:         "RFC3339 negative offset crossing midnight returns UTC",
+			now:          afterBoundary,
+			timeStr:      "2026-03-08T23:30:00-05:00",
+			expectedTime: time.Date(2026, 3, 9, 4, 30, 0, 0, time.UTC),
+		},
 	}
 
 	for _, tt := range tests {
@@ -200,6 +212,7 @@ func TestParseCRReleaseTimeAt(t *testing.T) {
 			got, err := ParseCRReleaseTimeAt(tt.now, nil, "4.22", tt.timeStr, tt.isStart, nil, tt.roundingFactor, tt.roundingOffset)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedTime, got)
+			assert.Equal(t, time.UTC, got.Location())
 		})
 	}
 }

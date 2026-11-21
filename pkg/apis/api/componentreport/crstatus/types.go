@@ -81,11 +81,14 @@ type TestJobRunRows struct {
 	ProwJobURL   string                 `bigquery:"prowjob_url"`
 	StartTime    time.Time              `bigquery:"prowjob_start"`
 	crtest.Count
-	JiraComponent   string   `bigquery:"jira_component"`
-	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
-	JobLabels       []string `bigquery:"-" json:"job_labels,omitempty"`
-	TestFailures    int      `bigquery:"-" json:"test_failures"`
-	Lifecycle       string   `bigquery:"lifecycle"`
+	// StatsCount keeps mutually exclusive pass, failure, and flake counts for
+	// detail summaries when the per-run display Count projects flakes as passes.
+	StatsCount      *crtest.Count `json:"-" bigquery:"-"`
+	JiraComponent   string        `bigquery:"jira_component"`
+	JiraComponentID *big.Rat      `bigquery:"jira_component_id"`
+	JobLabels       []string      `bigquery:"-" json:"job_labels,omitempty"`
+	TestFailures    int           `bigquery:"-" json:"test_failures"`
+	Lifecycle       string        `bigquery:"lifecycle"`
 }
 
 // JobVariant defines a variant and the possible values.

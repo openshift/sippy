@@ -24,6 +24,9 @@ type RequestOptions struct {
 	CacheOption    cache.RequestOptions
 	TestFilters
 	TestIDOptions []TestIdentification
+	// SkipGABaseJobRuns omits PostgreSQL GA base run details for internal
+	// consumers that need only snapshot statistics. Sample runs remain available.
+	SkipGABaseJobRuns bool `json:"-" yaml:"-"`
 	// SpotCheckJobSamples defines resolved sample windows for spot-check job analysis.
 	// Each entry specifies a tier name, time window, and variant filters to select jobs.
 	SpotCheckJobSamples []SpotCheckJobSampleOpts `json:"spot_check_job_samples,omitempty" yaml:"spot_check_job_samples,omitempty"`

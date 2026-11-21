@@ -46,7 +46,7 @@ func New(wrappedLoaders []dataloader.DataLoader) *LoaderWithMetrics {
 	return loader
 }
 
-var loaderOrder = []string{"release-definitions", "pr-merge-sync", "prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "regression-cache", "ga-test-status"}
+var loaderOrder = []string{"release-definitions", "pr-merge-sync", "prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "ga-test-status", "regression-cache"}
 
 // sortLoaders guarantees that the loaders run in a predictable and proper order
 func (l *LoaderWithMetrics) sortLoaders() {
@@ -75,7 +75,12 @@ func (l *LoaderWithMetrics) Load() {
 	l.sortLoaders()
 	overallStart := time.Now()
 	log.Infof("starting %d loaders...", len(l.loaders))
+	gaRefreshFailed := false
 	for _, loader := range l.loaders {
+		if loader.Name() == "regression-cache" && gaRefreshFailed {
+			log.Error("skipping regression-cache because GA refresh failed")
+			continue
+		}
 		log.Infof("starting loader %q with metrics wrapper", loader.Name())
 		start := time.Now()
 		loader.Load()
@@ -84,6 +89,9 @@ func (l *LoaderWithMetrics) Load() {
 
 		loadMetric.WithLabelValues(loader.Name()).Observe(float64(totalTime.Milliseconds()))
 		errorMetric.WithLabelValues(loader.Name()).Observe(float64(len(loader.Errors())))
+		if loader.Name() == "ga-test-status" && len(loader.Errors()) > 0 {
+			gaRefreshFailed = true
+		}
 	}
 	overallDuration := time.Since(overallStart)
 	log.Infof("%d loaders finished in %+v...", len(l.loaders), overallDuration)
