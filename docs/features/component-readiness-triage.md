@@ -20,32 +20,75 @@ often surfaces as several regressions that a single triage covers together.
 A regression with no triage means Sippy has no triage record for it. It does not mean that no Jira
 bug exists, and it does not mean that no owner is looking into it.
 
-Linking a regression to a triage records that connection and nothing more. It does not assign the
-Jira issue to anyone, and it does not prove the regression is fixed.
+Linking a regression to a triage connects it to the tracking URL. It does not assign the Jira issue to
+anyone, and it does not prove the regression is fixed.
 
 ## How a human triages
 
 1. **Find untriaged regressions:** Open the regressed tests dialog from the report and use the
    `Untriaged` tab, which lists the regressions that still need a triage record.
 2. **Inspect the evidence:** Open a regression to read its test details for each variant and job run.
-   A stable [regression link](../../sippy-ng/src/component_readiness/RegressionRedirect.jsx) opens
-   that page, so a link shared in a bug points at the right test.
+   The route `/sippy-ng/component_readiness/regressions/{id}` redirects to those details, so a link
+   built from a regression id resolves to the right test
+   ([`RegressionRedirect.jsx`](../../sippy-ng/src/component_readiness/RegressionRedirect.jsx)).
 3. **Link the regressions:** Add them to an `Existing Triage` that already points at the bug, or
    create a `New Triage` with the URL, description, and type. `Potential Matches` suggests candidates
    to review, not confirmed causes.
-4. **Follow the fix:** The `All Triage Records` index and each triage detail page link to the tracking
-   Jira bug. Open that bug to follow the fix's progress, which the triage's own unresolved or resolved
-   state does not report.
+4. **Follow the fix:** Open the tracking Jira bug, linked from the `All Triage Records` index and each
+   triage detail page, to judge bug progress. Judge actual CI recovery from the report status and the
+   failing job runs, not from the Jira state alone.
+
+## Lifecycle
+
+1. **Detection:** Component Readiness opens a regression when a test's sample pass rate drops enough
+   to be significant in a view.
+2. **Linking:** An engineer links the regression to a triage record that points at a new or existing
+   Jira bug.
+3. **Jira sync:** A background loader imports the linked bug, and for a triage covering a single
+   release it auto-resolves the triage (not the regression) once the bug reaches `ON_QA`, `Verified`,
+   `Release Pending`, or `Closed` ([`bugloader.go`](../../pkg/dataloader/bugloader/bugloader.go)).
+4. **Recovery:** A regression closes when the test no longer appears as regressed in any report. If the
+   test regresses again within five days Sippy reuses that record, otherwise it opens a new regression
+   ([`regressiontracker.go`](../../pkg/api/componentreadiness/regressiontracker.go)).
+5. **Continuing failures:** Sippy shows `Failed Fix` when every linked triage is resolved and
+   qualifying failures follow the latest resolution. Check the test details and the `Unresolved` tab
+   for the ongoing failures.
+6. **Reopened bug:** If the bug later leaves those states, the loader clears only resolutions it set
+   automatically, never a user or rolled-off resolution.
+
+## Statuses you will see
+
+The regressed tests dialog tabs filter the regression list rather than a single record
+([`RegressedTestsModal.jsx`](../../sippy-ng/src/component_readiness/RegressedTestsModal.jsx),
+[`CompReadyUtils.jsx`](../../sippy-ng/src/component_readiness/CompReadyUtils.jsx)):
+
+- `Unresolved`: still-failing regressions, including triaged-but-unresolved and failed-fix ones, but excluding those believed fixed.
+- `Untriaged`: regressions with no triage record yet.
+- `Triaged`: regressions grouped under their triage records.
+- `All`: every regression in the current report.
+
+Each report cell shows the regression's own status
+([`crtest/types.go`](../../pkg/apis/api/componentreport/crtest/types.go),
+[`regressiontracker.go`](../../pkg/api/componentreadiness/middleware/regressiontracker/regressiontracker.go)):
+
+- `Significant Regression` or `Extreme Regression (>15%)`: untriaged and failing.
+- `Triaged Regression` or `Extreme Triaged Regression (>15%)`: linked to an unresolved triage and still failing.
+- `Believed Fixed`: every triage is resolved and no qualifying failures followed the resolution time.
+- `Failed Fix`: every triage is resolved, yet qualifying failures followed the resolution time.
+
+A triage record shows its own state on the index and detail pages: unresolved, resolved on a date, or
+a failed fix. Key tests tolerate a small number of post-resolution failures before the report flips
+them from `Believed Fixed` to `Failed Fix`.
 
 ## Source pointers
 
 | Path | Contents |
 |------|----------|
 | [`pkg/db/models/triage.go`](../../pkg/db/models/triage.go) | `Triage` and `TestRegression` models. |
-| [`pkg/api/componentreadiness/triage.go`](../../pkg/api/componentreadiness/triage.go) | Triage API, validation, and regression linking. |
-| [`pkg/sippyserver/server.go`](../../pkg/sippyserver/server.go) | Registers the triage and regression API routes. |
-| [`sippy-ng/src/component_readiness/RegressedTestsModal.jsx`](../../sippy-ng/src/component_readiness/RegressedTestsModal.jsx) | Regressed tests dialog and the `Untriaged` tab. |
-| [`sippy-ng/src/component_readiness/AddRegressionPanel.jsx`](../../sippy-ng/src/component_readiness/AddRegressionPanel.jsx) | Existing and new triage panel. |
+| [`pkg/api/componentreadiness/regressiontracker.go`](../../pkg/api/componentreadiness/regressiontracker.go) | Opens, reuses, closes, and force closes regression records. |
+| [`pkg/api/componentreadiness/middleware/regressiontracker/regressiontracker.go`](../../pkg/api/componentreadiness/middleware/regressiontracker/regressiontracker.go) | Computes the believed-fixed and failed-fix report statuses. |
+| [`pkg/dataloader/bugloader/bugloader.go`](../../pkg/dataloader/bugloader/bugloader.go) | Imports linked bugs and auto-resolves or unresolves triages from Jira status. |
+| [`sippy-ng/src/component_readiness/RegressedTestsModal.jsx`](../../sippy-ng/src/component_readiness/RegressedTestsModal.jsx) | Regressed tests dialog and its tabs. |
 | [`sippy-ng/src/component_readiness/TriageList.jsx`](../../sippy-ng/src/component_readiness/TriageList.jsx) | `All Triage Records` index. |
 | [`sippy-ng/src/component_readiness/Triage.jsx`](../../sippy-ng/src/component_readiness/Triage.jsx) | Triage detail page. |
 
