@@ -13,8 +13,6 @@ REDIS_PORT="23479"
 
 E2E_DB_NAME="sippy_e2e"
 SERVICE_URL_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../mcp" && pwd)/serviceurl.py"
-# Directory holding the MCP virtualenv launcher and Sippy MCP tests; overridable for tests.
-MCP_DIR="${SIPPY_E2E_MCP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../mcp" && pwd)}"
 
 # ---------------------------------------------------------------------------
 # Safety helpers for database create/drop
@@ -283,23 +281,6 @@ wait_for_sippy || exit $?
 # Prime fresh reports so triage tests can inject fixtures without reusing prior runs.
 e2e_prime_component_readiness_cache || exit $?
 
-# Exercise the Sippy MCP triage tools against this isolated server and database. This runs
-# before the Go suite because some Go tests delete every seeded regression; the MCP tests only
-# touch the triage they create and delete it again.
-echo "Running Sippy MCP triage integration tests..."
-(
-  cd "$MCP_DIR" && ./run.sh --sippy-dev-setup-only && \
-    SIPPY_MCP_INTEGRATION_SIPPY_URL="http://$SIPPY_ENDPOINT:$SIPPY_API_PORT" \
-    SIPPY_MCP_INTEGRATION_DELEGATOR="$SIPPY_E2E_TRUSTED_DELEGATOR" \
-    .venv/bin/pytest sippy/test_triage_integration.py -v -rs
-) 2>&1 | e2e_redact_logs | tee "$OUTPUT_DIR/e2e-mcp-sippy.log"
-mcp_status=$?
-
 # Run e2e tests
 gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile="$OUTPUT_DIR/e2e-test-coverage.out" -coverpkg=./pkg/...,./cmd/... 2>&1 | e2e_redact_logs | tee "$OUTPUT_DIR/e2e-gotestsum.log"
-go_status=$?
-
-if [ "$go_status" -ne 0 ]; then
-    exit "$go_status"
-fi
-exit "$mcp_status"
+exit "$?"

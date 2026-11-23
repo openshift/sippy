@@ -2,7 +2,7 @@
 
 Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`, named `sippy-dev`) that exposes Sippy development commands requiring process management to **Cursor**, **Claude Code**, and **Codex**.
 
-The **`sippy`** MCP server for triage management is a separate entry point in [`sippy/`](sippy/README.md). It shares no code or tools with this `sippy-dev` server, and its tests run as part of `make test` (unit) and `make e2e` (integration against the isolated e2e server). Never add development-workflow tools to it.
+The **`sippy`** MCP server for working with production Sippy data is a separate entry point in [`sippy/`](sippy/README.md). It shares no code or tools with this `sippy-dev` server, and its tests run as part of `make test`. Never add development-workflow tools to it.
 
 Simple local commands are documented in project instructions via [APM](../apm.yml); see `.apm/instructions/dev-commands.instructions.md`.
 
@@ -157,7 +157,7 @@ For unit tests and e2e, `ARTIFACT_DIR` is preserved and must be writable by the 
 server; the runner fails early rather than losing CI artifacts. Without it,
 artifacts go to `sippy-dev-logs/artifacts/`. The e2e runner sets `SIPPY_TEST_OUTPUT_DIR` to
 `ARTIFACT_DIR/e2e/` for e2e logs and coverage, including `e2e-seed.log`, `e2e.log`,
-`e2e-gotestsum.log`, and `e2e-mcp-sippy.log` (`sippy` MCP integration tests). Tool summaries and prerequisite diagnostics are in
+and `e2e-gotestsum.log`. Tool summaries and prerequisite diagnostics are in
 `sippy-dev-logs/run_tests.log`, `run_lint.log`, and `run_e2e.log`.
 
 Database setup/seeding errors stop execution immediately. An API process that exits
