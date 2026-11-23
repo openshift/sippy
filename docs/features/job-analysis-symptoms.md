@@ -76,14 +76,6 @@ Symptoms and labels are created and managed through:
 Definitions are stored in Sippy's PostgreSQL database (tables `job_run_symptoms` and
 `job_run_labels`).
 
-**Identity.** Symptom and label mutations record `created_by` and `updated_by` from
-`getUserForRequest` (`pkg/sippyserver/identity.go`), and the same effective user is attached to
-BigQuery request labels. Normally that is the `X-Forwarded-User` set by the authenticating proxy.
-When that principal is a configured trusted delegator (`--trusted-delegator`, see
-[config/README.md](../../config/README.md#trusted-delegators)), its `X-Acting-For` header becomes
-the effective user instead, and mutating requests from it without `X-Acting-For` are rejected with
-`400`. See [sippy-mcp-triage.md](sippy-mcp-triage.md) for the delegation flow.
-
 ### 2. Detection (Cloud Function)
 
 A GCS-triggered Google Cloud Function (ci-data-loader in `openshift/ci-cloud-functions`) fires when

@@ -16,27 +16,26 @@ from pathlib import Path
 import pytest
 from fastmcp import Client
 
+import sippy_client
 import sippy_mcp_server
-import triage_api
-from sippy_mcp_server import (
-    DEFAULT_HTTP_HOST,
-    DEFAULT_HTTP_PORT,
-    build_server,
-    http_transport_options,
-    load_service,
-    runtime_settings_from_env,
-)
-from test_triage_api import API_URL, TOKEN, FakeSippy
-from triage_api import (
+from sippy_client import (
     API_URL_ENV,
     TOKEN_FILE_ENV,
     ConfigurationError,
     SippyAPIConfig,
     SippyClient,
     TransportError,
-    TriageService,
     urllib_transport,
 )
+from sippy_mcp_server import (
+    DEFAULT_HTTP_HOST,
+    DEFAULT_HTTP_PORT,
+    build_server,
+    http_transport_options,
+    load_client,
+    runtime_settings_from_env,
+)
+from test_triage_api import API_URL, TOKEN, FakeSippy
 
 SERVER_DIR = Path(__file__).resolve().parent
 _TRIAGE_TOOLS = {"list_triages", "get_triage", "create_triage", "update_triage", "delete_triage"}
@@ -72,8 +71,7 @@ def fake() -> FakeSippy:
 
 @pytest.fixture
 def server(fake, token_file):
-    service = TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file), transport=fake))
-    return build_server(service)
+    return build_server(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file), transport=fake))
 
 
 def _tools(server) -> dict:
@@ -82,6 +80,21 @@ def _tools(server) -> dict:
 
 def test_registers_only_triage_tools(server):
     assert set(_tools(server)) == _TRIAGE_TOOLS
+
+
+def test_build_server_registers_every_toolset(token_file):
+    def register_example(server, client):
+        @server.tool()
+        def example_tool() -> dict:
+            """Example."""
+            return {}
+
+    example = sippy_mcp_server.Toolset(name="example", instructions="Example toolset.", register=register_example)
+    client = SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file))
+    server = build_server(client, (*sippy_mcp_server.TOOLSETS, example))
+    assert set(_tools(server)) == _TRIAGE_TOOLS | {"example_tool"}
+    assert "Example toolset." in server.instructions
+    assert "Triage:" in server.instructions
 
 
 def test_no_development_tools(server):
@@ -129,7 +142,7 @@ def _imported_modules(path: Path) -> set[str]:
     return names
 
 
-@pytest.mark.parametrize("module", ["sippy_mcp_server.py", "triage_api.py"])
+@pytest.mark.parametrize("module", ["sippy_mcp_server.py", "sippy_client.py", "triage_api.py"])
 def test_server_modules_do_not_import_development_code(module):
     imported = _imported_modules(SERVER_DIR / module)
     assert not imported & {"server", "testenv", "serviceurl", "dotenv", "subprocess"}
@@ -205,9 +218,9 @@ def test_missing_acting_for_is_rejected_by_schema(server, fake):
 
 
 def _http_app(allowed_hosts: str = ""):
-    service = TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file="/nonexistent")))
+    client = SippyClient(SippyAPIConfig(api_url=API_URL, token_file="/nonexistent"))
     settings = runtime_settings_from_env({"SIPPY_MCP_TRANSPORT": "streamable-http", "SIPPY_MCP_ALLOWED_HOSTS": allowed_hosts})
-    return build_server(service).http_app(transport="streamable-http", **http_transport_options(settings))
+    return build_server(client).http_app(transport="streamable-http", **http_transport_options(settings))
 
 
 def test_healthz():
@@ -276,9 +289,9 @@ def test_runtime_settings_fail_closed(env, message):
         runtime_settings_from_env(env)
 
 
-def test_load_service_requires_readable_token(tmp_path):
+def test_load_client_requires_readable_token(tmp_path):
     with pytest.raises(ConfigurationError, match="could not be read"):
-        load_service({API_URL_ENV: API_URL, TOKEN_FILE_ENV: str(tmp_path / "missing")})
+        load_client({API_URL_ENV: API_URL, TOKEN_FILE_ENV: str(tmp_path / "missing")})
 
 
 def test_main_exits_nonzero_without_configuration(monkeypatch, capsys):
@@ -443,8 +456,8 @@ def trickling_peer():
 def test_urllib_transport_enforces_total_deadline_on_trickled_proxy_connect(trickling_peer, monkeypatch):
     port = trickling_peer(b"HTTP/1.1 200 Connection established\r\nX-Padding: " + b"x" * 20 + b"\r\n\r\n")
     monkeypatch.setattr(urllib.request, "proxy_bypass", lambda host: False)
-    proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"https": f"http://127.0.0.1:{port}"}), *triage_api._HANDLERS)
-    monkeypatch.setattr(triage_api, "_OPENER", proxied)
+    proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"https": f"http://127.0.0.1:{port}"}), *sippy_client._HANDLERS)
+    monkeypatch.setattr(sippy_client, "_OPENER", proxied)
     started = time.monotonic()
     with pytest.raises(TransportError, match="TimeoutError"):
         urllib_transport("GET", "https://sippy.example.invalid/api", {}, None, 0.5)
@@ -466,9 +479,9 @@ def test_loopback_requests_bypass_inherited_proxy(local_http, monkeypatch):
     # Ignore NO_PROXY so selecting the proxied opener for loopback would actually hit the closed port.
     monkeypatch.setattr(urllib.request, "proxy_bypass", lambda host: False)
     # An inherited proxy pointing at a closed port: using it for the loopback API would fail.
-    proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"http": "http://127.0.0.1:9"}), triage_api._NoRedirect)
-    monkeypatch.setattr(triage_api, "_OPENER", proxied)
+    proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"http": "http://127.0.0.1:9"}), sippy_client._NoRedirect)
+    monkeypatch.setattr(sippy_client, "_OPENER", proxied)
     response = urllib_transport("GET", f"{local_http}/ok", {"Authorization": "Bearer secret"}, None, 5)
     assert response.status == 200
     assert [s["path"] for s in _Recorder.seen] == ["/ok"]
-    assert triage_api._opener_for("https://sippy.example.com/api") is proxied
+    assert sippy_client._opener_for("https://sippy.example.com/api") is proxied

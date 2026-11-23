@@ -1,10 +1,12 @@
-"""Sippy MCP server ("sippy") exposing component readiness triage management.
+"""Sippy MCP server ("sippy") for working with production Sippy data.
 
 This entry point is separate from the development-workflow server (mcp/server.py, "sippy-dev") and
 exposes no development commands. It is meant to run behind an authenticating proxy, holds a
 service-account token for the authenticated Sippy API, and forwards each mutating tool's acting_for
-value as X-Acting-For so Sippy attributes changes to the requesting user. See README.md in this
-directory.
+value as X-Acting-For so Sippy attributes changes to the requesting user.
+
+Tools are grouped into toolsets (see TOOLSETS). To add a capability, write a module that registers
+its tools against a SippyClient and add a Toolset entry. See README.md in this directory.
 """
 
 from __future__ import annotations
@@ -12,21 +14,15 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from triage_api import (
-    DEFAULT_LIST_LIMIT,
-    ConfigurationError,
-    SippyAPIConfig,
-    SippyClient,
-    TriageService,
-    read_token,
-)
+from sippy_client import ConfigurationError, SippyAPIConfig, SippyClient, read_token
+from triage_api import DEFAULT_LIST_LIMIT, TriageService
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +40,11 @@ DEFAULT_HTTP_PORT = 8090
 SUPPORTED_TRANSPORTS = ("stdio", "streamable-http")
 
 _INSTRUCTIONS = """\
-Manage Sippy component readiness triage records.
+Work with production Sippy data.
 
-Every tool that changes a triage (create_triage, update_triage, delete_triage) requires acting_for:
-the identity of the human the change is made for, taken from the consumer's authenticated context
-(never from free text typed by a user). Sippy records that identity in triage audit logs. Reads
-(list_triages, get_triage) need no identity. Read a triage with get_triage before changing it, and
+Every tool that changes data requires acting_for: the identity of the human the change is made for,
+taken from the consumer's authenticated context (never from free text typed by a user). Sippy records
+that identity in its audit logs. Read tools need no identity. Read a record before changing it, and
 confirm destructive changes with the user. Mutations are not retried automatically; an
 outcome_unknown error means you must read current state before trying again.
 """
@@ -65,7 +60,9 @@ def _document_acting_for(fn):
     return fn
 
 
-def register_triage_tools(server: FastMCP, service: TriageService) -> None:
+def register_triage_tools(server: FastMCP, client: SippyClient) -> None:
+    service = TriageService(client)
+
     @server.tool()
     def list_triages(
         view: str | None = None,
@@ -166,10 +163,31 @@ def register_triage_tools(server: FastMCP, service: TriageService) -> None:
         return service.delete_triage(acting_for, triage_id)
 
 
-def build_server(service: TriageService) -> FastMCP:
+@dataclass(frozen=True)
+class Toolset:
+    """A group of tools for one area of Sippy data, with instructions that apply to it."""
+
+    name: str
+    instructions: str
+    register: Callable[[FastMCP, SippyClient], None]
+
+
+TOOLSETS: tuple[Toolset, ...] = (
+    Toolset(
+        name="triage",
+        instructions="Triage: list_triages and get_triage read Component Readiness triage records; "
+        "create_triage, update_triage, and delete_triage change them.",
+        register=register_triage_tools,
+    ),
+)
+
+
+def build_server(client: SippyClient, toolsets: tuple[Toolset, ...] = TOOLSETS) -> FastMCP:
+    instructions = "\n".join([_INSTRUCTIONS, *(t.instructions for t in toolsets)])
     # Strict validation stops type coercion (for example true -> 1 for an id) before a tool runs.
-    server = FastMCP(SERVER_NAME, instructions=_INSTRUCTIONS, strict_input_validation=True)
-    register_triage_tools(server, service)
+    server = FastMCP(SERVER_NAME, instructions=instructions, strict_input_validation=True)
+    for toolset in toolsets:
+        toolset.register(server, client)
 
     @server.custom_route("/healthz", methods=["GET"], include_in_schema=False)
     async def healthz(_: Request) -> JSONResponse:
@@ -212,24 +230,24 @@ def http_transport_options(settings: RuntimeSettings) -> dict:
     return {"host_origin_protection": True, "allowed_hosts": settings.allowed_hosts}
 
 
-def load_service(environ: Mapping[str, str] | None = None) -> TriageService:
-    """Build the service from the environment and confirm the token is readable before serving."""
+def load_client(environ: Mapping[str, str] | None = None) -> SippyClient:
+    """Build the Sippy client from the environment and confirm the token is readable before serving."""
     config = SippyAPIConfig.from_env(environ)
     read_token(config.token_file)
-    return TriageService(SippyClient(config))
+    return SippyClient(config)
 
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     try:
-        service = load_service()
+        client = load_client()
         settings = runtime_settings_from_env()
     except ConfigurationError as e:
         print(f"{SERVER_NAME}: configuration error: {e}", file=sys.stderr)
         return 2
 
-    server = build_server(service)
-    logger.info("starting %s (transport=%s, api=%s)", SERVER_NAME, settings.transport, service.client.config.api_url)
+    server = build_server(client)
+    logger.info("starting %s (transport=%s, api=%s)", SERVER_NAME, settings.transport, client.config.api_url)
     if settings.transport == "stdio":
         server.run(transport="stdio", show_banner=False)
     else:

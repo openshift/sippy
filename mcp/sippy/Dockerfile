@@ -1,4 +1,4 @@
-# Sippy MCP server ("sippy", triage management). Build from the repository root with
+# Sippy MCP server ("sippy", production Sippy data). Build from the repository root with
 # `make sippy-mcp-image`, or: podman build -f mcp/sippy/Dockerfile mcp/sippy
 #
 # The image contains only the Sippy MCP server and its locked runtime dependencies. It contains no
@@ -23,7 +23,7 @@ RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 python3.12 && \
     microdnf clean all
 
 COPY --from=builder /opt/sippy-mcp/venv /opt/sippy-mcp/venv
-COPY triage_api.py sippy_mcp_server.py /opt/sippy-mcp/
+COPY sippy_client.py triage_api.py sippy_mcp_server.py /opt/sippy-mcp/
 
 # Streamable HTTP on loopback: a same-pod authenticating proxy forwards to 127.0.0.1:8090.
 # Override SIPPY_MCP_HTTP_HOST only when the listener is otherwise unreachable without authentication.

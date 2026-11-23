@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 import pytest
 
-from triage_api import (
+from sippy_client import (
     API_URL_ENV,
     MAX_RESPONSE_BYTES,
     TOKEN_FILE_ENV,
@@ -19,11 +19,11 @@ from triage_api import (
     SippyAPIConfig,
     SippyClient,
     TransportError,
-    TriageService,
     read_body,
     read_token,
     validate_api_url,
 )
+from triage_api import TriageService
 
 TOKEN = "sa-token-secret-value"
 API_URL = "https://sippy-auth.example.com"
