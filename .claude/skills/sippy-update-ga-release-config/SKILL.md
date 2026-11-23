@@ -1,0 +1,153 @@
+---
+name: sippy-update-ga-release-config
+description: "Update release-controller verification jobs when a release goes GA"
+input: [release]
+---
+
+# Update GA Release Config
+
+This command updates OpenShift release-controller verification jobs when a release goes GA.
+
+When a release goes GA, qualifying driver toolkit and FIPS verification jobs move from informing to blocking. For OCP 5.0, this matched [openshift/release#88806](https://github.com/openshift/release/pull/88806).
+
+The release immediately before the GA release has all informing jobs disabled in the main release-controller configuration. When OCP 5.0 goes GA, that release is 4.22; this matched [openshift/release#89222](https://github.com/openshift/release/pull/89222).
+
+Aggregated jobs are removed from the GA release's controller configurations. For OCP 5.0, this matched [openshift/release#88302](https://github.com/openshift/release/pull/88302).
+
+## Arguments
+
+- `[release]`: Release version that just went GA (for example, `4.21`)
+
+If the argument is not provided, prompt the user interactively.
+
+## Workflow
+
+### Promote qualifying jobs in the GA release
+
+1. **Validate the release argument**
+   - Require the `X.Y` format (for example, `4.21`, `5.0`).
+   - Do not infer the release from Sippy configuration or data.
+
+2. **Locate the release-controller source**
+   - Obtain or update a checkout of `openshift/release`.
+   - Confirm the checkout contains both:
+     - `core-services/release-controller/_releases/release-ocp-<release>.json`
+     - `core-services/release-controller/_releases/priv/release-ocp-<release>.json`
+   - For a nonstandard release name, ask the user for the exact release-controller file names.
+
+3. **Identify qualifying informing jobs**
+   - Inspect both the public and private release-controller JSON files.
+   - Qualifying verification entries are:
+     - `driver-toolkit`
+     - `driver-toolkit-rhel10`
+     - `fips-scan`
+   - Only entries that currently contain `"optional": true` need to change.
+   - If a qualifying entry is already blocking, leave it unchanged.
+   - If a qualifying entry is missing, report it and ask whether it is expected for that release.
+
+4. **Move qualifying jobs to blocking**
+   - In both the public and private release-controller JSON files, remove only the `optional` property from each qualifying verification entry.
+   - Preserve every other property exactly, including `disabled`, `maxRetries`, `prowJob`, and qualifier definitions.
+   - Do not rename jobs, alter retry behavior, or change unrelated verification entries.
+   - If the private file is generated from the public configuration, use the repository's documented generation command rather than editing it by hand.
+
+5. **Validate release-controller changes**
+   - In the `openshift/release` checkout, run the repository's standard checks, including:
+
+     ```sh
+     make check-core
+     make release-controllers
+     ```
+
+   - Confirm there is no generated drift.
+   - Confirm the diff removes only the intended `optional` fields from the qualifying public and private entries.
+
+### Disable informing jobs in the GA-minus-one release
+
+1. **Determine the preceding release**
+   - Identify the release immediately before the GA release from the release-controller catalog.
+   - Do not calculate it arithmetically. For example, the release immediately before OCP 5.0 is 4.22.
+   - If the preceding release is ambiguous, ask the user to confirm it.
+
+2. **Locate the main release-controller source**
+   - In the `openshift/release` checkout, confirm the public file exists:
+     - `core-services/release-controller/_releases/release-ocp-<previous-release>.json`
+   - Also confirm the corresponding generated private file exists:
+     - `core-services/release-controller/_releases/priv/release-ocp-<previous-release>.json`
+
+3. **Identify all informing jobs**
+   - In the public main release-controller JSON, inspect every entry under `verify`.
+   - Informing jobs are entries where `optional` is `true`.
+   - Include every such entry, regardless of platform, architecture, or product area.
+
+4. **Disable the informing jobs**
+   - In the public main release-controller JSON, add `"disabled": true` to every entry that has `"optional": true`.
+   - Preserve `optional: true` and every other existing property, including `maxRetries`, `prowJob`, `upgrade`, and qualifier definitions.
+   - Do not disable blocking jobs, which do not have `optional: true`.
+   - Regenerate the private release-controller configuration with the repository's documented command. The expected generated result is that disabled optional entries are removed from the private file.
+
+5. **Validate the release-controller changes**
+   - In the `openshift/release` checkout, run the repository's standard checks, including:
+
+     ```sh
+     make check-core
+     make release-controllers
+     ```
+
+   - Confirm there is no generated drift.
+   - Confirm the public diff only adds `disabled: true` to optional verification entries.
+   - Confirm the private diff only reflects generated removal of those disabled optional entries.
+
+### Remove aggregation from the GA release
+
+1. **Locate all GA-release controller configurations**
+   - In the `openshift/release` checkout, identify every public controller configuration for the GA release that contains aggregated verification entries.
+   - Include at least:
+     - `core-services/release-controller/_releases/release-ocp-<release>.json`
+     - `core-services/release-controller/_releases/release-ocp-<release>-ci.json`
+   - Include architecture or other stream-specific public files for the release when they contain aggregated entries.
+   - Identify the corresponding generated private files.
+
+2. **Convert aggregated jobs to single-run jobs**
+   - For every verification entry containing `aggregatedProwJob`:
+     - Remove the `aggregated-` prefix from the verification entry name.
+     - Remove the `aggregatedProwJob` object.
+     - Set `maxRetries` to `1`.
+   - Preserve the Prow job name, upgrade flags, upgrade-from configuration, blocking or informing status, and all unrelated properties.
+   - Regenerate private release-controller configuration with the repository's documented command rather than editing generated private files by hand.
+
+3. **Validate aggregation removal**
+   - Confirm no `aggregatedProwJob` objects remain in the GA release's public controller configurations.
+   - Confirm converted entries retain their original Prow jobs and upgrade semantics.
+   - Confirm the private configuration reflects the expected generated result.
+
+### Prepare one release-controller PR
+
+1. **Combine all GA changes**
+   - Perform qualifying-job promotion, GA-minus-one informing-job disabling, and GA-release aggregation removal in one `openshift/release` branch.
+   - Do not open separate PRs for these changes.
+
+2. **Validate the combined branch**
+   - In the `openshift/release` checkout, run:
+
+     ```sh
+     make check-core
+     make release-controllers
+     ```
+
+   - Confirm there is no generated drift.
+   - Review the complete diff to ensure it contains only the intended GA transition changes.
+
+3. **Open one PR**
+   - Open a single `openshift/release` pull request containing all changes made by this skill.
+   - Include a summary of qualifying-job promotion, GA-minus-one informing-job disabling, and aggregation removal.
+   - Reference the relevant release and, where useful, the prior PRs that establish the pattern.
+
+## Important Notes
+
+- This skill changes only `openshift/release` job classifications.
+- Sippy consumes the resulting CI data automatically; do not run Sippy generators or edit Sippy YAML as part of this workflow.
+- For GA-release promotion, preserve every qualifying-job property except `optional`.
+- For GA-minus-one disabling, preserve every informing-job property and add `disabled: true`.
+- For GA-release aggregation removal, preserve each job's Prow job and upgrade semantics while removing aggregation and setting `maxRetries: 1`.
+- All work performed by this skill must result in one `openshift/release` pull request.

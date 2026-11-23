@@ -1,0 +1,2 @@
+description = "Perform pre-branch release preparation steps"
+prompt = "Read and follow `.apm/skills/sippy-pre-branch-release-steps/SKILL.md`."

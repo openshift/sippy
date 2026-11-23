@@ -1,5 +1,5 @@
 lockfile_version: '1'
-generated_at: '2026-11-17T20:24:12.851003+00:00'
+generated_at: '2026-11-23T21:30:10.931534+00:00'
 apm_version: 0.10.0
 dependencies: []
 deployments:
@@ -93,6 +93,24 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:d74b1ab09f818b61fc20bea816946954245d0c34a8dbf83fc0b9a9610e6fa859
+- kind: project-relative
+  target: claude
+  value: .claude/commands/sippy-pre-branch-release-steps.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:bc9ad89361511e885c3679ead2fe1717645df62a47ac7f1e948ae0c30b1311ae
+- kind: project-relative
+  target: claude
+  value: .claude/commands/sippy-update-ga-release-config.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:ac80e0adea231621d9d55c7f457ca714c99de20fa0affef18a78622895958404
 - kind: project-relative
   target: claude
   value: .claude/commands/sippy-update-ga-release-views.md
@@ -356,6 +374,42 @@ deployments:
   content_hash: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
 - kind: project-relative
   target: claude
+  value: .claude/skills/sippy-pre-branch-release-steps
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/sippy-pre-branch-release-steps/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:3f5c5e5358b7035019de23225fc583a14de764c112dfce9c886312aecf5b6df2
+- kind: project-relative
+  target: claude
+  value: .claude/skills/sippy-update-ga-release-config
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/sippy-update-ga-release-config/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:8218693f914935a1fc5e6ebf5f96f4e65de11111ef63a5ddaa460a2cec3dfef7
+- kind: project-relative
+  target: claude
   value: .claude/skills/sippy-update-ga-release-views
   runtime: null
   scope: project
@@ -554,6 +608,42 @@ deployments:
   content_hash: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
 - kind: project-relative
   target: codex
+  value: .agents/skills/sippy-pre-branch-release-steps
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/sippy-pre-branch-release-steps/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:3f5c5e5358b7035019de23225fc583a14de764c112dfce9c886312aecf5b6df2
+- kind: project-relative
+  target: codex
+  value: .agents/skills/sippy-update-ga-release-config
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/sippy-update-ga-release-config/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:8218693f914935a1fc5e6ebf5f96f4e65de11111ef63a5ddaa460a2cec3dfef7
+- kind: project-relative
+  target: codex
   value: .agents/skills/sippy-update-ga-release-views
   runtime: null
   scope: project
@@ -678,6 +768,24 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:d74b1ab09f818b61fc20bea816946954245d0c34a8dbf83fc0b9a9610e6fa859
+- kind: project-relative
+  target: cursor
+  value: .cursor/commands/sippy-pre-branch-release-steps.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:bc9ad89361511e885c3679ead2fe1717645df62a47ac7f1e948ae0c30b1311ae
+- kind: project-relative
+  target: cursor
+  value: .cursor/commands/sippy-update-ga-release-config.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:ac80e0adea231621d9d55c7f457ca714c99de20fa0affef18a78622895958404
 - kind: project-relative
   target: cursor
   value: .cursor/commands/sippy-update-ga-release-views.md
@@ -867,6 +975,24 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:42e61f8e357d207467d9be9f15c442a95ba87898aedeeb6db241c70c78f256ad
+- kind: project-relative
+  target: gemini
+  value: .gemini/commands/sippy-pre-branch-release-steps.toml
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:48fab3893e618aff24e2a2ef1974d6ca005920320e0def7888bd0fb09fcedf58
+- kind: project-relative
+  target: gemini
+  value: .gemini/commands/sippy-update-ga-release-config.toml
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:0a58ec413531a39c19ff2146d692ae2cddb28548ee7214a7112b18621fec4164
 - kind: project-relative
   target: gemini
   value: .gemini/commands/sippy-update-ga-release-views.toml
@@ -1112,6 +1238,24 @@ deployments:
   content_hash: sha256:d74b1ab09f818b61fc20bea816946954245d0c34a8dbf83fc0b9a9610e6fa859
 - kind: project-relative
   target: opencode
+  value: .opencode/commands/sippy-pre-branch-release-steps.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:bc9ad89361511e885c3679ead2fe1717645df62a47ac7f1e948ae0c30b1311ae
+- kind: project-relative
+  target: opencode
+  value: .opencode/commands/sippy-update-ga-release-config.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:ac80e0adea231621d9d55c7f457ca714c99de20fa0affef18a78622895958404
+- kind: project-relative
+  target: opencode
   value: .opencode/commands/sippy-update-ga-release-views.md
   runtime: null
   scope: project
@@ -1197,6 +1341,10 @@ local_deployed_files:
 - .agents/skills/sippy-dev-tests/SKILL.md
 - .agents/skills/sippy-generate-release-views
 - .agents/skills/sippy-generate-release-views/SKILL.md
+- .agents/skills/sippy-pre-branch-release-steps
+- .agents/skills/sippy-pre-branch-release-steps/SKILL.md
+- .agents/skills/sippy-update-ga-release-config
+- .agents/skills/sippy-update-ga-release-config/SKILL.md
 - .agents/skills/sippy-update-ga-release-views
 - .agents/skills/sippy-update-ga-release-views/SKILL.md
 - .agents/skills/sippy-update-job-variant
@@ -1211,6 +1359,8 @@ local_deployed_files:
 - .claude/commands/sippy-dev-setup.md
 - .claude/commands/sippy-dev-tests.md
 - .claude/commands/sippy-generate-release-views.md
+- .claude/commands/sippy-pre-branch-release-steps.md
+- .claude/commands/sippy-update-ga-release-config.md
 - .claude/commands/sippy-update-ga-release-views.md
 - .claude/commands/sippy-update-job-variant.md
 - .claude/rules/backend.md
@@ -1240,6 +1390,10 @@ local_deployed_files:
 - .claude/skills/sippy-dev-tests/SKILL.md
 - .claude/skills/sippy-generate-release-views
 - .claude/skills/sippy-generate-release-views/SKILL.md
+- .claude/skills/sippy-pre-branch-release-steps
+- .claude/skills/sippy-pre-branch-release-steps/SKILL.md
+- .claude/skills/sippy-update-ga-release-config
+- .claude/skills/sippy-update-ga-release-config/SKILL.md
 - .claude/skills/sippy-update-ga-release-views
 - .claude/skills/sippy-update-ga-release-views/SKILL.md
 - .claude/skills/sippy-update-job-variant
@@ -1254,6 +1408,8 @@ local_deployed_files:
 - .cursor/commands/sippy-dev-setup.md
 - .cursor/commands/sippy-dev-tests.md
 - .cursor/commands/sippy-generate-release-views.md
+- .cursor/commands/sippy-pre-branch-release-steps.md
+- .cursor/commands/sippy-update-ga-release-config.md
 - .cursor/commands/sippy-update-ga-release-views.md
 - .cursor/commands/sippy-update-job-variant.md
 - .cursor/rules/backend.mdc
@@ -1275,6 +1431,8 @@ local_deployed_files:
 - .gemini/commands/sippy-dev-setup.toml
 - .gemini/commands/sippy-dev-tests.toml
 - .gemini/commands/sippy-generate-release-views.toml
+- .gemini/commands/sippy-pre-branch-release-steps.toml
+- .gemini/commands/sippy-update-ga-release-config.toml
 - .gemini/commands/sippy-update-ga-release-views.toml
 - .gemini/commands/sippy-update-job-variant.toml
 - .opencode/commands/sippy-dev-app.md
@@ -1287,6 +1445,8 @@ local_deployed_files:
 - .opencode/commands/sippy-dev-setup.md
 - .opencode/commands/sippy-dev-tests.md
 - .opencode/commands/sippy-generate-release-views.md
+- .opencode/commands/sippy-pre-branch-release-steps.md
+- .opencode/commands/sippy-update-ga-release-config.md
 - .opencode/commands/sippy-update-ga-release-views.md
 - .opencode/commands/sippy-update-job-variant.md
 local_deployed_file_hashes:
@@ -1299,6 +1459,8 @@ local_deployed_file_hashes:
   .agents/skills/sippy-dev-setup/SKILL.md: sha256:172c4be3c349ebcdf667414ead603f17d14035e76a720d3eeaffd837e2c2ed8a
   .agents/skills/sippy-dev-tests/SKILL.md: sha256:48fad168633dbab1761ee8b1982974f215f41a3f8c9456e5ad0ef68c79e29e57
   .agents/skills/sippy-generate-release-views/SKILL.md: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
+  .agents/skills/sippy-pre-branch-release-steps/SKILL.md: sha256:3f5c5e5358b7035019de23225fc583a14de764c112dfce9c886312aecf5b6df2
+  .agents/skills/sippy-update-ga-release-config/SKILL.md: sha256:8218693f914935a1fc5e6ebf5f96f4e65de11111ef63a5ddaa460a2cec3dfef7
   .agents/skills/sippy-update-ga-release-views/SKILL.md: sha256:8fb3e633d401b21187499a5b4f70354ee07a9097e4e6a4095e1b152d0aa1d834
   .agents/skills/sippy-update-job-variant/SKILL.md: sha256:eeed3299f2ee00d17a3bad19c4ebc1bedcc85d9deaf2a45389e57412e9da90d3
   .claude/commands/sippy-dev-app.md: sha256:7f0b4e574aa9de57873332bddf83dcf1afe14fcf90e61d8d10dc2ff1d0e1625e
@@ -1311,6 +1473,8 @@ local_deployed_file_hashes:
   .claude/commands/sippy-dev-setup.md: sha256:8afe518e13771104dc173092856a3b1f715120ea359d0c92d99338f39220c40b
   .claude/commands/sippy-dev-tests.md: sha256:a9bb874d2f176904c84e731ba3e3f1a256e84a31f54d5d166a6aa25ffe7e43be
   .claude/commands/sippy-generate-release-views.md: sha256:d74b1ab09f818b61fc20bea816946954245d0c34a8dbf83fc0b9a9610e6fa859
+  .claude/commands/sippy-pre-branch-release-steps.md: sha256:bc9ad89361511e885c3679ead2fe1717645df62a47ac7f1e948ae0c30b1311ae
+  .claude/commands/sippy-update-ga-release-config.md: sha256:ac80e0adea231621d9d55c7f457ca714c99de20fa0affef18a78622895958404
   .claude/commands/sippy-update-ga-release-views.md: sha256:a20b5939a273c79dbb77bb814b7e3e672116bc14bfc5fd9e3e7c066a8e822cf2
   .claude/commands/sippy-update-job-variant.md: sha256:4888a9409411ea4440c3c3c3e9b8d20ef400432bc74555875837f686520aff92
   .claude/rules/backend.md: sha256:60f9f7f5315eb4c1f9bc84af897529796e38abb343056c2ed6605cb0ddcf3401
@@ -1331,6 +1495,8 @@ local_deployed_file_hashes:
   .claude/skills/sippy-dev-setup/SKILL.md: sha256:172c4be3c349ebcdf667414ead603f17d14035e76a720d3eeaffd837e2c2ed8a
   .claude/skills/sippy-dev-tests/SKILL.md: sha256:48fad168633dbab1761ee8b1982974f215f41a3f8c9456e5ad0ef68c79e29e57
   .claude/skills/sippy-generate-release-views/SKILL.md: sha256:a345fce61418412d36ad68641eedda29bbb59daadc01bb2c203ff9624742f82a
+  .claude/skills/sippy-pre-branch-release-steps/SKILL.md: sha256:3f5c5e5358b7035019de23225fc583a14de764c112dfce9c886312aecf5b6df2
+  .claude/skills/sippy-update-ga-release-config/SKILL.md: sha256:8218693f914935a1fc5e6ebf5f96f4e65de11111ef63a5ddaa460a2cec3dfef7
   .claude/skills/sippy-update-ga-release-views/SKILL.md: sha256:8fb3e633d401b21187499a5b4f70354ee07a9097e4e6a4095e1b152d0aa1d834
   .claude/skills/sippy-update-job-variant/SKILL.md: sha256:eeed3299f2ee00d17a3bad19c4ebc1bedcc85d9deaf2a45389e57412e9da90d3
   .cursor/commands/sippy-dev-app.md: sha256:7f0b4e574aa9de57873332bddf83dcf1afe14fcf90e61d8d10dc2ff1d0e1625e
@@ -1343,6 +1509,8 @@ local_deployed_file_hashes:
   .cursor/commands/sippy-dev-setup.md: sha256:8afe518e13771104dc173092856a3b1f715120ea359d0c92d99338f39220c40b
   .cursor/commands/sippy-dev-tests.md: sha256:a9bb874d2f176904c84e731ba3e3f1a256e84a31f54d5d166a6aa25ffe7e43be
   .cursor/commands/sippy-generate-release-views.md: sha256:d74b1ab09f818b61fc20bea816946954245d0c34a8dbf83fc0b9a9610e6fa859
+  .cursor/commands/sippy-pre-branch-release-steps.md: sha256:bc9ad89361511e885c3679ead2fe1717645df62a47ac7f1e948ae0c30b1311ae
+  .cursor/commands/sippy-update-ga-release-config.md: sha256:ac80e0adea231621d9d55c7f457ca714c99de20fa0affef18a78622895958404
   .cursor/commands/sippy-update-ga-release-views.md: sha256:a20b5939a273c79dbb77bb814b7e3e672116bc14bfc5fd9e3e7c066a8e822cf2
   .cursor/commands/sippy-update-job-variant.md: sha256:4888a9409411ea4440c3c3c3e9b8d20ef400432bc74555875837f686520aff92
   .cursor/rules/backend.mdc: sha256:f64404abf6d9fac0cf9abfa9f8a7920041d29d872193c5141b0ceebfb40d3bbf
@@ -1364,6 +1532,8 @@ local_deployed_file_hashes:
   .gemini/commands/sippy-dev-setup.toml: sha256:6382798c484e050809a3dd9fd66eea37fbf98367ea0321fe6b50753918b09b7a
   .gemini/commands/sippy-dev-tests.toml: sha256:00d6d4ab7cf645286bd1bdd4c7c103638b5e784cca4d7ae1f83c96a14f03d654
   .gemini/commands/sippy-generate-release-views.toml: sha256:42e61f8e357d207467d9be9f15c442a95ba87898aedeeb6db241c70c78f256ad
+  .gemini/commands/sippy-pre-branch-release-steps.toml: sha256:48fab3893e618aff24e2a2ef1974d6ca005920320e0def7888bd0fb09fcedf58
+  .gemini/commands/sippy-update-ga-release-config.toml: sha256:0a58ec413531a39c19ff2146d692ae2cddb28548ee7214a7112b18621fec4164
   .gemini/commands/sippy-update-ga-release-views.toml: sha256:0b7f1f19f44a1a059dd7d0724ce2a110d900cbead4a3f07e8c5906436f085a57
   .gemini/commands/sippy-update-job-variant.toml: sha256:81d760b16898c5018423c5df43604ce4f4295c1f3559a70e8caa9a0cdeb5c85d
   .opencode/commands/sippy-dev-app.md: sha256:7f0b4e574aa9de57873332bddf83dcf1afe14fcf90e61d8d10dc2ff1d0e1625e
@@ -1376,5 +1546,7 @@ local_deployed_file_hashes:
   .opencode/commands/sippy-dev-setup.md: sha256:8afe518e13771104dc173092856a3b1f715120ea359d0c92d99338f39220c40b
   .opencode/commands/sippy-dev-tests.md: sha256:a9bb874d2f176904c84e731ba3e3f1a256e84a31f54d5d166a6aa25ffe7e43be
   .opencode/commands/sippy-generate-release-views.md: sha256:d74b1ab09f818b61fc20bea816946954245d0c34a8dbf83fc0b9a9610e6fa859
+  .opencode/commands/sippy-pre-branch-release-steps.md: sha256:bc9ad89361511e885c3679ead2fe1717645df62a47ac7f1e948ae0c30b1311ae
+  .opencode/commands/sippy-update-ga-release-config.md: sha256:ac80e0adea231621d9d55c7f457ca714c99de20fa0affef18a78622895958404
   .opencode/commands/sippy-update-ga-release-views.md: sha256:a20b5939a273c79dbb77bb814b7e3e672116bc14bfc5fd9e3e7c066a8e822cf2
   .opencode/commands/sippy-update-job-variant.md: sha256:4888a9409411ea4440c3c3c3e9b8d20ef400432bc74555875837f686520aff92
