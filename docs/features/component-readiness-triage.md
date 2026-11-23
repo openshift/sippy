@@ -44,11 +44,16 @@ anyone, and it does not prove the regression is fixed.
    to be significant in a view.
 2. **Linking:** An engineer links the regression to a triage record that points at a new or existing
    Jira bug.
-3. **Jira sync:** A background loader imports the linked bug, and for a triage covering a single
-   release it auto-resolves the triage (not the regression) once the bug reaches `ON_QA`, `Verified`,
-   `Release Pending`, or `Closed` ([`bugloader.go`](../../pkg/dataloader/bugloader/bugloader.go)).
-4. **Recovery:** A regression closes when the test no longer appears as regressed in any report. If the
-   test regresses again within five days Sippy reuses that record, otherwise it opens a new regression
+3. **Jira sync:** A background loader imports the linked bug and, for a triage covering a single
+   release, auto-resolves the triage (not the regression) once the bug reaches `ON_QA`, `Verified`,
+   `Release Pending`, or `Closed`. The loader imports only recently updated tickets (`Closed` or
+   `Verified` within 14 days, other statuses within 90), so a newly linked bug that Sippy has not
+   already imported and was last updated before that window stays out of the bug table, and the loader
+   cannot reconcile it or auto-resolve its triage
+   ([`bugloader.go`](../../pkg/dataloader/bugloader/bugloader.go)).
+4. **Recovery:** A regression closes when the test no longer appears as regressed in any report. Sippy
+   may reuse a recently closed regression if the test regresses again within five days, but it never
+   reuses a force-closed record
    ([`regressiontracker.go`](../../pkg/api/componentreadiness/regressiontracker.go)).
 5. **Continuing failures:** Sippy shows `Failed Fix` when every linked triage is resolved and
    qualifying failures follow the latest resolution. Check the test details and the `Unresolved` tab
@@ -67,7 +72,8 @@ The regressed tests dialog tabs filter the regression list rather than a single 
 - `Triaged`: regressions grouped under their triage records.
 - `All`: every regression in the current report.
 
-Each report cell shows the regression's own status
+A report cell shows a single aggregate status; when it contains several regressions, that is the most
+severe of them. The regressed tests dialog can show each regression's own status in its `Status` column
 ([`crtest/types.go`](../../pkg/apis/api/componentreport/crtest/types.go),
 [`regressiontracker.go`](../../pkg/api/componentreadiness/middleware/regressiontracker/regressiontracker.go)):
 
@@ -76,9 +82,10 @@ Each report cell shows the regression's own status
 - `Believed Fixed`: every triage is resolved and no qualifying failures followed the resolution time.
 - `Failed Fix`: every triage is resolved, yet qualifying failures followed the resolution time.
 
-A triage record shows its own state on the index and detail pages: unresolved, resolved on a date, or
-a failed fix. Key tests tolerate a small number of post-resolution failures before the report flips
-them from `Believed Fixed` to `Failed Fix`.
+A triage record shows its state on the `All Triage Records` index as unresolved or resolved on a date.
+The failed-fix state does not appear on that index; the triage detail page and the report can show it,
+because they have the regression data the index panel lacks. Key tests tolerate a few post-resolution
+failures before the report flips them from `Believed Fixed` to `Failed Fix`.
 
 ## Source pointers
 
