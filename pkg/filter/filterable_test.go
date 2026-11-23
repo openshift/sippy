@@ -35,6 +35,18 @@ func TestPostgresFilterToSQL(t *testing.T) {
 		require.ErrorIs(t, q.Error, ErrInvalidField)
 		require.NoError(t, base.Error)
 	})
+	t.Run("unsupported operator stops filter construction", func(t *testing.T) {
+		item := FilterItem{Field: "suite_name", Operator: "unsupported", Value: "openshift"}
+		condition, param, err := item.FilterFieldToSQL(dbc, apitype.Test{})
+		require.ErrorContains(t, err, `unsupported operator "unsupported" for field "suite_name"`)
+		require.Empty(t, condition)
+		require.Nil(t, param)
+
+		filters := Filter{Items: []FilterItem{item}}
+		q := filters.ToSQL(dbc.Table("final_results"), apitype.Test{})
+		require.ErrorContains(t, q.Error, err.Error())
+		require.NotContains(t, q.Statement.Clauses, "WHERE")
+	})
 }
 
 func TestLinkOperator(t *testing.T) {

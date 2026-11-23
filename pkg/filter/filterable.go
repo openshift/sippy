@@ -236,11 +236,7 @@ func (f FilterItem) FilterFieldToSQL(db *gorm.DB, filterable Filterable) (string
 	case OperatorIsEmpty:
 		sql = f.isEmptyFilter(field, filterable, false)
 	default:
-		var err error
-		sql, param, err = f.FilterItemToSQL(field)
-		if err != nil {
-			return "UnknownFilterOperator()", nil, nil
-		}
+		return f.FilterItemToSQL(field)
 	}
 	return sql, param, nil
 }
