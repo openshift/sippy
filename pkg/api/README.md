@@ -791,15 +791,6 @@ Create, update, and delete record the requesting user in the triage audit log
 when no user can be determined. The user is the authenticated `X-Forwarded-User`
 set by the oauth proxy, or the `DEV_MODE=1` mock user locally (see `DEVELOPMENT.md`).
 
-For principals configured with `--trusted-delegator` (see `config/README.md`), every
-mutating request (any method other than `GET`, `HEAD`, or `OPTIONS`) must also send
-`X-Acting-For: <user>`; Sippy uses that user for authorization and audit records, and
-rejects a missing or blank value with `400 Bad Request` before any change. Reads may
-omit it and run as the principal. Other callers' `X-Acting-For` headers are ignored.
-The check runs in middleware for every request from such a principal, so all
-endpoints that attribute work to a user (triage writes, regression force close, Jira
-bug filing, and symptom changes) see the same delegated user.
-
 Endpoint: `POST /api/component_readiness/triages/{id}/force_close_regressions`
 
 Force closes the open regressions associated with a resolved triage that existed at its
