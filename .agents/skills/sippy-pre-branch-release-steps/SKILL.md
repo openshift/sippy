@@ -53,6 +53,9 @@ If the argument is not provided, prompt the user interactively.
    - Watch for payloads that have attempted to run the stream's configured verification jobs.
    - A payload may be force accepted regardless of whether verification jobs pass, provided the jobs genuinely attempted to run.
    - Do not force accept a payload whose jobs failed because required images were missing; report the missing-image failure instead.
+   - If a stream cannot progress because its payloads repeatedly fail from missing images, ask the user whether to stop monitoring that stream.
+   - If the user confirms the stop, mark the stream incomplete and report its missing-image failures.
+   - A stream blocked by missing images is not configuration-blocked; continue monitoring the other streams.
    - Allow naturally passing payloads to become accepted naturally.
    - Force accept only when the stream has fewer than two accepted payloads and the payload is not naturally passing or becoming accepted.
 
@@ -61,5 +64,5 @@ If the argument is not provided, prompt the user interactively.
    - Count both naturally accepted and force-accepted payloads.
    - Stop monitoring an eligible stream after it has two accepted payloads.
    - Stop monitoring a blocked stream; it cannot reach two accepted payloads without configuration repair.
-   - Stop the entire workflow after every stream is either eligible with two accepted payloads or blocked with a reported configuration problem.
-   - Report the final count and payload identifiers for each eligible stream, along with the blocking reason for each blocked stream.
+   - Stop the entire workflow after every stream is eligible with two accepted payloads, blocked with a reported configuration problem, or incomplete with reported missing-image failures.
+   - Report the final count and payload identifiers for each eligible stream, along with the blocking reason for each blocked stream and the missing-image failures for each incomplete stream.
