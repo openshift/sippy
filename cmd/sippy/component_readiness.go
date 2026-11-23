@@ -228,8 +228,8 @@ func (f *ComponentReadinessFlags) runServerMode(ctx context.Context) error {
 		config,
 		f.APIFlags.EnableWriteEndpoints,
 		jiraClient,
+		f.APIFlags.TrustedDelegators,
 	)
-	server.SetTrustedDelegators(f.APIFlags.TrustedDelegators)
 
 	if f.APIFlags.MetricsAddr != "" {
 		// Do an immediate metrics update

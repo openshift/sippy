@@ -95,6 +95,9 @@ func NewServer(
 	config *v1.SippyConfig,
 	enableWriteEndpoints bool,
 	jiraClient *jira.Client,
+	// trustedDelegators are the exact authenticated principals allowed to act for another user
+	// through the X-Acting-For header; empty enables no delegation.
+	trustedDelegators []string,
 ) *Server {
 
 	server := &Server{
@@ -119,6 +122,10 @@ func NewServer(
 		config:               config,
 		enableWriteAPIs:      enableWriteEndpoints,
 		jiraClient:           jiraClient,
+		delegation:           newDelegationResolver(trustedDelegators),
+	}
+	if len(trustedDelegators) > 0 {
+		log.WithField("count", len(trustedDelegators)).Info("trusted delegators configured")
 	}
 
 	if crDataProvider != nil {
@@ -184,15 +191,6 @@ type Server struct {
 	symptomReStatusQuerier *symptomre.StatusQuerier
 	symptomReCanceller     *symptomre.BatchCanceller
 	delegation             delegationResolver
-}
-
-// SetTrustedDelegators configures the exact authenticated principals allowed to act for another
-// user through the X-Acting-For header. An empty list (the default) enables no delegation.
-func (s *Server) SetTrustedDelegators(principals []string) {
-	s.delegation = newDelegationResolver(principals)
-	if len(principals) > 0 {
-		log.WithField("count", len(principals)).Info("trusted delegators configured")
-	}
 }
 
 // SetSymptomReEvaluation wires the async symptom re-evaluation submitter,

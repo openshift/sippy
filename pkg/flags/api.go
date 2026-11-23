@@ -12,9 +12,7 @@ type APIFlags struct {
 	EnableWriteEndpoints bool
 	ListenAddr           string
 	MetricsAddr          string
-	// TrustedDelegators lists exact authenticated principals (X-Forwarded-User values) that may act
-	// for another user through the X-Acting-For header. Empty enables no delegation.
-	TrustedDelegators []string
+	TrustedDelegators    []string
 }
 
 func NewAPIFlags() *APIFlags {

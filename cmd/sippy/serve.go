@@ -204,8 +204,8 @@ func NewServeCommand() *cobra.Command {
 				config,
 				f.APIFlags.EnableWriteEndpoints,
 				jiraClient,
+				f.APIFlags.TrustedDelegators,
 			)
-			server.SetTrustedDelegators(f.APIFlags.TrustedDelegators)
 
 			// Wire up async symptom re-evaluation (insert-only River client).
 			if pgxPool, err := workqueue.NewPgxV5Pool(cmd.Context(), f.DBFlags.DSN); err != nil {
