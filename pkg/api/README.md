@@ -70,6 +70,8 @@ The legacy top-level field `linkOperator` is also accepted.
 
 The filter should be URI encoded json in the `filter` parameter.
 
+The PostgreSQL job-run and test reports return HTTP 400 for unknown filter fields.
+
 ### Sorting
 
 You may sort results by any sortable field in the item by specifying `sortField`, as well `sort` with the value

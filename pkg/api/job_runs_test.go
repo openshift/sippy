@@ -8,9 +8,48 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/filter"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
+
+func TestApplyJobRunFilters(t *testing.T) {
+	t.Run("base column, alias and test name keep arguments in order", func(t *testing.T) {
+		dbc, err := gorm.Open(postgres.Open("host=localhost dbname=sippy_test"), &gorm.Config{
+			DryRun: true, DisableAutomaticPing: true,
+		})
+		require.NoError(t, err)
+		lookback := time.Date(2026, time.June, 1, 0, 0, 0, 0, time.UTC)
+		opts := &filter.FilterOptions{Filter: &filter.Filter{
+			LinkOperator: filter.LinkOperatorOr,
+			Items: []filter.FilterItem{
+				{Field: "test_failures", Operator: filter.OperatorArithmeticGreaterThan, Value: "2"},
+				{Field: "job", Operator: filter.OperatorContains, Value: "aws"},
+				{Field: "ran_test_names", Operator: filter.OperatorEquals, Value: "network test"},
+			},
+		}}
+
+		q, err := applyJobRunFilters(dbc.Table("prow_job_runs"), opts, lookback)
+		require.NoError(t, err)
+		stmt := q.Find(&[]apitype.JobRun{}).Statement
+		assert.Contains(t, stmt.SQL.String(), `("test_failures" > $1 OR prow_jobs.name ILIKE $2 OR EXISTS`)
+		assert.Contains(t, stmt.SQL.String(), `AND tests.name = $4`)
+		assert.Equal(t, []any{"2", "%aws%", lookback, "network test"}, stmt.Vars)
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		opts := &filter.FilterOptions{Filter: &filter.Filter{Items: []filter.FilterItem{
+			{Field: "unknown_column", Operator: filter.OperatorEquals, Value: "aws"},
+		}}}
+		q, err := applyJobRunFilters(nil, opts, time.Time{})
+		require.ErrorAs(t, err, new(*ValidationError))
+		assert.Nil(t, q)
+		assert.ErrorContains(t, err, "unknown job-run filter field")
+	})
+}
 
 func TestJobRunPartitionKeyPredicate(t *testing.T) {
 	lookback := time.Date(2026, time.June, 1, 0, 0, 0, 0, time.UTC)

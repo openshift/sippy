@@ -7,8 +7,20 @@ import (
 	"testing"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/stretchr/testify/require"
 )
+
+func TestPostgresTestReportRejectsUnknownFilterField(t *testing.T) {
+	spec := TestResultsSpec{Filter: &filter.Filter{Items: []filter.FilterItem{
+		{Field: "unknown_column", Operator: filter.OperatorContains, Value: "network"},
+	}}}
+	_, errs := spec.buildTestsResultsPGGenerator(t.Context(), nil, query.DateRange{}, query.DateRange{})
+	require.Len(t, errs, 1)
+	require.ErrorAs(t, errs[0], new(*ValidationError))
+	require.ErrorContains(t, errs[0], "unknown test-report filter field")
+}
 
 func TestComputeOverallTest(t *testing.T) {
 	tests := []struct {

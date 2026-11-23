@@ -5,7 +5,37 @@ import (
 	"testing"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
+
+func TestPostgresFilterToSQL(t *testing.T) {
+	dbc, err := gorm.Open(postgres.Open("host=localhost dbname=sippy_test"), &gorm.Config{
+		DryRun: true, DisableAutomaticPing: true,
+	})
+	require.NoError(t, err)
+	t.Run("test report values stay bound", func(t *testing.T) {
+		filters := Filter{LinkOperator: LinkOperatorOr, Items: []FilterItem{
+			{Field: "suite_name", Operator: OperatorContains, Value: "openshift"},
+			{Field: "lifecycles", Operator: OperatorIsEmpty},
+			{Field: "working_average", Operator: OperatorArithmeticGreaterThan, Value: "95"},
+		}}
+		q := filters.ToSQL(dbc.Table("final_results"), apitype.Test{}).Find(&[]apitype.Test{})
+		require.NoError(t, q.Error)
+		require.Contains(t, q.Statement.SQL.String(), `"suite_name" ILIKE $1 or ("lifecycles" IS NULL or "lifecycles" = '{}') or "working_average" > $2`)
+		require.Equal(t, []any{"%openshift%", "95"}, q.Statement.Vars)
+	})
+	t.Run("field must be a single identifier", func(t *testing.T) {
+		filters := Filter{Items: []FilterItem{
+			{Field: "suite name", Operator: OperatorEquals, Value: "openshift"},
+		}}
+		base := dbc.Table("final_results")
+		q := filters.ToSQL(base, apitype.Test{})
+		require.ErrorIs(t, q.Error, ErrInvalidField)
+		require.NoError(t, base.Error)
+	})
+}
 
 func TestLinkOperator(t *testing.T) {
 	cases := []struct {

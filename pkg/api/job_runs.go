@@ -226,6 +226,15 @@ var columnAliases = map[string]string{
 	"pull_request_author": "pp.author",
 }
 
+// jobRunFilterColumns lists the unambiguous base columns available to generic
+// filters in the first phase of the job-runs report.
+var jobRunFilterColumns = sets.New(
+	"cluster", "duration", "failed", "gcs_bucket", "infrastructure_failure",
+	"kind", "known_failure", "labels", "name", "overall_result", "prow_job_id",
+	"prow_job_release", "release", "succeeded", "test_failures", "test_flakes",
+	"url", "variant_combination_id", "variants",
+)
+
 // testNameStatuses maps test name filter fields to the prow_job_run_tests
 // status code used in EXISTS subqueries. ran_test_names uses 0 to mean
 // "no status constraint" (matches any test outcome). This is safe because
@@ -266,14 +275,16 @@ func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback t
 			allArgs = append(allArgs, args...)
 			continue
 		default:
+			var err error
 			if col, ok := columnAliases[item.Field]; ok {
-				var err error
 				sql, param, err = item.FilterItemToSQL(col)
-				if err != nil {
-					return nil, &ValidationError{Message: err.Error()}
-				}
+			} else if jobRunFilterColumns.Has(item.Field) {
+				sql, param, err = item.FilterFieldToSQL(q, apitype.JobRun{})
 			} else {
-				sql, param = item.FilterFieldToSQL(apitype.JobRun{})
+				err = fmt.Errorf("unknown job-run filter field %q", item.Field)
+			}
+			if err != nil {
+				return nil, &ValidationError{Message: err.Error()}
 			}
 		}
 		if sql != "" {

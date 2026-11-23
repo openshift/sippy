@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -56,6 +57,12 @@ const (
 // fmt.Errorf("%w: ...", ErrUnsupportedOperator) so API handlers can classify it as a client
 // error (400) rather than an internal failure.
 var ErrUnsupportedOperator = errors.New("unsupported filter operator")
+
+// ErrInvalidField indicates that a field is outside the supported SQL identifier syntax.
+var ErrInvalidField = errors.New("invalid filter field")
+
+// sqlFilterIdentifier limits generic filters to one plain column name.
+var sqlFilterIdentifier = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 // Filter is a collection of FilterItem, with a link operator. It is used to chain
 // filters together, for example: where name contains aws and runs > 10.
@@ -169,7 +176,7 @@ func (f FilterItem) isEmptyFilter(field string, filterable Filterable, forBQ boo
 }
 
 // FilterItemToSQL returns a SQL fragment and parameter for a filter item
-// applied to the given column expression. The column is used as-is with no
+// applied to a trusted SQL column expression. The column is used as-is with no
 // type-aware transformations: ILIKE operators match the column value directly
 // rather than unnesting array elements, and timestamps are not converted to
 // epoch milliseconds. Use FilterFieldToSQL when the column may be an array
@@ -208,28 +215,34 @@ func (f FilterItem) FilterItemToSQL(column string) (string, any, error) {
 	return WrapNot(sql, f.Not), param, nil
 }
 
-// FilterFieldToSQL returns a SQL fragment and parameter for a filter item,
-// with array and timestamp type awareness from the filterable.
-func (f FilterItem) FilterFieldToSQL(filterable Filterable) (string, any) {
-	field := fmt.Sprintf("%q", f.Field)
+// FilterFieldToSQL returns a SQL fragment and parameter for a single validated
+// column name, with type awareness from the filterable.
+func (f FilterItem) FilterFieldToSQL(db *gorm.DB, filterable Filterable) (string, any, error) {
+	if !sqlFilterIdentifier.MatchString(f.Field) {
+		return "", nil, fmt.Errorf("%w: %q", ErrInvalidField, f.Field)
+	}
+	field := db.Statement.Quote(clause.Column{Name: f.Field})
+	var sql string
+	var param any
 	// Operators that need array-aware handling delegate to specialized helpers;
 	// all other operators use the common scalar implementation.
 	switch f.Operator {
 	case OperatorHasEntryContaining, OperatorContains:
-		return ilikeFilter(field, fmt.Sprintf("%%%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		sql, param = ilikeFilter(field, fmt.Sprintf("%%%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
 	case OperatorStartsWith:
-		return ilikeFilter(field, fmt.Sprintf("%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		sql, param = ilikeFilter(field, fmt.Sprintf("%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
 	case OperatorEndsWith:
-		return ilikeFilter(field, fmt.Sprintf("%%%s", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		sql, param = ilikeFilter(field, fmt.Sprintf("%%%s", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
-		return f.isEmptyFilter(field, filterable, false), nil
+		sql = f.isEmptyFilter(field, filterable, false)
+	default:
+		var err error
+		sql, param, err = f.FilterItemToSQL(field)
+		if err != nil {
+			return "UnknownFilterOperator()", nil, nil
+		}
 	}
-
-	sql, param, err := f.FilterItemToSQL(field)
-	if err != nil {
-		return "UnknownFilterOperator()", nil
-	}
-	return sql, param
+	return sql, param, nil
 }
 
 func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, params []bigquery.QueryParameter) { //nolint
@@ -406,6 +419,9 @@ func ApplyFilters(
 	filterable Filterable) (*gorm.DB, error) {
 
 	q := filter.ToSQL(dbClient, filterable)
+	if q.Error != nil {
+		return nil, q.Error
+	}
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
@@ -419,6 +435,9 @@ func ApplyFilters(
 
 func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable Filterable) (*gorm.DB, error) {
 	q := filterOpts.Filter.ToSQL(dbClient, filterable)
+	if q.Error != nil {
+		return nil, q.Error
+	}
 	if filterOpts.Limit > 0 {
 		q = q.Limit(filterOpts.Limit)
 	}
@@ -466,7 +485,12 @@ func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	var orFilterParams []interface{}
 
 	for _, f := range filters.Items {
-		q, p := f.FilterFieldToSQL(filterable)
+		q, p, err := f.FilterFieldToSQL(db, filterable)
+		if err != nil {
+			db = db.Session(&gorm.Session{})
+			db.Error = errors.Join(db.Error, err)
+			return db
+		}
 		switch filters.LinkOperator {
 		case LinkOperatorAnd, "":
 			if p != nil {

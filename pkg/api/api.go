@@ -70,7 +70,7 @@ func IsBadRequestError(err error) bool {
 		len(apiErr.Errors) > 0 && apiErr.Errors[0].Reason == bqInvalidQuery {
 		return true
 	}
-	if errors.Is(err, filter.ErrUnsupportedOperator) {
+	if errors.Is(err, filter.ErrUnsupportedOperator) || errors.Is(err, filter.ErrInvalidField) {
 		return true
 	}
 	return false

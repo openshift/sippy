@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -473,6 +474,26 @@ type testResults struct {
 
 const testResultsCacheDuration = time.Hour
 
+// testReportFilterColumns lists the columns available after aggregation in
+// both PostgreSQL test-report projections.
+var testReportFilterColumns = sets.New(
+	"suite_name", "jira_component", "jira_component_id", "lifecycles", "open_bugs",
+	"current_runs", "current_successes", "current_failures", "current_flakes",
+	"previous_runs", "previous_successes", "previous_failures", "previous_flakes",
+	"current_pass_percentage", "current_failure_percentage", "current_flake_percentage", "current_working_percentage",
+	"previous_pass_percentage", "previous_failure_percentage", "previous_flake_percentage", "previous_working_percentage",
+	"net_failure_improvement", "net_flake_improvement", "net_working_improvement", "net_improvement",
+)
+
+// uncollapsedTestReportFilterColumns lists the additional per-variant columns
+// available after aggregating the uncollapsed PostgreSQL report.
+var uncollapsedTestReportFilterColumns = sets.New(
+	"test_id", "suite_id", "variant_combination_id", "release",
+	"working_average", "working_standard_deviation", "delta_from_working_average",
+	"passing_average", "passing_standard_deviation", "delta_from_passing_average",
+	"flake_average", "flake_standard_deviation", "delta_from_flake_average",
+)
+
 func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) (testResults, error) {
 	sample, base := query.PeriodsForReportType(v1.ReportType(spec.Period))
 
@@ -500,6 +521,12 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		var variantsAndLifecycle *filter.Filter
 		nameFilter, variantsAndLifecycle = nameVariantsAndLifecycle.Split([]string{"name"})
 		variantFilter, lifecycleFilter = variantsAndLifecycle.Split([]string{"variants"})
+		for _, item := range processedFilter.Items {
+			if !testReportFilterColumns.Has(item.Field) &&
+				(spec.Collapse || !uncollapsedTestReportFilterColumns.Has(item.Field)) {
+				return result, []error{&ValidationError{Message: fmt.Sprintf("unknown test-report filter field %q", item.Field)}}
+			}
+		}
 	}
 
 	testMetadataColumns := []string{"suite_name", "name", "jira_component", "jira_component_id", "lifecycles"}
@@ -540,6 +567,9 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 
 	if processedFilter != nil {
 		finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
+		if finalResults.Error != nil {
+			return result, []error{finalResults.Error}
+		}
 	}
 
 	// The global connection-level work_mem (128MB) causes the planner to
