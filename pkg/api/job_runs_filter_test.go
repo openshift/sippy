@@ -41,6 +41,21 @@ func TestApplyJobRunFilters(t *testing.T) {
 			wantInvalidName: true,
 		},
 		{
+			name: "negated alias renders constant column with bound pattern",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "pull_request_author", Operator: filter.OperatorStartsWith, Not: true, Value: "bot_"},
+			}},
+			wantWhere: `WHERE (NOT(pp.author ILIKE $1))`,
+			wantVars:  []any{`bot\_%`},
+		},
+		{
+			name: "unsupported operator on alias column is a validation error",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "job", Operator: "matches", Value: "x"},
+			}},
+			wantValidation: true,
+		},
+		{
 			name: "unsupported operator on generic column is a validation error",
 			filter: &filter.Filter{Items: []filter.FilterItem{
 				{Field: "cluster", Operator: "matches", Value: "x"},

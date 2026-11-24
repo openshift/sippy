@@ -280,7 +280,10 @@ func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback t
 		default:
 			var err error
 			if col, ok := columnAlias(item.Field); ok {
-				sql, param, err = item.FilterItemToSQL(col)
+				// Only the constant column, operator and negation shape the SQL text; the
+				// request value is passed separately so it can only ever be a bound parameter.
+				sql, err = filter.ColumnFilterSQL(col, item.Operator, item.Not)
+				param = filter.ColumnFilterParam(item.Operator, item.Value)
 			} else {
 				sql, param, err = item.FilterFieldToSQL(apitype.JobRun{})
 			}

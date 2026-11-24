@@ -210,37 +210,61 @@ func (f FilterItem) FilterItemToSQL(column string) (string, any, error) {
 	if err := ValidateField(f.Field); err != nil {
 		return "", nil, err
 	}
+	sql, err := ColumnFilterSQL(column, f.Operator, f.Not)
+	if err != nil {
+		return "", nil, fmt.Errorf("%w for field %q", err, f.Field)
+	}
+	return sql, ColumnFilterParam(f.Operator, f.Value), nil
+}
+
+// ColumnFilterSQL returns the SQL condition applying op to a trusted column expression,
+// with at most one "?" placeholder for the value. It deliberately takes neither the
+// request field nor the value, so a caller that supplies a constant column produces SQL
+// text that request input can only select among, never alter. Pair it with
+// ColumnFilterParam for the bound value.
+func ColumnFilterSQL(column string, op Operator, not bool) (string, error) {
 	var sql string
-	var param any
-	switch f.Operator {
+	switch op {
 	case OperatorHasEntry:
-		sql, param = fmt.Sprintf("? = ANY(COALESCE(%s, '{}'))", column), f.Value
-	case OperatorHasEntryContaining, OperatorContains:
-		sql, param = fmt.Sprintf("%s ILIKE ?", column), fmt.Sprintf("%%%s%%", EscapeLikeMetachars(f.Value))
+		sql = fmt.Sprintf("? = ANY(COALESCE(%s, '{}'))", column)
+	case OperatorHasEntryContaining, OperatorContains, OperatorStartsWith, OperatorEndsWith:
+		sql = fmt.Sprintf("%s ILIKE ?", column)
 	case OperatorEquals, OperatorArithmeticEquals:
-		sql, param = fmt.Sprintf("%s = ?", column), f.Value
+		sql = fmt.Sprintf("%s = ?", column)
 	case OperatorArithmeticGreaterThan:
-		sql, param = fmt.Sprintf("%s > ?", column), f.Value
+		sql = fmt.Sprintf("%s > ?", column)
 	case OperatorArithmeticGreaterThanOrEquals:
-		sql, param = fmt.Sprintf("%s >= ?", column), f.Value
+		sql = fmt.Sprintf("%s >= ?", column)
 	case OperatorArithmeticLessThan:
-		sql, param = fmt.Sprintf("%s < ?", column), f.Value
+		sql = fmt.Sprintf("%s < ?", column)
 	case OperatorArithmeticLessThanOrEquals:
-		sql, param = fmt.Sprintf("%s <= ?", column), f.Value
+		sql = fmt.Sprintf("%s <= ?", column)
 	case OperatorArithmeticNotEquals:
-		sql, param = fmt.Sprintf("%s <> ?", column), f.Value
-	case OperatorStartsWith:
-		sql, param = fmt.Sprintf("%s ILIKE ?", column), fmt.Sprintf("%s%%", EscapeLikeMetachars(f.Value))
-	case OperatorEndsWith:
-		sql, param = fmt.Sprintf("%s ILIKE ?", column), fmt.Sprintf("%%%s", EscapeLikeMetachars(f.Value))
+		sql = fmt.Sprintf("%s <> ?", column)
 	case OperatorIsEmpty:
 		sql = fmt.Sprintf("%s IS NULL", column)
 	case OperatorIsNotEmpty:
 		sql = fmt.Sprintf("%s IS NOT NULL", column)
 	default:
-		return "", nil, fmt.Errorf("unsupported operator %q for field %q", f.Operator, f.Field)
+		return "", fmt.Errorf("%w %q", ErrUnsupportedOperator, op)
 	}
-	return WrapNot(sql, f.Not), param, nil
+	return WrapNot(sql, not), nil
+}
+
+// ColumnFilterParam returns the bound parameter ColumnFilterSQL expects for op, or nil
+// when op takes no value. LIKE metacharacters in value are escaped for pattern operators.
+func ColumnFilterParam(op Operator, value string) any {
+	switch op {
+	case OperatorHasEntryContaining, OperatorContains:
+		return fmt.Sprintf("%%%s%%", EscapeLikeMetachars(value))
+	case OperatorStartsWith:
+		return fmt.Sprintf("%s%%", EscapeLikeMetachars(value))
+	case OperatorEndsWith:
+		return fmt.Sprintf("%%%s", EscapeLikeMetachars(value))
+	case OperatorIsEmpty, OperatorIsNotEmpty:
+		return nil
+	}
+	return value
 }
 
 // FilterFieldToSQL returns a SQL fragment and parameter for a filter item,
