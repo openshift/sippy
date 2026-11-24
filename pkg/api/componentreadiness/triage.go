@@ -962,7 +962,7 @@ func generateHistoricalTestDetailsURL(regression *models.TestRegression, view cr
 		"",
 	)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to generate historical test details URL: %w", err)
 	}
 
 	u, err := url.Parse(testDetailsURL)

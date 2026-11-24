@@ -106,16 +106,20 @@ to its test details once per view it was tracked in:
 
 Historical rows show a clock icon with a green check badge. The tooltip names the covered period, for
 example "Closed regression. View historical test details for September 22-29, 2026." The green check
-means the tracked regression closed; it is not a passing assessment for that period. When Sippy cannot
-build a link (the regression has no recorded last failure, the view is no longer configured, or the
-view's basis cannot be resolved), the icon is disabled and its tooltip explains why.
+means either the tracked regression closed or, for a regression that is still open elsewhere, it closed
+in that view only. It does not mean the regression closed everywhere, and it is not a passing
+assessment for that period. When Sippy cannot build a link (the regression has no recorded last
+failure, the view is no longer configured, or the view's basis cannot be resolved), the icon is
+disabled and its tooltip explains why.
 
 A historical report covers the week ending with the regression's last failure, compared against the
-view's basis as it applied at that time. The test details page keeps the computed statistical result,
-even when it is red, and adds a `Closed regression, historical report` notice with the regression ID,
-closure date, last failure, and the sample and basis periods. Viewing history never changes
-regression tracking or triage state. The link holds concrete dates, so sharing or reopening it shows
-the same period.
+basis resolved from the view's current configuration (rolling basis dates are evaluated from the last
+failure). Sippy does not reconstruct the view configuration that applied at that time. The test
+details page keeps the computed statistical result, even when it is red, and adds a
+`Closed regression, historical report` notice with the regression ID, closure date, last failure, and
+the sample and basis periods. Viewing history never changes regression tracking or triage state. The
+link holds concrete dates, so sharing or reopening it shows the same requested period; the dates do not
+preserve the original view configuration.
 
 Keep in mind:
 
