@@ -31,17 +31,16 @@ anyone, and it does not prove the regression is fixed.
    `Untriaged` tab, which lists the regressions that still need a triage record.
 2. **Inspect the evidence:** In the dialog, click a regression's status icon to open its test details
    page. Review the results for each variant and job run, and file a bug if needed.
-3. **Link the regression:** When write endpoints are enabled, the test details page shows a `Triage`
-   button that opens the triage dialog. Add the regression to an `Existing Triage` that already points
-   at the bug, or create a `New Triage` with the URL, description, and type.
+3. **Link the regression:** For authorized users of the authenticated `sippy-auth` deployment, the
+   test details page shows a `Triage` button that opens the triage dialog. Add the regression to an
+   `Existing Triage` that already points at the bug, or create a `New Triage` with the URL,
+   description, and type.
 4. **Follow the fix:** Open the tracking Jira bug, linked from the `All Triage Records` index and each
    triage detail page, to judge bug progress. Judge actual CI recovery from the report status and the
    failing job runs, not from the Jira state alone.
 
 When you triage a single regression, the dialog's `Potential Matches` tab suggests candidate triage
-records to review, not confirmed causes. To share a stable link to a regression's test details, build
-a URL from its id with the route `/sippy-ng/component_readiness/regressions/{id}`, which redirects to
-those details ([`RegressionRedirect.jsx`](../../sippy-ng/src/component_readiness/RegressionRedirect.jsx)).
+records to review, not confirmed causes.
 
 ## Lifecycle
 
