@@ -74,3 +74,24 @@ func TestApplyJobRunFilters(t *testing.T) {
 		})
 	}
 }
+
+func TestColumnAlias(t *testing.T) {
+	tests := []struct {
+		name       string
+		field      string
+		wantColumn string
+		wantOK     bool
+	}{
+		{name: "aliased field", field: "job", wantColumn: "prow_jobs.name", wantOK: true},
+		{name: "quoted reserved column", field: "timestamp", wantColumn: `prow_job_runs."timestamp"`, wantOK: true},
+		{name: "base table column is not an alias", field: "cluster"},
+		{name: "breakout text is not an alias", field: `job" OR 1=1 --`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			column, ok := columnAlias(tc.field)
+			assert.Equal(t, tc.wantOK, ok)
+			assert.Equal(t, tc.wantColumn, column)
+		})
+	}
+}

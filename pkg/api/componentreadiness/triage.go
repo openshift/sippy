@@ -271,7 +271,7 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	err = dbc.Transaction(func(tx *gorm.DB) error {
 		// Capture the old triage state before making any changes, this is necessary to avoid multiple audit logs for the transaction
 		var oldTriage models.Triage
-		if err := tx.Preload("Regressions").First(&oldTriage, triage.ID).Error; err != nil {
+		if err := tx.Preload("Regressions").Where("id = ?", triage.ID).First(&oldTriage).Error; err != nil {
 			return err
 		}
 		ctx := context.WithValue(tx.Statement.Context, models.OldTriageKey, oldTriage)

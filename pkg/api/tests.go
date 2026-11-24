@@ -527,7 +527,6 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 			Where("current_runs > 0 or previous_runs > 0")
 		finalResults = dbc.DB.Table("(?) as final_results", processedResults)
 	} else {
-		// deepcode ignore Sqli/test: pushed-down columns come from a constant allowlist, operators from a fixed map, values are bound (TRT-3122)
 		rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(ctx, dbc, spec.Release, sample, base, nameFilter, variantFilter, processedFilter, lifecycleFilter)
 		if err != nil {
 			errs = append(errs, err)
@@ -649,6 +648,11 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	// assembled our final temporary table.
 	var rawFilter, processedFilter *filter.Filter
 	if spec.Filter != nil {
+		// The collapsed query never renders processedFilter, so validate every field here
+		// rather than relying on ToBQStr to reject invalid ones.
+		if err := spec.Filter.ValidateFields(); err != nil {
+			return testResultsBQ{}, []error{&ValidationError{Message: err.Error()}}
+		}
 		var lifecycleFilter *filter.Filter
 		lifecycleFilter, processedFilter = spec.Filter.Split([]string{"lifecycle"})
 		if len(lifecycleFilter.Items) > 0 {

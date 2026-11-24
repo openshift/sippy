@@ -2,11 +2,20 @@
 # https://docs.snyk.io/scan-applications/snyk-code/using-snyk-code-from-the-cli/excluding-directories-and-files-from-the-snyk-code-cli-test
 # https://docs.snyk.io/snyk-cli/commands/ignore
 
-# Reviewed Snyk Code false positives in Go are suppressed per finding with an inline
-# "// deepcode ignore <rule>: <reason>" comment directly above the reported line, rather
-# than excluding whole files here, so new findings in the same files still fail the scan.
-# The CI scan runs without --remote-repo-url, so finding-ID ignores are not applied there.
-# Fix confirmed unsafe query construction instead of suppressing it (see TRT-3122).
+# The ci/prow/security scan (snyk code test) applies only the path excludes below. It runs
+# without --remote-repo-url, so it ignores both finding-ID ignores and inline
+# "// deepcode ignore" comments (the scan log reports "Ignored issues: 0").
+# Fix real findings in code. For a reviewed false positive, first restructure the code so
+# request input cannot reach the SQL text. If that is not practical, move only the reviewed
+# code into its own file and exclude that file here with the reason, so the rest of the
+# package stays scanned (see TRT-3122).
+
+# Uncollapsed tests report raw SQL builder (go/Sqli, go/Sqli/test)
+# Path: pkg/db/query/uncollapsed_test_report.go
+# Info: Snyk taints the whole TestResultsSpec from the validated release/period params and
+# flags the Raw call. Pushed-down columns come from the constant pushdownColumns table,
+# operators from fixed maps or switches, and all values are bound (covered by
+# cumulative_query_test.go and the /api/tests e2e filter tests).
 
 # used for byte compression decompression validation
 # Path: pkg/cache/compressed/cache.go, line 77
@@ -31,3 +40,4 @@ exclude:
     - scripts/add-intentional-regression.py
     # MCP dev server: create_subprocess_exec (no shell) with validated inputs; not a real injection vector
     - mcp/server.py
+    - pkg/db/query/uncollapsed_test_report.go

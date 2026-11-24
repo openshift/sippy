@@ -208,22 +208,34 @@ func analyzeJobRunFilters(filterOpts *filter.FilterOptions, prColumns sets.Set[s
 	return needs
 }
 
-// columnAliases maps filter field names that are SELECT aliases (not base
-// table columns) to their table-qualified column expressions. PostgreSQL
+// columnAliases lists filter field names that are SELECT aliases (not base
+// table columns) with their table-qualified column expressions. PostgreSQL
 // WHERE clauses cannot reference SELECT aliases, so these fields must be
 // rewritten before they reach the generic filter system.
-var columnAliases = map[string]string{
-	"id":                  "prow_job_runs.id",
-	"job":                 "prow_jobs.name",
-	"brief_name":          "regexp_replace(prow_jobs.name, 'periodic-ci-openshift-(multiarch|release)-(master|main)-(ci|nightly)-[0-9]+.[0-9]+-', '')",
-	"prow_id":             "prow_job_runs.id",
-	"test_grid_url":       "prow_job_runs.url",
-	"timestamp":           `prow_job_runs."timestamp"`,
-	"pull_request_link":   "pp.link",
-	"pull_request_sha":    "pp.sha",
-	"pull_request_org":    "pp.org",
-	"pull_request_repo":   "pp.repo",
-	"pull_request_author": "pp.author",
+var columnAliases = []struct{ field, column string }{
+	{"id", "prow_job_runs.id"},
+	{"job", "prow_jobs.name"},
+	{"brief_name", "regexp_replace(prow_jobs.name, 'periodic-ci-openshift-(multiarch|release)-(master|main)-(ci|nightly)-[0-9]+.[0-9]+-', '')"},
+	{"prow_id", "prow_job_runs.id"},
+	{"test_grid_url", "prow_job_runs.url"},
+	{"timestamp", `prow_job_runs."timestamp"`},
+	{"pull_request_link", "pp.link"},
+	{"pull_request_sha", "pp.sha"},
+	{"pull_request_org", "pp.org"},
+	{"pull_request_repo", "pp.repo"},
+	{"pull_request_author", "pp.author"},
+}
+
+// columnAlias returns the column expression for a filter field that is a SELECT alias.
+// The expression always comes from columnAliases, never from field itself, so request
+// input can only choose among these fixed SQL expressions.
+func columnAlias(field string) (string, bool) {
+	for _, alias := range columnAliases {
+		if alias.field == field {
+			return alias.column, true
+		}
+	}
+	return "", false
 }
 
 // testNameStatuses maps test name filter fields to the prow_job_run_tests
@@ -267,7 +279,7 @@ func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback t
 			continue
 		default:
 			var err error
-			if col, ok := columnAliases[item.Field]; ok {
+			if col, ok := columnAlias(item.Field); ok {
 				sql, param, err = item.FilterItemToSQL(col)
 			} else {
 				sql, param, err = item.FilterFieldToSQL(apitype.JobRun{})

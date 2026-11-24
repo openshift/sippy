@@ -82,6 +82,18 @@ type Filter struct {
 	LinkOperator LinkOperator `json:"linkOperator"`
 }
 
+// ValidateFields returns ErrInvalidField for the first item whose field fails ValidateField.
+// Callers that split a filter and render only some parts to SQL use it so an invalid field
+// is rejected even when the part containing it is never rendered.
+func (filters Filter) ValidateFields() error {
+	for _, f := range filters.Items {
+		if err := ValidateField(f.Field); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UnmarshalJSON accepts both MUI X v5 ("linkOperator") and v7
 // ("logicOperator") field names so old bookmarks and new frontend
 // requests both work.

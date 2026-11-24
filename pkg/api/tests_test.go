@@ -199,3 +199,53 @@ func TestBuildTestsResultsBQGenerator_RejectsLifecycleFilterAlongsideOtherFilter
 		t.Fatalf("errs[0] = %v (%T), want *ValidationError", errs[0], errs[0])
 	}
 }
+
+// The collapsed BigQuery query never renders the processed (non name/variants) filter,
+// so field validation must happen before the split; otherwise an invalid field would
+// return HTTP 200. Validation fails before bqc is used, so passing nil is safe.
+func TestBuildTestsResultsBQGenerator_RejectsInvalidField(t *testing.T) {
+	tests := []struct {
+		name     string
+		collapse bool
+		item     filter.FilterItem
+	}{
+		{
+			name:     "collapsed processed filter",
+			collapse: true,
+			item:     filter.FilterItem{Field: "name) OR (TRUE", Operator: filter.OperatorArithmeticGreaterThan, Value: "1"},
+		},
+		{
+			name: "uncollapsed processed filter",
+			item: filter.FilterItem{Field: "name) OR (TRUE", Operator: filter.OperatorArithmeticGreaterThan, Value: "1"},
+		},
+		{
+			name:     "collapsed quote breakout",
+			collapse: true,
+			item:     filter.FilterItem{Field: `current_runs" = 1 OR 1=1 --`, Operator: filter.OperatorEquals, Value: "1"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := &TestResultsSpec{
+				Release:  "4.16",
+				Collapse: tc.collapse,
+				Filter: &filter.Filter{Items: []filter.FilterItem{
+					{Field: "name", Operator: filter.OperatorContains, Value: "network"},
+					tc.item,
+				}},
+			}
+
+			_, errs := spec.buildTestsResultsBQGenerator(context.Background(), nil)
+			if len(errs) != 1 {
+				t.Fatalf("errs = %v, want exactly one error", errs)
+			}
+			var validationErr *ValidationError
+			if !errors.As(errs[0], &validationErr) {
+				t.Fatalf("errs[0] = %v (%T), want *ValidationError so it surfaces as HTTP 400", errs[0], errs[0])
+			}
+			if !strings.Contains(validationErr.Message, filter.ErrInvalidField.Error()) {
+				t.Errorf("validation message = %q, want it to mention %q", validationErr.Message, filter.ErrInvalidField)
+			}
+		})
+	}
+}

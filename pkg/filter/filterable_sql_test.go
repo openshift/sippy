@@ -53,6 +53,33 @@ func TestValidateField(t *testing.T) {
 	}
 }
 
+func TestFilterValidateFields(t *testing.T) {
+	tests := []struct {
+		name    string
+		items   []FilterItem
+		wantErr bool
+	}{
+		{name: "no items"},
+		{name: "all valid", items: []FilterItem{{Field: "name"}, {Field: "current_runs"}}},
+		{name: "invalid after valid", items: []FilterItem{{Field: "name"}, {Field: injectionField}}, wantErr: true},
+		{name: "invalid first", items: []FilterItem{{Field: "name) OR (TRUE"}, {Field: "name"}}, wantErr: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Filter{Items: tc.items}.ValidateFields()
+			if tc.wantErr {
+				if !errors.Is(err, ErrInvalidField) {
+					t.Fatalf("ValidateFields() error = %v, want ErrInvalidField", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ValidateFields() unexpected error: %v", err)
+			}
+		})
+	}
+}
+
 func TestFilterFieldToSQL(t *testing.T) {
 	tests := []struct {
 		name      string
