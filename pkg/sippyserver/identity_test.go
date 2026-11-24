@@ -1,6 +1,7 @@
 package sippyserver
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -22,40 +23,40 @@ const (
 func TestDelegationResolverResolve(t *testing.T) {
 	twoDelegators := []string{delegatorA, delegatorB}
 	tests := []struct {
-		name          string
-		allowlist     []string
-		authenticated string
+		name      string
+		allowlist []string
+		principal string
 		// method defaults to POST, a mutating request.
-		method        string
-		actingFor     string
-		wantUser      string
-		wantDelegated bool
-		wantErr       bool
+		method    string
+		actingFor string
+		// wantDelegatedUser is "" when the request is not delegated.
+		wantDelegatedUser string
+		wantErr           bool
 	}{
-		{name: "first delegator acts for user", allowlist: twoDelegators, authenticated: delegatorA, actingFor: "alice", wantUser: "alice", wantDelegated: true},
-		{name: "second delegator acts for user", allowlist: twoDelegators, authenticated: delegatorB, actingFor: "bob", wantUser: "bob", wantDelegated: true},
-		{name: "delegated identity is trimmed", allowlist: twoDelegators, authenticated: delegatorA, actingFor: "  alice\t", wantUser: "alice", wantDelegated: true},
-		{name: "delegator without acting for is rejected", allowlist: twoDelegators, authenticated: delegatorA, wantErr: true},
-		{name: "delegator with blank acting for is rejected", allowlist: twoDelegators, authenticated: delegatorB, actingFor: "   ", wantErr: true},
-		{name: "delegator put without acting for is rejected", allowlist: twoDelegators, authenticated: delegatorA, method: http.MethodPut, wantErr: true},
-		{name: "delegator delete without acting for is rejected", allowlist: twoDelegators, authenticated: delegatorA, method: http.MethodDelete, wantErr: true},
-		{name: "delegator patch without acting for is rejected", allowlist: twoDelegators, authenticated: delegatorA, method: http.MethodPatch, wantErr: true},
-		{name: "delegator get without acting for keeps its identity", allowlist: twoDelegators, authenticated: delegatorA, method: http.MethodGet, wantUser: delegatorA},
-		{name: "delegator head with blank acting for keeps its identity", allowlist: twoDelegators, authenticated: delegatorA, method: http.MethodHead, actingFor: " ", wantUser: delegatorA},
-		{name: "delegator options without acting for keeps its identity", allowlist: twoDelegators, authenticated: delegatorB, method: http.MethodOptions, wantUser: delegatorB},
-		{name: "delegator get with acting for is delegated", allowlist: twoDelegators, authenticated: delegatorA, method: http.MethodGet, actingFor: "alice", wantUser: "alice", wantDelegated: true},
-		{name: "nil allowlist enables no delegation", allowlist: nil, authenticated: delegatorA, actingFor: "alice", wantUser: delegatorA},
-		{name: "empty allowlist enables no delegation", allowlist: []string{}, authenticated: delegatorA, actingFor: "alice", wantUser: delegatorA},
-		{name: "unlisted chai-bot principal cannot delegate", allowlist: twoDelegators, authenticated: "chai-bot", actingFor: "mallory", wantUser: "chai-bot"},
-		{name: "direct user ignores acting for", allowlist: twoDelegators, authenticated: "alice", actingFor: "mallory", wantUser: "alice"},
-		{name: "direct user without acting for is unchanged", allowlist: twoDelegators, authenticated: "alice", wantUser: "alice"},
-		{name: "unauthenticated request cannot acquire identity", allowlist: twoDelegators, authenticated: "", actingFor: "alice", wantUser: ""},
-		{name: "empty allowlist entry does not trust unauthenticated requests", allowlist: []string{""}, authenticated: "", actingFor: "alice", wantUser: ""},
-		{name: "suffix of a delegator is not trusted", allowlist: twoDelegators, authenticated: "sippy-mcp", actingFor: "alice", wantUser: "sippy-mcp"},
-		{name: "same namespace service account is not trusted", allowlist: twoDelegators, authenticated: "system:serviceaccount:sippy:other", actingFor: "alice", wantUser: "system:serviceaccount:sippy:other"},
-		{name: "superstring of a delegator is not trusted", allowlist: twoDelegators, authenticated: delegatorB + "-2", actingFor: "alice", wantUser: delegatorB + "-2"},
-		{name: "case differences are not trusted", allowlist: twoDelegators, authenticated: strings.ToUpper(delegatorB), actingFor: "alice", wantUser: strings.ToUpper(delegatorB)},
-		{name: "padded principal is not trusted", allowlist: twoDelegators, authenticated: " " + delegatorB, actingFor: "alice", wantUser: " " + delegatorB},
+		{name: "first delegator acts for user", allowlist: twoDelegators, principal: delegatorA, actingFor: "alice", wantDelegatedUser: "alice"},
+		{name: "second delegator acts for user", allowlist: twoDelegators, principal: delegatorB, actingFor: "bob", wantDelegatedUser: "bob"},
+		{name: "delegated identity is trimmed", allowlist: twoDelegators, principal: delegatorA, actingFor: "  alice\t", wantDelegatedUser: "alice"},
+		{name: "delegator without acting for is rejected", allowlist: twoDelegators, principal: delegatorA, wantErr: true},
+		{name: "delegator with blank acting for is rejected", allowlist: twoDelegators, principal: delegatorB, actingFor: "   ", wantErr: true},
+		{name: "delegator put without acting for is rejected", allowlist: twoDelegators, principal: delegatorA, method: http.MethodPut, wantErr: true},
+		{name: "delegator delete without acting for is rejected", allowlist: twoDelegators, principal: delegatorA, method: http.MethodDelete, wantErr: true},
+		{name: "delegator patch without acting for is rejected", allowlist: twoDelegators, principal: delegatorA, method: http.MethodPatch, wantErr: true},
+		{name: "delegator get without acting for is not delegated", allowlist: twoDelegators, principal: delegatorA, method: http.MethodGet},
+		{name: "delegator head with blank acting for is not delegated", allowlist: twoDelegators, principal: delegatorA, method: http.MethodHead, actingFor: " "},
+		{name: "delegator options without acting for is not delegated", allowlist: twoDelegators, principal: delegatorB, method: http.MethodOptions},
+		{name: "delegator get with acting for is delegated", allowlist: twoDelegators, principal: delegatorA, method: http.MethodGet, actingFor: "alice", wantDelegatedUser: "alice"},
+		{name: "nil allowlist enables no delegation", allowlist: nil, principal: delegatorA, actingFor: "alice"},
+		{name: "empty allowlist enables no delegation", allowlist: []string{}, principal: delegatorA, actingFor: "alice"},
+		{name: "unlisted chai-bot principal cannot delegate", allowlist: twoDelegators, principal: "chai-bot", actingFor: "mallory"},
+		{name: "direct user ignores acting for", allowlist: twoDelegators, principal: "alice", actingFor: "mallory"},
+		{name: "direct user without acting for is not delegated", allowlist: twoDelegators, principal: "alice"},
+		{name: "unauthenticated request cannot acquire identity", allowlist: twoDelegators, principal: "", actingFor: "alice"},
+		{name: "empty allowlist entry does not trust unauthenticated requests", allowlist: []string{""}, principal: "", actingFor: "alice"},
+		{name: "suffix of a delegator is not trusted", allowlist: twoDelegators, principal: "sippy-mcp", actingFor: "alice"},
+		{name: "same namespace service account is not trusted", allowlist: twoDelegators, principal: "system:serviceaccount:sippy:other", actingFor: "alice"},
+		{name: "superstring of a delegator is not trusted", allowlist: twoDelegators, principal: delegatorB + "-2", actingFor: "alice"},
+		{name: "case differences are not trusted", allowlist: twoDelegators, principal: strings.ToUpper(delegatorB), actingFor: "alice"},
+		{name: "padded principal is not trusted", allowlist: twoDelegators, principal: " " + delegatorB, actingFor: "alice"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -63,24 +64,22 @@ func TestDelegationResolverResolve(t *testing.T) {
 			if method == "" {
 				method = http.MethodPost
 			}
-			user, delegated, err := newDelegationResolver(tc.allowlist).resolve(tc.authenticated, method, tc.actingFor)
+			delegatedUser, err := newDelegationResolver(tc.allowlist).resolve(tc.principal, method, tc.actingFor)
 			if tc.wantErr {
 				require.ErrorIs(t, err, errMissingActingFor)
-				assert.Empty(t, user, "a rejected request must not fall back to the delegator identity")
+				assert.Empty(t, delegatedUser, "a rejected request must not fall back to the delegator identity")
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, tc.wantUser, user)
-			assert.Equal(t, tc.wantDelegated, delegated)
+			assert.Equal(t, tc.wantDelegatedUser, delegatedUser)
 		})
 	}
 }
 
 func TestZeroValueDelegationResolverTrustsNobody(t *testing.T) {
-	user, delegated, err := delegationResolver{}.resolve(delegatorA, http.MethodPost, "alice")
+	delegatedUser, err := delegationResolver{}.resolve(delegatorA, http.MethodPost, "alice")
 	require.NoError(t, err)
-	assert.Equal(t, delegatorA, user)
-	assert.False(t, delegated)
+	assert.Empty(t, delegatedUser)
 }
 
 // TestDelegationMiddlewareEffectiveUser verifies the user seen by handlers through the shared identity
@@ -176,27 +175,25 @@ func TestUserAttributedHandlersWithDelegation(t *testing.T) {
 		path    string
 		vars    map[string]string
 		handler http.HandlerFunc
-		// authenticatedStatus is the status for an authenticated request with an empty body.
-		authenticatedStatus int
 	}{
-		{name: "create triage", method: http.MethodPost, path: "/api/component_readiness/triages", handler: s.jsonCreateTriage, authenticatedStatus: http.StatusBadRequest},
-		{name: "update triage", method: http.MethodPut, path: "/api/component_readiness/triages/1", vars: map[string]string{"id": "1"}, handler: s.jsonUpdateTriage, authenticatedStatus: http.StatusBadRequest},
-		{name: "force close", method: http.MethodPost, path: "/api/component_readiness/triages/1/force_close_regressions", vars: map[string]string{"id": "1"}, handler: s.jsonForceCloseRegressions, authenticatedStatus: http.StatusBadRequest},
-		{name: "file jira bug", method: http.MethodPost, path: "/api/component_readiness/bugs", handler: s.jsonFileJiraBug, authenticatedStatus: http.StatusBadRequest},
+		{name: "create triage", method: http.MethodPost, path: "/api/component_readiness/triages", handler: s.jsonCreateTriage},
+		{name: "update triage", method: http.MethodPut, path: "/api/component_readiness/triages/1", vars: map[string]string{"id": "1"}, handler: s.jsonUpdateTriage},
+		{name: "force close", method: http.MethodPost, path: "/api/component_readiness/triages/1/force_close_regressions", vars: map[string]string{"id": "1"}, handler: s.jsonForceCloseRegressions},
+		{name: "file jira bug", method: http.MethodPost, path: "/api/component_readiness/bugs", handler: s.jsonFileJiraBug},
 	}
 	identities := []struct {
 		name          string
 		forwardedUser string
 		actingFor     string
-		authenticated bool
-		wantStatus    int
+		// wantStatus is 400 for authenticated identities because the empty body fails validation.
+		wantStatus int
 		// rejectedByMiddleware marks the case refused by the delegation middleware, whose 400 must
 		// be told apart from the handlers' own body-validation 400.
 		rejectedByMiddleware bool
 	}{
-		{name: "delegated user", forwardedUser: delegatorA, actingFor: "alice", authenticated: true},
-		{name: "direct user", forwardedUser: "alice", authenticated: true},
-		{name: "unlisted principal with acting for", forwardedUser: "chai-bot", actingFor: "alice", authenticated: true},
+		{name: "delegated user", forwardedUser: delegatorA, actingFor: "alice", wantStatus: http.StatusBadRequest},
+		{name: "direct user", forwardedUser: "alice", wantStatus: http.StatusBadRequest},
+		{name: "unlisted principal with acting for", forwardedUser: "chai-bot", actingFor: "alice", wantStatus: http.StatusBadRequest},
 		{name: "delegator without acting for", forwardedUser: delegatorA, wantStatus: http.StatusBadRequest, rejectedByMiddleware: true},
 		{name: "unauthenticated with acting for", actingFor: "alice", wantStatus: http.StatusUnauthorized},
 	}
@@ -218,11 +215,7 @@ func TestUserAttributedHandlersWithDelegation(t *testing.T) {
 
 				s.delegation.middleware(h.handler).ServeHTTP(rec, req)
 
-				want := id.wantStatus
-				if id.authenticated {
-					want = h.authenticatedStatus
-				}
-				assert.Equal(t, want, rec.Code, rec.Body.String())
+				assert.Equal(t, id.wantStatus, rec.Code, rec.Body.String())
 				if id.rejectedByMiddleware {
 					assert.Contains(t, rec.Body.String(), actingForHeader)
 				} else {
@@ -234,7 +227,9 @@ func TestUserAttributedHandlersWithDelegation(t *testing.T) {
 }
 
 // TestDeleteTriageRequiresUser verifies delete refuses an unauthenticated request before touching
-// the database, with or without an X-Acting-For header.
+// the database, with or without an X-Acting-For header. It is kept out of the handler matrix in
+// TestUserAttributedHandlersWithDelegation because an authenticated delete has no body to fail
+// validation on, so it would reach the nil database and panic.
 func TestDeleteTriageRequiresUser(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -287,19 +282,25 @@ func TestUserForRequest(t *testing.T) {
 	tests := []struct {
 		name   string
 		header string
-		env    map[string]string
-		want   string
+		// delegatedUser is stored in the request context as the delegation middleware would.
+		delegatedUser string
+		env           map[string]string
+		want          string
 	}{
 		{name: "production with header", header: "alice", env: map[string]string{}, want: "alice"},
 		{name: "production without header is unauthenticated", env: map[string]string{}, want: ""},
 		{name: "DEV_MODE without header uses mock user", env: map[string]string{devModeEnvVar: "1"}, want: MockUser},
 		{name: "real header wins over mock user", header: "alice", env: map[string]string{devModeEnvVar: "1"}, want: "alice"},
+		{name: "delegated identity wins over header and mock user", header: delegatorA, delegatedUser: "alice", env: map[string]string{devModeEnvVar: "1"}, want: "alice"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			if tc.header != "" {
 				req.Header.Set(forwardedUserHeader, tc.header)
+			}
+			if tc.delegatedUser != "" {
+				req = req.WithContext(context.WithValue(req.Context(), identityContextKey{}, tc.delegatedUser))
 			}
 			assert.Equal(t, tc.want, userForRequest(req, envFrom(tc.env)))
 		})

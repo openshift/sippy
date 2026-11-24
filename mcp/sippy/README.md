@@ -17,7 +17,7 @@ Triage management is its first toolset.
 The server runs behind an authenticating proxy and calls Sippy with a service-account bearer token.
 Mutating tools take a required `acting_for` argument, sent as `X-Acting-For`. Sippy honors that
 header only when the authenticated principal is listed with `--trusted-delegator` (see
-[config/README.md](../../config/README.md#trusted-delegators)), so changes are authorized and
+[config/README.md](../../config/README.md#trusted-delegators)), so changes are attributed to and
 audited as the requesting user. Read tools take no identity.
 
 Consumers are other services (for example a chat bot or a Jira automation) that authenticate to the

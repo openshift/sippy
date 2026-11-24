@@ -2092,8 +2092,7 @@ func (s *Server) jsonForceCloseRegressions(w http.ResponseWriter, req *http.Requ
 
 	user := getUserForRequest(req)
 	// Force closing records who closed each regression for attribution and audit, so we refuse to
-	// proceed when we cannot determine the user rather than recording an empty ForceClosedBy. The
-	// user identity is intentionally not logged.
+	// proceed when we cannot determine the user rather than recording an empty ForceClosedBy.
 	if strings.TrimSpace(user) == "" {
 		failureResponse(w, http.StatusUnauthorized, "cannot determine user for force close request; authentication is required")
 		return

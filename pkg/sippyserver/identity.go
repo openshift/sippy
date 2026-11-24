@@ -16,7 +16,7 @@ const (
 	forwardedUserHeader string = "X-Forwarded-User"
 
 	// actingForHeader lets a trusted delegator (for example the Sippy MCP server's service account)
-	// name the user it is acting for, so authorization and audit records reflect that user.
+	// name the user it is acting for, so attribution and audit records reflect that user.
 	actingForHeader string = "X-Acting-For"
 
 	// MockUser is the identity attributed to requests that arrive without an authenticated user when
@@ -57,53 +57,50 @@ func newDelegationResolver(trustedDelegators []string) delegationResolver {
 // because they change nothing that needs attribution.
 var safeMethods = sets.New[string](http.MethodGet, http.MethodHead, http.MethodOptions)
 
-// resolve returns the effective user for an authenticated principal, the request method, and the raw
-// X-Acting-For value. delegated reports whether the identity came from X-Acting-For. Only a non-empty
-// authenticated principal that exactly matches an allowlist entry can delegate, so an unauthenticated
-// request can never acquire an identity from the header. A trusted delegator must name a user on
-// mutating requests; on safe methods without one it keeps its own identity.
-func (r delegationResolver) resolve(authenticatedUser, method, actingFor string) (user string, delegated bool, err error) {
-	if authenticatedUser == "" || !r.trustedDelegators.Has(authenticatedUser) {
-		return authenticatedUser, false, nil
+// resolve returns the user named by X-Acting-For when the request is delegated, or "" when it is
+// not. Only a non-empty authenticated principal that exactly matches an allowlist entry can delegate,
+// so an unauthenticated request can never acquire an identity from the header. A trusted delegator
+// must name a user on mutating requests; on safe methods without one it keeps its own identity.
+func (r delegationResolver) resolve(principal, method, actingFor string) (delegatedUser string, err error) {
+	if principal == "" || !r.trustedDelegators.Has(principal) {
+		return "", nil
 	}
-	actingFor = strings.TrimSpace(actingFor)
-	if actingFor != "" {
-		return actingFor, true, nil
+	if actingFor = strings.TrimSpace(actingFor); actingFor != "" {
+		return actingFor, nil
 	}
 	if safeMethods.Has(method) {
-		return authenticatedUser, false, nil
+		return "", nil
 	}
-	return "", false, errMissingActingFor
+	return "", errMissingActingFor
 }
 
 // middleware resolves delegation before any handler runs. Mutating requests from trusted delegators
 // without a delegated identity are rejected with 400 so no mutation can proceed or be attributed to
-// the delegator.
-// Resolved identities are stored in the request context for getUserForRequest.
+// the delegator. Resolved identities are stored in the request context for getUserForRequest.
 func (r delegationResolver) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		authenticatedUser := req.Header.Get(forwardedUserHeader)
-		user, delegated, err := r.resolve(authenticatedUser, req.Method, req.Header.Get(actingForHeader))
+		principal := req.Header.Get(forwardedUserHeader)
+		delegatedUser, err := r.resolve(principal, req.Method, req.Header.Get(actingForHeader))
 		if err != nil {
 			log.WithFields(log.Fields{
-				"principal": authenticatedUser,
+				"principal": principal,
 				"method":    req.Method,
 				"path":      req.URL.Path,
 			}).Warn("trusted delegator request rejected: missing delegated identity")
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if !delegated {
+		if delegatedUser == "" {
 			next.ServeHTTP(w, req)
 			return
 		}
 		log.WithFields(log.Fields{
-			"principal":  authenticatedUser,
-			"acting_for": user,
+			"principal":  principal,
+			"acting_for": delegatedUser,
 			"method":     req.Method,
 			"path":       req.URL.Path,
 		}).Info("delegated request")
-		next.ServeHTTP(w, req.WithContext(context.WithValue(req.Context(), identityContextKey{}, user)))
+		next.ServeHTTP(w, req.WithContext(context.WithValue(req.Context(), identityContextKey{}, delegatedUser)))
 	})
 }
 
