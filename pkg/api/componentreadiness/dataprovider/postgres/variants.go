@@ -13,7 +13,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/query"
 )
 
 // buildVariantFilterClause generates the WHERE clause fragment and bind args
@@ -58,9 +57,9 @@ func lookupVariantValues(
 	filterArgs []any,
 	dbGroupBy sets.Set[string],
 ) (map[uint]map[string]string, error) {
-	sqlQuery := "SELECT id, variants FROM variant_combinations"
+	query := "SELECT id, variants FROM variant_combinations"
 	if filterClause != "" {
-		sqlQuery += " WHERE " + filterClause
+		query += " WHERE " + filterClause
 	}
 
 	type vcRow struct {
@@ -69,7 +68,7 @@ func lookupVariantValues(
 	}
 
 	var rows []vcRow
-	if err := query.ScanAll(dbc.DB.WithContext(ctx).Raw(sqlQuery, filterArgs...), &rows); err != nil {
+	if err := dbc.DB.WithContext(ctx).Raw(query, filterArgs...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("looking up variant values: %w", err)
 	}
 

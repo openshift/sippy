@@ -453,12 +453,12 @@ func enrichJobRunsWithAnnotations(dbc *db.DB, results []apitype.JobRun, release 
 // FetchJobRun returns a single job run loaded from postgres and populated with the ProwJob and test results.
 // If onlyNewTests is true, only new tests are loaded: those not registered in test_ownerships and not
 // previously seen in a merged pull request. Otherwise any failed tests are loaded.
-func FetchJobRun(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *log.Entry) (*models.ProwJobRun, error) {
+func FetchJobRun(dbc *db.DB, jobRunID int64, onlyNewTests bool, preloads []string, logger *log.Entry) (*models.ProwJobRun, error) {
 	jobRun := &models.ProwJobRun{}
 
 	// Load the ProwJobRun, ProwJob, and (failed|unknown) tests:
 	// TODO: we may want to expand to analyzing flakes here in the future
-	q := dbc.DB.WithContext(ctx).Joins("ProwJob").
+	q := dbc.DB.Joins("ProwJob").
 		Preload("PullRequests")
 
 	// Tests are loaded separately with partition pruning keys, so
@@ -468,7 +468,7 @@ func FetchJobRun(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests b
 		q = q.Preload(preload)
 	}
 
-	partKeys, err := query.LookupProwJobRunPartitionKeys(ctx, dbc.DB, jobRunID)
+	partKeys, err := query.LookupProwJobRunPartitionKeys(dbc.DB, jobRunID)
 	if err != nil {
 		return nil, fmt.Errorf("looking up partition keys for job run %d: %w", jobRunID, err)
 	}
@@ -480,7 +480,7 @@ func FetchJobRun(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests b
 	}
 
 	var tests []models.ProwJobRunTest
-	testQuery := dbc.DB.WithContext(ctx).
+	testQuery := dbc.DB.
 		Where("prow_job_run_id = ? AND prow_job_run_release = ? AND prow_job_run_timestamp = ?",
 			jobRun.ID, jobRun.ProwJobRelease, jobRun.Timestamp)
 
@@ -515,7 +515,7 @@ func FetchJobRun(ctx context.Context, dbc *db.DB, jobRunID int64, onlyNewTests b
 	}
 	jobRun.Tests = tests
 
-	jobRunTestCount, err := query.JobRunTestCount(ctx, dbc, jobRunID, jobRun.ProwJobRelease, jobRun.Timestamp)
+	jobRunTestCount, err := query.JobRunTestCount(dbc, jobRunID, jobRun.ProwJobRelease, jobRun.Timestamp)
 	if err != nil { // should be unusual
 		logger.WithError(err).Errorf("Error getting test count for job run %d", jobRunID)
 		jobRunTestCount = -1
@@ -551,7 +551,7 @@ func splitTestPreloads(preloads []string) (other, testRelated []string) {
 // periodic-ci-openshift-release-master-nightly-4.14- e2e-vsphere-ovn-etcd-scaling
 // our common root is e2e-vsphere-ovn-etcd-scaling and our compareRelease is 4.14
 // if we don't have enough data from the current compareRelease we fall back to include the previous release as well
-func findReleaseMatchJobNames(ctx context.Context, dbc *db.DB, jobRun *models.ProwJobRun, compareRelease string, logger *log.Entry) ([]string, int, error) {
+func findReleaseMatchJobNames(dbc *db.DB, jobRun *models.ProwJobRun, compareRelease string, logger *log.Entry) ([]string, int, error) {
 	segments := strings.Split(jobRun.ProwJob.Name, "-")
 	logger = logger.WithField("func", "findReleaseMatchJobNames").WithField("job", jobRun.ProwJob.Name)
 
@@ -571,7 +571,7 @@ func findReleaseMatchJobNames(ctx context.Context, dbc *db.DB, jobRun *models.Pr
 		name := joinSegments(segments, i, "-")
 
 		if len(name) > 0 {
-			jobs, err := query.ProwJobSimilarName(ctx, dbc, name, compareRelease)
+			jobs, err := query.ProwJobSimilarName(dbc, name, compareRelease)
 
 			if err != nil {
 				logger.WithError(err).Errorf("Failed to find similar name for release: %s, root: %s", compareRelease, name)
@@ -602,7 +602,7 @@ func findReleaseMatchJobNames(ctx context.Context, dbc *db.DB, jobRun *models.Pr
 					gosort.Strings(job.Variants)
 					if stringSlicesEqual(variants, job.Variants) {
 
-						runCount, err := query.ProwJobRunCount(ctx, dbc, job.ID, compareRelease, time.Now().Add(-14*24*time.Hour))
+						runCount, err := query.ProwJobRunCount(dbc, job.ID, compareRelease, time.Now().Add(-14*24*time.Hour))
 						if err != nil {
 							logger.WithError(err).Errorf("Failed to query job run count for %d", job.ID)
 							continue
@@ -654,20 +654,16 @@ func JobRunRiskAnalysis(
 	if compareRelease == models.ReleasePresubmits {
 		// TODO: Non-OCP are not supported yet. At least ensure adding new releases doesn't break OCP.
 		var err error
-		compareRelease, err = query.CurrentActiveRelease(ctx, dbc)
+		compareRelease, err = query.CurrentActiveRelease(dbc)
 		if err != nil {
 			return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("getting release for presubmit risk analysis: %w", err)
 		}
 	}
 
-	historicalCount, err := query.ProwJobHistoricalTestCounts(ctx, dbc, jobRun.ProwJob.ID, jobRun.ProwJob.Release)
+	historicalCount, err := query.ProwJobHistoricalTestCounts(dbc, jobRun.ProwJob.ID, jobRun.ProwJob.Release)
 
-	// if we had an error we will continue the risk analysis and not elevate based on test counts,
-	// unless the caller gave up; a zero count then would understate the risk of an incomplete run.
+	// if we had an error we will continue the risk analysis and not elevate based on test counts
 	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("getting historical test count for risk analysis: %w", ctxErr)
-		}
 		logger.WithError(err).Error("Error comparing historical job run test count")
 		historicalCount = 0
 	}
@@ -691,7 +687,7 @@ func JobRunRiskAnalysis(
 	// we want to get a list of job names and a count of jobRunIds and fall back to include prior release if needed,
 	// variants don't cover all of our cases, like etcd-scaling so we want to
 	// find a job match against releases and analyze the pass rates
-	jobNames, totalJobRuns, err := findReleaseMatchJobNames(ctx, dbc, jobRun, compareRelease, logger)
+	jobNames, totalJobRuns, err := findReleaseMatchJobNames(dbc, jobRun, compareRelease, logger)
 
 	if err != nil {
 		if err.Error() == "never-stable" {
@@ -714,7 +710,7 @@ func JobRunRiskAnalysis(
 				}
 			}
 			if priorRelease != "" {
-				priorJobNames, _, err := findReleaseMatchJobNames(ctx, dbc, jobRun, priorRelease, logger)
+				priorJobNames, _, err := findReleaseMatchJobNames(dbc, jobRun, priorRelease, logger)
 				if err != nil {
 					// since this is for the prior release we won't return the never-stable error in this case
 					if err.Error() != "never-stable" {
@@ -730,7 +726,7 @@ func JobRunRiskAnalysis(
 
 	// NOTE: we are including bugs for all releases, may want to filter here in future to just those
 	// with an AffectsVersions that seems to match our compareRelease?
-	jobBugs, err := query.LoadBugsForJobs(ctx, dbc, []int{int(jobRun.ProwJob.ID)}, true) // nolint:gosec
+	jobBugs, err := query.LoadBugsForJobs(dbc, []int{int(jobRun.ProwJob.ID)}, true) // nolint:gosec
 	if err != nil {
 		logger.WithError(err).Errorf("Error evaluating bugs for prow job: %d", jobRun.ProwJob.ID)
 	} else {
@@ -740,7 +736,7 @@ func JobRunRiskAnalysis(
 	// Pre-load test bugs as well:
 	if len(jobRun.Tests) <= maxFailuresToFullyAnalyze {
 		for i, tr := range jobRun.Tests {
-			bugs, err := query.LoadBugsForTest(ctx, dbc, tr.Test.Name, true)
+			bugs, err := query.LoadBugsForTest(dbc, tr.Test.Name, true)
 			if err != nil {
 				logger.WithError(err).Errorf("Error evaluating bugs for prow job: %d, test name: %s", jobRun.ProwJob.ID, tr.Test.Name)
 			} else {
@@ -751,18 +747,12 @@ func JobRunRiskAnalysis(
 		}
 	}
 
-	analysis := runJobRunAnalysis(ctx,
+	return runJobRunAnalysis(ctx,
 		bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger,
-		jobNamesTestResultFunc(ctx, dbc, compareRelease),
+		jobNamesTestResultFunc(dbc, compareRelease),
 		variantsTestResultFunc(ctx, dbc, cacheClient),
 		compareOtherPRs,
 	)
-	// Lookups above log and continue on error, so cancellation midway would otherwise yield
-	// an assessment built from partial data with a nil error.
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		return apitype.ProwJobRunRiskAnalysis{}, fmt.Errorf("risk analysis canceled: %w", ctxErr)
-	}
-	return analysis, nil
 }
 
 // testResultsByJobNameFunc is used for injecting db responses in unit tests.
@@ -771,7 +761,7 @@ type testResultsByJobNameFunc func(testName string, jobNames []string) (*apitype
 type testResultsByVariantsFunc func(testName string, release, suite string, variants []string, jobNames []string) (*apitype.Test, error)
 
 // jobNamesTestResultFunc looks to match job runs based on the jobnames
-func jobNamesTestResultFunc(ctx context.Context, dbc *db.DB, release string) testResultsByJobNameFunc {
+func jobNamesTestResultFunc(dbc *db.DB, release string) testResultsByJobNameFunc {
 	return func(testName string, jobNames []string) (*apitype.Test, error) {
 		if len(jobNames) == 0 {
 			return nil, nil
@@ -779,7 +769,7 @@ func jobNamesTestResultFunc(ctx context.Context, dbc *db.DB, release string) tes
 
 		analyzeSince := time.Now().Add(-14 * 24 * time.Hour)
 
-		q := dbc.DB.WithContext(ctx).Raw(query.QueryTestAnalysis, analyzeSince, release, release, testName, jobNames)
+		q := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, release, release, testName, jobNames)
 		if q.Error != nil {
 			return nil, q.Error
 		}
@@ -856,7 +846,7 @@ func variantsTestResultFunc(ctx context.Context, dbc *db.DB, cacheClient cache.C
 	}
 }
 
-func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models.ProwJobRun, compareRelease string, historicalRunTestCount int, neverStableJob bool, jobNames []string, logger *log.Entry, testResultsJobNameFunc testResultsByJobNameFunc, testResultsVariantsFunc testResultsByVariantsFunc, compareOtherPRs bool) apitype.ProwJobRunRiskAnalysis {
+func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models.ProwJobRun, compareRelease string, historicalRunTestCount int, neverStableJob bool, jobNames []string, logger *log.Entry, testResultsJobNameFunc testResultsByJobNameFunc, testResultsVariantsFunc testResultsByVariantsFunc, compareOtherPRs bool) (apitype.ProwJobRunRiskAnalysis, error) {
 
 	logger = logger.WithField("func", "runJobRunAnalysis").WithField("job", jobRun.ProwJob.Name)
 	logger.Infof("analyzing prow job run with %d failed test(s)", len(jobRun.Tests))
@@ -887,21 +877,21 @@ func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models
 		response.OverallRisk.Level = apitype.FailureRiskLevelIncompleteTests
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			fmt.Sprintf("Tests for this run (%d) are below the historical average (%d): IncompleteTests (not enough tests ran to make a reasonable risk analysis; this could be due to infra, installation, or upgrade problems)", jobRun.TestCount, historicalRunTestCount))
-		return response
+		return response, nil
 
 	// Return early if no tests failed in this run:
 	case len(jobRun.Tests) == 0:
 		response.OverallRisk.Level = apitype.FailureRiskLevelNone
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			"No test failures found in this job run.")
-		return response
+		return response, nil
 
 	// Return early if we see mass test failures:
 	case len(jobRun.Tests) > maxFailuresToFullyAnalyze:
 		response.OverallRisk.Level = apitype.FailureRiskLevelHigh
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons,
 			fmt.Sprintf("%d tests failed in this run: High", len(jobRun.Tests)))
-		return response
+		return response, nil
 	}
 
 	maxTestRisk := apitype.FailureRiskLevelNone
@@ -927,7 +917,7 @@ func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models
 		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, fmt.Sprintf("Maximum failed test risk: %s", maxTestRisk.Name))
 	}
 
-	return response
+	return response, nil
 }
 
 // For a failed test, query its pass rates by NURPs, find a matching variant combo, and
@@ -1257,7 +1247,7 @@ func GetJobRunSummary(ctx context.Context, dbc *db.DB, gcsClient *storage.Client
 	jLog := log.WithField("JobRunID", jobRunID)
 	dbStart := time.Now()
 	jLog.Info("Querying DB for job run data")
-	jr, err := FetchJobRun(ctx, dbc, jobRunID, false, []string{"Tests.ProwJobRunTestOutput"}, jLog)
+	jr, err := FetchJobRun(dbc, jobRunID, false, []string{"Tests.ProwJobRunTestOutput"}, jLog)
 	if err != nil {
 		return nil, err
 	}

@@ -64,7 +64,7 @@ func (r *RegressionAllowances) Analyze(_ crtest.Identification, _ *testdetails.T
 	return false, nil
 }
 
-func (r *RegressionAllowances) PostAnalysis(_ context.Context, testKey crtest.Identification, testStats *testdetails.TestComparison) error {
+func (r *RegressionAllowances) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	return nil
 }
 

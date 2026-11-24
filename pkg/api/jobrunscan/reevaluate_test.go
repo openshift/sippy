@@ -334,7 +334,7 @@ func TestBuildOutputs(t *testing.T) {
 		URL: "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/test-job/12345",
 	}
 
-	bqLabels, bucketLabels, err := re.buildOutputs(t.Context(), matches, "12345", jobRun)
+	bqLabels, bucketLabels, err := re.buildOutputs(matches, "12345", jobRun)
 	if err != nil {
 		t.Fatalf("buildOutputs() error = %v", err)
 	}
@@ -397,7 +397,7 @@ func TestBuildOutputsMultipleLabels(t *testing.T) {
 		URL: "https://example.com/gs/test-platform-results/logs/job/1/",
 	}
 
-	bqLabels, bucketLabels, err := re.buildOutputs(t.Context(), matches, "1", jobRun)
+	bqLabels, bucketLabels, err := re.buildOutputs(matches, "1", jobRun)
 	if err != nil {
 		t.Fatalf("buildOutputs() error = %v", err)
 	}
@@ -515,7 +515,7 @@ func TestBuildOutputsUsesJobBucket(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			re := &ReEvaluator{gcsBucket: tt.fallback}
-			_, bucketLabels, err := re.buildOutputs(t.Context(), matches, "1", tt.jobRun)
+			_, bucketLabels, err := re.buildOutputs(matches, "1", tt.jobRun)
 			if err != nil {
 				t.Fatalf("buildOutputs() error = %v", err)
 			}

@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -10,9 +9,9 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-func HasBuildClusterData(ctx context.Context, dbc *db.DB, release string, since time.Time) (bool, error) {
+func HasBuildClusterData(dbc *db.DB, release string, since time.Time) (bool, error) {
 	count := int64(0)
-	res := dbc.DB.WithContext(ctx).Table("prow_job_runs").
+	res := dbc.DB.Table("prow_job_runs").
 		Where(`cluster != '' AND cluster IS NOT NULL`).
 		Where("prow_job_release = ?", release).
 		Where("timestamp > ?", since).
@@ -20,10 +19,10 @@ func HasBuildClusterData(ctx context.Context, dbc *db.DB, release string, since 
 	return count > 0, res.Error
 }
 
-func BuildClusterHealth(ctx context.Context, dbc *db.DB, release string, start, boundary, end time.Time) ([]models.BuildClusterHealthReport, error) {
+func BuildClusterHealth(dbc *db.DB, release string, start, boundary, end time.Time) ([]models.BuildClusterHealthReport, error) {
 	results := make([]models.BuildClusterHealthReport, 0)
 
-	rawResults := dbc.DB.WithContext(ctx).Select(`
+	rawResults := dbc.DB.Select(`
 		ROW_NUMBER() OVER() AS id,
 		cluster,
 		coalesce(count(case when succeeded = true AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_passes,
@@ -41,21 +40,20 @@ func BuildClusterHealth(ctx context.Context, dbc *db.DB, release string, start, 
 		Where("prow_job_runs.timestamp BETWEEN @start AND @end", sql.Named("start", start), sql.Named("end", end)).
 		Group("cluster")
 
-	q := dbc.DB.WithContext(ctx).Table("(?) as results", rawResults).
+	q := dbc.DB.Table("(?) as results", rawResults).
 		Select(`*,
 		current_passes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
        previous_passes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
        (current_passes * 100.0 / NULLIF(current_runs, 0)) - (previous_passes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
-`)
+`).Scan(&results)
 
-	err := ScanAll(q, &results)
-	return results, err
+	return results, q.Error
 }
 
-func BuildClusterAnalysis(ctx context.Context, dbc *db.DB, release, period string) ([]models.BuildClusterHealth, error) {
+func BuildClusterAnalysis(dbc *db.DB, release, period string) ([]models.BuildClusterHealth, error) {
 	results := make([]models.BuildClusterHealth, 0)
 
-	q := dbc.DB.WithContext(ctx).Raw(fmt.Sprintf(`
+	q := dbc.DB.Raw(fmt.Sprintf(`
 SELECT
     cluster,
     date_trunc('%s', timestamp) as period,
@@ -78,8 +76,6 @@ AND
 AND
     timestamp > NOW() - INTERVAL '14 DAY'
 GROUP BY cluster, period
-`, period), sql.Named("release", release))
-
-	err := ScanAll(q, &results)
-	return results, err
+`, period), sql.Named("release", release)).Scan(&results)
+	return results, q.Error
 }

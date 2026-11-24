@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -15,7 +14,6 @@ const PeriodDay = "day"
 const PeriodHour = "hour"
 
 func PrintJobAnalysisJSONFromDB(
-	ctx context.Context,
 	dbc *db.DB,
 	release string,
 	jobFilter *filter.Filter,
@@ -28,7 +26,7 @@ func PrintJobAnalysisJSONFromDB(
 	reportEnd time.Time) (apitype.JobAnalysisResult, error) {
 	result := apitype.JobAnalysisResult{}
 
-	jobs, err := query.ListFilteredJobIDs(ctx, dbc, release, jobFilter,
+	jobs, err := query.ListFilteredJobIDs(dbc, release, jobFilter,
 		start, boundary, end, limit, sortField, sort)
 	if err != nil {
 		return result, err
@@ -53,8 +51,8 @@ func PrintJobAnalysisJSONFromDB(
 		NoResult       int `gorm:"column:n"`
 	}
 	sums := make([]resultSum, 0)
-	prowJobRunsFiltered := jobRunsFilter.ToSQL(dbc.DB.WithContext(ctx).Table("prow_job_runs"), apitype.JobRun{})
-	sumResults := dbc.DB.WithContext(ctx).Table("(?) as prow_job_runs", prowJobRunsFiltered).
+	prowJobRunsFiltered := jobRunsFilter.ToSQL(dbc.DB.Table("prow_job_runs"), apitype.JobRun{})
+	sumResults := dbc.DB.Table("(?) as prow_job_runs", prowJobRunsFiltered).
 		Select(`date_trunc(?, timestamp)        AS period,
 	           count(*)                                              AS total_runs,
 	           sum(case when overall_result = 'S' then 1 else 0 end) AS "S",
@@ -72,7 +70,7 @@ func PrintJobAnalysisJSONFromDB(
 		Where("prow_job_runs.timestamp BETWEEN ? AND ?", start, end).
 		Group("period")
 
-	if err := query.ScanAll(sumResults, &sums); err != nil {
+	if err := sumResults.Scan(&sums).Error; err != nil {
 		return result, err
 	}
 
@@ -117,15 +115,15 @@ func PrintJobAnalysisJSONFromDB(
 	}
 	tr := make([]testResult, 0)
 
-	testFailures := dbc.DB.WithContext(ctx).Table("prow_job_run_tests pjrt").
+	if err := dbc.DB.Table("prow_job_run_tests pjrt").
 		Select("date_trunc(?, pjrt.prow_job_run_timestamp) AS period, tests.name AS test_name, count(tests.name) AS count", period).
 		Joins("JOIN tests ON pjrt.test_id = tests.id").
 		Where("pjrt.status = ?", v1sippyprocessing.TestStatusFailure).
 		Where("pjrt.prow_job_id IN ?", jobs).
 		Where("pjrt.prow_job_run_release = ?", release).
 		Where("pjrt.prow_job_run_timestamp BETWEEN ? AND ?", start, end).
-		Group("tests.name, period, pjrt.prow_job_id")
-	if err := query.ScanAll(testFailures, &tr); err != nil {
+		Group("tests.name, period, pjrt.prow_job_id").
+		Scan(&tr).Error; err != nil {
 		return results, err
 	}
 

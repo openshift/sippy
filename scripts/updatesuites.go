@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -152,7 +151,7 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 
 	// Refresh materialized views
 	// NOTE: does not update timestamps to invalidate cached matview data; not clear if the use case for this script requires that.
-	if err := sippyserver.RefreshData(context.Background(), &db.DB{
+	if err := sippyserver.RefreshData(&db.DB{
 		DB: dbc,
 	}, nil, sippyserver.RefreshOptions{}); err != nil {
 		return fmt.Errorf("refreshing data: %w", err)

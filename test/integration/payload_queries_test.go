@@ -37,7 +37,7 @@ func TestGetPayloadDiff_NewPRsBetweenPayloads(t *testing.T) {
 	intutil.LinkReleaseTagPullRequests(t, dbc, &tagFrom, shared, onlyFrom)
 	intutil.LinkReleaseTagPullRequests(t, dbc, &tagTo, shared, onlyTo)
 
-	results, err := query.GetPayloadDiff(t.Context(), dbc.DB, tagFrom.ReleaseTag, tagTo.ReleaseTag)
+	results, err := query.GetPayloadDiff(dbc.DB, tagFrom.ReleaseTag, tagTo.ReleaseTag)
 	require.NoError(t, err)
 
 	require.Len(t, results, 1, "should return only PRs in target but not in baseline")
@@ -53,7 +53,7 @@ func TestGetPayloadDiff_IdenticalPayloads(t *testing.T) {
 	pr := intutil.CreateReleasePullRequest(t, dbc, "https://github.com/org/repo/pull/1", "repo", "some PR")
 	intutil.LinkReleaseTagPullRequests(t, dbc, &tag, pr)
 
-	results, err := query.GetPayloadDiff(t.Context(), dbc.DB, tag.ReleaseTag, tag.ReleaseTag)
+	results, err := query.GetPayloadDiff(dbc.DB, tag.ReleaseTag, tag.ReleaseTag)
 	require.NoError(t, err)
 	assert.Empty(t, results, "self-diff should produce no results")
 }
@@ -70,7 +70,7 @@ func TestGetPayloadDiff_AllPRsAreNew(t *testing.T) {
 	intutil.LinkReleaseTagPullRequests(t, dbc, &tagTo, pr1, pr2)
 	// tagFrom has no PRs
 
-	results, err := query.GetPayloadDiff(t.Context(), dbc.DB, tagFrom.ReleaseTag, tagTo.ReleaseTag)
+	results, err := query.GetPayloadDiff(dbc.DB, tagFrom.ReleaseTag, tagTo.ReleaseTag)
 	require.NoError(t, err)
 	assert.Len(t, results, 2, "all target PRs should appear when baseline has none")
 }
@@ -87,7 +87,7 @@ func TestGetPayloadDiff_ResultsOrderedByURL(t *testing.T) {
 	prM := intutil.CreateReleasePullRequest(t, dbc, "https://github.com/m-org/repo/pull/1", "m-repo", "m PR")
 	intutil.LinkReleaseTagPullRequests(t, dbc, &tagTo, prZ, prA, prM)
 
-	results, err := query.GetPayloadDiff(t.Context(), dbc.DB, tagFrom.ReleaseTag, tagTo.ReleaseTag)
+	results, err := query.GetPayloadDiff(dbc.DB, tagFrom.ReleaseTag, tagTo.ReleaseTag)
 	require.NoError(t, err)
 	require.Len(t, results, 3)
 
@@ -122,7 +122,7 @@ func TestGetLastAccepted_MostRecentPerArchStream(t *testing.T) {
 	ciTag := intutil.CreateReleaseTag(t, dbc, "4.16.0-0.ci-2024-06-13-010000", "4.16", "ci", "amd64",
 		time.Date(2024, 6, 13, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetLastAcceptedByArchitectureAndStream(t.Context(), dbc.DB, "4.16", reportEnd)
+	results, err := query.GetLastAcceptedByArchitectureAndStream(dbc.DB, "4.16", reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 3, "one result per unique (arch, stream) combo")
 
@@ -147,7 +147,7 @@ func TestGetLastAccepted_ExcludesPayloadsAfterReportEnd(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetLastAcceptedByArchitectureAndStream(t.Context(), dbc.DB, "4.16", reportEnd)
+	results, err := query.GetLastAcceptedByArchitectureAndStream(dbc.DB, "4.16", reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "4.16.0-0.nightly-2024-06-12-010000", results[0].ReleaseTag)
@@ -159,7 +159,7 @@ func TestGetLastAccepted_NoAcceptedPayloads(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC), intutil.WithPhase(apitype.PayloadRejected))
 
-	results, err := query.GetLastAcceptedByArchitectureAndStream(t.Context(), dbc.DB, "4.16",
+	results, err := query.GetLastAcceptedByArchitectureAndStream(dbc.DB, "4.16",
 		time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.Empty(t, results)
@@ -219,7 +219,7 @@ func TestGetTestFailuresForPayload_ReturnsFailedTests(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	f := setupFailureFixture(t, dbc)
 
-	results, err := query.GetTestFailuresForPayload(t.Context(), dbc.DB, f.tag.ReleaseTag, f.release, f.tagTime)
+	results, err := query.GetTestFailuresForPayload(dbc.DB, f.tag.ReleaseTag, f.release, f.tagTime)
 	require.NoError(t, err)
 
 	require.Len(t, results, 2)
@@ -262,7 +262,7 @@ func TestGetTestFailuresForPayload_IncludesAllJobKinds(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, blockingRun.ID, blockingJob.ID, testX.ID, release, runTime, int(v1.TestStatusFailure))
 	intutil.CreateProwJobRunTest(t, dbc, informingRun.ID, informingJob.ID, testX.ID, release, informingRun.Timestamp, int(v1.TestStatusFailure))
 
-	results, err := query.GetTestFailuresForPayload(t.Context(), dbc.DB, tag.ReleaseTag, release, tagTime)
+	results, err := query.GetTestFailuresForPayload(dbc.DB, tag.ReleaseTag, release, tagTime)
 	require.NoError(t, err)
 
 	assert.Len(t, results, 2, "should include failures from both blocking and informing jobs")
@@ -292,7 +292,7 @@ func TestGetTestFailuresForPayload_ExcludesSucceededJobRuns(t *testing.T) {
 	testX := intutil.CreateTest(t, dbc, "test-x")
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, testX.ID, release, runTime, int(v1.TestStatusFailure))
 
-	results, err := query.GetTestFailuresForPayload(t.Context(), dbc.DB, tag.ReleaseTag, release, tagTime)
+	results, err := query.GetTestFailuresForPayload(dbc.DB, tag.ReleaseTag, release, tagTime)
 	require.NoError(t, err)
 	assert.Empty(t, results, "succeeded job runs should not produce test failure results")
 }
@@ -305,7 +305,7 @@ func TestGetTestFailuresForPayload_ExcludesPassingTestResults(t *testing.T) {
 	passingTest := intutil.CreateTest(t, dbc, "test-passes")
 	intutil.CreateProwJobRunTest(t, dbc, f.run.ID, f.job.ID, passingTest.ID, f.release, f.runTime, int(v1.TestStatusSuccess))
 
-	results, err := query.GetTestFailuresForPayload(t.Context(), dbc.DB, f.tag.ReleaseTag, f.release, f.tagTime)
+	results, err := query.GetTestFailuresForPayload(dbc.DB, f.tag.ReleaseTag, f.release, f.tagTime)
 	require.NoError(t, err)
 
 	for _, r := range results {
@@ -323,7 +323,7 @@ func TestGetTestFailuresForPayload_NoFailures(t *testing.T) {
 	tag := intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-010000", release, "nightly", "amd64",
 		tagTime, intutil.WithPhase(apitype.PayloadAccepted))
 
-	results, err := query.GetTestFailuresForPayload(t.Context(), dbc.DB, tag.ReleaseTag, release, tagTime)
+	results, err := query.GetTestFailuresForPayload(dbc.DB, tag.ReleaseTag, release, tagTime)
 	require.NoError(t, err)
 	assert.Empty(t, results, "payload with no job runs should have no test failures")
 }
@@ -351,7 +351,7 @@ func TestGetLastOSUpgrade_MostRecentPerArchStream(t *testing.T) {
 		time.Date(2024, 6, 12, 1, 0, 0, 0, time.UTC),
 		intutil.WithPreviousOSVersion("9.1"), intutil.WithCurrentOSVersion("9.2"))
 
-	results, err := query.GetLastOSUpgradeByArchitectureAndStream(t.Context(), dbc.DB, "4.16")
+	results, err := query.GetLastOSUpgradeByArchitectureAndStream(dbc.DB, "4.16")
 	require.NoError(t, err)
 	require.Len(t, results, 2)
 
@@ -375,7 +375,7 @@ func TestGetLastOSUpgrade_SkipsPayloadsWithoutUpgrade(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetLastOSUpgradeByArchitectureAndStream(t.Context(), dbc.DB, "4.16")
+	results, err := query.GetLastOSUpgradeByArchitectureAndStream(dbc.DB, "4.16")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "4.16.0-0.nightly-2024-06-10-010000", results[0].ReleaseTag)
@@ -388,7 +388,7 @@ func TestGetLastOSUpgrade_NoUpgradesExist(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetLastOSUpgradeByArchitectureAndStream(t.Context(), dbc.DB, "4.16")
+	results, err := query.GetLastOSUpgradeByArchitectureAndStream(dbc.DB, "4.16")
 	require.NoError(t, err)
 	assert.Empty(t, results)
 }
@@ -415,7 +415,7 @@ func TestGetLastPayloadTags_RecentPayloads(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-05-31-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 5, 31, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetLastPayloadTags(t.Context(), dbc.DB, "4.16", "nightly", "amd64", reportEnd)
+	results, err := query.GetLastPayloadTags(dbc.DB, "4.16", "nightly", "amd64", reportEnd)
 	require.NoError(t, err)
 
 	require.Len(t, results, 3, "should include recent, within-window, and boundary tags")
@@ -434,7 +434,7 @@ func TestGetLastPayloadTags_IsolatedByStreamAndArch(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.ci-2024-06-14-010000", "4.16", "ci", "amd64", t0)
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-arm64-2024-06-14-010000", "4.16", "nightly", "arm64", t0)
 
-	results, err := query.GetLastPayloadTags(t.Context(), dbc.DB, "4.16", "nightly", "amd64", reportEnd)
+	results, err := query.GetLastPayloadTags(dbc.DB, "4.16", "nightly", "amd64", reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "4.16.0-0.nightly-2024-06-14-010000", results[0].ReleaseTag)
@@ -452,7 +452,7 @@ func TestGetLastPayloadTags_IncludesPayloadsAfterReportEnd(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-12-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 12, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetLastPayloadTags(t.Context(), dbc.DB, "4.16", "nightly", "amd64", reportEnd)
+	results, err := query.GetLastPayloadTags(dbc.DB, "4.16", "nightly", "amd64", reportEnd)
 	require.NoError(t, err)
 	// GetLastPayloadTags has no upper-bound filter on release_time, so tags after
 	// reportEnd within the 14-day window are included in results.
@@ -471,7 +471,7 @@ func TestGetLastPayloadTags_MostRecentFirst(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-13-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 13, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetLastPayloadTags(t.Context(), dbc.DB, "4.16", "nightly", "amd64", reportEnd)
+	results, err := query.GetLastPayloadTags(dbc.DB, "4.16", "nightly", "amd64", reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 3)
 
@@ -556,7 +556,7 @@ func TestGetLastPayloadStatus_PhaseStreaks(t *testing.T) {
 			tags := createPhaseSequence(t, dbc, tc.release, tc.stream, tc.arch, baseTime, tc.phases)
 			require.Len(t, tags, len(tc.phases))
 
-			phase, count, err := query.GetLastPayloadStatus(t.Context(), dbc.DB, tc.arch, tc.stream, tc.release, reportEnd)
+			phase, count, err := query.GetLastPayloadStatus(dbc.DB, tc.arch, tc.stream, tc.release, reportEnd)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedPhase, phase)
 			assert.Equal(t, tc.expectedCount, count)
@@ -581,7 +581,7 @@ func TestGetLastPayloadStatus_RespectsReportCutoff(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-10-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 10, 1, 0, 0, 0, time.UTC), intutil.WithPhase(apitype.PayloadRejected))
 
-	phase, count, err := query.GetLastPayloadStatus(t.Context(), dbc.DB, "amd64", "nightly", "4.16", reportEnd)
+	phase, count, err := query.GetLastPayloadStatus(dbc.DB, "amd64", "nightly", "4.16", reportEnd)
 	require.NoError(t, err)
 	assert.Equal(t, apitype.PayloadRejected, phase, "should only see payloads before report end")
 	assert.Equal(t, 3, count)
@@ -608,7 +608,7 @@ func TestGetPayloadStreamPhaseCounts_CountsByPhase(t *testing.T) {
 			intutil.WithPhase(apitype.PayloadRejected))
 	}
 
-	results, err := query.GetPayloadStreamPhaseCounts(t.Context(), dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
+	results, err := query.GetPayloadStreamPhaseCounts(dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 
 	byPhase := make(map[string]int)
@@ -635,7 +635,7 @@ func TestGetPayloadStreamPhaseCounts_WithStartTime(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-new-2", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC), intutil.WithPhase(apitype.PayloadRejected))
 
-	results, err := query.GetPayloadStreamPhaseCounts(t.Context(), dbc.DB, "4.16", "amd64", "nightly", &since, reportEnd)
+	results, err := query.GetPayloadStreamPhaseCounts(dbc.DB, "4.16", "amd64", "nightly", &since, reportEnd)
 	require.NoError(t, err)
 
 	total := 0
@@ -655,7 +655,7 @@ func TestGetPayloadStreamPhaseCounts_ExcludesPayloadsAfterReportEnd(t *testing.T
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-after", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetPayloadStreamPhaseCounts(t.Context(), dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
+	results, err := query.GetPayloadStreamPhaseCounts(dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 
 	total := 0
@@ -685,7 +685,7 @@ func TestGetPayloadAcceptanceStatistics_ComputesTimeBetweenAccepted(t *testing.T
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-050000", "4.16", "nightly", "amd64", t0.Add(5*time.Hour))
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-110000", "4.16", "nightly", "amd64", t0.Add(11*time.Hour))
 
-	stats, err := query.GetPayloadAcceptanceStatistics(t.Context(), dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
+	stats, err := query.GetPayloadAcceptanceStatistics(dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 
 	assert.Equal(t, int64(7200), stats.MinSecondsBetween)
@@ -705,7 +705,7 @@ func TestGetPayloadAcceptanceStatistics_IgnoresRejectedPayloads(t *testing.T) {
 		intutil.WithPhase(apitype.PayloadRejected))
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-040000", "4.16", "nightly", "amd64", t0.Add(4*time.Hour))
 
-	stats, err := query.GetPayloadAcceptanceStatistics(t.Context(), dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
+	stats, err := query.GetPayloadAcceptanceStatistics(dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 
 	assert.Equal(t, int64(14400), stats.MinSecondsBetween, "gap should be 4 hours = 14400s")
@@ -731,7 +731,7 @@ func TestGetPayloadAcceptanceStatistics_WithStartTime(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-060000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 6, 0, 0, 0, time.UTC))
 
-	stats, err := query.GetPayloadAcceptanceStatistics(t.Context(), dbc.DB, "4.16", "amd64", "nightly", &since, reportEnd)
+	stats, err := query.GetPayloadAcceptanceStatistics(dbc.DB, "4.16", "amd64", "nightly", &since, reportEnd)
 	require.NoError(t, err)
 
 	assert.Equal(t, int64(21600), stats.MinSecondsBetween, "only the 6-hour gap after since should count")
@@ -747,7 +747,7 @@ func TestGetPayloadAcceptanceStatistics_SingleAcceptedPayload(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-000000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 0, 0, 0, 0, time.UTC))
 
-	stats, err := query.GetPayloadAcceptanceStatistics(t.Context(), dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
+	stats, err := query.GetPayloadAcceptanceStatistics(dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 
 	assert.Equal(t, int64(0), stats.MinSecondsBetween, "no gap to measure with a single payload")
@@ -765,7 +765,7 @@ func TestGetReleaseTag_Found(t *testing.T) {
 	created := intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC), intutil.WithPhase(apitype.PayloadRejected))
 
-	result, err := query.GetReleaseTag(t.Context(), dbc.DB, "4.16.0-0.nightly-2024-06-14-010000")
+	result, err := query.GetReleaseTag(dbc.DB, "4.16.0-0.nightly-2024-06-14-010000")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -779,7 +779,7 @@ func TestGetReleaseTag_Found(t *testing.T) {
 func TestGetReleaseTag_NotFound(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
-	result, err := query.GetReleaseTag(t.Context(), dbc.DB, "nonexistent-tag")
+	result, err := query.GetReleaseTag(dbc.DB, "nonexistent-tag")
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 	assert.Nil(t, result)
 }
@@ -798,7 +798,7 @@ func TestGetPreviousPayload_FindsPredecessor(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-12-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 12, 1, 0, 0, 0, time.UTC))
 
-	result, err := query.GetPreviousPayload(t.Context(), dbc.DB, "4.16.0-0.nightly-2024-06-12-010000")
+	result, err := query.GetPreviousPayload(dbc.DB, "4.16.0-0.nightly-2024-06-12-010000")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Equal(t, "4.16.0-0.nightly-2024-06-11-010000", result.ReleaseTag,
@@ -811,7 +811,7 @@ func TestGetPreviousPayload_FirstPayloadHasNoPredecessor(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-10-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 10, 1, 0, 0, 0, time.UTC))
 
-	_, err := query.GetPreviousPayload(t.Context(), dbc.DB, "4.16.0-0.nightly-2024-06-10-010000")
+	_, err := query.GetPreviousPayload(dbc.DB, "4.16.0-0.nightly-2024-06-10-010000")
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
 
@@ -825,7 +825,7 @@ func TestGetPreviousPayload_OnlySameStreamAndArch(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-10-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 10, 1, 0, 0, 0, time.UTC))
 
-	_, err := query.GetPreviousPayload(t.Context(), dbc.DB, "4.16.0-0.nightly-2024-06-10-010000")
+	_, err := query.GetPreviousPayload(dbc.DB, "4.16.0-0.nightly-2024-06-10-010000")
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound,
 		"should not find a predecessor in a different stream")
 }
@@ -833,7 +833,7 @@ func TestGetPreviousPayload_OnlySameStreamAndArch(t *testing.T) {
 func TestGetPreviousPayload_NonexistentTarget(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
-	_, err := query.GetPreviousPayload(t.Context(), dbc.DB, "nonexistent-tag")
+	_, err := query.GetPreviousPayload(dbc.DB, "nonexistent-tag")
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
 
@@ -846,7 +846,7 @@ func TestGetPreviousPayload_OnlySameArchitecture(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-10-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 10, 1, 0, 0, 0, time.UTC))
 
-	_, err := query.GetPreviousPayload(t.Context(), dbc.DB, "4.16.0-0.nightly-2024-06-10-010000")
+	_, err := query.GetPreviousPayload(dbc.DB, "4.16.0-0.nightly-2024-06-10-010000")
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound,
 		"should not find a predecessor in a different architecture")
 }
@@ -876,7 +876,7 @@ func TestGetTestFailuresForPayloadStream_BasicAggregation(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	f := setupFailureFixture(t, dbc)
 
-	subquery := query.GetTestFailuresForPayloadStream(t.Context(), dbc.DB, f.release, f.stream, f.arch, f.reportEnd, "")
+	subquery := query.GetTestFailuresForPayloadStream(dbc.DB, f.release, f.stream, f.arch, f.reportEnd, "")
 	rows := scanStreamFailures(t, dbc, subquery)
 
 	require.Len(t, rows, 2)
@@ -908,7 +908,7 @@ func TestGetTestFailuresForPayloadStream_OnlyBlockingJobs(t *testing.T) {
 	informingOnlyTest := intutil.CreateTest(t, dbc, "test-informing-only")
 	intutil.CreateProwJobRunTest(t, dbc, informingRun.ID, informingJob.ID, informingOnlyTest.ID, f.release, informingRunTime, int(v1.TestStatusFailure))
 
-	subquery := query.GetTestFailuresForPayloadStream(t.Context(), dbc.DB, f.release, f.stream, f.arch, f.reportEnd, "")
+	subquery := query.GetTestFailuresForPayloadStream(dbc.DB, f.release, f.stream, f.arch, f.reportEnd, "")
 	rows := scanStreamFailures(t, dbc, subquery)
 
 	names := sets.New[string]()
@@ -923,7 +923,7 @@ func TestGetTestFailuresForPayloadStream_ExcludesTestByName(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	f := setupFailureFixture(t, dbc)
 
-	subquery := query.GetTestFailuresForPayloadStream(t.Context(), dbc.DB, f.release, f.stream, f.arch, f.reportEnd, f.testA.Name)
+	subquery := query.GetTestFailuresForPayloadStream(dbc.DB, f.release, f.stream, f.arch, f.reportEnd, f.testA.Name)
 	rows := scanStreamFailures(t, dbc, subquery)
 
 	require.Len(t, rows, 1, "excluded test should not appear")
@@ -959,7 +959,7 @@ func TestGetTestFailuresForPayloadStream_FourteenDayWindow(t *testing.T) {
 	intutil.CreateReleaseJobRun(t, dbc, outOfWindowTag.ID, outOfWindowRun.ID, job.Name, "Blocking", "Failed", outOfWindowURL)
 	intutil.CreateProwJobRunTest(t, dbc, outOfWindowRun.ID, job.ID, test.ID, release, outOfWindowRunTime, int(v1.TestStatusFailure))
 
-	subquery := query.GetTestFailuresForPayloadStream(t.Context(), dbc.DB, release, stream, arch, reportEnd, "")
+	subquery := query.GetTestFailuresForPayloadStream(dbc.DB, release, stream, arch, reportEnd, "")
 	rows := scanStreamFailures(t, dbc, subquery)
 
 	require.Len(t, rows, 1, "only in-window failures should appear")
@@ -998,7 +998,7 @@ func TestGetTestFailuresForPayloadStream_AggregatesAcrossPayloads(t *testing.T) 
 	intutil.CreateReleaseJobRun(t, dbc, tag2.ID, run2.ID, job2.Name, "Blocking", "Failed", agg2URL)
 	intutil.CreateProwJobRunTest(t, dbc, run2.ID, job2.ID, test.ID, release, run2Time, int(v1.TestStatusFailure))
 
-	subquery := query.GetTestFailuresForPayloadStream(t.Context(), dbc.DB, release, stream, arch, reportEnd, "")
+	subquery := query.GetTestFailuresForPayloadStream(dbc.DB, release, stream, arch, reportEnd, "")
 	rows := scanStreamFailures(t, dbc, subquery)
 
 	require.Len(t, rows, 1, "same test across payloads should be aggregated into one row")
@@ -1019,7 +1019,7 @@ func TestGetTestFailuresForPayloadStream_ExcludesPassingTests(t *testing.T) {
 	passingTest := intutil.CreateTest(t, dbc, "test-passes")
 	intutil.CreateProwJobRunTest(t, dbc, f.run.ID, f.job.ID, passingTest.ID, f.release, f.runTime, int(v1.TestStatusSuccess))
 
-	subquery := query.GetTestFailuresForPayloadStream(t.Context(), dbc.DB, f.release, f.stream, f.arch, f.reportEnd, "")
+	subquery := query.GetTestFailuresForPayloadStream(dbc.DB, f.release, f.stream, f.arch, f.reportEnd, "")
 	rows := scanStreamFailures(t, dbc, subquery)
 
 	names := sets.New[string]()
@@ -1045,7 +1045,7 @@ func TestGetTestFailuresForPayloadStream_IsolatedByStreamAndArch(t *testing.T) {
 	ciTest := intutil.CreateTest(t, dbc, "test-ci-only")
 	intutil.CreateProwJobRunTest(t, dbc, ciRun.ID, ciJob.ID, ciTest.ID, f.release, ciRunTime, int(v1.TestStatusFailure))
 
-	subquery := query.GetTestFailuresForPayloadStream(t.Context(), dbc.DB, f.release, f.stream, f.arch, f.reportEnd, "")
+	subquery := query.GetTestFailuresForPayloadStream(dbc.DB, f.release, f.stream, f.arch, f.reportEnd, "")
 	rows := scanStreamFailures(t, dbc, subquery)
 
 	names := sets.New[string]()
@@ -1076,7 +1076,7 @@ func TestGetTestFailuresForPayloadStream_ExcludesSucceededJobs(t *testing.T) {
 	test := intutil.CreateTest(t, dbc, "test-in-succeeded-job")
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, release, runTime, int(v1.TestStatusFailure))
 
-	subquery := query.GetTestFailuresForPayloadStream(t.Context(), dbc.DB, release, stream, arch, reportEnd, "")
+	subquery := query.GetTestFailuresForPayloadStream(dbc.DB, release, stream, arch, reportEnd, "")
 	rows := scanStreamFailures(t, dbc, subquery)
 
 	assert.Empty(t, rows, "test failures from succeeded blocking jobs should not appear")
@@ -1119,7 +1119,7 @@ func TestGetTestFailuresForPayload_ExcludesFailuresFromOtherPayloads(t *testing.
 	intutil.CreateProwJobRunTest(t, dbc, run1.ID, job.ID, testTag1Only.ID, release, run1Time, int(v1.TestStatusFailure))
 	intutil.CreateProwJobRunTest(t, dbc, run2.ID, job.ID, testTag2Only.ID, release, run2Time, int(v1.TestStatusFailure))
 
-	results, err := query.GetTestFailuresForPayload(t.Context(), dbc.DB, tag1.ReleaseTag, release, tag1Time)
+	results, err := query.GetTestFailuresForPayload(dbc.DB, tag1.ReleaseTag, release, tag1Time)
 	require.NoError(t, err)
 
 	names := sets.New[string]()
@@ -1142,7 +1142,7 @@ func TestGetLastAccepted_ExcludesPayloadAtExactReportEnd(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-15-120000", "4.16", "nightly", "amd64",
 		reportEnd)
 
-	results, err := query.GetLastAcceptedByArchitectureAndStream(t.Context(), dbc.DB, "4.16", reportEnd)
+	results, err := query.GetLastAcceptedByArchitectureAndStream(dbc.DB, "4.16", reportEnd)
 	require.NoError(t, err)
 	assert.Empty(t, results, "tag at exact reportEnd should be excluded (release_time < reportEnd)")
 }
@@ -1157,7 +1157,7 @@ func TestGetPayloadStreamPhaseCounts_ExcludesPayloadAtExactReportEnd(t *testing.
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-15-120000", "4.16", "nightly", "amd64",
 		reportEnd)
 
-	counts, err := query.GetPayloadStreamPhaseCounts(t.Context(), dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
+	counts, err := query.GetPayloadStreamPhaseCounts(dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 
 	total := 0
@@ -1175,7 +1175,7 @@ func TestGetPayloadAcceptanceStatistics_ExcludesPayloadAtExactReportEnd(t *testi
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-15-120000", "4.16", "nightly", "amd64",
 		reportEnd)
 
-	stats, err := query.GetPayloadAcceptanceStatistics(t.Context(), dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
+	stats, err := query.GetPayloadAcceptanceStatistics(dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), stats.MeanSecondsBetween,
 		"tag at exact reportEnd should be excluded, leaving no data for stats")
@@ -1189,7 +1189,7 @@ func TestGetLastPayloadStatus_IncludesPayloadAtExactReportEnd(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-15-120000", "4.16", "nightly", "amd64",
 		reportEnd, intutil.WithPhase(apitype.PayloadRejected))
 
-	phase, count, err := query.GetLastPayloadStatus(t.Context(), dbc.DB, "amd64", "nightly", "4.16", reportEnd)
+	phase, count, err := query.GetLastPayloadStatus(dbc.DB, "amd64", "nightly", "4.16", reportEnd)
 	require.NoError(t, err)
 	assert.Equal(t, apitype.PayloadRejected, phase,
 		"tag at exact reportEnd should be included (release_time <= reportEnd)")
@@ -1210,7 +1210,7 @@ func TestGetLastAccepted_IsolatedByRelease(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.17.0-0.nightly-2024-06-14-010000", "4.17", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC))
 
-	results, err := query.GetLastAcceptedByArchitectureAndStream(t.Context(), dbc.DB, "4.16", reportEnd)
+	results, err := query.GetLastAcceptedByArchitectureAndStream(dbc.DB, "4.16", reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "4.16", results[0].Release,
@@ -1226,7 +1226,7 @@ func TestGetPayloadStreamPhaseCounts_NoMatchingPayloads(t *testing.T) {
 
 	reportEnd := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 
-	counts, err := query.GetPayloadStreamPhaseCounts(t.Context(), dbc.DB, "4.99", "amd64", "nightly", nil, reportEnd)
+	counts, err := query.GetPayloadStreamPhaseCounts(dbc.DB, "4.99", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 	assert.Empty(t, counts, "no tags should produce empty counts")
 }
@@ -1239,7 +1239,7 @@ func TestGetPayloadAcceptanceStatistics_NoAcceptedPayloads(t *testing.T) {
 	intutil.CreateReleaseTag(t, dbc, "4.16.0-0.nightly-2024-06-14-010000", "4.16", "nightly", "amd64",
 		time.Date(2024, 6, 14, 1, 0, 0, 0, time.UTC), intutil.WithPhase(apitype.PayloadRejected))
 
-	stats, err := query.GetPayloadAcceptanceStatistics(t.Context(), dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
+	stats, err := query.GetPayloadAcceptanceStatistics(dbc.DB, "4.16", "amd64", "nightly", nil, reportEnd)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), stats.MeanSecondsBetween)
 	assert.Equal(t, int64(0), stats.MinSecondsBetween)
@@ -1251,7 +1251,7 @@ func TestGetLastPayloadStatus_NoPayloads(t *testing.T) {
 
 	reportEnd := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 
-	phase, count, err := query.GetLastPayloadStatus(t.Context(), dbc.DB, "amd64", "nightly", "4.99", reportEnd)
+	phase, count, err := query.GetLastPayloadStatus(dbc.DB, "amd64", "nightly", "4.99", reportEnd)
 	require.NoError(t, err)
 	assert.Equal(t, "", phase, "no tags should produce empty phase")
 	assert.Equal(t, 0, count, "no tags should produce zero count")
@@ -1275,7 +1275,7 @@ func TestGetPayloadDiff_ReturnsAllPRFields(t *testing.T) {
 
 	intutil.LinkReleaseTagPullRequests(t, dbc, &tag2, pr)
 
-	results, err := query.GetPayloadDiff(t.Context(), dbc.DB, tag1.ReleaseTag, tag2.ReleaseTag)
+	results, err := query.GetPayloadDiff(dbc.DB, tag1.ReleaseTag, tag2.ReleaseTag)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 

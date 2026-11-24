@@ -256,8 +256,8 @@ func (s *Server) GetReportEnd() time.Time {
 // main postgresql tables.
 //
 // refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
-// the views appear to be empty. ctx is the caller's lifecycle; canceling it stops the remaining queries.
-func refreshMaterializedViews(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool) {
+// the views appear to be empty.
+func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool) {
 	var promPusher *push.Pusher
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
 		promPusher = push.New(pushgateway, "sippy-matviews")
@@ -283,7 +283,7 @@ func refreshMaterializedViews(ctx context.Context, dbc *db.DB, cacheClient cache
 	for _, lookback := range lookbacks {
 		wg.Add(1)
 		go func(lookback int) {
-			jobRunsCount, testIDsCount, err := api.GetJobRunTestsCountByLookback(ctx, dbc, lookback)
+			jobRunsCount, testIDsCount, err := api.GetJobRunTestsCountByLookback(dbc, lookback)
 			if err != nil {
 				log.Errorf("Error getting prow job run test lookback counts: %v", err)
 			} else {
@@ -298,7 +298,7 @@ func refreshMaterializedViews(ctx context.Context, dbc *db.DB, cacheClient cache
 	wg.Wait()
 	db.RefreshByPhase(db.PostgresMatViews, func(phaseMatViews []db.PostgresView) {
 		log.Infof("refreshing %d materialized views", len(phaseMatViews))
-		refreshMatviews(ctx, dbc, cacheClient, refreshMatviewOnlyIfEmpty, phaseMatViews)
+		refreshMatviews(dbc, cacheClient, refreshMatviewOnlyIfEmpty, phaseMatViews)
 	})
 
 	allElapsed := time.Since(allStart)
@@ -315,12 +315,12 @@ func refreshMaterializedViews(ctx context.Context, dbc *db.DB, cacheClient cache
 	}
 }
 
-func refreshMatviews(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, matviews []db.PostgresView) {
+func refreshMatviews(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, matviews []db.PostgresView) {
 	ch := make(chan string)
 	wg := sync.WaitGroup{}
 	for t := 0; t < 2; t++ {
 		wg.Add(1)
-		go refreshMatview(ctx, dbc, cacheClient, refreshMatviewOnlyIfEmpty, ch, &wg)
+		go refreshMatview(dbc, cacheClient, refreshMatviewOnlyIfEmpty, ch, &wg)
 	}
 	for _, pmv := range matviews {
 		ch <- pmv.Name
@@ -329,7 +329,7 @@ func refreshMatviews(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, r
 	wg.Wait()
 }
 
-func refreshMatview(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
+func refreshMatview(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
 
 	for matView := range ch {
 		start := time.Now()
@@ -338,8 +338,8 @@ func refreshMatview(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, re
 		// If requested, we only refresh the materialized view if it has no rows
 		if refreshMatviewOnlyIfEmpty {
 			var count int
-			if err := query.ScanAll(dbc.DB.WithContext(ctx).Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)), &count); err != nil {
-				tmpLog.WithError(err).Warn("proceeding with refresh of matview that appears to be empty")
+			if res := dbc.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s", matView)).Scan(&count); res.Error != nil {
+				tmpLog.WithError(res.Error).Warn("proceeding with refresh of matview that appears to be empty")
 			} else if count > 0 {
 				tmpLog.Info("skipping matview refresh as it appears to be populated")
 				continue
@@ -350,11 +350,11 @@ func refreshMatview(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, re
 		// populated (could be a developer env, or a schema migration on the view), fall back to the normal
 		// refresh which locks reads.
 		tmpLog.Info("refreshing materialized view")
-		if res := dbc.DB.WithContext(ctx).Exec(
+		if res := dbc.DB.Exec(
 			fmt.Sprintf("REFRESH MATERIALIZED VIEW CONCURRENTLY %s", matView)); res.Error != nil {
 			tmpLog.WithError(res.Error).Warn("error refreshing materialized view concurrently, falling back to regular refresh")
 
-			if res := dbc.DB.WithContext(ctx).Exec(
+			if res := dbc.DB.Exec(
 				fmt.Sprintf("REFRESH MATERIALIZED VIEW %s", matView)); res.Error != nil {
 				tmpLog.WithError(res.Error).Error("error refreshing materialized view")
 			} else {
@@ -395,14 +395,9 @@ type RefreshOptions struct {
 // RefreshData refreshes materialized views. Summary tables
 // (test_daily_totals, test_cumulative_summaries) are updated
 // incrementally by the prow loader; use "sippy backfill" to repair them.
-// ctx bounds the refresh queries so the caller's shutdown can cancel them.
-func RefreshData(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
+func RefreshData(dbc *db.DB, cacheClient cache.Cache, opts RefreshOptions) error {
 	log.Infof("Refreshing data")
-	refreshMaterializedViews(ctx, dbc, cacheClient, opts.RefreshOnlyIfEmpty)
-	// refreshMaterializedViews logs per-view failures, so cancellation would otherwise look like success
-	if err := ctx.Err(); err != nil {
-		return fmt.Errorf("refresh canceled: %w", err)
-	}
+	refreshMaterializedViews(dbc, cacheClient, opts.RefreshOnlyIfEmpty)
 	log.Info("Refresh complete")
 	return nil
 }
@@ -457,14 +452,14 @@ func (s *Server) determineCapabilities() {
 		hasBuildCluster := false
 		backoff := 1 * time.Second
 		for attempt := 1; attempt <= 3; attempt++ {
-			buildClusterRelease, err := query.CurrentActiveRelease(context.Background(), s.db)
+			buildClusterRelease, err := query.CurrentActiveRelease(s.db)
 			if err != nil {
 				log.WithError(err).WithField("attempt", attempt).Warningf("could not determine active release for build cluster check")
 				time.Sleep(backoff)
 				backoff *= 2
 				continue
 			}
-			hasBuildCluster, err = query.HasBuildClusterData(context.Background(), s.db, buildClusterRelease, time.Now().Add(-14*24*time.Hour))
+			hasBuildCluster, err = query.HasBuildClusterData(s.db, buildClusterRelease, time.Now().Add(-14*24*time.Hour))
 			if err != nil {
 				log.WithError(err).WithField("attempt", attempt).Warningf("could not fetch build cluster data")
 				time.Sleep(backoff)
@@ -645,7 +640,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 		"arch":    arch,
 	}).Info("analyzing payload stream")
 
-	result, err := api.GetPayloadStreamTestFailures(req.Context(), s.db, release, stream, arch, filterOpts, s.GetReportEnd())
+	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts, s.GetReportEnd())
 	if err != nil {
 		failureResponseWithError(w, "error analyzing payload", err)
 		return
@@ -667,7 +662,7 @@ func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Req
 	})
 	logger.Info("checking for test failures in payload")
 
-	result, err := api.GetPayloadTestFailures(req.Context(), s.db, payload, logger)
+	result, err := api.GetPayloadTestFailures(s.db, payload, logger)
 	if err != nil {
 		log.WithError(err).Error("error")
 		failureResponse(w, http.StatusInternalServerError, "Error looking up test failures for payload: "+err.Error())
@@ -683,7 +678,7 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	results, err := api.ReleaseHealthReports(req.Context(), s.db, release, s.GetReportEnd())
+	results, err := api.ReleaseHealthReports(s.db, release, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error generating release health report")
 		failureResponse(w, http.StatusInternalServerError, err.Error())
@@ -699,7 +694,7 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 
 	// If fromPayload is not specified, look up the previous payload in the same stream
 	if fromPayload == "" && toPayload != "" {
-		prevPayload, err := query.GetPreviousPayload(req.Context(), s.db.DB, toPayload)
+		prevPayload, err := query.GetPreviousPayload(s.db.DB, toPayload)
 		if err != nil {
 			log.WithError(err).Error("error looking up previous payload")
 			failureResponse(w, http.StatusBadRequest, "could not find previous payload for: "+toPayload)
@@ -708,7 +703,7 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 		fromPayload = prevPayload.ReleaseTag
 	}
 
-	results, err := api.GetPayloadDiffPullRequests(req.Context(), s.db, fromPayload, toPayload)
+	results, err := api.GetPayloadDiffPullRequests(s.db, fromPayload, toPayload)
 
 	if err != nil {
 		log.WithError(err).Error("error generating payload diff")
@@ -727,7 +722,7 @@ func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusBadRequest, "couldn't parse filter opts: "+err.Error())
 			return
 		}
-		gates, err := query.GetFeatureGatesFromDB(req.Context(), s.db, release, filterOpts)
+		gates, err := query.GetFeatureGatesFromDB(s.db, release, filterOpts)
 		if err != nil {
 			failureResponseWithError(w, "couldn't query feature gates", err)
 			return
@@ -755,7 +750,7 @@ func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request)
 			},
 		},
 	}
-	gates, err := query.GetFeatureGatesFromDB(req.Context(), s.db, release, filterOpts)
+	gates, err := query.GetFeatureGatesFromDB(s.db, release, filterOpts)
 	if err != nil {
 		failureResponseWithError(w, "couldn't query feature gate", err)
 		return
@@ -765,7 +760,7 @@ func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	matchingJobs, err := query.GetMatchingJobsForCapability(req.Context(), s.db, release, featureGate)
+	matchingJobs, err := query.GetMatchingJobsForCapability(s.db, release, featureGate)
 	if err != nil {
 		failureResponseWithError(w, "couldn't query matching jobs for capability", err)
 		return
@@ -903,7 +898,7 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	bugs, err := query.LoadBugsForTest(req.Context(), s.db, testName, false)
+	bugs, err := query.LoadBugsForTest(s.db, testName, false)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			api.RespondWithJSON(http.StatusOK, w, []models.Bug{})
@@ -933,7 +928,7 @@ func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	outputs, err := api.GetTestDurationsFromDB(req.Context(), s.db, release, testName, filters)
+	outputs, err := api.GetTestDurationsFromDB(s.db, release, testName, filters)
 	if err != nil {
 		failureResponseWithError(w, "error querying test durations from db", err)
 		return
@@ -958,7 +953,7 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	outputs, err := api.GetTestOutputsFromDB(req.Context(), s.db, release, testName, filters, 10)
+	outputs, err := api.GetTestOutputsFromDB(s.db, release, testName, filters, 10)
 	if err != nil {
 		failureResponseWithError(w, "error querying test outputs from db", err)
 		return
@@ -1333,13 +1328,13 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	limit := getLimitParam(req)
 	sortField, sort := getSortParams(req)
 
-	jobIDs, err := query.ListFilteredJobIDs(req.Context(), s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
+	jobIDs, err := query.ListFilteredJobIDs(s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
 	if err != nil {
 		failureResponseWithError(w, "error querying jobs", err)
 		return
 	}
 
-	bugs, err := query.LoadBugsForJobs(req.Context(), s.db, jobIDs, false)
+	bugs, err := query.LoadBugsForJobs(s.db, jobIDs, false)
 	if err != nil {
 		log.WithError(err).Error("error querying job bugs from db")
 		failureResponse(w, http.StatusInternalServerError, "error querying job bugs from db")
@@ -1372,7 +1367,7 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 	testSubstring := req.URL.Query()["test"]
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
-		api.PrintTestsDetailsJSONFromDB(req.Context(), w, release, testSubstring, s.db)
+		api.PrintTestsDetailsJSONFromDB(w, release, testSubstring, s.db)
 	}
 }
 
@@ -1388,7 +1383,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 	var lastUpdated time.Time
 	if s.db != nil {
 		var err error
-		lastUpdated, err = api.GetLastUpdateTime(req.Context(), s.db)
+		lastUpdated, err = api.GetLastUpdateTime(s.db)
 		if err != nil {
 			log.WithError(err).Error("error querying last updated from db")
 			failureResponse(w, http.StatusInternalServerError, "error querying last updated from db")
@@ -1425,15 +1420,9 @@ func (s *Server) jsonTestLifecyclesFromDB(w http.ResponseWriter, req *http.Reque
 
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
-	if release == "" {
-		return
+	if release != "" {
+		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetReportEnd())
 	}
-	health, err := api.OverallReleaseHealthFromDB(req.Context(), s.db, release, s.GetReportEnd())
-	if err != nil {
-		failureResponseWithError(w, "error building release health report", err)
-		return
-	}
-	api.RespondWithJSON(http.StatusOK, w, health)
 }
 
 func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {
@@ -1442,7 +1431,7 @@ func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request
 	release := param.SafeRead(req, "release")
 	if release == "" {
 		var err error
-		release, err = query.CurrentActiveRelease(req.Context(), s.db)
+		release, err = query.CurrentActiveRelease(s.db)
 		if err != nil {
 			log.WithError(err).Error("error determining release for build cluster health")
 			failureResponse(w, http.StatusInternalServerError, "error determining release: "+err.Error())
@@ -1450,7 +1439,7 @@ func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request
 		}
 	}
 
-	results, err := api.GetBuildClusterHealthReport(req.Context(), s.db, release, start, boundary, end)
+	results, err := api.GetBuildClusterHealthReport(s.db, release, start, boundary, end)
 	if err != nil {
 		log.WithError(err).Error("error querying build cluster health from db")
 		failureResponse(w, http.StatusInternalServerError, "error querying build cluster health from db: "+err.Error())
@@ -1466,7 +1455,7 @@ func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http
 	release := param.SafeRead(req, "release")
 	if release == "" {
 		var err error
-		release, err = query.CurrentActiveRelease(req.Context(), s.db)
+		release, err = query.CurrentActiveRelease(s.db)
 		if err != nil {
 			log.WithError(err).Error("error determining release for build cluster analysis")
 			failureResponse(w, http.StatusInternalServerError, "error determining release: "+err.Error())
@@ -1474,7 +1463,7 @@ func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http
 		}
 	}
 
-	results, err := api.GetBuildClusterHealthAnalysis(req.Context(), s.db, release, period)
+	results, err := api.GetBuildClusterHealthAnalysis(s.db, release, period)
 	if err != nil {
 		log.WithError(err).Error("error querying build cluster health from db")
 		failureResponse(w, http.StatusInternalServerError, "error querying build cluster health from db: "+err.Error())
@@ -1536,7 +1525,7 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 			return
 		}
 
-		results, err := api.GetRepositoriesReportFromDB(req.Context(), s.db, release, filterOpts, s.GetReportEnd())
+		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts, s.GetReportEnd())
 		if err != nil {
 			failureResponseWithError(w, "error fetching repositories", err)
 			return
@@ -1555,7 +1544,7 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 			return
 		}
 
-		results, err := api.GetPullRequestsReportFromDB(req.Context(), s.db, release, filterOpts)
+		results, err := api.GetPullRequestsReportFromDB(s.db, release, filterOpts)
 		if err != nil {
 			failureResponseWithError(w, "error fetching pull requests", err)
 			return
@@ -1620,7 +1609,7 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 	}
 	if useCurrentRelease {
 		var err error
-		release, err = query.CurrentActiveRelease(req.Context(), s.db)
+		release, err = query.CurrentActiveRelease(s.db)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, "determining current release: "+err.Error())
 			return
@@ -1677,7 +1666,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		logger = logger.WithField("jobRunID", jobRunID)
 
 		// lookup prowjob and run count
-		jobRun, err = api.FetchJobRun(req.Context(), s.db, jobRunID, false, nil, logger)
+		jobRun, err = api.FetchJobRun(s.db, jobRunID, false, nil, logger)
 
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1793,7 +1782,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		// JobName was not passed.
 		gcsPath = ""
 	}
-	result, err := jobrunintervals.JobRunIntervals(req.Context(), s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
+	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
 		intervalFile, logger.WithField("func", "JobRunIntervals"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1842,7 +1831,7 @@ func (s *Server) jsonJobRunEvents(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	result, err := jobrunevents.JobRunEvents(req.Context(), s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
+	result, err := jobrunevents.JobRunEvents(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
 		logger.WithField("func", "JobRunEvents"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1888,7 +1877,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	sortField, sort := getSortParams(req)
 	period := getPeriod(req, api.PeriodDay)
 
-	results, err := api.PrintJobAnalysisJSONFromDB(req.Context(), s.db, release, jobFilter, jobRunsFilter,
+	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, jobFilter, jobRunsFilter,
 		start, boundary, end, limit, sortField, sort, period, s.GetReportEnd())
 	if err != nil {
 		failureResponseWithError(w, "error in job analysis", err)
@@ -3359,37 +3348,10 @@ func respondFromCache(content []byte, w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
-// cacheFillGrace bounds how long a cache-miss handler keeps running after its client disconnects.
-// The public ingress drops requests with no response after 90 seconds, which cancels the request
-// context. Letting the handler finish and populate the cache means a retry can be served from the
-// cache instead of starting cold and timing out again.
-const cacheFillGrace = 5 * time.Minute
-
-// contextWithDisconnectGrace returns a context that carries parent's values but is canceled only
-// once grace has elapsed after parent is done, or when the returned cancel function is called.
-func contextWithDisconnectGrace(parent context.Context, grace time.Duration) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.WithoutCancel(parent))
-	stop := context.AfterFunc(parent, func() {
-		timer := time.NewTimer(grace)
-		defer timer.Stop()
-		select {
-		case <-ctx.Done():
-		case <-timer.C:
-			cancel()
-		}
-	})
-	return ctx, func() {
-		stop()
-		cancel()
-	}
-}
-
 func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter, r *http.Request, handler func(w http.ResponseWriter, r *http.Request)) {
 	apiResponse := cache.APIResponse{}
 	recorder := httptest.NewRecorder()
-	ctx, cancel := contextWithDisconnectGrace(r.Context(), cacheFillGrace)
-	defer cancel()
-	handler(recorder, r.WithContext(ctx))
+	handler(recorder, r)
 	apiResponse.Headers = w.Header()
 	for k, v := range recorder.Result().Header {
 		w.Header()[k] = v

@@ -47,9 +47,9 @@ func (l List) Analyze(testKey crtest.Identification, testStats *testdetails.Test
 	return false, nil
 }
 
-func (l List) PostAnalysis(ctx context.Context, testKey crtest.Identification, testStats *testdetails.TestComparison) error {
+func (l List) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	for _, mw := range l {
-		if err := mw.PostAnalysis(ctx, testKey, testStats); err != nil {
+		if err := mw.PostAnalysis(testKey, testStats); err != nil {
 			return err
 		}
 	}

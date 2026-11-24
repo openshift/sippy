@@ -67,7 +67,7 @@ func TestTriageArchival(t *testing.T) {
 			view := fmt.Sprintf("archival-%d", i)
 			require.NoError(t, tx.Create(&models.RegressionView{TestRegressionID: regs[0].ID, ViewName: view, Active: true}).Error)
 			for _, filter := range []string{"", view} {
-				listed, err := query.ListTriages(t.Context(), dbc, filter, false)
+				listed, err := query.ListTriages(dbc, filter, false)
 				require.NoError(t, err)
 				found := false
 				for _, item := range listed {
@@ -77,12 +77,12 @@ func TestTriageArchival(t *testing.T) {
 					}
 				}
 				require.Equal(t, tc.visible, found)
-				historical, err := query.ListTriages(t.Context(), dbc, view, true)
+				historical, err := query.ListTriages(dbc, view, true)
 				require.NoError(t, err)
 				require.Len(t, historical, 1)
 				require.Len(t, historical[0].Regressions, len(regs))
 			}
-			wrongView, err := query.ListTriages(t.Context(), dbc, "nonexistent", true)
+			wrongView, err := query.ListTriages(dbc, "nonexistent", true)
 			require.NoError(t, err)
 			require.Empty(t, wrongView)
 			// Query-time archival preserves both the triage and its associations.
@@ -91,13 +91,13 @@ func TestTriageArchival(t *testing.T) {
 			require.Len(t, stored.Regressions, len(regs))
 			if !tc.visible {
 				require.NoError(t, tx.Model(&models.Triage{}).Where("id = ?", triage.ID).UpdateColumn("resolved", nil).Error)
-				listed, err := query.ListTriages(t.Context(), dbc, view, false)
+				listed, err := query.ListTriages(dbc, view, false)
 				require.NoError(t, err)
 				require.Len(t, listed, 1, "reopening reactivates")
 				require.NoError(t, tx.Model(&models.Triage{}).Where("id = ?", triage.ID).UpdateColumn("resolved", now.Add(-tc.age)).Error)
 				nonGA := intutil.CreateTestRegression(t, dbc, fmt.Sprintf("non-ga-%d", i), "future")
 				require.NoError(t, tx.Model(&triage).Association("Regressions").Append(nonGA))
-				listed, err = query.ListTriages(t.Context(), dbc, view, false)
+				listed, err = query.ListTriages(dbc, view, false)
 				require.NoError(t, err)
 				require.Len(t, listed, 1, "adding non-GA association reactivates across releases")
 			}

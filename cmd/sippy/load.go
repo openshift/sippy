@@ -477,7 +477,7 @@ func NewLoadCommand() *cobra.Command {
 			log.WithField("elapsed", elapsed).Info("database load complete")
 
 			if refreshMatviews && !f.SkipMatviewRefresh {
-				if err := sippyserver.RefreshData(cmd.Context(), dbc, cacheClient, sippyserver.RefreshOptions{}); err != nil {
+				if err := sippyserver.RefreshData(dbc, cacheClient, sippyserver.RefreshOptions{}); err != nil {
 					log.WithError(err).Error("refresh failed")
 					allErrs = append(allErrs, err)
 				}

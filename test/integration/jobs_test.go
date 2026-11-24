@@ -103,7 +103,7 @@ func TestProwJobSimilarName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := query.ProwJobSimilarName(t.Context(), dbc, tt.rootName, tt.release)
+			result, err := query.ProwJobSimilarName(dbc, tt.rootName, tt.release)
 			require.NoError(t, err)
 
 			gotNames := make([]string, len(result))
@@ -158,7 +158,7 @@ func TestVariantReports(t *testing.T) {
 		{timestamp: end},
 	})
 
-	variants, err := query.VariantReports(t.Context(), dbc, "4.16", start, boundary, end)
+	variants, err := query.VariantReports(dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 
 	require.Len(t, variants, 2)
@@ -221,7 +221,7 @@ func TestVariantReports_MultipleJobs(t *testing.T) {
 		{timestamp: boundary.Add(48 * time.Hour), succeeded: true},
 	})
 
-	variants, err := query.VariantReports(t.Context(), dbc, "4.16", start, boundary, end)
+	variants, err := query.VariantReports(dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 
 	variantByName := make(map[string]apitype.Variant)
@@ -278,7 +278,7 @@ func TestVariantReports_ZeroPreviousRuns(t *testing.T) {
 		{timestamp: boundary.Add(72 * time.Hour)},
 	})
 
-	variants, err := query.VariantReports(t.Context(), dbc, "4.16", start, boundary, end)
+	variants, err := query.VariantReports(dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, variants, 1)
 
@@ -313,7 +313,7 @@ func TestVariantReports_EmptyVariants(t *testing.T) {
 		{timestamp: boundary.Add(24 * time.Hour), succeeded: true},
 	})
 
-	variants, err := query.VariantReports(t.Context(), dbc, "4.16", start, boundary, end)
+	variants, err := query.VariantReports(dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	assert.Empty(t, variants, "empty variants array should produce no variant rows via unnest")
 }
@@ -339,7 +339,7 @@ func TestVariantReports_BoundaryTimestamp(t *testing.T) {
 		{timestamp: boundary.Add(48 * time.Hour), succeeded: true},
 	})
 
-	variants, err := query.VariantReports(t.Context(), dbc, "4.16", start, boundary, end)
+	variants, err := query.VariantReports(dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, variants, 1)
 
@@ -389,7 +389,7 @@ func TestVariantReports_MultipleReleases(t *testing.T) {
 		{timestamp: boundary.Add(48 * time.Hour)},
 	})
 
-	variants, err := query.VariantReports(t.Context(), dbc, "4.16", start, boundary, end)
+	variants, err := query.VariantReports(dbc, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, variants, 1)
 	assert.InDelta(t, 100.0, variants[0].CurrentPassPercentage, 0.1,
@@ -426,7 +426,7 @@ func TestJobReports(t *testing.T) {
 
 	lastSucceededTimestamp := boundary.Add(120 * time.Hour)
 
-	reports, err := query.JobReports(t.Context(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
+	reports, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 
@@ -481,7 +481,7 @@ func TestJobReports_BriefNameWithMainBranch(t *testing.T) {
 		{timestamp: boundary, succeeded: true, duration: 30 * time.Minute},
 	})
 
-	reports, err := query.JobReports(t.Context(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
+	reports, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 
@@ -519,7 +519,7 @@ func TestJobReports_WithBugs(t *testing.T) {
 		require.NoError(t, dbc.DB.Model(&job).Association("Bugs").Append(&bugs[i]))
 	}
 
-	reports, err := query.JobReports(t.Context(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
+	reports, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 
@@ -588,7 +588,7 @@ func TestJobReports_WithPullRequests(t *testing.T) {
 		}).Error)
 	}
 
-	reports, err := query.JobReports(t.Context(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
+	reports, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 
@@ -623,7 +623,7 @@ func TestJobReports_ZeroPreviousRuns(t *testing.T) {
 		{timestamp: boundary.Add(72 * time.Hour)},
 	})
 
-	reports, err := query.JobReports(t.Context(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
+	reports, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 
@@ -680,7 +680,7 @@ func TestJobReports_WithFilters(t *testing.T) {
 				},
 			},
 		}
-		reports, err := query.JobReports(t.Context(), dbc, opts, "4.16", start, boundary, end)
+		reports, err := query.JobReports(dbc, opts, "4.16", start, boundary, end)
 		require.NoError(t, err)
 		require.Len(t, reports, 1)
 		assert.Contains(t, reports[0].Name, "aws")
@@ -694,7 +694,7 @@ func TestJobReports_WithFilters(t *testing.T) {
 				},
 			},
 		}
-		reports, err := query.JobReports(t.Context(), dbc, opts, "4.16", start, boundary, end)
+		reports, err := query.JobReports(dbc, opts, "4.16", start, boundary, end)
 		require.NoError(t, err)
 		require.Len(t, reports, 1)
 		assert.Contains(t, reports[0].Name, "gcp")
@@ -707,7 +707,7 @@ func TestJobReports_WithFilters(t *testing.T) {
 			Sort:      apitype.SortAscending,
 			Limit:     1,
 		}
-		reports, err := query.JobReports(t.Context(), dbc, opts, "4.16", start, boundary, end)
+		reports, err := query.JobReports(dbc, opts, "4.16", start, boundary, end)
 		require.NoError(t, err)
 		require.Len(t, reports, 1)
 		assert.Contains(t, reports[0].Name, "aws", "lowest pass percentage should be aws at 75%%")
@@ -744,7 +744,7 @@ func TestJobReports_MultipleReleases(t *testing.T) {
 		{timestamp: boundary.Add(48 * time.Hour)},
 	})
 
-	reports, err := query.JobReports(t.Context(), dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
+	reports, err := query.JobReports(dbc, &filter.FilterOptions{Filter: &filter.Filter{}}, "4.16", start, boundary, end)
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 	assert.Equal(t, job416.Name, reports[0].Name)
@@ -813,7 +813,7 @@ func TestJobRunTestCount(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run.ID, job.ID, test3.ID, "4.16", timestamp, 12)
 
 	runID := int64(run.ID) //nolint:gosec
-	count, err := query.JobRunTestCount(t.Context(), dbc, runID, "4.16", timestamp)
+	count, err := query.JobRunTestCount(dbc, runID, "4.16", timestamp)
 	require.NoError(t, err)
 	assert.Equal(t, 3, count)
 }
@@ -843,7 +843,7 @@ func TestJobRunTestCountRequiresMatchingPartitionKeys(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			count, err := query.JobRunTestCount(t.Context(), dbc, runID, tt.release, tt.timestamp)
+			count, err := query.JobRunTestCount(dbc, runID, tt.release, tt.timestamp)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, count)
 		})
@@ -893,7 +893,7 @@ func TestJobRunTestCountNoTests(t *testing.T) {
 	run := intutil.CreateProwJobRun(t, dbc, job.ID, "4.16", timestamp, true, v1.JobSucceeded)
 
 	runID := int64(run.ID) //nolint:gosec
-	count, err := query.JobRunTestCount(t.Context(), dbc, runID, "4.16", timestamp)
+	count, err := query.JobRunTestCount(dbc, runID, "4.16", timestamp)
 	require.NoError(t, err)
 	assert.Equal(t, 0, count)
 }
@@ -910,7 +910,7 @@ func TestProwJobRunCount(t *testing.T) {
 	intutil.CreateProwJobRun(t, dbc, otherJob.ID, "4.16", time.Date(2024, 6, 3, 12, 0, 0, 0, time.UTC), true, v1.JobSucceeded)
 
 	since := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
-	count, err := query.ProwJobRunCount(t.Context(), dbc, job.ID, "4.16", since)
+	count, err := query.ProwJobRunCount(dbc, job.ID, "4.16", since)
 	require.NoError(t, err)
 	assert.Equal(t, 2, count)
 }
@@ -941,7 +941,7 @@ func TestProwJobHistoricalTestCounts(t *testing.T) {
 	intutil.CreateProwJobRunTest(t, dbc, run2.ID, job.ID, test4.ID, "4.16", ts2, 12)
 
 	// avg(2, 4) = 3
-	avg, err := query.ProwJobHistoricalTestCounts(t.Context(), dbc, job.ID, "4.16")
+	avg, err := query.ProwJobHistoricalTestCounts(dbc, job.ID, "4.16")
 	require.NoError(t, err)
 	assert.Equal(t, 3, avg)
 }
@@ -970,7 +970,7 @@ func TestProwJobHistoricalTestCountsExcludesOldData(t *testing.T) {
 	}
 
 	// Only the recent run's 2 tests should contribute: avg(2) = 2
-	avg, err := query.ProwJobHistoricalTestCounts(t.Context(), dbc, job.ID, "4.16")
+	avg, err := query.ProwJobHistoricalTestCounts(dbc, job.ID, "4.16")
 	require.NoError(t, err)
 	assert.Equal(t, 2, avg)
 }
@@ -999,7 +999,7 @@ func TestProwJobHistoricalTestCountsExcludesDifferentRelease(t *testing.T) {
 	}
 
 	// Only 4.16 tests count: avg(2) = 2
-	avg, err := query.ProwJobHistoricalTestCounts(t.Context(), dbc, job.ID, "4.16")
+	avg, err := query.ProwJobHistoricalTestCounts(dbc, job.ID, "4.16")
 	require.NoError(t, err)
 	assert.Equal(t, 2, avg)
 }
@@ -1009,7 +1009,7 @@ func TestProwJobHistoricalTestCountsNoData(t *testing.T) {
 
 	job := intutil.CreateProwJob(t, dbc, "periodic-ci-e2e-aws-4.16", "4.16", []string{"aws"})
 
-	avg, err := query.ProwJobHistoricalTestCounts(t.Context(), dbc, job.ID, "4.16")
+	avg, err := query.ProwJobHistoricalTestCounts(dbc, job.ID, "4.16")
 	require.NoError(t, err)
 	assert.Equal(t, 0, avg)
 }
@@ -1106,7 +1106,7 @@ func TestListFilteredJobIDs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ids, err := query.ListFilteredJobIDs(t.Context(), dbc, "4.16", tt.filter, start, boundary, end, 100, "current_pass_percentage", apitype.SortDescending)
+			ids, err := query.ListFilteredJobIDs(dbc, "4.16", tt.filter, start, boundary, end, 100, "current_pass_percentage", apitype.SortDescending)
 			require.NoError(t, err)
 			if tt.checkIDs {
 				assert.Equal(t, tt.wantIDs, ids)
@@ -1139,7 +1139,7 @@ func TestListFilteredJobIDsNumericFilter(t *testing.T) {
 			{Field: "current_pass_percentage", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "50"},
 		},
 	}
-	ids, err := query.ListFilteredJobIDs(t.Context(), dbc, "4.16", fil, start, boundary, end, 100, "current_pass_percentage", apitype.SortDescending)
+	ids, err := query.ListFilteredJobIDs(dbc, "4.16", fil, start, boundary, end, 100, "current_pass_percentage", apitype.SortDescending)
 	require.NoError(t, err)
 	assert.Equal(t, []int{int(awsJob.ID)}, ids) //nolint:gosec
 }
@@ -1167,7 +1167,7 @@ func TestListFilteredJobIDsOrFilter(t *testing.T) {
 			{Field: "name", Operator: filter.OperatorContains, Value: "gcp"},
 		},
 	}
-	ids, err := query.ListFilteredJobIDs(t.Context(), dbc, "4.16", fil, start, boundary, end, 100, "name", apitype.SortAscending)
+	ids, err := query.ListFilteredJobIDs(dbc, "4.16", fil, start, boundary, end, 100, "name", apitype.SortAscending)
 	require.NoError(t, err)
 	assert.Len(t, ids, 2)
 	assert.NotContains(t, ids, int(azureJob.ID)) //nolint:gosec
@@ -1183,7 +1183,7 @@ func TestLoadBugsForJobs(t *testing.T) {
 	intutil.CreateBug(t, dbc, "BZ-1001", "NEW", "flaky aws test", recentTime, []models.ProwJob{job})
 	intutil.CreateBug(t, dbc, "BZ-1002", "ASSIGNED", "aws timeout", recentTime, []models.ProwJob{job})
 
-	bugs, err := query.LoadBugsForJobs(t.Context(), dbc, []int{jobID}, false)
+	bugs, err := query.LoadBugsForJobs(dbc, []int{jobID}, false)
 	require.NoError(t, err)
 	assert.Len(t, bugs, 2)
 }
@@ -1199,13 +1199,13 @@ func TestLoadBugsForJobsFiltersClosed(t *testing.T) {
 	intutil.CreateBug(t, dbc, "BZ-2002", "CLOSED", "closed bug", recentTime, []models.ProwJob{job})
 
 	// With filterClosed=true, should only return the open bug
-	bugs, err := query.LoadBugsForJobs(t.Context(), dbc, []int{jobID}, true)
+	bugs, err := query.LoadBugsForJobs(dbc, []int{jobID}, true)
 	require.NoError(t, err)
 	assert.Len(t, bugs, 1)
 	assert.Equal(t, "BZ-2001", bugs[0].Key)
 
 	// With filterClosed=false, should return both
-	bugs, err = query.LoadBugsForJobs(t.Context(), dbc, []int{jobID}, false)
+	bugs, err = query.LoadBugsForJobs(dbc, []int{jobID}, false)
 	require.NoError(t, err)
 	assert.Len(t, bugs, 2)
 }
@@ -1224,7 +1224,7 @@ func TestLoadBugsForJobsMultipleJobIDsReturnsFirstOnly(t *testing.T) {
 
 	// LoadBugsForJobs uses First(), so it only returns bugs for the first matching job.
 	// This documents the current behavior (noted as a possible bug in the source).
-	bugs, err := query.LoadBugsForJobs(t.Context(), dbc, []int{job1ID, job2ID}, false)
+	bugs, err := query.LoadBugsForJobs(dbc, []int{job1ID, job2ID}, false)
 	require.NoError(t, err)
 	assert.Len(t, bugs, 1)
 	assert.Equal(t, "BZ-6001", bugs[0].Key)
@@ -1247,7 +1247,7 @@ func TestLoadBugsForJobsExcludesStaleClosedBugs(t *testing.T) {
 	intutil.CreateBug(t, dbc, "BZ-4004", "CLOSED", "recent closed bug", recentTime, []models.ProwJob{job})
 
 	// Without filterClosed: stale CLOSED/VERIFIED bugs (20 days) should be excluded by the 14-day window
-	bugs, err := query.LoadBugsForJobs(t.Context(), dbc, []int{jobID}, false)
+	bugs, err := query.LoadBugsForJobs(dbc, []int{jobID}, false)
 	require.NoError(t, err)
 	assert.Len(t, bugs, 2)
 	bugKeys := make([]string, len(bugs))
@@ -1257,7 +1257,7 @@ func TestLoadBugsForJobsExcludesStaleClosedBugs(t *testing.T) {
 	assert.ElementsMatch(t, []string{"BZ-4001", "BZ-4004"}, bugKeys)
 
 	// With filterClosed: should also exclude the recent CLOSED bug
-	bugs, err = query.LoadBugsForJobs(t.Context(), dbc, []int{jobID}, true)
+	bugs, err = query.LoadBugsForJobs(dbc, []int{jobID}, true)
 	require.NoError(t, err)
 	assert.Len(t, bugs, 1)
 	assert.Equal(t, "BZ-4001", bugs[0].Key)
@@ -1275,7 +1275,7 @@ func TestLoadBugsForJobsFiltersVerified(t *testing.T) {
 	intutil.CreateBug(t, dbc, "BZ-5002", "VERIFIED", "verified bug", recentTime, []models.ProwJob{job})
 
 	// filterClosed=true should exclude VERIFIED just like CLOSED
-	bugs, err := query.LoadBugsForJobs(t.Context(), dbc, []int{jobID}, true)
+	bugs, err := query.LoadBugsForJobs(dbc, []int{jobID}, true)
 	require.NoError(t, err)
 	assert.Len(t, bugs, 1)
 	assert.Equal(t, "BZ-5001", bugs[0].Key)
@@ -1289,7 +1289,7 @@ func TestLoadBugsForJobsEmptyJobIDs(t *testing.T) {
 	intutil.CreateBug(t, dbc, "BZ-7001", "NEW", "some bug", recentTime, []models.ProwJob{job})
 
 	// Empty job ID slice causes First() to find no matching ProwJob, returning an error
-	bugs, err := query.LoadBugsForJobs(t.Context(), dbc, []int{}, false)
+	bugs, err := query.LoadBugsForJobs(dbc, []int{}, false)
 	require.Error(t, err)
 	assert.Empty(t, bugs)
 }
@@ -1306,7 +1306,7 @@ func TestLoadBugsForJobsExcludesStale(t *testing.T) {
 	intutil.CreateBug(t, dbc, "BZ-3001", "NEW", "recent open bug", recentTime, []models.ProwJob{job})
 	intutil.CreateBug(t, dbc, "BZ-3002", "NEW", "stale open bug", staleOpenTime, []models.ProwJob{job})
 
-	bugs, err := query.LoadBugsForJobs(t.Context(), dbc, []int{jobID}, false)
+	bugs, err := query.LoadBugsForJobs(dbc, []int{jobID}, false)
 	require.NoError(t, err)
 	// Only the recent bug should pass the time-based filter
 	assert.Len(t, bugs, 1)

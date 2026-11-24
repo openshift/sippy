@@ -70,7 +70,7 @@ func TestLookbackCount_OnlyCountsActiveRelease(t *testing.T) {
 	intutil.CreateCumulativeSummary(t, dbc, today, "4.19", f.testGamma, f.jobB, f.suiteA, 50, 45, 2)
 	intutil.CreateCumulativeSummary(t, dbc, startMinusOne, "4.19", f.testGamma, f.jobB, f.suiteA, 30, 25, 1)
 
-	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(t.Context(), dbc, 14, lookbackDate)
+	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), testIDsCount, "should only count tests from the active release")
 }
@@ -94,7 +94,7 @@ func TestLookbackCount_ZeroAndNegativeDeltaExcluded(t *testing.T) {
 	intutil.CreateCumulativeSummary(t, dbc, today, "4.18", f.testGamma, f.jobA, f.suiteA, 30, 25, 1)
 	intutil.CreateCumulativeSummary(t, dbc, startMinusOne, "4.18", f.testGamma, f.jobA, f.suiteA, 40, 35, 2)
 
-	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(t.Context(), dbc, 14, lookbackDate)
+	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), testIDsCount, "only testAlpha (positive delta) should be counted")
 }
@@ -110,7 +110,7 @@ func TestLookbackCount_NewTestWithNoPriorRow(t *testing.T) {
 	// equals the full end prefix sum and should be counted.
 	intutil.CreateCumulativeSummary(t, dbc, today, "4.18", f.testAlpha, f.jobA, f.suiteA, 10, 8, 1)
 
-	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(t.Context(), dbc, 14, lookbackDate)
+	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), testIDsCount, "test with no prior row should be counted")
 }
@@ -133,7 +133,7 @@ func TestLookbackCount_JobRunsCountExcludesDeleted(t *testing.T) {
 	deletedRun := intutil.CreateProwJobRun(t, dbc, 1, "4.18", withinWindow.Add(-2*time.Hour), true, v1.JobSucceeded)
 	require.NoError(t, dbc.DB.Delete(&deletedRun).Error)
 
-	jobRunsCount, _, err := api.GetJobRunTestsCountByLookbackAt(t.Context(), dbc, 14, lookbackDate)
+	jobRunsCount, _, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), jobRunsCount, "should count only non-deleted runs within the window")
 }
@@ -154,7 +154,7 @@ func TestLookbackCount_MultipleJobsPerTestAggregated(t *testing.T) {
 	intutil.CreateCumulativeSummary(t, dbc, today, "4.18", f.testAlpha, f.jobB, f.suiteA, 30, 25, 1)
 	intutil.CreateCumulativeSummary(t, dbc, startMinusOne, "4.18", f.testAlpha, f.jobB, f.suiteA, 20, 18, 0)
 
-	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(t.Context(), dbc, 14, lookbackDate)
+	_, testIDsCount, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), testIDsCount, "test with positive aggregate delta across jobs should be counted")
 }
@@ -162,7 +162,7 @@ func TestLookbackCount_MultipleJobsPerTestAggregated(t *testing.T) {
 func TestLookbackCount_NoReleasesReturnsError(t *testing.T) {
 	dbc := lookbackCountDB(t)
 
-	_, _, err := api.GetJobRunTestsCountByLookbackAt(t.Context(), dbc, 14, lookbackDate)
+	_, _, err := api.GetJobRunTestsCountByLookbackAt(dbc, 14, lookbackDate)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no OCP release found")
 }
@@ -170,14 +170,14 @@ func TestLookbackCount_NoReleasesReturnsError(t *testing.T) {
 func TestLookbackCount_InvalidLookbackDays(t *testing.T) {
 	dbc := lookbackCountDB(t)
 
-	_, _, err := api.GetJobRunTestsCountByLookbackAt(t.Context(), dbc, 0, lookbackDate)
+	_, _, err := api.GetJobRunTestsCountByLookbackAt(dbc, 0, lookbackDate)
 	assert.Error(t, err)
 
-	_, _, err = api.GetJobRunTestsCountByLookbackAt(t.Context(), dbc, -1, lookbackDate)
+	_, _, err = api.GetJobRunTestsCountByLookbackAt(dbc, -1, lookbackDate)
 	assert.Error(t, err)
 }
 
 func TestLookbackCount_NilDatabase(t *testing.T) {
-	_, _, err := api.GetJobRunTestsCountByLookbackAt(t.Context(), nil, 14, lookbackDate)
+	_, _, err := api.GetJobRunTestsCountByLookbackAt(nil, 14, lookbackDate)
 	assert.Error(t, err)
 }

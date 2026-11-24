@@ -163,7 +163,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *
 	return nil
 }
 
-func (r *ReleaseFallback) PostAnalysis(_ context.Context, testKey crtest.Identification, testStats *testdetails.TestComparison) error {
+func (r *ReleaseFallback) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	return nil
 }
 

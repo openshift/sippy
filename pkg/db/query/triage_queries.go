@@ -38,9 +38,9 @@ const ordinaryTriagePredicate = `(
 )`
 
 // ListTriages loads triages visible in a view; includeArchived also returns historical triages.
-func ListTriages(ctx context.Context, dbc *db.DB, view string, includeArchived bool) ([]models.Triage, error) {
+func ListTriages(dbc *db.DB, view string, includeArchived bool) ([]models.Triage, error) {
 	var triages []models.Triage
-	q := dbc.DB.WithContext(ctx).Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions")
+	q := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions")
 
 	if !includeArchived {
 		q = q.Where(ordinaryTriagePredicate, triageArchivalAgeHours)
@@ -62,9 +62,9 @@ func ListTriages(ctx context.Context, dbc *db.DB, view string, includeArchived b
 	return triages, res.Error
 }
 
-func ListOpenRegressions(ctx context.Context, dbc *db.DB, release string) ([]*models.TestRegression, error) {
+func ListOpenRegressions(dbc *db.DB, release string) ([]*models.TestRegression, error) {
 	var openRegressions []*models.TestRegression
-	res := dbc.DB.WithContext(ctx).
+	res := dbc.DB.
 		Model(&models.TestRegression{}).
 		Preload("Triages.Bug").
 		Where("test_regressions.release = ?", release).
@@ -77,10 +77,9 @@ func ListOpenRegressions(ctx context.Context, dbc *db.DB, release string) ([]*mo
 }
 
 // CountRegressionFailuresAfter counts failed job runs for a regression that
-// started after the specified time. The query is capped at 30 seconds even
-// when the caller's context allows longer (or has no deadline).
-func CountRegressionFailuresAfter(ctx context.Context, dbc *db.DB, regressionID uint, after time.Time) (int, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+// started after the specified time.
+func CountRegressionFailuresAfter(dbc *db.DB, regressionID uint, after time.Time) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	var count int64
 	res := dbc.DB.WithContext(ctx).Model(&models.RegressionJobRun{}).
@@ -92,9 +91,9 @@ func CountRegressionFailuresAfter(ctx context.Context, dbc *db.DB, regressionID 
 	return int(count), nil
 }
 
-func ListRegressions(ctx context.Context, dbc *db.DB, release string) ([]models.TestRegression, error) {
+func ListRegressions(dbc *db.DB, release string) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
-	query := dbc.DB.WithContext(ctx).Model(&models.TestRegression{}).Preload("Triages").Preload("JobRuns").Preload("Views")
+	query := dbc.DB.Model(&models.TestRegression{}).Preload("Triages").Preload("JobRuns").Preload("Views")
 
 	if release != "" {
 		query = query.Where("test_regressions.release = ?", release)
@@ -107,9 +106,9 @@ func ListRegressions(ctx context.Context, dbc *db.DB, release string) ([]models.
 	return regressions, res.Error
 }
 
-func GetRegressionsForTest(ctx context.Context, dbc *db.DB, release, testName string) ([]models.TestRegression, error) {
+func GetRegressionsForTest(dbc *db.DB, release, testName string) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
-	query := dbc.DB.WithContext(ctx).Model(&models.TestRegression{}).Preload("Triages").Preload("JobRuns").Preload("Views")
+	query := dbc.DB.Model(&models.TestRegression{}).Preload("Triages").Preload("JobRuns").Preload("Views")
 
 	if release != "" {
 		query = query.Where("test_regressions.release = ?", release)

@@ -133,7 +133,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 		promReportTypes := buildPromReportTypes(releases)
 
 		// Get last updated job run
-		lastUpdated, err := api.GetLastUpdateTime(ctx, dbc)
+		lastUpdated, err := api.GetLastUpdateTime(dbc)
 		if err != nil {
 			return errors.Wrapf(err, "could not fetch last updated time")
 		}
@@ -145,7 +145,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 			// start, boundary and end will just be defaults
 			// the api will decide based on the period
 			// and current day / time
-			jobsResult, err := api.JobReportsFromDB(ctx, dbc, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{}, reportEnd)
+			jobsResult, err := api.JobReportsFromDB(dbc, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{}, reportEnd)
 
 			if err != nil {
 				return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
@@ -163,11 +163,11 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 			}
 		}
 
-		if err := refreshBuildClusterMetrics(ctx, dbc, reportEnd); err != nil {
+		if err := refreshBuildClusterMetrics(dbc, reportEnd); err != nil {
 			log.WithError(err).Error("error refreshing build cluster metrics")
 		}
 
-		refreshPayloadMetrics(ctx, dbc, reportEnd, releases)
+		refreshPayloadMetrics(dbc, reportEnd, releases)
 
 	}
 
@@ -277,14 +277,14 @@ func updateComponentReadinessMetricsForView(ctx context.Context, provider datapr
 	return nil
 }
 
-func refreshBuildClusterMetrics(ctx context.Context, dbc *db.DB, reportEnd time.Time) error {
-	release, err := query.CurrentActiveRelease(ctx, dbc)
+func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
+	release, err := query.CurrentActiveRelease(dbc)
 	if err != nil {
 		return err
 	}
 	for _, period := range []string{"current", "twoDay"} {
 		start, boundary, end := util.PeriodToDates(period, reportEnd)
-		result, err := query.BuildClusterHealth(ctx, dbc, release, start, boundary, end)
+		result, err := query.BuildClusterHealth(dbc, release, start, boundary, end)
 		if err != nil {
 			return err
 		}
@@ -297,12 +297,12 @@ func refreshBuildClusterMetrics(ctx context.Context, dbc *db.DB, reportEnd time.
 	return nil
 }
 
-func refreshPayloadMetrics(ctx context.Context, dbc *db.DB, reportEnd time.Time, releases []v1.Release) {
+func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []v1.Release) {
 	for _, r := range releases {
 		if !r.Capabilities[v1.MetricsCap] {
 			continue
 		}
-		results, err := api.ReleaseHealthReports(ctx, dbc, r.Release, reportEnd)
+		results, err := api.ReleaseHealthReports(dbc, r.Release, reportEnd)
 		if err != nil {
 			log.WithError(err).Error("error calling ReleaseHealthReports")
 			return
@@ -317,7 +317,7 @@ func refreshPayloadMetrics(ctx context.Context, dbc *db.DB, reportEnd time.Time,
 
 		}
 
-		lastAcceptedReleaseTags, err := query.GetLastAcceptedByArchitectureAndStream(ctx, dbc.DB, r.Release, reportEnd)
+		lastAcceptedReleaseTags, err := query.GetLastAcceptedByArchitectureAndStream(dbc.DB, r.Release, reportEnd)
 		if err != nil {
 			log.WithError(err).Error("error querying last accepted payloads")
 			return
@@ -329,7 +329,7 @@ func refreshPayloadMetrics(ctx context.Context, dbc *db.DB, reportEnd time.Time,
 				getReleaseStatus(releases, r.Release)).Set(sinceLastAccepted.Hours())
 		}
 
-		lastOSUpgradeTags, err := query.GetLastOSUpgradeByArchitectureAndStream(ctx, dbc.DB, r.Release)
+		lastOSUpgradeTags, err := query.GetLastOSUpgradeByArchitectureAndStream(dbc.DB, r.Release)
 		if err != nil {
 			log.WithError(err).Error("error querying last os upgrades")
 			return

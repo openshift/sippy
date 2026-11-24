@@ -1,9 +1,8 @@
 package api
 
 import (
-	"context"
-	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -43,11 +42,9 @@ func useNewInstallTest(release string) bool {
 	return true
 }
 
-// OverallReleaseHealthFromDB gives a summarized status of the overall health, including
-// infrastructure, install, upgrade, and variant success rates. It returns an error rather than a
-// partial report when a query fails or ctx is canceled, so the caller does not cache an incomplete
-// response as a success.
-func OverallReleaseHealthFromDB(ctx context.Context, dbc *db.DB, release string, reportEnd time.Time) (apitype.Health, error) {
+// PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
+// infrastructure, install, upgrade, and variant success rates.
+func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
 	excludedVariants := testidentification.DefaultExcludedVariants
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
 	excludedInstallVariants := testidentification.DefaultExcludedVariants
@@ -62,35 +59,35 @@ func OverallReleaseHealthFromDB(ctx context.Context, dbc *db.DB, release string,
 		installTestName = testidentification.NewInstallTestName
 	}
 
-	indicatorTests := []struct {
-		key      string
-		testName string
-		excluded []string
-	}{
-		{"infrastructure", infraTestName, excludedVariants},
-		{"installConfig", testidentification.InstallConfigTestName, excludedInstallVariants},
-		{"bootstrap", testidentification.InstallBootstrapTestName, excludedInstallVariants},
-		{"installOther", testidentification.InstallOtherTestName, excludedInstallVariants},
-		{"install", installTestName, excludedInstallVariants},
-		{"upgrade", testidentification.UpgradeTestName, excludedVariants},
-		// NOTE: this is not actually representing the percentage of tests that passed, it's representing
-		// the percentage of time that all tests passed. We should probably fix that.
-		{"tests", testidentification.OpenShiftTestsName, excludedVariants},
+	if infraIndicator, found := query.TestReportExcludeVariants(dbc, release, infraTestName, excludedVariants); found {
+		indicators["infrastructure"] = infraIndicator
 	}
-	for _, it := range indicatorTests {
-		indicator, found, err := query.TestReportExcludeVariants(ctx, dbc, release, it.testName, it.excluded)
-		if err != nil {
-			return apitype.Health{}, fmt.Errorf("querying %s health indicator: %w", it.key, err)
-		}
-		// a test with no results is omitted rather than reported as an error
-		if found {
-			indicators[it.key] = indicator
-		}
+	if installConfigIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants); found {
+		indicators["installConfig"] = installConfigIndicator
+	}
+	if bootstrapIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants); found {
+		indicators["bootstrap"] = bootstrapIndicator
+	}
+	if installOtherIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants); found {
+		indicators["installOther"] = installOtherIndicator
+	}
+	if installIndicator, found := query.TestReportExcludeVariants(dbc, release, installTestName, excludedInstallVariants); found {
+		indicators["install"] = installIndicator
+	}
+	if upgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.UpgradeTestName, excludedVariants); found {
+		indicators["upgrade"] = upgradeIndicator
 	}
 
-	lastUpdated, err := GetLastUpdateTime(ctx, dbc)
+	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
+	// the percentage of time that all tests passed. We should probably fix that.
+	if testsIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.OpenShiftTestsName, excludedVariants); found {
+		indicators["tests"] = testsIndicator
+	}
+
+	lastUpdated, err := GetLastUpdateTime(dbc)
 	if err != nil {
-		return apitype.Health{}, fmt.Errorf("querying last update time: %w", err)
+		log.WithError(err).Error("error querying last update time")
+		return
 	}
 	log.WithField("lastUpdated", lastUpdated).Info("ran the last update query")
 
@@ -104,9 +101,10 @@ func OverallReleaseHealthFromDB(ctx context.Context, dbc *db.DB, release string,
 	start := reportEnd.Add(-14 * 24 * time.Hour)
 	boundary := reportEnd.Add(-7 * 24 * time.Hour)
 	end := reportEnd
-	jobReports, err := query.JobReports(ctx, dbc, filterOpts, release, start, boundary, end)
+	jobReports, err := query.JobReports(dbc, filterOpts, release, start, boundary, end)
 	if err != nil {
-		return apitype.Health{}, fmt.Errorf("querying job reports: %w", err)
+		log.WithError(err).Error("error querying job reports")
+		return
 	}
 	currStats, prevStats := calculateJobResultStatistics(jobReports)
 
@@ -116,17 +114,13 @@ func OverallReleaseHealthFromDB(ctx context.Context, dbc *db.DB, release string,
 	// TODO: use or remove this logic
 	var warnings []string
 
-	if err := ctx.Err(); err != nil {
-		return apitype.Health{}, err
-	}
-
-	return apitype.Health{
+	RespondWithJSON(http.StatusOK, w, apitype.Health{
 		Indicators:  indicators,
 		LastUpdated: lastUpdated,
 		Current:     currStats,
 		Previous:    prevStats,
 		Warnings:    warnings,
-	}, nil
+	})
 }
 
 func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats sippyprocessingv1.Statistics) {

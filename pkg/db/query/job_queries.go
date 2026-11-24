@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"database/sql"
 	"time"
 
@@ -26,19 +25,19 @@ type ProwJobRunPartitionKeys struct {
 // by ID from prow_job_run_id_map. This is the first step of a two-step lookup
 // pattern where the caller then uses these keys to load the full row with
 // partition pruning.
-func LookupProwJobRunPartitionKeys(ctx context.Context, gormDB *gorm.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
+func LookupProwJobRunPartitionKeys(gormDB *gorm.DB, jobRunID int64) (ProwJobRunPartitionKeys, error) {
 	var keys ProwJobRunPartitionKeys
-	err := gormDB.WithContext(ctx).Model(&models.ProwJobRunIDMap{}).
+	err := gormDB.Model(&models.ProwJobRunIDMap{}).
 		Select("prow_job_release, timestamp").
 		Where("id = ?", jobRunID).
 		Take(&keys).Error
 	return keys, err
 }
 
-func JobRunTestCount(ctx context.Context, dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {
+func JobRunTestCount(dbc *db.DB, jobRunID int64, release string, timestamp time.Time) (int, error) {
 	var prowJobRunTestCount int64
 
-	res := dbc.DB.WithContext(ctx).Model(&models.ProwJobRunTest{}).
+	res := dbc.DB.Model(&models.ProwJobRunTest{}).
 		Where("prow_job_run_id = ?", jobRunID).
 		Where("prow_job_run_release = ?", release).
 		Where("prow_job_run_timestamp = ?", timestamp).
@@ -50,7 +49,7 @@ func JobRunTestCount(ctx context.Context, dbc *db.DB, jobRunID int64, release st
 	return int(prowJobRunTestCount), nil
 }
 
-func ProwJobSimilarName(ctx context.Context, dbc *db.DB, rootName, release string) ([]models.ProwJob, error) {
+func ProwJobSimilarName(dbc *db.DB, rootName, release string) ([]models.ProwJob, error) {
 
 	// pull-ci-openshift-origin-master-e2e-vsphere-ovn-etcd-scaling
 	// periodic-ci-openshift-release-master-nightly-4.14-e2e-vsphere-ovn-etcd-scaling
@@ -58,20 +57,20 @@ func ProwJobSimilarName(ctx context.Context, dbc *db.DB, rootName, release strin
 	// the compare versions / variants to match up, all in search of is this a 'never-stable' job
 	// and other edge cases
 	jobs := make([]models.ProwJob, 0)
-	q := dbc.DB.WithContext(ctx).Raw(`SELECT * FROM prow_jobs WHERE name LIKE ? AND release = ?`, "%"+rootName, release)
+	q := dbc.DB.Raw(`SELECT * FROM prow_jobs WHERE name LIKE ? AND release = ?`, "%"+rootName, release)
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	if err := ScanAll(q, &jobs); err != nil {
+	if err := q.Scan(&jobs).Error; err != nil {
 		return nil, err
 	}
 
 	return jobs, nil
 }
 
-func ProwJobRunCount(ctx context.Context, dbc *db.DB, prowJobID uint, release string, since time.Time) (int, error) {
+func ProwJobRunCount(dbc *db.DB, prowJobID uint, release string, since time.Time) (int, error) {
 	var count int64
-	q := dbc.DB.WithContext(ctx).Table("prow_job_runs").
+	q := dbc.DB.Table("prow_job_runs").
 		Where("prow_job_id = ?", prowJobID).
 		Where("prow_job_release = ?", release).
 		Where("timestamp > ?", since)
@@ -81,10 +80,10 @@ func ProwJobRunCount(ctx context.Context, dbc *db.DB, prowJobID uint, release st
 	return int(count), nil
 }
 
-func ProwJobHistoricalTestCounts(ctx context.Context, dbc *db.DB, prowJobID uint, release string) (int, error) {
+func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint, release string) (int, error) {
 
 	var historicalProwJobRunTestCount float64
-	q := dbc.DB.WithContext(ctx).Raw(`SELECT COALESCE(avg(count), 0)
+	q := dbc.DB.Raw(`SELECT COALESCE(avg(count), 0)
 	FROM (SELECT count(*)
 	FROM prow_job_run_tests
 	WHERE prow_job_run_tests.prow_job_id = ?
@@ -103,11 +102,11 @@ func ProwJobHistoricalTestCounts(ctx context.Context, dbc *db.DB, prowJobID uint
 	return int(historicalProwJobRunTestCount), nil
 }
 
-func JobReports(ctx context.Context, dbc *db.DB, filterOpts *filter.FilterOptions, release string, start, boundary, end time.Time) ([]apitype.Job, error) {
+func JobReports(dbc *db.DB, filterOpts *filter.FilterOptions, release string, start, boundary, end time.Time) ([]apitype.Job, error) {
 	now := time.Now()
 	jobReports := make([]apitype.Job, 0)
 
-	table := dbc.DB.WithContext(ctx).Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
+	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
 	if table.Error != nil {
 		return jobReports, table.Error
 	}
@@ -117,7 +116,7 @@ func JobReports(ctx context.Context, dbc *db.DB, filterOpts *filter.FilterOption
 		return jobReports, err
 	}
 
-	if err := ScanAll(q, &jobReports); err != nil {
+	if err := q.Scan(&jobReports).Error; err != nil {
 		return nil, err
 	}
 	elapsed := time.Since(now)
@@ -126,9 +125,9 @@ func JobReports(ctx context.Context, dbc *db.DB, filterOpts *filter.FilterOption
 	return jobReports, nil
 }
 
-func VariantReports(ctx context.Context, dbc *db.DB, release string, start, boundary, end time.Time) ([]apitype.Variant, error) {
+func VariantReports(dbc *db.DB, release string, start, boundary, end time.Time) ([]apitype.Variant, error) {
 	variantResults := make([]apitype.Variant, 0)
-	q := dbc.DB.WithContext(ctx).Raw(`
+	q := dbc.DB.Raw(`
 WITH results AS (
         select unnest(prow_jobs.variants) as variant,
                 coalesce(count(case when succeeded = true AND timestamp >= @start AND timestamp < @boundary then 1 end), 0) as previous_passes,
@@ -163,14 +162,14 @@ ORDER BY current_pass_percentage ASC;
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	if err := ScanAll(q, &variantResults); err != nil {
+	if err := q.Scan(&variantResults).Error; err != nil {
 		return nil, err
 	}
 	return variantResults, nil
 }
 
-func ListFilteredJobIDs(ctx context.Context, dbc *db.DB, release string, fil *filter.Filter, start, boundary, end time.Time, limit int, sortField string, sort apitype.Sort) ([]int, error) {
-	table := dbc.DB.WithContext(ctx).Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
+func ListFilteredJobIDs(dbc *db.DB, release string, fil *filter.Filter, start, boundary, end time.Time, limit int, sortField string, sort apitype.Sort) ([]int, error) {
+	table := dbc.DB.Table("job_results(?, ?, ?, ?)", release, start, boundary, end)
 
 	q, err := filter.ApplyFilters(fil, sortField, sort, limit, table, apitype.Job{})
 	if err != nil {
@@ -187,12 +186,12 @@ func ListFilteredJobIDs(ctx context.Context, dbc *db.DB, release string, fil *fi
 
 // LoadBugsForJobs returns all bugs in the database for the given jobs, across all releases.
 // See ListFilteredJobIDs for obtaining the list of job IDs.
-func LoadBugsForJobs(ctx context.Context, dbc *db.DB,
+func LoadBugsForJobs(dbc *db.DB,
 	jobIDs []int, filterClosed bool) ([]models.Bug, error) {
 	results := []models.Bug{}
 
 	job := models.ProwJob{}
-	q := dbc.DB.WithContext(ctx).Where("id IN ?", jobIDs)
+	q := dbc.DB.Where("id IN ?", jobIDs)
 	// filter bugs since we no longer delete them, if the bug is not yet Closed (or Verified) we want updates within the last 90 days, otherwise 14
 	timeLimit := "(UPPER(status) IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '14 days') OR " +
 		"(UPPER(status) NOT IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '90 days')"

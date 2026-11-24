@@ -1,7 +1,6 @@
 package installhtml
 
 import (
-	"context"
 	"encoding/json"
 
 	"github.com/openshift/sippy/pkg/apis/api"
@@ -63,14 +62,14 @@ type testsByVariant struct {
 	aggregationToOverallTestResult map[string]*currPrevTestResult            // this is the first row of the table, summarizing all data.  If empty or nil, no summary is given.
 }
 
-func getDataForTestsByVariantFromDB(ctx context.Context, dbc *db.DB, release string, testSubStrings []string) (testsByVariant, error) {
+func getDataForTestsByVariantFromDB(dbc *db.DB, release string, testSubStrings []string) (testsByVariant, error) {
 	ret := testsByVariant{
 		aggregateResultByTestName:      map[string]*currPrevFailedTestResult{}, // not used in output, maybe we can skip
 		testNameToVariantToTestResult:  map[string]map[string]*currPrevTestResult{},
 		aggregationToOverallTestResult: map[string]*currPrevTestResult{}, // may not be used in output in our first use case
 	}
 
-	testReports, err := query.TestReportsByVariant(ctx, dbc, release, sippyprocessingv1.CurrentReport, query.TestNameMatches{Substrings: testSubStrings}, nil, false)
+	testReports, err := query.TestReportsByVariant(dbc, release, sippyprocessingv1.CurrentReport, query.TestNameMatches{Substrings: testSubStrings}, nil, false)
 	if err != nil {
 		return ret, err
 	}

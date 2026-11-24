@@ -50,7 +50,7 @@ func (l *LinkInjector) Analyze(_ crtest.Identification, _ *testdetails.TestCompa
 }
 
 // PostAnalysis injects HATEOAS links into test analysis results
-func (l *LinkInjector) PostAnalysis(_ context.Context, testKey crtest.Identification, testStats *testdetails.TestComparison) error {
+func (l *LinkInjector) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	// Initialize Links map if it doesn't exist
 	if testStats.Links == nil {
 		testStats.Links = make(map[string]string)

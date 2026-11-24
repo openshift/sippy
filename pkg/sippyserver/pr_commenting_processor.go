@@ -483,16 +483,7 @@ func (aw *AnalysisWorker) determinePrComment(ctx context.Context, prCommentProsp
 	}
 
 	riskAnalyses := aw.buildPRJobRiskAnalysis(ctx, logger, completedJobs)
-	newTestRisks, err := aw.newTestsWorker.analyzeRisks(ctx, logger, completedJobs)
-	if err == nil {
-		// risk analysis logs and skips failed lookups, so a canceled ctx can leave it incomplete
-		err = ctx.Err()
-	}
-	if err != nil {
-		// an incomplete or empty comment would replace or clear the pending one, so leave it for a later cycle
-		logger.WithError(err).Warn("PR analysis interrupted, not preparing a comment")
-		return
-	}
+	newTestRisks := aw.newTestsWorker.analyzeRisks(logger, completedJobs)
 	preparedComment := PreparedComment{
 		comment:     buildCommentText(riskAnalyses, newTestRisks, prCommentProspect.SHA),
 		sha:         prCommentProspect.SHA,
@@ -826,7 +817,7 @@ func (aw *AnalysisWorker) getRiskSummary(ctx context.Context, jobRunID, jobRunID
 
 	if jobRunIntID, err := strconv.ParseInt(jobRunID, 10, 64); err != nil {
 		log.WithError(err).Errorf("Failed to parse jobRunId id: %s for: %s", jobRunID, jobRunIDPath)
-	} else if jobRun, err := jobQueries.FetchJobRun(ctx, aw.dbc, jobRunIntID, false, nil, logger); err != nil {
+	} else if jobRun, err := jobQueries.FetchJobRun(aw.dbc, jobRunIntID, false, nil, logger); err != nil {
 		// RecordNotFound can be expected if the jobRunId job isn't in sippy yet. log any other error
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)

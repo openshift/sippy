@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -14,13 +13,13 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api"
 )
 
-func GetFeatureGatesFromDB(ctx context.Context, dbc *db.DB, release string, filterOpts *filter.FilterOptions) ([]api.FeatureGate, error) {
+func GetFeatureGatesFromDB(dbc *db.DB, release string, filterOpts *filter.FilterOptions) ([]api.FeatureGate, error) {
 	// Get test names that had actual runs in the last 7 days. We compare
 	// prefix_sum_runs at the end vs start of the range to confirm the test ran
 	// at least once, filtering out tests that merely have carried-forward rows.
 	tomorrow := civil.DateOf(time.Now().UTC()).AddDays(1)
 	dr := DateRange{Start: tomorrow.AddDays(-8), End: tomorrow}
-	if err := ResolveDateRanges(ctx, dbc, release, &dr); err != nil {
+	if err := ResolveDateRanges(dbc, release, &dr); err != nil {
 		return nil, err
 	}
 	lookupEnd := dr.End.AddDays(-1)
@@ -37,21 +36,21 @@ func GetFeatureGatesFromDB(ctx context.Context, dbc *db.DB, release string, filt
 			AND e.prefix_sum_runs > COALESCE(s.prefix_sum_runs, 0)
 	)`
 
-	byTag := dbc.DB.WithContext(ctx).Table("tests t").
+	byTag := dbc.DB.Table("tests t").
 		Select("t.name, ? AS release, (m.match)[2] AS gate_name", release).
 		Joins(`CROSS JOIN LATERAL regexp_matches(t.name, '\[(FeatureGate|OCPFeatureGate):([^\]]+)\]', 'g') AS m(match)`).
 		Where("t.name LIKE ?", "%FeatureGate:%").
 		Where(activeTestExists, lookupStart, lookupEnd, release)
 
-	byInstall := dbc.DB.WithContext(ctx).Table("tests t").
+	byInstall := dbc.DB.Table("tests t").
 		Select("t.name, ? AS release, NULL::text AS gate_name", release).
 		Where("t.name LIKE ?", "%install should succeed%").
 		Where(activeTestExists, lookupStart, lookupEnd, release)
 
-	subQuery := dbc.DB.WithContext(ctx).Raw("? UNION ALL ?", byTag, byInstall)
+	subQuery := dbc.DB.Raw("? UNION ALL ?", byTag, byInstall)
 
 	// Figure out the first release we ever saw a FG.
-	firstSeenQuery := dbc.DB.WithContext(ctx).Raw(`
+	firstSeenQuery := dbc.DB.Raw(`
 		SELECT DISTINCT ON (feature_gate)
 			feature_gate,
 			release AS first_seen_in,
@@ -62,7 +61,7 @@ func GetFeatureGatesFromDB(ctx context.Context, dbc *db.DB, release string, filt
 		ORDER BY feature_gate, string_to_array(release, '.')::int[] ASC
 	`)
 
-	fgQuery := dbc.DB.WithContext(ctx).Table("feature_gates AS fg").
+	fgQuery := dbc.DB.Table("feature_gates AS fg").
 		Select(`
 			ROW_NUMBER() OVER (ORDER BY fg.feature_gate) AS id,
 			fg.feature_gate,
@@ -80,7 +79,7 @@ func GetFeatureGatesFromDB(ctx context.Context, dbc *db.DB, release string, filt
 		Group("fg.feature_gate, fg.release, fs.first_seen_in, fs.first_seen_in_major, fs.first_seen_in_minor").
 		Order("fg.feature_gate")
 
-	table := dbc.DB.WithContext(ctx).Table("(?) AS results", fgQuery)
+	table := dbc.DB.Table("(?) AS results", fgQuery)
 
 	q, err := filter.FilterableDBResult(table, filterOpts, api.FeatureGate{})
 	if err != nil {
@@ -88,8 +87,9 @@ func GetFeatureGatesFromDB(ctx context.Context, dbc *db.DB, release string, filt
 	}
 
 	results := make([]api.FeatureGate, 0)
-	if err := ScanAll(q, &results); err != nil {
-		return nil, fmt.Errorf("failed to scan feature gates: %w", err)
+	tx := q.Scan(&results)
+	if tx.Error != nil {
+		return nil, fmt.Errorf("failed to scan feature gates: %w", tx.Error)
 	}
 
 	return results, nil
@@ -97,10 +97,10 @@ func GetFeatureGatesFromDB(ctx context.Context, dbc *db.DB, release string, filt
 
 // GetMatchingJobsForCapability returns the sorted names of prow jobs whose
 // variants array contains "Capability:<capabilityName>" for the given release.
-func GetMatchingJobsForCapability(ctx context.Context, dbc *db.DB, release, capabilityName string) ([]string, error) {
+func GetMatchingJobsForCapability(dbc *db.DB, release, capabilityName string) ([]string, error) {
 	capabilityVariant := fmt.Sprintf("Capability:%s", capabilityName)
 	names := make([]string, 0)
-	tx := dbc.DB.WithContext(ctx).Table("prow_jobs").
+	tx := dbc.DB.Table("prow_jobs").
 		Select("DISTINCT name").
 		Where("release = ? AND ? = ANY(variants)", release, capabilityVariant).
 		Scan(&names)

@@ -43,7 +43,7 @@ func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 // ListTriages adds REST links to triages, optionally including archived history.
 func ListTriages(dbc *db.DB, req *http.Request, includeArchived bool) ([]models.Triage, error) {
 	view := req.URL.Query().Get("view")
-	triages, err := query.ListTriages(req.Context(), dbc, view, includeArchived)
+	triages, err := query.ListTriages(dbc, view, includeArchived)
 	for i := range triages {
 		injectHATEOASLinks(&triages[i], sippyapi.GetBaseURL(req))
 	}
@@ -311,7 +311,7 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 func ListRegressions(dbc *db.DB, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	var err error
-	regressions, err = query.ListRegressions(req.Context(), dbc, release)
+	regressions, err = query.ListRegressions(dbc, release)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func ListRegressions(dbc *db.DB, release string, views []crview.View, releases [
 
 // GetRegressionsForTest returns regressions matching a specific test name, optionally filtered by release.
 func GetRegressionsForTest(dbc *db.DB, release, testName string, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) ([]models.TestRegression, error) {
-	regressions, err := query.GetRegressionsForTest(req.Context(), dbc, release, testName)
+	regressions, err := query.GetRegressionsForTest(dbc, release, testName)
 	if err != nil {
 		return nil, err
 	}

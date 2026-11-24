@@ -534,7 +534,7 @@ func TestTestOutputsExcludesInfraFailureRuns(t *testing.T) {
 	seedReadQueryRun(t, dbc, jobID, testRec.ID, infraTS, 99.0, "https://prow/infra-run", "infra failure output", true)
 	seedReadQueryRun(t, dbc, jobID, testRec.ID, cleanTS, 3.0, "https://prow/clean-run", "clean failure output", false)
 
-	outputs, err := query.TestOutputs(t.Context(), dbc, readQueryRelease, "read-exclude-outputs-test", nil, nil, 10)
+	outputs, err := query.TestOutputs(dbc, readQueryRelease, "read-exclude-outputs-test", nil, nil, 10)
 	require.NoError(t, err)
 	require.Len(t, outputs, 1, "the InfraFailure-labeled run's output must be excluded")
 	assert.Equal(t, "https://prow/clean-run", outputs[0].ProwJobURL, "only the clean run's output should be returned")
@@ -560,7 +560,7 @@ func TestTestDurationsExcludesInfraFailureRuns(t *testing.T) {
 	seedReadQueryRun(t, dbc, jobID, testRec.ID, infraTS, 99.0, "https://prow/infra-run", "infra failure output", true)
 	seedReadQueryRun(t, dbc, jobID, testRec.ID, cleanTS, 3.0, "https://prow/clean-run", "clean failure output", false)
 
-	durations, err := query.TestDurations(t.Context(), dbc, readQueryRelease, "read-exclude-durations-test", nil, nil)
+	durations, err := query.TestDurations(dbc, readQueryRelease, "read-exclude-durations-test", nil, nil)
 	require.NoError(t, err)
 	require.Len(t, durations, 1, "only the clean run's date bucket should be present")
 	dateKey := civil.DateOf(day.UTC())

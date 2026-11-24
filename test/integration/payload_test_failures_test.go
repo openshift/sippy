@@ -226,7 +226,7 @@ func TestGetPayloadStreamTestFailures(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	f := setupPayloadFixture(t, dbc)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, f.release, f.stream, f.arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, f.release, f.stream, f.arch,
 		emptyFilterOpts(), f.reportEnd)
 	require.NoError(t, err)
 
@@ -260,7 +260,7 @@ func TestGetPayloadStreamTestFailures_FiltersByStream(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	f := setupPayloadFixture(t, dbc)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, f.release, "ci", f.arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, f.release, "ci", f.arch,
 		emptyFilterOpts(), f.reportEnd)
 	require.NoError(t, err)
 
@@ -272,7 +272,7 @@ func TestGetPayloadStreamTestFailures_FiltersByStream(t *testing.T) {
 func TestGetPayloadStreamTestFailures_NoPayloads(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, "4.99", "nightly", "amd64",
+	results, err := api.GetPayloadStreamTestFailures(dbc, "4.99", "nightly", "amd64",
 		emptyFilterOpts(), time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.Nil(t, results, "should return nil when no payloads exist")
@@ -315,7 +315,7 @@ func TestGetPayloadStreamTestFailures_MultiPayloadAggregation(t *testing.T) {
 		TestID: f.testA.ID, Status: 12,
 	}).Error)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, f.release, f.stream, f.arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, f.release, f.stream, f.arch,
 		emptyFilterOpts(), f.reportEnd)
 	require.NoError(t, err)
 
@@ -362,7 +362,7 @@ func TestGetPayloadStreamTestFailures_MultipleJobsPerPayload(t *testing.T) {
 		TestID: f.testA.ID, Status: 12,
 	}).Error)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, f.release, f.stream, f.arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, f.release, f.stream, f.arch,
 		emptyFilterOpts(), f.reportEnd)
 	require.NoError(t, err)
 
@@ -412,7 +412,7 @@ func TestGetPayloadStreamTestFailures_ExcludesOpenShiftTestsName(t *testing.T) {
 		Status:              12,
 	}).Error)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, f.release, f.stream, f.arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, f.release, f.stream, f.arch,
 		emptyFilterOpts(), f.reportEnd)
 	require.NoError(t, err)
 
@@ -484,7 +484,7 @@ func TestGetPayloadStreamTestFailures_BlockerScoreAndSortOrder(t *testing.T) {
 		}
 	}
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, release, stream, arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, release, stream, arch,
 		emptyFilterOpts(), reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 2)
@@ -547,7 +547,7 @@ func TestGetPayloadStreamTestFailures_FiltersByArchitecture(t *testing.T) {
 	}).Error)
 
 	// Query for amd64: should not include arm64 failures
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, f.release, f.stream, f.arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, f.release, f.stream, f.arch,
 		emptyFilterOpts(), f.reportEnd)
 	require.NoError(t, err)
 	for _, r := range results {
@@ -561,7 +561,7 @@ func TestGetPayloadStreamTestFailures_FilterByName(t *testing.T) {
 	dbc := intutil.NewTestDB(t, pgContainer)
 	f := setupPayloadFixture(t, dbc)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, f.release, f.stream, f.arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, f.release, f.stream, f.arch,
 		&filter.FilterOptions{
 			Filter: &filter.Filter{
 				Items: []filter.FilterItem{
@@ -633,7 +633,7 @@ func TestGetPayloadStreamTestFailures_BlockerScoreStreakPercentageOverride(t *te
 		}
 	}
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, release, stream, arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, release, stream, arch,
 		emptyFilterOpts(), reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
@@ -699,7 +699,7 @@ func TestGetPayloadStreamTestFailures_MostRecentPayloadAccepted(t *testing.T) {
 		TestID: testX.ID, Status: 12,
 	}).Error)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, release, stream, arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, release, stream, arch,
 		emptyFilterOpts(), reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 1, "test failure from older rejected payload should still appear")
@@ -795,7 +795,7 @@ func TestGetPayloadStreamTestFailures_SortTiebreakers(t *testing.T) {
 		TestID: testCharlie.ID, Status: 12,
 	}).Error)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, release, stream, arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, release, stream, arch,
 		emptyFilterOpts(), reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 3)
@@ -847,7 +847,7 @@ func TestGetPayloadStreamTestFailures_FailureCountReflectsPerJobFailures(t *test
 		TestID: f.testA.ID, Status: 12,
 	}).Error)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, f.release, f.stream, f.arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, f.release, f.stream, f.arch,
 		emptyFilterOpts(), f.reportEnd)
 	require.NoError(t, err)
 
@@ -913,7 +913,7 @@ func TestGetPayloadStreamTestFailures_BlockerScoreReasons(t *testing.T) {
 		}).Error)
 	}
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, release, stream, arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, release, stream, arch,
 		emptyFilterOpts(), reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
@@ -972,7 +972,7 @@ func TestGetPayloadStreamTestFailures_AcceptedPayloadWithFailedBlockingJob(t *te
 		TestID: forceTest.ID, Status: 12,
 	}).Error)
 
-	results, err := api.GetPayloadStreamTestFailures(t.Context(), dbc, release, stream, arch,
+	results, err := api.GetPayloadStreamTestFailures(dbc, release, stream, arch,
 		emptyFilterOpts(), reportEnd)
 	require.NoError(t, err)
 	require.Len(t, results, 1,

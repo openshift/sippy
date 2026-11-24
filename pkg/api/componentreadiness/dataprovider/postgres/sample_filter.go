@@ -10,7 +10,6 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	"github.com/openshift/sippy/pkg/db/query"
 	"gorm.io/gorm"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -90,14 +89,14 @@ func findSamplePullRequestReleases(
 		Release string `gorm:"column:prow_job_run_release"`
 	}
 	var releaseRows []pullRequestReleaseRow
-	err = query.ScanAll(db.WithContext(ctx).Raw(`
+	err = db.WithContext(ctx).Raw(`
 		SELECT DISTINCT pr_run.prow_job_run_release
 		FROM prow_job_run_prow_pull_requests pr_run
 		JOIN prow_pull_requests pr ON pr.id = pr_run.prow_pull_request_id
 		WHERE pr.org = ? AND pr.repo = ? AND pr.number = ?
 			AND pr_run.prow_job_run_timestamp >= ? AND pr_run.prow_job_run_timestamp < ?
 			AND pr.deleted_at IS NULL`,
-		pr.Org, pr.Repo, number, start, end), &releaseRows)
+		pr.Org, pr.Repo, number, start, end).Scan(&releaseRows).Error
 	if err != nil {
 		return nil, fmt.Errorf("finding releases for sample pull request: %w", err)
 	}
@@ -126,7 +125,7 @@ func findSamplePayloadReleases(
 		Timestamp      sql.NullTime   `gorm:"column:timestamp"`
 	}
 	var runLookups []payloadRunLookup
-	err := query.ScanAll(db.WithContext(ctx).Raw(`
+	err := db.WithContext(ctx).Raw(`
 		SELECT DISTINCT payload_run.prow_job_run_id AS id,
 			run_map.prow_job_release, run_map.timestamp
 		FROM release_job_runs payload_run
@@ -135,7 +134,7 @@ func findSamplePayloadReleases(
 		WHERE rt.release_tag = ANY(?)
 			AND payload_run.deleted_at IS NULL
 			AND rt.deleted_at IS NULL`,
-		pq.Array(payload.Tags)), &runLookups)
+		pq.Array(payload.Tags)).Scan(&runLookups).Error
 	if err != nil {
 		return nil, fmt.Errorf("finding Prow run lookup keys for sample payload tags: %w", err)
 	}
@@ -176,7 +175,7 @@ func findSamplePayloadReleases(
 			Release   string    `gorm:"column:prow_job_run_release"`
 			Timestamp time.Time `gorm:"column:timestamp"`
 		}
-		sqlQuery := `
+		query := `
 			SELECT DISTINCT authoritative_run.id,
 				authoritative_run.prow_job_release AS prow_job_run_release,
 				authoritative_run.timestamp
@@ -189,7 +188,7 @@ func findSamplePayloadReleases(
 					AND run_row.timestamp = run_lookup.run_timestamp
 					AND run_row.deleted_at IS NULL
 			) authoritative_run ON TRUE`
-		if err := query.ScanAll(db.WithContext(ctx).Raw(sqlQuery, args...), &releaseRows); err != nil {
+		if err := db.WithContext(ctx).Raw(query, args...).Scan(&releaseRows).Error; err != nil {
 			return nil, fmt.Errorf("finding authoritative Prow releases for sample payload tags: %w", err)
 		}
 		for _, row := range releaseRows {
@@ -209,13 +208,13 @@ func findSamplePayloadReleases(
 		var releaseRows []struct {
 			Release string `gorm:"column:prow_job_release"`
 		}
-		if err := query.ScanAll(db.WithContext(ctx).Raw(`
+		if err := db.WithContext(ctx).Raw(`
 			SELECT DISTINCT pjr.prow_job_release
 			FROM prow_job_runs pjr
 			WHERE pjr.id = ANY(?)
 				AND pjr.timestamp >= ? AND pjr.timestamp < ?
 				AND pjr.deleted_at IS NULL`,
-			pq.Array(unresolvedRunIDs), start, end), &releaseRows); err != nil {
+			pq.Array(unresolvedRunIDs), start, end).Scan(&releaseRows).Error; err != nil {
 			return nil, fmt.Errorf("finding Prow releases for runs with missing or stale lookup keys: %w", err)
 		}
 		for _, row := range releaseRows {

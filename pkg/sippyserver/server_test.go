@@ -1,13 +1,9 @@
 package sippyserver
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"strings"
 	"testing"
-	"testing/synctest"
-	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -144,83 +140,5 @@ func TestEncodeDefaultHighRisk(t *testing.T) {
 
 	if analysis.OverallRisk.Level.Level != apitype.FailureRiskLevelHigh.Level {
 		t.Fatal("Invalid overall risk analysis after decoding")
-	}
-}
-
-func TestRefreshDataReportsCancellation(t *testing.T) {
-	tests := []struct {
-		name      string
-		cancelCtx bool
-		expectErr error
-	}{
-		{name: "active context reports success"},
-		{name: "canceled context returns the context error", cancelCtx: true, expectErr: context.Canceled},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			if tt.cancelCtx {
-				cancel()
-			}
-			// a nil db skips the refresh queries, isolating the completion check
-			err := RefreshData(ctx, nil, nil, RefreshOptions{})
-			if tt.expectErr == nil {
-				if err != nil {
-					t.Fatalf("RefreshData returned error: %v", err)
-				}
-				return
-			}
-			if !errors.Is(err, tt.expectErr) {
-				t.Fatalf("RefreshData error = %v, want %v", err, tt.expectErr)
-			}
-		})
-	}
-}
-
-func TestContextWithDisconnectGrace(t *testing.T) {
-	type ctxKey struct{}
-	const grace = 5 * time.Minute
-	tests := []struct {
-		name         string
-		cancelParent bool
-		cancelChild  bool
-		elapsed      time.Duration
-		expectDone   bool
-	}{
-		{name: "live parent keeps the context open", elapsed: 2 * grace},
-		{name: "parent cancellation is deferred during the grace period", cancelParent: true, elapsed: grace - time.Nanosecond},
-		{name: "parent cancellation propagates once the grace period expires", cancelParent: true, elapsed: grace, expectDone: true},
-		{name: "cancel function stops the context immediately", cancelChild: true, expectDone: true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// synctest's fake clock makes the grace boundary exact, independent of scheduling delays
-			synctest.Test(t, func(t *testing.T) {
-				parent, cancelParent := context.WithCancel(context.WithValue(t.Context(), ctxKey{}, "value"))
-				defer cancelParent()
-				ctx, cancel := contextWithDisconnectGrace(parent, grace)
-				defer cancel()
-
-				if got := ctx.Value(ctxKey{}); got != "value" {
-					t.Fatalf("context value = %v, want parent value", got)
-				}
-				if tt.cancelParent {
-					cancelParent()
-				}
-				if tt.cancelChild {
-					cancel()
-				}
-				// let the cancellation callback start its grace timer before advancing the clock
-				synctest.Wait()
-
-				time.Sleep(tt.elapsed)
-				synctest.Wait()
-
-				if done := ctx.Err() != nil; done != tt.expectDone {
-					t.Fatalf("after %s: context done = %v (err %v), want %v", tt.elapsed, done, ctx.Err(), tt.expectDone)
-				}
-			})
-		})
 	}
 }

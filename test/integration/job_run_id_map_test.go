@@ -20,11 +20,11 @@ func TestLookupProwJobRunPartitionKeys(t *testing.T) {
 	run := intutil.CreateProwJobRun(t, dbc, job.ID, "4.18", ts, true, v1.JobSucceeded)
 
 	runID := int64(run.ID) //nolint:gosec // G115: prow_job_runs.id is a PostgreSQL serial, always within int64 range
-	keys, err := query.LookupProwJobRunPartitionKeys(t.Context(), dbc.DB, runID)
+	keys, err := query.LookupProwJobRunPartitionKeys(dbc.DB, runID)
 	require.NoError(t, err)
 	assert.Equal(t, "4.18", keys.ProwJobRelease)
 	assert.True(t, ts.Equal(keys.Timestamp))
 
-	_, err = query.LookupProwJobRunPartitionKeys(t.Context(), dbc.DB, 999999)
+	_, err = query.LookupProwJobRunPartitionKeys(dbc.DB, 999999)
 	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }

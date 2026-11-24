@@ -29,7 +29,7 @@ type Middleware interface {
 	// Implementations can alter Status code and add explanations for what they did and why.
 	// Used in both ComponentReport and TestDetails. Both uses are OUTSIDE the normal caching of the report.
 	// This allows for cheap reloads with fresh triage data without having to do an expensive report recalculation.
-	PostAnalysis(ctx context.Context, testKey crtest.Identification, testStats *testdetails.TestComparison) error
+	PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error
 
 	// Analyze gives middleware the opportunity to perform statistical analysis for a test,
 	// replacing the default Fisher's exact / pass-rate logic. Return true if this middleware

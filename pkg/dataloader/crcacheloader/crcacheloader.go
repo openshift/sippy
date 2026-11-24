@@ -229,7 +229,7 @@ func (l *ComponentReadinessCacheLoader) generateReport(ctx context.Context, gene
 		}
 		return nil, fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
-	err := generator.PostAnalysis(ctx, &report)
+	err := generator.PostAnalysis(&report)
 	return &report, err
 }
 

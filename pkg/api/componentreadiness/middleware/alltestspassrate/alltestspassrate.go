@@ -29,7 +29,7 @@ func (a *AllTestsPassRate) PreAnalysis(_ crtest.Identification, _ *testdetails.T
 	return nil
 }
 
-func (a *AllTestsPassRate) PostAnalysis(_ context.Context, _ crtest.Identification, _ *testdetails.TestComparison) error {
+func (a *AllTestsPassRate) PostAnalysis(_ crtest.Identification, _ *testdetails.TestComparison) error {
 	return nil
 }
 
