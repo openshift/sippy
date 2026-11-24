@@ -901,7 +901,10 @@ var errMissingLastFailure = errors.New("regression has no recorded last failure"
 // HistoricalSampleWindow returns the sample window for a historical report: from 00:00 UTC seven
 // calendar days before the last-failure date through the whole last-failure date. The end is the
 // following UTC midnight, exclusive, matching the data providers' ">= start AND < end" filters, so
-// the failure itself is always included.
+// the failure itself is always included. Using the exact last-failure timestamp as the end would
+// exclude that failure. The result is an inclusive calendar-date range rather than an exact 168 hour
+// interval: a last failure at 2026-09-29T01:33:26Z gives 2026-09-22T00:00:00Z to
+// 2026-09-30T00:00:00Z, which the UI shows as September 22-29, 2026.
 func HistoricalSampleWindow(lastFailure time.Time) (start, end time.Time) {
 	lastFailureDate := civil.DateOf(lastFailure.UTC())
 	start = lastFailureDate.AddDays(-historicalSampleDays).In(time.UTC)
@@ -910,9 +913,17 @@ func HistoricalSampleWindow(lastFailure time.Time) (start, end time.Time) {
 }
 
 // generateHistoricalTestDetailsURL builds a test_details link that approximates the query that showed
-// this regression: the sample ends with the regression-wide last failure and the view's basis is
-// resolved relative to that anchor. Concrete dates are serialized so reopening the link never advances the windows. The
-// regressionId parameter lets the UI load authoritative closure metadata for the report.
+// this regression. The sample release is the regression's persisted release and the sample window
+// ends with the regression-wide last failure (see HistoricalSampleWindow). The view's basis is
+// resolved relative to that anchor: rolling expressions such as now-60d to now-30d are evaluated
+// from the last failure, while GA-based and absolute boundaries keep their configured meaning.
+// Everything else (grouping, variant options, test filters, advanced options) comes from the view's
+// current configuration, so the link reconstructs a query rather than replaying a stored report.
+//
+// Concrete RFC 3339 dates are serialized so reopening the link never advances the windows, and
+// ParseCRReleaseTimeAt keeps already-passed boundaries exact instead of applying cache rounding. The
+// regressionId parameter lets the UI load authoritative closure metadata for the report; the API
+// ignores it.
 func generateHistoricalTestDetailsURL(regression *models.TestRegression, view crview.View, releases []v1.Release, baseURL string) (string, error) {
 	if regression == nil {
 		return "", fmt.Errorf("regression cannot be nil")

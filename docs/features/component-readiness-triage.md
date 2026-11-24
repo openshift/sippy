@@ -92,6 +92,40 @@ The failed-fix state does not appear on that index; the triage detail page and t
 because they have the regression data the index panel lacks. Key tests tolerate a few post-resolution
 failures before the report flips them from `Believed Fixed` to `Failed Fix`.
 
+## Reviewing closed regressions
+
+A closed regression no longer appears in the current report, but triage detail pages and the regressed
+tests dialog still list it so you can review the evidence that led to it. Each listed regression links
+to its test details once per view it was tracked in:
+
+| Regression | In this view | Link |
+|------------|--------------|------|
+| Open | Still regressed | The view's current report, shown with the severity icon. |
+| Open | Closed in this view only | A historical report, labeled `Closed in this view`. |
+| Closed (including force closed) | Any | A historical report, labeled `Closed regression`. |
+
+Historical rows show a clock icon with a green check badge. The tooltip names the covered period, for
+example "Closed regression. View historical test details for September 22-29, 2026." The green check
+means the tracked regression closed; it is not a passing assessment for that period. When Sippy cannot
+build a link (the regression has no recorded last failure, the view is no longer configured, or the
+view's basis cannot be resolved), the icon is disabled and its tooltip explains why.
+
+A historical report covers the week ending with the regression's last failure, compared against the
+view's basis as it applied at that time. The test details page keeps the computed statistical result,
+even when it is red, and adds a `Closed regression, historical report` notice with the regression ID,
+closure date, last failure, and the sample and basis periods. Viewing history never changes
+regression tracking or triage state. The link holds concrete dates, so sharing or reopening it shows
+the same period.
+
+Keep in mind:
+
+- The report uses the view's current grouping and filters, so it can differ slightly from the report
+  that originally flagged the regression.
+- If the providers no longer hold data for that period, the page shows the closure details and states
+  that no test results are available. It never substitutes today's data.
+- The last failure is tracked per regression, not per view. For a regression that closed in one view
+  but stayed open in another, the period may end after it closed in the first view.
+
 ## Source pointers
 
 | Path | Contents |
@@ -103,6 +137,9 @@ failures before the report flips them from `Believed Fixed` to `Failed Fix`.
 | [`sippy-ng/src/component_readiness/RegressedTestsModal.jsx`](../../sippy-ng/src/component_readiness/RegressedTestsModal.jsx) | Regressed tests dialog and its tabs. |
 | [`sippy-ng/src/component_readiness/TriageList.jsx`](../../sippy-ng/src/component_readiness/TriageList.jsx) | `All Triage Records` index. |
 | [`sippy-ng/src/component_readiness/Triage.jsx`](../../sippy-ng/src/component_readiness/Triage.jsx) | Triage detail page. |
+| [`pkg/api/componentreadiness/triage.go`](../../pkg/api/componentreadiness/triage.go) | Builds current and historical `test_details:<view>` links for regressions. |
+| [`sippy-ng/src/component_readiness/TriagedRegressionTestList.jsx`](../../sippy-ng/src/component_readiness/TriagedRegressionTestList.jsx) | Triaged regression table with historical icons and links. |
+| [`sippy-ng/src/component_readiness/HistoricalRegressionNotice.jsx`](../../sippy-ng/src/component_readiness/HistoricalRegressionNotice.jsx) | Closure notice on historical test details pages. |
 
 ## API and tests
 
@@ -112,6 +149,7 @@ The triage and regression endpoints live under `/api/component_readiness/` and u
 [`sippy-ng/bdd/features/`](../../sippy-ng/bdd/features/):
 [`triage-index.feature`](../../sippy-ng/bdd/features/triage-index.feature),
 [`triage-detail.feature`](../../sippy-ng/bdd/features/triage-detail.feature),
-[`regressed-tests-dialog.feature`](../../sippy-ng/bdd/features/regressed-tests-dialog.feature), and
-[`regression-redirect.feature`](../../sippy-ng/bdd/features/regression-redirect.feature). Run it with
+[`regressed-tests-dialog.feature`](../../sippy-ng/bdd/features/regressed-tests-dialog.feature),
+[`regression-redirect.feature`](../../sippy-ng/bdd/features/regression-redirect.feature), and
+[`historical-regressions.feature`](../../sippy-ng/bdd/features/historical-regressions.feature). Run it with
 `make test-bdd`.

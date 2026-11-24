@@ -896,4 +896,4 @@ historical link is returned when the regression has no `last_failure`, when the
 view is no longer configured, or when the view's basis cannot be resolved. The
 link only describes a query; whether the providers still hold data for the
 window is determined when it is opened. See
-[docs/features/closed-regression-history.md](../../docs/features/closed-regression-history.md).
+[docs/features/component-readiness-triage.md](../../docs/features/component-readiness-triage.md#reviewing-closed-regressions).
