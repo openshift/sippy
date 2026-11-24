@@ -247,14 +247,14 @@ attribute those requests to a mock user instead.
   to attribute writes to the mock user. There is no separate environment variable.
   `hack/agentic_setup.sh` exports `DEV_MODE=1` (unless already set), and the agentic-staging
   deployment sources that script before starting `sippy serve`. In the devcontainer, add `DEV_MODE=1` to
-  `.devcontainer/.env` (or export it before starting the server). The MCP server reads
+  `.devcontainer/.env` (or export it before starting the server). The `sippy-dev` MCP server reads
   `.devcontainer/.env` only at startup and `sippy_serve` inherits its environment, so after
   changing the file restart the MCP server and any running Sippy server. Note that `DEV_MODE=1`
   also bypasses the component report and test details caches. Triage and other post-analysis
   still apply to both reports. `scripts/e2e.sh` starts its server with `DEV_MODE=0` regardless,
   because the triage e2e tests inject regressions into the report cache.
-* **Precedence:** a real `X-Forwarded-User` header always wins. The mock only fills in the user when
-  the header is missing.
+* **Precedence:** a real `X-Forwarded-User` header (or a trusted delegator's `X-Acting-For`) always
+  wins over the mock. The mock only fills in the user when the header is missing.
 * **Production:** production leaves `DEV_MODE` unset, so endpoints that check for a user still
   reject requests without one (for example, triage writes and force close return `401 Unauthorized`).
 * **Isolation:** with the mock active, any client that can reach the server can perform

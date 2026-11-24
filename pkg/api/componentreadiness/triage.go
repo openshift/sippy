@@ -310,7 +310,7 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 	existingTriage := &models.Triage{}
 	res := dbc.First(existingTriage, id).Delete(existingTriage)
 	if res.Error != nil {
-		return fmt.Errorf("error deleting triage record: %w", res.Error)
+		return fmt.Errorf("deleting triage record %d: %w", id, res.Error)
 	}
 	return nil
 }

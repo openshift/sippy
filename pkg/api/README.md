@@ -764,32 +764,17 @@ Returns a single triage record by ID. Use `expand=regressions` to include
 regressed test summaries. Regression job runs in the response may contain
 applied `job_labels`.
 
-A triage `id` that does not exist returns `404 Not Found`.
-
 Endpoint: `POST /api/component_readiness/triages`
 
 Creates a new triage record.
 
 Endpoint: `PUT /api/component_readiness/triages/{id}`
 
-Updates an existing triage record by replacing it: fields missing from the body are
-cleared and `regressions` becomes exactly the listed IDs. Retrieve the full record
-first and send it back with your changes. There is no version check, so concurrent
-replacements are last writer wins. `resolution_reason` is system-owned: resubmitting
-an unchanged `resolved` instant keeps the stored reason whatever the body sends,
-setting or changing it sets the reason to `user`, and clearing it clears the reason.
-A triage `id` that does not exist returns `404 Not Found`.
+Updates an existing triage record.
 
 Endpoint: `DELETE /api/component_readiness/triages/{id}`
 
-Deletes a triage record. A triage `id` that does not exist returns `404 Not Found`.
-
-### Triage write identity
-
-Create, update, and delete record the requesting user in the triage audit log
-(`GET /api/component_readiness/triages/{id}/audit`) and return `401 Unauthorized`
-when no user can be determined. The user is the authenticated `X-Forwarded-User`
-set by the oauth proxy, or the `DEV_MODE=1` mock user locally (see `DEVELOPMENT.md`).
+Deletes a triage record.
 
 Endpoint: `POST /api/component_readiness/triages/{id}/force_close_regressions`
 
@@ -808,7 +793,9 @@ The triage must be resolved. If it is not, the endpoint returns `400 Bad Request
 message "Cannot force-close regressions for an unresolved triage. Resolve the triage first."
 This is a write endpoint and requires the `write_endpoints` capability.
 
-The closing user is taken from the `X-Forwarded-User` header. A request without a user returns
+The closing user is taken from the `X-Forwarded-User` header, or from `X-Acting-For` when the
+request comes from a trusted delegator (which must send it, or gets `400 Bad Request`; see
+[config/README.md](../../config/README.md#trusted-delegators)). A request without a user returns
 `401 Unauthorized`, except when `DEV_MODE=1` (local development and agentic-staging), in which case
 the request is attributed to the mock user `developer`. See
 [DEVELOPMENT.md](../../DEVELOPMENT.md#mock-authentication-local-and-agentic-staging).

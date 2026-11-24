@@ -68,7 +68,7 @@ func SippyGetAbsolute(url string, data interface{}) error {
 // sippyMutatingRequest performs a JSON request as the default e2e user, failing on any non-200
 // status and decoding the response into responseData when it is non-nil.
 func sippyMutatingRequest(method, path string, bodyData, responseData interface{}) error {
-	status, body, err := SippyRequestWithHeaders(method, path, map[string]string{"X-Forwarded-User": "developer"}, bodyData)
+	status, body, err := SippyRequestWithHeaders(method, path, map[string]string{ForwardedUserHeader: DefaultUser}, bodyData)
 	if err != nil {
 		return err
 	}
@@ -94,6 +94,13 @@ func SippyDelete(path string) error {
 }
 
 const (
+	// ForwardedUserHeader carries the authenticated principal, as the oauth proxy sets it in production.
+	ForwardedUserHeader string = "X-Forwarded-User"
+	// ActingForHeader lets a trusted delegator name the user it acts for.
+	ActingForHeader string = "X-Acting-For"
+	// DefaultUser is the principal the default mutating helpers authenticate as.
+	DefaultUser string = "developer"
+
 	// TrustedDelegator and SecondTrustedDelegator are the principals scripts/e2e.sh and
 	// e2e-scripts/sippy-e2e-sippy-e2e-test-commands.sh pass to --trusted-delegator. These values
 	// must be kept in sync.

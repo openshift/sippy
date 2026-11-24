@@ -24,10 +24,10 @@ const (
 func delegatedHeaders(principal, actingFor string) map[string]string {
 	headers := map[string]string{}
 	if principal != "" {
-		headers["X-Forwarded-User"] = principal
+		headers[util.ForwardedUserHeader] = principal
 	}
 	if actingFor != "" {
-		headers["X-Acting-For"] = actingFor
+		headers[util.ActingForHeader] = actingFor
 	}
 	return headers
 }
@@ -40,6 +40,24 @@ func triagePath(id uint) string {
 func deleteRegression(t *testing.T, dbc *db.DB, regression *models.TestRegression) {
 	if err := dbc.DB.Delete(regression).Error; err != nil {
 		t.Errorf("failed to delete regression fixture %d: %v", regression.ID, err)
+	}
+}
+
+// triageRequest is one triage API call in a table of calls expected to get the same response status.
+type triageRequest struct {
+	method string
+	path   string
+	body   interface{}
+}
+
+// assertEachStatus sends every request with headers and asserts each response has wantStatus.
+func assertEachStatus(t *testing.T, headers map[string]string, requests []triageRequest, wantStatus int) {
+	for _, r := range requests {
+		t.Run(r.method, func(t *testing.T) {
+			status, body, err := util.SippyRequestWithHeaders(r.method, r.path, headers, r.body)
+			require.NoError(t, err)
+			assert.Equal(t, wantStatus, status, string(body))
+		})
 	}
 }
 
@@ -142,7 +160,7 @@ func Test_TriageDelegation(t *testing.T) {
 			status, respBody, err := util.SippyRequestWithHeaders(http.MethodPost, triagesPath, delegatedHeaders(util.SecondTrustedDelegator, actingFor), body)
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusBadRequest, status, string(respBody))
-			assert.Contains(t, string(respBody), "X-Acting-For")
+			assert.Contains(t, string(respBody), util.ActingForHeader)
 		}
 		assert.Equal(t, triagesBefore, countTriages(t, dbc), "rejected requests must not create triages")
 		assert.Equal(t, auditsBefore, countAuditLogs(t, dbc), "rejected requests must not write audit records")
@@ -155,13 +173,15 @@ func Test_TriageDelegation(t *testing.T) {
 
 		changed := created
 		changed.Description = "should not persist"
-		status, body, err := util.SippyRequestWithHeaders(http.MethodPut, triagePath(created.ID), delegatedHeaders(util.TrustedDelegator, ""), changed)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, status, string(body))
-
-		status, body, err = util.SippyRequestWithHeaders(http.MethodDelete, triagePath(created.ID), delegatedHeaders(util.TrustedDelegator, " "), nil)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, status, string(body))
+		requests := []triageRequest{
+			{method: http.MethodPut, path: triagePath(created.ID), body: changed},
+			{method: http.MethodDelete, path: triagePath(created.ID)},
+		}
+		for _, actingFor := range []string{"", " "} {
+			t.Run(fmt.Sprintf("acting for %q", actingFor), func(t *testing.T) {
+				assertEachStatus(t, delegatedHeaders(util.TrustedDelegator, actingFor), requests, http.StatusBadRequest)
+			})
+		}
 
 		var current models.Triage
 		require.NoError(t, util.SippyGet(triagePath(created.ID), &current))
@@ -177,44 +197,33 @@ func Test_TriageDelegation(t *testing.T) {
 
 	t.Run("direct user ignores X-Acting-For", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		created := createTriageAs(t, delegatedHeaders("developer", "mallory@example.com"), regression)
-		assert.Equal(t, "developer", latestAuditLog(t, dbc, created.ID).User)
+		created := createTriageAs(t, delegatedHeaders(util.DefaultUser, "mallory@example.com"), regression)
+		assert.Equal(t, util.DefaultUser, latestAuditLog(t, dbc, created.ID).User)
 	})
 
 	t.Run("unauthenticated request cannot acquire an identity", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		created := createTriageAs(t, delegatedHeaders("developer", ""), regression)
+		created := createTriageAs(t, delegatedHeaders(util.DefaultUser, ""), regression)
 		triagesBefore, auditsBefore := countTriages(t, dbc), countAuditLogs(t, dbc)
-
-		body := models.Triage{URL: delegationTestURL, Type: models.TriageTypeProduct}
-		status, respBody, err := util.SippyRequestWithHeaders(http.MethodPost, triagesPath, delegatedHeaders("", "alice@example.com"), body)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, status, string(respBody))
 
 		changed := created
 		changed.Description = "should not persist"
-		status, respBody, err = util.SippyRequestWithHeaders(http.MethodPut, triagePath(created.ID), delegatedHeaders("", "alice@example.com"), changed)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, status, string(respBody))
-
-		status, respBody, err = util.SippyRequestWithHeaders(http.MethodDelete, triagePath(created.ID), delegatedHeaders("", "alice@example.com"), nil)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, status, string(respBody))
+		assertEachStatus(t, delegatedHeaders("", "alice@example.com"), []triageRequest{
+			{method: http.MethodPost, path: triagesPath, body: models.Triage{URL: delegationTestURL, Type: models.TriageTypeProduct}},
+			{method: http.MethodPut, path: triagePath(created.ID), body: changed},
+			{method: http.MethodDelete, path: triagePath(created.ID)},
+		}, http.StatusUnauthorized)
 
 		assert.Equal(t, triagesBefore, countTriages(t, dbc))
 		assert.Equal(t, auditsBefore, countAuditLogs(t, dbc))
 	})
 
 	t.Run("update and delete of a nonexistent triage return not found", func(t *testing.T) {
-		headers := delegatedHeaders(util.TrustedDelegator, "alice@example.com")
 		missing := models.Triage{ID: 999999999, URL: delegationTestURL, Type: models.TriageTypeProduct}
-		status, body, err := util.SippyRequestWithHeaders(http.MethodPut, triagePath(missing.ID), headers, missing)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusNotFound, status, string(body))
-
-		status, body, err = util.SippyRequestWithHeaders(http.MethodDelete, triagePath(missing.ID), headers, nil)
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusNotFound, status, string(body))
+		assertEachStatus(t, delegatedHeaders(util.TrustedDelegator, "alice@example.com"), []triageRequest{
+			{method: http.MethodPut, path: triagePath(missing.ID), body: missing},
+			{method: http.MethodDelete, path: triagePath(missing.ID)},
+		}, http.StatusNotFound)
 	})
 }
 
@@ -227,7 +236,7 @@ func Test_TriageUpdatePreservesResolutionReason(t *testing.T) {
 	defer deleteRegression(t, dbc, regression)
 	defer cleanupAllTriages(dbc)
 
-	created := createTriageAs(t, delegatedHeaders("developer", ""), regression)
+	created := createTriageAs(t, delegatedHeaders(util.DefaultUser, ""), regression)
 	resolvedAt := time.Now().UTC().Add(-time.Hour).Truncate(time.Microsecond)
 	res := dbc.DB.Model(&models.Triage{}).Where("id = ?", created.ID).UpdateColumns(map[string]interface{}{
 		models.ColResolved:         sql.NullTime{Time: resolvedAt, Valid: true},

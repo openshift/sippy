@@ -9,6 +9,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	sippybq "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 )
 
 const (
@@ -142,6 +145,26 @@ func TestDelegationMiddlewareEffectiveUser(t *testing.T) {
 	}
 }
 
+// TestWithRequestIdentityLabelsBigQueryWithDelegatedUser guards the middleware order: request logging
+// must run after delegation so BigQuery queries are labeled with the delegated user, not the delegator.
+func TestWithRequestIdentityLabelsBigQueryWithDelegatedUser(t *testing.T) {
+	t.Setenv(devModeEnvVar, "")
+	var got bqlabel.RequestContext
+	next := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		got, _ = req.Context().Value(sippybq.RequestContextKey).(bqlabel.RequestContext)
+		w.WriteHeader(http.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/component_readiness/triages", nil)
+	req.Header.Set(forwardedUserHeader, delegatorA)
+	req.Header.Set(actingForHeader, "alice")
+	rec := httptest.NewRecorder()
+
+	newDelegationResolver([]string{delegatorA}).withRequestIdentity(next).ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, "alice", got.User)
+}
+
 // TestUserAttributedHandlersWithDelegation runs handlers that share getUserForRequest behind the
 // delegation middleware. Requests that pass authentication use an empty body so they stop at body
 // validation (400) before any database access; the status therefore shows which identity check ran.
@@ -167,11 +190,14 @@ func TestUserAttributedHandlersWithDelegation(t *testing.T) {
 		actingFor     string
 		authenticated bool
 		wantStatus    int
+		// rejectedByMiddleware marks the case refused by the delegation middleware, whose 400 must
+		// be told apart from the handlers' own body-validation 400.
+		rejectedByMiddleware bool
 	}{
 		{name: "delegated user", forwardedUser: delegatorA, actingFor: "alice", authenticated: true},
 		{name: "direct user", forwardedUser: "alice", authenticated: true},
 		{name: "unlisted principal with acting for", forwardedUser: "chai-bot", actingFor: "alice", authenticated: true},
-		{name: "delegator without acting for", forwardedUser: delegatorA, wantStatus: http.StatusBadRequest},
+		{name: "delegator without acting for", forwardedUser: delegatorA, wantStatus: http.StatusBadRequest, rejectedByMiddleware: true},
 		{name: "unauthenticated with acting for", actingFor: "alice", wantStatus: http.StatusUnauthorized},
 	}
 	for _, h := range handlers {
@@ -197,6 +223,11 @@ func TestUserAttributedHandlersWithDelegation(t *testing.T) {
 					want = h.authenticatedStatus
 				}
 				assert.Equal(t, want, rec.Code, rec.Body.String())
+				if id.rejectedByMiddleware {
+					assert.Contains(t, rec.Body.String(), actingForHeader)
+				} else {
+					assert.NotContains(t, rec.Body.String(), actingForHeader)
+				}
 			})
 		}
 	}
@@ -205,14 +236,21 @@ func TestUserAttributedHandlersWithDelegation(t *testing.T) {
 // TestDeleteTriageRequiresUser verifies delete refuses an unauthenticated request before touching
 // the database, with or without an X-Acting-For header.
 func TestDeleteTriageRequiresUser(t *testing.T) {
-	for _, actingFor := range []string{"", "alice"} {
-		t.Run("acting for "+actingFor, func(t *testing.T) {
+	tests := []struct {
+		name      string
+		actingFor string
+	}{
+		{name: "unauthenticated without acting for"},
+		{name: "unauthenticated with acting for", actingFor: "alice"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv(devModeEnvVar, "")
 			s := &Server{delegation: newDelegationResolver([]string{delegatorA})}
 			req := httptest.NewRequest(http.MethodDelete, "/api/component_readiness/triages/1", nil)
 			req = mux.SetURLVars(req, map[string]string{"id": "1"})
-			if actingFor != "" {
-				req.Header.Set(actingForHeader, actingFor)
+			if tc.actingFor != "" {
+				req.Header.Set(actingForHeader, tc.actingFor)
 			}
 			rec := httptest.NewRecorder()
 
@@ -261,7 +299,7 @@ func TestUserForRequest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			if tc.header != "" {
-				req.Header.Set("X-Forwarded-User", tc.header)
+				req.Header.Set(forwardedUserHeader, tc.header)
 			}
 			assert.Equal(t, tc.want, userForRequest(req, envFrom(tc.env)))
 		})

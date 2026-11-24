@@ -35,8 +35,8 @@ const (
 type identityContextKey struct{}
 
 // errMissingActingFor is returned when a trusted delegator omits the delegated identity on a
-// mutating request. It maps to 400 Bad Request, matching ship-status, and the request never falls back
-// to the delegator identity.
+// mutating request. It maps to 400 Bad Request, and the request never falls back to the delegator
+// identity.
 var errMissingActingFor = fmt.Errorf("%s is required for requests from a trusted delegator", actingForHeader)
 
 // delegationResolver determines the effective requesting user for a request. Principals in the
@@ -105,6 +105,13 @@ func (r delegationResolver) middleware(next http.Handler) http.Handler {
 		}).Info("delegated request")
 		next.ServeHTTP(w, req.WithContext(context.WithValue(req.Context(), identityContextKey{}, user)))
 	})
+}
+
+// withRequestIdentity wraps next with delegation resolution and request logging. Delegation runs
+// first so the BigQuery labels set by logRequestHandler, and every handler, see the effective user
+// rather than the delegator.
+func (r delegationResolver) withRequestIdentity(next http.Handler) http.Handler {
+	return r.middleware(logRequestHandler(next))
 }
 
 // delegatedUserFromContext returns the identity resolved by the delegation middleware, if any. The

@@ -2008,7 +2008,7 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 // mutation is refused rather than recorded with an empty user.
 func requireTriageWriteUser(w http.ResponseWriter, req *http.Request) (string, bool) {
 	user := getUserForRequest(req)
-	if strings.TrimSpace(user) == "" {
+	if user == "" {
 		failureResponse(w, http.StatusUnauthorized, "cannot determine user for triage change; authentication is required")
 		return "", false
 	}
@@ -3257,10 +3257,7 @@ func (s *Server) Serve() {
 		http.FileServer(http.FS(s.static)).ServeHTTP(w, r)
 	})
 
-	var handler http.Handler = router
-	handler = logRequestHandler(handler)
-	// Resolve delegation before request logging so BigQuery labels and handlers see the effective user.
-	handler = s.delegation.middleware(handler)
+	handler := s.delegation.withRequestIdentity(router)
 
 	// Middleware for http metrics
 	metricsMiddleware := middleware.New(middleware.Config{

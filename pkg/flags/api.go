@@ -34,10 +34,11 @@ func (f *APIFlags) BindFlags(fs *pflag.FlagSet) {
 // misconfigured allowlist fails at startup instead of silently enabling or disabling delegation.
 func (f *APIFlags) Validate() error {
 	for _, principal := range f.TrustedDelegators {
-		if strings.TrimSpace(principal) == "" {
+		trimmed := strings.TrimSpace(principal)
+		if trimmed == "" {
 			return fmt.Errorf("--trusted-delegator must not be blank")
 		}
-		if strings.TrimSpace(principal) != principal {
+		if trimmed != principal {
 			return fmt.Errorf("--trusted-delegator %q must not have surrounding whitespace", principal)
 		}
 	}

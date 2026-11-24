@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAPIFlagsTrustedDelegators(t *testing.T) {
+func TestAPIFlagsValidate(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    []string
