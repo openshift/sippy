@@ -772,6 +772,7 @@ func (s *Server) jsonFeatureGateDetail(w http.ResponseWriter, req *http.Request)
 	}
 	gates[0].MatchingJobs = matchingJobs
 
+	// deepcode ignore Sqli: release is regexp-validated and bound; promotion filters only reach SQL via allowlisted columns and bound values (TRT-3122)
 	promotionStatus, err := featuregatepromotion.GetPromotionStatus(req.Context(), s.db, s.cache, release, featureGate)
 	if err != nil {
 		failureResponseWithError(w, "couldn't compute feature gate promotion status", err)
@@ -1333,6 +1334,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	limit := getLimitParam(req)
 	sortField, sort := getSortParams(req)
 
+	// deepcode ignore Sqli: filter columns must pass filter.ValidateField and are quoted; values are bound parameters (TRT-3122)
 	jobIDs, err := query.ListFilteredJobIDs(req.Context(), s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
 	if err != nil {
 		failureResponseWithError(w, "error querying jobs", err)
@@ -1351,6 +1353,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
+		// deepcode ignore Sqli: pushed-down columns come from a constant allowlist, operators from a fixed map, values are bound (TRT-3122)
 		api.PrintTestsJSONFromDB(w, req, s.db, s.cache, release)
 	}
 }
@@ -1639,6 +1642,7 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
+	// deepcode ignore Sqli: filter columns are aliases or pass filter.ValidateField and are quoted; values are bound parameters (TRT-3122)
 	result, err := api.JobsRunsReportFromDB(s.db, filterOpts, release, pagination, s.GetReportEnd())
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1888,6 +1892,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	sortField, sort := getSortParams(req)
 	period := getPeriod(req, api.PeriodDay)
 
+	// deepcode ignore Sqli: filter columns must pass filter.ValidateField and are quoted; values are bound parameters (TRT-3122)
 	results, err := api.PrintJobAnalysisJSONFromDB(req.Context(), s.db, release, jobFilter, jobRunsFilter,
 		start, boundary, end, limit, sortField, sort, period, s.GetReportEnd())
 	if err != nil {
@@ -2035,6 +2040,7 @@ func (s *Server) jsonUpdateTriage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
+	// deepcode ignore Sqli: triage.ID is a uint primary key bound as a query parameter (TRT-3122)
 	triage, err = componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), s.jiraClient, triage, req)
 	if err != nil {
 		log.WithError(err).Error("error updating triage")

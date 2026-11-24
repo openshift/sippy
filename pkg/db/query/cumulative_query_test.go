@@ -378,3 +378,77 @@ func TestPeriodsForReportType_Contiguous(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessedFilterConditions(t *testing.T) {
+	tests := []struct {
+		name          string
+		filter        *filter.Filter
+		wantConds     []string
+		wantArgs      []any
+		wantRemaining []filter.FilterItem
+	}{
+		{
+			name:   "nil filter",
+			filter: nil,
+		},
+		{
+			name: "allowlisted arithmetic fields are pushed down with quoted columns",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThanOrEquals, Value: "7"},
+				{Field: "current_pass_percentage", Operator: filter.OperatorArithmeticLessThan, Value: "80", Not: true},
+			}},
+			wantConds: []string{`"current_runs" >= ?`, `NOT("current_pass_percentage" < ?)`},
+			wantArgs:  []any{"7", "80"},
+		},
+		{
+			name: "stats-derived and non-arithmetic items remain for the outer query",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "open_bugs", Operator: filter.OperatorArithmeticEquals, Value: "0"},
+				{Field: "delta_from_working_average", Operator: filter.OperatorArithmeticLessThan, Value: "-5"},
+				{Field: "current_runs", Operator: filter.OperatorContains, Value: "1"},
+			}},
+			wantConds: []string{`"open_bugs" = ?`},
+			wantArgs:  []any{"0"},
+			wantRemaining: []filter.FilterItem{
+				{Field: "delta_from_working_average", Operator: filter.OperatorArithmeticLessThan, Value: "-5"},
+				{Field: "current_runs", Operator: filter.OperatorContains, Value: "1"},
+			},
+		},
+		{
+			name: "field that is not an exact allowlist entry never reaches the SQL text",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: `current_runs" > 0 OR 1=1 --`, Operator: filter.OperatorArithmeticGreaterThan, Value: "1"},
+			}},
+			wantRemaining: []filter.FilterItem{
+				{Field: `current_runs" > 0 OR 1=1 --`, Operator: filter.OperatorArithmeticGreaterThan, Value: "1"},
+			},
+		},
+		{
+			name: "or-linked filters are left entirely for the outer query",
+			filter: &filter.Filter{LinkOperator: filter.LinkOperatorOr, Items: []filter.FilterItem{
+				{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThan, Value: "1"},
+			}},
+			wantRemaining: []filter.FilterItem{
+				{Field: "current_runs", Operator: filter.OperatorArithmeticGreaterThan, Value: "1"},
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			conds, args, remaining := processedFilterConditions(tc.filter)
+			if !slices.Equal(conds, tc.wantConds) {
+				t.Errorf("conditions = %q, want %q", conds, tc.wantConds)
+			}
+			if !slices.Equal(args, tc.wantArgs) {
+				t.Errorf("args = %#v, want %#v", args, tc.wantArgs)
+			}
+			var gotRemaining []filter.FilterItem
+			if remaining != nil {
+				gotRemaining = remaining.Items
+			}
+			if !slices.Equal(gotRemaining, tc.wantRemaining) {
+				t.Errorf("remaining = %#v, want %#v", gotRemaining, tc.wantRemaining)
+			}
+		})
+	}
+}

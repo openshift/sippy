@@ -54,6 +54,9 @@ func PrintJobAnalysisJSONFromDB(
 	}
 	sums := make([]resultSum, 0)
 	prowJobRunsFiltered := jobRunsFilter.ToSQL(dbc.DB.WithContext(ctx).Table("prow_job_runs"), apitype.JobRun{})
+	if prowJobRunsFiltered.Error != nil {
+		return result, prowJobRunsFiltered.Error
+	}
 	sumResults := dbc.DB.WithContext(ctx).Table("(?) as prow_job_runs", prowJobRunsFiltered).
 		Select(`date_trunc(?, timestamp)        AS period,
 	           count(*)                                              AS total_runs,

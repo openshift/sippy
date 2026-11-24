@@ -266,14 +266,14 @@ func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback t
 			allArgs = append(allArgs, args...)
 			continue
 		default:
+			var err error
 			if col, ok := columnAliases[item.Field]; ok {
-				var err error
 				sql, param, err = item.FilterItemToSQL(col)
-				if err != nil {
-					return nil, &ValidationError{Message: err.Error()}
-				}
 			} else {
-				sql, param = item.FilterFieldToSQL(apitype.JobRun{})
+				sql, param, err = item.FilterFieldToSQL(apitype.JobRun{})
+			}
+			if err != nil {
+				return nil, &ValidationError{Message: err.Error()}
 			}
 		}
 		if sql != "" {

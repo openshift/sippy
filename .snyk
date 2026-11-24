@@ -2,6 +2,12 @@
 # https://docs.snyk.io/scan-applications/snyk-code/using-snyk-code-from-the-cli/excluding-directories-and-files-from-the-snyk-code-cli-test
 # https://docs.snyk.io/snyk-cli/commands/ignore
 
+# Reviewed Snyk Code false positives in Go are suppressed per finding with an inline
+# "// deepcode ignore <rule>: <reason>" comment directly above the reported line, rather
+# than excluding whole files here, so new findings in the same files still fail the scan.
+# The CI scan runs without --remote-repo-url, so finding-ID ignores are not applied there.
+# Fix confirmed unsafe query construction instead of suppressing it (see TRT-3122).
+
 # used for byte compression decompression validation
 # Path: pkg/cache/compressed/cache.go, line 77
 # Info: The MD5 hash (used in crypto.md5.Sum) is insecure. Consider changing it to a secure hash algorithm

@@ -229,7 +229,7 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	// Ensure the record exists and preserve fields you're not allowed to update:
 	// Side effect of not requiring you to specify them in your json.
 	existingTriage := models.Triage{}
-	res := dbc.First(&existingTriage, triage.ID)
+	res := dbc.Where("id = ?", triage.ID).First(&existingTriage)
 	if res.Error != nil {
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %v", triage.ID)
 		return triage, res.Error

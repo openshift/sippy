@@ -7,6 +7,8 @@ import (
 
 	"github.com/jackc/pgconn"
 	"google.golang.org/api/googleapi"
+
+	"github.com/openshift/sippy/pkg/filter"
 )
 
 func TestIsBadRequestError(t *testing.T) {
@@ -24,6 +26,16 @@ func TestIsBadRequestError(t *testing.T) {
 			name: "generic error",
 			err:  fmt.Errorf("something went wrong"),
 			want: false,
+		},
+		{
+			name: "invalid filter field",
+			err:  filter.ValidateField(`name" OR 1=1 --`),
+			want: true,
+		},
+		{
+			name: "invalid filter field joined with other errors",
+			err:  errors.Join(fmt.Errorf("other"), fmt.Errorf("scan: %w", filter.ErrInvalidField)),
+			want: true,
 		},
 		{
 			name: "pg undefined column",

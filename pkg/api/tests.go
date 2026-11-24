@@ -527,6 +527,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 			Where("current_runs > 0 or previous_runs > 0")
 		finalResults = dbc.DB.Table("(?) as final_results", processedResults)
 	} else {
+		// deepcode ignore Sqli/test: pushed-down columns come from a constant allowlist, operators from a fixed map, values are bound (TRT-3122)
 		rawQuery, remainingFilter, err := query.UncollapsedTestReportWithStats(ctx, dbc, spec.Release, sample, base, nameFilter, variantFilter, processedFilter, lifecycleFilter)
 		if err != nil {
 			errs = append(errs, err)
@@ -540,6 +541,10 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 
 	if processedFilter != nil {
 		finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
+		if finalResults.Error != nil {
+			errs = append(errs, finalResults.Error)
+			return
+		}
 	}
 
 	// The global connection-level work_mem (128MB) causes the planner to
@@ -673,7 +678,10 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	paramIndex := 0
 
 	if rawFilter != nil && len(rawFilter.Items) > 0 {
-		filterResult := rawFilter.ToBQStr(apitype.Test{}, &paramIndex)
+		filterResult, err := rawFilter.ToBQStr(apitype.Test{}, &paramIndex)
+		if err != nil {
+			return testResultsBQ{}, []error{&ValidationError{Message: err.Error()}}
+		}
 		whereStr += " AND " + filterResult.SQL
 		// Add filter parameters directly from the filter result
 		queryParams = append(queryParams, filterResult.Parameters...)
@@ -705,7 +713,10 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	`, query.QueryTestSummer, bqc.Dataset, table, bqc.Dataset, whereStr, query.QueryTestSummarizer)
 	} else {
 		if processedFilter != nil && len(processedFilter.Items) > 0 {
-			filterResult := processedFilter.ToBQStr(apitype.Test{}, &paramIndex)
+			filterResult, err := processedFilter.ToBQStr(apitype.Test{}, &paramIndex)
+			if err != nil {
+				return testResultsBQ{}, []error{&ValidationError{Message: err.Error()}}
+			}
 			whereStr += " AND " + filterResult.SQL
 			// Add processed filter parameters directly from the filter result
 			queryParams = append(queryParams, filterResult.Parameters...)

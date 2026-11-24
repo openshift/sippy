@@ -27,6 +27,11 @@ An individual filter is JSON, in the following format:
 The legacy field names `columnField`/`operatorValue` (from MUI X v5) are
 also accepted for backward compatibility with existing bookmarks and links.
 
+The `field` must be a simple column name (letters, digits, and underscores, not starting with a digit).
+Any other field name is rejected before a query is built and classified as a bad request (HTTP 400
+from handlers that use the shared `IsBadRequestError` classification).
+Filter values are always sent as bound query parameters.
+
 - String operators are: contains, starts with, ends with, equals, is empty, is not empty.
 - Numerical operators are: =, !=, <, <=, >, >=
 - Array operators are: contains
