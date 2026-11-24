@@ -2,11 +2,13 @@
 
 ## Purpose
 
-Component Readiness flags tests whose pass rate regressed against a basis release. A triage record
-links one or more related regressions to a tracking URL, usually a Jira bug. Triage lets the team
-track a known issue without investigating it twice, and it keeps clear which regressions still need
-attention. Component Readiness splits each regression by variant and suite, so one underlying issue
-often surfaces as several regressions that a single triage covers together.
+Component Readiness compares each test's pass rate against a basis release or a threshold and flags
+the tests that regressed. Triage acknowledges and tracks these regressions by associating them with
+known issues, separating them from regressions that still need initial investigation.
+
+A triage record links one or more related regressions to a tracking URL, usually a Jira bug.
+Component Readiness tracks a separate regression for each affected variant and suite, so one
+underlying issue often surfaces as several regressions that a single triage record covers together.
 
 ## Concepts
 
@@ -27,16 +29,19 @@ anyone, and it does not prove the regression is fixed.
 
 1. **Find untriaged regressions:** Open the regressed tests dialog from the report and use the
    `Untriaged` tab, which lists the regressions that still need a triage record.
-2. **Inspect the evidence:** Open a regression to read its test details for each variant and job run.
-   The route `/sippy-ng/component_readiness/regressions/{id}` redirects to those details, so a link
-   built from a regression id resolves to the right test
-   ([`RegressionRedirect.jsx`](../../sippy-ng/src/component_readiness/RegressionRedirect.jsx)).
-3. **Link the regressions:** Add them to an `Existing Triage` that already points at the bug, or
-   create a `New Triage` with the URL, description, and type. `Potential Matches` suggests candidates
-   to review, not confirmed causes.
+2. **Inspect the evidence:** In the dialog, click a regression's status icon to open its test details
+   page. Review the results for each variant and job run, and file a bug if needed.
+3. **Link the regression:** When write endpoints are enabled, the test details page shows a `Triage`
+   button that opens the triage dialog. Add the regression to an `Existing Triage` that already points
+   at the bug, or create a `New Triage` with the URL, description, and type.
 4. **Follow the fix:** Open the tracking Jira bug, linked from the `All Triage Records` index and each
    triage detail page, to judge bug progress. Judge actual CI recovery from the report status and the
    failing job runs, not from the Jira state alone.
+
+When you triage a single regression, the dialog's `Potential Matches` tab suggests candidate triage
+records to review, not confirmed causes. To share a stable link to a regression's test details, build
+a URL from its id with the route `/sippy-ng/component_readiness/regressions/{id}`, which redirects to
+those details ([`RegressionRedirect.jsx`](../../sippy-ng/src/component_readiness/RegressionRedirect.jsx)).
 
 ## Lifecycle
 
@@ -72,8 +77,9 @@ The regressed tests dialog tabs filter the regression list rather than a single 
 - `Triaged`: regressions grouped under their triage records.
 - `All`: every regression in the current report.
 
-A report cell shows a single aggregate status; when it contains several regressions, that is the most
-severe of them. The regressed tests dialog can show each regression's own status in its `Status` column
+A Component Readiness report cell shows a single aggregate status; when it contains several
+regressions, that is the most severe of them. The regressed tests dialog can show each regression's
+own status in its `Status` column
 ([`crtest/types.go`](../../pkg/apis/api/componentreport/crtest/types.go),
 [`regressiontracker.go`](../../pkg/api/componentreadiness/middleware/regressiontracker/regressiontracker.go)):
 
