@@ -208,11 +208,13 @@ func analyzeJobRunFilters(filterOpts *filter.FilterOptions, prColumns sets.Set[s
 	return needs
 }
 
-// columnAliases maps filter field names that are SELECT aliases (not base
-// table columns) to their table-qualified column expressions. PostgreSQL
-// WHERE clauses cannot reference SELECT aliases, so these fields must be
-// rewritten before they reach the generic filter system.
-var columnAliases = map[string]string{
+// jobRunFilterColumns maps every filterable field (other than the test name fields) to
+// its table-qualified column expression. Some fields are SELECT aliases, which a
+// PostgreSQL WHERE clause cannot reference, and the rest are base columns from
+// jobRunsBaseSelect. Resolving fields here means filter SQL is built only from these
+// constant expressions, so request text can select a column but never become SQL.
+var jobRunFilterColumns = map[string]string{
+	// SELECT aliases
 	"id":                  "prow_job_runs.id",
 	"job":                 "prow_jobs.name",
 	"brief_name":          "regexp_replace(prow_jobs.name, 'periodic-ci-openshift-(multiarch|release)-(master|main)-(ci|nightly)-[0-9]+.[0-9]+-', '')",
@@ -224,6 +226,19 @@ var columnAliases = map[string]string{
 	"pull_request_org":    "pp.org",
 	"pull_request_repo":   "pp.repo",
 	"pull_request_author": "pp.author",
+	// base columns
+	"release":                "prow_jobs.release",
+	"name":                   "prow_jobs.name",
+	"variants":               "prow_jobs.variants",
+	"overall_result":         "prow_job_runs.overall_result",
+	"url":                    "prow_job_runs.url",
+	"succeeded":              "prow_job_runs.succeeded",
+	"infrastructure_failure": "prow_job_runs.infrastructure_failure",
+	"known_failure":          "prow_job_runs.known_failure",
+	"cluster":                "prow_job_runs.cluster",
+	"labels":                 "prow_job_runs.labels",
+	"test_failures":          "prow_job_runs.test_failures",
+	"test_flakes":            "prow_job_runs.test_flakes",
 }
 
 // testNameStatuses maps test name filter fields to the prow_job_run_tests
@@ -266,18 +281,18 @@ func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback t
 			allArgs = append(allArgs, args...)
 			continue
 		default:
-			var err error
-			if col, ok := columnAliases[item.Field]; ok {
-				// Only the constant column, operator and negation shape the SQL text; the
-				// request value is passed separately so it can only ever be a bound parameter.
-				sql, err = filter.ColumnFilterSQL(col, item.Operator, item.Not)
-				param = filter.ColumnFilterParam(item.Operator, item.Value)
-			} else {
-				sql, param, err = item.FilterFieldToSQL(apitype.JobRun{})
+			col, ok := jobRunFilterColumns[item.Field]
+			if !ok {
+				return nil, &ValidationError{Message: fmt.Sprintf("%v: %q is not a filterable job run field", filter.ErrInvalidField, item.Field)}
 			}
+			// Only the constant column, its type and the operator shape the SQL text; the
+			// request value is passed separately so it can only ever be a bound parameter.
+			var err error
+			sql, err = filter.TypedColumnFilterSQL(col, apitype.JobRun{}.GetFieldType(item.Field), item.Operator, item.Not)
 			if err != nil {
 				return nil, &ValidationError{Message: err.Error()}
 			}
+			param = filter.ColumnFilterParam(item.Operator, item.Value)
 		}
 		if sql != "" {
 			clauses = append(clauses, sql)

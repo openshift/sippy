@@ -29,13 +29,37 @@ func TestApplyJobRunFilters(t *testing.T) {
 				{Field: "job", Operator: filter.OperatorContains, Value: "aws"},
 				{Field: "cluster", Operator: filter.OperatorEquals, Value: "build01"},
 			}},
-			wantWhere: `WHERE (prow_jobs.name ILIKE $1 OR "cluster" = $2)`,
+			wantWhere: `WHERE (prow_jobs.name ILIKE $1 OR prow_job_runs.cluster = $2)`,
 			wantVars:  []any{"%aws%", "build01"},
 		},
 		{
 			name: "quote breakout field is a validation error",
 			filter: &filter.Filter{Items: []filter.FilterItem{
 				{Field: `cluster" = 'x' OR 1=1 --`, Operator: filter.OperatorEquals, Value: "x"},
+			}},
+			wantValidation:   true,
+			wantInvalidField: true,
+		},
+		{
+			name: "array column contains matches any element",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "labels", Operator: filter.OperatorContains, Value: "infra"},
+			}},
+			wantWhere: `WHERE (EXISTS (SELECT 1 FROM unnest(prow_job_runs.labels) AS elem WHERE elem ILIKE $1))`,
+			wantVars:  []any{"%infra%"},
+		},
+		{
+			name: "array column is empty also matches empty array",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "variants", Operator: filter.OperatorIsEmpty},
+			}},
+			wantWhere: `WHERE ((prow_jobs.variants IS NULL or prow_jobs.variants = '{}'))`,
+			wantVars:  []any{},
+		},
+		{
+			name: "identifier that is not a job run field is a validation error",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "prow_job_id", Operator: filter.OperatorEquals, Value: "1"},
 			}},
 			wantValidation:   true,
 			wantInvalidField: true,

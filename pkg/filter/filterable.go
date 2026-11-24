@@ -174,18 +174,6 @@ func EscapeLikeMetachars(s string) string {
 	return r.Replace(s)
 }
 
-// ilikeFilter returns the SQL filter and parameters for ILIKE pattern matching,
-// handling both string fields (using ILIKE directly) and array fields (using unnest with EXISTS).
-func ilikeFilter(field, pattern string, not bool, filterable Filterable, fieldName string) (string, any) {
-	var sql string
-	if filterable != nil && filterable.GetFieldType(fieldName) == apitype.ColumnTypeArray {
-		sql = fmt.Sprintf("EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", field)
-	} else {
-		sql = fmt.Sprintf("%s ILIKE ?", field)
-	}
-	return WrapNot(sql, not), pattern
-}
-
 func (f FilterItem) isEmptyFilter(field string, filterable Filterable, forBQ bool) string {
 	sql := fmt.Sprintf("%s IS NULL", field)
 	// should work for null/empty arrays in addition to null strings
@@ -210,17 +198,33 @@ func (f FilterItem) FilterItemToSQL(column string) (string, any, error) {
 	if err := ValidateField(f.Field); err != nil {
 		return "", nil, err
 	}
-	return f.scalarSQL(column)
+	return f.columnSQL(column, apitype.ColumnTypeString)
 }
 
-// scalarSQL renders the item's operator against column without type awareness.
-// Callers must have validated f.Field already.
-func (f FilterItem) scalarSQL(column string) (string, any, error) {
-	sql, err := ColumnFilterSQL(column, f.Operator, f.Not)
+// columnSQL renders the item's operator against column, with array awareness when
+// colType says so. Callers must have validated f.Field already.
+func (f FilterItem) columnSQL(column string, colType apitype.ColumnType) (string, any, error) {
+	sql, err := TypedColumnFilterSQL(column, colType, f.Operator, f.Not)
 	if err != nil {
 		return "", nil, fmt.Errorf("%w for field %q", err, f.Field)
 	}
 	return sql, ColumnFilterParam(f.Operator, f.Value), nil
+}
+
+// TypedColumnFilterSQL is ColumnFilterSQL with awareness of array columns: pattern
+// operators match any array element and "is empty" also matches an empty array.
+// Like ColumnFilterSQL it takes no request text, so a constant column and the
+// column's type are the only inputs that shape the SQL.
+func TypedColumnFilterSQL(column string, colType apitype.ColumnType, op Operator, not bool) (string, error) {
+	if colType == apitype.ColumnTypeArray {
+		switch op {
+		case OperatorHasEntryContaining, OperatorContains, OperatorStartsWith, OperatorEndsWith:
+			return WrapNot(fmt.Sprintf("EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", column), not), nil
+		case OperatorIsEmpty:
+			return WrapNot(fmt.Sprintf("(%s IS NULL or %s = '{}')", column, column), not), nil
+		}
+	}
+	return ColumnFilterSQL(column, op, not)
 }
 
 // ColumnFilterSQL returns the SQL condition applying op to a trusted column expression,
@@ -274,30 +278,17 @@ func ColumnFilterParam(op Operator, value string) any {
 }
 
 // FilterFieldToSQL returns a SQL fragment and parameter for a filter item,
-// with array and timestamp type awareness from the filterable. It returns
-// ErrInvalidField when the item's field is not a simple identifier.
+// with array type awareness from the filterable. It returns ErrInvalidField
+// when the item's field is not a simple identifier.
 func (f FilterItem) FilterFieldToSQL(filterable Filterable) (string, any, error) {
 	if err := ValidateField(f.Field); err != nil {
 		return "", nil, err
 	}
-	field := pq.QuoteIdentifier(f.Field)
-	// Operators that need array-aware handling delegate to specialized helpers;
-	// all other operators use the common scalar implementation.
-	switch f.Operator {
-	case OperatorHasEntryContaining, OperatorContains:
-		sql, param := ilikeFilter(field, fmt.Sprintf("%%%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
-		return sql, param, nil
-	case OperatorStartsWith:
-		sql, param := ilikeFilter(field, fmt.Sprintf("%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
-		return sql, param, nil
-	case OperatorEndsWith:
-		sql, param := ilikeFilter(field, fmt.Sprintf("%%%s", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
-		return sql, param, nil
-	case OperatorIsEmpty:
-		return f.isEmptyFilter(field, filterable, false), nil, nil
+	colType := apitype.ColumnTypeString
+	if filterable != nil {
+		colType = filterable.GetFieldType(f.Field)
 	}
-
-	return f.scalarSQL(field)
+	return f.columnSQL(pq.QuoteIdentifier(f.Field), colType)
 }
 
 // toBQStr expects f.Field to have passed ValidateField; ToBQStr enforces that.

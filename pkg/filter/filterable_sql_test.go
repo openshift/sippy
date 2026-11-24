@@ -254,6 +254,44 @@ func TestColumnFilterSQL(t *testing.T) {
 	}
 }
 
+func TestTypedColumnFilterSQL(t *testing.T) {
+	tests := []struct {
+		name    string
+		colType apitype.ColumnType
+		op      Operator
+		not     bool
+		wantSQL string
+		wantErr bool
+	}{
+		{name: "array contains unnests", colType: apitype.ColumnTypeArray, op: OperatorContains, wantSQL: "EXISTS (SELECT 1 FROM unnest(t.c) AS elem WHERE elem ILIKE ?)"},
+		{name: "array starts with unnests", colType: apitype.ColumnTypeArray, op: OperatorStartsWith, wantSQL: "EXISTS (SELECT 1 FROM unnest(t.c) AS elem WHERE elem ILIKE ?)"},
+		{name: "negated array ends with", colType: apitype.ColumnTypeArray, op: OperatorEndsWith, not: true, wantSQL: "NOT(EXISTS (SELECT 1 FROM unnest(t.c) AS elem WHERE elem ILIKE ?))"},
+		{name: "array is empty matches empty array", colType: apitype.ColumnTypeArray, op: OperatorIsEmpty, wantSQL: "(t.c IS NULL or t.c = '{}')"},
+		{name: "array has entry uses ANY", colType: apitype.ColumnTypeArray, op: OperatorHasEntry, wantSQL: "? = ANY(COALESCE(t.c, '{}'))"},
+		{name: "string contains is plain ILIKE", colType: apitype.ColumnTypeString, op: OperatorContains, wantSQL: "t.c ILIKE ?"},
+		{name: "string is empty is plain IS NULL", colType: apitype.ColumnTypeString, op: OperatorIsEmpty, wantSQL: "t.c IS NULL"},
+		{name: "timestamp comparison is scalar", colType: apitype.ColumnTypeTimestamp, op: OperatorArithmeticLessThan, wantSQL: "t.c < ?"},
+		{name: "unsupported operator on array", colType: apitype.ColumnTypeArray, op: "matches", wantErr: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			sql, err := TypedColumnFilterSQL("t.c", tc.colType, tc.op, tc.not)
+			if tc.wantErr {
+				if !errors.Is(err, ErrUnsupportedOperator) {
+					t.Fatalf("error = %v, want error wrapping %v", err, ErrUnsupportedOperator)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if sql != tc.wantSQL {
+				t.Errorf("sql = %q, want %q", sql, tc.wantSQL)
+			}
+		})
+	}
+}
+
 func TestColumnFilterParam(t *testing.T) {
 	tests := []struct {
 		name      string
