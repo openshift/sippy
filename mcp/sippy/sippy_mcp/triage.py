@@ -120,6 +120,9 @@ def validate_url(value: Any) -> str:
     if not isinstance(value, str) or not value.strip():
         raise invalid("url is required and must not be blank")
     url = value.strip()
+    # urlsplit silently drops embedded tab/CR/LF, so the stored string would differ from what was validated.
+    if any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in url):
+        raise invalid("url must not contain whitespace or control characters")
     message = "url must be an absolute http(s) URL, typically a Jira issue"
     try:
         parts = urllib.parse.urlsplit(url)

@@ -111,7 +111,7 @@ const (
 // SippyRequestWithHeaders sends a JSON request with exactly the supplied headers (no default
 // X-Forwarded-User), returning the status code and body so tests can assert on rejections. It is the
 // single place e2e helpers build and send mutating requests.
-func SippyRequestWithHeaders(method, path string, headers map[string]string, bodyData interface{}) (int, []byte, error) {
+func SippyRequestWithHeaders(method, path string, headers map[string]string, bodyData interface{}) (status int, body []byte, err error) {
 	var bodyReader io.Reader
 	if bodyData != nil {
 		bodyBytes, err := json.Marshal(bodyData)
@@ -133,7 +133,12 @@ func SippyRequestWithHeaders(method, path string, headers map[string]string, bod
 	if err != nil {
 		return 0, nil, err
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	defer func() {
+		// Keep a read error if there is one; otherwise report the close failure.
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("closing response body: %w", closeErr)
+		}
+	}()
+	body, err = io.ReadAll(resp.Body)
 	return resp.StatusCode, body, err
 }
