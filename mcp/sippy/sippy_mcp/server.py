@@ -5,8 +5,9 @@ exposes no development commands. It is meant to run behind an authenticating pro
 service-account token for the authenticated Sippy API, and forwards each mutating tool's acting_for
 value as X-Acting-For so Sippy attributes changes to the requesting user.
 
-Tools are grouped into toolsets (see TOOLSETS). To add a capability, write a module that registers
-its tools against a SippyClient and add a Toolset entry. See README.md in this directory.
+Tools are grouped into toolsets (see TOOLSETS). To add a capability, write a module in this package
+that registers its tools against a SippyClient and add a Toolset entry. This module only holds wiring.
+See README.md in the parent directory.
 """
 
 from __future__ import annotations
@@ -21,8 +22,8 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from sippy_client import ConfigurationError, SippyAPIConfig, SippyClient, read_token
-from triage_api import DEFAULT_LIST_LIMIT, TriageService
+from sippy_mcp import triage
+from sippy_mcp.client import ConfigurationError, SippyAPIConfig, SippyClient, read_token
 
 logger = logging.getLogger(__name__)
 
@@ -49,119 +50,6 @@ confirm destructive changes with the user. Mutations are not retried automatical
 outcome_unknown error means you must read current state before trying again.
 """
 
-_ACTING_FOR_DOC = (
-    "acting_for: identity of the requesting user from the trusted consumer's authenticated context; "
-    "sent as X-Acting-For and recorded in Sippy's audit log."
-)
-
-
-def _document_acting_for(fn):
-    fn.__doc__ = f"{fn.__doc__.rstrip()}\n\n{_ACTING_FOR_DOC}"
-    return fn
-
-
-def register_triage_tools(server: FastMCP, client: SippyClient) -> None:
-    service = TriageService(client)
-
-    @server.tool()
-    def list_triages(
-        view: str | None = None,
-        include_archived: bool = False,
-        type: str | None = None,
-        status: str | None = None,
-        url_contains: str | None = None,
-        regression_id: int | None = None,
-        limit: int = DEFAULT_LIST_LIMIT,
-    ) -> dict:
-        """List or search triage records, newest first (GET /api/component_readiness/triages).
-
-        view and include_archived are applied by Sippy; type (ci-infra, product-infra, product, test),
-        status (open or resolved), url_contains (case-insensitive), and regression_id (linked
-        regression) filter the result. limit is 1-200 (default 50). Returns triages (summaries with
-        regression_ids), count, total_matches, and truncated. No matches returns an empty list.
-        """
-        return service.list_triages(
-            view=view,
-            include_archived=include_archived,
-            type=type,
-            status=status,
-            url_contains=url_contains,
-            regression_id=regression_id,
-            limit=limit,
-        )
-
-    @server.tool()
-    def get_triage(triage_id: int) -> dict:
-        """Fetch one triage with its linked regressions (GET /api/component_readiness/triages/{id}).
-
-        Returns {"triage": ...} or an error with code not_found.
-        """
-        return service.get_triage(triage_id)
-
-    @server.tool()
-    @_document_acting_for
-    def create_triage(
-        acting_for: str,
-        url: str,
-        type: str,
-        description: str | None = None,
-        regression_ids: list[int] | None = None,
-    ) -> dict:
-        """Create a triage (POST /api/component_readiness/triages).
-
-        url is required (typically a Jira issue). type is ci-infra, product-infra, product, or test.
-        regression_ids links existing regressions (omit for none). Returns {"triage": ...} with the
-        record Sippy persisted.
-        """
-        return service.create_triage(acting_for, url, type, description=description, regression_ids=regression_ids)
-
-    @server.tool()
-    @_document_acting_for
-    def update_triage(
-        acting_for: str,
-        triage_id: int,
-        url: str | None = None,
-        description: str | None = None,
-        type: str | None = None,
-        resolved: str | None = None,
-        clear_resolved: bool = False,
-        add_regression_ids: list[int] | None = None,
-        remove_regression_ids: list[int] | None = None,
-    ) -> dict:
-        """Partially update a triage; omitted (or null) fields and regression links are preserved.
-
-        Reads the full record, applies only the supplied changes, replaces it with
-        PUT /api/component_readiness/triages/{id}, and returns the record Sippy persisted with
-        changed_fields. description="" clears the description. resolved is an RFC 3339 timestamp that marks the
-        triage resolved; clear_resolved=true unresolves it (not both). add_regression_ids links
-        regressions that are not yet linked; remove_regression_ids unlinks currently linked ones.
-        Empty lists, overlapping ids, and requests with no changes are rejected.
-
-        The PUT replaces the whole record from the earlier read (last writer wins), so a concurrent
-        change made between the read and the write is overwritten.
-        """
-        return service.update_triage(
-            acting_for,
-            triage_id,
-            url=url,
-            description=description,
-            type=type,
-            resolved=resolved,
-            clear_resolved=clear_resolved,
-            add_regression_ids=add_regression_ids,
-            remove_regression_ids=remove_regression_ids,
-        )
-
-    @server.tool()
-    @_document_acting_for
-    def delete_triage(acting_for: str, triage_id: int) -> dict:
-        """Permanently delete a triage (DELETE /api/component_readiness/triages/{id}).
-
-        Returns {"deleted": true, "triage_id": ...}, or not_found when the triage does not exist.
-        Prefer resolving a triage (update_triage with resolved) over deleting it.
-        """
-        return service.delete_triage(acting_for, triage_id)
-
 
 @dataclass(frozen=True)
 class Toolset:
@@ -173,12 +61,7 @@ class Toolset:
 
 
 TOOLSETS: tuple[Toolset, ...] = (
-    Toolset(
-        name="triage",
-        instructions="Triage: list_triages and get_triage read Component Readiness triage records; "
-        "create_triage, update_triage, and delete_triage change them.",
-        register=register_triage_tools,
-    ),
+    Toolset(name="triage", instructions=triage.INSTRUCTIONS, register=triage.register_tools),
 )
 
 
@@ -259,7 +142,3 @@ def main() -> int:
             **http_transport_options(settings),
         )
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

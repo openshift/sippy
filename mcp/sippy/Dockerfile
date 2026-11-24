@@ -23,11 +23,13 @@ RUN microdnf install -y --nodocs --setopt=install_weak_deps=0 python3.12 && \
     microdnf clean all
 
 COPY --from=builder /opt/sippy-mcp/venv /opt/sippy-mcp/venv
-COPY sippy_client.py triage_api.py sippy_mcp_server.py /opt/sippy-mcp/
+# The whole package, so adding a toolset module never needs a change here.
+COPY sippy_mcp /opt/sippy-mcp/sippy_mcp
 
 # Streamable HTTP on loopback: a same-pod authenticating proxy forwards to 127.0.0.1:8090.
 # Override SIPPY_MCP_HTTP_HOST only when the listener is otherwise unreachable without authentication.
 ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/opt/sippy-mcp \
     PATH=/opt/sippy-mcp/venv/bin:$PATH \
     SIPPY_MCP_TRANSPORT=streamable-http \
     SIPPY_MCP_HTTP_HOST=127.0.0.1 \
@@ -36,4 +38,4 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /opt/sippy-mcp
 USER 1001
 EXPOSE 8090
-ENTRYPOINT ["/opt/sippy-mcp/venv/bin/python", "/opt/sippy-mcp/sippy_mcp_server.py"]
+ENTRYPOINT ["/opt/sippy-mcp/venv/bin/python", "-m", "sippy_mcp"]

@@ -3,28 +3,27 @@
 Every request goes to the authenticated Sippy API with the server's service-account bearer token.
 Mutating tools also send the delegated user in X-Acting-For. Sippy resolves that header only for
 configured trusted delegators, so authorization and audit records name the requesting user rather
-than this server. Toolset modules (for example triage_api.py) build on SippyClient.send, the tool
+than this server. Toolset modules (for example triage.py) build on SippyClient.send, the tool
 result wrapper, and the shared validators here.
 """
 
 from __future__ import annotations
 
-import contextvars
-import http.client
+import dataclasses
+import functools
 import ipaddress
 import json
 import os
 import re
-import socket
-import threading
-import time
-import urllib.error
+import ssl
 import urllib.parse
-import urllib.request
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import anyio
+import httpx2
 
 API_URL_ENV = "SIPPY_MCP_API_URL"
 TOKEN_FILE_ENV = "SIPPY_MCP_AUTH_TOKEN_FILE"
@@ -37,11 +36,14 @@ MAX_ID = 2**63 - 1
 # Bounds memory for a single response. Some list endpoints (for example triages) are unpaginated, so
 # this is sized well above a realistic full listing while still stopping a runaway body.
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
-_READ_CHUNK_BYTES = 64 * 1024
+# Read-only methods, matching safeMethods in Sippy's delegation resolver. Every other method is a
+# mutation, which is never retried and reports a missing response as an unknown outcome.
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 _LOOPBACK_HOSTNAMES = ("localhost",)
 # RFC 6750 b64token, the only form a bearer credential may take in an Authorization header.
 _BEARER_TOKEN = re.compile(r"[A-Za-z0-9\-._~+/]+=*")
+
 
 class ConfigurationError(Exception):
     """Required runtime configuration is missing or invalid. Messages never contain secrets."""
@@ -70,11 +72,13 @@ class ToolFailure(Exception):
 class HTTPResponse:
     status: int
     body: bytes
+    # The request this answers, as "METHOD /path", so error messages can say which call failed.
+    request: str = ""
 
 
 # (method, url, headers, body, timeout_seconds) -> HTTPResponse. Raises TransportError when no
-# HTTP response was received. Tests substitute a fake transport at this seam.
-Transport = Callable[[str, str, dict[str, str], bytes | None, float], HTTPResponse]
+# complete HTTP response was received. Tests substitute a fake transport at this seam.
+Transport = Callable[[str, str, dict[str, str], bytes | None, float], Awaitable[HTTPResponse]]
 
 
 def _is_loopback(host: str) -> bool:
@@ -124,7 +128,7 @@ def read_token(path: str) -> str:
         raise ConfigurationError(f"the file named by {TOKEN_FILE_ENV} could not be read ({type(e).__name__})") from None
     if not token:
         raise ConfigurationError(f"the file named by {TOKEN_FILE_ENV} is empty")
-    # http.client echoes an invalid header value in its exception, so never let one reach a request.
+    # HTTP libraries can echo an invalid header value in their exceptions, so never let one reach a request.
     if not _BEARER_TOKEN.fullmatch(token):
         raise ConfigurationError(f"the file named by {TOKEN_FILE_ENV} must contain a single bearer token")
     return token
@@ -152,192 +156,58 @@ class SippyAPIConfig:
             except ValueError:
                 raise ConfigurationError(f"{TIMEOUT_ENV} must be a number of seconds") from None
             if not 0 < timeout <= 300:
-                raise ConfigurationError(f"{TIMEOUT_ENV} must be between 0 and 300 seconds")
+                raise ConfigurationError(f"{TIMEOUT_ENV} must be greater than 0 and at most 300 seconds")
         return cls(api_url=api_url, token_file=token_file, timeout=timeout)
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    """Refuse redirects: urllib would resend Authorization to the new location, and an auth proxy
-    redirect to a login page means the token was not accepted."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102
-        return None
+# The system trust store rather than a bundled CA set, so CAs installed in the image apply.
+_SSL_CONTEXT = ssl.create_default_context()
 
 
-def _shutdown(sock: socket.socket) -> None:
-    try:
-        # The base-class shutdown, because SSLSocket.shutdown also discards TLS state that the
-        # request thread may be reading through.
-        socket.socket.shutdown(sock, socket.SHUT_RDWR)
-    except OSError:
-        pass  # already closed
+def _http_client(url: str) -> httpx2.AsyncClient:
+    """A client for one request. Redirects are not followed: they would resend Authorization to the new
+    location, and an auth proxy redirect to a login page means the token was not accepted. Plain HTTP
+    is only allowed for loopback, so loopback requests ignore any inherited proxy, which would carry the
+    bearer token in cleartext off the host."""
+    direct = _is_loopback(urllib.parse.urlsplit(url).hostname or "")
+    return httpx2.AsyncClient(verify=_SSL_CONTEXT, trust_env=not direct, follow_redirects=False, timeout=None)
 
 
-class _RequestDeadline:
-    """Shuts a request's socket down once its total deadline passes.
-
-    urllib's timeout applies to each socket operation, and a single http.client call can make many
-    of them (a proxy CONNECT response, the TLS handshake, headers, chunk sizes, or trailers), so a
-    peer trickling bytes could hold a request open indefinitely. Shutting the socket down unblocks
-    any read in progress.
-    """
-
-    def __init__(self, timeout: float, clock: Callable[[], float] = time.monotonic) -> None:
-        # The timer starts after this, so it never fires before the deadline a reader checks.
-        self.at = clock() + timeout
-        self.expired = False
-        self._lock = threading.Lock()
-        self._sockets: list[socket.socket] = []
-        self._timer = threading.Timer(timeout, self._expire)
-        self._timer.daemon = True
-
-    def __enter__(self) -> _RequestDeadline:
-        self._timer.start()
-        return self
-
-    def __exit__(self, *exc_info: object) -> None:
-        self._timer.cancel()
-        with self._lock:
-            sockets, self._sockets = self._sockets, []
-            for sock in sockets:
-                sock.close()
-
-    def watch(self, sock: socket.socket) -> None:
-        """Bound every later read on sock's connection, including after TLS wraps it.
-
-        TLS wrapping detaches the original socket object and completes the handshake before
-        returning the wrapped one. A duplicate descriptor still refers to the same connection, so
-        shutting it down unblocks the handshake and every read on the wrapped socket.
-        """
-        watched = sock.dup()
-        with self._lock:
-            self._sockets.append(watched)
-            if self.expired:
-                _shutdown(watched)
-
-    def _expire(self) -> None:
-        # Shutting down under the lock keeps __exit__ from closing a descriptor mid-shutdown.
-        with self._lock:
-            self.expired = True
-            for sock in self._sockets:
-                _shutdown(sock)
-
-
-# The deadline of the request being sent on this thread; connections register their sockets with it.
-_active_deadline: contextvars.ContextVar[_RequestDeadline | None] = contextvars.ContextVar("_active_deadline", default=None)
-
-
-class _DeadlineConnectionMixin:
-    """Registers each new TCP socket with the active deadline before anything is read from it.
-
-    connect() reads an inherited proxy's CONNECT response and completes the TLS handshake before it
-    returns, so registering afterwards would leave both unbounded.
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        create_connection = self._create_connection
-
-        def create_watched_connection(*conn_args: Any, **conn_kwargs: Any) -> socket.socket:
-            sock = create_connection(*conn_args, **conn_kwargs)
-            deadline = _active_deadline.get()
-            if deadline is not None:
-                try:
-                    deadline.watch(sock)
-                except OSError:
-                    sock.close()
-                    raise
-            return sock
-
-        self._create_connection = create_watched_connection
-
-
-class _DeadlineHTTPConnection(_DeadlineConnectionMixin, http.client.HTTPConnection):
-    pass
-
-
-class _DeadlineHTTPSConnection(_DeadlineConnectionMixin, http.client.HTTPSConnection):
-    pass
-
-
-class _DeadlineHTTPHandler(urllib.request.HTTPHandler):
-    def http_open(self, req):  # noqa: D102
-        return self.do_open(_DeadlineHTTPConnection, req)
-
-
-class _DeadlineHTTPSHandler(urllib.request.HTTPSHandler):
-    def https_open(self, req):  # noqa: D102
-        # No context argument, so TLS verification keeps http.client's defaults.
-        return self.do_open(_DeadlineHTTPSConnection, req)
-
-
-_HANDLERS = (_DeadlineHTTPHandler, _DeadlineHTTPSHandler, _NoRedirect)
-_OPENER = urllib.request.build_opener(*_HANDLERS)
-# Plain HTTP is only allowed for loopback, so it must never be sent through an inherited proxy, which
-# would carry the bearer token in cleartext off the host.
-_DIRECT_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), *_HANDLERS)
-
-
-def _opener_for(url: str) -> urllib.request.OpenerDirector:
-    return _DIRECT_OPENER if _is_loopback(urllib.parse.urlsplit(url).hostname or "") else _OPENER
-
-
-def read_body(response: Any, deadline: float, clock: Callable[[], float] = time.monotonic) -> bytes:
-    """Read a response body before deadline (a clock() value) and within MAX_RESPONSE_BYTES.
-
-    The deadline is checked after every read, so an EOF caused by _RequestDeadline shutting the
-    socket down is reported as a timeout rather than as the end of the body.
-    """
+async def _read_body(response: httpx2.Response) -> bytes:
     chunks: list[bytes] = []
     size = 0
-    while True:
-        chunk = response.read1(_READ_CHUNK_BYTES)
-        if clock() >= deadline:
-            raise TimeoutError("request deadline exceeded")
-        if not chunk:
-            # Unlike read(), read1 reports a body cut short of its Content-Length as a plain EOF,
-            # leaving the unread byte count in length.
-            remaining = getattr(response, "length", None)
-            if isinstance(remaining, int) and remaining > 0:
-                raise http.client.IncompleteRead(b"".join(chunks), remaining)
-            return b"".join(chunks)
+    async for chunk in response.aiter_bytes():
         size += len(chunk)
         if size > MAX_RESPONSE_BYTES:
             raise TransportError(f"response body exceeded {MAX_RESPONSE_BYTES} bytes")
         chunks.append(chunk)
+    return b"".join(chunks)
 
 
-def urllib_transport(method: str, url: str, headers: dict[str, str], body: bytes | None, timeout: float) -> HTTPResponse:
-    """Send one request, bounding everything after connect by a total deadline of timeout seconds."""
-    request = urllib.request.Request(url, data=body, headers=headers, method=method)
-    with _RequestDeadline(timeout) as deadline:
-        active = _active_deadline.set(deadline)
-        # Failures while reading either a success or an error body (for example IncompleteRead or a
-        # timeout) mean no complete response arrived, so they are reported as an unknown outcome.
-        try:
-            try:
-                with _opener_for(url).open(request, timeout=timeout) as response:
-                    return HTTPResponse(response.status, read_body(response, deadline.at))
-            except urllib.error.HTTPError as e:
-                try:
-                    return HTTPResponse(e.code, read_body(e, deadline.at))
-                finally:
-                    e.close()
-        except (urllib.error.URLError, http.client.HTTPException, OSError) as e:
-            # A shut-down socket surfaces as whatever error the interrupted read produced.
-            raise TransportError("TimeoutError" if deadline.expired else type(e).__name__) from None
-        finally:
-            _active_deadline.reset(active)
+async def httpx_transport(method: str, url: str, headers: dict[str, str], body: bytes | None, timeout: float) -> HTTPResponse:
+    """Send one request within a total deadline of timeout seconds.
+
+    The deadline covers everything, including an inherited proxy's CONNECT response, the TLS
+    handshake, headers, and the body, so a peer trickling bytes cannot hold a request open.
+    """
+    try:
+        with anyio.fail_after(timeout):
+            async with _http_client(url) as client, client.stream(method, url, headers=headers, content=body) as response:
+                return HTTPResponse(response.status_code, await _read_body(response))
+    except (httpx2.HTTPError, httpx2.StreamError, OSError) as e:
+        # TimeoutError (the deadline) is an OSError. Any failure before the whole body arrived means no
+        # complete response, so the outcome is unknown.
+        raise TransportError(type(e).__name__) from None
 
 
 class SippyClient:
     """Sends authenticated, delegated requests to the Sippy API."""
 
-    def __init__(self, config: SippyAPIConfig, transport: Transport = urllib_transport) -> None:
+    def __init__(self, config: SippyAPIConfig, transport: Transport = httpx_transport) -> None:
         self.config = config
         self._transport = transport
 
-    def request(
+    async def request(
         self,
         method: str,
         path: str,
@@ -361,15 +231,15 @@ class SippyClient:
         if body is not None:
             headers["Content-Type"] = "application/json"
             data = json.dumps(body).encode("utf-8")
-        return self._transport(method, url, headers, data, self.config.timeout)
+        response = await self._transport(method, url, headers, data, self.config.timeout)
+        return dataclasses.replace(response, request=f"{method} {path}")
 
-    def send(
+    async def send(
         self,
         method: str,
         path: str,
         acting_for: str | None = None,
         *,
-        mutation: bool,
         subject: str,
         not_found: str | None = None,
         details: Mapping[str, Any] | None = None,
@@ -380,16 +250,18 @@ class SippyClient:
 
         subject names the record in unknown-outcome hints (for example "triage"), not_found replaces
         Sippy's 404 message, and details are added to every error result (for example a record ID).
-        Mutations are never retried; a mutation without a complete response is reported as
-        outcome_unknown.
+        Mutations (any method other than GET, HEAD, or OPTIONS) are never retried; a mutation without
+        a complete response is reported as outcome_unknown.
         """
+        mutation = method not in _SAFE_METHODS
         extra = dict(details or {})
         try:
-            response = self.request(method, path, acting_for, body=body, query=query)
+            response = await self.request(method, path, acting_for, body=body, query=query)
         except TransportError as e:
+            message = f"No response from Sippy to {method} {path} ({e})"
             if mutation:
-                raise ToolFailure("outcome_unknown", f"No response from Sippy ({e}). {unknown_outcome_hint(subject)}", **extra) from None
-            raise ToolFailure("upstream_unavailable", f"No response from Sippy ({e})", **extra) from None
+                raise ToolFailure("outcome_unknown", f"{message}. {unknown_outcome_hint(subject)}", **extra) from None
+            raise ToolFailure("upstream_unavailable", message, **extra) from None
         raise_for_status(response, mutation=mutation, subject=subject, not_found=not_found, **extra)
         return response
 
@@ -447,7 +319,7 @@ def decode_json(response: HTTPResponse) -> Any:
     try:
         return json.loads(response.body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
-        raise ToolFailure("upstream_error", "Sippy returned a response that is not valid JSON") from None
+        raise ToolFailure("upstream_error", f"Sippy returned a response to {response.request} that is not valid JSON") from None
 
 
 # --- shared input validation and tool results -------------------------------------------------
@@ -459,9 +331,9 @@ def invalid(message: str) -> ToolFailure:
 
 def validate_acting_for(acting_for: Any) -> str:
     """The delegated identity must be supplied by a trusted consumer from its authenticated context."""
-    if not isinstance(acting_for, str) or not acting_for.strip():
+    value = acting_for.strip() if isinstance(acting_for, str) else ""
+    if not value:
         raise invalid("acting_for is required and must identify the requesting user")
-    value = acting_for.strip()
     if len(value) > MAX_ACTING_FOR_CHARS:
         raise invalid(f"acting_for must be at most {MAX_ACTING_FOR_CHARS} characters")
     # HTTP header values are not reliably transported beyond ASCII, and an audit identity must never be
@@ -477,18 +349,21 @@ def validate_id(value: Any, name: str) -> int:
     return value
 
 
-def tool_result(fn: Callable[..., dict[str, Any]]) -> Callable[..., dict[str, Any]]:
-    """Convert expected failures into structured error results; never include credentials."""
+def tool_result(fn: Callable[..., Awaitable[dict[str, Any]]]) -> Callable[..., Awaitable[dict[str, Any]]]:
+    """Convert expected failures into structured error results; never include credentials.
 
-    def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    functools.wraps keeps the name, docstring, and (through __wrapped__) the signature, so a decorated
+    method can be registered with FastMCP directly.
+    """
+
+    @functools.wraps(fn)
+    async def wrapper(*args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
-            return fn(*args, **kwargs)
+            return await fn(*args, **kwargs)
         except ToolFailure as e:
             return e.to_dict()
         except ConfigurationError as e:
             return ToolFailure("configuration_error", str(e)).to_dict()
 
-    wrapper.__name__ = fn.__name__
-    wrapper.__doc__ = fn.__doc__
     return wrapper
 

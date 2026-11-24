@@ -1,6 +1,6 @@
 """Component Readiness triage toolset for the Sippy MCP server.
 
-Triage CRUD over Sippy's existing triage REST API, built on the shared client in sippy_client.py.
+Triage CRUD over Sippy's existing triage REST API, built on the shared client in client.py.
 """
 
 from __future__ import annotations
@@ -10,7 +10,9 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
 
-from sippy_client import (
+from fastmcp import FastMCP
+
+from sippy_mcp.client import (
     HTTPResponse,
     SippyClient,
     ToolFailure,
@@ -36,6 +38,12 @@ _READ_ONLY_FIELDS = ("links", "bug")
 # Scalar fields update_triage can replace directly from tool arguments.
 _EDITABLE_FIELDS = ("url", "description", "type")
 _SUBJECT = "triage"
+
+INSTRUCTIONS = (
+    "Triage: list_triages and get_triage read Component Readiness triage records; "
+    "create_triage, update_triage, and delete_triage change them."
+)
+
 
 def _null_time(value: Any) -> str | None:
     """Convert Go sql.NullTime JSON ({"Time": ..., "Valid": ...}) to an RFC 3339 string or None."""
@@ -96,8 +104,6 @@ def summarize_triage(raw: Mapping[str, Any], *, include_regressions: bool) -> di
 
 # --- input validation -------------------------------------------------------------------------
 
-# --- input validation -------------------------------------------------------------------------
-
 
 def validate_id_list(values: Any, name: str) -> list[int]:
     if not isinstance(values, list):
@@ -152,9 +158,6 @@ def validate_resolved(value: Any) -> str:
 # --- domain operations ------------------------------------------------------------------------
 
 
-# --- domain operations ------------------------------------------------------------------------
-
-
 class TriageService:
     """Triage CRUD over Sippy's existing REST API.
 
@@ -166,27 +169,26 @@ class TriageService:
     def __init__(self, client: SippyClient) -> None:
         self.client = client
 
-    def _send(self, method: str, path: str, acting_for: str | None, *, mutation: bool, triage_id: int | None = None, **kwargs: Any) -> HTTPResponse:
-        return self.client.send(
+    async def _send(self, method: str, path: str, acting_for: str | None, *, triage_id: int | None = None, **kwargs: Any) -> HTTPResponse:
+        return await self.client.send(
             method,
             path,
             acting_for,
-            mutation=mutation,
             subject=_SUBJECT,
             not_found=f"triage {triage_id} not found" if triage_id else None,
             details={"triage_id": triage_id},
             **kwargs,
         )
 
-    def _fetch(self, triage_id: int, acting_for: str | None = None) -> dict[str, Any]:
-        response = self._send("GET", f"{TRIAGES_PATH}/{triage_id}", acting_for, mutation=False, triage_id=triage_id)
+    async def _fetch(self, triage_id: int, acting_for: str | None = None) -> dict[str, Any]:
+        response = await self._send("GET", f"{TRIAGES_PATH}/{triage_id}", acting_for, triage_id=triage_id)
         raw = decode_json(response)
         if not isinstance(raw, dict) or raw.get("id") != triage_id:
             raise ToolFailure("upstream_error", "Sippy returned an unexpected triage record", triage_id=triage_id)
         return raw
 
     @tool_result
-    def list_triages(
+    async def list_triages(
         self,
         view: str | None = None,
         include_archived: bool = False,
@@ -196,6 +198,13 @@ class TriageService:
         regression_id: int | None = None,
         limit: int = DEFAULT_LIST_LIMIT,
     ) -> dict[str, Any]:
+        """List or search triage records, newest first (GET /api/component_readiness/triages).
+
+        view and include_archived are applied by Sippy; type (ci-infra, product-infra, product, test),
+        status (open or resolved), url_contains (case-insensitive), and regression_id (linked
+        regression) filter the result. limit is 1-200 (default 50). Returns triages (summaries with
+        regression_ids), count, total_matches, and truncated. No matches returns an empty list.
+        """
         query: dict[str, str] = {}
         if view is not None:
             if not isinstance(view, str) or not view.strip():
@@ -218,7 +227,7 @@ class TriageService:
 
         # Sippy's list endpoint has no paging or server-side filters beyond view and include_archived,
         # so the full listing is fetched (bounded by MAX_RESPONSE_BYTES) and filtered here.
-        raw = decode_json(self._send("GET", TRIAGES_PATH, None, mutation=False, query=query or None))
+        raw = decode_json(await self._send("GET", TRIAGES_PATH, None, query=query or None))
         if raw is None:
             raw = []
         if not isinstance(raw, list):
@@ -249,12 +258,16 @@ class TriageService:
         }
 
     @tool_result
-    def get_triage(self, triage_id: int) -> dict[str, Any]:
+    async def get_triage(self, triage_id: int) -> dict[str, Any]:
+        """Fetch one triage with its linked regressions (GET /api/component_readiness/triages/{id}).
+
+        Returns {"triage": ...} or an error with code not_found.
+        """
         triage_id = validate_id(triage_id, "triage_id")
-        return {"triage": summarize_triage(self._fetch(triage_id), include_regressions=True)}
+        return {"triage": summarize_triage(await self._fetch(triage_id), include_regressions=True)}
 
     @tool_result
-    def create_triage(
+    async def create_triage(
         self,
         acting_for: str,
         url: str,
@@ -262,6 +275,15 @@ class TriageService:
         description: str | None = None,
         regression_ids: list[int] | None = None,
     ) -> dict[str, Any]:
+        """Create a triage (POST /api/component_readiness/triages).
+
+        url is required (typically a Jira issue). type is ci-infra, product-infra, product, or test.
+        regression_ids links existing regressions (omit for none). Returns {"triage": ...} with the
+        record Sippy persisted.
+
+        acting_for: identity of the requesting user from the trusted consumer's authenticated context;
+        sent as X-Acting-For and recorded in Sippy's audit log.
+        """
         acting_for = validate_acting_for(acting_for)
         body: dict[str, Any] = {"url": validate_url(url), "type": validate_type(type)}
         if description is not None:
@@ -269,7 +291,7 @@ class TriageService:
         ids = validate_id_list(regression_ids, "regression_ids") if regression_ids is not None else []
         body["regressions"] = [{"id": i} for i in ids]
 
-        response = self._send("POST", TRIAGES_PATH, acting_for, mutation=True, body=body)
+        response = await self._send("POST", TRIAGES_PATH, acting_for, body=body)
         try:
             created = decode_json(response)
         except ToolFailure:
@@ -280,7 +302,7 @@ class TriageService:
         return {"triage": summarize_triage(created, include_regressions=True)}
 
     @tool_result
-    def update_triage(
+    async def update_triage(
         self,
         acting_for: str,
         triage_id: int,
@@ -292,6 +314,21 @@ class TriageService:
         add_regression_ids: list[int] | None = None,
         remove_regression_ids: list[int] | None = None,
     ) -> dict[str, Any]:
+        """Partially update a triage; omitted (or null) fields and regression links are preserved.
+
+        Reads the full record, applies only the supplied changes, replaces it with
+        PUT /api/component_readiness/triages/{id}, and returns the record Sippy persisted with
+        changed_fields. description="" clears the description. resolved is an RFC 3339 timestamp that
+        marks the triage resolved; clear_resolved=true unresolves it (not both). add_regression_ids
+        links regressions that are not yet linked; remove_regression_ids unlinks currently linked ones.
+        Empty lists, overlapping ids, and requests with no changes are rejected.
+
+        The PUT replaces the whole record from the earlier read (last writer wins), so a concurrent
+        change made between the read and the write is overwritten.
+
+        acting_for: identity of the requesting user from the trusted consumer's authenticated context;
+        sent as X-Acting-For and recorded in Sippy's audit log.
+        """
         acting_for = validate_acting_for(acting_for)
         triage_id = validate_id(triage_id, "triage_id")
         if not isinstance(clear_resolved, bool):
@@ -315,7 +352,7 @@ class TriageService:
             raise invalid("no changes requested; supply at least one field to update")
 
         # Sippy's PUT replaces the whole record, so start from the complete current record.
-        current = self._fetch(triage_id, acting_for)
+        current = await self._fetch(triage_id, acting_for)
         current_ids = _regression_ids(current)
         already_linked = sorted(set(add) & set(current_ids))
         if already_linked:
@@ -335,7 +372,7 @@ class TriageService:
         elif clear_resolved:
             body["resolved"] = dict(_UNRESOLVED)
 
-        response = self._send("PUT", f"{TRIAGES_PATH}/{triage_id}", acting_for, mutation=True, triage_id=triage_id, body=body)
+        response = await self._send("PUT", f"{TRIAGES_PATH}/{triage_id}", acting_for, triage_id=triage_id, body=body)
         try:
             updated = decode_json(response)
         except ToolFailure:
@@ -355,8 +392,23 @@ class TriageService:
         return {"triage": summarize_triage(updated, include_regressions=True), "changed_fields": sorted(changed_fields)}
 
     @tool_result
-    def delete_triage(self, acting_for: str, triage_id: int) -> dict[str, Any]:
+    async def delete_triage(self, acting_for: str, triage_id: int) -> dict[str, Any]:
+        """Permanently delete a triage (DELETE /api/component_readiness/triages/{id}).
+
+        Returns {"deleted": true, "triage_id": ...}, or not_found when the triage does not exist.
+        Prefer resolving a triage (update_triage with resolved) over deleting it.
+
+        acting_for: identity of the requesting user from the trusted consumer's authenticated context;
+        sent as X-Acting-For and recorded in Sippy's audit log.
+        """
         acting_for = validate_acting_for(acting_for)
         triage_id = validate_id(triage_id, "triage_id")
-        self._send("DELETE", f"{TRIAGES_PATH}/{triage_id}", acting_for, mutation=True, triage_id=triage_id)
+        await self._send("DELETE", f"{TRIAGES_PATH}/{triage_id}", acting_for, triage_id=triage_id)
         return {"deleted": True, "triage_id": triage_id}
+
+
+def register_tools(server: FastMCP, client: SippyClient) -> None:
+    """Register the triage tools; each tool's name, docstring, and signature come from its method."""
+    service = TriageService(client)
+    for tool in (service.list_triages, service.get_triage, service.create_triage, service.update_triage, service.delete_triage):
+        server.tool(tool)

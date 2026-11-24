@@ -5,29 +5,30 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import functools
 import http.server
 import json
 import socket
 import threading
 import time
-import urllib.request
 from pathlib import Path
 
+import anyio
 import pytest
 from fastmcp import Client
 
-import sippy_client
-import sippy_mcp_server
-from sippy_client import (
+from sippy_mcp import client as sippy_client
+from sippy_mcp import server as sippy_mcp_server
+from sippy_mcp.client import (
     API_URL_ENV,
     TOKEN_FILE_ENV,
     ConfigurationError,
     SippyAPIConfig,
     SippyClient,
     TransportError,
-    urllib_transport,
+    httpx_transport,
 )
-from sippy_mcp_server import (
+from sippy_mcp.server import (
     DEFAULT_HTTP_HOST,
     DEFAULT_HTTP_PORT,
     build_server,
@@ -37,7 +38,7 @@ from sippy_mcp_server import (
 )
 from test_triage_api import API_URL, TOKEN, FakeSippy
 
-SERVER_DIR = Path(__file__).resolve().parent
+PACKAGE_DIR = Path(__file__).resolve().parent / "sippy_mcp"
 _TRIAGE_TOOLS = {"list_triages", "get_triage", "create_triage", "update_triage", "delete_triage"}
 _MUTATION_TOOLS = {"create_triage", "update_triage", "delete_triage"}
 _READ_TOOLS = _TRIAGE_TOOLS - _MUTATION_TOOLS
@@ -142,10 +143,16 @@ def _imported_modules(path: Path) -> set[str]:
     return names
 
 
-@pytest.mark.parametrize("module", ["sippy_mcp_server.py", "sippy_client.py", "triage_api.py"])
+@pytest.mark.parametrize("module", sorted(p.name for p in PACKAGE_DIR.glob("*.py")))
 def test_server_modules_do_not_import_development_code(module):
-    imported = _imported_modules(SERVER_DIR / module)
+    imported = _imported_modules(PACKAGE_DIR / module)
     assert not imported & {"server", "testenv", "serviceurl", "dotenv", "subprocess"}
+
+
+def test_package_holds_every_runtime_module():
+    # The image copies only the package directory, so a runtime module outside it would fail at start.
+    runtime = {p.name for p in Path(__file__).resolve().parent.glob("*.py") if not p.name.startswith("test_")}
+    assert runtime == set(), f"move {sorted(runtime)} into sippy_mcp/"
 
 
 def test_calls_flow_through_mcp_with_delegated_identity(server, fake):
@@ -380,40 +387,50 @@ def local_http():
     httpd.server_close()
 
 
-def test_urllib_transport_returns_error_responses(local_http):
-    response = urllib_transport("GET", f"{local_http}/missing", {}, None, 5)
+def _transport(method: str, url: str, headers: dict, body: bytes | None, timeout: float):
+    return anyio.run(functools.partial(httpx_transport, method, url, headers, body, timeout))
+
+
+def test_transport_returns_error_responses(local_http):
+    response = _transport("GET", f"{local_http}/missing", {}, None, 5)
     assert response.status == 404
     assert json.loads(response.body)["message"] == "triage 1 not found"
 
 
-def test_urllib_transport_does_not_follow_redirects(local_http):
-    response = urllib_transport("GET", f"{local_http}/redirect", {"Authorization": "Bearer secret"}, None, 5)
+def test_transport_does_not_follow_redirects(local_http):
+    response = _transport("GET", f"{local_http}/redirect", {"Authorization": "Bearer secret"}, None, 5)
     assert response.status == 302
     assert [s["path"] for s in _Recorder.seen] == ["/redirect"], "the bearer token must not be resent to a redirect target"
 
 
-def test_urllib_transport_connection_failure():
+def test_transport_connection_failure():
     with pytest.raises(TransportError):
-        urllib_transport("GET", "http://127.0.0.1:9/unreachable", {}, None, 2)
+        _transport("GET", "http://127.0.0.1:9/unreachable", {}, None, 2)
 
 
 @pytest.mark.parametrize("path", ["/truncated", "/truncated-error"])
-def test_urllib_transport_incomplete_response_is_transport_error(local_http, path):
-    with pytest.raises(TransportError, match="IncompleteRead"):
-        urllib_transport("GET", f"{local_http}{path}", {}, None, 5)
+def test_transport_incomplete_response_is_transport_error(local_http, path):
+    with pytest.raises(TransportError, match="RemoteProtocolError"):
+        _transport("GET", f"{local_http}{path}", {}, None, 5)
 
 
-def test_urllib_transport_enforces_total_deadline_on_trickled_body(local_http):
+def test_transport_rejects_oversized_body(local_http, monkeypatch):
+    monkeypatch.setattr(sippy_client, "MAX_RESPONSE_BYTES", 4)
+    with pytest.raises(TransportError, match="exceeded 4 bytes"):
+        _transport("GET", f"{local_http}/ok", {}, None, 5)
+
+
+def test_transport_enforces_total_deadline_on_trickled_body(local_http):
     started = time.monotonic()
     with pytest.raises(TransportError, match="TimeoutError"):
-        urllib_transport("GET", f"{local_http}/trickle", {}, None, 0.5)
+        _transport("GET", f"{local_http}/trickle", {}, None, 0.5)
     assert time.monotonic() - started < 1.5
 
 
-def test_urllib_transport_enforces_total_deadline_on_trickled_chunked_trailer(local_http):
+def test_transport_enforces_total_deadline_on_trickled_chunked_trailer(local_http):
     started = time.monotonic()
     with pytest.raises(TransportError, match="TimeoutError"):
-        urllib_transport("POST", f"{local_http}/trickle-trailer", {"Content-Type": "application/json"}, b"{}", 0.5)
+        _transport("POST", f"{local_http}/trickle-trailer", {"Content-Type": "application/json"}, b"{}", 0.5)
     assert time.monotonic() - started < 1.5
     assert [s["path"] for s in _Recorder.seen] == ["/trickle-trailer"], "a timed-out mutation must not be replayed"
 
@@ -422,7 +439,7 @@ def test_urllib_transport_enforces_total_deadline_on_trickled_chunked_trailer(lo
 def trickling_peer():
     """Starts a TCP peer that, after reading the client's first message, sends bytes one at a time.
 
-    Each byte arrives well within the per-read timeout, so only a total deadline can stop the client.
+    Each byte arrives well within any per-read timeout, so only a total deadline can stop the client.
     Yields a function that takes the bytes to trickle and returns the peer's port.
     """
     servers: list[socket.socket] = []
@@ -453,35 +470,42 @@ def trickling_peer():
         server.close()
 
 
-def test_urllib_transport_enforces_total_deadline_on_trickled_proxy_connect(trickling_peer, monkeypatch):
+@pytest.fixture
+def no_proxy_env(monkeypatch):
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    return monkeypatch
+
+
+def test_transport_enforces_total_deadline_on_trickled_proxy_connect(trickling_peer, no_proxy_env):
     port = trickling_peer(b"HTTP/1.1 200 Connection established\r\nX-Padding: " + b"x" * 20 + b"\r\n\r\n")
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda host: False)
-    proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"https": f"http://127.0.0.1:{port}"}), *sippy_client._HANDLERS)
-    monkeypatch.setattr(sippy_client, "_OPENER", proxied)
+    no_proxy_env.setenv("HTTPS_PROXY", f"http://127.0.0.1:{port}")
     started = time.monotonic()
     with pytest.raises(TransportError, match="TimeoutError"):
-        urllib_transport("GET", "https://sippy.example.invalid/api", {}, None, 0.5)
+        _transport("GET", "https://sippy.example.invalid/api", {}, None, 0.5)
     assert time.monotonic() - started < 1.5
 
 
-def test_urllib_transport_enforces_total_deadline_on_trickled_tls_handshake(trickling_peer):
-    # Guards that registering the pre-TLS socket keeps a direct handshake bounded and reported as a
-    # timeout. The peer sends a handshake record and ServerHello header announcing a long message,
-    # which then never completes in time.
+def test_transport_enforces_total_deadline_on_trickled_tls_handshake(trickling_peer):
+    # The peer sends a handshake record and ServerHello header announcing a long message, which then
+    # never completes in time.
     port = trickling_peer(b"\x16\x03\x03\x40\x00" + b"\x02\x00\x3f\xfc" + b"\x03\x03" + b"\x00" * 30)
     started = time.monotonic()
     with pytest.raises(TransportError, match="TimeoutError"):
-        urllib_transport("GET", f"https://127.0.0.1:{port}/api", {}, None, 0.5)
+        _transport("GET", f"https://127.0.0.1:{port}/api", {}, None, 0.5)
     assert time.monotonic() - started < 1.5
 
 
-def test_loopback_requests_bypass_inherited_proxy(local_http, monkeypatch):
-    # Ignore NO_PROXY so selecting the proxied opener for loopback would actually hit the closed port.
-    monkeypatch.setattr(urllib.request, "proxy_bypass", lambda host: False)
+def test_loopback_requests_bypass_inherited_proxy(local_http, no_proxy_env):
     # An inherited proxy pointing at a closed port: using it for the loopback API would fail.
-    proxied = urllib.request.build_opener(urllib.request.ProxyHandler({"http": "http://127.0.0.1:9"}), sippy_client._NoRedirect)
-    monkeypatch.setattr(sippy_client, "_OPENER", proxied)
-    response = urllib_transport("GET", f"{local_http}/ok", {"Authorization": "Bearer secret"}, None, 5)
+    no_proxy_env.setenv("HTTP_PROXY", "http://127.0.0.1:9")
+    response = _transport("GET", f"{local_http}/ok", {"Authorization": "Bearer secret"}, None, 5)
     assert response.status == 200
     assert [s["path"] for s in _Recorder.seen] == ["/ok"]
-    assert sippy_client._opener_for("https://sippy.example.com/api") is proxied
+
+
+def test_remote_requests_use_inherited_proxy(local_http, no_proxy_env):
+    # The recorder answers CONNECT with 501, so a ProxyError (not a DNS ConnectError) shows the proxy was used.
+    no_proxy_env.setenv("HTTPS_PROXY", local_http)
+    with pytest.raises(TransportError, match="ProxyError"):
+        _transport("GET", "https://sippy.example.invalid/api", {}, None, 2)

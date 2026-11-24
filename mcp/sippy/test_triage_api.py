@@ -3,27 +3,30 @@
 from __future__ import annotations
 
 import copy
-import http.client
+import functools
 import json
 import re
 from collections.abc import Callable
 
+import anyio
 import pytest
 
-from sippy_client import (
+from sippy_mcp.client import (
     API_URL_ENV,
-    MAX_RESPONSE_BYTES,
+    MAX_ERROR_MESSAGE_CHARS,
     TOKEN_FILE_ENV,
     ConfigurationError,
     HTTPResponse,
     SippyAPIConfig,
     SippyClient,
+    ToolFailure,
     TransportError,
-    read_body,
+    _clean_text,
+    _upstream_message,
     read_token,
     validate_api_url,
 )
-from triage_api import TriageService
+from sippy_mcp.triage import TriageService
 
 TOKEN = "sa-token-secret-value"
 API_URL = "https://sippy-auth.example.com"
@@ -92,7 +95,7 @@ class FakeSippy:
         out["links"] = {"self": f"{API_URL}/api/component_readiness/triages/{record['id']}"}
         return out
 
-    def __call__(self, method: str, url: str, headers: dict, body: bytes | None, timeout: float) -> HTTPResponse:
+    async def __call__(self, method: str, url: str, headers: dict, body: bytes | None, timeout: float) -> HTTPResponse:
         assert url.startswith(API_URL)
         path_and_query = url[len(API_URL):]
         path = path_and_query.split("?", 1)[0]
@@ -177,9 +180,24 @@ def fake() -> FakeSippy:
     return FakeSippy()
 
 
+class SyncTriageService:
+    """Runs each async TriageService tool to completion, so tests read like plain calls."""
+
+    def __init__(self, service: TriageService) -> None:
+        self._service = service
+
+    def __getattr__(self, name: str) -> Callable[..., dict]:
+        tool = getattr(self._service, name)
+        return lambda *args, **kwargs: anyio.run(functools.partial(tool, *args, **kwargs))
+
+
+def sync_service(client: SippyClient) -> SyncTriageService:
+    return SyncTriageService(TriageService(client))
+
+
 @pytest.fixture
-def service(fake, token_file) -> TriageService:
-    return TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file), transport=fake))
+def service(fake, token_file) -> SyncTriageService:
+    return sync_service(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file), transport=fake))
 
 
 def _error_code(result: dict) -> str:
@@ -218,7 +236,8 @@ def _assert_no_secret(result) -> None:
         ({API_URL_ENV: "https://sippy.example.com/a\x00b", TOKEN_FILE_ENV: "/t"}, "control"),
         ({API_URL_ENV: "https://sippy.example.com/a\x7fb", TOKEN_FILE_ENV: "/t"}, "control"),
         ({API_URL_ENV: API_URL, TOKEN_FILE_ENV: "/t", "SIPPY_MCP_REQUEST_TIMEOUT": "soon"}, "number"),
-        ({API_URL_ENV: API_URL, TOKEN_FILE_ENV: "/t", "SIPPY_MCP_REQUEST_TIMEOUT": "0"}, "between"),
+        ({API_URL_ENV: API_URL, TOKEN_FILE_ENV: "/t", "SIPPY_MCP_REQUEST_TIMEOUT": "0"}, "greater than 0"),
+        ({API_URL_ENV: API_URL, TOKEN_FILE_ENV: "/t", "SIPPY_MCP_REQUEST_TIMEOUT": "301"}, "at most 300"),
     ],
 )
 def test_config_fails_closed(env, message):
@@ -246,67 +265,35 @@ def test_validate_api_url_accepts(raw, expected):
     assert validate_api_url(raw) == expected
 
 
-class _ChunkedBody:
-    """A response body whose read1 returns one queued chunk per call, like a single socket read."""
-
-    def __init__(self, chunks: list[bytes]) -> None:
-        self.chunks = list(chunks)
-        self.reads = 0
-
-    def read1(self, size: int) -> bytes:
-        self.reads += 1
-        return self.chunks.pop(0) if self.chunks else b""
-
-
-class _Clock:
-    """A clock that advances by step seconds on every reading."""
-
-    def __init__(self, step: float) -> None:
-        self.now = 0.0
-        self.step = step
-
-    def __call__(self) -> float:
-        self.now += self.step
-        return self.now
+@pytest.mark.parametrize(
+    "name, text, expected",
+    [
+        ("short text is kept", "triage 1 not found", "triage 1 not found"),
+        ("surrounding whitespace is trimmed", "  boom \n", "boom"),
+        ("control characters are replaced", "bad\x00input\x1b[31m", "bad input [31m"),
+        ("long text is truncated", "x" * 600, "x" * MAX_ERROR_MESSAGE_CHARS + "..."),
+        ("text at the limit is kept", "y" * MAX_ERROR_MESSAGE_CHARS, "y" * MAX_ERROR_MESSAGE_CHARS),
+    ],
+)
+def test_clean_text(name, text, expected):
+    assert _clean_text(text) == expected
 
 
 @pytest.mark.parametrize(
-    "name, chunks, step, deadline, expected",
+    "name, body, expected",
     [
-        ("complete body before deadline", [b"ab", b"cd"], 1.0, 10.0, b"abcd"),
-        ("empty body", [], 1.0, 10.0, b""),
-        ("trickled body exceeds deadline", [b"a"] * 20, 1.0, 5.0, TimeoutError),
-        ("body exceeds size bound", [b"x" * MAX_RESPONSE_BYTES, b"y", b"z"], 0.0, 10.0, TransportError),
+        ("string message is used", json.dumps({"code": 400, "message": "url is required"}).encode(), "url is required"),
+        ("message is cleaned", json.dumps({"message": "a\tb" + "z" * 600}).encode(), "a b" + "z" * 497 + "..."),
+        ("non-string message falls back", json.dumps({"message": 42}).encode(), "HTTP 418"),
+        ("missing message falls back", json.dumps({"code": 418}).encode(), "HTTP 418"),
+        ("JSON list falls back", json.dumps(["message"]).encode(), "HTTP 418"),
+        ("HTML falls back", b"<html><body>teapot</body></html>", "HTTP 418"),
+        ("non-UTF-8 bytes fall back", b"\xff\xfe{}", "HTTP 418"),
+        ("empty body falls back", b"", "HTTP 418"),
     ],
 )
-def test_read_body_enforces_deadline_and_size(name, chunks, step, deadline, expected):
-    body = _ChunkedBody(chunks)
-    if isinstance(expected, bytes):
-        assert read_body(body, deadline, clock=_Clock(step)) == expected
-        return
-    with pytest.raises(expected):
-        read_body(body, deadline, clock=_Clock(step))
-    assert body.chunks, "reading must stop before the whole body is consumed"
-
-
-def test_read_body_reports_eof_after_deadline_as_timeout():
-    # A socket shut down at the deadline reads as EOF, which must not pass for a complete body.
-    clock = _Clock(0.0)
-
-    class _BlockedUntilShutdown:
-        def read1(self, size: int) -> bytes:
-            clock.now += 5.0
-            return b""
-
-    with pytest.raises(TimeoutError):
-        read_body(_BlockedUntilShutdown(), 1.0, clock=clock)
-
-
-def test_read_body_reports_body_shorter_than_content_length():
-    body = _ChunkedBody([b'{"id": 1'])
-    body.length = 92  # http.client leaves the unread Content-Length byte count here
-    with pytest.raises(http.client.IncompleteRead):
-        read_body(body, 10.0, clock=_Clock(0.0))
+def test_upstream_message(name, body, expected):
+    assert _upstream_message(HTTPResponse(418, body)) == expected
 
 
 def test_read_token_errors_do_not_expose_contents(tmp_path):
@@ -376,7 +363,7 @@ def test_token_is_reread_for_rotation(service, fake, token_file):
 
 
 def test_missing_token_rejects_without_request(fake, tmp_path):
-    svc = TriageService(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=str(tmp_path / "none")), transport=fake))
+    svc = sync_service(SippyClient(SippyAPIConfig(api_url=API_URL, token_file=str(tmp_path / "none")), transport=fake))
     result = svc.create_triage("alice", "https://redhat.atlassian.net/browse/OCPBUGS-9", "product")
     assert _error_code(result) == "configuration_error"
     assert fake.calls == []
@@ -734,3 +721,51 @@ def test_delete_forbidden_makes_no_change(service, fake):
 def test_read_transport_failure(service, fake):
     fake.scripted[("GET", "/api/component_readiness/triages/5")] = [TransportError("ConnectionRefusedError")]
     assert _error_code(service.get_triage(5)) == "upstream_unavailable"
+
+
+# --- request outcomes -------------------------------------------------------------------------
+
+
+def _send(fake: FakeSippy, token_file: str, method: str, path: str) -> dict:
+    client = SippyClient(SippyAPIConfig(api_url=API_URL, token_file=token_file), transport=fake)
+
+    async def run() -> dict:
+        try:
+            await client.send(method, path, "alice", subject="triage")
+        except ToolFailure as e:
+            return e.to_dict()
+        return {}
+
+    return anyio.run(run)
+
+
+@pytest.mark.parametrize(
+    "method, code",
+    [("GET", "upstream_unavailable"), ("HEAD", "upstream_unavailable"), ("OPTIONS", "upstream_unavailable"),
+     ("POST", "outcome_unknown"), ("PUT", "outcome_unknown"), ("PATCH", "outcome_unknown"), ("DELETE", "outcome_unknown")],
+)
+def test_send_derives_mutation_from_method(fake, token_file, method, code):
+    fake.scripted[(method, "/api/x")] = [TransportError("TimeoutError")]
+    result = _send(fake, token_file, method, "/api/x")
+    assert _error_code(result) == code
+    assert f"{method} /api/x" in result["error"]["message"]
+
+
+def test_update_reports_which_request_failed(service, fake):
+    fake.add_triage(id=5)
+    fake.scripted[("GET", "/api/component_readiness/triages/5")] = [TransportError("TimeoutError")]
+    read_failure = service.update_triage("alice", 5, description="x")
+    assert _error_code(read_failure) == "upstream_unavailable"
+    assert "GET /api/component_readiness/triages/5" in read_failure["error"]["message"]
+
+    fake.scripted[("PUT", "/api/component_readiness/triages/5")] = [TransportError("TimeoutError")]
+    write_failure = service.update_triage("alice", 5, description="x")
+    assert _error_code(write_failure) == "outcome_unknown"
+    assert "PUT /api/component_readiness/triages/5" in write_failure["error"]["message"]
+
+
+def test_invalid_json_names_the_request(service, fake):
+    fake.scripted[("GET", "/api/component_readiness/triages/5")] = [HTTPResponse(200, b"<html>")]
+    result = service.get_triage(5)
+    assert _error_code(result) == "upstream_error"
+    assert "GET /api/component_readiness/triages/5" in result["error"]["message"]
