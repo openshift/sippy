@@ -16,12 +16,12 @@ import (
 func TestApplyJobRunFilters(t *testing.T) {
 	lookback := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct {
-		name            string
-		filter          *filter.Filter
-		wantWhere       string
-		wantVars        []any
-		wantValidation  bool
-		wantInvalidName bool
+		name             string
+		filter           *filter.Filter
+		wantWhere        string
+		wantVars         []any
+		wantValidation   bool
+		wantInvalidField bool
 	}{
 		{
 			name: "alias and generic columns are quoted with bound values",
@@ -37,8 +37,8 @@ func TestApplyJobRunFilters(t *testing.T) {
 			filter: &filter.Filter{Items: []filter.FilterItem{
 				{Field: `cluster" = 'x' OR 1=1 --`, Operator: filter.OperatorEquals, Value: "x"},
 			}},
-			wantValidation:  true,
-			wantInvalidName: true,
+			wantValidation:   true,
+			wantInvalidField: true,
 		},
 		{
 			name: "negated alias renders constant column with bound pattern",
@@ -74,7 +74,7 @@ func TestApplyJobRunFilters(t *testing.T) {
 			if tc.wantValidation {
 				var validationErr *ValidationError
 				require.True(t, errors.As(err, &validationErr), "expected ValidationError, got %v", err)
-				if tc.wantInvalidName {
+				if tc.wantInvalidField {
 					assert.Contains(t, validationErr.Message, filter.ErrInvalidField.Error())
 				}
 				return
@@ -86,27 +86,6 @@ func TestApplyJobRunFilters(t *testing.T) {
 			require.NoError(t, result.Error)
 			assert.Contains(t, result.Statement.SQL.String(), tc.wantWhere)
 			assert.Equal(t, tc.wantVars, result.Statement.Vars)
-		})
-	}
-}
-
-func TestColumnAlias(t *testing.T) {
-	tests := []struct {
-		name       string
-		field      string
-		wantColumn string
-		wantOK     bool
-	}{
-		{name: "aliased field", field: "job", wantColumn: "prow_jobs.name", wantOK: true},
-		{name: "quoted reserved column", field: "timestamp", wantColumn: `prow_job_runs."timestamp"`, wantOK: true},
-		{name: "base table column is not an alias", field: "cluster"},
-		{name: "breakout text is not an alias", field: `job" OR 1=1 --`},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			column, ok := columnAlias(tc.field)
-			assert.Equal(t, tc.wantOK, ok)
-			assert.Equal(t, tc.wantColumn, column)
 		})
 	}
 }

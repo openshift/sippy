@@ -53,9 +53,9 @@ func PrintJobAnalysisJSONFromDB(
 		NoResult       int `gorm:"column:n"`
 	}
 	sums := make([]resultSum, 0)
-	prowJobRunsFiltered := jobRunsFilter.ToSQL(dbc.DB.WithContext(ctx).Table("prow_job_runs"), apitype.JobRun{})
-	if prowJobRunsFiltered.Error != nil {
-		return result, prowJobRunsFiltered.Error
+	prowJobRunsFiltered, err := jobRunsFilter.ToSQL(dbc.DB.WithContext(ctx).Table("prow_job_runs"), apitype.JobRun{})
+	if err != nil {
+		return result, err
 	}
 	sumResults := dbc.DB.WithContext(ctx).Table("(?) as prow_job_runs", prowJobRunsFiltered).
 		Select(`date_trunc(?, timestamp)        AS period,

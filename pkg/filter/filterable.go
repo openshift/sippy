@@ -210,6 +210,12 @@ func (f FilterItem) FilterItemToSQL(column string) (string, any, error) {
 	if err := ValidateField(f.Field); err != nil {
 		return "", nil, err
 	}
+	return f.scalarSQL(column)
+}
+
+// scalarSQL renders the item's operator against column without type awareness.
+// Callers must have validated f.Field already.
+func (f FilterItem) scalarSQL(column string) (string, any, error) {
 	sql, err := ColumnFilterSQL(column, f.Operator, f.Not)
 	if err != nil {
 		return "", nil, fmt.Errorf("%w for field %q", err, f.Field)
@@ -291,13 +297,14 @@ func (f FilterItem) FilterFieldToSQL(filterable Filterable) (string, any, error)
 		return f.isEmptyFilter(field, filterable, false), nil, nil
 	}
 
-	return f.FilterItemToSQL(field)
+	return f.scalarSQL(field)
 }
 
 // toBQStr expects f.Field to have passed ValidateField; ToBQStr enforces that.
 func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, params []bigquery.QueryParameter) { //nolint
-	// A validated identifier needs no quoting in GoogleSQL, and leaving it bare keeps
-	// the column resolution rules the BigQuery queries were written against.
+	// The identifier grammar rules out injection, so the column is left bare to keep
+	// the column resolution rules the BigQuery queries were written against. A reserved
+	// word (e.g. "order") would still need backticks and fails as a syntax error.
 	field := f.Field
 
 	// Helper to create a parameter
@@ -470,9 +477,9 @@ func ApplyFilters(
 	dbClient *gorm.DB,
 	filterable Filterable) (*gorm.DB, error) {
 
-	q := filter.ToSQL(dbClient, filterable)
-	if q.Error != nil {
-		return nil, q.Error
+	q, err := filter.ToSQL(dbClient, filterable)
+	if err != nil {
+		return nil, err
 	}
 	if limit > 0 {
 		q = q.Limit(limit)
@@ -486,9 +493,9 @@ func ApplyFilters(
 }
 
 func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable Filterable) (*gorm.DB, error) {
-	q := filterOpts.Filter.ToSQL(dbClient, filterable)
-	if q.Error != nil {
-		return nil, q.Error
+	q, err := filterOpts.Filter.ToSQL(dbClient, filterable)
+	if err != nil {
+		return nil, err
 	}
 	if filterOpts.Limit > 0 {
 		q = q.Limit(filterOpts.Limit)
@@ -532,22 +539,17 @@ filterOuterLoop:
 	return newFilter, oldFilter
 }
 
-// ToSQL applies the filter to db as WHERE conditions. An item that cannot be
-// rendered (invalid field or unsupported operator) is recorded with db.AddError
-// so executing the returned query fails instead of running without that filter.
-// GORM does not propagate a subquery's error to the outer query, so callers that
-// embed the result as a subquery must check its Error first.
-func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
+// ToSQL applies the filter to db as WHERE conditions. It returns ErrInvalidField or
+// ErrUnsupportedOperator when an item cannot be rendered, so the caller fails the
+// request instead of running the query without that filter.
+func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) (*gorm.DB, error) {
 	var orFilters []string
 	var orFilterParams []interface{}
 
 	for _, f := range filters.Items {
 		q, p, err := f.FilterFieldToSQL(filterable)
 		if err != nil {
-			// Record the error on a copy so a shared root handle passed in by a caller is never poisoned.
-			db = db.Session(&gorm.Session{})
-			_ = db.AddError(err) // the accumulated error is retained on db.Error
-			return db
+			return nil, err
 		}
 		switch filters.LinkOperator {
 		case LinkOperatorAnd, "":
@@ -571,7 +573,7 @@ func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	log.Debugf("final query string: %s", queryStr)
 	db = db.Where(queryStr, orFilterParams...)
 
-	return db
+	return db, nil
 }
 
 // BQFilterResult contains the WHERE clause SQL and the BigQuery parameters to use with it.

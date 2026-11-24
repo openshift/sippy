@@ -2,11 +2,8 @@ package e2e
 
 import (
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +15,6 @@ import (
 // rejected as bad requests on endpoints that render filter fields into SQL, while an otherwise
 // identical filter on a real column still succeeds.
 func TestFilterFieldValidation(t *testing.T) {
-	const filterTemplate = `{"items":[{"columnField":%q,"operatorValue":">=","value":"0"}],"linkOperator":"and"}`
 	const quoteBreakout = `current_runs" >= 0 OR 1=1 --`
 
 	tests := []struct {
@@ -33,24 +29,41 @@ func TestFilterFieldValidation(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			validFilter := url.QueryEscape(fmt.Sprintf(filterTemplate, tc.validField))
-			status, body := getStatus(t, tc.path+"&filter="+validFilter)
-			assert.Equal(t, http.StatusOK, status, "valid filter field should succeed: %s", body)
+			var result any
+			err := util.SippyGet(filterPath(tc.path, tc.validField, ">="), &result)
+			require.NoError(t, err, "valid filter field should succeed")
 
-			invalidFilter := url.QueryEscape(fmt.Sprintf(filterTemplate, quoteBreakout))
-			status, body = getStatus(t, tc.path+"&filter="+invalidFilter)
-			assert.Equal(t, http.StatusBadRequest, status, "invalid filter field should be rejected: %s", body)
+			err = util.SippyGet(filterPath(tc.path, quoteBreakout, ">="), &result)
+			require.Error(t, err, "invalid filter field should be rejected")
+			assert.Contains(t, err.Error(), "400", "expected 400 status code")
 		})
 	}
 }
 
-func getStatus(t *testing.T, path string) (int, string) {
-	t.Helper()
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Get(util.BuildE2EURL(path)) //nolint:gosec // G107: URL is built from the hardcoded local e2e endpoint
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	return resp.StatusCode, string(body)
+// TestFilterOperatorValidation verifies that an unsupported operator is a bad request. Job analysis
+// sends cluster filters to its job runs subquery, whose render error GORM would otherwise drop.
+func TestFilterOperatorValidation(t *testing.T) {
+	tests := []struct {
+		name  string
+		path  string
+		field string
+	}{
+		{name: "job analysis job runs subquery", path: "/api/jobs/analysis?release=" + util.Release, field: "cluster"},
+		{name: "job runs alias column", path: "/api/jobs/runs?release=" + util.Release, field: "job"},
+		{name: "tests report", path: "/api/tests?release=" + util.Release, field: "current_runs"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var result any
+			err := util.SippyGet(filterPath(tc.path, tc.field, "matches"), &result)
+			require.Error(t, err, "unsupported filter operator should be rejected")
+			assert.Contains(t, err.Error(), "400", "expected 400 status code")
+		})
+	}
+}
+
+// filterPath appends a single-item filter on field to path.
+func filterPath(path, field, operator string) string {
+	filterJSON := fmt.Sprintf(`{"items":[{"columnField":%q,"operatorValue":%q,"value":"0"}],"linkOperator":"and"}`, field, operator)
+	return path + "&filter=" + url.QueryEscape(filterJSON)
 }

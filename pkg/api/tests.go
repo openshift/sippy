@@ -539,9 +539,10 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	testReports := make([]apitype.Test, 0)
 
 	if processedFilter != nil {
-		finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
-		if finalResults.Error != nil {
-			errs = append(errs, finalResults.Error)
+		var err error
+		finalResults, err = processedFilter.ToSQL(finalResults, apitype.Test{})
+		if err != nil {
+			errs = append(errs, err)
 			return
 		}
 	}

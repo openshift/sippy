@@ -86,8 +86,7 @@ func TestFilterFieldToSQL(t *testing.T) {
 		item      FilterItem
 		wantSQL   string
 		wantParam any
-		wantErr   bool
-		wantErrIs error // optional sentinel the error must wrap
+		wantErrIs error
 	}{
 		{
 			name:      "equals quotes column and binds value",
@@ -115,20 +114,19 @@ func TestFilterFieldToSQL(t *testing.T) {
 		{
 			name:      "quote breakout field is rejected",
 			item:      FilterItem{Field: injectionField, Operator: OperatorEquals, Value: "x"},
-			wantErr:   true,
 			wantErrIs: ErrInvalidField,
 		},
 		{
-			name:    "unsupported operator is an error",
-			item:    FilterItem{Field: "name", Operator: "matches", Value: "x"},
-			wantErr: true,
+			name:      "unsupported operator is an error",
+			item:      FilterItem{Field: "name", Operator: "matches", Value: "x"},
+			wantErrIs: ErrUnsupportedOperator,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			sql, param, err := tc.item.FilterFieldToSQL(apitype.JobRun{})
-			if tc.wantErr {
-				if err == nil || (tc.wantErrIs != nil && !errors.Is(err, tc.wantErrIs)) {
+			if tc.wantErrIs != nil {
+				if !errors.Is(err, tc.wantErrIs) {
 					t.Fatalf("error = %v, want error wrapping %v", err, tc.wantErrIs)
 				}
 				if sql != "" {
@@ -188,7 +186,7 @@ func TestFilterItemToSQL(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sql, param, err := tc.item.FilterItemToSQL(tc.column)
 			if tc.wantErrIs != nil {
-				if err == nil || (tc.wantErrIs != errAny && !errors.Is(err, tc.wantErrIs)) {
+				if !errors.Is(err, tc.wantErrIs) {
 					t.Fatalf("error = %v, want error wrapping %v", err, tc.wantErrIs)
 				}
 				if sql != "" {
@@ -282,9 +280,6 @@ func TestColumnFilterParam(t *testing.T) {
 	}
 }
 
-// errAny marks a test case that expects some error without a specific sentinel.
-var errAny = errors.New("any error")
-
 // dryRunDB renders SQL through the real PostgreSQL dialect without connecting.
 func dryRunDB(t *testing.T) *gorm.DB {
 	t.Helper()
@@ -337,22 +332,31 @@ func TestFilterToSQL(t *testing.T) {
 			}},
 			wantErr: ErrInvalidField,
 		},
+		{
+			name: "unsupported operator fails the query",
+			filter: Filter{Items: []FilterItem{
+				{Field: "name", Operator: "matches", Value: "b"},
+			}},
+			wantErr: ErrUnsupportedOperator,
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			root := dryRunDB(t)
-			q := tc.filter.ToSQL(root.Table("jobs"), apitype.Job{})
-			var rows []map[string]any
-			result := q.Find(&rows)
+			q, err := tc.filter.ToSQL(dryRunDB(t).Table("jobs"), apitype.Job{})
 			if tc.wantErr != nil {
-				if !errors.Is(result.Error, tc.wantErr) {
-					t.Fatalf("error = %v, want %v", result.Error, tc.wantErr)
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("error = %v, want %v", err, tc.wantErr)
 				}
-				if root.Error != nil {
-					t.Errorf("filter error leaked onto the shared root handle: %v", root.Error)
+				if q != nil {
+					t.Errorf("expected no query on error")
 				}
 				return
 			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			var rows []map[string]any
+			result := q.Find(&rows)
 			if result.Error != nil {
 				t.Fatalf("unexpected error: %v", result.Error)
 			}
