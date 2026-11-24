@@ -149,6 +149,69 @@ func TestFilterFieldToSQL(t *testing.T) {
 	}
 }
 
+func TestFilterItemToSQL(t *testing.T) {
+	tests := []struct {
+		name      string
+		item      FilterItem
+		column    string
+		wantSQL   string
+		wantParam any
+		wantErrIs error
+	}{
+		{
+			name:      "renders the given column and binds value",
+			item:      FilterItem{Field: "job", Operator: OperatorStartsWith, Value: "e2e_"},
+			column:    "prow_jobs.name",
+			wantSQL:   "prow_jobs.name ILIKE ?",
+			wantParam: `e2e\_%`,
+		},
+		{
+			name:    "negated is not empty",
+			item:    FilterItem{Field: "job", Operator: OperatorIsNotEmpty, Not: true},
+			column:  "prow_jobs.name",
+			wantSQL: "NOT(prow_jobs.name IS NOT NULL)",
+		},
+		{
+			name:      "quote breakout field is rejected",
+			item:      FilterItem{Field: injectionField, Operator: OperatorEquals, Value: "x"},
+			column:    "prow_jobs.name",
+			wantErrIs: ErrInvalidField,
+		},
+		{
+			name:      "unsupported operator is an error",
+			item:      FilterItem{Field: "job", Operator: "matches", Value: "x"},
+			column:    "prow_jobs.name",
+			wantErrIs: errAny,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			sql, param, err := tc.item.FilterItemToSQL(tc.column)
+			if tc.wantErrIs != nil {
+				if err == nil || (tc.wantErrIs != errAny && !errors.Is(err, tc.wantErrIs)) {
+					t.Fatalf("error = %v, want error wrapping %v", err, tc.wantErrIs)
+				}
+				if sql != "" {
+					t.Errorf("expected no SQL on error, got %q", sql)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if sql != tc.wantSQL {
+				t.Errorf("sql = %q, want %q", sql, tc.wantSQL)
+			}
+			if param != tc.wantParam {
+				t.Errorf("param = %#v, want %#v", param, tc.wantParam)
+			}
+		})
+	}
+}
+
+// errAny marks a test case that expects some error without a specific sentinel.
+var errAny = errors.New("any error")
+
 // dryRunDB renders SQL through the real PostgreSQL dialect without connecting.
 func dryRunDB(t *testing.T) *gorm.DB {
 	t.Helper()

@@ -203,8 +203,13 @@ func (f FilterItem) isEmptyFilter(field string, filterable Filterable, forBQ boo
 // type-aware transformations: ILIKE operators match the column value directly
 // rather than unnesting array elements, and timestamps are not converted to
 // epoch milliseconds. Use FilterFieldToSQL when the column may be an array
-// or timestamp type.
+// or timestamp type. It returns ErrInvalidField when the item's field is not a
+// simple identifier, even though column (not the field) is rendered, so every
+// item reaching SQL obeys the same field grammar regardless of caller.
 func (f FilterItem) FilterItemToSQL(column string) (string, any, error) {
+	if err := ValidateField(f.Field); err != nil {
+		return "", nil, err
+	}
 	var sql string
 	var param any
 	switch f.Operator {
