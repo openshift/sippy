@@ -12,6 +12,8 @@ When a release goes GA, qualifying driver toolkit and FIPS verification jobs mov
 
 The release immediately before the GA release has all informing jobs disabled in the main release-controller configuration. When OCP 5.0 goes GA, that release is 4.22; this matched [openshift/release#89222](https://github.com/openshift/release/pull/89222).
 
+Two blocking analysis gates depend on those informing jobs and must also be disabled. For OCP 5.0's preceding release, this matched [openshift/release#89354](https://github.com/openshift/release/pull/89354).
+
 Aggregated jobs are removed from the GA release's controller configurations. For OCP 5.0, this matched [openshift/release#88302](https://github.com/openshift/release/pull/88302).
 
 ## Arguments
@@ -81,10 +83,13 @@ If the argument is not provided, prompt the user interactively.
    - Informing jobs are entries where `optional` is `true`.
    - Include every such entry, regardless of platform, architecture, or product area.
 
-4. **Disable the informing jobs**
+4. **Disable the informing jobs and dependent analysis gates**
    - In the public main release-controller JSON, add `"disabled": true` to every entry that has `"optional": true`.
+   - Also add `"disabled": true` to these blocking analysis gates when present:
+     - `install-analysis-all`
+     - `overall-analysis-all`
    - Preserve `optional: true` and every other existing property, including `maxRetries`, `prowJob`, `upgrade`, and qualifier definitions.
-   - Do not disable blocking jobs, which do not have `optional: true`.
+   - Do not disable other blocking jobs, which do not have `optional: true`.
    - Run `make release-controllers` to regenerate private configuration when needed. The expected generated result is that disabled optional entries are removed from the private file.
 
 5. **Validate the release-controller changes**
@@ -96,8 +101,8 @@ If the argument is not provided, prompt the user interactively.
      ```
 
    - Confirm there is no generated drift.
-   - Confirm the public diff only adds `disabled: true` to optional verification entries.
-   - Confirm the private diff only reflects generated removal of those disabled optional entries.
+   - Confirm the public diff only adds `disabled: true` to optional verification entries and the two dependent analysis gates.
+   - Confirm the private diff only reflects generated removal of those disabled entries.
 
 ### Remove aggregation from the GA release
 
