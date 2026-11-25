@@ -11,7 +11,7 @@
 # package stays scanned (see TRT-3122).
 
 # Uncollapsed tests report raw SQL builder (go/Sqli, go/Sqli/test)
-# Path: pkg/db/query/uncollapsed_test_report.go
+# Path: pkg/db/query/test_queries_uncollapsed.go
 # Info: Snyk taints the whole TestResultsSpec from the validated release/period params and
 # flags the Raw call. Pushed-down columns come from the constant pushdownColumns table,
 # operators from fixed maps or switches, and all values are bound (covered by
@@ -48,5 +48,5 @@ exclude:
     - scripts/add-intentional-regression.py
     # MCP dev server: create_subprocess_exec (no shell) with validated inputs; not a real injection vector
     - mcp/server.py
-    - pkg/db/query/uncollapsed_test_report.go
+    - pkg/db/query/test_queries_uncollapsed.go
     - pkg/api/job_runs_filters.go
