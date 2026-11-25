@@ -204,11 +204,13 @@ func (s *Server) getReleases(ctx context.Context) ([]sippyv1.Release, error) {
 
 // regressionLinkConfig gathers the configuration used to add test_details links to regressions
 // embedded in triage responses. Links are a convenience on those responses, so a release lookup
-// failure is logged and leaves GA-based links out rather than failing the triage request.
+// failure is logged once and returns nil, which skips the links rather than failing the triage
+// request or logging an error for every GA-based regression and view pair.
 func (s *Server) regressionLinkConfig(ctx context.Context) *componentreadiness.RegressionLinkConfig {
 	releases, err := s.getReleases(ctx)
 	if err != nil {
-		log.WithError(err).Warn("unable to load releases for triage regression links")
+		log.WithError(err).Warn("unable to load releases; omitting triage regression links")
+		return nil
 	}
 	return &componentreadiness.RegressionLinkConfig{
 		Views:                s.views.ComponentReadiness,

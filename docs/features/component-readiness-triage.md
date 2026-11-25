@@ -109,15 +109,31 @@ example "Closed regression. View historical test details for September 22-29, 20
 means either the tracked regression closed or, for a regression that is still open elsewhere, it closed
 in that view only. It does not mean the regression closed everywhere, and it is not a passing
 assessment for that period. When Sippy cannot build a link (the regression has no recorded last
-failure, the view is no longer configured, or the view's basis cannot be resolved), the icon is
-disabled and its tooltip explains why.
+failure, the view is no longer configured, the view's basis cannot be resolved, or it is a spot-check
+regression), the icon is disabled and its tooltip explains why. Spot-check regressions have no
+historical link because test details always resolve spot-check samples from the current time, so the
+link would show recent runs rather than the historical period.
+
+The stable `/component_readiness/regressions/<id>` link opens a view's current report when the
+regression is still open in one, preferring the main view, and falls back to a historical report only
+when every association has closed.
 
 A historical report covers the week ending with the regression's last failure, compared against the
 basis resolved from the view's current configuration (rolling basis dates are evaluated from the last
 failure). Sippy does not reconstruct the view configuration that applied at that time. The test
-details page keeps the computed statistical result, even when it is red, and adds a
-`Closed regression, historical report` notice with the regression ID, closure date, last failure, and
-the sample and basis periods. Viewing history never changes regression tracking or triage state. The
+details page keeps the computed statistical result, even when it is red, and adds a notice with the
+regression ID, closure, last failure, and the sample and basis periods. The notice title follows the
+closure scope:
+
+| Case | Notice title | Closed line |
+|------|--------------|-------------|
+| The regression closed | `Closed regression, historical report` | The regression's closure date. |
+| Closed in this view only | `Closed in this view, historical report` | The view's closure date, noting the regression is still open in another view. |
+| Open, and the report has no view (for example after Generate Report) | `Historical report for a tracked regression` | Per-view closure is unknown because the report has no view. |
+
+Closure details are shown only after the regression record matches the report's test, release,
+variants, and view. Otherwise the notice is a warning instead: the record does not match (listing the
+mismatched fields), the regression was not found, or the regression could not be loaded. Viewing history never changes regression tracking or triage state. The
 link holds concrete dates, so sharing or reopening it shows the same requested period; the dates do not
 preserve the original view configuration.
 
@@ -144,6 +160,7 @@ Keep in mind:
 | [`pkg/api/componentreadiness/triage.go`](../../pkg/api/componentreadiness/triage.go) | Builds current and historical `test_details:<view>` links for regressions. |
 | [`sippy-ng/src/component_readiness/TriagedRegressionTestList.jsx`](../../sippy-ng/src/component_readiness/TriagedRegressionTestList.jsx) | Triaged regression table with historical icons and links. |
 | [`sippy-ng/src/component_readiness/HistoricalRegressionNotice.jsx`](../../sippy-ng/src/component_readiness/HistoricalRegressionNotice.jsx) | Closure notice on historical test details pages. |
+| [`sippy-ng/src/component_readiness/HistoricalRegressionUtils.js`](../../sippy-ng/src/component_readiness/HistoricalRegressionUtils.js) | Closure scope, table cell, link selection, and URL date helpers shared by the table, redirect, and notice. |
 
 ## API and tests
 

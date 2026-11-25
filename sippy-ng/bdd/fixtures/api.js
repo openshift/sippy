@@ -326,12 +326,14 @@ async function responseFor(api, method, url, bodyText) {
 }
 
 function regressionResponse(api, path) {
-  if (api.regressionBody && api.regressionMode !== 'missing') {
+  if (api.regressionBody && api.regressionMode === 'ok') {
     return ok(api.regressionBody)
   }
   switch (api.regressionMode) {
     case 'missing':
       return fail(404, `regression not found: ${path}`)
+    case 'error':
+      return fail(500, `regression lookup failed: ${path}`)
     case 'no-links':
       return ok(regressionRecord({}))
     case 'bad-path':

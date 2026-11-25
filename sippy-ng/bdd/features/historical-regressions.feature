@@ -23,6 +23,17 @@ Feature: Historical test details for closed regressions
     And the regression closed only in this view says so
     And the regression without a last failure explains that history is unavailable
 
+  Scenario: Sorting a view's status column orders open, historical, then unavailable rows
+    Given a component readiness API
+    And a triage with open and closed regressions exists
+    When I open triage 7
+    And I sort by the "5.0-main" status column
+    Then the "5.0-main" status column is sorted ascending
+    And the "5.0-main" rows are ordered open, historical, then unavailable
+    When I sort by the "5.0-main" status column
+    Then the "5.0-main" status column is sorted descending
+    And the "5.0-main" rows start with unavailable history and end with the open row
+
   Scenario: A historical link identifies the closed regression on test details
     Given a component readiness API
     And the regression API returns the closed regression
@@ -49,6 +60,27 @@ Feature: Historical test details for closed regressions
     And test details no longer track the regression
     When I open the historical test details link
     Then the notice says the regression does not match this report
+
+  Scenario: A regression closed only in this view is described as such
+    Given a component readiness API
+    And the regression API returns a regression closed only in this view
+    And test details no longer track the regression
+    When I open the historical test details link for the regression closed only in this view
+    Then the notice says the regression closed only in this view
+
+  Scenario: Without a view, closure of an open regression is not claimed
+    Given a component readiness API
+    And the regression API returns a regression closed only in this view
+    And test details no longer track the regression
+    When I open the historical test details link for the regression closed only in this view without a view
+    Then the notice says closure in a specific view is unknown
+
+  Scenario: A failed regression lookup is reported instead of claiming closure
+    Given a component readiness API
+    And the regression API fails
+    And test details no longer track the regression
+    When I open the historical test details link
+    Then the notice says the regression could not be loaded
 
   Scenario: A missing regression is reported instead of claiming closure
     Given a component readiness API

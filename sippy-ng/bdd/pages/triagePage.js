@@ -6,6 +6,40 @@ export class TriagePage {
     this.page = page
   }
 
+  // regressionRow is a row of the triaged regression table.
+  regressionRow(id) {
+    return this.page.locator(`.MuiDataGrid-row[data-id="${id}"]`)
+  }
+
+  // statusColumnHeader is the triaged regression table's status column for a
+  // view. Its accessible name is its tooltip, which starts with the view.
+  statusColumnHeader(view) {
+    const escaped = view.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return this.page.getByRole('columnheader', {
+      name: new RegExp(`^${escaped}:`),
+    })
+  }
+
+  // sortByStatus sorts the triaged regression table by a view's status
+  // column. The narrow column's menu button covers its title, so use the
+  // header's sort button, which appears on hover.
+  async sortByStatus(view) {
+    const header = this.statusColumnHeader(view)
+    await header.hover()
+    await header.getByRole('button', { name: 'Sort' }).click()
+  }
+
+  // regressionRowIds lists, in display order, the row IDs of the triaged
+  // regression table that has a status column for the view.
+  async regressionRowIds(view) {
+    return this.page
+      .locator('.MuiDataGrid-root', {
+        has: this.page.locator(`[data-field="status:${view}"]`),
+      })
+      .locator('.MuiDataGrid-row[data-id]')
+      .evaluateAll((rows) => rows.map((row) => Number(row.dataset.id)))
+  }
+
   async open(id) {
     await this.page.goto(`component_readiness/triages/${id}`)
     await this.page.getByRole('heading', { name: 'Triage Details' }).waitFor()

@@ -1,14 +1,15 @@
 import {
   CLOSED_IN_VIEW_REGRESSION_ID,
   CLOSED_REGRESSION_ID,
+  closedInViewRegression,
   closedRegression,
   closedRegressionTriage,
   HISTORICAL_BASE_END,
+  HISTORICAL_CLOSED_AT,
   HISTORICAL_LAST_FAILURE,
   HISTORICAL_RANGE,
   HISTORICAL_SAMPLE_END,
   HISTORICAL_SAMPLE_START,
-  historicalTestDetailsPath,
   JIRA_URL,
   mixedRegressionTriage,
   NO_FAILURE_REGRESSION_ID,
@@ -20,14 +21,16 @@ import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
 import { latestRequest } from '../fixtures/expectations.js'
 import { test } from '../fixtures/test.js'
+import { TestDetailsPage } from '../pages/testDetailsPage.js'
+import { TriagePage } from '../pages/triagePage.js'
 
 const { Given, When, Then } = createBdd(test)
 
 const closedTooltip = `Closed regression. View historical test details for ${HISTORICAL_RANGE}.`
 const closedInViewTooltip = `Closed in this view. View historical test details for ${HISTORICAL_RANGE}.`
 
-function gridRow(page, id) {
-  return page.locator(`.MuiDataGrid-row[data-id="${id}"]`)
+function regressionRow(page, id) {
+  return new TriagePage(page).regressionRow(id)
 }
 
 Given('a triage whose only regression closed exists', async ({ api }) => {
@@ -49,8 +52,19 @@ Given(
   }
 )
 
+Given(
+  'the regression API returns a regression closed only in this view',
+  async ({ api }) => {
+    api.regressionBody = closedInViewRegression()
+  }
+)
+
 Given('the regression API cannot find the regression', async ({ api }) => {
   api.regressionMode = 'missing'
+})
+
+Given('the regression API fails', async ({ api }) => {
+  api.regressionMode = 'error'
 })
 
 Given('test details no longer track the regression', async ({ api }) => {
@@ -58,24 +72,76 @@ Given('test details no longer track the regression', async ({ api }) => {
 })
 
 When('I open the historical test details link', async ({ page }) => {
-  const apiPath = historicalTestDetailsPath()
-  await page.goto(
-    apiPath.replace('/api/component_readiness/', 'component_readiness/')
-  )
+  await new TestDetailsPage(page).openHistorical(CLOSED_REGRESSION_ID)
+})
+
+When(
+  'I open the historical test details link for the regression closed only in this view',
+  async ({ page }) => {
+    await new TestDetailsPage(page).openHistorical(CLOSED_IN_VIEW_REGRESSION_ID)
+  }
+)
+
+When(
+  'I open the historical test details link for the regression closed only in this view without a view',
+  async ({ page }) => {
+    await new TestDetailsPage(page).openHistorical(
+      CLOSED_IN_VIEW_REGRESSION_ID,
+      { withView: false }
+    )
+  }
+)
+
+When('I sort by the {string} status column', async ({ page }, view) => {
+  await new TriagePage(page).sortByStatus(view)
 })
 
 Then('the {string} status column is shown', async ({ page }, view) => {
-  // The header's accessible name is its tooltip, which starts with the view.
-  const escaped = view.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  await expect(
-    page.getByRole('columnheader', { name: new RegExp(`^${escaped}:`) })
-  ).toBeVisible()
+  await expect(new TriagePage(page).statusColumnHeader(view)).toBeVisible()
 })
+
+Then(
+  'the {string} status column is sorted {word}',
+  async ({ page }, view, direction) => {
+    await expect(new TriagePage(page).statusColumnHeader(view)).toHaveAttribute(
+      'aria-sort',
+      direction
+    )
+  }
+)
+
+Then(
+  'the {string} rows start with unavailable history and end with the open row',
+  async ({ page }, view) => {
+    await expect
+      .poll(async () => {
+        const ids = await new TriagePage(page).regressionRowIds(view)
+        return [ids[0], ids[ids.length - 1]]
+      })
+      .toEqual([NO_FAILURE_REGRESSION_ID, REGRESSION_ID])
+  }
+)
+
+Then(
+  'the {string} rows are ordered open, historical, then unavailable',
+  async ({ page }, view) => {
+    // The status columns are keyed by view name, so the sort applies to the
+    // view's column even though historical columns were added to the grid.
+    await expect
+      .poll(() => new TriagePage(page).regressionRowIds(view))
+      .toEqual([
+        REGRESSION_ID,
+        CLOSED_REGRESSION_ID,
+        CLOSED_IN_VIEW_REGRESSION_ID,
+        NO_FAILURE_REGRESSION_ID,
+      ])
+  }
+)
 
 Then(
   'the closed regression links to its historical test details',
   async ({ page }) => {
-    const link = gridRow(page, CLOSED_REGRESSION_ID).getByRole('link', {
+    const link = regressionRow(page, CLOSED_REGRESSION_ID).getByRole('link', {
       name: closedTooltip,
       exact: true,
     })
@@ -101,7 +167,7 @@ Then(
   async ({ page }) => {
     // Focus the row's first cell, then arrow to the status cell. The grid's
     // managed tab index must hand focus to the link for Enter to open it.
-    const row = gridRow(page, CLOSED_REGRESSION_ID)
+    const row = regressionRow(page, CLOSED_REGRESSION_ID)
     const link = row.getByRole('link', { name: closedTooltip, exact: true })
     const idCell = row.locator('[data-field="id"][role="gridcell"]')
     const statusCell = row.locator(
@@ -133,14 +199,14 @@ Then(
 )
 
 Then('the open regression keeps its severity icon', async ({ page }) => {
-  const status = gridRow(page, REGRESSION_ID).locator('.status')
+  const status = regressionRow(page, REGRESSION_ID).locator('.status')
   await expect(status.getByAltText('SignificantRegression')).toBeVisible()
   await expect(status.locator('.historical-test-details')).toHaveCount(0)
 })
 
 Then('the regression closed only in this view says so', async ({ page }) => {
   await expect(
-    gridRow(page, CLOSED_IN_VIEW_REGRESSION_ID).getByRole('link', {
+    regressionRow(page, CLOSED_IN_VIEW_REGRESSION_ID).getByRole('link', {
       name: closedInViewTooltip,
       exact: true,
     })
@@ -150,7 +216,7 @@ Then('the regression closed only in this view says so', async ({ page }) => {
 Then(
   'the regression without a last failure explains that history is unavailable',
   async ({ page }) => {
-    const row = gridRow(page, NO_FAILURE_REGRESSION_ID)
+    const row = regressionRow(page, NO_FAILURE_REGRESSION_ID)
     await expect(
       row.getByRole('img', {
         name: 'Closed regression. Historical test details are unavailable because no last failure was recorded.',
@@ -164,7 +230,7 @@ Then(
 Then(
   'the closed regression notice shows its closure details',
   async ({ page }) => {
-    const notice = page.getByTestId('historical-notice')
+    const notice = new TestDetailsPage(page).historicalNotice()
     await expect(notice).toContainText('Closed regression, historical report')
     await expect(notice).toContainText(`Regression ID: ${CLOSED_REGRESSION_ID}`)
     await expect(notice).toContainText('Closed: 2026-10-02T08:00:00Z')
@@ -206,7 +272,7 @@ Then('the regression ID row shows the closed regression', async ({ page }) => {
 
 Then("the closed regression's triage is listed", async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Triages' })).toBeVisible()
-  const triageRow = gridRow(page, SEEDED_TRIAGE_ID)
+  const triageRow = new TestDetailsPage(page).triageRow(SEEDED_TRIAGE_ID)
   await expect(triageRow).toBeVisible()
   await expect(
     triageRow.locator('[data-field="jira_key"]').getByRole('link')
@@ -242,7 +308,7 @@ Then(
     expect(url.searchParams.get('regressionId')).toBe(
       String(CLOSED_REGRESSION_ID)
     )
-    await expect(page.getByTestId('historical-notice')).toContainText(
+    await expect(new TestDetailsPage(page).historicalNotice()).toContainText(
       `Sample window: ${HISTORICAL_RANGE} (UTC)`
     )
   }
@@ -251,7 +317,7 @@ Then(
 Then(
   'the notice says the regression does not match this report',
   async ({ page }) => {
-    await expect(page.getByTestId('historical-notice')).toContainText(
+    await expect(new TestDetailsPage(page).historicalNotice()).toContainText(
       `Regression ${CLOSED_REGRESSION_ID} does not match this report (test ID)`
     )
     await expect(
@@ -261,7 +327,7 @@ Then(
 )
 
 Then('the notice says the regression was not found', async ({ page }) => {
-  await expect(page.getByTestId('historical-notice')).toContainText(
+  await expect(new TestDetailsPage(page).historicalNotice()).toContainText(
     `Regression ${CLOSED_REGRESSION_ID} was not found`
   )
 })
@@ -269,10 +335,50 @@ Then('the notice says the regression was not found', async ({ page }) => {
 Then(
   'the closed regression notice explains there is no historical data',
   async ({ page }) => {
-    const notice = page.getByTestId('historical-notice')
+    const notice = new TestDetailsPage(page).historicalNotice()
     await expect(notice).toContainText('Closed regression, historical report')
     await expect(notice).toContainText(
       'No test results are available for this historical window.'
     )
   }
 )
+
+Then(
+  'the notice says the regression closed only in this view',
+  async ({ page }) => {
+    const notice = new TestDetailsPage(page).historicalNotice()
+    await expect(notice).toContainText('Closed in this view, historical report')
+    await expect(notice).toContainText(
+      `Regression ID: ${CLOSED_IN_VIEW_REGRESSION_ID}`
+    )
+    await expect(notice).toContainText(
+      `Closed: Closed in ${VIEW} on ${HISTORICAL_CLOSED_AT}; still open in another view`
+    )
+    await expect(notice).toContainText(
+      `Sample window: ${HISTORICAL_RANGE} (UTC)`
+    )
+  }
+)
+
+Then(
+  'the notice says closure in a specific view is unknown',
+  async ({ page }) => {
+    const notice = new TestDetailsPage(page).historicalNotice()
+    await expect(notice).toContainText(
+      'Historical report for a tracked regression'
+    )
+    await expect(notice).toContainText(
+      'Not closed overall; closure in a specific view is unknown because this report has no view'
+    )
+  }
+)
+
+Then('the notice says the regression could not be loaded', async ({ page }) => {
+  const notice = new TestDetailsPage(page).historicalNotice()
+  await expect(notice).toContainText(
+    `Unable to load regression ${CLOSED_REGRESSION_ID}: API server returned 500`
+  )
+  await expect(
+    page.getByText('Closed regression, historical report')
+  ).toHaveCount(0)
+})

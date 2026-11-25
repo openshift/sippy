@@ -1,8 +1,5 @@
-import {
-  convertApiUrlToUiUrl,
-  getRegressionAPIUrl,
-  getTestDetailsLink,
-} from './CompReadyUtils'
+import { convertApiUrlToUiUrl, getRegressionAPIUrl } from './CompReadyUtils'
+import { preferredTestDetailsLink } from './HistoricalRegressionUtils'
 import { useNavigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import React from 'react'
@@ -27,16 +24,9 @@ export default function RegressionRedirect() {
         return response.json()
       })
       .then((regression) => {
-        const detailKeys = regression?.links
-          ? Object.keys(regression.links)
-              .filter((k) => k.startsWith('test_details:'))
-              .sort()
-          : []
-        const mainViewKey = detailKeys.find((k) => k.endsWith('-main'))
-        const selectedKey = mainViewKey || detailKeys[0]
-        const testDetailsUrl = selectedKey
-          ? regression.links[selectedKey]
-          : getTestDetailsLink(regression?.links)
+        // Live reports win over historical ones, so an open regression whose
+        // main association closed still opens a current report.
+        const testDetailsUrl = preferredTestDetailsLink(regression)
         if (!testDetailsUrl) {
           setError('No test details link available for this regression.')
           return

@@ -9,14 +9,16 @@ import {
   convertVariantItemsToParam,
   dateEndFormat,
   dateFormat,
-  endTimeControlValue,
-  endTimeParam,
   formatLongDate,
   getComponentReadinessViewsAPIUrl,
   getJobVariantsAPIUrl,
   gotFetchError,
-  viewControlDefaults,
 } from './CompReadyUtils'
+import {
+  endTimeControlValue,
+  endTimeParam,
+  viewControlDefaults,
+} from './HistoricalRegressionUtils'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
 import CompReadyProgress from './CompReadyProgress'
@@ -426,7 +428,8 @@ export const CompReadyVarsProvider = ({ children }) => {
     updateVarsFromView(view.name, views, {})
   }
 
-  // Maps each view-provided control value to its setter.
+  // Maps each control in viewControls (HistoricalRegressionUtils) to its
+  // setter. updateVarsFromView throws if a control has no setter here.
   const viewControlSetters = {
     baseRelease: setBaseRelease,
     baseStartTime: setBaseStartTime,
@@ -467,7 +470,11 @@ export const CompReadyVarsProvider = ({ children }) => {
 
     const defaults = viewControlDefaults(view, urlParams)
     for (const [control, value] of Object.entries(defaults)) {
-      viewControlSetters[control](value)
+      const setter = viewControlSetters[control]
+      if (!setter) {
+        throw new Error(`No setter for view control "${control}"`)
+      }
+      setter(value)
     }
   }
 

@@ -817,9 +817,14 @@ const HISTORICAL_PASSED_RUN = '2026-09-24T00:00:00Z'
 const historicalVariants = ['Architecture:amd64', 'Platform:aws']
 
 // The historical test_details link the API builds for a closed regression.
-export function historicalTestDetailsPath(regressionId = CLOSED_REGRESSION_ID) {
+// withView: false drops the view, as Generate Report does, so per-view
+// closure cannot be checked.
+export function historicalTestDetailsPath(
+  regressionId = CLOSED_REGRESSION_ID,
+  { withView = true } = {}
+) {
   const params = new URLSearchParams()
-  params.set('view', VIEW)
+  if (withView) params.set('view', VIEW)
   params.set('testId', TEST_ID)
   params.set('component', COMPONENT)
   params.set('capability', CAPABILITY)
@@ -879,6 +884,28 @@ export function closedRegression(overrides = {}) {
   }
 }
 
+// A regression that closed in VIEW but stays open in OTHER_VIEW.
+export function closedInViewRegression() {
+  return closedRegression({
+    id: CLOSED_IN_VIEW_REGRESSION_ID,
+    test_name: CLOSED_IN_VIEW_TEST_NAME,
+    closed: { Time: null, Valid: false },
+    views: [
+      {
+        view_name: VIEW,
+        active: false,
+        closed_at: { Time: HISTORICAL_CLOSED_AT, Valid: true },
+      },
+      { view_name: OTHER_VIEW, active: true },
+    ],
+    links: {
+      [`test_details:${VIEW}`]: historicalTestDetailsPath(
+        CLOSED_IN_VIEW_REGRESSION_ID
+      ),
+    },
+  })
+}
+
 // A resolved triage whose only regression closed and rolled off, so the
 // expanded triage has no current regressed_tests.
 export function closedRegressionTriage() {
@@ -911,26 +938,7 @@ export function mixedRegressionTriage() {
       links: { [`test_details:${VIEW}`]: testDetailsPath(VIEW) },
     },
     strip(closedRegression()),
-    strip(
-      closedRegression({
-        id: CLOSED_IN_VIEW_REGRESSION_ID,
-        test_name: CLOSED_IN_VIEW_TEST_NAME,
-        closed: { Time: null, Valid: false },
-        views: [
-          {
-            view_name: VIEW,
-            active: false,
-            closed_at: { Time: HISTORICAL_CLOSED_AT, Valid: true },
-          },
-          { view_name: OTHER_VIEW, active: true },
-        ],
-        links: {
-          [`test_details:${VIEW}`]: historicalTestDetailsPath(
-            CLOSED_IN_VIEW_REGRESSION_ID
-          ),
-        },
-      })
-    ),
+    strip(closedInViewRegression()),
     strip(
       closedRegression({
         id: NO_FAILURE_REGRESSION_ID,

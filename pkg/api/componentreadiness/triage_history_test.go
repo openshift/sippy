@@ -1,3 +1,7 @@
+// Tests for historical (closed regression) test_details links: the sample window, basis resolution,
+// per-view link selection in InjectRegressionHATEOASLinksHistory, triage enrichment, and the request
+// parsing round trip. General InjectRegressionHATEOASLinks behavior for current links is covered by
+// TestInjectRegressionHATEOASLinks in triage_test.go.
 package componentreadiness
 
 import (
@@ -254,6 +258,16 @@ func TestGenerateHistoricalTestDetailsURL(t *testing.T) {
 			wantErr: errMissingLastFailure,
 		},
 		{
+			name: "spot-check regression has no historical link because its samples follow the current time",
+			regression: func() *models.TestRegression {
+				r := regression49971()
+				r.TestID = crtest.SpotCheckTestID("spotcheck-30d", "Networking", "ovn")
+				return r
+			},
+			view:    gaView,
+			wantErr: errSpotCheckHistory,
+		},
+		{
 			name:       "basis GA date that cannot be resolved is an error",
 			regression: regression49971,
 			view: func() crview.View {
@@ -293,10 +307,6 @@ func TestGenerateHistoricalTestDetailsURL(t *testing.T) {
 		})
 	}
 
-	t.Run("nil regression is an error", func(t *testing.T) {
-		_, err := generateHistoricalTestDetailsURL(nil, gaView, releases, "http://frontend")
-		require.Error(t, err)
-	})
 }
 
 func TestInjectRegressionHATEOASLinksHistory(t *testing.T) {
@@ -372,7 +382,7 @@ func TestInjectRegressionHATEOASLinksHistory(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := tt.regression()
-			InjectRegressionHATEOASLinks(r, views, releases, 12*time.Hour, 4*time.Hour, "http://api", "http://frontend")
+			InjectRegressionHATEOASLinks(r, &RegressionLinkConfig{Views: views, Releases: releases, CRTimeRoundingFactor: 12 * time.Hour, CRTimeRoundingOffset: 4 * time.Hour}, "http://api", "http://frontend")
 			assert.Equal(t, "http://api/api/component_readiness/regressions/49971", r.Links["self"])
 			assert.Len(t, r.Links, 1+len(tt.wantHistorical)+len(tt.wantCurrent))
 			for _, viewName := range tt.wantHistorical {
@@ -414,12 +424,6 @@ func TestInjectTriageRegressionLinks(t *testing.T) {
 		triage := &models.Triage{ID: 792, Regressions: []models.TestRegression{*regression49971()}}
 		injectTriageRegressionLinks(triage, nil, req)
 		assert.Nil(t, triage.Regressions[0].Links)
-	})
-
-	t.Run("nil triage is ignored", func(t *testing.T) {
-		assert.NotPanics(t, func() {
-			injectTriageRegressionLinks(nil, &RegressionLinkConfig{Views: views, Releases: releases}, req)
-		})
 	})
 }
 

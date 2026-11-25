@@ -715,7 +715,7 @@ supplied by the selected data provider.
 |----------------|--------|-------------|
 | testLifecycles | String (repeated) | Lifecycle values (e.g. `testLifecycles=blocking&testLifecycles=informing`) to restrict both the row filter and the `test_failures` count to matching tests. Applied only to sample data; base details remain unfiltered. When set, `test_failures` is computed as a COUNT(DISTINCT test) of failures in the requested lifecycles rather than the pre-computed total on the job run. Omit to include all lifecycles. |
 | sampleStartTime, sampleEndTime, baseStartTime, baseEndTime | String (RFC 3339) | Explicit window boundaries; they override the view's defaults. Sample filters use `>= start AND < end`. Boundaries that have already passed are used exactly. Only a boundary on today's UTC date that is at or after the current time is rounded to the cache rounding factor. |
-| regressionId | Number | Present on historical links for closed regressions. The API ignores it; the UI uses it to load closure details from `GET /api/component_readiness/regressions/{id}`. |
+| regressionId | Number | Present on historical `test_details` links (closed regressions, and views where the regression closed while staying open elsewhere). The API ignores it; the UI uses it to load closure details from `GET /api/component_readiness/regressions/{id}`. |
 
 Links to this endpoint are published as HATEOAS `test_details:<view>` links on
 regression records. See [Component Readiness Regressions](#component-readiness-regressions).
@@ -767,7 +767,11 @@ from it. Regression job runs in the response may contain applied `job_labels`.
 In both the list and single triage responses, each embedded regression carries
 the same HATEOAS `links` as `GET /api/component_readiness/regressions/{id}`,
 including current and historical `test_details:<view>` links (see
-[Component Readiness Regressions](#component-readiness-regressions)).
+[Component Readiness Regressions](#component-readiness-regressions)). If the
+release list cannot be loaded, regression links are omitted from the response
+and a single warning is logged. The list endpoint skips this work when `fields`
+omits `regressions`. Triages returned by `POST` and `PUT` do not include
+regression links; fetch the triage with `GET` to get them.
 
 Endpoint: `POST /api/component_readiness/triages`
 
@@ -893,7 +897,10 @@ view's current configuration:
 
 Concrete dates are serialized, so reopening a link never moves its windows. No
 historical link is returned when the regression has no `last_failure`, when the
-view is no longer configured, or when the view's basis cannot be resolved. The
+view is no longer configured, when the view's basis cannot be resolved, or for
+spot-check regressions (test IDs starting with `spotcheck-`). Test details
+resolve a view's spot-check samples from the current time rather than from the
+URL's sample dates, so a historical spot-check link would show recent runs. The
 link only describes a query; whether the providers still hold data for the
 window is determined when it is opened. See
 [docs/features/component-readiness-triage.md](../../docs/features/component-readiness-triage.md#reviewing-closed-regressions).

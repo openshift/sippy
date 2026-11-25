@@ -24,8 +24,6 @@ import {
   makePageTitle,
   makeRFC3339Time,
   noDataTable,
-  parseEnvironmentVariants,
-  validateHistoricalRegression,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
@@ -34,6 +32,11 @@ import {
   pathForExactTestAnalysisWithFilter,
 } from '../helpers'
 import { Link } from 'react-router'
+import {
+  LookupStatus,
+  parseEnvironmentVariants,
+  validateHistoricalRegression,
+} from './HistoricalRegressionUtils'
 import { ReleasesContext, SippyCapabilitiesContext } from '../App'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
@@ -140,7 +143,7 @@ export default function TestDetailsReport(props) {
   // is fetched alongside, and independently of, the cached statistical report
   // so lifecycle changes show up without regenerating the report.
   const [historicalLookup, setHistoricalLookup] = React.useState({
-    status: 'idle',
+    status: LookupStatus.IDLE,
   })
 
   // Helpers for copying the test ID to clipboard
@@ -238,17 +241,17 @@ export default function TestDetailsReport(props) {
 
   useEffect(() => {
     if (!historicalRegressionId) {
-      setHistoricalLookup({ status: 'idle' })
+      setHistoricalLookup({ status: LookupStatus.IDLE })
       return
     }
-    setHistoricalLookup({ status: 'loading' })
+    setHistoricalLookup({ status: LookupStatus.LOADING })
     const controller = new AbortController()
     fetch(getRegressionAPIUrl(historicalRegressionId), {
       signal: controller.signal,
     })
       .then((response) => {
         if (response.status === 404) {
-          setHistoricalLookup({ status: 'missing' })
+          setHistoricalLookup({ status: LookupStatus.MISSING })
           return
         }
         if (response.status !== 200) {
@@ -257,12 +260,15 @@ export default function TestDetailsReport(props) {
         return response
           .json()
           .then((regression) =>
-            setHistoricalLookup({ status: 'loaded', regression })
+            setHistoricalLookup({ status: LookupStatus.LOADED, regression })
           )
       })
       .catch((error) => {
         if (error.name !== 'AbortError') {
-          setHistoricalLookup({ status: 'error', error: error.message })
+          setHistoricalLookup({
+            status: LookupStatus.ERROR,
+            error: error.message,
+          })
         }
       })
     return () => controller.abort()
@@ -320,7 +326,7 @@ export default function TestDetailsReport(props) {
   useEffect(() => setLoadedParams(datesEnv), [])
 
   const historicalValidation =
-    historicalLookup.status === 'loaded'
+    historicalLookup.status === LookupStatus.LOADED
       ? validateHistoricalRegression(historicalLookup.regression, {
           testId,
           sampleRelease: urlParams?.sampleRelease || sampleRelease,

@@ -1,6 +1,12 @@
 import { ageColor, relativeTime, useFilterModelParam } from '../helpers'
 import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
 import { Badge, Box, Tooltip, Typography } from '@mui/material'
+import {
+  CellKind,
+  triagedRegressionCellRank,
+  triagedRegressionViewCell,
+  triagedRegressionViewNames,
+} from './HistoricalRegressionUtils'
 import { CheckCircle, History, HistoryToggleOff } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { filterRegressionsByLabel } from './TriageSymptomLabels'
@@ -8,11 +14,6 @@ import { Link } from 'react-router'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { pathForExactTestAnalysisWithVariants } from '../helpers'
 import { styled, useTheme } from '@mui/material/styles'
-import {
-  triagedRegressionCellRank,
-  triagedRegressionViewCell,
-  triagedRegressionViewNames,
-} from './CompReadyUtils'
 import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -52,7 +53,7 @@ function HistoricalIcon() {
 // managed value, so arrow-key navigation focuses the control and inactive
 // cells stay out of the tab sequence.
 function HistoricalStatusCell({ cell, tabIndex }) {
-  if (cell.kind === 'unavailable') {
+  if (cell.kind === CellKind.UNAVAILABLE) {
     return (
       <Tooltip title={cell.tooltip}>
         <span
@@ -355,7 +356,7 @@ export default function TriagedRegressionTestList(props) {
             renderCell: (params) => {
               const cell = params.value
               if (cell == null) return null
-              if (cell.kind !== 'current') {
+              if (cell.kind !== CellKind.CURRENT) {
                 return (
                   <StatusCell className="status">
                     <HistoricalStatusCell

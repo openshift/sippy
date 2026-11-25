@@ -1,14 +1,32 @@
 import { Alert, AlertTitle, Box } from '@mui/material'
+import {
+  ClosureScope,
+  formatUrlDateRange,
+  LookupStatus,
+} from './HistoricalRegressionUtils'
 import { formatDateToSeconds } from '../helpers'
-import { formatUrlDateRange } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React from 'react'
 
 const titles = {
-  regression: 'Closed regression, historical report',
-  view: 'Closed in this view, historical report',
-  open: 'Historical report for an open regression',
-  unknown: 'Historical report for a tracked regression',
+  [ClosureScope.REGRESSION]: 'Closed regression, historical report',
+  [ClosureScope.VIEW]: 'Closed in this view, historical report',
+  [ClosureScope.OPEN]: 'Historical report for an open regression',
+  [ClosureScope.UNKNOWN]: 'Historical report for a tracked regression',
+}
+
+// HistoricalWarning reports why closure details cannot be shown for the
+// regression a historical link names.
+function HistoricalWarning({ children }) {
+  return (
+    <Alert severity="warning" sx={{ my: 2 }} data-testid="historical-notice">
+      {children}
+    </Alert>
+  )
+}
+
+HistoricalWarning.propTypes = {
+  children: PropTypes.node,
 }
 
 // HistoricalRegressionNotice explains the closure context of the regression a
@@ -29,42 +47,42 @@ export default function HistoricalRegressionNotice({
   // for a different ID is likewise stale until the lookup effect replaces it.
   if (
     !regressionId ||
-    lookup.status === 'idle' ||
-    lookup.status === 'loading' ||
-    (lookup.status === 'loaded' &&
+    lookup.status === LookupStatus.IDLE ||
+    lookup.status === LookupStatus.LOADING ||
+    (lookup.status === LookupStatus.LOADED &&
       String(lookup.regression?.id) !== String(regressionId))
   ) {
     return null
   }
 
-  if (lookup.status === 'missing') {
+  if (lookup.status === LookupStatus.MISSING) {
     return (
-      <Alert severity="warning" sx={{ my: 2 }} data-testid="historical-notice">
+      <HistoricalWarning>
         Regression {regressionId} was not found, so this report cannot be
         identified as the historical report of a closed regression.
-      </Alert>
+      </HistoricalWarning>
     )
   }
-  if (lookup.status === 'error') {
+  if (lookup.status === LookupStatus.ERROR) {
     return (
-      <Alert severity="warning" sx={{ my: 2 }} data-testid="historical-notice">
+      <HistoricalWarning>
         Unable to load regression {regressionId}: {lookup.error}
-      </Alert>
+      </HistoricalWarning>
     )
   }
   if (!validation) return null
   if (!validation.valid) {
     return (
-      <Alert severity="warning" sx={{ my: 2 }} data-testid="historical-notice">
+      <HistoricalWarning>
         Regression {regressionId} does not match this report (
         {validation.mismatches.join(', ')}), so its closure details are not
         shown.
-      </Alert>
+      </HistoricalWarning>
     )
   }
 
   const regression = lookup.regression
-  const association = (regression.views || []).find((v) => v.view_name === view)
+  const { association } = validation
   const sampleRange = formatUrlDateRange(
     urlParams.sampleStartTime,
     urlParams.sampleEndTime
@@ -75,12 +93,12 @@ export default function HistoricalRegressionNotice({
   )
 
   let closedText = 'Open'
-  if (validation.scope === 'regression') {
+  if (validation.scope === ClosureScope.REGRESSION) {
     closedText = formatDateToSeconds(regression.closed.Time)
-  } else if (validation.scope === 'unknown') {
+  } else if (validation.scope === ClosureScope.UNKNOWN) {
     closedText =
       'Not closed overall; closure in a specific view is unknown because this report has no view'
-  } else if (validation.scope === 'view') {
+  } else if (validation.scope === ClosureScope.VIEW) {
     closedText = association?.closed_at?.Valid
       ? `Closed in ${view} on ${formatDateToSeconds(
           association.closed_at.Time
@@ -124,15 +142,15 @@ export default function HistoricalRegressionNotice({
 HistoricalRegressionNotice.propTypes = {
   regressionId: PropTypes.number,
   lookup: PropTypes.shape({
-    status: PropTypes.oneOf(['idle', 'loading', 'loaded', 'missing', 'error'])
-      .isRequired,
+    status: PropTypes.oneOf(Object.values(LookupStatus)).isRequired,
     regression: PropTypes.object,
     error: PropTypes.string,
   }).isRequired,
   validation: PropTypes.shape({
     valid: PropTypes.bool,
     mismatches: PropTypes.array,
-    scope: PropTypes.string,
+    scope: PropTypes.oneOf(Object.values(ClosureScope)),
+    association: PropTypes.object,
   }),
   urlParams: PropTypes.object.isRequired,
   view: PropTypes.string,
