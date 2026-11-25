@@ -30,7 +30,6 @@ also accepted for backward compatibility with existing bookmarks and links.
 The `field` must be a simple column name (letters, digits, and underscores, not starting with a digit).
 Any other field name is rejected before a query is built, and the request returns HTTP 400.
 An operator that is not supported for the field also returns HTTP 400.
-Filter values are always sent as bound query parameters.
 
 - String operators are: contains, starts with, ends with, equals, is empty, is not empty.
 - Numerical operators are: =, !=, <, <=, >, >=
