@@ -2015,9 +2015,6 @@ var historicalRegressionSeeds = []historicalRegressionSeed{
 	{testID: "test-significant-improvement", jobTemplate: awsAmd64Parallel, views: []string{"4.22-main"}, failing: testCount{60, 30, 0}},
 }
 
-// historicalRegressionRelease is the release of the seeded historical regressions.
-const historicalRegressionRelease = "4.22"
-
 // historicalFailureDays is how long the seeded historical regressions were failing.
 const historicalFailureDays = 5
 
@@ -2028,6 +2025,8 @@ const historicalFailureGapDays = 2
 
 // historicalFailureWindow returns when the seeded historical regressions were failing: a span of
 // sample release runs that ends historicalFailureGapDays before the current sample window starts.
+// The seeded historical regressions are therefore in the sample release, so they follow the seed
+// views when those move to a new release.
 // It is short enough that a historical report's sample window, which starts seven days before the
 // last failure's date, covers all of it.
 func (c seedClock) historicalFailureWindow() (start, end time.Time) {
@@ -2039,10 +2038,6 @@ func (c seedClock) historicalFailureWindow() (start, end time.Time) {
 // runs of each seed's job in the historical failure window, recording only the seeded tests. It runs
 // with the bulk run seeding so the materialized views and cumulative summaries include these runs.
 func seedHistoricalRegressionRuns(dbc *db.DB, clock seedClock, suite *models.Suite, testIDsByName map[string]uint) (int, int, error) {
-	// The failure window is placed relative to the sample window, so it only fits the sample release.
-	if clock.sample.Name != historicalRegressionRelease {
-		return 0, 0, fmt.Errorf("historical regression release %s is not the seed sample release %s", historicalRegressionRelease, clock.sample.Name)
-	}
 	failStart, failEnd := clock.historicalFailureWindow()
 
 	var jobTemplates []string
@@ -2062,7 +2057,7 @@ func seedHistoricalRegressionRuns(dbc *db.DB, clock seedClock, suite *models.Sui
 
 	totalRuns, totalResults := 0, 0
 	for _, jobTemplate := range jobTemplates {
-		jobName := fmt.Sprintf(jobTemplate, historicalRegressionRelease)
+		jobName := fmt.Sprintf(jobTemplate, clock.sample.Name)
 		var prowJob models.ProwJob
 		if err := dbc.DB.Where("name = ?", jobName).First(&prowJob).Error; err != nil {
 			return 0, 0, fmt.Errorf("failed to find ProwJob %s: %w", jobName, err)
@@ -2087,6 +2082,7 @@ func seedHistoricalRegressions(dbc *db.DB, clock seedClock, views apitype.SippyV
 		return fmt.Errorf("finding triage %s for historical regressions: %w", networkTriageURL, err)
 	}
 
+	release := clock.sample.Name
 	opened, closed := clock.historicalFailureWindow()
 	links := make([]map[string]any, 0, len(historicalRegressionSeeds))
 	for _, seed := range historicalRegressionSeeds {
@@ -2094,12 +2090,12 @@ func seedHistoricalRegressions(dbc *db.DB, clock seedClock, views apitype.SippyV
 		if !ok {
 			return fmt.Errorf("historical regression seed references unknown test %s", seed.testID)
 		}
-		jobName := fmt.Sprintf(seed.jobTemplate, historicalRegressionRelease)
-		lastFailure, err := latestSeededFailure(dbc, spec.testName, jobName, historicalRegressionRelease, opened, closed)
+		jobName := fmt.Sprintf(seed.jobTemplate, release)
+		lastFailure, err := latestSeededFailure(dbc, spec.testName, jobName, release, opened, closed)
 		if err != nil {
 			return err
 		}
-		reg, err := buildHistoricalRegression(seed, spec, views, opened, lastFailure, closed)
+		reg, err := buildHistoricalRegression(seed, spec, views, release, opened, lastFailure, closed)
 		if err != nil {
 			return err
 		}
@@ -2126,11 +2122,11 @@ func seedHistoricalRegressions(dbc *db.DB, clock seedClock, views apitype.SippyV
 	return nil
 }
 
-// buildHistoricalRegression returns the closed regression record for seed. Its variants are the
-// seed job's variants limited to the first view's DB grouping, matching what regression tracking
-// records for a report row; its base release is that view's; and every view association is closed
-// when the regression closed.
-func buildHistoricalRegression(seed historicalRegressionSeed, spec syntheticTestSpec, views apitype.SippyViews, opened, lastFailure, closed time.Time) (models.TestRegression, error) {
+// buildHistoricalRegression returns the closed regression record for seed in release, the seed
+// sample release. Its variants are the seed job's variants limited to the first view's DB grouping,
+// matching what regression tracking records for a report row; its base release is that view's; and
+// every view association is closed when the regression closed.
+func buildHistoricalRegression(seed historicalRegressionSeed, spec syntheticTestSpec, views apitype.SippyViews, release string, opened, lastFailure, closed time.Time) (models.TestRegression, error) {
 	if len(seed.views) == 0 {
 		return models.TestRegression{}, fmt.Errorf("historical regression seed %s has no views", seed.testID)
 	}
@@ -2177,7 +2173,7 @@ func buildHistoricalRegression(seed historicalRegressionSeed, spec syntheticTest
 	sort.Strings(variants)
 
 	return models.TestRegression{
-		Release:     historicalRegressionRelease,
+		Release:     release,
 		BaseRelease: baseRelease,
 		Component:   spec.component,
 		Capability:  spec.capabilities[0],

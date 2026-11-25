@@ -45,7 +45,7 @@ Feature: Historical test details for closed regressions
     And the regression ID row shows the closed regression
     And the closed regression's triage is listed
     And the closed regression's triage shows its Jira details
-    And the stale report warning is not shown
+    And the stale report warning links to the latest report
 
   Scenario: Generating the report keeps the historical window and regression
     Given a component readiness API

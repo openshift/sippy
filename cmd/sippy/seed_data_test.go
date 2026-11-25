@@ -379,6 +379,17 @@ func assertSurfacesAgree(t *testing.T, server reqopts.Release, counts testCount,
 	assertStatusTally(t, counts, details, "details")
 }
 
+// historicalSeedReleases returns the releases a seeded historical regression is recorded against:
+// the seed sample release and the basis release of the seed's first view.
+func historicalSeedReleases(t *testing.T, views apitype.SippyViews, seed historicalRegressionSeed) (sample, basis string) {
+	t.Helper()
+	require.NotEmpty(t, seed.views)
+	clock := testSeedClock(t, views, time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC), defaultRounding.Factor, defaultRounding.Offset)
+	view, ok := componentreadiness.FindViewByName(seed.views[0], views.ComponentReadiness)
+	require.True(t, ok, "seed view %s not found", seed.views[0])
+	return clock.sample.Name, view.BaseRelease.Name
+}
+
 // withFailing returns a copy of seed with different failing-window counts.
 func withFailing(seed historicalRegressionSeed, failing testCount) historicalRegressionSeed {
 	seed.failing = failing
@@ -424,11 +435,12 @@ func TestBuildHistoricalRegression(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			spec, ok := findSyntheticTest(tt.seed.testID)
 			require.True(t, ok)
-			reg, err := buildHistoricalRegression(tt.seed, spec, views, opened, lastFailure, closed)
+			release, basis := historicalSeedReleases(t, views, tt.seed)
+			reg, err := buildHistoricalRegression(tt.seed, spec, views, release, opened, lastFailure, closed)
 			require.NoError(t, err)
 
-			assert.Equal(t, historicalRegressionRelease, reg.Release)
-			assert.Equal(t, "4.21", reg.BaseRelease)
+			assert.Equal(t, release, reg.Release)
+			assert.Equal(t, basis, reg.BaseRelease)
 			assert.Equal(t, spec.testID, reg.TestID)
 			assert.Equal(t, spec.testName, reg.TestName)
 			assert.Equal(t, spec.component, reg.Component)
@@ -457,6 +469,7 @@ func TestBuildHistoricalRegressionErrors(t *testing.T) {
 	require.True(t, ok)
 	now := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
 	failing := testCount{60, 45, 0}
+	release, _ := historicalSeedReleases(t, views, historicalRegressionSeeds[0])
 
 	tests := []struct {
 		name string
@@ -469,7 +482,7 @@ func TestBuildHistoricalRegressionErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := buildHistoricalRegression(tt.seed, spec, views, now, now, now)
+			_, err := buildHistoricalRegression(tt.seed, spec, views, release, now, now, now)
 			assert.Error(t, err)
 		})
 	}
@@ -479,12 +492,14 @@ func TestBuildHistoricalRegressionErrors(t *testing.T) {
 // seeded historical regression: no seeded test may pass noticeably less often in the sample than in
 // the basis.
 func TestHistoricalRegressionSeedsAreNotRegressed(t *testing.T) {
+	views := testSeedViews(t)
 	for _, seed := range historicalRegressionSeeds {
 		t.Run(seed.testID, func(t *testing.T) {
 			spec, ok := findSyntheticTest(seed.testID)
 			require.True(t, ok)
+			sampleRelease, basisRelease := historicalSeedReleases(t, views, seed)
 			counts := spec.jobCounts[seed.jobTemplate]
-			basis, sample := counts["4.21"], counts[historicalRegressionRelease]
+			basis, sample := counts[basisRelease], counts[sampleRelease]
 			require.NotZero(t, basis.total)
 			require.NotZero(t, sample.total)
 			assert.GreaterOrEqual(t, seededPassRate(sample), seededPassRate(basis)-0.05,
@@ -496,11 +511,13 @@ func TestHistoricalRegressionSeedsAreNotRegressed(t *testing.T) {
 // TestHistoricalRegressionSeedsWereRegressed checks that each seeded historical regression's failing
 // results pass far less often than its basis, so its historical report shows it regressed.
 func TestHistoricalRegressionSeedsWereRegressed(t *testing.T) {
+	views := testSeedViews(t)
 	for _, seed := range historicalRegressionSeeds {
 		t.Run(seed.testID, func(t *testing.T) {
 			spec, ok := findSyntheticTest(seed.testID)
 			require.True(t, ok)
-			basis := spec.jobCounts[seed.jobTemplate]["4.21"]
+			_, basisRelease := historicalSeedReleases(t, views, seed)
+			basis := spec.jobCounts[seed.jobTemplate][basisRelease]
 			require.NotZero(t, basis.total)
 			require.NotZero(t, seed.failing.total)
 			assert.LessOrEqual(t, seededPassRate(seed.failing), seededPassRate(basis)-0.15,
@@ -527,7 +544,6 @@ func TestHistoricalFailureWindowFitsHistoricalReport(t *testing.T) {
 	}
 	for _, now := range nows {
 		clock := testSeedClock(t, views, now, defaultRounding.Factor, defaultRounding.Offset)
-		require.Equal(t, historicalRegressionRelease, clock.sample.Name)
 		failStart, failEnd := clock.historicalFailureWindow()
 
 		runCounts := map[string]int{}

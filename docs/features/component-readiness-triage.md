@@ -137,10 +137,6 @@ closure scope:
 | Open, and the report has no view (for example after Generate Report) | `Historical report for a tracked regression` | Per-view closure is unknown because the report has no view. |
 | Open, and the report's view association is still active (for example the view was edited in the URL, or the association reopened after the link was generated) | `Historical report for an open regression` | `Open`. |
 
-When the notice shows validated closure details, the usual "more than 48 hours ago" banner is hidden.
-Its latest link keeps the basis anchored to the last failure, so for views with a rolling basis it
-would compare today's sample against an old basis.
-
 Closure details are shown only after the regression record matches the report's test, release,
 variants, and view. Otherwise the notice is a warning instead: the record does not match (listing the
 mismatched fields), the regression was not found, or the regression could not be loaded. Viewing history never changes regression tracking or triage state. The
@@ -156,10 +152,12 @@ Keep in mind:
 - The last failure is tracked per regression, not per view. For a regression that closed in one view
   but stayed open in another, the period may end after it closed in the first view.
 
-To try this locally, `sippy seed-data` adds two closed 4.22 regressions to the network triage
+To try this locally, `sippy seed-data` adds two closed regressions to the network triage
 (`OCPBUGS-40002`), which also has an active regression, so they are reachable from the triage list.
-Each test gets extra failing 4.22 runs in a five day window that ends two days before the current
-sample window, and its historical report shows it as an extreme regression against the 4.21 basis.
+They are in the seed sample release (the sample release of the `4.22-main` seed view) and use the
+view's basis release, so they follow the seed views to a new release. Each test gets extra failing
+sample release runs in a five day window that ends two days before the current sample window, and its
+historical report shows it as an extreme regression against the basis.
 One was tracked in both `4.22-main` and `4.22-gcp-only`, so it has two historical links. Both tests
 pass in the current report, so regression tracking does not reopen them. The definitions are
 `historicalRegressionSeeds` in

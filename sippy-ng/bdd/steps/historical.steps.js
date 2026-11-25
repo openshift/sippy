@@ -301,11 +301,6 @@ Then(
   }
 )
 
-Then('the stale report warning is not shown', async ({ page }) => {
-  await expect(new TestDetailsPage(page).historicalNotice()).toBeVisible()
-  await expect(page.getByText(/more than 48 hours ago/)).toHaveCount(0)
-})
-
 Then(
   'the sample date controls show the historical window',
   async ({ page }) => {

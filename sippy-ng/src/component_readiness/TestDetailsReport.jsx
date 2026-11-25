@@ -546,10 +546,7 @@ View the [test details report|${document.location.href}] for additional context.
         apiCallStr={testDetailsApiCall}
       />
       {historicalNotice(false)}
-      {/* A validated historical report is old by design, and its latest link
-          would compare today's sample against a basis anchored to the last
-          failure, so the notice replaces this banner. */}
-      {latestReportUrl && !historicalRegression && (
+      {latestReportUrl && (
         <Alert severity="warning" sx={{ marginTop: 2, marginBottom: 2 }}>
           This report shows data from more than 48 hours ago.{' '}
           <LaunderedLink
