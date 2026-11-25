@@ -2141,7 +2141,8 @@ func buildHistoricalRegression(seed historicalRegressionSeed, spec syntheticTest
 	if len(spec.capabilities) == 0 {
 		return models.TestRegression{}, fmt.Errorf("synthetic test %s has no capability", spec.testID)
 	}
-	failures := seed.failing.total - seed.failing.success - seed.failing.flake
+	// Flakes count toward success, matching seededTestStatus.
+	failures := seed.failing.total - seed.failing.success
 	if failures <= 0 {
 		return models.TestRegression{}, fmt.Errorf("historical regression seed %s has no failures", seed.testID)
 	}

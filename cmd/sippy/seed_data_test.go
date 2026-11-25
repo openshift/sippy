@@ -379,6 +379,12 @@ func assertSurfacesAgree(t *testing.T, server reqopts.Release, counts testCount,
 	assertStatusTally(t, counts, details, "details")
 }
 
+// withFailing returns a copy of seed with different failing-window counts.
+func withFailing(seed historicalRegressionSeed, failing testCount) historicalRegressionSeed {
+	seed.failing = failing
+	return seed
+}
+
 func TestBuildHistoricalRegression(t *testing.T) {
 	views := testSeedViews(t)
 	opened := time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC)
@@ -405,6 +411,13 @@ func TestBuildHistoricalRegression(t *testing.T) {
 			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:aws", "Suite:parallel", "Topology:ha", "Upgrade:none"},
 			wantViews:       []string{"4.22-main"},
 			wantMaxFailures: 30,
+		},
+		{
+			name:            "flakes count toward success",
+			seed:            withFailing(historicalRegressionSeeds[0], testCount{60, 55, 5}),
+			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:gcp", "Suite:parallel", "Topology:ha", "Upgrade:none"},
+			wantViews:       []string{"4.22-main", "4.22-gcp-only"},
+			wantMaxFailures: 5,
 		},
 	}
 	for _, tt := range tests {
@@ -452,7 +465,7 @@ func TestBuildHistoricalRegressionErrors(t *testing.T) {
 		{name: "no views", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, failing: failing}},
 		{name: "unknown view", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"no-such-view"}, failing: failing}},
 		{name: "unknown job", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: "no-such-job-%s", views: []string{"4.22-main"}, failing: failing}},
-		{name: "no failures", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"4.22-main"}, failing: testCount{60, 55, 5}}},
+		{name: "no failures", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"4.22-main"}, failing: testCount{60, 60, 5}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

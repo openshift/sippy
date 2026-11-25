@@ -179,7 +179,7 @@ pass in the current report, so regression tracking does not reopen them. The def
 | [`pkg/api/componentreadiness/triage.go`](../../pkg/api/componentreadiness/triage.go) | Builds current and historical `test_details:<view>` links for regressions. |
 | [`sippy-ng/src/component_readiness/TriagedRegressionTestList.jsx`](../../sippy-ng/src/component_readiness/TriagedRegressionTestList.jsx) | Triaged regression table with historical icons and links. |
 | [`sippy-ng/src/component_readiness/HistoricalRegressionNotice.jsx`](../../sippy-ng/src/component_readiness/HistoricalRegressionNotice.jsx) | Closure notice on historical test details pages. |
-| [`sippy-ng/src/component_readiness/HistoricalRegressionUtils.js`](../../sippy-ng/src/component_readiness/HistoricalRegressionUtils.js) | Closure scope, table cell, link selection, and URL date helpers shared by the table, redirect, and notice. |
+| [`sippy-ng/src/component_readiness/HistoricalRegressionUtils.jsx`](../../sippy-ng/src/component_readiness/HistoricalRegressionUtils.jsx) | Closure scope, table cell, link selection, and URL date helpers shared by the table, redirect, and notice. |
 
 ## API and tests
 
