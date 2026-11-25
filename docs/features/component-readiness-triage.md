@@ -156,11 +156,13 @@ Keep in mind:
 - The last failure is tracked per regression, not per view. For a regression that closed in one view
   but stayed open in another, the period may end after it closed in the first view.
 
-To try this locally, `sippy seed-data` creates a resolved triage (`OCPBUGS-40006`) with two closed
-4.22 regressions whose last failures fall in the seeded sample window. One closed on its own and was
-tracked in both `4.22-main` and `4.22-gcp-only`, so it has two historical links. The other was force
-closed by the triage's resolution. Both tests pass in the current report, so regression tracking does
-not reopen them. The definitions are `historicalRegressionSeeds` in
+To try this locally, `sippy seed-data` adds two closed 4.22 regressions to the network triage
+(`OCPBUGS-40002`), which also has an active regression, so they are reachable from the triage list.
+Each test gets extra failing 4.22 runs in a five day window that ends two days before the current
+sample window, and its historical report shows it as an extreme regression against the 4.21 basis.
+One was tracked in both `4.22-main` and `4.22-gcp-only`, so it has two historical links. Both tests
+pass in the current report, so regression tracking does not reopen them. The definitions are
+`historicalRegressionSeeds` in
 [`cmd/sippy/seed_data.go`](../../cmd/sippy/seed_data.go).
 
 ## Source pointers

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	componentreadiness "github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -389,23 +390,21 @@ func TestBuildHistoricalRegression(t *testing.T) {
 		seed            historicalRegressionSeed
 		wantVariants    []string
 		wantViews       []string
-		wantForceClosed bool
 		wantMaxFailures int
 	}{
 		{
-			name:            "naturally closed regression tracked in two views",
+			name:            "regression tracked in two views",
 			seed:            historicalRegressionSeeds[0],
 			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:gcp", "Suite:parallel", "Topology:ha", "Upgrade:none"},
 			wantViews:       []string{"4.22-main", "4.22-gcp-only"},
-			wantMaxFailures: 5,
+			wantMaxFailures: 15,
 		},
 		{
-			name:            "force closed regression",
+			name:            "regression tracked in one view",
 			seed:            historicalRegressionSeeds[1],
 			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:aws", "Suite:parallel", "Topology:ha", "Upgrade:none"},
 			wantViews:       []string{"4.22-main"},
-			wantForceClosed: true,
-			wantMaxFailures: 10,
+			wantMaxFailures: 30,
 		},
 	}
 	for _, tt := range tests {
@@ -426,14 +425,7 @@ func TestBuildHistoricalRegression(t *testing.T) {
 			assert.Equal(t, sql.NullTime{Valid: true, Time: closed}, reg.Closed)
 			assert.Equal(t, sql.NullTime{Valid: true, Time: lastFailure}, reg.LastFailure)
 			assert.Equal(t, tt.wantMaxFailures, reg.MaxFailures)
-			assert.Equal(t, tt.wantForceClosed, reg.ForceClosed)
-			if tt.wantForceClosed {
-				require.NotNil(t, reg.ForceClosedBy)
-				require.NotNil(t, reg.ForceClosedReason)
-			} else {
-				assert.Nil(t, reg.ForceClosedBy)
-				assert.Nil(t, reg.ForceClosedReason)
-			}
+			assert.False(t, reg.ForceClosed)
 
 			require.Len(t, reg.Views, len(tt.wantViews))
 			for i, rv := range reg.Views {
@@ -451,15 +443,16 @@ func TestBuildHistoricalRegressionErrors(t *testing.T) {
 	spec, ok := findSyntheticTest("test-not-significant")
 	require.True(t, ok)
 	now := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
+	failing := testCount{60, 45, 0}
 
 	tests := []struct {
 		name string
 		seed historicalRegressionSeed
 	}{
-		{name: "no views", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel}},
-		{name: "unknown view", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"no-such-view"}}},
-		{name: "unknown job", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: "no-such-job-%s", views: []string{"4.22-main"}}},
-		{name: "test does not run in job", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: azureAmd64Parallel, views: []string{"4.22-main"}}},
+		{name: "no views", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, failing: failing}},
+		{name: "unknown view", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"no-such-view"}, failing: failing}},
+		{name: "unknown job", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: "no-such-job-%s", views: []string{"4.22-main"}, failing: failing}},
+		{name: "no failures", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"4.22-main"}, failing: testCount{60, 55, 5}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -481,10 +474,91 @@ func TestHistoricalRegressionSeedsAreNotRegressed(t *testing.T) {
 			basis, sample := counts["4.21"], counts[historicalRegressionRelease]
 			require.NotZero(t, basis.total)
 			require.NotZero(t, sample.total)
-			basisPassRate := float64(basis.success+basis.flake) / float64(basis.total)
-			samplePassRate := float64(sample.success+sample.flake) / float64(sample.total)
-			assert.GreaterOrEqual(t, samplePassRate, basisPassRate-0.05,
+			assert.GreaterOrEqual(t, seededPassRate(sample), seededPassRate(basis)-0.05,
 				"%s should not be a significant regression in the current report", seed.testID)
 		})
 	}
+}
+
+// TestHistoricalRegressionSeedsWereRegressed checks that each seeded historical regression's failing
+// results pass far less often than its basis, so its historical report shows it regressed.
+func TestHistoricalRegressionSeedsWereRegressed(t *testing.T) {
+	for _, seed := range historicalRegressionSeeds {
+		t.Run(seed.testID, func(t *testing.T) {
+			spec, ok := findSyntheticTest(seed.testID)
+			require.True(t, ok)
+			basis := spec.jobCounts[seed.jobTemplate]["4.21"]
+			require.NotZero(t, basis.total)
+			require.NotZero(t, seed.failing.total)
+			assert.LessOrEqual(t, seededPassRate(seed.failing), seededPassRate(basis)-0.15,
+				"%s should be a significant regression in its historical report", seed.testID)
+		})
+	}
+}
+
+// seededPassRate is the share of counts.total results that passed or flaked.
+func seededPassRate(counts testCount) float64 {
+	return float64(counts.success+counts.flake) / float64(counts.total)
+}
+
+// TestHistoricalFailureWindowFitsHistoricalReport checks that the historical report linked from each
+// seeded historical regression covers all of its failing runs and none of the current sample runs,
+// across rounding boundaries and UTC midnight.
+func TestHistoricalFailureWindowFitsHistoricalReport(t *testing.T) {
+	views := testSeedViews(t)
+	nows := []time.Time{
+		time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 9, 29, 3, 59, 59, 0, time.UTC),
+		time.Date(2026, 9, 29, 23, 59, 59, 0, time.UTC),
+		time.Date(2026, 3, 1, 12, 30, 0, 0, time.UTC),
+	}
+	for _, now := range nows {
+		clock := testSeedClock(t, views, now, defaultRounding.Factor, defaultRounding.Offset)
+		require.Equal(t, historicalRegressionRelease, clock.sample.Name)
+		failStart, failEnd := clock.historicalFailureWindow()
+
+		runCounts := map[string]int{}
+		for _, seed := range historicalRegressionSeeds {
+			runCounts[seed.jobTemplate] = max(runCounts[seed.jobTemplate], seed.failing.total)
+		}
+		for _, seed := range historicalRegressionSeeds {
+			t.Run(fmt.Sprintf("%s/%s", now.Format(time.RFC3339), seed.testID), func(t *testing.T) {
+				runCount := runCounts[seed.jobTemplate]
+				timestamps := seededRunTimestamps(failStart, failEnd, runCount+seededInfraRuns)
+				var failures []time.Time
+				for i := 0; i < seed.failing.total; i++ {
+					if seededTestStatus(i, seed.failing) == int(v1.TestStatusFailure) {
+						failures = append(failures, timestamps[i])
+					}
+				}
+				require.NotEmpty(t, failures)
+
+				start, end := componentreadiness.HistoricalSampleWindow(failures[len(failures)-1])
+				assert.False(t, timestamps[0].Before(start),
+					"historical report starting %s should include the first failing run at %s", start, timestamps[0])
+				assert.False(t, end.After(clock.sample.Start),
+					"historical report ending %s should not reach the sample window starting %s", end, clock.sample.Start)
+			})
+		}
+	}
+}
+
+func TestSyntheticJobResults(t *testing.T) {
+	results := syntheticJobResults(jobReleaseKey{jobTemplate: awsAmd64Parallel, release: "4.22"})
+	byName := map[string]testCount{}
+	for _, r := range results {
+		byName[r.testName] = r.counts
+	}
+
+	regression, ok := findSyntheticTest("test-significant-regression")
+	require.True(t, ok)
+	assert.Equal(t, regression.jobCounts[awsAmd64Parallel]["4.22"], byName[regression.testName])
+
+	missingSample, ok := findSyntheticTest("test-missing-sample")
+	require.True(t, ok)
+	assert.NotContains(t, byName, missingSample.testName, "tests with no runs in the release should be skipped")
+
+	basisOnly, ok := findSyntheticTest("test-basis-only")
+	require.True(t, ok)
+	assert.NotContains(t, byName, basisOnly.testName, "tests without counts for the release should be skipped")
 }
