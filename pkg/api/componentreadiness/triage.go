@@ -229,7 +229,7 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	// Ensure the record exists and preserve fields you're not allowed to update:
 	// Side effect of not requiring you to specify them in your json.
 	existingTriage := models.Triage{}
-	res := dbc.First(&existingTriage, triage.ID)
+	res := dbc.Where("id = ?", triage.ID).First(&existingTriage)
 	if res.Error != nil {
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %v", triage.ID)
 		return triage, res.Error
@@ -271,7 +271,7 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	err = dbc.Transaction(func(tx *gorm.DB) error {
 		// Capture the old triage state before making any changes, this is necessary to avoid multiple audit logs for the transaction
 		var oldTriage models.Triage
-		if err := tx.Preload("Regressions").First(&oldTriage, triage.ID).Error; err != nil {
+		if err := tx.Preload("Regressions").Where("id = ?", triage.ID).First(&oldTriage).Error; err != nil {
 			return err
 		}
 		ctx := context.WithValue(tx.Statement.Context, models.OldTriageKey, oldTriage)

@@ -10,7 +10,6 @@ import (
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
@@ -250,11 +249,13 @@ func lifecycleWhereClause(lifecycleFilter *filter.Filter, columnRef string) (cla
 	return "(" + strings.Join(conditions, joiner) + ")", args, nil
 }
 
-// pushdownSafeFields lists columns available in the filtered CTE (before the
-// stats join). Only these fields can be pushed into post_filtered; stats-derived
-// fields like working_average and delta_from_* exist only after the final SELECT
-// and must stay in remaining for the caller to apply on the outer query.
-var pushdownSafeFields = sets.New[string](
+// pushdownColumns maps the filter fields available in the filtered CTE (before the
+// stats join) to their quoted SQL column references. Only these fields can be pushed
+// into post_filtered; stats-derived fields like working_average and delta_from_* exist
+// only after the final SELECT and must stay in remaining for the caller to apply on the
+// outer query. The SQL text comes from this table rather than the request's field name,
+// so a filter item can only select a column, never contribute SQL of its own.
+var pushdownColumns = quotedColumns(
 	"current_runs", "current_successes", "current_failures", "current_flakes",
 	"previous_runs", "previous_successes", "previous_failures", "previous_flakes",
 	"open_bugs",
@@ -262,6 +263,15 @@ var pushdownSafeFields = sets.New[string](
 	"previous_pass_percentage", "previous_failure_percentage", "previous_flake_percentage", "previous_working_percentage",
 	"net_failure_improvement", "net_flake_improvement", "net_working_improvement", "net_improvement",
 )
+
+// quotedColumns returns a lookup from each column name to its quoted SQL identifier.
+func quotedColumns(names ...string) map[string]string {
+	columns := make(map[string]string, len(names))
+	for _, name := range names {
+		columns[name] = pq.QuoteIdentifier(name)
+	}
+	return columns
+}
 
 // arithmeticOps maps filter operators to SQL comparison operators.
 var arithmeticOps = map[filter.Operator]string{
@@ -289,9 +299,9 @@ func processedFilterConditions(f *filter.Filter) (conditions []string, args []an
 	var unsupported []filter.FilterItem
 	for _, item := range f.Items {
 		op, isArithmetic := arithmeticOps[item.Operator]
-		if isArithmetic && pushdownSafeFields.Has(item.Field) {
-			field := pq.QuoteIdentifier(item.Field)
-			cond := fmt.Sprintf("%s %s ?", field, op)
+		column, pushdownSafe := pushdownColumns[item.Field]
+		if isArithmetic && pushdownSafe {
+			cond := fmt.Sprintf("%s %s ?", column, op)
 			if item.Not {
 				cond = negateConditions([]string{cond})[0]
 			}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -57,11 +58,40 @@ const (
 // error (400) rather than an internal failure.
 var ErrUnsupportedOperator = errors.New("unsupported filter operator")
 
+// ErrInvalidField indicates a filter item named a column that is not a simple identifier.
+// Field names come from request JSON and end up as SQL column references, which cannot be
+// bound as parameters, so anything outside the identifier grammar is rejected outright.
+var ErrInvalidField = errors.New("invalid filter field")
+
+// fieldIdentifierRegexp is the grammar every filterable column name already follows
+// (snake_case database columns and a few camelCase in-memory fields).
+var fieldIdentifierRegexp = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// ValidateField returns ErrInvalidField unless field is safe to use as a SQL column reference.
+func ValidateField(field string) error {
+	if !fieldIdentifierRegexp.MatchString(field) {
+		return fmt.Errorf("%w: %q", ErrInvalidField, field)
+	}
+	return nil
+}
+
 // Filter is a collection of FilterItem, with a link operator. It is used to chain
 // filters together, for example: where name contains aws and runs > 10.
 type Filter struct {
 	Items        []FilterItem `json:"items"`
 	LinkOperator LinkOperator `json:"linkOperator"`
+}
+
+// ValidateFields returns ErrInvalidField for the first item whose field fails ValidateField.
+// Callers that split a filter and render only some parts to SQL use it so an invalid field
+// is rejected even when the part containing it is never rendered.
+func (filters Filter) ValidateFields() error {
+	for _, f := range filters.Items {
+		if err := ValidateField(f.Field); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // UnmarshalJSON accepts both MUI X v5 ("linkOperator") and v7
@@ -203,37 +233,44 @@ func (f FilterItem) FilterItemToSQL(column string) (string, any, error) {
 	case OperatorIsNotEmpty:
 		sql = fmt.Sprintf("%s IS NOT NULL", column)
 	default:
-		return "", nil, fmt.Errorf("unsupported operator %q for field %q", f.Operator, f.Field)
+		return "", nil, fmt.Errorf("%w %q for field %q", ErrUnsupportedOperator, f.Operator, f.Field)
 	}
 	return WrapNot(sql, f.Not), param, nil
 }
 
 // FilterFieldToSQL returns a SQL fragment and parameter for a filter item,
-// with array and timestamp type awareness from the filterable.
-func (f FilterItem) FilterFieldToSQL(filterable Filterable) (string, any) {
-	field := fmt.Sprintf("%q", f.Field)
+// with array and timestamp type awareness from the filterable. It returns
+// ErrInvalidField when the item's field is not a simple identifier.
+func (f FilterItem) FilterFieldToSQL(filterable Filterable) (string, any, error) {
+	if err := ValidateField(f.Field); err != nil {
+		return "", nil, err
+	}
+	field := pq.QuoteIdentifier(f.Field)
 	// Operators that need array-aware handling delegate to specialized helpers;
 	// all other operators use the common scalar implementation.
 	switch f.Operator {
 	case OperatorHasEntryContaining, OperatorContains:
-		return ilikeFilter(field, fmt.Sprintf("%%%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		sql, param := ilikeFilter(field, fmt.Sprintf("%%%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		return sql, param, nil
 	case OperatorStartsWith:
-		return ilikeFilter(field, fmt.Sprintf("%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		sql, param := ilikeFilter(field, fmt.Sprintf("%s%%", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		return sql, param, nil
 	case OperatorEndsWith:
-		return ilikeFilter(field, fmt.Sprintf("%%%s", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		sql, param := ilikeFilter(field, fmt.Sprintf("%%%s", EscapeLikeMetachars(f.Value)), f.Not, filterable, f.Field)
+		return sql, param, nil
 	case OperatorIsEmpty:
-		return f.isEmptyFilter(field, filterable, false), nil
+		return f.isEmptyFilter(field, filterable, false), nil, nil
 	}
 
-	sql, param, err := f.FilterItemToSQL(field)
-	if err != nil {
-		return "UnknownFilterOperator()", nil
-	}
-	return sql, param
+	return f.FilterItemToSQL(field)
 }
 
+// toBQStr expects f.Field to have passed ValidateField; ToBQStr enforces that.
 func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, params []bigquery.QueryParameter) { //nolint
-	field := strings.ReplaceAll(fmt.Sprintf("%q", f.Field), "\"", "")
+	// The identifier grammar rules out injection, so the column is left bare to keep
+	// the column resolution rules the BigQuery queries were written against. A reserved
+	// word (e.g. "order") would still need backticks and fails as a syntax error.
+	field := f.Field
 
 	// Helper to create a parameter
 	paramName := fmt.Sprintf("filterParam%d", paramIndex+1)
@@ -405,7 +442,10 @@ func ApplyFilters(
 	dbClient *gorm.DB,
 	filterable Filterable) (*gorm.DB, error) {
 
-	q := filter.ToSQL(dbClient, filterable)
+	q, err := filter.ToSQL(dbClient, filterable)
+	if err != nil {
+		return nil, err
+	}
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
@@ -418,7 +458,10 @@ func ApplyFilters(
 }
 
 func FilterableDBResult(dbClient *gorm.DB, filterOpts *FilterOptions, filterable Filterable) (*gorm.DB, error) {
-	q := filterOpts.Filter.ToSQL(dbClient, filterable)
+	q, err := filterOpts.Filter.ToSQL(dbClient, filterable)
+	if err != nil {
+		return nil, err
+	}
 	if filterOpts.Limit > 0 {
 		q = q.Limit(filterOpts.Limit)
 	}
@@ -461,12 +504,18 @@ filterOuterLoop:
 	return newFilter, oldFilter
 }
 
-func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
+// ToSQL applies the filter to db as WHERE conditions. It returns ErrInvalidField or
+// ErrUnsupportedOperator when an item cannot be rendered, so the caller fails the
+// request instead of running the query without that filter.
+func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) (*gorm.DB, error) {
 	var orFilters []string
 	var orFilterParams []interface{}
 
 	for _, f := range filters.Items {
-		q, p := f.FilterFieldToSQL(filterable)
+		q, p, err := f.FilterFieldToSQL(filterable)
+		if err != nil {
+			return nil, err
+		}
 		switch filters.LinkOperator {
 		case LinkOperatorAnd, "":
 			if p != nil {
@@ -489,7 +538,7 @@ func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	log.Debugf("final query string: %s", queryStr)
 	db = db.Where(queryStr, orFilterParams...)
 
-	return db
+	return db, nil
 }
 
 // BQFilterResult contains the WHERE clause SQL and the BigQuery parameters to use with it.
@@ -501,12 +550,16 @@ type BQFilterResult struct {
 }
 
 // ToBQStr generates a parameterized BigQuery WHERE clause with safe parameter binding
-// to prevent SQL injection. Returns the SQL string and BigQuery parameters ready to use.
-func (filters Filter) ToBQStr(filterable Filterable, paramIndex *int) BQFilterResult {
+// to prevent SQL injection. Returns the SQL string and BigQuery parameters ready to use,
+// or ErrInvalidField if any item names a column that is not a simple identifier.
+func (filters Filter) ToBQStr(filterable Filterable, paramIndex *int) (BQFilterResult, error) {
 	items := []string{}
 	allParams := []bigquery.QueryParameter{}
 
 	for _, f := range filters.Items {
+		if err := ValidateField(f.Field); err != nil {
+			return BQFilterResult{}, err
+		}
 		sql, params := f.toBQStr(filterable, *paramIndex)
 		items = append(items, sql)
 		if params != nil {
@@ -526,7 +579,7 @@ func (filters Filter) ToBQStr(filterable Filterable, paramIndex *int) BQFilterRe
 	return BQFilterResult{
 		SQL:        queryStr,
 		Parameters: allParams,
-	}
+	}, nil
 }
 
 // Filter applies the selected filters to a filterable item.

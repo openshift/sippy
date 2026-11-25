@@ -539,7 +539,12 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	testReports := make([]apitype.Test, 0)
 
 	if processedFilter != nil {
-		finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
+		var err error
+		finalResults, err = processedFilter.ToSQL(finalResults, apitype.Test{})
+		if err != nil {
+			errs = append(errs, err)
+			return
+		}
 	}
 
 	// The global connection-level work_mem (128MB) causes the planner to
@@ -644,6 +649,11 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	// assembled our final temporary table.
 	var rawFilter, processedFilter *filter.Filter
 	if spec.Filter != nil {
+		// The collapsed query never renders processedFilter, so validate every field here
+		// rather than relying on ToBQStr to reject invalid ones.
+		if err := spec.Filter.ValidateFields(); err != nil {
+			return testResultsBQ{}, []error{&ValidationError{Message: err.Error()}}
+		}
 		var lifecycleFilter *filter.Filter
 		lifecycleFilter, processedFilter = spec.Filter.Split([]string{"lifecycle"})
 		if len(lifecycleFilter.Items) > 0 {
@@ -673,7 +683,10 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	paramIndex := 0
 
 	if rawFilter != nil && len(rawFilter.Items) > 0 {
-		filterResult := rawFilter.ToBQStr(apitype.Test{}, &paramIndex)
+		filterResult, err := rawFilter.ToBQStr(apitype.Test{}, &paramIndex)
+		if err != nil {
+			return testResultsBQ{}, []error{&ValidationError{Message: err.Error()}}
+		}
 		whereStr += " AND " + filterResult.SQL
 		// Add filter parameters directly from the filter result
 		queryParams = append(queryParams, filterResult.Parameters...)
@@ -705,7 +718,10 @@ func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, b
 	`, query.QueryTestSummer, bqc.Dataset, table, bqc.Dataset, whereStr, query.QueryTestSummarizer)
 	} else {
 		if processedFilter != nil && len(processedFilter.Items) > 0 {
-			filterResult := processedFilter.ToBQStr(apitype.Test{}, &paramIndex)
+			filterResult, err := processedFilter.ToBQStr(apitype.Test{}, &paramIndex)
+			if err != nil {
+				return testResultsBQ{}, []error{&ValidationError{Message: err.Error()}}
+			}
 			whereStr += " AND " + filterResult.SQL
 			// Add processed filter parameters directly from the filter result
 			queryParams = append(queryParams, filterResult.Parameters...)
