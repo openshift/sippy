@@ -238,15 +238,36 @@ describe('triagedRegressionViewCell', () => {
     )
   })
 
-  test('current report data keeps the severity cell', () => {
-    const current = {
-      regression: { id: 49971 },
-      status: -400,
-      explanations: ['regressed'],
-      links: { test_details: '/api/component_readiness/test_details?x=1' },
+  const currentReportEntry = {
+    regression: { id: 49971 },
+    status: -400,
+    explanations: ['regressed'],
+    links: { test_details: '/api/component_readiness/test_details?x=1' },
+  }
+
+  test.each([
+    ['closed regression', closedRegression, ClosureScope.REGRESSION],
+    ['closure in only this view', closedInMainOnly, ClosureScope.VIEW],
+  ])(
+    '%s with stale current report data links to the historical report',
+    (_name, regression, scope) => {
+      const cell = triagedRegressionViewCell(regression, '5.0-main', {
+        '5.0-main': [currentReportEntry],
+      })
+      expect(cell.kind).toBe(CellKind.HISTORICAL)
+      expect(cell.scope).toBe(scope)
+      expect(cell.url).toContain('sampleStartTime=2026-09-22')
     }
-    const cell = triagedRegressionViewCell(closedRegression, '5.0-main', {
-      '5.0-main': [current],
+  )
+
+  test('open regression with current report data keeps the severity cell', () => {
+    const open = {
+      ...closedRegression,
+      closed: { Valid: false },
+      views: [{ view_name: '5.0-main', active: true }],
+    }
+    const cell = triagedRegressionViewCell(open, '5.0-main', {
+      '5.0-main': [currentReportEntry],
     })
     expect(cell).toEqual({
       kind: CellKind.CURRENT,

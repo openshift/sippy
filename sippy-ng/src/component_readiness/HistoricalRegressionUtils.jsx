@@ -193,21 +193,26 @@ function unavailableReason(regression, viewName, link) {
 
 // triagedRegressionViewCell decides what the triaged regression table shows
 // for one regression in one view column:
-//   - CellKind.CURRENT: the regression is in this view's current report; keep
-//     its severity icon and link.
+//   - CellKind.CURRENT: the regression is open in this view and in its current
+//     report; keep its severity icon and link.
 //   - CellKind.HISTORICAL: the regression (or this view's association) is
 //     closed and the API supplied a historical test_details link.
 //   - CellKind.UNAVAILABLE: closed, but no usable historical link exists.
 //   - null: nothing to show.
+// Closure is checked first. Reports only attach open regressions, so a
+// report row naming a closed regression comes from a cached report built
+// before the closure.
 export function triagedRegressionViewCell(
   regression,
   viewName,
   regressedTestsByView
 ) {
-  const current = (regressedTestsByView?.[viewName] || []).find(
-    (t) => t?.regression?.id === regression.id
-  )
-  if (current) {
+  const closure = historicalClosure(regression, viewName)
+  if (!closure) {
+    const current = (regressedTestsByView?.[viewName] || []).find(
+      (t) => t?.regression?.id === regression.id
+    )
+    if (!current) return null
     return {
       kind: CellKind.CURRENT,
       status: current.status,
@@ -215,9 +220,6 @@ export function triagedRegressionViewCell(
       url: generateTestDetailsReportLink(current, viewName),
     }
   }
-
-  const closure = historicalClosure(regression, viewName)
-  if (!closure) return null
   const { scope } = closure
   const label = closureLabels[scope]
 

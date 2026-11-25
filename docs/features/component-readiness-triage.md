@@ -104,6 +104,9 @@ to its test details once per view it was tracked in:
 | Open | Closed in this view only | A historical report, labeled `Closed in this view`. |
 | Closed (including force closed) | Any | A historical report, labeled `Closed regression`. |
 
+The recorded closure takes precedence over report data. A cached report built before the closure can
+still list the regression, but the row links to the historical report.
+
 Historical rows show a clock icon with a green check badge. The tooltip names the covered period, for
 example "Closed regression. View historical test details for September 22-29, 2026." The green check
 means either the tracked regression closed or, for a regression that is still open elsewhere, it closed
