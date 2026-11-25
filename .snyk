@@ -17,6 +17,14 @@
 # operators from fixed maps or switches, and all values are bound (covered by
 # cumulative_query_test.go and the /api/tests e2e filter tests).
 
+# Job runs filter SQL builders (go/Sqli)
+# Path: pkg/api/job_runs_filters.go
+# Info: Snyk treats a map lookup or switch result keyed by the request's filter field or
+# operator as tainted and flags the Where call in applyJobRunFilters (reported at
+# pkg/sippyserver/server.go). Columns come from the constant jobRunFilterColumns table,
+# operators from fixed switches, and all values, including the test name status, are bound
+# (covered by job_runs_filter_test.go and the /api/jobs/runs e2e filter tests).
+
 # used for byte compression decompression validation
 # Path: pkg/cache/compressed/cache.go, line 77
 # Info: The MD5 hash (used in crypto.md5.Sum) is insecure. Consider changing it to a secure hash algorithm
@@ -41,3 +49,4 @@ exclude:
     # MCP dev server: create_subprocess_exec (no shell) with validated inputs; not a real injection vector
     - mcp/server.py
     - pkg/db/query/uncollapsed_test_report.go
+    - pkg/api/job_runs_filters.go
