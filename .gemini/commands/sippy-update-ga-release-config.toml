@@ -1,0 +1,2 @@
+description = "Update generated release job configuration when a release goes GA"
+prompt = "Read and follow `.apm/skills/sippy-update-ga-release-config/SKILL.md`."
