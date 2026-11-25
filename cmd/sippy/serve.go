@@ -76,6 +76,9 @@ func (f *ServerFlags) Validate() error {
 	if err := f.ComponentReadinessFlags.Validate(); err != nil {
 		return err
 	}
+	if err := f.APIFlags.Validate(); err != nil {
+		return err
+	}
 	if f.DataProvider == reqopts.DataSourceBigQuery {
 		return f.GoogleCloudFlags.Validate()
 	}
@@ -201,6 +204,7 @@ func NewServeCommand() *cobra.Command {
 				config,
 				f.APIFlags.EnableWriteEndpoints,
 				jiraClient,
+				f.APIFlags.TrustedDelegators,
 			)
 
 			// Wire up async symptom re-evaluation (insert-only River client).

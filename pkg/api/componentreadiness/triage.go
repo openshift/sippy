@@ -241,14 +241,7 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 		return triage, err
 	}
 
-	// If the resolution has been set/modified set the reason to "user"
-	if existingTriage.Resolved.Time != triage.Resolved.Time {
-		triage.ResolutionReason = models.User
-	}
-	// If the triage is unresolved, make sure the reason is unset
-	if !triage.Resolved.Valid {
-		triage.ResolutionReason = ""
-	}
+	applyResolutionReason(existingTriage, &triage)
 
 	// If we have a bug in the db matching the url we were given, link them up now.
 	// If not, this should be handled later during the next fetchdata cron job.
@@ -297,11 +290,27 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	return triage, nil
 }
 
+// applyResolutionReason sets the resolution reason to persist for an update. Setting or changing the
+// resolution attributes it to the user, clearing it unsets the reason, and resubmitting the same
+// resolution instant keeps the stored reason, so clients cannot rewrite this system-owned field.
+// Instants are compared with Equal because a JSON round trip can change a time's location without
+// changing the moment it represents.
+func applyResolutionReason(existing models.Triage, updated *models.Triage) {
+	switch {
+	case !updated.Resolved.Valid:
+		updated.ResolutionReason = ""
+	case !existing.Resolved.Valid || !existing.Resolved.Time.Equal(updated.Resolved.Time):
+		updated.ResolutionReason = models.User
+	default:
+		updated.ResolutionReason = existing.ResolutionReason
+	}
+}
+
 func DeleteTriage(dbc *gorm.DB, id int) error {
 	existingTriage := &models.Triage{}
 	res := dbc.First(existingTriage, id).Delete(existingTriage)
 	if res.Error != nil {
-		return fmt.Errorf("error deleting triage record: %v", res.Error)
+		return fmt.Errorf("deleting triage record %d: %w", id, res.Error)
 	}
 	return nil
 }

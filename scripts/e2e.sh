@@ -234,6 +234,10 @@ fi
 # Spawn sippy server off into a separate process:
 export SIPPY_API_PORT="18080"
 export SIPPY_ENDPOINT="127.0.0.1"
+# Two distinct trusted delegators exercise X-Acting-For delegation. These must match
+# test/e2e/util (TrustedDelegator, SecondTrustedDelegator).
+SIPPY_E2E_TRUSTED_DELEGATOR="system:serviceaccount:sippy-e2e:sippy-mcp"
+SIPPY_E2E_SECOND_TRUSTED_DELEGATOR="sippy-e2e-second-delegator"
 
 set -- \
   --listen ":$SIPPY_API_PORT" \
@@ -243,7 +247,9 @@ set -- \
   --log-level debug \
   --views config/seed-views.yaml \
   --redis-url="$REDIS_URL" \
-  --data-provider postgres
+  --data-provider postgres \
+  --trusted-delegator "$SIPPY_E2E_TRUSTED_DELEGATOR" \
+  --trusted-delegator "$SIPPY_E2E_SECOND_TRUSTED_DELEGATOR"
 if [ -n "$GCS_SA_JSON_PATH" ]; then
     set -- "$@" --google-service-account-credential-file "$GCS_SA_JSON_PATH"
 fi

@@ -85,6 +85,11 @@ spec:
     - ./config/seed-views.yaml
     - --data-provider
     - postgres
+    # Must match TrustedDelegator and SecondTrustedDelegator in test/e2e/util.
+    - --trusted-delegator
+    - system:serviceaccount:sippy-e2e:sippy-mcp
+    - --trusted-delegator
+    - sippy-e2e-second-delegator
     env:
     - name: GCS_SA_JSON_PATH
       value: /tmp/secrets/gcs-cred

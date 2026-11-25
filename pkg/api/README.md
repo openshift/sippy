@@ -740,7 +740,9 @@ all other triage endpoints, regression triage associations, and the regression
 potential-match endpoint continue to access historical triages. Frontend listings
 and reuse selectors use ordinary listings, with view filters where applicable,
 preserving non-archived cross-release candidates. There is no separate BigQuery
-triage listing implementation or MCP triage listing tool.
+triage listing implementation. The `sippy` MCP server's `list_triages` tool
+(`mcp/sippy/`) calls this endpoint, adding `fields` without `regressions` when
+`include_archived=true` because each regression embeds its job-run history.
 
 ### Parameters
 
@@ -792,7 +794,9 @@ The triage must be resolved. If it is not, the endpoint returns `400 Bad Request
 message "Cannot force-close regressions for an unresolved triage. Resolve the triage first."
 This is a write endpoint and requires the `write_endpoints` capability.
 
-The closing user is taken from the `X-Forwarded-User` header. A request without a user returns
+The closing user is taken from the `X-Forwarded-User` header, or from `X-Acting-For` when the
+request comes from a trusted delegator (which must send it, or gets `400 Bad Request`; see
+[config/README.md](../../config/README.md#trusted-delegators)). A request without a user returns
 `401 Unauthorized`, except when `DEV_MODE=1` (local development and agentic-staging), in which case
 the request is attributed to the mock user `developer`. See
 [DEVELOPMENT.md](../../DEVELOPMENT.md#mock-authentication-local-and-agentic-staging).

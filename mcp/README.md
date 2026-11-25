@@ -1,6 +1,8 @@
-# Sippy dev MCP server
+# sippy-dev MCP server
 
-Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor**, **Claude Code**, and **Codex**.
+Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`, named `sippy-dev`) that exposes Sippy development commands requiring process management to **Cursor**, **Claude Code**, and **Codex**.
+
+The **`sippy`** MCP server for working with production Sippy data is a separate entry point in [`sippy/`](sippy/README.md). It shares no code or tools with this `sippy-dev` server, and its tests run as part of `make test`. Never add development-workflow tools to it.
 
 Simple local commands are documented in project instructions via [APM](../apm.yml); see `.apm/instructions/dev-commands.instructions.md`.
 
@@ -48,7 +50,7 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 | `sippy_serve`        | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)     | `sippy-dev-logs/sippy_serve.log`        |
 | `sippy_ng_start`     | Background `npm start` in `sippy-ng/` (typically port **3000**)             | `sippy-dev-logs/sippy_ng_start.log`     |
 | `sippy_stop`         | Stops background `sippy_serve` and `sippy_ng_start` processes               | none                                    |
-| `run_tests`          | `make test` (BDD, Go, Vitest, MCP)                                         | `sippy-dev-logs/run_tests.log`          |
+| `run_tests`          | `make test` (BDD, Go, Vitest, MCP including `sippy/` unit tests)           | `sippy-dev-logs/run_tests.log`          |
 | `run_lint`           | `make lint` (Go, ESLint, dependency audit)                                 | `sippy-dev-logs/run_lint.log`           |
 | `run_e2e`            | `make e2e` (BigQuery coverage is opt-in)                                    | `sippy-dev-logs/run_e2e.log`            |
 | `get_make_result`    | Poll a make run's running status or final result                           | same log as the run                    |

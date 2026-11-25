@@ -157,3 +157,12 @@ references. With the flag enabled, neither of these Jira consumers uses PAT.
 An isolated `sippy load --loader=jira --jira-service-account` run still updates
 PostgreSQL; it is not a dry run. Repeated short jobs verify token acquisition,
 while token renewal requires a client that remains active past token expiry.
+
+## Trusted delegators
+
+`sippy serve` and `sippy component-readiness` accept `--trusted-delegator <principal>` (repeat once
+per principal) to let an authenticated service, such as the `sippy` MCP server in `mcp/sippy/`, act
+for the user it serves. When the oauth proxy's `X-Forwarded-User` exactly matches a listed
+principal, Sippy uses the `X-Acting-For` header as the requesting user for attribution and audit
+records, and rejects mutating requests without it (`400`). Other callers' `X-Acting-For` headers are
+ignored. Omitting the flag disables delegation.
