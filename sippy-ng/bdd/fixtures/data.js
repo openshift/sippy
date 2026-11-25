@@ -844,6 +844,13 @@ export function historicalTestDetailsPath(
   return `/api/component_readiness/test_details?${params}`
 }
 
+// The Jira bug the regression endpoint preloads with each triage.
+export const historicalTriageBug = {
+  status: 'Verified',
+  components: ['Networking / ovn-kubernetes'],
+  release_blocker: 'Approved',
+}
+
 export function closedRegression(overrides = {}) {
   const id = overrides.id || CLOSED_REGRESSION_ID
   return {
@@ -874,6 +881,7 @@ export function closedRegression(overrides = {}) {
         created_at: GENERATED_AT,
         updated_at: GENERATED_AT,
         resolved: { Time: HISTORICAL_CLOSED_AT, Valid: true },
+        bug: historicalTriageBug,
       },
     ],
     links: {
@@ -904,6 +912,16 @@ export function closedInViewRegression() {
       ),
     },
   })
+}
+
+// A regression closed only in VIEW whose association has no recorded closure
+// time.
+export function closedInViewWithoutClosedAtRegression() {
+  const regression = closedInViewRegression()
+  regression.views = regression.views.map((v) =>
+    v.view_name === VIEW ? { ...v, closed_at: { Time: null, Valid: false } } : v
+  )
+  return regression
 }
 
 // A resolved triage whose only regression closed and rolled off, so the
@@ -945,6 +963,9 @@ export function mixedRegressionTriage() {
         test_name: NO_FAILURE_TEST_NAME,
         last_failure: { Time: null, Valid: false },
         links: {},
+        historical_link_unavailable: {
+          [VIEW]: 'no last failure was recorded',
+        },
       })
     ),
   ]

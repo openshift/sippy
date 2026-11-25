@@ -257,6 +257,11 @@ type TestRegression struct {
 
 	// Links contains HATEOAS-style links for this regression record (not stored in database)
 	Links map[string]string `json:"links,omitempty" gorm:"-"`
+
+	// HistoricalLinkUnavailable explains, per view name, why a closed view association has no historical
+	// test_details link. The API owns these reasons so clients never have to re-derive them (not stored in
+	// database).
+	HistoricalLinkUnavailable map[string]string `json:"historical_link_unavailable,omitempty" gorm:"-"`
 }
 
 // RegressionView associates a regression with a component readiness view.

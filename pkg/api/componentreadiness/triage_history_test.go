@@ -1,5 +1,5 @@
 // Tests for historical (closed regression) test_details links: the sample window, basis resolution,
-// per-view link selection in InjectRegressionHATEOASLinksHistory, triage enrichment, and the request
+// per-view link selection in InjectRegressionHATEOASLinks, triage enrichment, and the request
 // parsing round trip. General InjectRegressionHATEOASLinks behavior for current links is covered by
 // TestInjectRegressionHATEOASLinks in triage_test.go.
 package componentreadiness
@@ -284,10 +284,13 @@ func TestGenerateHistoricalTestDetailsURL(t *testing.T) {
 			got, err := generateHistoricalTestDetailsURL(tt.regression(), tt.view, releases, "http://frontend")
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
+				// Expected gaps must wrap errNoHistoricalLink so they are logged at debug level.
+				require.ErrorIs(t, err, errNoHistoricalLink)
 				return
 			}
 			if tt.wantAnyErr {
 				require.Error(t, err)
+				require.NotErrorIs(t, err, errNoHistoricalLink, "unexpected failures must still be logged as errors")
 				return
 			}
 			require.NoError(t, err)
@@ -311,9 +314,12 @@ func TestGenerateHistoricalTestDetailsURL(t *testing.T) {
 
 func TestInjectRegressionHATEOASLinksHistory(t *testing.T) {
 	releases := historyReleases()
+	unknownBasis := historyView("5.0-unknown-basis", "ga-30d", "ga")
+	unknownBasis.BaseRelease.Name = "3.11"
 	views := []crview.View{
 		historyView("5.0-main", "ga-30d", "ga"),
 		historyView("5.0-azure", "ga-30d", "ga"),
+		unknownBasis,
 	}
 	closedAt := sql.NullTime{Time: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC), Valid: true}
 
@@ -322,6 +328,8 @@ func TestInjectRegressionHATEOASLinksHistory(t *testing.T) {
 		regression     func() *models.TestRegression
 		wantHistorical []string
 		wantCurrent    []string
+		// wantUnavailable maps a view to the reason its closed association has no historical link.
+		wantUnavailable map[string]string
 	}{
 		{
 			name:           "closed regression with inactive view gets a historical link",
@@ -370,12 +378,57 @@ func TestInjectRegressionHATEOASLinksHistory(t *testing.T) {
 			wantHistorical: []string{"5.0-main"},
 		},
 		{
-			name: "removed view produces no link",
+			name: "removed view produces no link and explains why",
 			regression: func() *models.TestRegression {
 				r := regression49971()
 				r.Views = []models.RegressionView{{TestRegressionID: r.ID, ViewName: "4.99-removed", Active: false}}
 				return r
 			},
+			wantUnavailable: map[string]string{"4.99-removed": reasonViewNotConfigured},
+		},
+		{
+			name: "removed view of an active association is not reported as a historical gap",
+			regression: func() *models.TestRegression {
+				r := regression49971()
+				r.Closed = sql.NullTime{}
+				r.Views = []models.RegressionView{{TestRegressionID: r.ID, ViewName: "4.99-removed", Active: true}}
+				return r
+			},
+		},
+		{
+			name: "closed regression without a last failure explains the missing link",
+			regression: func() *models.TestRegression {
+				r := regression49971()
+				r.LastFailure = sql.NullTime{}
+				return r
+			},
+			wantUnavailable: map[string]string{"5.0-main": errMissingLastFailure.Reason},
+		},
+		{
+			// 5.1-main with spotcheck-30d produces this combination: the spot-check regression closed
+			// in main while azure still reports it.
+			name: "spot-check regression open elsewhere links currently but never historically",
+			regression: func() *models.TestRegression {
+				r := regression49971()
+				r.TestID = crtest.SpotCheckTestID("spotcheck-30d", "Networking", "ovn")
+				r.Closed = sql.NullTime{}
+				r.Views = []models.RegressionView{
+					{TestRegressionID: r.ID, ViewName: "5.0-main", Active: false, ClosedAt: closedAt},
+					{TestRegressionID: r.ID, ViewName: "5.0-azure", Active: true},
+				}
+				return r
+			},
+			wantCurrent:     []string{"5.0-azure"},
+			wantUnavailable: map[string]string{"5.0-main": errSpotCheckHistory.Reason},
+		},
+		{
+			name: "basis that cannot be resolved for a closed association gets a generic reason",
+			regression: func() *models.TestRegression {
+				r := regression49971()
+				r.Views = []models.RegressionView{{TestRegressionID: r.ID, ViewName: "5.0-unknown-basis", Active: false}}
+				return r
+			},
+			wantUnavailable: map[string]string{"5.0-unknown-basis": reasonLinkFailed},
 		},
 	}
 
@@ -385,6 +438,11 @@ func TestInjectRegressionHATEOASLinksHistory(t *testing.T) {
 			InjectRegressionHATEOASLinks(r, &RegressionLinkConfig{Views: views, Releases: releases, CRTimeRoundingFactor: 12 * time.Hour, CRTimeRoundingOffset: 4 * time.Hour}, "http://api", "http://frontend")
 			assert.Equal(t, "http://api/api/component_readiness/regressions/49971", r.Links["self"])
 			assert.Len(t, r.Links, 1+len(tt.wantHistorical)+len(tt.wantCurrent))
+			if tt.wantUnavailable == nil {
+				assert.Nil(t, r.HistoricalLinkUnavailable)
+			} else {
+				assert.Equal(t, tt.wantUnavailable, r.HistoricalLinkUnavailable)
+			}
 			for _, viewName := range tt.wantHistorical {
 				link := r.Links["test_details:"+viewName]
 				require.NotEmpty(t, link, "expected historical link for %s", viewName)
@@ -412,19 +470,34 @@ func TestInjectTriageRegressionLinks(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://sippy.example/api/component_readiness/triages/792", nil)
 	req.Header.Set("Origin", "https://frontend.example")
 
-	t.Run("embedded regressions receive regression links", func(t *testing.T) {
-		triage := &models.Triage{ID: 792, Regressions: []models.TestRegression{*regression49971()}}
-		injectTriageRegressionLinks(triage, &RegressionLinkConfig{Views: views, Releases: releases}, req)
-		links := triage.Regressions[0].Links
-		assert.Equal(t, "http://sippy.example/api/component_readiness/regressions/49971", links["self"])
-		assert.Contains(t, links["test_details:5.0-main"], "https://frontend.example/api/component_readiness/test_details?")
-	})
-
-	t.Run("nil config leaves regressions untouched", func(t *testing.T) {
-		triage := &models.Triage{ID: 792, Regressions: []models.TestRegression{*regression49971()}}
-		injectTriageRegressionLinks(triage, nil, req)
-		assert.Nil(t, triage.Regressions[0].Links)
-	})
+	tests := []struct {
+		name       string
+		linkConfig *RegressionLinkConfig
+		wantLinks  bool
+	}{
+		{
+			name:       "embedded regressions receive regression links",
+			linkConfig: &RegressionLinkConfig{Views: views, Releases: releases},
+			wantLinks:  true,
+		},
+		{
+			name:       "nil config leaves regressions untouched",
+			linkConfig: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			triage := &models.Triage{ID: 792, Regressions: []models.TestRegression{*regression49971()}}
+			injectTriageRegressionLinks(triage, tt.linkConfig, req)
+			links := triage.Regressions[0].Links
+			if !tt.wantLinks {
+				assert.Nil(t, links)
+				return
+			}
+			assert.Equal(t, "http://sippy.example/api/component_readiness/regressions/49971", links["self"])
+			assert.Contains(t, links["test_details:5.0-main"], "https://frontend.example/api/component_readiness/test_details?")
+		})
+	}
 }
 
 // TestHistoricalURLSurvivesRequestParsing round-trips generated historical links through the request

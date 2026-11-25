@@ -24,6 +24,7 @@ import {
   makePageTitle,
   makeRFC3339Time,
   noDataTable,
+  parseEnvironmentVariants,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
@@ -34,7 +35,6 @@ import {
 import { Link } from 'react-router'
 import {
   LookupStatus,
-  parseEnvironmentVariants,
   validateHistoricalRegression,
 } from './HistoricalRegressionUtils'
 import { ReleasesContext, SippyCapabilitiesContext } from '../App'
@@ -343,7 +343,6 @@ export default function TestDetailsReport(props) {
       lookup={historicalLookup}
       validation={historicalValidation}
       urlParams={urlParams || {}}
-      view={urlParams?.view}
       noData={noData}
     />
   )
@@ -547,7 +546,10 @@ View the [test details report|${document.location.href}] for additional context.
         apiCallStr={testDetailsApiCall}
       />
       {historicalNotice(false)}
-      {latestReportUrl && (
+      {/* A validated historical report is old by design, and its latest link
+          would compare today's sample against a basis anchored to the last
+          failure, so the notice replaces this banner. */}
+      {latestReportUrl && !historicalRegression && (
         <Alert severity="warning" sx={{ marginTop: 2, marginBottom: 2 }}>
           This report shows data from more than 48 hours ago.{' '}
           <LaunderedLink

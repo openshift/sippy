@@ -7,16 +7,16 @@
  * test details page present those links.
  ******************************************************** */
 import {
+  compareViewNames,
   convertApiUrlToUiUrl,
   dateEndFormat,
-  dateFormat,
   formatLongDate,
   generateTestDetailsReportLink,
   getTestDetailsLink,
+  parseVariantPairs,
+  TEST_DETAILS_LINK_PREFIX,
 } from './CompReadyUtils'
 import { formatInTimeZone } from 'date-fns-tz'
-
-export const TEST_DETAILS_LINK_PREFIX = 'test_details:'
 
 // ClosureScope describes how a regression relates to the view a report is
 // shown for. Shared by the triaged regression table and the test details
@@ -48,17 +48,6 @@ export const CellKind = Object.freeze({
   UNAVAILABLE: 'unavailable',
 })
 
-const SPOT_CHECK_TEST_ID_PREFIX = 'spotcheck-'
-
-// Main views are listed first, then the rest alphabetically.
-export function compareViewNames(a, b) {
-  const aMain = a.endsWith('-main')
-  const bMain = b.endsWith('-main')
-  if (aMain && !bMain) return -1
-  if (!aMain && bMain) return 1
-  return a.localeCompare(b)
-}
-
 function testDetailsLinkKey(viewName) {
   return `${TEST_DETAILS_LINK_PREFIX}${viewName}`
 }
@@ -71,7 +60,7 @@ function testDetailsLinkKey(viewName) {
 // in this view or was never tracked in it. The API only emits test_details
 // links for recorded associations, so the association list is authoritative.
 export function historicalClosure(regression, viewName) {
-  const association = (regression?.views || []).find(
+  const association = (regression.views || []).find(
     (v) => v.view_name === viewName
   )
   if (!association) return null
@@ -190,14 +179,16 @@ const closureLabels = {
 }
 
 // unavailableReason explains why a closed regression has no usable historical
-// link, mirroring the cases in which the API omits it.
-function unavailableReason(regression, link) {
+// link. The API reports why it left a link out in historical_link_unavailable
+// (see InjectRegressionHATEOASLinks in pkg/api/componentreadiness/triage.go),
+// so the UI never re-derives those reasons; only a link the UI cannot read is
+// explained here.
+function unavailableReason(regression, viewName, link) {
   if (link) return 'its link has no readable sample window'
-  if (regression.test_id?.startsWith(SPOT_CHECK_TEST_ID_PREFIX)) {
-    return 'spot-check reports always cover recent runs'
-  }
-  if (!regression.last_failure?.Valid) return 'no last failure was recorded'
-  return 'this view is no longer configured or its basis could not be resolved'
+  return (
+    regression.historical_link_unavailable?.[viewName] ||
+    'the API did not provide a historical link'
+  )
 }
 
 // triagedRegressionViewCell decides what the triaged regression table shows
@@ -250,6 +241,7 @@ export function triagedRegressionViewCell(
     scope,
     tooltip: `${label}. Historical test details are unavailable because ${unavailableReason(
       regression,
+      viewName,
       link
     )}.`,
   }
@@ -300,146 +292,6 @@ export function endTimeParam(controlValue, urlValue) {
     return urlValue
   }
   return formatted
-}
-
-// viewControls lists each control a view supplies: the URL parameters that
-// override it and how to read its default from the view. Keeping both in one
-// table means a new control cannot have one without the other. The matching
-// state setters live in CompReadyVars, which fails loudly for a control
-// without one.
-export const viewControls = Object.freeze({
-  baseRelease: {
-    urlParams: ['baseRelease'],
-    fromView: (view) => view.base_release.release,
-  },
-  baseStartTime: {
-    urlParams: ['baseStartTime'],
-    fromView: (view) => formatLongDate(view.base_release.start, dateFormat),
-  },
-  baseEndTime: {
-    urlParams: ['baseEndTime'],
-    fromView: (view) => formatLongDate(view.base_release.end, dateFormat),
-  },
-  sampleRelease: {
-    urlParams: ['sampleRelease'],
-    fromView: (view) => view.sample_release.release,
-  },
-  sampleStartTime: {
-    urlParams: ['sampleStartTime'],
-    fromView: (view) => formatLongDate(view.sample_release.start, dateFormat),
-  },
-  sampleEndTime: {
-    urlParams: ['sampleEndTime'],
-    fromView: (view) => formatLongDate(view.sample_release.end, dateFormat),
-  },
-  columnGroupBy: {
-    urlParams: ['columnGroupBy'],
-    fromView: (view) =>
-      Object.keys(view.variant_options?.column_group_by || {}),
-  },
-  dbGroupBy: {
-    urlParams: ['dbGroupBy'],
-    fromView: (view) => Object.keys(view.variant_options?.db_group_by || {}),
-  },
-  includeVariants: {
-    urlParams: ['includeVariant'],
-    fromView: (view) => view.variant_options?.include_variants,
-  },
-  // Cross-compare groups and the variants checked within them are set
-  // together, so either URL parameter overrides both view defaults.
-  variantCrossCompare: {
-    urlParams: ['variantCrossCompare', 'compareVariant'],
-    fromView: (view) => view.variant_options?.variant_cross_compare,
-  },
-  compareVariants: {
-    urlParams: ['compareVariant', 'variantCrossCompare'],
-    fromView: (view) => view.variant_options?.compare_variants,
-  },
-  testLifecycles: {
-    urlParams: ['testLifecycles'],
-    fromView: (view) => view.test_filters?.lifecycles || [],
-  },
-  testCapabilities: {
-    urlParams: ['testCapabilities'],
-    fromView: (view) => view.test_filters?.capabilities || [],
-  },
-  confidence: {
-    urlParams: ['confidence'],
-    fromView: (view) => view.advanced_options?.confidence,
-  },
-  pity: {
-    urlParams: ['pity'],
-    fromView: (view) => view.advanced_options?.pity_factor,
-  },
-  minFail: {
-    urlParams: ['minFail'],
-    fromView: (view) => view.advanced_options?.minimum_failure,
-  },
-  passRateNewTests: {
-    urlParams: ['passRateNewTests'],
-    fromView: (view) => view.advanced_options?.pass_rate_required_new_tests,
-  },
-  passRateAllTests: {
-    urlParams: ['passRateAllTests'],
-    fromView: (view) => view.advanced_options?.pass_rate_required_all_tests,
-  },
-  ignoreDisruption: {
-    urlParams: ['ignoreDisruption'],
-    fromView: (view) => view.advanced_options?.ignore_disruption,
-  },
-  ignoreMissing: {
-    urlParams: ['ignoreMissing'],
-    fromView: (view) => view.advanced_options?.ignore_missing,
-  },
-  flakeAsFailure: {
-    urlParams: ['flakeAsFailure'],
-    fromView: (view) => view.advanced_options?.flake_as_failure,
-  },
-  includeMultiReleaseAnalysis: {
-    urlParams: ['includeMultiReleaseAnalysis'],
-    fromView: (view) => view.advanced_options?.include_multi_release_analysis,
-  },
-})
-
-function hasUrlValue(value) {
-  if (value === undefined || value === null || value === '') return false
-  return !Array.isArray(value) || value.length > 0
-}
-
-// viewControlDefaults returns the control values a view supplies, leaving out
-// any control whose value was given explicitly in the URL. Explicit URL
-// parameters take precedence over view defaults, as they do in the API, so a
-// shared historical link keeps its dates when the views finish loading.
-export function viewControlDefaults(view, urlParams = {}) {
-  const result = {}
-  for (const [control, { urlParams: params, fromView }] of Object.entries(
-    viewControls
-  )) {
-    const value = fromView(view)
-    if (value === undefined) continue
-    if (!params.some((param) => hasUrlValue(urlParams[param]))) {
-      result[control] = value
-    }
-  }
-  return result
-}
-
-// parseVariantPairs turns ["Platform:aws", "Network:ovn"] into a map. Entries
-// without a key before the colon are skipped.
-export function parseVariantPairs(items) {
-  const variants = {}
-  for (const item of items || []) {
-    const index = item.indexOf(':')
-    if (index > 0) {
-      variants[item.slice(0, index)] = item.slice(index + 1)
-    }
-  }
-  return variants
-}
-
-// parseEnvironmentVariants turns "Platform:aws Network:ovn" into a map.
-export function parseEnvironmentVariants(environment) {
-  return parseVariantPairs((environment || '').split(' '))
 }
 
 // validateHistoricalRegression checks that a regression record loaded from the

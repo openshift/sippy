@@ -39,7 +39,6 @@ export default function HistoricalRegressionNotice({
   lookup,
   validation,
   urlParams,
-  view,
   noData,
 }) {
   // idle covers the render before the lookup effect starts, such as when
@@ -99,11 +98,11 @@ export default function HistoricalRegressionNotice({
     closedText =
       'Not closed overall; closure in a specific view is unknown because this report has no view'
   } else if (validation.scope === ClosureScope.VIEW) {
-    closedText = association?.closed_at?.Valid
-      ? `Closed in ${view} on ${formatDateToSeconds(
+    closedText = association.closed_at?.Valid
+      ? `Closed in ${urlParams.view} on ${formatDateToSeconds(
           association.closed_at.Time
         )}; still open in another view`
-      : `Closed in ${view}; still open in another view`
+      : `Closed in ${urlParams.view}; still open in another view`
   }
 
   return (
@@ -153,6 +152,5 @@ HistoricalRegressionNotice.propTypes = {
     association: PropTypes.object,
   }),
   urlParams: PropTypes.object.isRequired,
-  view: PropTypes.string,
   noData: PropTypes.bool,
 }

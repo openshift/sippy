@@ -267,6 +267,9 @@ func Test_TriageAPI(t *testing.T) {
 
 			assert.NotContains(t, byID[noFailureReg.ID].Links, linkKey, "no historical link can be built without a last failure")
 			assert.NotEmpty(t, byID[noFailureReg.ID].Links["self"])
+			assert.Equal(t, "no last failure was recorded", byID[noFailureReg.ID].HistoricalLinkUnavailable[view.Name],
+				"the API should explain why the closed association has no historical link")
+			assert.Empty(t, byID[closedReg.ID].HistoricalLinkUnavailable)
 
 			openLink := byID[openReg.ID].Links[linkKey]
 			require.NotEmpty(t, openLink, "open regression should keep its current link")
@@ -305,6 +308,9 @@ func Test_TriageAPI(t *testing.T) {
 			assert.True(t, regression.Closed.Valid)
 			require.Len(t, regression.Triages, 1)
 			assert.Equal(t, created.ID, regression.Triages[0].ID)
+			// The historical report's triage table shows Jira details from the embedded bug.
+			require.NotNil(t, regression.Triages[0].Bug, "regression endpoint should preload each triage's bug")
+			assert.Equal(t, jiraBug.Status, regression.Triages[0].Bug.Status)
 		})
 	})
 	t.Run("list", func(t *testing.T) {

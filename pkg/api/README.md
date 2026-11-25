@@ -900,7 +900,21 @@ historical link is returned when the regression has no `last_failure`, when the
 view is no longer configured, when the view's basis cannot be resolved, or for
 spot-check regressions (test IDs starting with `spotcheck-`). Test details
 resolve a view's spot-check samples from the current time rather than from the
-URL's sample dates, so a historical spot-check link would show recent runs. The
-link only describes a query; whether the providers still hold data for the
+URL's sample dates, so a historical spot-check link would show recent runs.
+
+When a closed view association has no historical link, the record's
+`historical_link_unavailable` object maps that view name to a human-readable
+reason, so clients can explain the gap without re-deriving it:
+
+| Reason | Cause |
+|--------|-------|
+| `no last failure was recorded` | The regression has no `last_failure`. |
+| `spot-check reports always cover recent runs` | Spot-check regression. |
+| `this view is no longer configured` | The view was removed from configuration. |
+| `the view's basis could not be resolved for the last failure` | Any other failure to build the link. |
+
+The field is omitted when every closed association has a link. Reasons are
+display text and may be reworded; do not match on them. A historical link only
+describes a query; whether the providers still hold data for the
 window is determined when it is opened. See
 [docs/features/component-readiness-triage.md](../../docs/features/component-readiness-triage.md#reviewing-closed-regressions).

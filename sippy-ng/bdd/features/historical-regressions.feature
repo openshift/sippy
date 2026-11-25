@@ -44,6 +44,8 @@ Feature: Historical test details for closed regressions
     And the test details request keeps the historical window
     And the regression ID row shows the closed regression
     And the closed regression's triage is listed
+    And the closed regression's triage shows its Jira details
+    And the stale report warning is not shown
 
   Scenario: Generating the report keeps the historical window and regression
     Given a component readiness API
@@ -60,6 +62,7 @@ Feature: Historical test details for closed regressions
     And test details no longer track the regression
     When I open the historical test details link
     Then the notice says the regression does not match this report
+    And the stale report warning links to the latest report
 
   Scenario: A regression closed only in this view is described as such
     Given a component readiness API
@@ -67,6 +70,13 @@ Feature: Historical test details for closed regressions
     And test details no longer track the regression
     When I open the historical test details link for the regression closed only in this view
     Then the notice says the regression closed only in this view
+
+  Scenario: A view closure without a recorded time is still described
+    Given a component readiness API
+    And the regression API returns a regression closed only in this view without a closure time
+    And test details no longer track the regression
+    When I open the historical test details link for the regression closed only in this view
+    Then the notice says the regression closed only in this view without a date
 
   Scenario: Without a view, closure of an open regression is not claimed
     Given a component readiness API

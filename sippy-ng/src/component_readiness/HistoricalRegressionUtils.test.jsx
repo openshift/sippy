@@ -7,15 +7,12 @@ import {
   formatUrlDateRange,
   historicalClosure,
   historicalWindowFromLink,
-  parseEnvironmentVariants,
   parseUrlDate,
-  parseVariantPairs,
   preferredTestDetailsLink,
   triagedRegressionCellRank,
   triagedRegressionViewCell,
   triagedRegressionViewNames,
   validateHistoricalRegression,
-  viewControlDefaults,
 } from './HistoricalRegressionUtils'
 
 const historicalLink =
@@ -264,19 +261,20 @@ describe('triagedRegressionViewCell', () => {
 
   test.each([
     [
-      'no last failure',
-      { last_failure: { Valid: false }, links: {} },
+      'an API reason for this view',
+      {
+        links: {},
+        historical_link_unavailable: {
+          '5.0-main': 'no last failure was recorded',
+          '5.0-azure': 'this view is no longer configured',
+        },
+      },
       'no last failure was recorded',
     ],
     [
-      'a removed view or unresolvable basis',
+      'no API reason',
       { links: {} },
-      'this view is no longer configured or its basis could not be resolved',
-    ],
-    [
-      'a spot-check test',
-      { test_id: 'spotcheck-30d:networking:ovn', links: {} },
-      'spot-check reports always cover recent runs',
+      'the API did not provide a historical link',
     ],
     [
       'a link without a readable window',
@@ -285,6 +283,7 @@ describe('triagedRegressionViewCell', () => {
           'test_details:5.0-main':
             '/api/component_readiness/test_details?testId=t1',
         },
+        historical_link_unavailable: { '5.0-main': 'ignored' },
       },
       'its link has no readable sample window',
     ],
@@ -350,115 +349,6 @@ describe('end time controls', () => {
     expect(endTimeParam('2026-06-09T23:59:59Z', '2026-06-09T23:59:59Z')).toBe(
       '2026-06-09 23:59:59'
     )
-  })
-})
-
-describe('viewControlDefaults', () => {
-  const view = {
-    name: '5.0-main',
-    base_release: {
-      release: '4.22',
-      start: '2026-05-10T00:00:00Z',
-      end: '2026-06-09T23:59:59Z',
-    },
-    sample_release: {
-      release: '5.0',
-      start: '2026-11-10T00:00:00Z',
-      end: '2026-11-17T12:00:00Z',
-    },
-    variant_options: {
-      column_group_by: { Platform: {} },
-      db_group_by: { Platform: {}, Network: {} },
-      include_variants: { Platform: ['aws'] },
-    },
-    advanced_options: { confidence: 95, pity_factor: 5 },
-    test_filters: { lifecycles: ['blocking'] },
-  }
-  const crossCompareView = {
-    ...view,
-    variant_options: {
-      ...view.variant_options,
-      variant_cross_compare: ['Architecture'],
-      compare_variants: { Architecture: ['arm64'] },
-    },
-  }
-
-  test('uses the view when the URL has no overrides', () => {
-    expect(viewControlDefaults(view, { view: '5.0-main' })).toEqual({
-      baseRelease: '4.22',
-      baseStartTime: '2026-05-10 00:00:00',
-      baseEndTime: '2026-06-09 00:00:00',
-      sampleRelease: '5.0',
-      sampleStartTime: '2026-11-10 00:00:00',
-      sampleEndTime: '2026-11-17 00:00:00',
-      columnGroupBy: ['Platform'],
-      dbGroupBy: ['Platform', 'Network'],
-      includeVariants: { Platform: ['aws'] },
-      testLifecycles: ['blocking'],
-      testCapabilities: [],
-      confidence: 95,
-      pity: 5,
-    })
-  })
-
-  test('lets explicit URL parameters win', () => {
-    const defaults = viewControlDefaults(view, {
-      view: '5.0-main',
-      sampleStartTime: '2026-09-22T00:00:00Z',
-      sampleEndTime: '2026-09-30T00:00:00Z',
-      baseStartTime: '2026-05-10T00:00:00Z',
-      baseEndTime: '2026-06-09T23:59:59Z',
-      confidence: 90,
-      includeVariant: ['Platform:azure'],
-      testLifecycles: [],
-    })
-    expect(defaults).not.toHaveProperty('sampleStartTime')
-    expect(defaults).not.toHaveProperty('sampleEndTime')
-    expect(defaults).not.toHaveProperty('baseStartTime')
-    expect(defaults).not.toHaveProperty('baseEndTime')
-    expect(defaults).not.toHaveProperty('confidence')
-    expect(defaults).not.toHaveProperty('includeVariants')
-    expect(defaults.testLifecycles).toEqual(['blocking'])
-    expect(defaults.sampleRelease).toBe('5.0')
-  })
-
-  test('includes cross-compare defaults when the URL has neither parameter', () => {
-    const defaults = viewControlDefaults(crossCompareView, { view: '5.0-main' })
-    expect(defaults.variantCrossCompare).toEqual(['Architecture'])
-    expect(defaults.compareVariants).toEqual({ Architecture: ['arm64'] })
-  })
-
-  test.each([
-    ['compareVariant', { compareVariant: ['Architecture:amd64'] }],
-    ['variantCrossCompare', { variantCrossCompare: ['Platform'] }],
-  ])(
-    'an explicit %s suppresses both cross-compare defaults',
-    (_name, urlParams) => {
-      const defaults = viewControlDefaults(crossCompareView, {
-        view: '5.0-main',
-        ...urlParams,
-      })
-      expect(defaults).not.toHaveProperty('variantCrossCompare')
-      expect(defaults).not.toHaveProperty('compareVariants')
-      expect(defaults.includeVariants).toEqual({ Platform: ['aws'] })
-    }
-  )
-})
-
-describe('variant parsing', () => {
-  test('parseEnvironmentVariants splits key:value pairs', () => {
-    expect(parseEnvironmentVariants('Platform:azure Network:ovn')).toEqual({
-      Platform: 'azure',
-      Network: 'ovn',
-    })
-    expect(parseEnvironmentVariants(undefined)).toEqual({})
-  })
-
-  test('parseVariantPairs skips entries without a key', () => {
-    expect(
-      parseVariantPairs(['Platform:azure', 'garbage', ':ovn', 'Arch:a:b'])
-    ).toEqual({ Platform: 'azure', Arch: 'a:b' })
-    expect(parseVariantPairs(undefined)).toEqual({})
   })
 })
 

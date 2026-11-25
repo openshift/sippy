@@ -32,8 +32,7 @@ import (
 )
 
 // GetTriage looks up a triage with its regressions. When linkConfig is provided, each embedded
-// regression receives the same HATEOAS links as the regression endpoints, including historical
-// test_details links for closed regressions.
+// regression receives the same links as the regression endpoints (see InjectRegressionHATEOASLinks).
 func GetTriage(dbc *db.DB, id int, req *http.Request, linkConfig *RegressionLinkConfig) (*models.Triage, error) {
 	existingTriage := &models.Triage{}
 	res := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions").First(existingTriage, id)
@@ -353,7 +352,8 @@ func GetRegressionsForTest(dbc *db.DB, release, testName string, views []crview.
 // GetRegression returns the regression with the matching ID
 func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) (*models.TestRegression, error) {
 	regression := &models.TestRegression{}
-	res := dbc.DB.Preload("Triages").Preload("JobRuns").Preload("Views").First(regression, id)
+	// Triages.Bug matches ListOpenRegressions, so a historical report's triage table shows Jira details.
+	res := dbc.DB.Preload("Triages.Bug").Preload("JobRuns").Preload("Views").First(regression, id)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -854,9 +854,19 @@ func injectTriageRegressionLinks(triage *models.Triage, linkConfig *RegressionLi
 // contains the evidence that led to the regression. The last failure is regression-wide (views do not
 // record their own), so for an association that closed while another view kept the regression open,
 // the window may end after that association's own closure.
+//
+// When a closed association gets no historical link, HistoricalLinkUnavailable records the reason for
+// that view so clients can explain the gap without re-deriving it.
 func InjectRegressionHATEOASLinks(regression *models.TestRegression, linkConfig *RegressionLinkConfig, baseAPIURL, baseFrontendURL string) {
 	regression.Links = map[string]string{
 		"self": fmt.Sprintf(regressionLink, baseAPIURL, regression.ID),
+	}
+	regression.HistoricalLinkUnavailable = nil
+	recordUnavailable := func(viewName, reason string) {
+		if regression.HistoricalLinkUnavailable == nil {
+			regression.HistoricalLinkUnavailable = map[string]string{}
+		}
+		regression.HistoricalLinkUnavailable[viewName] = reason
 	}
 
 	logger := log.WithField("regressionID", regression.ID)
@@ -871,6 +881,7 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, linkConfig 
 				viewLogger.Warn("view not found in config for regression")
 			} else {
 				viewLogger.Debug("view not found in config for closed regression association")
+				recordUnavailable(rv.ViewName, reasonViewNotConfigured)
 			}
 			continue
 		}
@@ -888,6 +899,9 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, linkConfig 
 			} else {
 				viewLogger.WithError(err).Error("failed to generate test details URL")
 			}
+			if !current {
+				recordUnavailable(rv.ViewName, historicalLinkUnavailableReason(err))
+			}
 			continue
 		}
 		regression.Links[fmt.Sprintf("test_details:%s", rv.ViewName)] = testDetailsURL
@@ -898,18 +912,50 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, linkConfig 
 // historical sample, mirroring the default seven day sample of the regression-tracking views.
 const historicalSampleDays = 7
 
+// Reasons a closed association has no historical link. They are returned to clients in
+// HistoricalLinkUnavailable and shown to users, so they are phrased to complete
+// "Historical test details are unavailable because ...".
+const (
+	reasonViewNotConfigured = "this view is no longer configured"
+	reasonLinkFailed        = "the view's basis could not be resolved for the last failure"
+)
+
 // errNoHistoricalLink marks the expected reasons a closed regression has no historical link, which are
 // logged at debug level rather than as failures.
 var errNoHistoricalLink = errors.New("no historical test details link")
 
+// historicalLinkGapError is an expected reason a closed regression has no historical link. Its Reason
+// is user-facing; it wraps errNoHistoricalLink so callers can tell expected gaps from failures.
+type historicalLinkGapError struct {
+	Reason string
+}
+
+func (e *historicalLinkGapError) Error() string {
+	return fmt.Sprintf("%s: %s", errNoHistoricalLink, e.Reason)
+}
+
+func (e *historicalLinkGapError) Unwrap() error {
+	return errNoHistoricalLink
+}
+
+// historicalLinkUnavailableReason returns the user-facing reason for a failed historical link: the
+// gap's own reason when it is expected, otherwise a generic one.
+func historicalLinkUnavailableReason(err error) string {
+	var gap *historicalLinkGapError
+	if errors.As(err, &gap) {
+		return gap.Reason
+	}
+	return reasonLinkFailed
+}
+
 // errMissingLastFailure explains why a closed regression has no historical link: without a recorded
 // last failure there is no anchor, and substituting today's window would show unrelated data.
-var errMissingLastFailure = fmt.Errorf("%w: regression has no recorded last failure", errNoHistoricalLink)
+var errMissingLastFailure = &historicalLinkGapError{Reason: "no last failure was recorded"}
 
 // errSpotCheckHistory explains why closed spot-check regressions have no historical link. Test details
 // resolve a view's spot-check samples from the current time rather than from the URL's sample dates,
 // so a link labeled with the historical window would actually show recent spot-check runs.
-var errSpotCheckHistory = fmt.Errorf("%w: spot-check samples are always resolved from the current time", errNoHistoricalLink)
+var errSpotCheckHistory = &historicalLinkGapError{Reason: "spot-check reports always cover recent runs"}
 
 // HistoricalSampleWindow returns the sample window for a historical report: from 00:00 UTC seven
 // calendar days before the last-failure date through the whole last-failure date. The end is the

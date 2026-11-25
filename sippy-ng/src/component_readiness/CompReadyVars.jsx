@@ -13,12 +13,9 @@ import {
   getComponentReadinessViewsAPIUrl,
   getJobVariantsAPIUrl,
   gotFetchError,
-} from './CompReadyUtils'
-import {
-  endTimeControlValue,
-  endTimeParam,
   viewControlDefaults,
-} from './HistoricalRegressionUtils'
+} from './CompReadyUtils'
+import { endTimeControlValue, endTimeParam } from './HistoricalRegressionUtils'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
 import CompReadyProgress from './CompReadyProgress'
@@ -428,7 +425,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     updateVarsFromView(view.name, views, {})
   }
 
-  // Maps each control in viewControls (HistoricalRegressionUtils) to its
+  // Maps each control in viewControls (CompReadyUtils) to its
   // setter. updateVarsFromView throws if a control has no setter here.
   const viewControlSetters = {
     baseRelease: setBaseRelease,

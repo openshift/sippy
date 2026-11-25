@@ -110,7 +110,9 @@ means either the tracked regression closed or, for a regression that is still op
 in that view only. It does not mean the regression closed everywhere, and it is not a passing
 assessment for that period. When Sippy cannot build a link (the regression has no recorded last
 failure, the view is no longer configured, the view's basis cannot be resolved, or it is a spot-check
-regression), the icon is disabled and its tooltip explains why. Spot-check regressions have no
+regression), the icon is disabled and its tooltip shows the reason the API returned in
+`historical_link_unavailable` (see `InjectRegressionHATEOASLinks` in
+`pkg/api/componentreadiness/triage.go`). Spot-check regressions have no
 historical link because test details always resolve spot-check samples from the current time, so the
 link would show recent runs rather than the historical period.
 
@@ -128,8 +130,13 @@ closure scope:
 | Case | Notice title | Closed line |
 |------|--------------|-------------|
 | The regression closed | `Closed regression, historical report` | The regression's closure date. |
-| Closed in this view only | `Closed in this view, historical report` | The view's closure date, noting the regression is still open in another view. |
+| Closed in this view only | `Closed in this view, historical report` | The view's closure date when one was recorded, noting the regression is still open in another view. |
 | Open, and the report has no view (for example after Generate Report) | `Historical report for a tracked regression` | Per-view closure is unknown because the report has no view. |
+| Open, and the report's view association is still active (for example the view was edited in the URL, or the association reopened after the link was generated) | `Historical report for an open regression` | `Open`. |
+
+When the notice shows validated closure details, the usual "more than 48 hours ago" banner is hidden.
+Its latest link keeps the basis anchored to the last failure, so for views with a rolling basis it
+would compare today's sample against an old basis.
 
 Closure details are shown only after the regression record matches the report's test, release,
 variants, and view. Otherwise the notice is a warning instead: the record does not match (listing the

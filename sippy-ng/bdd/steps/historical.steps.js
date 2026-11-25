@@ -2,6 +2,7 @@ import {
   CLOSED_IN_VIEW_REGRESSION_ID,
   CLOSED_REGRESSION_ID,
   closedInViewRegression,
+  closedInViewWithoutClosedAtRegression,
   closedRegression,
   closedRegressionTriage,
   HISTORICAL_BASE_END,
@@ -10,6 +11,7 @@ import {
   HISTORICAL_RANGE,
   HISTORICAL_SAMPLE_END,
   HISTORICAL_SAMPLE_START,
+  historicalTriageBug,
   JIRA_URL,
   mixedRegressionTriage,
   NO_FAILURE_REGRESSION_ID,
@@ -56,6 +58,13 @@ Given(
   'the regression API returns a regression closed only in this view',
   async ({ api }) => {
     api.regressionBody = closedInViewRegression()
+  }
+)
+
+Given(
+  'the regression API returns a regression closed only in this view without a closure time',
+  async ({ api }) => {
+    api.regressionBody = closedInViewWithoutClosedAtRegression()
   }
 )
 
@@ -280,6 +289,24 @@ Then("the closed regression's triage is listed", async ({ page }) => {
 })
 
 Then(
+  "the closed regression's triage shows its Jira details",
+  async ({ page }) => {
+    const triageRow = new TestDetailsPage(page).triageRow(SEEDED_TRIAGE_ID)
+    await expect(triageRow.locator('[data-field="bug_state"]')).toHaveText(
+      historicalTriageBug.status
+    )
+    await expect(
+      triageRow.locator('[data-field="release_blocker"]')
+    ).toHaveText(historicalTriageBug.release_blocker)
+  }
+)
+
+Then('the stale report warning is not shown', async ({ page }) => {
+  await expect(new TestDetailsPage(page).historicalNotice()).toBeVisible()
+  await expect(page.getByText(/more than 48 hours ago/)).toHaveCount(0)
+})
+
+Then(
   'the sample date controls show the historical window',
   async ({ page }) => {
     const sample = page
@@ -356,6 +383,17 @@ Then(
     )
     await expect(notice).toContainText(
       `Sample window: ${HISTORICAL_RANGE} (UTC)`
+    )
+  }
+)
+
+Then(
+  'the notice says the regression closed only in this view without a date',
+  async ({ page }) => {
+    const notice = new TestDetailsPage(page).historicalNotice()
+    await expect(notice).toContainText('Closed in this view, historical report')
+    await expect(notice).toContainText(
+      `Closed: Closed in ${VIEW}; still open in another view`
     )
   }
 )
