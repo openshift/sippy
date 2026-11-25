@@ -1,10 +1,11 @@
 // This file is deliberately kept separate so it can be excluded from the Snyk code scan
 // (see .snyk). Snyk reports a false positive go/Sqli finding here because the filter
-// field and operator come from the request, even though they only select constant SQL
-// fragments and every value is bound. Because this file is not scanned, take extra care
-// not to introduce real SQL injection: build SQL text only from the constants below and
-// fixed operator switches, pass all request values as bound parameters, and do not add
-// unrelated code to this file.
+// field and operator come from the request, even though alias fields only select the
+// constant columnAliases expressions, other fields pass filter.ValidateField and are quoted
+// as identifiers, and every value is bound. Because this file is not scanned, take extra
+// care not to introduce real SQL injection: build SQL text only from the constants below,
+// validated and quoted identifiers, and fixed operator switches, pass all request values
+// as bound parameters, and do not add unrelated code to this file.
 
 package api
 
@@ -20,13 +21,11 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 )
 
-// jobRunFilterColumns maps every filterable field (other than the test name fields) to
-// its table-qualified column expression. Some fields are SELECT aliases, which a
-// PostgreSQL WHERE clause cannot reference, and the rest are base columns from
-// jobRunsBaseSelect. Resolving fields here means filter SQL is built only from these
-// constant expressions, so request text can select a column but never become SQL.
-var jobRunFilterColumns = map[string]string{
-	// SELECT aliases
+// columnAliases maps filter field names that are SELECT aliases (not base
+// table columns) to their table-qualified column expressions. PostgreSQL
+// WHERE clauses cannot reference SELECT aliases, so these fields must be
+// rewritten before they reach the generic filter system.
+var columnAliases = map[string]string{
 	"id":                  "prow_job_runs.id",
 	"job":                 "prow_jobs.name",
 	"brief_name":          "regexp_replace(prow_jobs.name, 'periodic-ci-openshift-(multiarch|release)-(master|main)-(ci|nightly)-[0-9]+.[0-9]+-', '')",
@@ -38,19 +37,6 @@ var jobRunFilterColumns = map[string]string{
 	"pull_request_org":    "pp.org",
 	"pull_request_repo":   "pp.repo",
 	"pull_request_author": "pp.author",
-	// base columns
-	"release":                "prow_jobs.release",
-	"name":                   "prow_jobs.name",
-	"variants":               "prow_jobs.variants",
-	"overall_result":         "prow_job_runs.overall_result",
-	"url":                    "prow_job_runs.url",
-	"succeeded":              "prow_job_runs.succeeded",
-	"infrastructure_failure": "prow_job_runs.infrastructure_failure",
-	"known_failure":          "prow_job_runs.known_failure",
-	"cluster":                "prow_job_runs.cluster",
-	"labels":                 "prow_job_runs.labels",
-	"test_failures":          "prow_job_runs.test_failures",
-	"test_flakes":            "prow_job_runs.test_flakes",
 }
 
 // testNameStatuses maps test name filter fields to the prow_job_run_tests
@@ -93,18 +79,15 @@ func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback t
 			allArgs = append(allArgs, args...)
 			continue
 		default:
-			col, ok := jobRunFilterColumns[item.Field]
-			if !ok {
-				return nil, &ValidationError{Message: fmt.Sprintf("%v: %q is not a filterable job run field", filter.ErrInvalidField, item.Field)}
-			}
-			// Only the constant column, its type and the operator shape the SQL text; the
-			// request value is passed separately so it can only ever be a bound parameter.
 			var err error
-			sql, err = filter.TypedColumnFilterSQL(col, apitype.JobRun{}.GetFieldType(item.Field), item.Operator, item.Not)
+			if col, ok := columnAliases[item.Field]; ok {
+				sql, param, err = item.FilterItemToSQL(col)
+			} else {
+				sql, param, err = item.FilterFieldToSQL(apitype.JobRun{})
+			}
 			if err != nil {
 				return nil, &ValidationError{Message: err.Error()}
 			}
-			param = filter.ColumnFilterParam(item.Operator, item.Value)
 		}
 		if sql != "" {
 			clauses = append(clauses, sql)
@@ -127,33 +110,37 @@ func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback t
 }
 
 func testNameFilterSQL(item filter.FilterItem, lookback time.Time) (string, []any, error) {
-	existsBase := "EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_run_tests.prow_job_run_release = prow_job_runs.prow_job_release AND prow_job_run_tests.prow_job_run_timestamp = prow_job_runs.timestamp AND prow_job_run_tests.prow_job_run_timestamp >= ?"
-	args := []any{lookback}
-	// The status is bound rather than formatted so the SQL text stays a constant even
-	// though the status is looked up by the request's field name.
+	statusClause := ""
 	if status := testNameStatuses[item.Field]; status != 0 {
-		existsBase += " AND prow_job_run_tests.status = ?"
-		args = append(args, status)
+		statusClause = fmt.Sprintf(" AND prow_job_run_tests.status = %d", status)
 	}
 
+	existsBase := fmt.Sprintf(
+		"EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_run_tests.prow_job_run_release = prow_job_runs.prow_job_release AND prow_job_run_tests.prow_job_run_timestamp = prow_job_runs.timestamp AND prow_job_run_tests.prow_job_run_timestamp >= ?%s",
+		statusClause,
+	)
+
 	var sql string
+	var args []any
 	switch item.Operator {
 	case filter.OperatorIsEmpty:
 		sql = "NOT " + existsBase + ")"
+		args = []any{lookback}
 	case filter.OperatorIsNotEmpty:
 		sql = existsBase + ")"
+		args = []any{lookback}
 	case filter.OperatorHasEntry, filter.OperatorEquals:
 		sql = existsBase + " AND tests.name = ?)"
-		args = append(args, item.Value)
+		args = []any{lookback, item.Value}
 	case filter.OperatorStartsWith:
 		sql = existsBase + " AND tests.name ILIKE ?)"
-		args = append(args, fmt.Sprintf("%s%%", filter.EscapeLikeMetachars(item.Value)))
+		args = []any{lookback, fmt.Sprintf("%s%%", filter.EscapeLikeMetachars(item.Value))}
 	case filter.OperatorEndsWith:
 		sql = existsBase + " AND tests.name ILIKE ?)"
-		args = append(args, fmt.Sprintf("%%%s", filter.EscapeLikeMetachars(item.Value)))
+		args = []any{lookback, fmt.Sprintf("%%%s", filter.EscapeLikeMetachars(item.Value))}
 	case filter.OperatorContains, filter.OperatorHasEntryContaining:
 		sql = existsBase + " AND tests.name ILIKE ?)"
-		args = append(args, fmt.Sprintf("%%%s%%", filter.EscapeLikeMetachars(item.Value)))
+		args = []any{lookback, fmt.Sprintf("%%%s%%", filter.EscapeLikeMetachars(item.Value))}
 	default:
 		return "", nil, fmt.Errorf("unsupported operator %q for field %q", item.Operator, item.Field)
 	}

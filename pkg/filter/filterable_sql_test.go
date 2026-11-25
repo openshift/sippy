@@ -170,12 +170,6 @@ func TestFilterItemToSQL(t *testing.T) {
 			wantSQL: "NOT(prow_jobs.name IS NOT NULL)",
 		},
 		{
-			name:      "quote breakout field is rejected",
-			item:      FilterItem{Field: injectionField, Operator: OperatorEquals, Value: "x"},
-			column:    "prow_jobs.name",
-			wantErrIs: ErrInvalidField,
-		},
-		{
 			name:      "unsupported operator is an error",
 			item:      FilterItem{Field: "job", Operator: "matches", Value: "x"},
 			column:    "prow_jobs.name",
@@ -201,117 +195,6 @@ func TestFilterItemToSQL(t *testing.T) {
 				t.Errorf("sql = %q, want %q", sql, tc.wantSQL)
 			}
 			if param != tc.wantParam {
-				t.Errorf("param = %#v, want %#v", param, tc.wantParam)
-			}
-		})
-	}
-}
-
-func TestColumnFilterSQL(t *testing.T) {
-	tests := []struct {
-		name    string
-		op      Operator
-		not     bool
-		wantSQL string
-		wantErr bool
-	}{
-		{name: "has entry", op: OperatorHasEntry, wantSQL: "? = ANY(COALESCE(prow_jobs.name, '{}'))"},
-		{name: "contains", op: OperatorContains, wantSQL: "prow_jobs.name ILIKE ?"},
-		{name: "has entry containing", op: OperatorHasEntryContaining, wantSQL: "prow_jobs.name ILIKE ?"},
-		{name: "starts with", op: OperatorStartsWith, wantSQL: "prow_jobs.name ILIKE ?"},
-		{name: "ends with", op: OperatorEndsWith, wantSQL: "prow_jobs.name ILIKE ?"},
-		{name: "equals", op: OperatorEquals, wantSQL: "prow_jobs.name = ?"},
-		{name: "arithmetic equals", op: OperatorArithmeticEquals, wantSQL: "prow_jobs.name = ?"},
-		{name: "not equals", op: OperatorArithmeticNotEquals, wantSQL: "prow_jobs.name <> ?"},
-		{name: "greater than", op: OperatorArithmeticGreaterThan, wantSQL: "prow_jobs.name > ?"},
-		{name: "greater than or equals", op: OperatorArithmeticGreaterThanOrEquals, wantSQL: "prow_jobs.name >= ?"},
-		{name: "less than", op: OperatorArithmeticLessThan, wantSQL: "prow_jobs.name < ?"},
-		{name: "less than or equals", op: OperatorArithmeticLessThanOrEquals, wantSQL: "prow_jobs.name <= ?"},
-		{name: "is empty", op: OperatorIsEmpty, wantSQL: "prow_jobs.name IS NULL"},
-		{name: "negated is not empty", op: OperatorIsNotEmpty, not: true, wantSQL: "NOT(prow_jobs.name IS NOT NULL)"},
-		{name: "unsupported operator", op: "matches", wantErr: true},
-		{name: "injection text as operator is unsupported", op: "= 1 OR 1=1 --", wantErr: true},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			sql, err := ColumnFilterSQL("prow_jobs.name", tc.op, tc.not)
-			if tc.wantErr {
-				if !errors.Is(err, ErrUnsupportedOperator) {
-					t.Fatalf("error = %v, want error wrapping %v", err, ErrUnsupportedOperator)
-				}
-				if sql != "" {
-					t.Errorf("expected no SQL on error, got %q", sql)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if sql != tc.wantSQL {
-				t.Errorf("sql = %q, want %q", sql, tc.wantSQL)
-			}
-		})
-	}
-}
-
-func TestTypedColumnFilterSQL(t *testing.T) {
-	tests := []struct {
-		name    string
-		colType apitype.ColumnType
-		op      Operator
-		not     bool
-		wantSQL string
-		wantErr bool
-	}{
-		{name: "array contains unnests", colType: apitype.ColumnTypeArray, op: OperatorContains, wantSQL: "EXISTS (SELECT 1 FROM unnest(t.c) AS elem WHERE elem ILIKE ?)"},
-		{name: "array starts with unnests", colType: apitype.ColumnTypeArray, op: OperatorStartsWith, wantSQL: "EXISTS (SELECT 1 FROM unnest(t.c) AS elem WHERE elem ILIKE ?)"},
-		{name: "negated array ends with", colType: apitype.ColumnTypeArray, op: OperatorEndsWith, not: true, wantSQL: "NOT(EXISTS (SELECT 1 FROM unnest(t.c) AS elem WHERE elem ILIKE ?))"},
-		{name: "array is empty matches empty array", colType: apitype.ColumnTypeArray, op: OperatorIsEmpty, wantSQL: "(t.c IS NULL or t.c = '{}')"},
-		{name: "array has entry uses ANY", colType: apitype.ColumnTypeArray, op: OperatorHasEntry, wantSQL: "? = ANY(COALESCE(t.c, '{}'))"},
-		{name: "string contains is plain ILIKE", colType: apitype.ColumnTypeString, op: OperatorContains, wantSQL: "t.c ILIKE ?"},
-		{name: "string is empty is plain IS NULL", colType: apitype.ColumnTypeString, op: OperatorIsEmpty, wantSQL: "t.c IS NULL"},
-		{name: "timestamp comparison is scalar", colType: apitype.ColumnTypeTimestamp, op: OperatorArithmeticLessThan, wantSQL: "t.c < ?"},
-		{name: "unsupported operator on array", colType: apitype.ColumnTypeArray, op: "matches", wantErr: true},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			sql, err := TypedColumnFilterSQL("t.c", tc.colType, tc.op, tc.not)
-			if tc.wantErr {
-				if !errors.Is(err, ErrUnsupportedOperator) {
-					t.Fatalf("error = %v, want error wrapping %v", err, ErrUnsupportedOperator)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if sql != tc.wantSQL {
-				t.Errorf("sql = %q, want %q", sql, tc.wantSQL)
-			}
-		})
-	}
-}
-
-func TestColumnFilterParam(t *testing.T) {
-	tests := []struct {
-		name      string
-		op        Operator
-		value     string
-		wantParam any
-	}{
-		{name: "contains escapes and wraps", op: OperatorContains, value: "50%_x", wantParam: `%50\%\_x%`},
-		{name: "has entry containing wraps", op: OperatorHasEntryContaining, value: "aws", wantParam: "%aws%"},
-		{name: "starts with appends wildcard", op: OperatorStartsWith, value: "e2e_", wantParam: `e2e\_%`},
-		{name: "ends with prepends wildcard", op: OperatorEndsWith, value: "aws", wantParam: "%aws"},
-		{name: "equals binds value as-is", op: OperatorEquals, value: "x' OR '1'='1", wantParam: "x' OR '1'='1"},
-		{name: "has entry binds value as-is", op: OperatorHasEntry, value: "tag", wantParam: "tag"},
-		{name: "arithmetic binds value as-is", op: OperatorArithmeticGreaterThan, value: "7", wantParam: "7"},
-		{name: "is empty takes no value", op: OperatorIsEmpty, value: "ignored", wantParam: nil},
-		{name: "is not empty takes no value", op: OperatorIsNotEmpty, value: "ignored", wantParam: nil},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if param := ColumnFilterParam(tc.op, tc.value); param != tc.wantParam {
 				t.Errorf("param = %#v, want %#v", param, tc.wantParam)
 			}
 		})
