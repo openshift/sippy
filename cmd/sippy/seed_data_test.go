@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -375,4 +376,115 @@ func assertSurfacesAgree(t *testing.T, server reqopts.Release, counts testCount,
 	}
 	assertStatusTally(t, counts, report, "report")
 	assertStatusTally(t, counts, details, "details")
+}
+
+func TestBuildHistoricalRegression(t *testing.T) {
+	views := testSeedViews(t)
+	opened := time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC)
+	lastFailure := time.Date(2026, 9, 28, 17, 30, 0, 0, time.UTC)
+	closed := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name            string
+		seed            historicalRegressionSeed
+		wantVariants    []string
+		wantViews       []string
+		wantForceClosed bool
+		wantMaxFailures int
+	}{
+		{
+			name:            "naturally closed regression tracked in two views",
+			seed:            historicalRegressionSeeds[0],
+			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:gcp", "Suite:parallel", "Topology:ha", "Upgrade:none"},
+			wantViews:       []string{"4.22-main", "4.22-gcp-only"},
+			wantMaxFailures: 5,
+		},
+		{
+			name:            "force closed regression",
+			seed:            historicalRegressionSeeds[1],
+			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:aws", "Suite:parallel", "Topology:ha", "Upgrade:none"},
+			wantViews:       []string{"4.22-main"},
+			wantForceClosed: true,
+			wantMaxFailures: 10,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spec, ok := findSyntheticTest(tt.seed.testID)
+			require.True(t, ok)
+			reg, err := buildHistoricalRegression(tt.seed, spec, views, opened, lastFailure, closed)
+			require.NoError(t, err)
+
+			assert.Equal(t, historicalRegressionRelease, reg.Release)
+			assert.Equal(t, "4.21", reg.BaseRelease)
+			assert.Equal(t, spec.testID, reg.TestID)
+			assert.Equal(t, spec.testName, reg.TestName)
+			assert.Equal(t, spec.component, reg.Component)
+			assert.Equal(t, spec.capabilities[0], reg.Capability)
+			assert.Equal(t, tt.wantVariants, []string(reg.Variants))
+			assert.Equal(t, opened, reg.Opened)
+			assert.Equal(t, sql.NullTime{Valid: true, Time: closed}, reg.Closed)
+			assert.Equal(t, sql.NullTime{Valid: true, Time: lastFailure}, reg.LastFailure)
+			assert.Equal(t, tt.wantMaxFailures, reg.MaxFailures)
+			assert.Equal(t, tt.wantForceClosed, reg.ForceClosed)
+			if tt.wantForceClosed {
+				require.NotNil(t, reg.ForceClosedBy)
+				require.NotNil(t, reg.ForceClosedReason)
+			} else {
+				assert.Nil(t, reg.ForceClosedBy)
+				assert.Nil(t, reg.ForceClosedReason)
+			}
+
+			require.Len(t, reg.Views, len(tt.wantViews))
+			for i, rv := range reg.Views {
+				assert.Equal(t, tt.wantViews[i], rv.ViewName)
+				assert.False(t, rv.Active, "view %s should be closed", rv.ViewName)
+				assert.Equal(t, opened, rv.OpenedAt)
+				assert.Equal(t, sql.NullTime{Valid: true, Time: closed}, rv.ClosedAt)
+			}
+		})
+	}
+}
+
+func TestBuildHistoricalRegressionErrors(t *testing.T) {
+	views := testSeedViews(t)
+	spec, ok := findSyntheticTest("test-not-significant")
+	require.True(t, ok)
+	now := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name string
+		seed historicalRegressionSeed
+	}{
+		{name: "no views", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel}},
+		{name: "unknown view", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"no-such-view"}}},
+		{name: "unknown job", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: "no-such-job-%s", views: []string{"4.22-main"}}},
+		{name: "test does not run in job", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: azureAmd64Parallel, views: []string{"4.22-main"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := buildHistoricalRegression(tt.seed, spec, views, now, now, now)
+			assert.Error(t, err)
+		})
+	}
+}
+
+// TestHistoricalRegressionSeedsAreNotRegressed guards against regression tracking reopening a
+// seeded historical regression: no seeded test may pass noticeably less often in the sample than in
+// the basis.
+func TestHistoricalRegressionSeedsAreNotRegressed(t *testing.T) {
+	for _, seed := range historicalRegressionSeeds {
+		t.Run(seed.testID, func(t *testing.T) {
+			spec, ok := findSyntheticTest(seed.testID)
+			require.True(t, ok)
+			counts := spec.jobCounts[seed.jobTemplate]
+			basis, sample := counts["4.21"], counts[historicalRegressionRelease]
+			require.NotZero(t, basis.total)
+			require.NotZero(t, sample.total)
+			basisPassRate := float64(basis.success+basis.flake) / float64(basis.total)
+			samplePassRate := float64(sample.success+sample.flake) / float64(sample.total)
+			assert.GreaterOrEqual(t, samplePassRate, basisPassRate-0.05,
+				"%s should not be a significant regression in the current report", seed.testID)
+		})
+	}
 }

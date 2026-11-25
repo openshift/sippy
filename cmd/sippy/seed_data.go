@@ -727,6 +727,10 @@ func seedSyntheticData(dbc *db.DB, clock seedClock, views apitype.SippyViews) er
 	}
 	log.Info("Seeded bugs and triages")
 
+	if err := seedHistoricalRegressions(dbc, clock, views); err != nil {
+		return errors.WithMessage(err, "failed to seed historical regressions")
+	}
+
 	if err := seedJobRunLabels(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed job run labels")
 	}
@@ -1966,6 +1970,213 @@ func seedBugsAndTriages(dbc *db.DB, clock seedClock) error {
 	// (similar name with Levenshtein distance of 2, overlapping job runs).
 
 	return nil
+}
+
+// historicalRegressionSeed describes a closed regression the seed creates so triage pages show
+// historical test details links that resolve to real seeded runs. Each seed targets a test that is
+// not regressed in the current report, so regression tracking never matches and reopens it.
+type historicalRegressionSeed struct {
+	testID      string
+	jobTemplate string
+	// views are the seed views the regression was tracked in; each gets a closed association.
+	views []string
+	// forceClosed marks the regression as closed by the seeded triage's resolution rather than
+	// by the test recovering.
+	forceClosed bool
+}
+
+// historicalRegressionSeeds cover both closure kinds the historical links distinguish, including a
+// regression tracked in two views so it gets one historical link per view.
+var historicalRegressionSeeds = []historicalRegressionSeed{
+	{testID: "test-not-significant", jobTemplate: gcpAmd64Parallel, views: []string{"4.22-main", "4.22-gcp-only"}},
+	{testID: "test-significant-improvement", jobTemplate: awsAmd64Parallel, views: []string{"4.22-main"}, forceClosed: true},
+}
+
+// historicalRegressionRelease is the release of the seeded historical regressions. Its runs fill the
+// current sample window, so a last failure there anchors a historical report with seeded data.
+const historicalRegressionRelease = "4.22"
+
+// seedHistoricalRegressions creates closed regressions with recorded last failures and closed view
+// associations, all tied to one resolved triage, so the historical regression links and notice can
+// be exercised against a freshly seeded database. It runs after syncRegressions so the sync never
+// sees these records.
+func seedHistoricalRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) error {
+	opened := seededRegressionOpened(clock, historicalRegressionRelease)
+	start, end := clock.window(historicalRegressionRelease)
+	// The sample window ends at the latest rounding boundary, so every seeded run precedes it.
+	closed := end
+
+	regressions := make([]models.TestRegression, 0, len(historicalRegressionSeeds))
+	var forceClosedIdx []int
+	for _, seed := range historicalRegressionSeeds {
+		spec, ok := findSyntheticTest(seed.testID)
+		if !ok {
+			return fmt.Errorf("historical regression seed references unknown test %s", seed.testID)
+		}
+		jobName := fmt.Sprintf(seed.jobTemplate, historicalRegressionRelease)
+		lastFailure, err := latestSeededFailure(dbc, spec.testName, jobName, historicalRegressionRelease, start, end)
+		if err != nil {
+			return err
+		}
+		reg, err := buildHistoricalRegression(seed, spec, views, opened, lastFailure, closed)
+		if err != nil {
+			return err
+		}
+		if err := dbc.DB.Create(&reg).Error; err != nil {
+			return fmt.Errorf("creating historical regression for %s: %w", seed.testID, err)
+		}
+		if seed.forceClosed {
+			forceClosedIdx = append(forceClosedIdx, len(regressions))
+		}
+		regressions = append(regressions, reg)
+	}
+
+	triageDB := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "seed-data"))
+	triage := models.Triage{
+		URL:              "https://redhat.atlassian.net/browse/OCPBUGS-40006",
+		Description:      "Closed regressions for reviewing historical test details",
+		Type:             models.TriageTypeProduct,
+		Regressions:      regressions,
+		Resolved:         sql.NullTime{Valid: true, Time: closed},
+		ResolutionReason: models.User,
+	}
+	if err := triageDB.Create(&triage).Error; err != nil {
+		return fmt.Errorf("failed to create historical regression triage: %w", err)
+	}
+
+	// GORM omits the zero-value Active=false on insert, so the column default (true) would leave the
+	// closed associations looking active.
+	for _, reg := range regressions {
+		if err := dbc.DB.Model(&models.RegressionView{}).Where("test_regression_id = ?", reg.ID).
+			Update("active", false).Error; err != nil {
+			return fmt.Errorf("closing view associations of historical regression %d: %w", reg.ID, err)
+		}
+	}
+
+	for _, i := range forceClosedIdx {
+		if err := dbc.DB.Model(&models.TestRegression{}).Where("id = ?", regressions[i].ID).
+			Update("force_closed_by_triage_id", triage.ID).Error; err != nil {
+			return fmt.Errorf("linking force closed regression %d to triage %d: %w", regressions[i].ID, triage.ID, err)
+		}
+	}
+
+	log.WithField("triageID", triage.ID).WithField("regressions", len(regressions)).
+		Info("Created historical regressions")
+	return nil
+}
+
+// buildHistoricalRegression returns the closed regression record for seed. Its variants are the
+// seed job's variants limited to the first view's DB grouping, matching what regression tracking
+// records for a report row; its base release is that view's; and every view association is closed
+// when the regression closed.
+func buildHistoricalRegression(seed historicalRegressionSeed, spec syntheticTestSpec, views apitype.SippyViews, opened, lastFailure, closed time.Time) (models.TestRegression, error) {
+	if len(seed.views) == 0 {
+		return models.TestRegression{}, fmt.Errorf("historical regression seed %s has no views", seed.testID)
+	}
+	job, ok := findSyntheticJob(seed.jobTemplate)
+	if !ok {
+		return models.TestRegression{}, fmt.Errorf("historical regression seed %s references unknown job %s", seed.testID, seed.jobTemplate)
+	}
+	if len(spec.capabilities) == 0 {
+		return models.TestRegression{}, fmt.Errorf("synthetic test %s has no capability", spec.testID)
+	}
+	counts, ok := spec.jobCounts[seed.jobTemplate][historicalRegressionRelease]
+	if !ok || counts.total-counts.success-counts.flake <= 0 {
+		return models.TestRegression{}, fmt.Errorf("synthetic test %s has no %s failures in %s", spec.testID, historicalRegressionRelease, seed.jobTemplate)
+	}
+
+	var dbGroupBy sets.Set[string]
+	var baseRelease string
+	regViews := make([]models.RegressionView, 0, len(seed.views))
+	for i, name := range seed.views {
+		view, ok := componentreadiness.FindViewByName(name, views.ComponentReadiness)
+		if !ok {
+			return models.TestRegression{}, fmt.Errorf("historical regression seed %s references unknown view %s", seed.testID, name)
+		}
+		if i == 0 {
+			dbGroupBy = view.VariantOptions.DBGroupBy
+			baseRelease = view.BaseRelease.Name
+		}
+		regViews = append(regViews, models.RegressionView{
+			ViewName: name,
+			Active:   false,
+			OpenedAt: opened,
+			ClosedAt: sql.NullTime{Valid: true, Time: closed},
+		})
+	}
+
+	grouped := make(map[string]string, len(job.variants))
+	for k, v := range job.variants {
+		if dbGroupBy.Has(k) {
+			grouped[k] = v
+		}
+	}
+	variants := utils.VariantsMapToStringSlice(grouped)
+	sort.Strings(variants)
+
+	reg := models.TestRegression{
+		Release:     historicalRegressionRelease,
+		BaseRelease: baseRelease,
+		Component:   spec.component,
+		Capability:  spec.capabilities[0],
+		TestID:      spec.testID,
+		TestName:    spec.testName,
+		Variants:    variants,
+		Opened:      opened,
+		Closed:      sql.NullTime{Valid: true, Time: closed},
+		LastFailure: sql.NullTime{Valid: true, Time: lastFailure},
+		MaxFailures: counts.total - counts.success - counts.flake,
+		Views:       regViews,
+	}
+	if seed.forceClosed {
+		by := "seed-data"
+		reason := "Fix verified; closing with the triage resolution"
+		reg.ForceClosed = true
+		reg.ForceClosedBy = &by
+		reg.ForceClosedReason = &reason
+	}
+	return reg, nil
+}
+
+// findSyntheticTest returns the synthetic test spec with the given test ID.
+func findSyntheticTest(testID string) (syntheticTestSpec, bool) {
+	for _, spec := range syntheticTests {
+		if spec.testID == testID {
+			return spec, true
+		}
+	}
+	return syntheticTestSpec{}, false
+}
+
+// findSyntheticJob returns the synthetic job definition with the given name template.
+func findSyntheticJob(nameTemplate string) (syntheticJobDef, bool) {
+	for _, job := range syntheticJobs {
+		if job.nameTemplate == nameTemplate {
+			return job, true
+		}
+	}
+	return syntheticJobDef{}, false
+}
+
+// latestSeededFailure returns the timestamp of the latest seeded failure of testName in jobName
+// within [start, end), which a historical regression records as its last failure.
+func latestSeededFailure(dbc *db.DB, testName, jobName, release string, start, end time.Time) (time.Time, error) {
+	var last sql.NullTime
+	if err := dbc.DB.Raw(`
+		SELECT MAX(pjrt.prow_job_run_timestamp)
+		FROM prow_job_run_tests pjrt
+		JOIN tests t ON t.id = pjrt.test_id
+		JOIN prow_jobs pj ON pj.id = pjrt.prow_job_id
+		WHERE t.name = ? AND pj.name = ? AND pjrt.status = ?
+		 AND pjrt.prow_job_run_release = ?
+		 AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
+	`, testName, jobName, int(v1.TestStatusFailure), release, start, end).Scan(&last).Error; err != nil {
+		return time.Time{}, fmt.Errorf("querying latest failure of %q in %s: %w", testName, jobName, err)
+	}
+	if !last.Valid {
+		return time.Time{}, fmt.Errorf("no seeded failure of %q in %s between %s and %s", testName, jobName, start, end)
+	}
+	return last.Time.UTC(), nil
 }
 
 // seedJobRunLabels gives synthetic failed runs labels for exercising label displays.
