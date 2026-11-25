@@ -9,7 +9,6 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -207,28 +206,9 @@ func updateComponentReadinessMetricsForView(ctx context.Context, provider datapr
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
 
-	baseRelease, err := utils.GetViewReleaseOptions(
-		releases, "basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor, cacheOptions.CRTimeRoundingOffset)
+	reportOpts, err := utils.ViewRequestOptions(view, releases, cacheOptions)
 	if err != nil {
 		return err
-	}
-
-	sampleRelease, err := utils.GetViewReleaseOptions(
-		releases, "sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor, cacheOptions.CRTimeRoundingOffset)
-	if err != nil {
-		return err
-	}
-
-	variantOption := view.VariantOptions
-	advancedOption := view.AdvancedOptions
-
-	// Get component readiness report
-	reportOpts := reqopts.RequestOptions{
-		BaseRelease:    baseRelease,
-		SampleRelease:  sampleRelease,
-		VariantOption:  variantOption,
-		AdvancedOption: advancedOption,
-		CacheOption:    cacheOptions,
 	}
 
 	report, errs := componentreadiness.GetComponentReport(ctx, provider, dbc, reportOpts, "")

@@ -481,45 +481,11 @@ func (l *RegressionCacheLoader) buildGenerator(
 	testIDOpts []reqopts.TestIdentification,
 ) (*componentreadiness.ComponentReportGenerator, error) {
 
-	baseRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "basis", view.BaseRelease, 0, 0)
+	reqOpts, err := utils.ViewRequestOptions(view, l.releases, cacheOpts)
 	if err != nil {
 		return nil, err
 	}
-
-	sampleRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
-	if err != nil {
-		return nil, err
-	}
-
-	reqOpts := reqopts.RequestOptions{
-		BaseRelease:    baseRelease,
-		SampleRelease:  sampleRelease,
-		VariantOption:  view.VariantOptions,
-		AdvancedOption: view.AdvancedOptions,
-		CacheOption:    cacheOpts,
-		TestIDOptions:  testIDOpts,
-		TestFilters:    view.TestFilters,
-	}
-
-	for name, sample := range view.SpotCheckJobSamples {
-		spotCheckRelative := reqopts.RelativeRelease{
-			Release:       reqopts.Release{Name: view.SampleRelease.Name},
-			RelativeStart: sample.RelativeStart,
-			RelativeEnd:   sample.RelativeEnd,
-		}
-		resolved, err := utils.GetViewReleaseOptions(
-			l.releases, "spot_check_"+name, spotCheckRelative, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
-		if err != nil {
-			return nil, err
-		}
-		reqOpts.SpotCheckJobSamples = append(reqOpts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
-			Name:            name,
-			Release:         resolved,
-			IncludeVariants: sample.IncludeVariants,
-		})
-	}
+	reqOpts.TestIDOptions = testIDOpts
 
 	generator := componentreadiness.NewComponentReportGenerator(
 		l.dataProvider,

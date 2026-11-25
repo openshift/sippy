@@ -239,31 +239,11 @@ func (l *ComponentReadinessCacheLoader) buildGenerator(
 	testIDOpts []reqopts.TestIdentification,
 ) (*componentreadiness.ComponentReportGenerator, error) {
 
-	baseRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "basis", view.BaseRelease, 0, 0)
+	reqOpts, err := utils.ViewRequestOptions(view, l.releases, cacheOpts)
 	if err != nil {
 		return nil, err
 	}
-
-	sampleRelease, err := utils.GetViewReleaseOptions(
-		l.releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
-	if err != nil {
-		return nil, err
-	}
-
-	variantOption := view.VariantOptions
-	advancedOption := view.AdvancedOptions
-
-	// Get component readiness report
-	reqOpts := reqopts.RequestOptions{
-		BaseRelease:    baseRelease,
-		SampleRelease:  sampleRelease,
-		VariantOption:  variantOption,
-		AdvancedOption: advancedOption,
-		CacheOption:    cacheOpts,
-		TestIDOptions:  testIDOpts,
-		TestFilters:    view.TestFilters,
-	}
+	reqOpts.TestIDOptions = testIDOpts
 
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
 	// explicitly set our reports in the cache, thus resetting the timer for all expiry and keeping the cache
