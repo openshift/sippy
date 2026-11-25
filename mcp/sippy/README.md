@@ -56,7 +56,7 @@ validated strictly (no type coercion), and mutations are never retried.
 
 | Tool | REST mapping | Notes |
 | --- | --- | --- |
-| `list_triages` | `GET /api/component_readiness/triages` | Filters: `view`, `include_archived`, `type`, `status`, `url_contains`, `regression_id`, `limit` (1 to 200). |
+| `list_triages` | `GET /api/component_readiness/triages` | Filters: `view`, `include_archived`, `type`, `status`, `url_contains`, `regression_id`, `limit` (1 to 200). With `include_archived`, the listing uses Sippy's `fields` selection to omit linked regressions (the full archived listing exceeds the response size cap), so `regression_ids` is `null` and `regression_id` is rejected. |
 | `get_triage` | `GET .../triages/{id}` | Includes linked regression summaries. |
 | `create_triage` | `POST .../triages` | `url`, `type`, optional `description` and `regression_ids`. |
 | `update_triage` | `GET` then `PUT .../triages/{id}` | Partial update; omitted fields and links are preserved. Last writer wins. |

@@ -35,6 +35,11 @@ MAX_LIST_LIMIT = 200
 _UNRESOLVED = {"Time": "0001-01-01T00:00:00Z", "Valid": False}
 # Presentation-only fields a GET returns that must not be echoed into a PUT replacement body.
 _READ_ONLY_FIELDS = ("links", "bug")
+# Top-level fields requested for archived listings. Omitting "regressions" keeps the archived response
+# small, because each regression embeds its full job-run history.
+_SPARSE_LIST_FIELDS = (
+    "id", "url", "description", "type", "resolved", "resolution_reason", "bug_id", "bug", "created_at", "updated_at",
+)
 # Scalar fields update_triage can replace directly from tool arguments.
 _EDITABLE_FIELDS = ("url", "description", "type")
 _SUBJECT = "triage"
@@ -92,7 +97,8 @@ def summarize_triage(raw: Mapping[str, Any], *, include_regressions: bool) -> di
         "resolution_reason": raw.get("resolution_reason") or None,
         "bug_id": raw.get("bug_id"),
         "bug": {k: bug.get(k) for k in ("key", "status", "summary", "url")} if bug else None,
-        "regression_ids": sorted(_regression_ids(raw)),
+        # None when the listing was fetched without regressions, so an empty list always means "none linked".
+        "regression_ids": sorted(_regression_ids(raw)) if "regressions" in raw else None,
         "created_at": raw.get("created_at"),
         "updated_at": raw.get("updated_at"),
         "links": raw.get("links") or {},
@@ -207,6 +213,8 @@ class TriageService:
         status (open or resolved), url_contains (case-insensitive), and regression_id (linked
         regression) filter the result. limit is 1-200 (default 50). Returns triages (summaries with
         regression_ids), count, total_matches, and truncated. No matches returns an empty list.
+        With include_archived, summaries omit linked regressions (regression_ids is null; use
+        get_triage for them) and regression_id cannot be used.
         """
         query: dict[str, str] = {}
         if view is not None:
@@ -217,6 +225,8 @@ class TriageService:
             raise invalid("include_archived must be a boolean")
         if include_archived:
             query["include_archived"] = "true"
+            # The full archived listing exceeds MAX_RESPONSE_BYTES, so request Sippy's sparse field selection.
+            query["fields"] = ",".join(_SPARSE_LIST_FIELDS)
         if type is not None:
             validate_type(type)
         if status is not None and status not in TRIAGE_STATUSES:
@@ -225,11 +235,13 @@ class TriageService:
             raise invalid("url_contains must be a non-blank string")
         if regression_id is not None:
             validate_id(regression_id, "regression_id")
+            if include_archived:
+                raise invalid("regression_id cannot be combined with include_archived; archived listings omit regressions")
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= MAX_LIST_LIMIT:
             raise invalid(f"limit must be an integer between 1 and {MAX_LIST_LIMIT}")
 
         # Sippy's list endpoint has no paging or server-side filters beyond view and include_archived,
-        # so the full listing is fetched (bounded by MAX_RESPONSE_BYTES) and filtered here.
+        # so the listing is fetched (bounded by MAX_RESPONSE_BYTES) and filtered here.
         raw = decode_json(await self._send("GET", TRIAGES_PATH, None, query=query or None))
         if raw is None:
             raw = []

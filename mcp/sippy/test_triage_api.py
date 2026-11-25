@@ -6,6 +6,7 @@ import copy
 import functools
 import json
 import re
+import urllib.parse
 from collections.abc import Callable
 
 import anyio
@@ -115,7 +116,13 @@ class FakeSippy:
             return _failure(400, "X-Acting-For is required for requests from a trusted delegator")
         if path == "/api/component_readiness/triages":
             if method == "GET":
-                return _json(200, [self._out(t) for t in self.triages.values()])
+                listing = [self._out(t) for t in self.triages.values()]
+                fields = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get("fields")
+                if fields:
+                    # Like Sippy's top-level field selection, which always keeps links.
+                    keep = set(fields[0].split(",")) | {"links"}
+                    listing = [{k: v for k, v in t.items() if k in keep} for t in listing]
+                return _json(200, listing)
             if method == "POST":
                 if not parsed.get("url"):
                     return _failure(400, "url is required for a triage record")
@@ -410,6 +417,7 @@ def test_list_filters_and_limits(service, fake):
     assert "view=4.22-main" in fake.calls[0]["url"] and "include_archived=true" in fake.calls[0]["url"]
     assert "regressions" not in result["triages"][0]
 
+    assert service.list_triages()["triages"][0]["regression_ids"] == [12]
     assert [t["id"] for t in service.list_triages(type="product")["triages"]] == [3, 1]
     assert [t["id"] for t in service.list_triages(status="resolved")["triages"]] == [2]
     assert [t["id"] for t in service.list_triages(status="open")["triages"]] == [3, 1]
@@ -419,9 +427,33 @@ def test_list_filters_and_limits(service, fake):
     assert resolved["resolved"] == "2026-11-02T00:00:00Z" and resolved["resolution_reason"] == "user"
 
 
+def test_list_archived_requests_sparse_fields(service, fake):
+    fake.add_triage(id=1, url="https://redhat.atlassian.net/browse/OCPBUGS-100", regressions=[11, 12])
+    fake.add_triage(id=2, url="https://redhat.atlassian.net/browse/TRT-1",
+                    resolved={"Time": "2026-11-02T00:00:00Z", "Valid": True}, resolution_reason="user")
+
+    result = service.list_triages(include_archived=True, url_contains="ocpbugs-1")
+    query = urllib.parse.parse_qs(urllib.parse.urlsplit(fake.calls[0]["url"]).query)
+    assert query["include_archived"] == ["true"]
+    assert "regressions" not in query["fields"][0].split(",")
+    assert [t["id"] for t in result["triages"]] == [1]
+    triage = result["triages"][0]
+    # Absent regressions must not be reported as "none linked".
+    assert triage["regression_ids"] is None
+    assert triage["bug"]["key"] == "OCPBUGS-1" and triage["links"]["self"].endswith("/triages/1")
+
+    resolved = service.list_triages(include_archived=True, status="resolved")["triages"]
+    assert [t["id"] for t in resolved] == [2] and resolved[0]["resolution_reason"] == "user"
+
+    # Ordinary listings stay full so regression_ids and the regression_id filter keep working.
+    assert service.list_triages(regression_id=12)["triages"][0]["regression_ids"] == [11, 12]
+    assert "fields=" not in fake.calls[-1]["url"]
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
+        {"include_archived": True, "regression_id": 11},
         {"type": "bogus"},
         {"status": "closed"},
         {"limit": 0},

@@ -741,7 +741,8 @@ potential-match endpoint continue to access historical triages. Frontend listing
 and reuse selectors use ordinary listings, with view filters where applicable,
 preserving non-archived cross-release candidates. There is no separate BigQuery
 triage listing implementation. The `sippy` MCP server's `list_triages` tool
-(`mcp/sippy/`) calls this endpoint.
+(`mcp/sippy/`) calls this endpoint, adding `fields` without `regressions` when
+`include_archived=true` because each regression embeds its job-run history.
 
 ### Parameters
 
