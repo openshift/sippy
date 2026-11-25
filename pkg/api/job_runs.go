@@ -315,37 +315,33 @@ func applyJobRunFilters(q *gorm.DB, filterOpts *filter.FilterOptions, lookback t
 }
 
 func testNameFilterSQL(item filter.FilterItem, lookback time.Time) (string, []any, error) {
-	statusClause := ""
+	existsBase := "EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_run_tests.prow_job_run_release = prow_job_runs.prow_job_release AND prow_job_run_tests.prow_job_run_timestamp = prow_job_runs.timestamp AND prow_job_run_tests.prow_job_run_timestamp >= ?"
+	args := []any{lookback}
+	// The status is bound rather than formatted so the SQL text stays a constant even
+	// though the status is looked up by the request's field name.
 	if status := testNameStatuses[item.Field]; status != 0 {
-		statusClause = fmt.Sprintf(" AND prow_job_run_tests.status = %d", status)
+		existsBase += " AND prow_job_run_tests.status = ?"
+		args = append(args, status)
 	}
 
-	existsBase := fmt.Sprintf(
-		"EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs.id AND prow_job_run_tests.prow_job_run_release = prow_job_runs.prow_job_release AND prow_job_run_tests.prow_job_run_timestamp = prow_job_runs.timestamp AND prow_job_run_tests.prow_job_run_timestamp >= ?%s",
-		statusClause,
-	)
-
 	var sql string
-	var args []any
 	switch item.Operator {
 	case filter.OperatorIsEmpty:
 		sql = "NOT " + existsBase + ")"
-		args = []any{lookback}
 	case filter.OperatorIsNotEmpty:
 		sql = existsBase + ")"
-		args = []any{lookback}
 	case filter.OperatorHasEntry, filter.OperatorEquals:
 		sql = existsBase + " AND tests.name = ?)"
-		args = []any{lookback, item.Value}
+		args = append(args, item.Value)
 	case filter.OperatorStartsWith:
 		sql = existsBase + " AND tests.name ILIKE ?)"
-		args = []any{lookback, fmt.Sprintf("%s%%", filter.EscapeLikeMetachars(item.Value))}
+		args = append(args, fmt.Sprintf("%s%%", filter.EscapeLikeMetachars(item.Value)))
 	case filter.OperatorEndsWith:
 		sql = existsBase + " AND tests.name ILIKE ?)"
-		args = []any{lookback, fmt.Sprintf("%%%s", filter.EscapeLikeMetachars(item.Value))}
+		args = append(args, fmt.Sprintf("%%%s", filter.EscapeLikeMetachars(item.Value)))
 	case filter.OperatorContains, filter.OperatorHasEntryContaining:
 		sql = existsBase + " AND tests.name ILIKE ?)"
-		args = []any{lookback, fmt.Sprintf("%%%s%%", filter.EscapeLikeMetachars(item.Value))}
+		args = append(args, fmt.Sprintf("%%%s%%", filter.EscapeLikeMetachars(item.Value)))
 	default:
 		return "", nil, fmt.Errorf("unsupported operator %q for field %q", item.Operator, item.Field)
 	}

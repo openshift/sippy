@@ -80,6 +80,30 @@ func TestApplyJobRunFilters(t *testing.T) {
 			wantValidation: true,
 		},
 		{
+			name: "failed test name filter binds status and value",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "failed_test_names", Operator: filter.OperatorContains, Value: "disk"},
+			}},
+			wantWhere: `prow_job_run_tests.prow_job_run_timestamp >= $1 AND prow_job_run_tests.status = $2 AND tests.name ILIKE $3))`,
+			wantVars:  []any{lookback, 12, "%disk%"},
+		},
+		{
+			name: "ran test name filter has no status constraint",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "ran_test_names", Operator: filter.OperatorEquals, Value: "install"},
+			}},
+			wantWhere: `prow_job_run_tests.prow_job_run_timestamp >= $1 AND tests.name = $2))`,
+			wantVars:  []any{lookback, "install"},
+		},
+		{
+			name: "negated flaked test name is empty binds only lookback and status",
+			filter: &filter.Filter{Items: []filter.FilterItem{
+				{Field: "flaked_test_names", Operator: filter.OperatorIsEmpty, Not: true},
+			}},
+			wantWhere: `WHERE (NOT(NOT EXISTS (SELECT 1 FROM prow_job_run_tests`,
+			wantVars:  []any{lookback, 13},
+		},
+		{
 			name: "unsupported operator on generic column is a validation error",
 			filter: &filter.Filter{Items: []filter.FilterItem{
 				{Field: "cluster", Operator: "matches", Value: "x"},
