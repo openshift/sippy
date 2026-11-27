@@ -61,7 +61,7 @@ const (
   job_name,
   ARRAY_AGG(STRUCT(variant_name, variant_value)) AS variants
 FROM 
-  $$DATASET$$.job_variants
+  $$TABLE$$
 WHERE variant_value IS NOT NULL AND variant_value != ""
 GROUP BY 
   job_name`
@@ -91,6 +91,10 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	if bqc == nil {
 		return nil, fmt.Errorf("openshift variant manager requires bigquery")
 	}
+	variantsQuery, err := jobVariantsQueryForDataset(bqc.Dataset)
+	if err != nil {
+		return nil, err
+	}
 
 	mgr := openshiftVariants{
 		variantValues: make(map[string]sets.Set[string]),
@@ -100,7 +104,6 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	start := time.Now()
 	log.Infof("loading variants from bigquery...")
 	// Read variants mapping from bigquery
-	variantsQuery := strings.ReplaceAll(jobVariantsQuery, "$$DATASET$$", bqc.Dataset)
 	log.Debugf("variant query is %+v", variantsQuery)
 	it, err := bqc.Query(ctx, bqlabel.JobVariants, variantsQuery).Read(ctx)
 	if err != nil {
@@ -134,6 +137,15 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 		"jobs": len(jobVariants),
 	}).Infof("variants loaded from bigquery in %+v", time.Since(start))
 	return &mgr, nil
+}
+
+// jobVariantsQueryForDataset quotes the validated table path so configured
+// project names with hyphens cannot alter the SQL around the identifier.
+func jobVariantsQueryForDataset(dataset string) (string, error) {
+	if err := bqcachedclient.ValidateDatasetIdentifier(dataset); err != nil {
+		return "", fmt.Errorf("building job variants query: %w", err)
+	}
+	return strings.ReplaceAll(jobVariantsQuery, "$$TABLE$$", fmt.Sprintf("`%s.job_variants`", dataset)), nil
 }
 
 func (v *openshiftVariants) AllPlatforms() sets.Set[string] {

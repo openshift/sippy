@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 
 	"cloud.google.com/go/storage"
 	"github.com/pkg/errors"
@@ -49,6 +50,15 @@ func NewGCSJobRun(bkt *storage.BucketHandle, path string) *GCSJobRun {
 		bkt:            bkt,
 		gcsProwJobPath: path,
 	}
+}
+
+// jobRunListingPrefix ends listings at the build directory so a missing build
+// cannot match a sibling whose ID starts with the same digits.
+func jobRunListingPrefix(path string) string {
+	if path == "" {
+		return ""
+	}
+	return strings.TrimRight(path, "/") + "/"
 }
 
 func (j *GCSJobRun) SetGCSJunitPaths(paths []string) {
@@ -135,6 +145,7 @@ func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
 	if root == "" {
 		root = j.gcsProwJobPath
 	}
+	root = jobRunListingPrefix(root)
 
 	it := j.bkt.Objects(context.Background(), &storage.Query{
 		Prefix: root,
@@ -164,7 +175,7 @@ func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
 // given glob pattern, using server-side filtering via MatchGlob.
 func (j *GCSJobRun) FindAllMatches(ctx context.Context, glob string) ([]string, error) {
 	q := &storage.Query{
-		Prefix:    j.gcsProwJobPath,
+		Prefix:    jobRunListingPrefix(j.gcsProwJobPath),
 		MatchGlob: glob,
 	}
 	if err := q.SetAttrSelection([]string{"Name"}); err != nil {
@@ -185,4 +196,19 @@ func (j *GCSJobRun) FindAllMatches(ctx context.Context, glob string) ([]string, 
 	}
 
 	return matches, nil
+}
+
+// HasObjects reports whether the job-run prefix contains any objects. A job
+// can have authoritative metadata without producing JUnit artifacts, so this
+// check must remain separate from FindAllMatches.
+func (j *GCSJobRun) HasObjects(ctx context.Context) (bool, error) {
+	it := j.bkt.Objects(ctx, &storage.Query{Prefix: jobRunListingPrefix(j.gcsProwJobPath)})
+	_, err := it.Next()
+	if errors.Is(err, iterator.Done) {
+		return false, nil
+	}
+	if err != nil {
+		return false, errors.Wrap(err, "error reading job-run prefix")
+	}
+	return true, nil
 }
