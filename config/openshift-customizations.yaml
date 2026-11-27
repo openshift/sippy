@@ -149,6 +149,15 @@ releases:
       # OpenShift Logging 6.6 e2e suites (cluster-logging and loki operators) from
       # openshift-eng/openshift-logging-e2e-tests, run against stable OCP payloads.
       - "^periodic-ci-openshift-eng-openshift-logging-e2e-tests-.*-openshift-logging-6\\.6-.*"
+  logging-6.8:
+    synthetic: true
+    regexp:
+      # OpenShift Logging 6.8 daily e2e periodics from openshift/loki-operator and,
+      # later, openshift/cluster-logging-operator. The release is part of the test
+      # name (openshift-logging-6-8-..., dashes because test names cannot contain
+      # dots), not of the branch, so the match stays on 6.8 after the development
+      # branches move on to 6.9. The 6.9 jobs will get their own entry.
+      - "^periodic-ci-openshift-(loki-operator|cluster-logging-operator)-.*-openshift-logging-6-8-.*"
   quay-3.10:
     synthetic: true
     regexp:
