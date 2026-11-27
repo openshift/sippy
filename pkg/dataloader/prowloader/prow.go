@@ -33,6 +33,7 @@ import (
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 
+	reconcilelabels "github.com/openshift/sippy/pkg/api/labels"
 	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/apis/junit"
 	"github.com/openshift/sippy/pkg/apis/prow"
@@ -66,6 +67,7 @@ type ProwLoader struct {
 	config               *v1config.SippyConfig
 	ghCommenter          *commenter.GitHubCommenter
 	gcsClient            *storage.Client
+	readGCSLabels        func(context.Context, *storage.Client, string, string) (map[string]reconcilelabels.DiscoveredLabel, error)
 	promPusher           *push.Pusher
 	loadSince            *time.Time
 	labelsCache          map[string]pq.StringArray
@@ -92,6 +94,7 @@ func New(
 		ctx:                  ctx,
 		dbc:                  dbc,
 		gcsClient:            gcsClient,
+		readGCSLabels:        reconcilelabels.ReadLabels,
 		githubClient:         githubClient,
 		bigQueryClient:       bigQueryClient,
 		maxConcurrency:       50,
@@ -260,12 +263,13 @@ func (pl *ProwLoader) Load() {
 		return
 	}
 
-	// Pre-fetch labels for all jobs in bulk instead of one BQ query per job.
-	if lc, err := pl.prefetchLabels(prowJobs); err == nil {
-		pl.labelsCache = lc
-	} else {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error pre-fetching labels from BigQuery"))
+	// Load the authoritative GCS label set for each job before processing runs.
+	lc, err := pl.prefetchLabels(prowJobs)
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error pre-fetching labels from GCS"))
+		return
 	}
+	pl.labelsCache = lc
 
 	prowLoaderQueriedMetricGauge.Set(float64(len(prowJobs)))
 
@@ -897,23 +901,35 @@ func (pl *ProwLoader) fetchPullRequestData(refs *prow.Refs, pjPath string) []pgw
 }
 
 func (pl *ProwLoader) prefetchLabels(prowJobs []prow.ProwJob) (map[string]pq.StringArray, error) {
-	buildIDs := make([]string, 0, len(prowJobs))
-	var earliest time.Time
+	if pl.gcsClient == nil {
+		return nil, fmt.Errorf("GCS client is required to load authoritative labels")
+	}
+	labelsByBuildID := make(map[string]pq.StringArray, len(prowJobs))
 	for i := range prowJobs {
-		buildIDs = append(buildIDs, prowJobs[i].Status.BuildID)
-		if earliest.IsZero() || prowJobs[i].Status.StartTime.Before(earliest) {
-			earliest = prowJobs[i].Status.StartTime
+		job := &prowJobs[i]
+		jobLog := log.WithFields(log.Fields{"build_id": job.Status.BuildID, "job": job.Spec.Job})
+		jobPath, err := GetGCSPathForProwJobURL(jobLog, job.Status.URL)
+		if err != nil {
+			return nil, fmt.Errorf("derive GCS path for job run %s: %w", job.Status.BuildID, err)
 		}
+		bucketName := job.Spec.DecorationConfig.GCSConfiguration.Bucket
+		readLabels := pl.readGCSLabels
+		if readLabels == nil {
+			readLabels = reconcilelabels.ReadLabels
+		}
+		discovered, err := readLabels(pl.ctx, pl.gcsClient, bucketName, jobPath)
+		if err != nil {
+			return nil, fmt.Errorf("read GCS labels for job run %s: %w", job.Status.BuildID, err)
+		}
+		jobLabels := make(pq.StringArray, 0, len(discovered))
+		for id := range discovered {
+			jobLabels = append(jobLabels, id)
+		}
+		slices.Sort(jobLabels)
+		labelsByBuildID[job.Status.BuildID] = jobLabels
 	}
-
-	log.WithField("count", len(buildIDs)).Info("pre-fetching labels from BigQuery in bulk")
-	start := time.Now()
-	labels, err := GatherLabelsFromBQ(pl.ctx, pl.bigQueryClient, buildIDs, earliest)
-	if err != nil {
-		return nil, fmt.Errorf("pre-fetching %d labels from BigQuery: %w", len(buildIDs), err)
-	}
-	log.WithField("count", len(labels)).WithField("duration", time.Since(start)).Info("pre-fetched labels from BigQuery")
-	return labels, nil
+	log.WithField("count", len(labelsByBuildID)).Info("pre-fetched authoritative labels from GCS")
+	return labelsByBuildID, nil
 }
 
 const LabelsDatasetEnv = "JOB_LABELS_DATASET"
