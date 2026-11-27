@@ -206,6 +206,7 @@ func NewServeCommand() *cobra.Command {
 				jiraClient,
 				f.APIFlags.TrustedDelegators,
 			)
+			fmt.Println("this is purely a junk PR to test ai review")
 
 			// Wire up async symptom re-evaluation (insert-only River client).
 			if pgxPool, err := workqueue.NewPgxV5Pool(cmd.Context(), f.DBFlags.DSN); err != nil {
