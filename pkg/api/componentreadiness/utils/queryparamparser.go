@@ -2,7 +2,9 @@ package utils
 
 import (
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -86,22 +88,10 @@ func ParseComponentReportRequest(
 	// Resolve spot-check samples after all URL overrides (sampleRelease, date ranges)
 	// so they use the final release name and time context.
 	if view != nil {
-		for name, sample := range view.SpotCheckJobSamples {
-			spotCheckRelative := reqopts.RelativeRelease{
-				Release:       reqopts.Release{Name: opts.SampleRelease.Name},
-				RelativeStart: sample.RelativeStart,
-				RelativeEnd:   sample.RelativeEnd,
-			}
-			resolved, resolveErr := GetViewReleaseOptions(releases, "spot_check_"+name, spotCheckRelative, crTimeRoundingFactor, crTimeRoundingOffset)
-			if resolveErr != nil {
-				err = resolveErr
-				return
-			}
-			opts.SpotCheckJobSamples = append(opts.SpotCheckJobSamples, reqopts.SpotCheckJobSampleOpts{
-				Name:            name,
-				Release:         resolved,
-				IncludeVariants: sample.IncludeVariants,
-			})
+		opts.SpotCheckJobSamples, err = resolveSpotCheckJobSamples(time.Now(), releases, opts.SampleRelease.Name,
+			view.SpotCheckJobSamples, crTimeRoundingFactor, crTimeRoundingOffset)
+		if err != nil {
+			return
 		}
 	}
 
@@ -168,23 +158,79 @@ func applyViewDefaults(
 	allJobVariants crtest.JobVariants,
 	crTimeRoundingFactor, crTimeRoundingOffset time.Duration,
 ) (opts reqopts.RequestOptions, warnings []string, err error) {
-	opts.ViewName = view.Name
-	opts.VariantOption = view.VariantOptions
-	opts.AdvancedOption = view.AdvancedOptions
-	opts.TestFilters = view.TestFilters
-	opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, 0, 0)
+	opts, err = ViewRequestOptions(*view, releases, cache.NewStandardCROptions(crTimeRoundingFactor, crTimeRoundingOffset))
 	if err != nil {
 		return
 	}
-	opts.SampleRelease, err = GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor, crTimeRoundingOffset)
-	if err != nil {
-		return
-	}
+	// URL parameters may still change the sample release, so spot-check samples are resolved after them.
+	opts.SpotCheckJobSamples = nil
 	if opts.VariantOption.IncludeVariants != nil {
 		viewWarnings := api.ValidateVariants(allJobVariants, opts.VariantOption.IncludeVariants, " from view")
 		warnings = append(warnings, viewWarnings...)
 	}
 	return
+}
+
+// ViewRequestOptions resolves a view into the request options for its component report.
+// Every caller that builds a report for a configured view (API, metrics, cache priming, regression
+// tracking, Jira automation) must use it so they all produce the same report and share cache entries.
+func ViewRequestOptions(view crview.View, releases []v1.Release, cacheOpts cache.RequestOptions) (reqopts.RequestOptions, error) {
+	return ViewRequestOptionsAt(time.Now(), view, releases, cacheOpts)
+}
+
+// ViewRequestOptionsAt is ViewRequestOptions resolved against the given reference time.
+func ViewRequestOptionsAt(now time.Time, view crview.View, releases []v1.Release, cacheOpts cache.RequestOptions) (reqopts.RequestOptions, error) {
+	opts := reqopts.RequestOptions{
+		ViewName:       view.Name,
+		VariantOption:  view.VariantOptions,
+		AdvancedOption: view.AdvancedOptions,
+		TestFilters:    view.TestFilters,
+		CacheOption:    cacheOpts,
+	}
+	var err error
+	// The basis is a fixed historical window, so it is never rounded.
+	opts.BaseRelease, err = GetViewReleaseOptionsAt(now, releases, "basis", view.BaseRelease, 0, 0)
+	if err != nil {
+		return opts, err
+	}
+	opts.SampleRelease, err = GetViewReleaseOptionsAt(now, releases, "sample", view.SampleRelease,
+		cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
+	if err != nil {
+		return opts, err
+	}
+	opts.SpotCheckJobSamples, err = resolveSpotCheckJobSamples(now, releases, opts.SampleRelease.Name,
+		view.SpotCheckJobSamples, cacheOpts.CRTimeRoundingFactor, cacheOpts.CRTimeRoundingOffset)
+	return opts, err
+}
+
+// resolveSpotCheckJobSamples turns a view's relative spot-check windows into concrete sample options
+// for the given sample release, ordered by name.
+func resolveSpotCheckJobSamples(
+	now time.Time,
+	releases []v1.Release,
+	sampleReleaseName string,
+	samples map[string]crview.SpotCheckJobSample,
+	roundingFactor, roundingOffset time.Duration,
+) ([]reqopts.SpotCheckJobSampleOpts, error) {
+	var resolved []reqopts.SpotCheckJobSampleOpts
+	for _, name := range slices.Sorted(maps.Keys(samples)) {
+		sample := samples[name]
+		relative := reqopts.RelativeRelease{
+			Release:       reqopts.Release{Name: sampleReleaseName},
+			RelativeStart: sample.RelativeStart,
+			RelativeEnd:   sample.RelativeEnd,
+		}
+		release, err := GetViewReleaseOptionsAt(now, releases, "spot_check_"+name, relative, roundingFactor, roundingOffset)
+		if err != nil {
+			return nil, err
+		}
+		resolved = append(resolved, reqopts.SpotCheckJobSampleOpts{
+			Name:            name,
+			Release:         release,
+			IncludeVariants: sample.IncludeVariants,
+		})
+	}
+	return resolved, nil
 }
 
 func parseRequiredReleases(req *http.Request, view *crview.View, opts *reqopts.RequestOptions) error {

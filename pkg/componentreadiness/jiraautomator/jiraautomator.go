@@ -115,30 +115,11 @@ func NewJiraAutomator(
 }
 
 func (j JiraAutomator) getRequestOptionForView(view crview.View) (reqopts.RequestOptions, error) {
-	baseRelease, err := utils.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, 0, 0)
+	reportOpts, err := utils.ViewRequestOptions(view, j.releases, j.cacheOptions)
 	if err != nil {
 		return reqopts.RequestOptions{}, err
 	}
-
-	sampleRelease, err := utils.GetViewReleaseOptions(j.releases, "sample", view.SampleRelease, j.cacheOptions.CRTimeRoundingFactor, j.cacheOptions.CRTimeRoundingOffset)
-	if err != nil {
-		return reqopts.RequestOptions{}, err
-	}
-
-	variantOption := view.VariantOptions
-	advancedOption := view.AdvancedOptions
-
-	// Get component readiness report
-	reportOpts := reqopts.RequestOptions{
-		BaseRelease:   baseRelease,
-		SampleRelease: sampleRelease,
-		TestIDOptions: []reqopts.TestIdentification{
-			view.TestIDOption,
-		},
-		VariantOption:  variantOption,
-		AdvancedOption: advancedOption,
-		CacheOption:    j.cacheOptions,
-	}
+	reportOpts.TestIDOptions = []reqopts.TestIdentification{view.TestIDOption}
 	return reportOpts, nil
 }
 

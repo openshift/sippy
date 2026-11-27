@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
@@ -1136,20 +1137,12 @@ func syncRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) erro
 		viewBackend := componentreadiness.NewPostgresRegressionStore(dbc, nil,
 			componentreadiness.WithOpenedAt(func() time.Time { return opened }))
 
-		baseRelease, err := clock.resolveViewRelease(releases, "basis", view.BaseRelease)
+		reportOpts, err := utils.ViewRequestOptionsAt(clock.now, view, releases, cache.RequestOptions{
+			CRTimeRoundingFactor: clock.roundingFactor,
+			CRTimeRoundingOffset: clock.roundingOffset,
+		})
 		if err != nil {
-			return fmt.Errorf("error getting base release for view %s: %w", view.Name, err)
-		}
-		sampleRelease, err := clock.resolveViewRelease(releases, "sample", view.SampleRelease)
-		if err != nil {
-			return fmt.Errorf("error getting sample release for view %s: %w", view.Name, err)
-		}
-
-		reportOpts := reqopts.RequestOptions{
-			BaseRelease:    baseRelease,
-			SampleRelease:  sampleRelease,
-			VariantOption:  view.VariantOptions,
-			AdvancedOption: view.AdvancedOptions,
+			return fmt.Errorf("error resolving request options for view %s: %w", view.Name, err)
 		}
 		if !view.PrimeCache.Enabled {
 			reportOpts.CacheOption.SkipCacheWrites = true
