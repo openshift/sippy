@@ -687,7 +687,7 @@ func TestInjectRegressionHATEOASLinks(t *testing.T) {
 			expectLinkKeys: []string{"test_details:4.22-main", "test_details:4.22-arm64"},
 		},
 		{
-			name: "inactive views are excluded from links",
+			name: "inactive view without a last failure has no link",
 			regression: &models.TestRegression{
 				ID:          3,
 				Release:     "4.22",
@@ -704,7 +704,7 @@ func TestInjectRegressionHATEOASLinks(t *testing.T) {
 			expectLinkKeys: []string{"test_details:4.22-main"},
 		},
 		{
-			name: "no active views produces no test_details links",
+			name: "closed regression without a last failure produces no test_details links",
 			regression: &models.TestRegression{
 				ID:          4,
 				Release:     "4.22",
@@ -713,6 +713,7 @@ func TestInjectRegressionHATEOASLinks(t *testing.T) {
 				Component:   "component",
 				Capability:  "capability",
 				Variants:    pq.StringArray{"Platform:aws"},
+				Closed:      sql.NullTime{Time: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC), Valid: true},
 				Views: []models.RegressionView{
 					{TestRegressionID: 4, ViewName: "4.22-main", Active: false},
 				},
@@ -767,7 +768,7 @@ func TestInjectRegressionHATEOASLinks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			InjectRegressionHATEOASLinks(tt.regression, views, releases, 0, 0, "http://api", "http://frontend")
+			InjectRegressionHATEOASLinks(tt.regression, &RegressionLinkConfig{Views: views, Releases: releases}, "http://api", "http://frontend")
 
 			assert.Contains(t, tt.regression.Links, "self")
 

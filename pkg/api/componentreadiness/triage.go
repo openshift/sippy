@@ -10,14 +10,18 @@ import (
 	"net/url"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/andygrunwald/go-jira"
 	sippyapi "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -27,7 +31,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
+// GetTriage looks up a triage with its regressions. When linkConfig is provided, each embedded
+// regression receives the same links as the regression endpoints (see InjectRegressionHATEOASLinks).
+func GetTriage(dbc *db.DB, id int, req *http.Request, linkConfig *RegressionLinkConfig) (*models.Triage, error) {
 	existingTriage := &models.Triage{}
 	res := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions.Views").Preload("Regressions").First(existingTriage, id)
 	if res.Error != nil {
@@ -37,15 +43,18 @@ func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %d", id)
 	}
 	injectHATEOASLinks(existingTriage, sippyapi.GetBaseURL(req))
+	injectTriageRegressionLinks(existingTriage, linkConfig, req)
 	return existingTriage, res.Error
 }
 
-// ListTriages adds REST links to triages, optionally including archived history.
-func ListTriages(dbc *db.DB, req *http.Request, includeArchived bool) ([]models.Triage, error) {
+// ListTriages adds REST links to triages, optionally including archived history. When linkConfig is
+// provided, embedded regressions are enriched with their HATEOAS links as in GetTriage.
+func ListTriages(dbc *db.DB, req *http.Request, includeArchived bool, linkConfig *RegressionLinkConfig) ([]models.Triage, error) {
 	view := req.URL.Query().Get("view")
 	triages, err := query.ListTriages(req.Context(), dbc, view, includeArchived)
 	for i := range triages {
 		injectHATEOASLinks(&triages[i], sippyapi.GetBaseURL(req))
+		injectTriageRegressionLinks(&triages[i], linkConfig, req)
 	}
 	return triages, err
 }
@@ -326,8 +335,9 @@ func ListRegressions(dbc *db.DB, release string, views []crview.View, releases [
 	}
 
 	// Add HATEOAS links to each regression
+	linkConfig := &RegressionLinkConfig{Views: views, Releases: releases, CRTimeRoundingFactor: crTimeRoundingFactor, CRTimeRoundingOffset: crTimeRoundingOffset}
 	for i := range regressions {
-		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, crTimeRoundingOffset, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
+		InjectRegressionHATEOASLinks(&regressions[i], linkConfig, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
 	}
 
 	return regressions, err
@@ -340,8 +350,9 @@ func GetRegressionsForTest(dbc *db.DB, release, testName string, views []crview.
 		return nil, err
 	}
 
+	linkConfig := &RegressionLinkConfig{Views: views, Releases: releases, CRTimeRoundingFactor: crTimeRoundingFactor, CRTimeRoundingOffset: crTimeRoundingOffset}
 	for i := range regressions {
-		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, crTimeRoundingOffset, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
+		InjectRegressionHATEOASLinks(&regressions[i], linkConfig, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
 	}
 
 	return regressions, err
@@ -350,14 +361,16 @@ func GetRegressionsForTest(dbc *db.DB, release, testName string, views []crview.
 // GetRegression returns the regression with the matching ID
 func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, req *http.Request) (*models.TestRegression, error) {
 	regression := &models.TestRegression{}
-	res := dbc.DB.Preload("Triages").Preload("JobRuns").Preload("Views").First(regression, id)
+	// Triages.Bug matches ListOpenRegressions, so a historical report's triage table shows Jira details.
+	res := dbc.DB.Preload("Triages.Bug").Preload("JobRuns").Preload("Views").First(regression, id)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		log.WithError(res.Error).Errorf("error looking up existing regression record: %d", id)
 	} else {
-		InjectRegressionHATEOASLinks(regression, views, releases, crTimeRoundingFactor, crTimeRoundingOffset, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
+		linkConfig := &RegressionLinkConfig{Views: views, Releases: releases, CRTimeRoundingFactor: crTimeRoundingFactor, CRTimeRoundingOffset: crTimeRoundingOffset}
+		InjectRegressionHATEOASLinks(regression, linkConfig, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
 	}
 	return regression, res.Error
 }
@@ -818,29 +831,216 @@ func injectHATEOASLinks(triage *models.Triage, baseURL string) {
 	}
 }
 
+// RegressionLinkConfig carries the view and release configuration needed to build per-view
+// test_details links for regressions embedded in other resources, such as triages.
+type RegressionLinkConfig struct {
+	Views                []crview.View
+	Releases             []v1.Release
+	CRTimeRoundingFactor time.Duration
+	CRTimeRoundingOffset time.Duration
+}
+
+// injectTriageRegressionLinks adds the same HATEOAS links the regression endpoints return to each
+// regression embedded in the triage. A nil config skips enrichment for callers that never serialize
+// the regressions, or when the release lookup the links depend on failed.
+func injectTriageRegressionLinks(triage *models.Triage, linkConfig *RegressionLinkConfig, req *http.Request) {
+	if linkConfig == nil {
+		return
+	}
+	baseAPIURL := sippyapi.GetBaseURL(req)
+	baseFrontendURL := sippyapi.GetBaseFrontendURL(req)
+	for i := range triage.Regressions {
+		InjectRegressionHATEOASLinks(&triage.Regressions[i], linkConfig, baseAPIURL, baseFrontendURL)
+	}
+}
+
 // InjectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
 // Per-view test_details links use composite keys: test_details:<view_name>.
-func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor, crTimeRoundingOffset time.Duration, baseAPIURL, baseFrontendURL string) {
+//
+// An open regression with an active view association links to the view's current report. A closed
+// regression, or an association that closed while the regression stays open elsewhere, links to a
+// historical report anchored to the regression's last failure, because the current report no longer
+// contains the evidence that led to the regression. The last failure is regression-wide (views do not
+// record their own), so for an association that closed while another view kept the regression open,
+// the window may end after that association's own closure.
+//
+// When a closed association gets no historical link, HistoricalLinkUnavailable records the reason for
+// that view so clients can explain the gap without re-deriving it.
+func InjectRegressionHATEOASLinks(regression *models.TestRegression, linkConfig *RegressionLinkConfig, baseAPIURL, baseFrontendURL string) {
 	regression.Links = map[string]string{
 		"self": fmt.Sprintf(regressionLink, baseAPIURL, regression.ID),
 	}
+	regression.HistoricalLinkUnavailable = nil
+	recordUnavailable := func(viewName, reason string) {
+		if regression.HistoricalLinkUnavailable == nil {
+			regression.HistoricalLinkUnavailable = map[string]string{}
+		}
+		regression.HistoricalLinkUnavailable[viewName] = reason
+	}
 
+	logger := log.WithField("regressionID", regression.ID)
 	for _, rv := range regression.Views {
-		if !rv.Active {
-			continue
-		}
-		view, ok := FindViewByName(rv.ViewName, views)
+		viewLogger := logger.WithField("view", rv.ViewName)
+		current := rv.Active && !regression.Closed.Valid
+		view, ok := FindViewByName(rv.ViewName, linkConfig.Views)
 		if !ok {
-			log.Errorf("view %s not found in config for regression %d", rv.ViewName, regression.ID)
+			// Closed associations commonly outlive views retired from config, so only an active
+			// association with an unknown view is worth a warning.
+			if current {
+				viewLogger.Warn("view not found in config for regression")
+			} else {
+				viewLogger.Debug("view not found in config for closed regression association")
+				recordUnavailable(rv.ViewName, reasonViewNotConfigured)
+			}
 			continue
 		}
-		testDetailsURL, err := generateTestDetailsURLFromRegression(regression, view, releases, crTimeRoundingFactor, crTimeRoundingOffset, baseFrontendURL)
+		var testDetailsURL string
+		var err error
+		if current {
+			testDetailsURL, err = generateTestDetailsURLFromRegression(regression, view, linkConfig.Releases,
+				linkConfig.CRTimeRoundingFactor, linkConfig.CRTimeRoundingOffset, baseFrontendURL)
+		} else {
+			testDetailsURL, err = generateHistoricalTestDetailsURL(regression, view, linkConfig.Releases, baseFrontendURL)
+		}
 		if err != nil {
-			log.WithError(err).Errorf("failed to generate test details URL for regression %d and view: %s", regression.ID, view.Name)
+			if errors.Is(err, errNoHistoricalLink) {
+				viewLogger.WithError(err).Debug("no historical test details link")
+			} else {
+				viewLogger.WithError(err).Error("failed to generate test details URL")
+			}
+			if !current {
+				recordUnavailable(rv.ViewName, historicalLinkUnavailableReason(err))
+			}
 			continue
 		}
 		regression.Links[fmt.Sprintf("test_details:%s", rv.ViewName)] = testDetailsURL
 	}
+}
+
+// historicalSampleDays is the number of whole UTC days before the last-failure date included in a
+// historical sample, mirroring the default seven day sample of the regression-tracking views.
+const historicalSampleDays = 7
+
+// Reasons a closed association has no historical link. They are returned to clients in
+// HistoricalLinkUnavailable and shown to users, so they are phrased to complete
+// "Historical test details are unavailable because ...".
+const (
+	reasonViewNotConfigured = "this view is no longer configured"
+	reasonLinkFailed        = "the view's basis could not be resolved for the last failure"
+)
+
+// errNoHistoricalLink marks the expected reasons a closed regression has no historical link, which are
+// logged at debug level rather than as failures.
+var errNoHistoricalLink = errors.New("no historical test details link")
+
+// historicalLinkGapError is an expected reason a closed regression has no historical link. Its Reason
+// is user-facing; it wraps errNoHistoricalLink so callers can tell expected gaps from failures.
+type historicalLinkGapError struct {
+	Reason string
+}
+
+func (e *historicalLinkGapError) Error() string {
+	return fmt.Sprintf("%s: %s", errNoHistoricalLink, e.Reason)
+}
+
+func (e *historicalLinkGapError) Unwrap() error {
+	return errNoHistoricalLink
+}
+
+// historicalLinkUnavailableReason returns the user-facing reason for a failed historical link: the
+// gap's own reason when it is expected, otherwise a generic one.
+func historicalLinkUnavailableReason(err error) string {
+	var gap *historicalLinkGapError
+	if errors.As(err, &gap) {
+		return gap.Reason
+	}
+	return reasonLinkFailed
+}
+
+// errMissingLastFailure explains why a closed regression has no historical link: without a recorded
+// last failure there is no anchor, and substituting today's window would show unrelated data.
+var errMissingLastFailure = &historicalLinkGapError{Reason: "no last failure was recorded"}
+
+// errSpotCheckHistory explains why closed spot-check regressions have no historical link. Test details
+// resolve a view's spot-check samples from the current time rather than from the URL's sample dates,
+// so a link labeled with the historical window would actually show recent spot-check runs.
+var errSpotCheckHistory = &historicalLinkGapError{Reason: "spot-check reports always cover recent runs"}
+
+// HistoricalSampleWindow returns the sample window for a historical report: from 00:00 UTC seven
+// calendar days before the last-failure date through the whole last-failure date. The end is the
+// following UTC midnight, exclusive, matching the data providers' ">= start AND < end" filters, so
+// the failure itself is always included. Using the exact last-failure timestamp as the end would
+// exclude that failure. The result is an inclusive calendar-date range rather than an exact 168 hour
+// interval: a last failure at 2026-09-29T01:33:26Z gives 2026-09-22T00:00:00Z to
+// 2026-09-30T00:00:00Z, which the UI shows as September 22-29, 2026.
+func HistoricalSampleWindow(lastFailure time.Time) (start, end time.Time) {
+	lastFailureDate := civil.DateOf(lastFailure.UTC())
+	start = lastFailureDate.AddDays(-historicalSampleDays).In(time.UTC)
+	end = lastFailureDate.AddDays(1).In(time.UTC)
+	return start, end
+}
+
+// generateHistoricalTestDetailsURL builds a test_details link that approximates the query that showed
+// this regression. The sample release is the regression's persisted release and the sample window
+// ends with the regression-wide last failure (see HistoricalSampleWindow). The view's basis is
+// resolved relative to that anchor: rolling expressions such as now-60d to now-30d are evaluated
+// from the last failure, while GA-based and absolute boundaries keep their configured meaning.
+// Everything else (grouping, variant options, test filters, advanced options) comes from the view's
+// current configuration, so the link reconstructs a query rather than replaying a stored report.
+//
+// Concrete RFC 3339 dates are serialized so reopening the link never advances the windows, and
+// ParseCRReleaseTimeAt keeps already-passed boundaries exact instead of applying cache rounding. The
+// regressionId parameter lets the UI load authoritative closure metadata for the report; the API
+// ignores it.
+func generateHistoricalTestDetailsURL(regression *models.TestRegression, view crview.View, releases []v1.Release, baseURL string) (string, error) {
+	if crtest.IsSpotCheckTestID(regression.TestID) {
+		return "", errSpotCheckHistory
+	}
+	if !regression.LastFailure.Valid {
+		return "", errMissingLastFailure
+	}
+	anchor := regression.LastFailure.Time.UTC()
+
+	// Rolling ("now") basis expressions follow the anchor; GA-based and absolute dates are unaffected.
+	baseReleaseOpts, err := utils.GetViewReleaseOptionsAt(anchor, releases, "basis", view.BaseRelease, 0, 0)
+	if err != nil {
+		return "", fmt.Errorf("failed to get base release options: %w", err)
+	}
+
+	sampleStart, sampleEnd := HistoricalSampleWindow(anchor)
+	sampleReleaseOpts := reqopts.Release{
+		Name:  regression.Release,
+		Start: sampleStart,
+		End:   sampleEnd,
+	}
+
+	testDetailsURL, err := utils.GenerateTestDetailsURL(
+		regression.TestID,
+		baseURL,
+		view.Name,
+		baseReleaseOpts,
+		sampleReleaseOpts,
+		view.AdvancedOptions,
+		view.VariantOptions,
+		view.TestFilters,
+		regression.Component,
+		regression.Capability,
+		regression.Variants,
+		regression.BaseRelease,
+		"",
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate historical test details URL: %w", err)
+	}
+
+	u, err := url.Parse(testDetailsURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse test details URL: %w", err)
+	}
+	params := u.Query()
+	params.Set("regressionId", strconv.FormatUint(uint64(regression.ID), 10))
+	u.RawQuery = params.Encode()
+	return u.String(), nil
 }
 
 func FindViewByName(name string, views []crview.View) (crview.View, bool) {

@@ -210,6 +210,24 @@ func (s *Server) getReleases(ctx context.Context) ([]sippyv1.Release, error) {
 	return nil, fmt.Errorf("no data source available for releases")
 }
 
+// regressionLinkConfig gathers the configuration used to add test_details links to regressions
+// embedded in triage responses. Links are a convenience on those responses, so a release lookup
+// failure is logged once and returns nil, which skips the links rather than failing the triage
+// request or logging an error for every GA-based regression and view pair.
+func (s *Server) regressionLinkConfig(ctx context.Context) *componentreadiness.RegressionLinkConfig {
+	releases, err := s.getReleases(ctx)
+	if err != nil {
+		log.WithError(err).Warn("unable to load releases; omitting triage regression links")
+		return nil
+	}
+	return &componentreadiness.RegressionLinkConfig{
+		Views:                s.views.ComponentReadiness,
+		Releases:             releases,
+		CRTimeRoundingFactor: s.crTimeRoundingFactor,
+		CRTimeRoundingOffset: s.crTimeRoundingOffset,
+	}
+}
+
 type rateLimiter struct {
 	mu           sync.Mutex
 	requestTimes []time.Time
@@ -1917,7 +1935,12 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
 		fields.Insert("links")
 	}
 	includeArchived := req.URL.Query().Get("include_archived") == "true"
-	triages, err := componentreadiness.ListTriages(s.db, req, includeArchived)
+	// The release lookup only feeds regression links, so skip it when the response omits regressions.
+	var linkConfig *componentreadiness.RegressionLinkConfig
+	if fields.Includes("regressions") {
+		linkConfig = s.regressionLinkConfig(req.Context())
+	}
+	triages, err := componentreadiness.ListTriages(s.db, req, includeArchived, linkConfig)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1952,7 +1975,7 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	triage, err := componentreadiness.GetTriage(s.db, triageID, req)
+	triage, err := componentreadiness.GetTriage(s.db, triageID, req, s.regressionLinkConfig(req.Context()))
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -2203,7 +2226,7 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 		return
 	}
 
-	triage, err := componentreadiness.GetTriage(s.db, triageID, req)
+	triage, err := componentreadiness.GetTriage(s.db, triageID, req, nil)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting triages: %v", err))
 		return
@@ -2366,7 +2389,7 @@ func (s *Server) jsonRegressionPotentialMatchingTriages(w http.ResponseWriter, r
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting regression: %v", err))
 	}
 	// Potential matches retain historical candidates independently of listing archival.
-	triages, err := componentreadiness.ListTriages(s.db, req, true)
+	triages, err := componentreadiness.ListTriages(s.db, req, true, nil)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("failed to list triages: %v", err))
 		return

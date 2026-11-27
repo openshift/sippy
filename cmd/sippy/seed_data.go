@@ -727,6 +727,10 @@ func seedSyntheticData(dbc *db.DB, clock seedClock, views apitype.SippyViews) er
 	}
 	log.Info("Seeded bugs and triages")
 
+	if err := seedHistoricalRegressions(dbc, clock, views); err != nil {
+		return errors.WithMessage(err, "failed to seed historical regressions")
+	}
+
 	if err := seedJobRunLabels(dbc, clock); err != nil {
 		return errors.WithMessage(err, "failed to seed job run labels")
 	}
@@ -911,7 +915,8 @@ func seedJobRunsAndResults(dbc *db.DB, clock seedClock) (int, int, error) {
 			return 0, 0, fmt.Errorf("failed to find ProwJob %s: %w", jobName, err)
 		}
 
-		runs, results, err := seedRunsForJob(dbc, clock, &suite, prowJob, jrKey, runCount, testIDsByName)
+		start, end := clock.window(jrKey.release)
+		runs, results, err := seedRunsForJob(dbc, &suite, prowJob, start, end, runCount, syntheticJobResults(jrKey), testIDsByName)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -921,7 +926,31 @@ func seedJobRunsAndResults(dbc *db.DB, clock seedClock) (int, int, error) {
 		log.Debugf("Created %d runs for %s", runCount, jobName)
 	}
 
-	return totalRuns, totalResults, nil
+	runs, results, err := seedHistoricalRegressionRuns(dbc, clock, &suite, testIDsByName)
+	if err != nil {
+		return 0, 0, err
+	}
+	return totalRuns + runs, totalResults + results, nil
+}
+
+// seededTestResults are the results one test records across a job's seeded runs.
+type seededTestResults struct {
+	testName string
+	counts   testCount
+}
+
+// syntheticJobResults returns the results each synthetic test records in the job and release of
+// jrKey, in syntheticTests order.
+func syntheticJobResults(jrKey jobReleaseKey) []seededTestResults {
+	var results []seededTestResults
+	for _, ts := range syntheticTests {
+		counts, ok := ts.jobCounts[jrKey.jobTemplate][jrKey.release]
+		if !ok || counts.total == 0 {
+			continue
+		}
+		results = append(results, seededTestResults{testName: ts.testName, counts: counts})
+	}
+	return results
 }
 
 func createProwJobRun(dbc *db.DB, run *models.ProwJobRun) error {
@@ -942,8 +971,9 @@ func createProwJobRun(dbc *db.DB, run *models.ProwJobRun) error {
 	})
 }
 
-func seedRunsForJob(dbc *db.DB, clock seedClock, suite *models.Suite, prowJob models.ProwJob, jrKey jobReleaseKey, runCount int, testIDsByName map[string]uint) (int, int, error) {
-	start, end := clock.window(jrKey.release)
+// seedRunsForJob creates runCount runs of prowJob spread over [start, end), plus infrastructure
+// failures, and records each test's results on the first counts.total of those runs.
+func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, start, end time.Time, runCount int, tests []seededTestResults, testIDsByName map[string]uint) (int, int, error) {
 	timestamps := seededRunTimestamps(start, end, runCount+seededInfraRuns)
 	totalRuns := len(timestamps)
 	runKeys := make([]models.ProwJobRunIDMap, totalRuns)
@@ -968,16 +998,8 @@ func seedRunsForJob(dbc *db.DB, clock seedClock, suite *models.Suite, prowJob mo
 	runsWithFailure := map[uint]bool{}
 	totalResults := 0
 
-	for _, ts := range syntheticTests {
-		releaseCounts, hasJob := ts.jobCounts[jrKey.jobTemplate]
-		if !hasJob {
-			continue
-		}
-		counts, hasRelease := releaseCounts[jrKey.release]
-		if !hasRelease || counts.total == 0 {
-			continue
-		}
-
+	for _, ts := range tests {
+		counts := ts.counts
 		testID, ok := testIDsByName[ts.testName]
 		if !ok {
 			return 0, 0, fmt.Errorf("test %q not found in DB", ts.testName)
@@ -1920,7 +1942,7 @@ func seedBugsAndTriages(dbc *db.DB, clock seedClock) error {
 	// Triage 1: network test regression (single view)
 	if regs, ok := regressionsByTest["[sig-network] Services should serve endpoints on same port and different protocol"]; ok && len(regs) > 0 {
 		triage := models.Triage{
-			URL:         "https://redhat.atlassian.net/browse/OCPBUGS-40002",
+			URL:         networkTriageURL,
 			Description: "Network endpoint regression under investigation",
 			Type:        models.TriageTypeCIInfra,
 			BugID:       &bugs[1].ID,
@@ -1966,6 +1988,245 @@ func seedBugsAndTriages(dbc *db.DB, clock seedClock) error {
 	// (similar name with Levenshtein distance of 2, overlapping job runs).
 
 	return nil
+}
+
+// networkTriageURL identifies the seeded triage of the network endpoint regression. It also holds
+// the seeded historical regressions, so the triage list leads to them.
+const networkTriageURL = "https://redhat.atlassian.net/browse/OCPBUGS-40002"
+
+// historicalRegressionSeed describes a closed regression the seed creates so triage pages show
+// historical test details links that resolve to real seeded runs. Each seed targets a test that is
+// not regressed in the current report, so regression tracking never matches and reopens it, and
+// gives it extra failing runs in the historical failure window so its historical report shows it
+// regressed.
+type historicalRegressionSeed struct {
+	testID      string
+	jobTemplate string
+	// views are the seed views the regression was tracked in; each gets a closed association.
+	views []string
+	// failing are the test's results in the historical failure window, regressed against the basis.
+	failing testCount
+}
+
+// historicalRegressionSeeds include a regression tracked in two views, so it gets one historical
+// link per view.
+var historicalRegressionSeeds = []historicalRegressionSeed{
+	{testID: "test-not-significant", jobTemplate: gcpAmd64Parallel, views: []string{"4.22-main", "4.22-gcp-only"}, failing: testCount{60, 45, 0}},
+	{testID: "test-significant-improvement", jobTemplate: awsAmd64Parallel, views: []string{"4.22-main"}, failing: testCount{60, 30, 0}},
+}
+
+// historicalFailureDays is how long the seeded historical regressions were failing.
+const historicalFailureDays = 5
+
+// historicalFailureGapDays separates the historical failure window from the current sample window. A
+// historical report's sample window ends at the UTC midnight after the last failure, so the gap keeps
+// the current sample runs, where the test passes, out of it under any rounding.
+const historicalFailureGapDays = 2
+
+// historicalFailureWindow returns when the seeded historical regressions were failing: a span of
+// sample release runs that ends historicalFailureGapDays before the current sample window starts.
+// The seeded historical regressions are therefore in the sample release, so they follow the seed
+// views when those move to a new release.
+// It is short enough that a historical report's sample window, which starts seven days before the
+// last failure's date, covers all of it.
+func (c seedClock) historicalFailureWindow() (start, end time.Time) {
+	end = c.sample.Start.AddDate(0, 0, -historicalFailureGapDays)
+	return end.AddDate(0, 0, -historicalFailureDays), end
+}
+
+// seedHistoricalRegressionRuns creates the failing runs behind the seeded historical regressions:
+// runs of each seed's job in the historical failure window, recording only the seeded tests. It runs
+// with the bulk run seeding so the materialized views and cumulative summaries include these runs.
+func seedHistoricalRegressionRuns(dbc *db.DB, clock seedClock, suite *models.Suite, testIDsByName map[string]uint) (int, int, error) {
+	failStart, failEnd := clock.historicalFailureWindow()
+
+	var jobTemplates []string
+	resultsByJob := map[string][]seededTestResults{}
+	runCounts := map[string]int{}
+	for _, seed := range historicalRegressionSeeds {
+		spec, ok := findSyntheticTest(seed.testID)
+		if !ok {
+			return 0, 0, fmt.Errorf("historical regression seed references unknown test %s", seed.testID)
+		}
+		if _, ok := resultsByJob[seed.jobTemplate]; !ok {
+			jobTemplates = append(jobTemplates, seed.jobTemplate)
+		}
+		resultsByJob[seed.jobTemplate] = append(resultsByJob[seed.jobTemplate], seededTestResults{testName: spec.testName, counts: seed.failing})
+		runCounts[seed.jobTemplate] = max(runCounts[seed.jobTemplate], seed.failing.total)
+	}
+
+	totalRuns, totalResults := 0, 0
+	for _, jobTemplate := range jobTemplates {
+		jobName := fmt.Sprintf(jobTemplate, clock.sample.Name)
+		var prowJob models.ProwJob
+		if err := dbc.DB.Where("name = ?", jobName).First(&prowJob).Error; err != nil {
+			return 0, 0, fmt.Errorf("failed to find ProwJob %s: %w", jobName, err)
+		}
+		runs, results, err := seedRunsForJob(dbc, suite, prowJob, failStart, failEnd, runCounts[jobTemplate], resultsByJob[jobTemplate], testIDsByName)
+		if err != nil {
+			return 0, 0, fmt.Errorf("seeding historical regression runs for %s: %w", jobName, err)
+		}
+		totalRuns += runs
+		totalResults += results
+	}
+	return totalRuns, totalResults, nil
+}
+
+// seedHistoricalRegressions creates closed regressions with recorded last failures and closed view
+// associations and adds them to the network triage, which also has an active regression, so the
+// historical regression links and notice can be exercised from the triage list against a freshly
+// seeded database. It runs after syncRegressions so the sync never sees these records.
+func seedHistoricalRegressions(dbc *db.DB, clock seedClock, views apitype.SippyViews) error {
+	var triage models.Triage
+	if err := dbc.DB.Where("url = ?", networkTriageURL).First(&triage).Error; err != nil {
+		return fmt.Errorf("finding triage %s for historical regressions: %w", networkTriageURL, err)
+	}
+
+	release := clock.sample.Name
+	opened, closed := clock.historicalFailureWindow()
+	links := make([]map[string]any, 0, len(historicalRegressionSeeds))
+	for _, seed := range historicalRegressionSeeds {
+		spec, ok := findSyntheticTest(seed.testID)
+		if !ok {
+			return fmt.Errorf("historical regression seed references unknown test %s", seed.testID)
+		}
+		jobName := fmt.Sprintf(seed.jobTemplate, release)
+		lastFailure, err := latestSeededFailure(dbc, spec.testName, jobName, release, opened, closed)
+		if err != nil {
+			return err
+		}
+		reg, err := buildHistoricalRegression(seed, spec, views, release, opened, lastFailure, closed)
+		if err != nil {
+			return err
+		}
+		if err := dbc.DB.Create(&reg).Error; err != nil {
+			return fmt.Errorf("creating historical regression for %s: %w", seed.testID, err)
+		}
+		// GORM omits the zero-value Active=false on insert, so the column default (true) would leave
+		// the closed associations looking active.
+		if err := dbc.DB.Model(&models.RegressionView{}).Where("test_regression_id = ?", reg.ID).
+			Update("active", false).Error; err != nil {
+			return fmt.Errorf("closing view associations of historical regression %d: %w", reg.ID, err)
+		}
+		links = append(links, map[string]any{"triage_id": triage.ID, "test_regression_id": reg.ID})
+	}
+
+	// Insert the join rows directly: appending through the triage association would upsert the
+	// regressions and run the triage audit hooks for what is only a new link.
+	if err := dbc.DB.Table("triage_regressions").Create(&links).Error; err != nil {
+		return fmt.Errorf("adding historical regressions to triage %d: %w", triage.ID, err)
+	}
+
+	log.WithField("triageID", triage.ID).WithField("regressions", len(links)).
+		Info("Created historical regressions")
+	return nil
+}
+
+// buildHistoricalRegression returns the closed regression record for seed in release, the seed
+// sample release. Its variants are the seed job's variants limited to the first view's DB grouping,
+// matching what regression tracking records for a report row; its base release is that view's; and
+// every view association is closed when the regression closed.
+func buildHistoricalRegression(seed historicalRegressionSeed, spec syntheticTestSpec, views apitype.SippyViews, release string, opened, lastFailure, closed time.Time) (models.TestRegression, error) {
+	if len(seed.views) == 0 {
+		return models.TestRegression{}, fmt.Errorf("historical regression seed %s has no views", seed.testID)
+	}
+	job, ok := findSyntheticJob(seed.jobTemplate)
+	if !ok {
+		return models.TestRegression{}, fmt.Errorf("historical regression seed %s references unknown job %s", seed.testID, seed.jobTemplate)
+	}
+	if len(spec.capabilities) == 0 {
+		return models.TestRegression{}, fmt.Errorf("synthetic test %s has no capability", spec.testID)
+	}
+	// Flakes count toward success, matching seededTestStatus.
+	failures := seed.failing.total - seed.failing.success
+	if failures <= 0 {
+		return models.TestRegression{}, fmt.Errorf("historical regression seed %s has no failures", seed.testID)
+	}
+
+	var dbGroupBy sets.Set[string]
+	var baseRelease string
+	regViews := make([]models.RegressionView, 0, len(seed.views))
+	for i, name := range seed.views {
+		view, ok := componentreadiness.FindViewByName(name, views.ComponentReadiness)
+		if !ok {
+			return models.TestRegression{}, fmt.Errorf("historical regression seed %s references unknown view %s", seed.testID, name)
+		}
+		if i == 0 {
+			dbGroupBy = view.VariantOptions.DBGroupBy
+			baseRelease = view.BaseRelease.Name
+		}
+		regViews = append(regViews, models.RegressionView{
+			ViewName: name,
+			Active:   false,
+			OpenedAt: opened,
+			ClosedAt: sql.NullTime{Valid: true, Time: closed},
+		})
+	}
+
+	grouped := make(map[string]string, len(job.variants))
+	for k, v := range job.variants {
+		if dbGroupBy.Has(k) {
+			grouped[k] = v
+		}
+	}
+	variants := utils.VariantsMapToStringSlice(grouped)
+	sort.Strings(variants)
+
+	return models.TestRegression{
+		Release:     release,
+		BaseRelease: baseRelease,
+		Component:   spec.component,
+		Capability:  spec.capabilities[0],
+		TestID:      spec.testID,
+		TestName:    spec.testName,
+		Variants:    variants,
+		Opened:      opened,
+		Closed:      sql.NullTime{Valid: true, Time: closed},
+		LastFailure: sql.NullTime{Valid: true, Time: lastFailure},
+		MaxFailures: failures,
+		Views:       regViews,
+	}, nil
+}
+
+// findSyntheticTest returns the synthetic test spec with the given test ID.
+func findSyntheticTest(testID string) (syntheticTestSpec, bool) {
+	for _, spec := range syntheticTests {
+		if spec.testID == testID {
+			return spec, true
+		}
+	}
+	return syntheticTestSpec{}, false
+}
+
+// findSyntheticJob returns the synthetic job definition with the given name template.
+func findSyntheticJob(nameTemplate string) (syntheticJobDef, bool) {
+	for _, job := range syntheticJobs {
+		if job.nameTemplate == nameTemplate {
+			return job, true
+		}
+	}
+	return syntheticJobDef{}, false
+}
+
+// latestSeededFailure returns the timestamp of the latest seeded failure of testName in jobName
+// within [start, end), which a historical regression records as its last failure.
+func latestSeededFailure(dbc *db.DB, testName, jobName, release string, start, end time.Time) (time.Time, error) {
+	var last sql.NullTime
+	if err := dbc.DB.Raw(`
+		SELECT MAX(pjrt.prow_job_run_timestamp)
+		FROM prow_job_run_tests pjrt
+		JOIN tests t ON t.id = pjrt.test_id
+		JOIN prow_jobs pj ON pj.id = pjrt.prow_job_id
+		WHERE t.name = ? AND pj.name = ? AND pjrt.status = ?
+		 AND pjrt.prow_job_run_release = ?
+		 AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?
+	`, testName, jobName, int(v1.TestStatusFailure), release, start, end).Scan(&last).Error; err != nil {
+		return time.Time{}, fmt.Errorf("querying latest failure of %q in %s: %w", testName, jobName, err)
+	}
+	if !last.Valid {
+		return time.Time{}, fmt.Errorf("no seeded failure of %q in %s between %s and %s", testName, jobName, start, end)
+	}
+	return last.Time.UTC(), nil
 }
 
 // seedJobRunLabels gives synthetic failed runs labels for exercising label displays.

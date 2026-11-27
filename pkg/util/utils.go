@@ -175,8 +175,10 @@ func ParseCRReleaseTimeAt(now time.Time, allReleases []v1.Release, release, time
 		return relTime, err
 	}
 
-	// Apply the rounding factor; compare dates in UTC so equivalent instants with other offsets match "today":
-	if crTimeRoundingFactor > 0 && civil.DateOf(now) == civil.DateOf(relTime.UTC()) {
+	// Apply the rounding factor; compare dates in UTC so equivalent instants with other offsets match "today".
+	// Only boundaries that have not yet passed stand in for "now" and need a stable cache key. An explicit
+	// past boundary, such as the exclusive end of a historical regression window, must be kept exactly.
+	if crTimeRoundingFactor > 0 && civil.DateOf(now) == civil.DateOf(relTime.UTC()) && !relTime.Before(now) {
 		relTime = TruncateAligned(now, crTimeRoundingFactor, crTimeRoundingOffset)
 	}
 	return relTime, nil

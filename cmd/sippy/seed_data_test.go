@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	componentreadiness "github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -375,4 +377,217 @@ func assertSurfacesAgree(t *testing.T, server reqopts.Release, counts testCount,
 	}
 	assertStatusTally(t, counts, report, "report")
 	assertStatusTally(t, counts, details, "details")
+}
+
+// historicalSeedReleases returns the releases a seeded historical regression is recorded against:
+// the seed sample release and the basis release of the seed's first view.
+func historicalSeedReleases(t *testing.T, views apitype.SippyViews, seed historicalRegressionSeed) (sample, basis string) {
+	t.Helper()
+	require.NotEmpty(t, seed.views)
+	clock := testSeedClock(t, views, time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC), defaultRounding.Factor, defaultRounding.Offset)
+	view, ok := componentreadiness.FindViewByName(seed.views[0], views.ComponentReadiness)
+	require.True(t, ok, "seed view %s not found", seed.views[0])
+	return clock.sample.Name, view.BaseRelease.Name
+}
+
+// withFailing returns a copy of seed with different failing-window counts.
+func withFailing(seed historicalRegressionSeed, failing testCount) historicalRegressionSeed {
+	seed.failing = failing
+	return seed
+}
+
+func TestBuildHistoricalRegression(t *testing.T) {
+	views := testSeedViews(t)
+	opened := time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC)
+	lastFailure := time.Date(2026, 9, 28, 17, 30, 0, 0, time.UTC)
+	closed := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name            string
+		seed            historicalRegressionSeed
+		wantVariants    []string
+		wantViews       []string
+		wantMaxFailures int
+	}{
+		{
+			name:            "regression tracked in two views",
+			seed:            historicalRegressionSeeds[0],
+			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:gcp", "Suite:parallel", "Topology:ha", "Upgrade:none"},
+			wantViews:       []string{"4.22-main", "4.22-gcp-only"},
+			wantMaxFailures: 15,
+		},
+		{
+			name:            "regression tracked in one view",
+			seed:            historicalRegressionSeeds[1],
+			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:aws", "Suite:parallel", "Topology:ha", "Upgrade:none"},
+			wantViews:       []string{"4.22-main"},
+			wantMaxFailures: 30,
+		},
+		{
+			name:            "flakes count toward success",
+			seed:            withFailing(historicalRegressionSeeds[0], testCount{60, 55, 5}),
+			wantVariants:    []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "LayeredProduct:none", "Network:ovn", "Platform:gcp", "Suite:parallel", "Topology:ha", "Upgrade:none"},
+			wantViews:       []string{"4.22-main", "4.22-gcp-only"},
+			wantMaxFailures: 5,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spec, ok := findSyntheticTest(tt.seed.testID)
+			require.True(t, ok)
+			release, basis := historicalSeedReleases(t, views, tt.seed)
+			reg, err := buildHistoricalRegression(tt.seed, spec, views, release, opened, lastFailure, closed)
+			require.NoError(t, err)
+
+			assert.Equal(t, release, reg.Release)
+			assert.Equal(t, basis, reg.BaseRelease)
+			assert.Equal(t, spec.testID, reg.TestID)
+			assert.Equal(t, spec.testName, reg.TestName)
+			assert.Equal(t, spec.component, reg.Component)
+			assert.Equal(t, spec.capabilities[0], reg.Capability)
+			assert.Equal(t, tt.wantVariants, []string(reg.Variants))
+			assert.Equal(t, opened, reg.Opened)
+			assert.Equal(t, sql.NullTime{Valid: true, Time: closed}, reg.Closed)
+			assert.Equal(t, sql.NullTime{Valid: true, Time: lastFailure}, reg.LastFailure)
+			assert.Equal(t, tt.wantMaxFailures, reg.MaxFailures)
+			assert.False(t, reg.ForceClosed)
+
+			require.Len(t, reg.Views, len(tt.wantViews))
+			for i, rv := range reg.Views {
+				assert.Equal(t, tt.wantViews[i], rv.ViewName)
+				assert.False(t, rv.Active, "view %s should be closed", rv.ViewName)
+				assert.Equal(t, opened, rv.OpenedAt)
+				assert.Equal(t, sql.NullTime{Valid: true, Time: closed}, rv.ClosedAt)
+			}
+		})
+	}
+}
+
+func TestBuildHistoricalRegressionErrors(t *testing.T) {
+	views := testSeedViews(t)
+	spec, ok := findSyntheticTest("test-not-significant")
+	require.True(t, ok)
+	now := time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC)
+	failing := testCount{60, 45, 0}
+	release, _ := historicalSeedReleases(t, views, historicalRegressionSeeds[0])
+
+	tests := []struct {
+		name string
+		seed historicalRegressionSeed
+	}{
+		{name: "no views", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, failing: failing}},
+		{name: "unknown view", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"no-such-view"}, failing: failing}},
+		{name: "unknown job", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: "no-such-job-%s", views: []string{"4.22-main"}, failing: failing}},
+		{name: "no failures", seed: historicalRegressionSeed{testID: spec.testID, jobTemplate: gcpAmd64Parallel, views: []string{"4.22-main"}, failing: testCount{60, 60, 5}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := buildHistoricalRegression(tt.seed, spec, views, release, now, now, now)
+			assert.Error(t, err)
+		})
+	}
+}
+
+// TestHistoricalRegressionSeedsAreNotRegressed guards against regression tracking reopening a
+// seeded historical regression: no seeded test may pass noticeably less often in the sample than in
+// the basis.
+func TestHistoricalRegressionSeedsAreNotRegressed(t *testing.T) {
+	views := testSeedViews(t)
+	for _, seed := range historicalRegressionSeeds {
+		t.Run(seed.testID, func(t *testing.T) {
+			spec, ok := findSyntheticTest(seed.testID)
+			require.True(t, ok)
+			sampleRelease, basisRelease := historicalSeedReleases(t, views, seed)
+			counts := spec.jobCounts[seed.jobTemplate]
+			basis, sample := counts[basisRelease], counts[sampleRelease]
+			require.NotZero(t, basis.total)
+			require.NotZero(t, sample.total)
+			assert.GreaterOrEqual(t, seededPassRate(sample), seededPassRate(basis)-0.05,
+				"%s should not be a significant regression in the current report", seed.testID)
+		})
+	}
+}
+
+// TestHistoricalRegressionSeedsWereRegressed checks that each seeded historical regression's failing
+// results pass far less often than its basis, so its historical report shows it regressed.
+func TestHistoricalRegressionSeedsWereRegressed(t *testing.T) {
+	views := testSeedViews(t)
+	for _, seed := range historicalRegressionSeeds {
+		t.Run(seed.testID, func(t *testing.T) {
+			spec, ok := findSyntheticTest(seed.testID)
+			require.True(t, ok)
+			_, basisRelease := historicalSeedReleases(t, views, seed)
+			basis := spec.jobCounts[seed.jobTemplate][basisRelease]
+			require.NotZero(t, basis.total)
+			require.NotZero(t, seed.failing.total)
+			assert.LessOrEqual(t, seededPassRate(seed.failing), seededPassRate(basis)-0.15,
+				"%s should be a significant regression in its historical report", seed.testID)
+		})
+	}
+}
+
+// seededPassRate is the share of counts.total results that passed or flaked.
+func seededPassRate(counts testCount) float64 {
+	return float64(counts.success+counts.flake) / float64(counts.total)
+}
+
+// TestHistoricalFailureWindowFitsHistoricalReport checks that the historical report linked from each
+// seeded historical regression covers all of its failing runs and none of the current sample runs,
+// across rounding boundaries and UTC midnight.
+func TestHistoricalFailureWindowFitsHistoricalReport(t *testing.T) {
+	views := testSeedViews(t)
+	nows := []time.Time{
+		time.Date(2026, 9, 29, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 9, 29, 3, 59, 59, 0, time.UTC),
+		time.Date(2026, 9, 29, 23, 59, 59, 0, time.UTC),
+		time.Date(2026, 3, 1, 12, 30, 0, 0, time.UTC),
+	}
+	for _, now := range nows {
+		clock := testSeedClock(t, views, now, defaultRounding.Factor, defaultRounding.Offset)
+		failStart, failEnd := clock.historicalFailureWindow()
+
+		runCounts := map[string]int{}
+		for _, seed := range historicalRegressionSeeds {
+			runCounts[seed.jobTemplate] = max(runCounts[seed.jobTemplate], seed.failing.total)
+		}
+		for _, seed := range historicalRegressionSeeds {
+			t.Run(fmt.Sprintf("%s/%s", now.Format(time.RFC3339), seed.testID), func(t *testing.T) {
+				runCount := runCounts[seed.jobTemplate]
+				timestamps := seededRunTimestamps(failStart, failEnd, runCount+seededInfraRuns)
+				var failures []time.Time
+				for i := 0; i < seed.failing.total; i++ {
+					if seededTestStatus(i, seed.failing) == int(v1.TestStatusFailure) {
+						failures = append(failures, timestamps[i])
+					}
+				}
+				require.NotEmpty(t, failures)
+
+				start, end := componentreadiness.HistoricalSampleWindow(failures[len(failures)-1])
+				assert.False(t, timestamps[0].Before(start),
+					"historical report starting %s should include the first failing run at %s", start, timestamps[0])
+				assert.False(t, end.After(clock.sample.Start),
+					"historical report ending %s should not reach the sample window starting %s", end, clock.sample.Start)
+			})
+		}
+	}
+}
+
+func TestSyntheticJobResults(t *testing.T) {
+	results := syntheticJobResults(jobReleaseKey{jobTemplate: awsAmd64Parallel, release: "4.22"})
+	byName := map[string]testCount{}
+	for _, r := range results {
+		byName[r.testName] = r.counts
+	}
+
+	regression, ok := findSyntheticTest("test-significant-regression")
+	require.True(t, ok)
+	assert.Equal(t, regression.jobCounts[awsAmd64Parallel]["4.22"], byName[regression.testName])
+
+	missingSample, ok := findSyntheticTest("test-missing-sample")
+	require.True(t, ok)
+	assert.NotContains(t, byName, missingSample.testName, "tests with no runs in the release should be skipped")
+
+	basisOnly, ok := findSyntheticTest("test-basis-only")
+	require.True(t, ok)
+	assert.NotContains(t, byName, basisOnly.testName, "tests without counts for the release should be skipped")
 }

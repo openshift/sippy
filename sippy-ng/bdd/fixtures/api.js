@@ -50,6 +50,8 @@ export function createApi() {
     triageMatchesMode: 'none',
     regressionMatchesMode: 'none',
     regressionMode: 'ok',
+    // When set, the regression endpoint answers with this record.
+    regressionBody: null,
     artifactMode: 'matches',
     labels: jobLabels(),
     symptoms: [],
@@ -313,6 +315,7 @@ async function responseFor(api, method, url, bodyText) {
         stale: true,
         lifecycle: 'informing',
         basisFailure: api.testDetailsMode === 'basis-failure',
+        untracked: api.testDetailsMode === 'untracked',
       })
     )
   }
@@ -323,9 +326,14 @@ async function responseFor(api, method, url, bodyText) {
 }
 
 function regressionResponse(api, path) {
+  if (api.regressionBody && api.regressionMode === 'ok') {
+    return ok(api.regressionBody)
+  }
   switch (api.regressionMode) {
     case 'missing':
       return fail(404, `regression not found: ${path}`)
+    case 'error':
+      return fail(500, `regression lookup failed: ${path}`)
     case 'no-links':
       return ok(regressionRecord({}))
     case 'bad-path':

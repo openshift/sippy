@@ -839,6 +839,10 @@ export function convertApiUrlToUiUrl(apiUrl) {
   return pathAndQuery
 }
 
+// TEST_DETAILS_LINK_PREFIX starts the composite per-view test_details link
+// keys on regression objects: test_details:<view_name>.
+export const TEST_DETAILS_LINK_PREFIX = 'test_details:'
+
 // Extracts the test_details link from HATEOAS links. Prefers the plain
 // "test_details" key (used by regressed tests in component reports), then
 // tries "test_details:<viewName>" if a viewName is given, then falls back
@@ -847,9 +851,11 @@ export function getTestDetailsLink(links, viewName) {
   if (!links) return null
   if (links['test_details']) return links['test_details']
   if (viewName) {
-    return links[`test_details:${viewName}`] || null
+    return links[`${TEST_DETAILS_LINK_PREFIX}${viewName}`] || null
   }
-  const key = Object.keys(links).find((k) => k.startsWith('test_details:'))
+  const key = Object.keys(links).find((k) =>
+    k.startsWith(TEST_DETAILS_LINK_PREFIX)
+  )
   return key ? links[key] : null
 }
 
@@ -900,4 +906,153 @@ export function hasFailedFixRegression(triage, allRegressedTests) {
 
   // Check if any have status -1000
   return relevantRegressedTests.some((rt) => rt.status === -1000)
+}
+
+// Main views are listed first, then the rest alphabetically.
+export function compareViewNames(a, b) {
+  const aMain = a.endsWith('-main')
+  const bMain = b.endsWith('-main')
+  if (aMain && !bMain) return -1
+  if (!aMain && bMain) return 1
+  return a.localeCompare(b)
+}
+
+// viewControls lists each control a view supplies: the URL parameters that
+// override it and how to read its default from the view. Keeping both in one
+// table means a new control cannot have one without the other. The matching
+// state setters live in CompReadyVars, which fails loudly for a control
+// without one.
+export const viewControls = Object.freeze({
+  baseRelease: {
+    urlParams: ['baseRelease'],
+    fromView: (view) => view.base_release.release,
+  },
+  baseStartTime: {
+    urlParams: ['baseStartTime'],
+    fromView: (view) => formatLongDate(view.base_release.start, dateFormat),
+  },
+  baseEndTime: {
+    urlParams: ['baseEndTime'],
+    fromView: (view) => formatLongDate(view.base_release.end, dateFormat),
+  },
+  sampleRelease: {
+    urlParams: ['sampleRelease'],
+    fromView: (view) => view.sample_release.release,
+  },
+  sampleStartTime: {
+    urlParams: ['sampleStartTime'],
+    fromView: (view) => formatLongDate(view.sample_release.start, dateFormat),
+  },
+  sampleEndTime: {
+    urlParams: ['sampleEndTime'],
+    fromView: (view) => formatLongDate(view.sample_release.end, dateFormat),
+  },
+  columnGroupBy: {
+    urlParams: ['columnGroupBy'],
+    fromView: (view) =>
+      Object.keys(view.variant_options?.column_group_by || {}),
+  },
+  dbGroupBy: {
+    urlParams: ['dbGroupBy'],
+    fromView: (view) => Object.keys(view.variant_options?.db_group_by || {}),
+  },
+  includeVariants: {
+    urlParams: ['includeVariant'],
+    fromView: (view) => view.variant_options?.include_variants,
+  },
+  // Cross-compare groups and the variants checked within them are set
+  // together, so either URL parameter overrides both view defaults.
+  variantCrossCompare: {
+    urlParams: ['variantCrossCompare', 'compareVariant'],
+    fromView: (view) => view.variant_options?.variant_cross_compare,
+  },
+  compareVariants: {
+    urlParams: ['compareVariant', 'variantCrossCompare'],
+    fromView: (view) => view.variant_options?.compare_variants,
+  },
+  testLifecycles: {
+    urlParams: ['testLifecycles'],
+    fromView: (view) => view.test_filters?.lifecycles || [],
+  },
+  testCapabilities: {
+    urlParams: ['testCapabilities'],
+    fromView: (view) => view.test_filters?.capabilities || [],
+  },
+  confidence: {
+    urlParams: ['confidence'],
+    fromView: (view) => view.advanced_options?.confidence,
+  },
+  pity: {
+    urlParams: ['pity'],
+    fromView: (view) => view.advanced_options?.pity_factor,
+  },
+  minFail: {
+    urlParams: ['minFail'],
+    fromView: (view) => view.advanced_options?.minimum_failure,
+  },
+  passRateNewTests: {
+    urlParams: ['passRateNewTests'],
+    fromView: (view) => view.advanced_options?.pass_rate_required_new_tests,
+  },
+  passRateAllTests: {
+    urlParams: ['passRateAllTests'],
+    fromView: (view) => view.advanced_options?.pass_rate_required_all_tests,
+  },
+  ignoreDisruption: {
+    urlParams: ['ignoreDisruption'],
+    fromView: (view) => view.advanced_options?.ignore_disruption,
+  },
+  ignoreMissing: {
+    urlParams: ['ignoreMissing'],
+    fromView: (view) => view.advanced_options?.ignore_missing,
+  },
+  flakeAsFailure: {
+    urlParams: ['flakeAsFailure'],
+    fromView: (view) => view.advanced_options?.flake_as_failure,
+  },
+  includeMultiReleaseAnalysis: {
+    urlParams: ['includeMultiReleaseAnalysis'],
+    fromView: (view) => view.advanced_options?.include_multi_release_analysis,
+  },
+})
+
+function hasUrlValue(value) {
+  if (value === undefined || value === null || value === '') return false
+  return !Array.isArray(value) || value.length > 0
+}
+
+// viewControlDefaults returns the control values a view supplies, leaving out
+// any control whose value was given explicitly in the URL. Explicit URL
+// parameters take precedence over view defaults, as they do in the API, so a
+// shared historical link keeps its dates when the views finish loading.
+export function viewControlDefaults(view, urlParams = {}) {
+  const result = {}
+  for (const [control, { urlParams: params, fromView }] of Object.entries(
+    viewControls
+  )) {
+    const value = fromView(view)
+    if (value === undefined) continue
+    if (!params.some((param) => hasUrlValue(urlParams[param]))) {
+      result[control] = value
+    }
+  }
+  return result
+}
+
+// parseVariantPairs turns ["Platform:aws", "Network:ovn"] into a map. Entries
+// without a key before the colon are skipped.
+export function parseVariantPairs(items) {
+  const variants = {}
+  for (const item of items || []) {
+    const index = item.indexOf(':')
+    if (index > 0) {
+      variants[item.slice(0, index)] = item.slice(index + 1)
+    }
+  }
+  return variants
+}
+
+// parseEnvironmentVariants turns "Platform:aws Network:ovn" into a map.
+export function parseEnvironmentVariants(environment) {
+  return parseVariantPairs((environment || '').split(' '))
 }

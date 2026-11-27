@@ -718,6 +718,11 @@ supplied by the selected data provider.
 | Option         | Type   | Description |
 |----------------|--------|-------------|
 | testLifecycles | String (repeated) | Lifecycle values (e.g. `testLifecycles=blocking&testLifecycles=informing`) to restrict both the row filter and the `test_failures` count to matching tests. Applied only to sample data; base details remain unfiltered. When set, `test_failures` is computed as a COUNT(DISTINCT test) of failures in the requested lifecycles rather than the pre-computed total on the job run. Omit to include all lifecycles. |
+| sampleStartTime, sampleEndTime, baseStartTime, baseEndTime | String (RFC 3339) | Explicit window boundaries; they override the view's defaults. Sample filters use `>= start AND < end`. Boundaries that have already passed are used exactly. Only a boundary on today's UTC date that is at or after the current time is rounded to the cache rounding factor. |
+| regressionId | Number | Present on historical `test_details` links (closed regressions, and views where the regression closed while staying open elsewhere). The API ignores it; the UI uses it to load closure details from `GET /api/component_readiness/regressions/{id}`. |
+
+Links to this endpoint are published as HATEOAS `test_details:<view>` links on
+regression records. See [Component Readiness Regressions](#component-readiness-regressions).
 
 ## Component Readiness Triages
 
@@ -761,8 +766,18 @@ Clients must retrieve the full record before submitting a replacement with `PUT`
 Endpoint: `GET /api/component_readiness/triages/{id}`
 
 Returns a single triage record by ID. Use `expand=regressions` to include
-regressed test summaries. Regression job runs in the response may contain
-applied `job_labels`.
+regressed test summaries. `regressed_tests` only contains views where the
+regression is still active in the current report; closed regressions are absent
+from it. Regression job runs in the response may contain applied `job_labels`.
+
+In both the list and single triage responses, each embedded regression carries
+the same HATEOAS `links` as `GET /api/component_readiness/regressions/{id}`,
+including current and historical `test_details:<view>` links (see
+[Component Readiness Regressions](#component-readiness-regressions)). If the
+release list cannot be loaded, regression links are omitted from the response
+and a single warning is logged. The list endpoint skips this work when `fields`
+omits `regressions`. Triages returned by `POST` and `PUT` do not include
+regression links; fetch the triage with `GET` to get them.
 
 Endpoint: `POST /api/component_readiness/triages`
 
@@ -853,3 +868,61 @@ Each regression object in `would_close` / `would_not_close` includes:
 | last_failure_before_resolution| String (time)   | Most recent failing job run at or before the resolution time.   |
 | first_failure_after_resolution| String (time)   | Earliest failing job run after the resolution time, if any (a gap indicator that the test kept failing). |
 | links                         | Object          | HATEOAS links for the regression (`self` points to its detail endpoint). |
+
+## Component Readiness Regressions
+
+Endpoints:
+
+* `GET /api/component_readiness/regressions?release=<release>` (or `view=<view>`, optionally `test=<name>`)
+* `GET /api/component_readiness/regressions/{id}`
+
+Regression records include HATEOAS `links`: `self`, plus one
+`test_details:<view>` link per recorded view association. The same links are
+added to regressions embedded in triage responses.
+
+| Regression | View association | `test_details:<view>` link |
+|------------|------------------|----------------------------|
+| Open | Active | The view's current report. |
+| Open | Inactive (closed in this view only) | Historical report. |
+| Closed, including force closed | Any | Historical report. |
+
+Historical links reconstruct the query that showed the regression, using the
+view's current configuration:
+
+* `sampleRelease` is the regression's release. `sampleStartTime` is 00:00 UTC
+  seven calendar days before the UTC date of `last_failure`, and
+  `sampleEndTime` is the following UTC midnight after that date (exclusive), so
+  the last failure is always included. For example, a last failure of
+  `2026-09-29T01:33:26Z` gives `2026-09-22T00:00:00Z` to `2026-09-30T00:00:00Z`.
+* The basis comes from the view. Expressions relative to `now` are evaluated
+  relative to the last failure; GA-based and absolute dates keep their meaning.
+  `testBasisRelease` is added when the regression was detected against an
+  earlier release.
+* The test ID, component, capability, and every regression variant are included,
+  along with the view's grouping, variant options, test filters, and advanced
+  options.
+* `regressionId=<id>` identifies the regression for the UI.
+
+Concrete dates are serialized, so reopening a link never moves its windows. No
+historical link is returned when the regression has no `last_failure`, when the
+view is no longer configured, when the view's basis cannot be resolved, or for
+spot-check regressions (test IDs starting with `spotcheck-`). Test details
+resolve a view's spot-check samples from the current time rather than from the
+URL's sample dates, so a historical spot-check link would show recent runs.
+
+When a closed view association has no historical link, the record's
+`historical_link_unavailable` object maps that view name to a human-readable
+reason, so clients can explain the gap without re-deriving it:
+
+| Reason | Cause |
+|--------|-------|
+| `no last failure was recorded` | The regression has no `last_failure`. |
+| `spot-check reports always cover recent runs` | Spot-check regression. |
+| `this view is no longer configured` | The view was removed from configuration. |
+| `the view's basis could not be resolved for the last failure` | Any other failure to build the link. |
+
+The field is omitted when every closed association has a link. Reasons are
+display text and may be reworded; do not match on them. A historical link only
+describes a query; whether the providers still hold data for the
+window is determined when it is opened. See
+[docs/features/component-readiness-triage.md](../../docs/features/component-readiness-triage.md#reviewing-closed-regressions).
