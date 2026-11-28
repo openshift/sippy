@@ -9,6 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -43,15 +44,15 @@ func TestGetCompleteMultiTestJobRunStatusesGroupsRequestedVariantsByDBGroupBy(t 
 	}
 	generator := ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.TestIdentification{{
+			TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{
 				TestID: "shared-test",
 				RequestedVariants: map[string]string{
 					"Platform":     "aws",
 					"Network":      "ovn",
 					"Architecture": "amd64",
 				},
-			}},
-			VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform", "Network")},
+			}}},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform", "Network")}},
 		},
 		jobRunTestStatusFetcher: func(*ComponentReportGenerator, context.Context) (crstatus.TestJobRunStatuses, []error) {
 			return statuses, nil
@@ -180,8 +181,8 @@ func TestGenerateTestDetailsReportMultiTestBatchesNonCollidingKeys(t *testing.T)
 	var queries [][]reqopts.TestIdentification
 	generator := ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: identifications,
-			VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")},
+			TestOptions:     reqopts.TestOptions{TestIDOptions: identifications},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")}},
 		},
 		jobRunTestStatusFetcher: func(g *ComponentReportGenerator, _ context.Context) (crstatus.TestJobRunStatuses, []error) {
 			queries = append(queries, g.ReqOptions.TestIDOptions)
@@ -207,8 +208,8 @@ func TestGenerateTestDetailsReportsErrorsForMissingBatchStatusKey(t *testing.T) 
 	}
 	generator := ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.TestIdentification{requested},
-			VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")},
+			TestOptions:     reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{requested}},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")}},
 		},
 	}
 
@@ -225,8 +226,8 @@ func TestGenerateTestDetailsReportMultiTestValidatesGroupedVariantsBeforeFetchin
 	fetches := 0
 	generator := ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.TestIdentification{{TestID: "test-id"}},
-			VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")},
+			TestOptions:     reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: "test-id"}}},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")}},
 		},
 		jobRunTestStatusFetcher: func(*ComponentReportGenerator, context.Context) (crstatus.TestJobRunStatuses, []error) {
 			fetches++
@@ -245,8 +246,8 @@ func TestGenerateTestDetailsReportValidatesGroupedVariantsBeforeFetching(t *test
 	fetches := 0
 	generator := ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.TestIdentification{{TestID: "test-id"}},
-			VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")},
+			TestOptions:     reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{TestID: "test-id"}}},
+			AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")}},
 		},
 		jobRunTestStatusFetcher: func(*ComponentReportGenerator, context.Context) (crstatus.TestJobRunStatuses, []error) {
 			fetches++
@@ -267,6 +268,255 @@ func TestMultiTestStatusQueryBackoff(t *testing.T) {
 		Duration: time.Minute,
 		Factor:   2,
 	}, defaultMultiTestStatusQueryBackoff())
+}
+
+func TestSummarizeRecordedTestStatsKeepsStoredJobsSeparateInNormalizedBucket(t *testing.T) {
+	baseRunTime := time.Date(2024, 3, 1, 12, 0, 0, 0, time.UTC)
+	sampleRunTime := baseRunTime.Add(time.Hour)
+	const (
+		normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+		f24Job        = "periodic-ci-openshift-release-master-nightly-f24-aws"
+		f48Job        = "periodic-ci-openshift-release-master-nightly-f48-aws"
+	)
+
+	generator := ComponentReportGenerator{
+		ReqOptions: reqopts.RequestOptions{AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}},
+	}
+	baseTotal, sampleTotal, analysis, result, lastFailure := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {
+				{
+					ProwJob:       f24Job,
+					Stats:         crtest.NewTestStats(4, 1, 0, false),
+					JiraComponent: "Storage",
+					TestName:      "openshift-tests:normalized-job-identity",
+					Lifecycle:     "legacy",
+					JobRuns: []crstatus.JobRunDetail{{
+						ProwJobRunID: "f24-base",
+						StartTime:    baseRunTime,
+						Count:        crtest.Count{TotalCount: 1, SuccessCount: 1},
+					}},
+				},
+				{
+					ProwJob:   f48Job,
+					Lifecycle: "informing",
+					JobRuns: []crstatus.JobRunDetail{{
+						ProwJobRunID: "f48-base",
+						StartTime:    baseRunTime,
+						Count:        crtest.Count{TotalCount: 1, SuccessCount: 1},
+					}},
+				},
+			},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{
+				ProwJob: f24Job,
+				Stats:   crtest.NewTestStats(3, 1, 0, false),
+				JobRuns: []crstatus.JobRunDetail{{
+					ProwJobRunID: "f24-sample",
+					StartTime:    sampleRunTime,
+					Count:        crtest.Count{TotalCount: 1},
+				}},
+			}},
+		},
+		crtest.Identification{},
+	)
+
+	assert.Equal(t, crtest.NewTestStats(4, 1, 0, false), baseTotal)
+	assert.Equal(t, crtest.NewTestStats(3, 1, 0, false), sampleTotal)
+	assert.Equal(t, sampleRunTime, lastFailure)
+	assert.Equal(t, "Storage", result.JiraComponent)
+	assert.Equal(t, "openshift-tests:normalized-job-identity", result.TestName)
+	assert.Equal(t, "informing", result.Lifecycle)
+	require.Len(t, analysis.JobStats, 2)
+
+	byBaseJob := make(map[string]int, len(analysis.JobStats))
+	for i, jobStats := range analysis.JobStats {
+		byBaseJob[jobStats.BaseJobName] = i
+	}
+
+	f24Index, ok := byBaseJob[f24Job]
+	require.True(t, ok)
+	f24Stats := analysis.JobStats[f24Index]
+	assert.Equal(t, f24Job, f24Stats.SampleJobName)
+	assert.Equal(t, crtest.NewTestStats(4, 1, 0, false), f24Stats.BaseStats)
+	assert.Equal(t, crtest.NewTestStats(3, 1, 0, false), f24Stats.SampleStats)
+	require.Len(t, f24Stats.BaseJobRunStats, 1)
+	assert.Equal(t, "f24-base", f24Stats.BaseJobRunStats[0].JobRunID)
+	require.Len(t, f24Stats.SampleJobRunStats, 1)
+	assert.Equal(t, "f24-sample", f24Stats.SampleJobRunStats[0].JobRunID)
+
+	f48Index, ok := byBaseJob[f48Job]
+	require.True(t, ok)
+	f48Stats := analysis.JobStats[f48Index]
+	assert.Empty(t, f48Stats.SampleJobName)
+	assert.Equal(t, crtest.Stats{}, f48Stats.SampleStats)
+	require.Len(t, f48Stats.BaseJobRunStats, 1)
+	assert.Equal(t, "f48-base", f48Stats.BaseJobRunStats[0].JobRunID)
+}
+
+func TestSummarizeRecordedTestStatsPairsRenamedStoredJobsOnlyWhenUnambiguous(t *testing.T) {
+	const normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}}}
+	_, _, analysis, _, _ := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {
+				{ProwJob: "f24", Stats: crtest.NewTestStats(1, 0, 0, false)},
+				{ProwJob: "f48", Stats: crtest.NewTestStats(1, 0, 0, false)},
+			},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {
+				{ProwJob: "f24", Stats: crtest.NewTestStats(1, 0, 0, false)},
+				{ProwJob: "f72", Stats: crtest.NewTestStats(1, 0, 0, false)},
+			},
+		},
+		crtest.Identification{},
+	)
+
+	require.Len(t, analysis.JobStats, 3)
+	byJobNames := make(map[string]struct{}, len(analysis.JobStats))
+	for _, jobStats := range analysis.JobStats {
+		byJobNames[jobStats.SampleJobName+":"+jobStats.BaseJobName] = struct{}{}
+	}
+	assert.Contains(t, byJobNames, "f24:f24")
+	assert.Contains(t, byJobNames, ":f48")
+	assert.Contains(t, byJobNames, "f72:")
+}
+
+func TestSummarizeRecordedTestStatsPairsSingleExactStoredJob(t *testing.T) {
+	const normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}}}
+	_, _, analysis, _, _ := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "same-job-name", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "same-job-name", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		crtest.Identification{},
+	)
+
+	require.Len(t, analysis.JobStats, 1)
+	assert.Equal(t, "same-job-name", analysis.JobStats[0].BaseJobName)
+	assert.Equal(t, "same-job-name", analysis.JobStats[0].SampleJobName)
+}
+
+func TestSummarizeRecordedTestStatsPairsSingleRenamedStoredJobs(t *testing.T) {
+	const normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}}}
+	_, _, analysis, _, _ := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "previous-job-name", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "renamed-job-name", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		crtest.Identification{},
+	)
+
+	require.Len(t, analysis.JobStats, 1)
+	assert.Equal(t, "previous-job-name", analysis.JobStats[0].BaseJobName)
+	assert.Equal(t, "renamed-job-name", analysis.JobStats[0].SampleJobName)
+}
+
+func TestSummarizeRecordedTestStatsPairsCountedJobsWhenBaseAlsoHasRawOnlyJob(t *testing.T) {
+	const normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}}}
+	_, _, analysis, _, _ := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {
+				{ProwJob: "f24", Stats: crtest.NewTestStats(1, 0, 0, false)},
+				{
+					ProwJob: "f72",
+					JobRuns: []crstatus.JobRunDetail{{
+						ProwJobRunID: "f72-base-run",
+						Count:        crtest.Count{TotalCount: 1, SuccessCount: 1},
+					}},
+				},
+			},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{ProwJob: "f48", Stats: crtest.NewTestStats(1, 0, 0, false)}},
+		},
+		crtest.Identification{},
+	)
+
+	require.Len(t, analysis.JobStats, 2)
+	assert.Contains(t, analysis.JobStats, testdetails.JobStats{
+		BaseJobName:   "f24",
+		SampleJobName: "f48",
+		BaseStats:     crtest.NewTestStats(1, 0, 0, false),
+		SampleStats:   crtest.NewTestStats(1, 0, 0, false),
+	})
+	assert.Contains(t, analysis.JobStats, testdetails.JobStats{
+		BaseJobName:       "f72",
+		BaseJobRunStats:   []testdetails.JobRunStats{{JobRunID: "f72-base-run", TestStats: crtest.NewTestStats(1, 0, 0, false)}},
+		BaseStats:         crtest.Stats{},
+		SampleStats:       crtest.Stats{},
+		SampleJobRunStats: nil,
+	})
+}
+
+func TestSummarizeRecordedTestStatsDoesNotPairRawOnlyBaseWithCountedExactSample(t *testing.T) {
+	const normalizedJob = "periodic-ci-openshift-release-master-nightly-aws"
+	generator := ComponentReportGenerator{ReqOptions: reqopts.RequestOptions{AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}}}}
+	_, _, analysis, _, _ := generator.summarizeRecordedTestStats(
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {
+				{
+					ProwJob: "f24",
+					Stats:   crtest.NewTestStats(1, 0, 0, false),
+					JobRuns: []crstatus.JobRunDetail{{
+						ProwJobRunID: "f24-base-run",
+						Count:        crtest.Count{TotalCount: 1, SuccessCount: 1},
+					}},
+				},
+				{
+					ProwJob: "f48",
+					JobRuns: []crstatus.JobRunDetail{{
+						ProwJobRunID: "f48-base-run",
+						Count:        crtest.Count{TotalCount: 1, SuccessCount: 1},
+					}},
+				},
+			},
+		},
+		map[string][]crstatus.TestDetailsSummary{
+			normalizedJob: {{
+				ProwJob: "f48",
+				Stats:   crtest.NewTestStats(1, 0, 0, false),
+				JobRuns: []crstatus.JobRunDetail{{
+					ProwJobRunID: "f48-sample-run",
+					Count:        crtest.Count{TotalCount: 1, SuccessCount: 1},
+				}},
+			}},
+		},
+		crtest.Identification{},
+	)
+
+	require.Len(t, analysis.JobStats, 2)
+	assert.Contains(t, analysis.JobStats, testdetails.JobStats{
+		BaseJobName:   "f24",
+		SampleJobName: "f48",
+		BaseStats:     crtest.NewTestStats(1, 0, 0, false),
+		SampleStats:   crtest.NewTestStats(1, 0, 0, false),
+		BaseJobRunStats: []testdetails.JobRunStats{{
+			JobRunID:  "f24-base-run",
+			TestStats: crtest.NewTestStats(1, 0, 0, false),
+		}},
+		SampleJobRunStats: []testdetails.JobRunStats{{
+			JobRunID:  "f48-sample-run",
+			TestStats: crtest.NewTestStats(1, 0, 0, false),
+		}},
+	})
+	assert.Contains(t, analysis.JobStats, testdetails.JobStats{
+		BaseJobName: "f48",
+		BaseStats:   crtest.Stats{},
+		BaseJobRunStats: []testdetails.JobRunStats{{
+			JobRunID:  "f48-base-run",
+			TestStats: crtest.NewTestStats(1, 0, 0, false),
+		}},
+	})
 }
 
 func TestGetCompleteMultiTestJobRunStatuses(t *testing.T) {
@@ -340,10 +590,10 @@ func TestGetCompleteMultiTestJobRunStatuses(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			calls := 0
 			generator := ComponentReportGenerator{
-				ReqOptions: reqopts.RequestOptions{TestIDOptions: []reqopts.TestIdentification{
+				ReqOptions: reqopts.RequestOptions{TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{
 					{TestID: present.TestID, RequestedVariants: present.Variants},
 					{TestID: missing.TestID, RequestedVariants: missing.Variants},
-				}, VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")}},
+				}}, AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{DBGroupBy: sets.New[string]("Platform")}}},
 				jobRunTestStatusFetcher: func(*ComponentReportGenerator, context.Context) (crstatus.TestJobRunStatuses, []error) {
 					response := testCase.responses[calls]
 					calls++

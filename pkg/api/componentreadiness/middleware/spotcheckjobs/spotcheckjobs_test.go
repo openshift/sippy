@@ -18,12 +18,12 @@ func TestAnalyze(t *testing.T) {
 
 	mw := &SpotCheckJobs{
 		reqOptions: reqopts.RequestOptions{
-			SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
+			JobRunOptions: reqopts.JobRunOptions{SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
 				{
 					Name:    "spotcheck-30d",
 					Release: reqopts.Release{Start: sampleStart, End: sampleEnd},
 				},
-			},
+			}},
 		},
 	}
 
@@ -163,12 +163,12 @@ func TestAnalyzeReportsSpotCheckWindow(t *testing.T) {
 
 	mw := &SpotCheckJobs{
 		reqOptions: reqopts.RequestOptions{
-			SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
+			JobRunOptions: reqopts.JobRunOptions{SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
 				{
 					Name:    "spotcheck-30d",
 					Release: reqopts.Release{Name: "5.0", Start: spotCheckStart, End: now},
 				},
-			},
+			}},
 		},
 	}
 	newStats := func() *testdetails.TestComparison {

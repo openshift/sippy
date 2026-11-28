@@ -1,6 +1,7 @@
 package loaderwithmetrics
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -101,6 +102,40 @@ func TestSortLoaders(t *testing.T) {
 
 			if diff := cmp.Diff(names, tt.expectedOrder); diff != "" {
 				t.Errorf("loaders mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+// recordingLoader exposes loader execution for ordering and failure gating.
+type recordingLoader struct {
+	name  string
+	calls *[]string
+	errs  []error
+}
+
+func (l *recordingLoader) Name() string    { return l.name }
+func (l *recordingLoader) Load()           { *l.calls = append(*l.calls, l.name) }
+func (l *recordingLoader) Errors() []error { return l.errs }
+
+func TestGARefreshBeforeRegressionCache(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		gaErrors []error
+		want     []string
+	}{
+		{"successful refresh", nil, []string{"ga-test-status", "regression-cache"}},
+		{"failed refresh prevents publishing", []error{fmt.Errorf("refresh failed")}, []string{"ga-test-status"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls []string
+			l := New([]dataloader.DataLoader{
+				&recordingLoader{name: "regression-cache", calls: &calls},
+				&recordingLoader{name: "ga-test-status", calls: &calls, errs: tc.gaErrors},
+			})
+			l.Load()
+			if diff := cmp.Diff(tc.want, calls); diff != "" {
+				t.Errorf("unexpected execution (-want +got): %s", diff)
 			}
 		})
 	}

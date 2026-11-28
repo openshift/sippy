@@ -37,19 +37,11 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 	variantsStrSlice := utils.VariantsMapToStringSlice(testKey.Variants)
 	mw := RegressionTracker{
 		reqOptions: reqopts.RequestOptions{
-			BaseRelease: reqopts.Release{
-				Name:  baseRelease,
-				Start: time.Time{},
-				End:   time.Time{},
+			ReleaseOptions: reqopts.ReleaseOptions{
+				BaseRelease:   reqopts.Release{Name: baseRelease, Start: time.Time{}, End: time.Time{}},
+				SampleRelease: reqopts.Release{Name: sampleRelease, Start: time.Time{}, End: time.Time{}},
 			},
-			SampleRelease: reqopts.Release{
-				Name:  sampleRelease,
-				Start: time.Time{},
-				End:   time.Time{},
-			},
-			AdvancedOption: reqopts.Advanced{
-				Confidence: 95,
-			},
+			AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}},
 		},
 	}
 	daysAgo5 := time.Now().UTC().Add(-5 * 24 * time.Hour)
@@ -345,19 +337,11 @@ func TestRegressionTracker_PreAnalysis_Adjustments(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := RegressionTracker{
 				reqOptions: reqopts.RequestOptions{
-					BaseRelease: reqopts.Release{
-						Name:  baseRelease,
-						Start: time.Time{},
-						End:   time.Time{},
+					ReleaseOptions: reqopts.ReleaseOptions{
+						BaseRelease:   reqopts.Release{Name: baseRelease, Start: time.Time{}, End: time.Time{}},
+						SampleRelease: reqopts.Release{Name: sampleRelease, Start: time.Time{}, End: time.Time{}},
 					},
-					SampleRelease: reqopts.Release{
-						Name:  sampleRelease,
-						Start: time.Time{},
-						End:   time.Time{},
-					},
-					AdvancedOption: reqopts.Advanced{
-						Confidence: 95,
-					},
+					AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}},
 				},
 				log: logrus.New(),
 			}
@@ -552,19 +536,11 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := RegressionTracker{
 				reqOptions: reqopts.RequestOptions{
-					BaseRelease: reqopts.Release{
-						Name:  baseRelease,
-						Start: time.Time{},
-						End:   time.Time{},
+					ReleaseOptions: reqopts.ReleaseOptions{
+						BaseRelease:   reqopts.Release{Name: baseRelease, Start: time.Time{}, End: time.Time{}},
+						SampleRelease: reqopts.Release{Name: sampleRelease, Start: time.Time{}, End: time.Time{}},
 					},
-					SampleRelease: reqopts.Release{
-						Name:  sampleRelease,
-						Start: time.Time{},
-						End:   time.Time{},
-					},
-					AdvancedOption: reqopts.Advanced{
-						Confidence: 95,
-					},
+					AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{Confidence: 95}},
 				},
 				openRegressions:      tt.openRegressions,
 				hasLoadedRegressions: true,
@@ -1011,12 +987,14 @@ func TestRegressionTracker_PostAnalysis_KeyTestThreshold(t *testing.T) {
 			}
 			mw := RegressionTracker{
 				reqOptions: reqopts.RequestOptions{
-					BaseRelease:   reqopts.Release{Name: baseRelease},
-					SampleRelease: reqopts.Release{Name: sampleRelease},
-					AdvancedOption: reqopts.Advanced{
+					ReleaseOptions: reqopts.ReleaseOptions{
+						BaseRelease:   reqopts.Release{Name: baseRelease},
+						SampleRelease: reqopts.Release{Name: sampleRelease},
+					},
+					AnalysisOptions: reqopts.AnalysisOptions{AdvancedOption: reqopts.Advanced{
 						Confidence:   95,
 						KeyTestNames: []string{keyTestName},
-					},
+					}},
 				},
 				openRegressions:      []*models.TestRegression{openRegression},
 				hasLoadedRegressions: true,

@@ -274,9 +274,14 @@ func (p *PostgresProvider) fetchJobVariantsByIDs(ctx context.Context, ids []uint
 	return result, nil
 }
 
-// baseMatchesGAWindow returns true when the base release dates align with a
-// pre-computed GA window in prow_ga_raw_test_data.
-func (p *PostgresProvider) baseMatchesGAWindow(ctx context.Context, release string, baseRange query.DateRange) bool {
+// gaWindowSelection separates the requested GA window from snapshot availability.
+type gaWindowSelection struct {
+	matchesWindow bool
+	hasSnapshot   bool
+}
+
+// baseMatchesGAWindow identifies a GA window and checks for its snapshot.
+func (p *PostgresProvider) baseMatchesGAWindow(ctx context.Context, release string, baseRange query.DateRange) (gaWindowSelection, error) {
 	var rd models.ReleaseDefinition
 	err := p.dbc.DB.WithContext(ctx).
 		Select("ga_date").
@@ -287,30 +292,44 @@ func (p *PostgresProvider) baseMatchesGAWindow(ctx context.Context, release stri
 			log.WithError(err).WithField("release", release).
 				Warn("failed to query GA date, falling back to prefix-sum query")
 		}
-		return false
+		return gaWindowSelection{}, nil
 	}
 	if rd.GADate == nil {
-		return false
+		return gaWindowSelection{}, nil
 	}
 
 	gaDate := *rd.GADate
 	if gaDate.After(civil.DateOf(time.Now().UTC())) {
-		return false
+		return gaWindowSelection{}, nil
 	}
 	if baseRange.End != utils.GAWindowEnd(gaDate) {
-		return false
+		return gaWindowSelection{}, nil
 	}
 
 	windowDays := gaDate.DaysSince(baseRange.Start)
-	return slices.Contains(utils.GAWindows, windowDays)
+	if !slices.Contains(utils.GAWindows, windowDays) {
+		return gaWindowSelection{}, nil
+	}
+
+	var exists bool
+	if err := p.dbc.DB.WithContext(ctx).Raw(`SELECT EXISTS (
+		SELECT 1 FROM prow_ga_raw_test_data WHERE release = ? AND window_days = ?
+	)`, release, windowDays).Scan(&exists).Error; err != nil {
+		return gaWindowSelection{}, fmt.Errorf("checking GA snapshot for release %s and %d-day window: %w", release, windowDays, err)
+	}
+	return gaWindowSelection{matchesWindow: true, hasSnapshot: exists}, nil
 }
 
 func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string]crstatus.TestStatus, []error) {
 	baseRange := query.DateRange{
-		Start: civil.DateOf(reqOptions.BaseRelease.Start),
-		End:   civil.DateOf(reqOptions.BaseRelease.End).AddDays(1),
+		Start: civil.DateOf(reqOptions.BaseRelease.Start.UTC()),
+		End:   civil.DateOf(reqOptions.BaseRelease.End.UTC()).AddDays(1),
 	}
-	if p.baseMatchesGAWindow(ctx, reqOptions.BaseRelease.Name, baseRange) {
+	gaWindow, err := p.baseMatchesGAWindow(ctx, reqOptions.BaseRelease.Name, baseRange)
+	if err != nil {
+		return nil, []error{err}
+	}
+	if gaWindow.hasSnapshot {
 		return p.queryBaseTestStatusGA(ctx, reqOptions, baseRange)
 	}
 	return p.queryTestStatusPrefixSum(ctx, reqOptions,
@@ -406,9 +425,8 @@ func buildTestDetailsRunScope(release string, start, end time.Time, runFilter st
         AND pjrt.prow_job_run_timestamp >= ? AND pjrt.prow_job_run_timestamp < ?`
 	args := []any{start, end, start, end}
 	if runFilter == "" {
-		clause += ` AND pj.release = ?
-        AND pjr.prow_job_release = ? AND pjrt.prow_job_run_release = ?`
-		args = append(args, release, release, release)
+		clause += ` AND pjr.prow_job_release = ? AND pjrt.prow_job_run_release = ?`
+		args = append(args, release, release)
 	} else {
 		clause += " AND " + runFilter
 		args = append(args, runArgs...)
@@ -546,11 +564,14 @@ WHERE %s
 		}
 
 		successCount := 0
+		statsSuccessCount := 0
 		flakeCount := 0
-		if row.Status == 1 || row.Status == 13 {
+		if row.Status == int(sippyprocessingv1.TestStatusSuccess) {
 			successCount = 1
+			statsSuccessCount = 1
 		}
-		if row.Status == 13 {
+		if row.Status == int(sippyprocessingv1.TestStatusFlake) {
+			successCount = 1
 			flakeCount = 1
 		}
 
@@ -561,18 +582,27 @@ WHERE %s
 
 		normalizedName := utils.NormalizeProwJobName(row.ProwJobName)
 		entry := crstatus.TestJobRunRows{
-			TestKey:         key,
-			TestKeyStr:      key.Encode(),
-			TestName:        row.TestName,
-			ProwJob:         row.ProwJobName,
-			ProwJobRunID:    row.ProwJobRunID,
-			ProwJobURL:      row.ProwJobURL,
-			StartTime:       row.ProwJobStart,
-			JobLabels:       []string(row.JobLabels),
-			TestFailures:    row.TestFailures,
-			Count:           crtest.Count{TotalCount: 1, SuccessCount: successCount, FlakeCount: flakeCount},
-			JiraComponent:   row.JiraComponent,
-			JiraComponentID: jiraComponentID,
+			TestIdentification: crstatus.TestIdentification{
+				TestKey:    key,
+				TestKeyStr: key.Encode(),
+				TestName:   row.TestName,
+			},
+			JobRunIdentification: crstatus.JobRunIdentification{
+				ProwJob:      row.ProwJobName,
+				ProwJobRunID: row.ProwJobRunID,
+				ProwJobURL:   row.ProwJobURL,
+				StartTime:    row.ProwJobStart,
+			},
+			TestJobRunCounts: crstatus.TestJobRunCounts{
+				Count:      crtest.Count{TotalCount: 1, SuccessCount: successCount, FlakeCount: flakeCount},
+				StatsCount: &crtest.Count{TotalCount: 1, SuccessCount: statsSuccessCount, FlakeCount: flakeCount},
+			},
+			TestJobRunMetadata: crstatus.TestJobRunMetadata{
+				JobLabels:       []string(row.JobLabels),
+				TestFailures:    row.TestFailures,
+				JiraComponent:   row.JiraComponent,
+				JiraComponentID: jiraComponentID,
+			},
 		}
 
 		result[normalizedName] = append(result[normalizedName], entry)
@@ -626,56 +656,144 @@ func appendTestDetailsLifecycleFilter(sqlQuery string, args []any, lifecycles []
 }
 
 func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {
+	baseRange := query.DateRange{Start: civil.DateOf(reqOptions.BaseRelease.Start.UTC()), End: civil.DateOf(reqOptions.BaseRelease.End.UTC()).AddDays(1)}
+	gaWindow, err := p.baseMatchesGAWindow(ctx, reqOptions.BaseRelease.Name, baseRange)
+	if err != nil {
+		return nil, []error{err}
+	}
+	return p.queryBaseRunDetails(ctx, reqOptions, gaWindow)
+}
+
+func (p *PostgresProvider) queryBaseRunDetails(ctx context.Context, reqOptions reqopts.RequestOptions, gaWindow gaWindowSelection) (map[string][]crstatus.TestDetailsSummary, []error) {
+	rawIncludeVariants := mergeRequestedVariants(reqOptions.VariantOption.IncludeVariants, reqOptions)
+	start, end := reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End
+	if gaWindow.matchesWindow {
+		start = civil.DateOf(start.UTC()).In(time.UTC)
+		end = civil.DateOf(end.UTC()).AddDays(1).In(time.UTC)
+	}
+	if gaWindow.hasSnapshot {
+		aggregate, errs := p.queryBaseAggregateTestDetails(ctx, reqOptions, aggregateSourceGASnapshot)
+		if len(errs) > 0 || reqOptions.SkipGABaseJobRuns {
+			return aggregate, errs
+		}
+		raw, errs := p.queryTestDetails(
+			ctx, reqOptions.BaseRelease.Name, start, end,
+			reqOptions, rawIncludeVariants, nil, "", nil, nil, false,
+		)
+		if len(errs) > 0 {
+			return nil, errs
+		}
+		return mergeGASnapshotAndRawDetails(aggregate, raw), nil
+	}
 	result, errs := p.queryTestDetails(
 		ctx,
 		reqOptions.BaseRelease.Name,
-		reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End,
-		reqOptions, reqOptions.VariantOption.IncludeVariants, nil, "", nil, nil, false,
+		start, end,
+		reqOptions, rawIncludeVariants, nil, "", nil, nil, false,
 	)
 	if len(errs) > 0 {
 		return result, errs
 	}
-	aggregateOptions := reqOptions
-	presentKeys := sets.New[string]()
-	if len(result) > 0 {
-		for _, summaries := range result {
-			for _, summary := range summaries {
-				presentKeys.Insert(summary.TestKeyStr)
-			}
-		}
-		aggregateOptions.TestIDOptions = nil
-		for _, identification := range reqOptions.TestIDOptions {
-			key := crtest.KeyWithVariants{
-				TestID:   identification.TestID,
-				Variants: filterByDBGroupBy(identification.RequestedVariants, reqOptions.VariantOption.DBGroupBy),
-			}
-			if !presentKeys.Has(key.Encode()) {
-				aggregateOptions.TestIDOptions = append(aggregateOptions.TestIDOptions, identification)
-			}
-		}
-		if len(aggregateOptions.TestIDOptions) == 0 {
-			return result, nil
-		}
-	}
 	log.WithField("release", reqOptions.BaseRelease.Name).
-		Info("querying aggregate base test details for keys without per-run data")
-	aggregate, aggregateErrs := p.queryBaseAggregateTestDetails(ctx, aggregateOptions)
+		Info("querying cumulative base test details")
+	aggregate, aggregateErrs := p.queryBaseAggregateTestDetails(ctx, reqOptions, aggregateSourceCumulativeSummary)
 	if len(aggregateErrs) > 0 {
 		return result, aggregateErrs
 	}
-	if result == nil {
-		result = make(map[string][]crstatus.TestDetailsSummary)
+	merged, err := mergeCumulativeSummaryAndRawDetails(aggregate, result, reqOptions.BaseRelease.Name)
+	if err != nil {
+		return nil, []error{err}
 	}
-	for jobName, summaries := range aggregate {
-		for _, summary := range summaries {
-			if presentKeys.Has(summary.TestKeyStr) {
-				continue
+	return merged, nil
+}
+
+// mergeCumulativeSummaryAndRawDetails combines authoritative cumulative
+// statistics with retained raw job-run details. A raw detail without a matching
+// cumulative summary indicates the two data sources are inconsistent.
+func mergeCumulativeSummaryAndRawDetails(cumulativeByNormalizedJobName, rawByNormalizedJobName map[string][]crstatus.TestDetailsSummary, release string) (map[string][]crstatus.TestDetailsSummary, error) {
+	merged := make(map[string][]crstatus.TestDetailsSummary, len(cumulativeByNormalizedJobName))
+	indexByIdentity := make(map[string]detailSummaryLocation)
+	for normalizedJobName, summaries := range cumulativeByNormalizedJobName {
+		merged[normalizedJobName] = make([]crstatus.TestDetailsSummary, len(summaries))
+		for i, summary := range summaries {
+			summary.JobRuns = slices.Clone(summary.JobRuns)
+			merged[normalizedJobName][i] = summary
+			identity := detailSummaryIdentity(summary)
+			if _, exists := indexByIdentity[identity]; !exists {
+				indexByIdentity[identity] = detailSummaryLocation{normalizedJobName: normalizedJobName, index: i}
 			}
-			result[jobName] = append(result[jobName], summary)
 		}
 	}
-	return result, nil
+
+	for _, summaries := range rawByNormalizedJobName {
+		for _, summary := range summaries {
+			location, exists := indexByIdentity[detailSummaryIdentity(summary)]
+			if !exists {
+				return nil, fmt.Errorf("base test details data integrity error: raw detail has no cumulative summary (release=%s test=%s job=%s)", release, summary.TestKeyStr, summary.ProwJob)
+			}
+			merged[location.normalizedJobName][location.index].JobRuns = append(merged[location.normalizedJobName][location.index].JobRuns, summary.JobRuns...)
+		}
+	}
+
+	return merged, nil
 }
+
+type detailSummaryLocation struct {
+	normalizedJobName string
+	index             int
+}
+
+// mergeGASnapshotAndRawDetails attaches raw run metadata to GA snapshot counts.
+// The map keys are normalized job names, while summary identities retain stored
+// Prow job names so separately stored jobs sharing a display key stay distinct.
+func mergeGASnapshotAndRawDetails(snapshotByNormalizedJobName, rawByNormalizedJobName map[string][]crstatus.TestDetailsSummary) map[string][]crstatus.TestDetailsSummary {
+	merged := make(map[string][]crstatus.TestDetailsSummary, len(snapshotByNormalizedJobName)+len(rawByNormalizedJobName))
+	for normalizedJobName, summaries := range snapshotByNormalizedJobName {
+		merged[normalizedJobName] = make([]crstatus.TestDetailsSummary, len(summaries))
+		for i, summary := range summaries {
+			summary.JobRuns = slices.Clone(summary.JobRuns)
+			merged[normalizedJobName][i] = summary
+		}
+	}
+	for normalizedJobName, rawSummaries := range rawByNormalizedJobName {
+		summaries := merged[normalizedJobName]
+		indexByIdentity := make(map[string]int, len(summaries))
+		for i, summary := range summaries {
+			identity := detailSummaryIdentity(summary)
+			if _, exists := indexByIdentity[identity]; !exists {
+				indexByIdentity[identity] = i
+			}
+		}
+		for _, summary := range rawSummaries {
+			identity := detailSummaryIdentity(summary)
+			if i, exists := indexByIdentity[identity]; exists {
+				summaries[i].JobRuns = append(summaries[i].JobRuns, summary.JobRuns...)
+				continue
+			}
+			// A raw-only key has no snapshot counts, but its run metadata is useful.
+			summary.Stats = crtest.Stats{}
+			summary.JobRuns = slices.Clone(summary.JobRuns)
+			indexByIdentity[identity] = len(summaries)
+			summaries = append(summaries, summary)
+		}
+		merged[normalizedJobName] = summaries
+	}
+	return merged
+}
+
+// detailSummaryIdentity keeps snapshot and raw details distinct when jobs
+// share a normalized map key but differ in their stored job names.
+func detailSummaryIdentity(summary crstatus.TestDetailsSummary) string {
+	return summary.TestKeyStr + "\x00" + summary.ProwJob
+}
+
+// aggregateSource selects the persisted aggregate containing base test counts.
+type aggregateSource int
+
+const (
+	aggregateSourceCumulativeSummary aggregateSource = iota
+	aggregateSourceGASnapshot
+)
 
 type aggregateTestDetailRow struct {
 	TestID          string `gorm:"column:test_id"`
@@ -689,11 +807,10 @@ type aggregateTestDetailRow struct {
 	FlakeCount      int    `gorm:"column:flake_count"`
 }
 
-// queryBaseAggregateTestDetails queries aggregate tables (test_cumulative_summaries
-// or prow_ga_raw_test_data) as a fallback for keys without prow_job_run_tests data
-// in the base release. Returns per-job aggregate stats as TestDetailsSummary entries
-// with no individual JobRuns, because per-run identifiers do not exist in these tables.
-func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, reqOptions reqopts.RequestOptions) (map[string][]crstatus.TestDetailsSummary, []error) {
+// queryBaseAggregateTestDetails queries the selected GA snapshot or cumulative
+// summary source for authoritative base counts. Aggregate rows do not contain
+// individual JobRuns because those tables have no per-run identifiers.
+func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, reqOptions reqopts.RequestOptions, source aggregateSource) (map[string][]crstatus.TestDetailsSummary, []error) {
 	includeVariants := reqOptions.VariantOption.IncludeVariants
 	if includeVariants == nil {
 		includeVariants = map[string][]string{}
@@ -721,14 +838,14 @@ func (p *PostgresProvider) queryBaseAggregateTestDetails(ctx context.Context, re
 	cte += ")"
 
 	baseRange := query.DateRange{
-		Start: civil.DateOf(reqOptions.BaseRelease.Start),
-		End:   civil.DateOf(reqOptions.BaseRelease.End).AddDays(1),
+		Start: civil.DateOf(reqOptions.BaseRelease.Start.UTC()),
+		End:   civil.DateOf(reqOptions.BaseRelease.End.UTC()).AddDays(1),
 	}
 
 	var sqlQuery string
 	var queryArgs []any
 
-	if p.baseMatchesGAWindow(ctx, reqOptions.BaseRelease.Name, baseRange) {
+	if source == aggregateSourceGASnapshot {
 		windowDays := baseRange.End.AddDays(-1).DaysSince(baseRange.Start)
 		sqlQuery, queryArgs = p.buildAggregateGAQuery(cte, cteArgs, reqOptions.BaseRelease.Name, windowDays, includeVariants)
 	} else {
@@ -864,18 +981,20 @@ func (p *PostgresProvider) processAggregateRows(ctx context.Context, rows []aggr
 			jiraComponentID = new(big.Rat).SetUint64(uint64(*row.JiraComponentID))
 		}
 
-		normalizedName := utils.NormalizeProwJobName(row.ProwJobName)
+		normalizedJobName := utils.NormalizeProwJobName(row.ProwJobName)
+		count := crtest.Count{TotalCount: row.TotalCount, SuccessCount: row.SuccessCount, FlakeCount: row.FlakeCount}
+		stats := count.ToTestStats(false)
 		entry := crstatus.TestDetailsSummary{
 			TestKey:         key,
 			TestKeyStr:      key.Encode(),
-			ProwJob:         normalizedName,
+			ProwJob:         row.ProwJobName,
 			TestName:        row.TestName,
-			Stats:           crtest.Count{TotalCount: row.TotalCount, SuccessCount: row.SuccessCount, FlakeCount: row.FlakeCount}.ToTestStats(false),
+			Stats:           stats,
 			JiraComponent:   row.JiraComponent,
 			JiraComponentID: jiraComponentID,
 		}
 
-		result[normalizedName] = append(result[normalizedName], entry)
+		result[normalizedJobName] = append(result[normalizedJobName], entry)
 	}
 
 	return result, nil

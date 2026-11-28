@@ -498,8 +498,8 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 	} else {
 		sampleRelease := reqOptions.SampleRelease.Name
 		sampleRange := query.DateRange{
-			Start: civil.DateOf(reqOptions.SampleRelease.Start),
-			End:   civil.DateOf(reqOptions.SampleRelease.End).AddDays(1),
+			Start: civil.DateOf(reqOptions.SampleRelease.Start.UTC()),
+			End:   civil.DateOf(reqOptions.SampleRelease.End.UTC()).AddDays(1),
 		}
 		if err := query.ResolveDateRanges(ctx, p.dbc, sampleRelease, &sampleRange); err != nil {
 			return nil, nil, []error{err}
@@ -509,13 +509,16 @@ func (p *PostgresProvider) queryCombinedTestStatus(
 
 	baseRelease := reqOptions.BaseRelease.Name
 	baseRange := query.DateRange{
-		Start: civil.DateOf(reqOptions.BaseRelease.Start),
-		End:   civil.DateOf(reqOptions.BaseRelease.End).AddDays(1),
+		Start: civil.DateOf(reqOptions.BaseRelease.Start.UTC()),
+		End:   civil.DateOf(reqOptions.BaseRelease.End.UTC()).AddDays(1),
 	}
-	baseIsGA := p.baseMatchesGAWindow(ctx, baseRelease, baseRange)
+	baseGAWindow, err := p.baseMatchesGAWindow(ctx, baseRelease, baseRange)
+	if err != nil {
+		return nil, nil, []error{err}
+	}
 
 	var baseSpec testStatusSpec
-	if baseIsGA {
+	if baseGAWindow.hasSnapshot {
 		baseWindowDays := baseRange.End.AddDays(-1).DaysSince(baseRange.Start)
 		baseSpec = gaSpec(baseRelease, baseWindowDays)
 	} else {

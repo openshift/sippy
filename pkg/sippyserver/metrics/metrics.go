@@ -224,11 +224,9 @@ func updateComponentReadinessMetricsForView(ctx context.Context, provider datapr
 
 	// Get component readiness report
 	reportOpts := reqopts.RequestOptions{
-		BaseRelease:    baseRelease,
-		SampleRelease:  sampleRelease,
-		VariantOption:  variantOption,
-		AdvancedOption: advancedOption,
-		CacheOption:    cacheOptions,
+		ReleaseOptions:  reqopts.ReleaseOptions{BaseRelease: baseRelease, SampleRelease: sampleRelease},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: variantOption, AdvancedOption: advancedOption},
+		CacheOptions:    reqopts.CacheOptions{CacheOption: cacheOptions},
 	}
 
 	report, errs := componentreadiness.GetComponentReport(ctx, provider, dbc, reportOpts, "")

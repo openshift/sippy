@@ -1086,7 +1086,9 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 	}
 
 	cts := crstatus.TestJobRunRows{
-		TestKey: crtest.KeyWithVariants{Variants: map[string]string{}},
+		TestIdentification: crstatus.TestIdentification{
+			TestKey: crtest.KeyWithVariants{Variants: map[string]string{}},
+		},
 	}
 	for i, fieldSchema := range schema {
 		col := fieldSchema.Name

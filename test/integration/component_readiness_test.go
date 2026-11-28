@@ -118,6 +118,7 @@ func createGARawData(t *testing.T, dbc *db.DB, release string, windowDays int, t
 		Flakes:     flakes,
 	}
 	require.NoError(t, dbc.DB.Create(&ga).Error)
+	require.NoError(t, dbc.DB.Exec("UPDATE release_definitions SET ga_data_loaded_date = ga_date WHERE release = ?", release).Error)
 }
 
 func createReleaseDefinition(t *testing.T, dbc *db.DB, release string, gaDate *civil.Date) {
@@ -184,23 +185,24 @@ func uintPtr(v uint) *uint { return &v }
 
 func defaultReqOptions(release string) reqopts.RequestOptions {
 	return reqopts.RequestOptions{
-		SampleRelease: reqopts.Release{
-			Name:  release,
-			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+		ReleaseOptions: reqopts.ReleaseOptions{
+			SampleRelease: reqopts.Release{
+				Name:  release,
+				Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
+			},
+			BaseRelease: reqopts.Release{
+				Name:  release,
+				Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+			},
 		},
-		BaseRelease: reqopts.Release{
-			Name:  release,
-			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
-			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		},
-		VariantOption: reqopts.Variants{
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:     sets.New[string]("Platform", "Network"),
 			ColumnGroupBy: sets.New[string]("Platform"),
-		},
-		AdvancedOption: reqopts.Advanced{
+		}, AdvancedOption: reqopts.Advanced{
 			MinimumFailure: 1,
-		},
+		}},
 	}
 }
 
@@ -280,6 +282,29 @@ func seedCRData(t *testing.T, dbc *db.DB) crSeedData {
 }
 
 func TestQueryTestStatus_SampleResults(t *testing.T) {
+	t.Run("sample offsets crossing UTC midnight select UTC dates", func(t *testing.T) {
+		dbc := crTestDB(t)
+		seed := seedCRData(t, dbc)
+		provider := postgres.NewPostgresProvider(dbc, nil)
+		opts := defaultReqOptions("4.16")
+		opts.SampleRelease.End = time.Date(2024, 6, 14, 0, 0, 0, 0, time.UTC)
+
+		_, utcResult, errs := provider.QueryTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+		key := crtest.KeyWithVariants{
+			TestID:   seed.tow1.UniqueID,
+			Variants: map[string]string{"Platform": "aws", "Network": "ovn"},
+		}
+		require.Equal(t, 10, utcResult[key.Encode()].TotalCount)
+
+		offset := time.FixedZone("UTC-4", -4*60*60)
+		opts.SampleRelease.Start = opts.SampleRelease.Start.In(offset)
+		opts.SampleRelease.End = opts.SampleRelease.End.In(offset)
+		_, offsetResult, errs := provider.QueryTestStatus(context.Background(), opts)
+		require.Empty(t, errs)
+		assert.Equal(t, utcResult, offsetResult)
+	})
+
 	t.Run("basic aggregation", func(t *testing.T) {
 		dbc := crTestDB(t)
 		release := "4.16"
@@ -1328,23 +1353,22 @@ func TestQueryTestStatus_DifferentBaseAndSampleReleases(t *testing.T) {
 
 	provider := postgres.NewPostgresProvider(dbc, nil)
 	opts := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name:  baseRelease,
 			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		},
-		SampleRelease: reqopts.Release{
+		}, SampleRelease: reqopts.Release{
 			Name:  sampleRelease,
 			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:       sets.New[string]("Platform", "Network"),
 			ColumnGroupBy:   sets.New[string]("Platform"),
 			IncludeVariants: map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
-		},
-		AdvancedOption: reqopts.Advanced{
+		}, AdvancedOption: reqopts.Advanced{
 			MinimumFailure: 1,
+		},
 		},
 	}
 
@@ -2076,13 +2100,67 @@ func TestQueryBaseJobRunTestStatus(t *testing.T) {
 	}
 }
 
+func TestTestDetailsUseStoredRunReleaseAfterJobReattribution(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.16"
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job := createProwJobWithVC(t, dbc, "periodic-reattributed-release", release, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests: reattributed job test")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-reattributed")
+	ownership := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:reattributed", "Networking", []string{"Services"})
+
+	baseTime := time.Date(2024, 5, 20, 12, 0, 0, 0, time.UTC)
+	sampleTime := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+	baseRun := createProwJobRunForCR(t, dbc, job.ID, release, baseTime)
+	baseRunID := strconv.FormatUint(uint64(baseRun.ID), 10)
+	createProwJobRunTest(t, dbc, baseRun.ID, job.ID, test.ID, &suite.ID, 1, release, baseTime)
+	baseDistractor := createProwJobRunForCR(t, dbc, job.ID, "4.17", baseTime.Add(time.Hour))
+	baseDistractorRunID := strconv.FormatUint(uint64(baseDistractor.ID), 10)
+	createProwJobRunTest(t, dbc, baseDistractor.ID, job.ID, test.ID, &suite.ID, 12, "4.17", baseDistractor.Timestamp)
+	sampleRun := createProwJobRunForCR(t, dbc, job.ID, release, sampleTime)
+	sampleRunID := strconv.FormatUint(uint64(sampleRun.ID), 10)
+	createProwJobRunTest(t, dbc, sampleRun.ID, job.ID, test.ID, &suite.ID, 1, release, sampleTime)
+	distractor := createProwJobRunForCR(t, dbc, job.ID, "4.17", sampleTime.Add(time.Hour))
+	distractorRunID := strconv.FormatUint(uint64(distractor.ID), 10)
+	createProwJobRunTest(t, dbc, distractor.ID, job.ID, test.ID, &suite.ID, 12, "4.17", distractor.Timestamp)
+	distractorRunIDs := sets.New(baseDistractorRunID, distractorRunID)
+	require.NoError(t, dbc.DB.Model(&models.ProwJob{}).Where("id = ?", job.ID).Update("release", "4.17").Error)
+
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	opts := testDetailsReqOptions(ownership.UniqueID, map[string]string{"Platform": "aws", "Network": "ovn"})
+	base, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+	sample, errs := provider.QuerySampleJobRunTestStatus(context.Background(), opts, opts.VariantOption.IncludeVariants, opts.SampleRelease.Start, opts.SampleRelease.End)
+	require.Empty(t, errs)
+	for name, tc := range map[string]struct {
+		result    map[string][]crstatus.TestDetailsSummary
+		wantRunID string
+	}{
+		"base":   {result: base, wantRunID: baseRunID},
+		"sample": {result: sample, wantRunID: sampleRunID},
+	} {
+		t.Run(name, func(t *testing.T) {
+			gotRunIDs := sets.New[string]()
+			for _, summaries := range tc.result {
+				for _, summary := range summaries {
+					for _, run := range summary.JobRuns {
+						gotRunIDs.Insert(run.ProwJobRunID)
+					}
+				}
+			}
+			assert.Equal(t, sets.New(tc.wantRunID), gotRunIDs, "only the matching stored 4.16 run should be included")
+			assert.Empty(t, gotRunIDs.Intersection(distractorRunIDs), "the 4.17 distractors should be excluded")
+		})
+	}
+}
+
 func TestQueryBaseJobRunTestStatus_AggregateFallback(t *testing.T) {
 	t.Run("prefix-sum fallback when per-run data is absent", func(t *testing.T) {
 		dbc := crTestDB(t)
 		release := "4.16"
 
 		vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
-		job := createProwJobWithVC(t, dbc, "periodic-agg-aws", release, vc)
+		job := createProwJobWithVC(t, dbc, "periodic-agg-f24-aws", release, vc)
 
 		test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] agg fallback test")
 		suite := intutil.CreateSuite(t, dbc, "openshift-tests-agg")
@@ -2118,9 +2196,12 @@ func TestQueryBaseJobRunTestStatus_AggregateFallback(t *testing.T) {
 		}
 		require.Equal(t, 1, totalRows, "should have 1 aggregate entry for the one job")
 
+		normalizedJobName := utils.NormalizeProwJobName(job.Name)
+		require.Contains(t, result, normalizedJobName, "aggregate rows remain keyed by normalized job name")
 		for _, rows := range result {
 			for _, row := range rows {
 				assert.Equal(t, tow.UniqueID, row.TestKey.TestID)
+				assert.Equal(t, job.Name, row.ProwJob, "aggregate rows retain the stored job name")
 				assert.Equal(t, 20, row.Stats.Total(), "aggregate total should be prefix-sum delta")
 				assert.Equal(t, 15, row.Stats.SuccessCount, "aggregate successes should be prefix-sum delta")
 				assert.Equal(t, 2, row.Stats.FlakeCount, "aggregate flakes should be prefix-sum delta")
@@ -2180,7 +2261,10 @@ func TestQueryBaseJobRunTestStatus_AggregateFallback(t *testing.T) {
 				assert.Equal(t, tow.UniqueID, row.TestKey.TestID)
 				assert.Equal(t, 50, row.Stats.Total())
 				assert.Equal(t, 45, row.Stats.SuccessCount)
+				assert.Equal(t, 3, row.Stats.FailureCount)
 				assert.Equal(t, 2, row.Stats.FlakeCount)
+				assert.InDelta(t, 0.94, row.Stats.PassRate(false), 0.0001, "flakes count as passing for pass-rate calculations")
+				assert.InDelta(t, 0.90, row.Stats.PassRate(true), 0.0001, "run display keeps flakes separate from successes")
 			}
 		}
 	})
@@ -2212,6 +2296,7 @@ func TestQueryBaseJobRunTestStatus_AggregateFallback(t *testing.T) {
 
 		provider := postgres.NewPostgresProvider(dbc, nil)
 		opts := defaultReqOptions(release)
+		opts.SkipGABaseJobRuns = true // The GA-only optimization must not change non-GA details.
 		opts.TestIDOptions = []reqopts.TestIdentification{{TestID: tow.UniqueID}}
 		opts.VariantOption.IncludeVariants = map[string][]string{
 			"Platform": {"aws"},
@@ -3166,22 +3251,20 @@ func TestTestExistsInBaseButNotSample(t *testing.T) {
 	provider := postgres.NewPostgresProvider(dbc, nil)
 	includeVariants := map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}
 	opts := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name:  baseRelease,
 			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		},
-		SampleRelease: reqopts.Release{
+		}, SampleRelease: reqopts.Release{
 			Name:  sampleRelease,
 			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:       sets.New[string]("Platform", "Network"),
 			ColumnGroupBy:   sets.New[string]("Platform"),
 			IncludeVariants: includeVariants,
-		},
-		AdvancedOption: reqopts.Advanced{MinimumFailure: 1},
+		}, AdvancedOption: reqopts.Advanced{MinimumFailure: 1}},
 	}
 
 	variantMap := map[string]string{"Platform": "aws", "Network": "ovn"}
@@ -3939,6 +4022,207 @@ func TestGenerateTestDetailsReportMultiTest_MultipleVariantsForSameTestID(t *tes
 	}
 }
 
+func TestQueryBaseJobRunTestStatus_GASnapshotCountsWithPartialRawRuns(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.15"
+	gaDate := civil.Date{Year: 2024, Month: 3, Day: 1}
+	createReleaseDefinition(t, dbc, release, &gaDate)
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	job1 := createProwJobWithVC(t, dbc, "periodic-ga-f1-aws", release, vc)
+	job2 := createProwJobWithVC(t, dbc, "periodic-ga-f2-aws", release, vc)
+	rawOnlyJob := createProwJobWithVC(t, dbc, "periodic-ga-raw-only", release, vc)
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] partial GA raw rows")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga-partial")
+	tow := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-partial", "Storage", []string{"PVC"})
+	createGARawData(t, dbc, release, 30, test.ID, job1.ID, suite.ID, 50, 45, 2)
+	createGARawData(t, dbc, release, 30, test.ID, job2.ID, suite.ID, 10, 8, 1)
+	var retainedRunIDs []string
+	var rawOnlyRunID string
+	for i, job := range []models.ProwJob{job1, job2, rawOnlyJob} {
+		timestamp := gaDate.AddDays(-10 + i).In(time.UTC)
+		run := createProwJobRunForCR(t, dbc, job.ID, release, timestamp)
+		createProwJobRunTest(t, dbc, run.ID, job.ID, test.ID, &suite.ID, 12, release, timestamp)
+		if i < 2 {
+			retainedRunIDs = append(retainedRunIDs, strconv.FormatUint(uint64(run.ID), 10))
+		} else {
+			rawOnlyRunID = strconv.FormatUint(uint64(run.ID), 10)
+		}
+	}
+
+	opts := defaultReqOptions(release)
+	opts.BaseRelease = reqopts.Release{Name: release, Start: gaDate.AddDays(-30).In(time.UTC), End: gaDate.In(time.UTC)}
+	opts.TestIDOptions = []reqopts.TestIdentification{{TestID: tow.UniqueID, RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"}}}
+	opts.VariantOption.IncludeVariants = map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}
+	provider := postgres.NewPostgresProvider(dbc, nil)
+	result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+	require.Len(t, result, 2)
+	rawOnlySummaries := result[utils.NormalizeProwJobName(rawOnlyJob.Name)]
+	require.Len(t, rawOnlySummaries, 1)
+	assert.Equal(t, crtest.Stats{}, rawOnlySummaries[0].Stats, "raw-only jobs must not add GA statistics")
+	require.Len(t, rawOnlySummaries[0].JobRuns, 1)
+	assert.Equal(t, rawOnlyRunID, rawOnlySummaries[0].JobRuns[0].ProwJobRunID)
+	summaries := result[utils.NormalizeProwJobName(job1.Name)]
+	var stats crtest.Stats
+	var runs []crstatus.JobRunDetail
+	for _, summary := range summaries {
+		stats = stats.Add(summary.Stats, false)
+		runs = append(runs, summary.JobRuns...)
+	}
+	assert.Equal(t, 53, stats.SuccessCount)
+	assert.Equal(t, 4, stats.FailureCount)
+	assert.Equal(t, 3, stats.FlakeCount)
+	var runIDs []string
+	for _, run := range runs {
+		runIDs = append(runIDs, run.ProwJobRunID)
+	}
+	assert.ElementsMatch(t, retainedRunIDs, runIDs, "raw runs for colliding normalized jobs must appear exactly once")
+
+	sampleTime := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+	sampleRun := createProwJobRunForCR(t, dbc, job1.ID, release, sampleTime)
+	createProwJobRunTest(t, dbc, sampleRun.ID, job1.ID, test.ID, &suite.ID, 12, release, sampleTime)
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	reports, errs := generator.GenerateTestDetailsReportMultiTest(context.Background())
+	require.Empty(t, errs)
+	require.Len(t, reports, 1)
+	require.Len(t, reports[0].Analyses, 1)
+	require.Len(t, reports[0].Analyses[0].JobStats, 3)
+	assert.Equal(t, stats, reports[0].Analyses[0].BaseStats.Stats)
+	jobStatsByBaseJob := make(map[string]int, len(reports[0].Analyses[0].JobStats))
+	for _, jobStats := range reports[0].Analyses[0].JobStats {
+		jobStatsByBaseJob[jobStats.BaseJobName] = len(jobStatsByBaseJob)
+	}
+	require.Contains(t, jobStatsByBaseJob, job1.Name)
+	require.Contains(t, jobStatsByBaseJob, job2.Name)
+	require.Contains(t, jobStatsByBaseJob, rawOnlyJob.Name)
+	job1Stats := reports[0].Analyses[0].JobStats[jobStatsByBaseJob[job1.Name]]
+	assert.Len(t, job1Stats.BaseJobRunStats, 1)
+	assert.Len(t, job1Stats.SampleJobRunStats, 1)
+	job2Stats := reports[0].Analyses[0].JobStats[jobStatsByBaseJob[job2.Name]]
+	assert.Len(t, job2Stats.BaseJobRunStats, 1)
+	assert.Empty(t, job2Stats.SampleJobRunStats)
+	rawOnlyStats := reports[0].Analyses[0].JobStats[jobStatsByBaseJob[rawOnlyJob.Name]]
+	assert.Len(t, rawOnlyStats.BaseJobRunStats, 1)
+	assert.Empty(t, rawOnlyStats.SampleJobRunStats)
+
+	opts.SkipGABaseJobRuns = true
+	statsOnly, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+	var statsWithoutRuns crtest.Stats
+	for _, summary := range statsOnly[utils.NormalizeProwJobName(job1.Name)] {
+		statsWithoutRuns = statsWithoutRuns.Add(summary.Stats, false)
+		assert.Empty(t, summary.JobRuns)
+	}
+	assert.Equal(t, stats, statsWithoutRuns)
+
+	generator = componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	reports, errs = generator.GenerateTestDetailsReportMultiTest(context.Background())
+	require.Empty(t, errs)
+	require.Len(t, reports, 1)
+	require.Len(t, reports[0].Analyses, 1)
+	require.Len(t, reports[0].Analyses[0].JobStats, 2)
+	assert.Equal(t, stats, reports[0].Analyses[0].BaseStats.Stats)
+	jobStatsByBaseJob = make(map[string]int, len(reports[0].Analyses[0].JobStats))
+	for _, jobStats := range reports[0].Analyses[0].JobStats {
+		jobStatsByBaseJob[jobStats.BaseJobName] = len(jobStatsByBaseJob)
+	}
+	require.Contains(t, jobStatsByBaseJob, job1.Name)
+	require.Contains(t, jobStatsByBaseJob, job2.Name)
+	job1Stats = reports[0].Analyses[0].JobStats[jobStatsByBaseJob[job1.Name]]
+	assert.Empty(t, job1Stats.BaseJobRunStats)
+	assert.Len(t, job1Stats.SampleJobRunStats, 1)
+	job2Stats = reports[0].Analyses[0].JobStats[jobStatsByBaseJob[job2.Name]]
+	assert.Empty(t, job2Stats.BaseJobRunStats)
+	assert.Empty(t, job2Stats.SampleJobRunStats)
+
+	// The stats-only path must not query the raw table at all.
+	require.NoError(t, dbc.DB.Exec("ALTER TABLE prow_job_run_tests RENAME TO unavailable_run_tests").Error)
+	statsOnly, errs = provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+	require.NotEmpty(t, statsOnly)
+}
+
+// TestQueryBaseJobRunTestStatus_GARawOnlyNormalizedJob keeps retained f24 and
+// f48 runs under their stored jobs when they share a normalized name and test key.
+func TestQueryBaseJobRunTestStatus_GARawOnlyNormalizedJob(t *testing.T) {
+	dbc := crTestDB(t)
+	release := "4.15"
+	gaDate := civil.Date{Year: 2024, Month: 3, Day: 1}
+	createReleaseDefinition(t, dbc, release, &gaDate)
+	vc := createVariantCombination(t, dbc, []string{"Platform:aws", "Network:ovn"})
+	snapshotJob := createProwJobWithVC(t, dbc, "periodic-ga-frequency-f24-aws", release, vc)
+	rawOnlyJob := createProwJobWithVC(t, dbc, "periodic-ga-frequency-f48-aws", release, vc)
+	require.Equal(t, utils.NormalizeProwJobName(snapshotJob.Name), utils.NormalizeProwJobName(rawOnlyJob.Name))
+	test := intutil.CreateTest(t, dbc, "openshift-tests:[sig-storage] normalized raw-only GA job")
+	suite := intutil.CreateSuite(t, dbc, "openshift-tests-ga-normalized-raw-only")
+	ownership := createTestOwnership(t, dbc, test.ID, &suite.ID, "openshift-tests:ga-normalized-raw-only", "Storage", []string{"PVC"})
+	createGARawData(t, dbc, release, 30, test.ID, snapshotJob.ID, suite.ID, 5, 4, 0)
+
+	rawRunAt := gaDate.AddDays(-2).In(time.UTC)
+	snapshotRun := createProwJobRunForCR(t, dbc, snapshotJob.ID, release, rawRunAt)
+	createProwJobRunTest(t, dbc, snapshotRun.ID, snapshotJob.ID, test.ID, &suite.ID, 12, release, rawRunAt)
+	rawRun := createProwJobRunForCR(t, dbc, rawOnlyJob.ID, release, rawRunAt)
+	createProwJobRunTest(t, dbc, rawRun.ID, rawOnlyJob.ID, test.ID, &suite.ID, 12, release, rawRunAt)
+
+	opts := defaultReqOptions(release)
+	opts.BaseRelease = reqopts.Release{Name: release, Start: gaDate.AddDays(-30).In(time.UTC), End: gaDate.In(time.UTC)}
+	opts.TestIDOptions = []reqopts.TestIdentification{{TestID: ownership.UniqueID, RequestedVariants: map[string]string{"Platform": "aws", "Network": "ovn"}}}
+	opts.VariantOption.IncludeVariants = map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}}
+	provider := postgres.NewPostgresProvider(dbc, nil)
+
+	result, errs := provider.QueryBaseJobRunTestStatus(context.Background(), opts)
+	require.Empty(t, errs)
+	summaries := result[utils.NormalizeProwJobName(snapshotJob.Name)]
+	require.Len(t, summaries, 2)
+
+	byJob := make(map[string]crstatus.TestDetailsSummary, len(summaries))
+	for _, summary := range summaries {
+		byJob[summary.ProwJob] = summary
+	}
+	snapshotSummary, ok := byJob[snapshotJob.Name]
+	require.True(t, ok)
+	assert.Equal(t, crtest.NewTestStats(4, 1, 0, false), snapshotSummary.Stats)
+	require.Len(t, snapshotSummary.JobRuns, 1)
+	assert.Equal(t, strconv.FormatUint(uint64(snapshotRun.ID), 10), snapshotSummary.JobRuns[0].ProwJobRunID)
+	rawOnlySummary, ok := byJob[rawOnlyJob.Name]
+	require.True(t, ok)
+	assert.Equal(t, crtest.Stats{}, rawOnlySummary.Stats)
+	require.Len(t, rawOnlySummary.JobRuns, 1)
+	assert.Equal(t, strconv.FormatUint(uint64(rawRun.ID), 10), rawOnlySummary.JobRuns[0].ProwJobRunID)
+
+	sampleRunAt := time.Date(2024, 6, 5, 12, 0, 0, 0, time.UTC)
+	sampleRun := createProwJobRunForCR(t, dbc, snapshotJob.ID, release, sampleRunAt)
+	createProwJobRunTest(t, dbc, sampleRun.ID, snapshotJob.ID, test.ID, &suite.ID, 12, release, sampleRunAt)
+	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
+	reports, errs := generator.GenerateTestDetailsReportMultiTest(context.Background())
+	require.Empty(t, errs)
+	require.Len(t, reports, 1)
+	require.Len(t, reports[0].Analyses, 1)
+	require.Len(t, reports[0].Analyses[0].JobStats, 2)
+
+	byBaseJobStats := make(map[string]int, len(reports[0].Analyses[0].JobStats))
+	for i, jobStats := range reports[0].Analyses[0].JobStats {
+		byBaseJobStats[jobStats.BaseJobName] = i
+	}
+
+	snapshotJobIndex, ok := byBaseJobStats[snapshotJob.Name]
+	require.True(t, ok)
+	snapshotJobStats := reports[0].Analyses[0].JobStats[snapshotJobIndex]
+	assert.Equal(t, snapshotJob.Name, snapshotJobStats.SampleJobName)
+	require.Len(t, snapshotJobStats.BaseJobRunStats, 1)
+	assert.Equal(t, strconv.FormatUint(uint64(snapshotRun.ID), 10), snapshotJobStats.BaseJobRunStats[0].JobRunID)
+	require.Len(t, snapshotJobStats.SampleJobRunStats, 1)
+	assert.Equal(t, strconv.FormatUint(uint64(sampleRun.ID), 10), snapshotJobStats.SampleJobRunStats[0].JobRunID)
+
+	rawOnlyJobIndex, ok := byBaseJobStats[rawOnlyJob.Name]
+	require.True(t, ok)
+	rawOnlyJobStats := reports[0].Analyses[0].JobStats[rawOnlyJobIndex]
+	assert.Empty(t, rawOnlyJobStats.SampleJobName)
+	require.Len(t, rawOnlyJobStats.BaseJobRunStats, 1)
+	assert.Equal(t, strconv.FormatUint(uint64(rawRun.ID), 10), rawOnlyJobStats.BaseJobRunStats[0].JobRunID)
+	assert.Empty(t, rawOnlyJobStats.SampleJobRunStats)
+}
+
 func TestQueryBaseJobRunTestStatus_MixedRawAndAggregateKeys(t *testing.T) {
 	dbc := crTestDB(t)
 	release := "4.16"
@@ -4567,26 +4851,24 @@ func TestGenerateReport_DifferentReleases(t *testing.T) {
 
 	provider := postgres.NewPostgresProvider(dbc, nil)
 	opts := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name:  baseRelease,
 			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		},
-		SampleRelease: reqopts.Release{
+		}, SampleRelease: reqopts.Release{
 			Name:  sampleRelease,
 			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:       sets.New[string]("Platform", "Network"),
 			ColumnGroupBy:   sets.New[string]("Platform"),
 			IncludeVariants: map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
-		},
-		AdvancedOption: reqopts.Advanced{
+		}, AdvancedOption: reqopts.Advanced{
 			MinimumFailure: 1,
 			Confidence:     95,
-		},
-		IncludeAllTests: true,
+		}},
+		ReportContentOptions: reqopts.ReportContentOptions{IncludeAllTests: true},
 	}
 
 	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
@@ -4643,25 +4925,23 @@ func TestGenerateReport_MissingSampleAndBasis(t *testing.T) {
 
 	provider := postgres.NewPostgresProvider(dbc, nil)
 	opts := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name:  baseRelease,
 			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		},
-		SampleRelease: reqopts.Release{
+		}, SampleRelease: reqopts.Release{
 			Name:  sampleRelease,
 			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:       sets.New[string]("Platform", "Network"),
 			ColumnGroupBy:   sets.New[string]("Platform"),
 			IncludeVariants: map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
-		},
-		AdvancedOption: reqopts.Advanced{
+		}, AdvancedOption: reqopts.Advanced{
 			MinimumFailure: 1,
 			Confidence:     95,
-		},
+		}},
 	}
 
 	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
@@ -4846,25 +5126,23 @@ func TestGenerateReport_DisjointVariantsBetweenBaseAndSample(t *testing.T) {
 
 	provider := postgres.NewPostgresProvider(dbc, nil)
 	opts := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name:  baseRelease,
 			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		},
-		SampleRelease: reqopts.Release{
+		}, SampleRelease: reqopts.Release{
 			Name:  sampleRelease,
 			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:       sets.New[string]("Platform", "Network"),
 			ColumnGroupBy:   sets.New[string]("Platform"),
 			IncludeVariants: map[string][]string{"Platform": {"aws", "gcp"}, "Network": {"ovn", "sdn"}},
-		},
-		AdvancedOption: reqopts.Advanced{
+		}, AdvancedOption: reqopts.Advanced{
 			MinimumFailure: 1,
 			Confidence:     95,
-		},
+		}},
 	}
 
 	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
@@ -4920,17 +5198,16 @@ func TestGenerateReport_EmptyBaseLookupStillReturnsSampleResults(t *testing.T) {
 
 	provider := postgres.NewPostgresProvider(dbc, nil)
 	opts := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name:  baseRelease,
 			Start: time.Date(2024, 5, 15, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
-		},
-		SampleRelease: reqopts.Release{
+		}, SampleRelease: reqopts.Release{
 			Name:  sampleRelease,
 			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:     sets.New[string]("Platform", "Topology"),
 			ColumnGroupBy: sets.New[string]("Platform"),
 			// Base side uses Topology:single (no matching VCs exist)
@@ -4941,11 +5218,10 @@ func TestGenerateReport_EmptyBaseLookupStillReturnsSampleResults(t *testing.T) {
 			// Cross-compare overrides sample side to Topology:ha (matches vcHA)
 			VariantCrossCompare: []string{"Topology"},
 			CompareVariants:     map[string][]string{"Topology": {"ha"}},
-		},
-		AdvancedOption: reqopts.Advanced{
+		}, AdvancedOption: reqopts.Advanced{
 			MinimumFailure: 1,
 			Confidence:     95,
-		},
+		}},
 	}
 
 	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
@@ -4991,26 +5267,24 @@ func TestGenerateReport_GABasePath(t *testing.T) {
 
 	provider := postgres.NewPostgresProvider(dbc, nil)
 	opts := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name:  baseRelease,
 			Start: gaStart.In(time.UTC),
 			End:   gaEnd.AddDays(-1).In(time.UTC),
-		},
-		SampleRelease: reqopts.Release{
+		}, SampleRelease: reqopts.Release{
 			Name:  sampleRelease,
 			Start: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC),
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:       sets.New[string]("Platform", "Network"),
 			ColumnGroupBy:   sets.New[string]("Platform"),
 			IncludeVariants: map[string][]string{"Platform": {"aws"}, "Network": {"ovn"}},
-		},
-		AdvancedOption: reqopts.Advanced{
+		}, AdvancedOption: reqopts.Advanced{
 			MinimumFailure: 1,
 			Confidence:     95,
-		},
-		IncludeAllTests: true,
+		}},
+		ReportContentOptions: reqopts.ReportContentOptions{IncludeAllTests: true},
 	}
 
 	generator := componentreadiness.NewComponentReportGenerator(provider, opts, dbc, nil, "")
@@ -5290,14 +5564,14 @@ type spotCheckSeed struct {
 func spotCheckReqOptions(release string) reqopts.RequestOptions {
 	now := time.Now().UTC()
 	return reqopts.RequestOptions{
-		SampleRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{SampleRelease: reqopts.Release{
 			Name:  release,
 			Start: now.Add(-30 * 24 * time.Hour),
 			End:   now.Add(24 * time.Hour), // buffer for test timing
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy: sets.New[string]("Platform", "Network"),
-		},
+		}},
 	}
 }
 
@@ -5558,31 +5832,29 @@ func TestSpotCheckEndToEnd(t *testing.T) {
 	sampleEnd := now.Add(24 * time.Hour)
 
 	opts := reqopts.RequestOptions{
-		SampleRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{SampleRelease: reqopts.Release{
 			Name:  seed.release,
 			Start: sampleStart,
 			End:   sampleEnd,
-		},
-		BaseRelease: reqopts.Release{
+		}, BaseRelease: reqopts.Release{
 			Name:  seed.release,
 			Start: sampleStart.Add(-30 * 24 * time.Hour),
 			End:   sampleStart,
-		},
-		VariantOption: reqopts.Variants{
+		}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:     sets.New[string]("Platform", "Network"),
 			ColumnGroupBy: sets.New[string]("Platform"),
-		},
-		AdvancedOption: reqopts.Advanced{
+		}, AdvancedOption: reqopts.Advanced{
 			MinimumFailure: 1,
 			Confidence:     95,
-		},
-		SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
+		}},
+		JobRunOptions: reqopts.JobRunOptions{SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{
 			{
 				Name:            "spotcheck-30d",
 				Release:         reqopts.Release{Start: sampleStart, End: sampleEnd},
 				IncludeVariants: map[string][]string{"JobTier": {"spotcheck-30d"}},
 			},
-		},
+		}},
 	}
 
 	report, errs := componentreadiness.GetComponentReport(
@@ -5873,31 +6145,31 @@ func TestSpotCheckDrilldownIgnoresBasisOverride(t *testing.T) {
 		require.NoError(t, dbc.DB.Create(&models.ReleaseDefinition{
 			Release: release.name, Major: 4, Minor: release.minor, GADate: &ga, Product: "OCP",
 		}).Error)
+		baseJob := createProwJobWithVC(t, dbc, "spotcheck-basis-"+release.name, release.name, seed.vcCPU)
+		createGARawData(t, dbc, release.name, 30, seed.syntheticTest.ID, baseJob.ID, 0, 1, 1, 0)
 	}
 
 	now := time.Now().UTC()
 	opts := reqopts.RequestOptions{
-		BaseRelease: reqopts.Release{
+		ReleaseOptions: reqopts.ReleaseOptions{BaseRelease: reqopts.Release{
 			Name:  "4.16",
 			Start: time.Date(2024, 5, 28, 0, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 6, 27, 0, 0, 0, 0, time.UTC),
-		},
-		SampleRelease: reqopts.Release{Name: seed.release, Start: now.Add(-30 * 24 * time.Hour), End: now.Add(24 * time.Hour)},
-		VariantOption: reqopts.Variants{
+		}, SampleRelease: reqopts.Release{Name: seed.release, Start: now.Add(-30 * 24 * time.Hour), End: now.Add(24 * time.Hour)}},
+		AnalysisOptions: reqopts.AnalysisOptions{VariantOption: reqopts.Variants{
 			DBGroupBy:     sets.New[string]("Platform", "Network"),
 			ColumnGroupBy: sets.New[string]("Platform"),
-		},
-		AdvancedOption: reqopts.Advanced{MinimumFailure: 1, Confidence: 95, IncludeMultiReleaseAnalysis: true},
-		SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{{
+		}, AdvancedOption: reqopts.Advanced{MinimumFailure: 1, Confidence: 95, IncludeMultiReleaseAnalysis: true}},
+		JobRunOptions: reqopts.JobRunOptions{SpotCheckJobSamples: []reqopts.SpotCheckJobSampleOpts{{
 			Name:            "spotcheck-30d",
 			Release:         reqopts.Release{Name: seed.release, Start: now.Add(-30 * 24 * time.Hour), End: now.Add(24 * time.Hour)},
 			IncludeVariants: map[string][]string{"JobTier": {"spotcheck-30d"}},
-		}},
-		TestIDOptions: []reqopts.TestIdentification{{
+		}}},
+		TestOptions: reqopts.TestOptions{TestIDOptions: []reqopts.TestIdentification{{
 			TestID:              crtest.SpotCheckTestID("spotcheck-30d", "Node / Kubelet", "CPU Partitioning"),
 			RequestedVariants:   map[string]string{"Platform": "aws", "Network": "ovn"},
 			BaseOverrideRelease: "4.15",
-		}},
+		}}},
 	}
 
 	provider := postgres.NewPostgresProvider(dbc, nil)

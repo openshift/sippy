@@ -1,6 +1,7 @@
 package main
 
 import (
+	stderrors "errors"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/flags"
 )
 
@@ -212,6 +214,46 @@ func TestSeededTestStatusCounts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assertSeededStatusCounts(t, tt.counts)
+		})
+	}
+}
+
+func TestRequiresGAFixture(t *testing.T) {
+	tests := []struct {
+		name            string
+		windowErr       error
+		hasEligibleRows bool
+		wantFixture     bool
+		wantErr         error
+	}{
+		{
+			name:        "incomplete window needs fixtures",
+			windowErr:   db.ErrGARawWindowIncomplete,
+			wantFixture: true,
+		},
+		{
+			name:        "complete but empty window needs fixtures",
+			wantFixture: true,
+		},
+		{
+			name:            "complete window with eligible rows preserves raw data",
+			hasEligibleRows: true,
+		},
+		{
+			name:      "unexpected window error is returned",
+			windowErr: stderrors.New("catalog unavailable"),
+			wantErr:   stderrors.New("catalog unavailable"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotFixture, err := requiresGAFixture(tt.windowErr, tt.hasEligibleRows)
+			assert.Equal(t, tt.wantFixture, gotFixture)
+			if tt.wantErr != nil {
+				assert.ErrorContains(t, err, tt.wantErr.Error())
+				return
+			}
+			assert.NoError(t, err)
 		})
 	}
 }

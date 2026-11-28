@@ -35,7 +35,7 @@ func TestProviderForDefaultsToPostgres(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			providerForRequest := provider.providerFor(reqopts.RequestOptions{DataSource: tt.dataSource})
+			providerForRequest := provider.providerFor(reqopts.RequestOptions{ViewDataSourceOptions: reqopts.ViewDataSourceOptions{DataSource: tt.dataSource}})
 			require.IsType(t, tt.wantType, providerForRequest)
 		})
 	}

@@ -25,24 +25,31 @@ func SummarizeTestJobRuns(rows map[string][]TestJobRunRows) map[string][]TestDet
 	result := map[string][]TestDetailsSummary{}
 
 	for jobName, jobRows := range rows {
-		byTestKey := map[string]*TestDetailsSummary{}
+		byJobAndTestKey := map[string]*TestDetailsSummary{}
 		var orderedKeys []string
 
 		for _, row := range jobRows {
-			summary, ok := byTestKey[row.TestKeyStr]
+			identity := row.TestKeyStr + "\x00" + row.ProwJob
+			summary, ok := byJobAndTestKey[identity]
 			if !ok {
 				summary = &TestDetailsSummary{
 					TestKey:    row.TestKey,
 					TestKeyStr: row.TestKeyStr,
 					ProwJob:    row.ProwJob,
 				}
-				byTestKey[row.TestKeyStr] = summary
-				orderedKeys = append(orderedKeys, row.TestKeyStr)
+				byJobAndTestKey[identity] = summary
+				orderedKeys = append(orderedKeys, identity)
 			}
 
 			// flakeAsFailure=false: counts are policy-independent; callers recompute SuccessRate
-			// with the request's FlakeAsFailure setting via Stats.Add().
-			summary.Stats = summary.Stats.AddTestCount(row.Count, false)
+			// with the request's FlakeAsFailure setting via Stats.Add(). PostgreSQL raw
+			// runs retain a flake-as-success projection for their display Count, but the
+			// summary must use mutually exclusive result counts.
+			statsCount := row.Count
+			if row.StatsCount != nil {
+				statsCount = *row.StatsCount
+			}
+			summary.Stats = summary.Stats.AddTestCount(statsCount, false)
 
 			if row.ProwJobRunID != "" {
 				summary.JobRuns = append(summary.JobRuns, JobRunDetail{
@@ -68,7 +75,7 @@ func SummarizeTestJobRuns(rows map[string][]TestJobRunRows) map[string][]TestDet
 		}
 
 		for _, key := range orderedKeys {
-			result[jobName] = append(result[jobName], *byTestKey[key])
+			result[jobName] = append(result[jobName], *byJobAndTestKey[key])
 		}
 	}
 
